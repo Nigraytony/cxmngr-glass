@@ -1,0 +1,190 @@
+{
+    "number": "TEMP-10001",
+    "tag": "AHU-1-TEMP",
+    "title": "Air Handling Unit Template",
+    "type": "Air Handling Unit",
+    "system": "Mechanical",
+    "responsible": null,
+    "template": null,
+    "status": "Not Started",
+    "attributes": [
+      {"number": 1, "title": "Manufacturer", "value": "", "unit": "", "dateCompleted": null, "notes": "" },
+      {"number": 2, "title": "Model", "value": "", "unit": "", "dateCompleted": null, "notes": "" },
+      {"number": 3, "title": "Serial #", "value": "", "unit": "", "dateCompleted": null, "notes": "" },
+      {"number": 4, "title": "Airflow", "value": "", "unit": "cfm", "dateCompleted": null, "notes": "" },
+      {"number": 5, "title": "Outside Airflow", "value": "", "unit": "cfm", "dateCompleted": null, "notes": "" },
+      {"number": 6, "title": "Static Pressure", "value": "", "unit": "inWC", "dateCompleted": null, "notes": "" },
+      {"number": 7, "title": "Voltage-Phase-Frequency", "value": "", "unit": "V-P-Hz", "dateCompleted": null, "notes": "" },
+      {"number": 8, "title": "Serves", "value": "", "unit": "", "dateCompleted": null, "notes": "" }
+    ],
+    "description": null,
+    "spaceId": null,
+    "orderDate": null,
+    "installationDate": null,
+    "balanceDate": null,
+    "testDate": null,
+    "projectId": null,
+    "issues": null,
+    "checklists": [
+      { 
+        "number": 1, 
+        "title": "Installation", 
+        "type": "default", 
+        "discipline": "mechanical",
+        "description": "checklist used for installation questions",
+        "system": "Mechanical",
+        "responsible": "",
+        "status": "Not Started",
+        "questions": [
+            { "number": 1, "question": "Is the unit level?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 2, "question": "Is the unit secure?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 3, "question": "Is the unit accessible for maintenance?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 4, "question": "Is the unit labeled or tagged?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 5, "question": "Is the unit connected to ductwork?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 6, "question": "Is the unit connected to hydronic piping?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 7, "question": "Is the unit connected to condensate drain?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 8, "question": "Is fire or smoke dampers install - where applicable?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 9, "question": "Is smoke detector installed in supply or return duct - where applicable?", "answer": null, "cxreview": null, "completed": false, "note": null },
+            { "number": 10, "question": "Are filters installed, with no air bypassing through gaps?", "answer": null, "cxreview": null, "completed": false, "note": null }
+        ],
+        "completed": false,
+        "completedDate": null,
+        "completedBy": null,
+        "notes": null, 
+        "issues": []
+        },
+        { 
+          "number": 2, 
+          "title": "Electrical", 
+          "type": "default", 
+          "discipline": "electrical",
+          "description": "checklist used for installation questions",
+          "system": "Mechanical",
+          "responsible": "",
+          "status": "Not Started",
+          "questions": [
+              { "number": 1, "question": "Is the unit connected to power?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 2, "question": "Is there a disconnect installed - were applicable?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 3, "question": "Is the unit wired for the correct voltage and phase?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 4, "question": "Is the unit connected to VFD - where applicable?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 5, "question": "Are electrical components tagged - labeled", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 6, "question": "Does the supplying panel identify the circuit serving this unit in its panel schedule?", "answer": null, "cxreview": null, "completed": false, "note": null }
+          ],
+          "completed": false,
+          "completedDate": null,
+          "completedBy": null,
+          "notes": null, 
+          "issues": []
+        },
+        { 
+          "number": 1, 
+          "title": "Controls", 
+          "type": "default", 
+          "discipline": "controls",
+          "description": "checklist used for installation questions",
+          "system": "Mechanical",
+          "responsible": "",
+          "status": "Not Started",
+          "questions": [
+              { "number": 1, "question": "Is the unit connected to the building automation system?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 2, "question": "Are panels and devices labeled or tagged?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 3, "question": "Are sensors installed and calibrated?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 4, "question": "Are alarms configured and tested?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 5, "question": "Are setpoints configured and tested?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 6, "question": "Are sequences of operation tested?", "answer": null, "cxreview": null, "completed": false, "note": null }
+          ],
+        "completed": false,
+        "completedDate": null,
+        "completedBy": null,
+        "notes": null, 
+        "issues": []
+        },
+        { 
+          "number": 1, 
+          "title": "Readiness", 
+          "type": "default", 
+          "discipline": "mechanical",
+          "description": "checklist used for installation questions",
+          "system": "Mechanical",
+          "responsible": "",
+          "status": "Not Started",
+          "questions": [
+              { "number": 1, "question": "Is the unit ready for startup?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 2, "question": "Is the unit ready for balancing?", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 3, "question": "Has the unit been tested to ensure it will pass commissioning", "answer": null, "cxreview": null, "completed": false, "note": null },
+              { "number": 4, "question": "Is the unit ready for commissioning?", "answer": null, "cxreview": null, "completed": false, "note": null }
+          ],
+        "completed": false,
+        "completedDate": null,
+        "completedBy": null,
+        "notes": null, 
+        "issues": []
+        }
+    ],
+    "functionalTests": [
+      {
+        "number": 1,
+        "title": "AHU Functional Performance Testing",
+        "type": null,
+        "system": "Mechanical",
+        "description": null,
+        "participants": null,
+        "status" :"Not Started",
+        "fptSections": [
+          {
+            "number": 1,
+            "title ": "Section 1 - Start & Stop & Scheduling",
+            "sequence": "Dampers and end switches shall be interlocked such that equipment will operate per the sequence below in either auto, hand or off on the VFD.",
+            "completed": null,
+            "fptQuestions": [
+              { 
+                "number": 1, 
+                "title": null, 
+                "question": "Place the VFD HOA switch in the Off position",
+                "expectedAnswer": "Supply fan shall be de-energized /n OA Damper shall close /n Cooling coil control valve shall close",
+                "answer": null,
+                "pass": null,
+                "notes":null
+              },
+              { 
+                "number": 2, 
+                "title": null, 
+                "question": "Place the VFD HOA switch in the On position",
+                "expectedAnswer": "Supply fan shall be energized /n OA Damper shall modulate /n Cooling coil control valve shall modulate",
+                "answer": null,
+                "pass": null,
+                "notes":null
+              },
+              { 
+                "number": 3, 
+                "title": null, 
+                "question": "Place the VFD HOA switch in the Auto  position",
+                "expectedAnswer": "The AHU shall follow occupied or deployment modes",
+                "answer": null,
+                "pass": null,
+                "notes":null
+              },
+              { 
+                "number": 4, 
+                "title": null, 
+                "question": "Using the DDC controller, place the air handling unit in the Occupied Mode",
+                "expectedAnswer": "Supply fan shall be energized /n OA Damper shall modulate/n Cooling coil control valve shall modulate",
+                "answer": null,
+                "pass": null,
+                "notes":null
+              }
+            ],
+            "notes": null
+          }
+        ],
+        "completed": false,
+        "notes": null,
+        "issues": []
+      }
+    ],
+    "images": null,
+    "attachments": null,
+    "history": null,
+    "labels": null,
+    "metadata": null
+  }

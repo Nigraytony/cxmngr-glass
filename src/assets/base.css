@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* App background for demo */
+html, body, #app {
+  height: 100%;
+}
+
+.app-bg {
+  @apply min-h-screen bg-gradient-to-br from-indigo-600 via-fuchsia-600 to-cyan-500;
+}

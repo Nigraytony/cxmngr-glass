@@ -1,0 +1,8 @@
+TO DO FOR THE APP
+1. Issues:  Update the Issues to pull them from the DB instead of static issues
+2. Issues:  keep all issue interraction on the Issues page
+3. APP:     Add Project CRUD to the app
+DONE 4. Side Panel: Update the side panel to highlight the page that is active
+Done 5. Profile: Add Update Password logic to the app
+Done 6. Profile: Add project Cards in th projects tab of the user profile
+7. Profile: Implement a Forgot Password functionality in the app
