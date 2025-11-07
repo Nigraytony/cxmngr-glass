@@ -19,6 +19,24 @@ const plansRoutes = require('./routes/plans');
 
 const app = express();
 const port = process.env.PORT || 4242;
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cxmngr-api';
+
+// CORS config: allow specific origins in production via env
+// CORS_ALLOWED_ORIGINS can be a comma-separated list or "*" for any
+const allowedOriginsEnv = process.env.CORS_ALLOWED_ORIGINS;
+let corsOptions = { origin: true, allowedHeaders: ['Content-Type', 'Authorization'] };
+if (allowedOriginsEnv && allowedOriginsEnv.trim() && allowedOriginsEnv !== '*') {
+  const list = allowedOriginsEnv.split(',').map(s => s.trim()).filter(Boolean);
+  corsOptions = {
+    origin: function(origin, callback) {
+      // allow REST tools or same-origin (no origin header)
+      if (!origin) return callback(null, true);
+      if (list.includes(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
+    allowedHeaders: ['Content-Type', 'Authorization']
+  };
+}
 
 // Middleware
 // Capture raw body for Stripe webhook signature verification, then parse JSON normally
@@ -35,8 +53,8 @@ app.use(express.json({
     }
   }
 }));
-// Enable CORS and allow Authorization header for preflight
-app.use(cors({ origin: true, allowedHeaders: ['Content-Type', 'Authorization'] }));
+// Enable CORS (restricted if CORS_ALLOWED_ORIGINS is set)
+app.use(cors(corsOptions));
 
 // Serve uploaded files (local storage)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -44,6 +62,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.get('/api/', (req, res) => {
   res.send('Welcome to the CXMNGR API');
+});
+// Simple health endpoint for Azure health checks
+app.get('/api/health', (req, res) => {
+  const state = mongoose.connection.readyState;
+  res.json({ ok: state === 1, dbState: state });
 });
 app.use('/api/projects', 
   // authorize(['admin', 'user']),
@@ -81,10 +104,9 @@ app.use('/api/stripe', webhookRoutes);
 // Public plans endpoint
 app.use('/api/plans', plansRoutes);
 
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/cxmngr-api', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+// Connect to MongoDB (Cosmos DB for MongoDB or Atlas or self-hosted)
+mongoose.connect(mongoUri, {
+  // Mongoose 8+ sensible defaults; options kept minimal.
 });
 
 const db = mongoose.connection;

@@ -1,0 +1,45 @@
+name: Deploy Backend API to Azure Web App
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'backend-api/**'
+      - '.github/workflows/azure-webapp-backend.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      WORKING_DIR: backend-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '${{ env.WORKING_DIR }}/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm ci
+
+      - name: Build (skip if not needed)
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          echo "No build step required for Node/Express."
+
+      - name: Zip artifact
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          zip -r ../backend-api.zip . -x "node_modules/*"
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ vars.WEBAPP_NAME_BACKEND }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BACKEND }}
+          package: backend-api.zip
