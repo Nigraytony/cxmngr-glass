@@ -108,3 +108,6 @@ tmp/
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# Personal settings
+TODO.txt

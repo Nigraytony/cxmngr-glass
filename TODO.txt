@@ -10,3 +10,40 @@ To run the Stripe webhook in the cli run the following at the terminal:
 stripe listen --forward-to localhost:4242/api/stripe/webhook
 8. Activities: Don't filter on projects. Only activities for the default project needs to be available
 9. Activities: Filter on Type and Start Date
+
+Database Name: sample_mflix
+Database URL: mongodb://atlas-sql-690d76023ddd8e5fe7c2972a-xf3ud.z.query.mongodb.net/sample_mflix?ssl=true&authSource=admin
+
+cxmngrdb organization
+database user: ngray_db_user
+database user password: h7rd6FJ1opWFyXJx
+URI: mongodb+srv://ngray_db_user:<db_password>@cluster0.ymfn7gc.mongodb.net/?appName=Cluster0
+
+
+UPDATED FOR CURRENT APP
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = "mongodb+srv://ngray_db_user:<db_password>@cluster0.ymfn7gc.mongodb.net/?appName=Cluster0";
+
+// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
+
+async function run() {
+  try {
+    // Connect the client to the server	(optional starting in v4.7)
+    await client.connect();
+    // Send a ping to confirm a successful connection
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+  } finally {
+    // Ensures that the client will close when you finish/error
+    await client.close();
+  }
+}
+run().catch(console.dir);
+
