@@ -64,9 +64,16 @@ app.get('/api/', (req, res) => {
   res.send('Welcome to the CXMNGR API');
 });
 // Simple health endpoint for Azure health checks
-app.get('/api/health', (req, res) => {
-  const state = mongoose.connection.readyState;
-  res.json({ ok: state === 1, dbState: state });
+app.get('/apihealth', async (req, res) => {
+  try {
+    const client = await db.connect(); // or however you access Mongo
+    // For mongodb native driver:
+    await client.db().command({ ping: 1 });
+    res.json({ status: 'ok', db: 'connected' });
+  } catch (err) {
+    console.error('Healthcheck DB error:', err);
+    res.status(500).json({ status: 'error', error: err.message });
+  }
 });
 app.use('/api/projects', 
   // authorize(['admin', 'user']),
