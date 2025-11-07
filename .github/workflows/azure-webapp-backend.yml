@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend-api/**'
       - '.github/workflows/azure-webapp-backend.yml'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
