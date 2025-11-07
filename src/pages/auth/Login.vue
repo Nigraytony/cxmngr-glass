@@ -4,6 +4,12 @@
                 bg-white/10 backdrop-blur-xl border border-white/20 ring-1 ring-white/10
                 shadow-[0_10px_40px_rgba(0,0,0,0.25)]">
       <span class="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-white/25 to-transparent opacity-40 mix-blend-overlay"></span>
+      <div class="relative z-10 mb-4 flex items-center justify-center">
+        <picture>
+          <source srcset="/brand/logo.svg" type="image/svg+xml" />
+          <img src="/brand/logo.png" alt="App logo" class="h-[4.5rem] w-auto object-contain invert" />
+        </picture>
+      </div>
       <h1 class="text-2xl font-semibold text-white drop-shadow">Welcome back</h1>
       <p class="text-white/80">Sign in to your account</p>
 

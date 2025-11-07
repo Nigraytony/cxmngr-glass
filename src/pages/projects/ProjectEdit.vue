@@ -34,6 +34,11 @@
             <span class="i">⚙️</span>
             <span>Settings</span>
           </button>
+
+          <button @click="activeTab = 'logs'" :class="tabClass('logs')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+            <span class="i">📝</span>
+            <span>Logs</span>
+          </button>
         </div>
 
         <div>
@@ -99,20 +104,41 @@
             </div>
 
             <div v-show="activeTab === 'logo'">
-              <h3 class="text-md font-medium mb-2">Logo</h3>
-              <p class="text-sm text-white/70 mb-4">Upload or change the project's logo.</p>
+              <h3 class="text-md font-medium mb-2">Logos</h3>
+              <p class="text-sm text-white/70 mb-4">Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).</p>
 
-              <div class="flex items-center gap-4">
-                <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden">
-                  <img v-if="project.logo" :src="project.logo" alt="project logo" class="object-cover w-full h-full" />
-                  <div v-else class="text-white/60">No logo</div>
+              <!-- Client Logo -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="rounded-lg p-4 bg-white/5 border border-white/10">
+                  <div class="font-medium mb-2">Client logo</div>
+                  <div class="flex items-center gap-4">
+                    <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
+                      <img v-if="project.logo" :src="project.logo" alt="client logo" class="object-contain w-full h-full" />
+                      <div v-else class="text-white/60 text-xs">No logo</div>
+                    </div>
+                    <div>
+                      <input type="file" ref="clientFileInput" @change="onClientLogoSelected" accept="image/*" />
+                      <div class="mt-2 flex gap-2">
+                        <button @click="removeClientLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <input type="file" ref="fileInput" @change="onLogoSelected" accept="image/*" />
-                  <div class="mt-2 flex gap-2">
-                    <button @click="uploadLogo" class="px-3 py-1 rounded bg-white/6">Upload</button>
-                    <button @click="removeLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                <!-- Commissioning Agent Logo -->
+                <div class="rounded-lg p-4 bg-white/5 border border-white/10">
+                  <div class="font-medium mb-2">Commissioning Agent logo</div>
+                  <div class="flex items-center gap-4">
+                    <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
+                      <img v-if="(project.commissioning_agent && project.commissioning_agent.logo)" :src="project.commissioning_agent.logo" alt="cxa logo" class="object-contain w-full h-full" />
+                      <div v-else class="text-white/60 text-xs">No logo</div>
+                    </div>
+                    <div>
+                      <input type="file" ref="cxaFileInput" @change="onCxaLogoSelected" accept="image/*" />
+                      <div class="mt-2 flex gap-2">
+                        <button @click="removeCxaLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -124,15 +150,21 @@
                 <h2 class="text-xl font-semibold">Project Billing</h2>
 
                 <div class="p-4 rounded-lg border">
-                <p><strong>Status:</strong> {{ status }}</p>
-                <p class="mt-2"><strong>Plan:</strong> {{ planLabel }}</p>
-                <p v-if="project.stripeCurrentPeriodEnd">
-                  <strong>Current period end:</strong>
-                  {{ new Date(project.stripeCurrentPeriodEnd).toLocaleString() }}
-                </p>
-                <p v-if="status === 'trialing'">
+                  <p><strong>Status:</strong> {{ status }}</p>
+                  <p class="mt-2"><strong>Plan:</strong> {{ planLabel }}</p>
+                  <p v-if="project.stripeCurrentPeriodEnd">
+                    <strong>Current period end:</strong>
+                    {{ new Date(project.stripeCurrentPeriodEnd).toLocaleString() }}
+                  </p>
+                  <p v-if="status === 'trialing' && trialEndDate">
+                    <strong>Trial ends:</strong> {{ new Date(trialEndDate).toLocaleString() }}
+                  </p>
+                  <p v-if="status === 'trialing'">
                     <strong>Trial days left:</strong> {{ trialDaysLeft }}
-                </p>
+                  </p>
+                  <p v-if="status === 'trialing'" class="text-xs text-white/70 mt-1">
+                    Trial end is fixed from when the project was created and does not change when switching plans.
+                  </p>
                 </div>
 
                 <div class="p-4 rounded-lg border">
@@ -151,6 +183,18 @@
 
                 <div class="mt-2">
                   <span v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice" class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full">Current plan</span>
+                </div>
+
+                <!-- Selected plan details -->
+                <div v-if="selectedPlanDetails" class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div class="flex items-center justify-between">
+                    <div class="font-medium text-white">{{ selectedPlanDetails.name }}</div>
+                    <div class="text-white/80">{{ selectedPlanDetails.price }}</div>
+                  </div>
+                  <p v-if="selectedPlanDetails.summary" class="text-sm text-white/70 mt-1">{{ selectedPlanDetails.summary }}</p>
+                  <ul v-if="selectedPlanDetails.features && selectedPlanDetails.features.length" class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1">
+                    <li v-for="(f, i) in selectedPlanDetails.features" :key="i">{{ f }}</li>
+                  </ul>
                 </div>
 
                 <div class="mt-4 flex gap-3">
@@ -177,12 +221,90 @@
                   <label class="block text-white/80 mb-1">Tags (comma separated)</label>
                   <input v-model="tagsText" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
                 </div>
+                <div class="mt-4">
+                  <label class="block text-white/80 mb-1">Search mode</label>
+                  <div class="relative inline-block w-full max-w-sm">
+                    <select v-model="project.searchMode" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
+                      <option value="substring">Substring</option>
+                      <option value="exact">Exact</option>
+                      <option value="fuzzy">Fuzzy</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                        <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p class="text-xs text-white/60 mt-1">This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).</p>
+                </div>
+                <div class="mt-4">
+                  <label class="block text-white/80 mb-1">Issues per page</label>
+                  <div class="relative inline-block w-full max-w-sm">
+                    <select v-model.number="issuesPageSizeLocal" @change="persistIssuesPageSize()" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
+                      <option :value="5">5</option>
+                      <option :value="10">10</option>
+                      <option :value="25">25</option>
+                      <option :value="50">50</option>
+                      <option :value="100">100</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                        <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p class="text-xs text-white/60 mt-1">Applies to the Issues list for this project. Saved locally.</p>
+                </div>
               </div>
+            </div>
+
+            <div v-show="activeTab === 'logs'">
+              <h3 class="text-md font-medium mb-2">Project Logs</h3>
+              <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3 items-stretch">
+                <input v-model="logsSearch" placeholder="Search logs…" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2" />
+                <div class="relative">
+                  <select v-model="selectedType" class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90">
+                    <option value="">All types</option>
+                    <option v-for="t in allTypes" :key="t" :value="t">{{ t }}</option>
+                  </select>
+                </div>
+                <input v-model="startDateText" type="datetime-local" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full" />
+                <input v-model="endDateText" type="datetime-local" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full" />
+              </div>
+              <div class="flex items-center gap-2 mb-3">
+                <button @click="loadLogs" class="px-3 py-2 rounded bg-white/10 border border-white/20">Refresh</button>
+                <button @click="loadMore" class="px-3 py-2 rounded bg-white/10 border border-white/20">Load more ({{ logsLimit + 200 }})</button>
+                <button @click="exportCsv" class="ml-auto px-3 py-2 rounded bg-white/10 border border-white/20">Export CSV</button>
+              </div>
+              <div v-if="!logs.length" class="text-white/60">No logs yet.</div>
+              <ul v-else class="space-y-1">
+                <li v-for="(e, i) in filteredLogs" :key="i" class="p-2 rounded bg-white/5 border border-white/10">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-white/70">{{ fmt(e.ts) }}</div>
+                    <div class="flex items-center gap-2">
+                      <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">{{ e.type }}</div>
+                      <div v-if="e.by" class="text-xs text-white/70">by {{ e.by }}</div>
+                    </div>
+                  </div>
+                  <div class="mt-1 text-sm truncate">
+                    <span v-if="e.scope && e.scope.equipmentTag" class="text-white/80">{{ e.scope.equipmentTag }}</span>
+                    <span v-else-if="e.scope && e.scope.equipmentId" class="text-white/70">Eq#{{ e.scope.equipmentId }}</span>
+                    <span v-if="e.section && (e.section.number || e.section.title)" class="text-white/60"> • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
+                    <span v-if="e.question && (e.question.number || e.question.text)" class="text-white/60"> • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
+                    <span v-if="!e.by" class="text-white/60">&nbsp;</span>
+                  </div>
+                </li>
+              </ul>
             </div>
           </div>
 
           <div class="mt-6 text-right">
-            <button @click="save" class="px-4 py-2 rounded bg-white/6 hover:bg-white/10">Save</button>
+            <button @click="save" :disabled="saving" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2" :class="saving ? 'opacity-60 cursor-not-allowed' : ''">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+                <path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Save</span>
+            </button>
           </div>
         </div>
       </div>
@@ -199,6 +321,8 @@ import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import http from '../../utils/http'
+import { apiUrl } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
 
 const projectStore = useProjectStore()
@@ -208,10 +332,17 @@ const router = useRouter()
 const projectId = route.params.id || route.query.id || null
 const project = ref(null)
 const activeTab = ref('info')
+const logs = ref([])
+const logsSearch = ref('')
+const selectedType = ref('')
+const startDateText = ref('')
+const endDateText = ref('')
+const logsLimit = ref(200)
 const formErrors = ref({})
 const ui = useUiStore()
 const auth = useAuthStore()
-const fileInput = ref(null)
+const clientFileInput = ref(null)
+const cxaFileInput = ref(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
 const invites = ref([])
 // use auth store token; fall back to localStorage if necessary
@@ -220,6 +351,25 @@ const tagsText = computed({
   get() { return (project.value && Array.isArray(project.value.tags)) ? project.value.tags.join(', ') : '' },
   set(v) { if (project.value) project.value.tags = v.split(',').map(s => s.trim()).filter(Boolean) }
 })
+
+// Issues per-page (local, per-project) preference UI
+const issuesPageSizeLocal = ref(10)
+const issuesPageSizeStorageKey = computed(() => {
+  const id = (project.value && (project.value._id || project.value.id)) || projectId || 'global'
+  return `issuesPageSize:${id}`
+})
+function loadIssuesPageSizeLocal() {
+  try {
+    const raw = localStorage.getItem(issuesPageSizeStorageKey.value)
+    if (!raw) return
+    const n = parseInt(raw, 10)
+    if ([5, 10, 25, 50, 100].includes(n)) issuesPageSizeLocal.value = n
+  } catch {}
+}
+function persistIssuesPageSize() {
+  try { localStorage.setItem(issuesPageSizeStorageKey.value, String(issuesPageSizeLocal.value)) } catch {}
+}
+watch(issuesPageSizeStorageKey, () => loadIssuesPageSizeLocal(), { immediate: true })
 
 function tabClass(t) {
   return activeTab.value === t ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80'
@@ -232,19 +382,21 @@ onMounted(async () => {
     try {
       const p = await projectStore.fetchProject(projectId)
       project.value = { ...p }
+      if (!project.value.searchMode) project.value.searchMode = 'substring'
     } catch (e) {
       ui.showError('Failed to load project')
       router.push('/projects')
     }
   } else {
     // If no projectId provided, prefer the currentProject from the store (user default)
-    if (projectStore.currentProject && projectStore.currentProject.value) {
-      // `currentProject` is a ref; use its .value
-      project.value = { ...projectStore.currentProject.value }
+    if (projectStore.currentProject) {
+      // Pinia unwraps refs on the store; access directly
+      project.value = { ...projectStore.currentProject }
+      if (!project.value.searchMode) project.value.searchMode = 'substring'
     }
     // Watch for the store to populate (async fetch) and set project when ready
     watch(projectStore.currentProject, (nv) => {
-      if (!projectId && nv) project.value = { ...nv }
+      if (!projectId && nv) { project.value = { ...nv }; if (!project.value.searchMode) project.value.searchMode = 'substring' }
     }, { immediate: true })
     // fallback: if after a short tick we still don't have a project, try reading selectedProjectId from localStorage and fetch directly
     await nextTick()
@@ -254,6 +406,7 @@ onMounted(async () => {
         try {
           const p2 = await projectStore.fetchProject(stored)
           project.value = { ...p2 }
+          if (!project.value.searchMode) project.value.searchMode = 'substring'
         } catch (e) {
           // silent
         }
@@ -275,7 +428,7 @@ async function loadInvites() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
-    const { data } = await axios.get(`http://localhost:4242/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
+  const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
     invites.value = data || []
   } catch (err) {
     console.error('loadInvites error', err)
@@ -286,7 +439,7 @@ async function resendInvite(inviteId) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return ui.showError('No project selected')
-    await axios.post(`http://localhost:4242/api/projects/${pid}/resend-invite`, { inviteId }, { headers: getAuthHeaders() })
+  await http.post(`/api/projects/${pid}/resend-invite`, { inviteId }, { headers: getAuthHeaders() })
     ui.showSuccess('Invitation resent')
     // reload invites to update timestamps
     await loadInvites()
@@ -295,6 +448,88 @@ async function resendInvite(inviteId) {
     ui.showError(err?.response?.data?.error || 'Failed to resend invite')
   }
 }
+
+function fmt(d) { try { return d ? new Date(d).toLocaleString() : '' } catch { return String(d || '') } }
+const allTypes = computed(() => {
+  const set = new Set()
+  for (const e of (logs.value || [])) { if (e && e.type) set.add(String(e.type)) }
+  return Array.from(set).sort()
+})
+const startDate = computed(() => {
+  if (!startDateText.value) return null
+  try { return new Date(startDateText.value) } catch { return null }
+})
+const endDate = computed(() => {
+  if (!endDateText.value) return null
+  try { return new Date(endDateText.value) } catch { return null }
+})
+const filteredLogs = computed(() => {
+  const q = (logsSearch.value || '').toLowerCase()
+  const type = (selectedType.value || '').toLowerCase()
+  const sdt = startDate.value ? startDate.value.getTime() : null
+  const edt = endDate.value ? endDate.value.getTime() : null
+  return (logs.value || []).filter((e) => {
+    // type filter
+    if (type && String(e.type || '').toLowerCase() !== type) return false
+    // date range filter (inclusive)
+    if (sdt) { const et = e && e.ts ? new Date(e.ts).getTime() : 0; if (et && et < sdt) return false }
+    if (edt) { const et = e && e.ts ? new Date(e.ts).getTime() : 0; if (et && et > edt) return false }
+    // search filter
+    if (!q) return true
+    return JSON.stringify(e).toLowerCase().includes(q)
+  })
+})
+async function loadLogs() {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return
+  const opts = { limit: logsLimit.value }
+    if (selectedType.value) opts.type = selectedType.value
+    const list = await projectStore.fetchProjectLogs(String(pid), opts)
+    logs.value = Array.isArray(list) ? list : []
+  } catch (err) {
+    // noop
+  }
+}
+
+function loadMore() {
+  logsLimit.value += 200
+  loadLogs()
+}
+
+function exportCsv() {
+  const headers = ['ts','by','type','equipmentTag','equipmentId','sectionNumber','sectionTitle','questionNumber','questionText']
+  const rows = filteredLogs.value.map((e) => [
+    e.ts || '',
+    e.by || '',
+    e.type || '',
+    (e.scope && e.scope.equipmentTag) || '',
+    (e.scope && e.scope.equipmentId) || '',
+    (e.section && (e.section.number ?? '')) || '',
+    (e.section && (e.section.title || '')) || '',
+    (e.question && (e.question.number ?? '')) || '',
+    (e.question && (e.question.text || '')) || '',
+  ])
+  const csv = [headers, ...rows]
+    .map((r) => r.map((v) => {
+      const s = String(v ?? '')
+      if (s.includes('"') || s.includes(',') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"'
+      return s
+    }).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `project-logs-${new Date().toISOString().slice(0,19)}.csv`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+// Lazy-load logs when tab is opened
+watch(activeTab, (t) => { if (t === 'logs' && !logs.value.length) loadLogs() })
+// Reload logs when type filter changes (server-side filter), reset limit
+watch(selectedType, () => { logsLimit.value = 200; loadLogs() })
 
 function removeMember(m) {
   project.value.team = (project.value.team || []).filter(tm => (tm._id || tm.email) !== (m._id || m.email))
@@ -322,63 +557,168 @@ async function addMember() {
   newMember.value = { email: '', firstName: '', lastName: '', company: '', role: 'User' }
 }
 
-function onLogoSelected(e) {
+function ensureCommissioningAgent() {
+  if (!project.value) return
+  if (!project.value.commissioning_agent) project.value.commissioning_agent = {}
+}
+
+async function onClientLogoSelected(e) {
   const f = e.target.files && e.target.files[0]
   if (!f) return
   // quick client-side preview
   const reader = new FileReader()
-  reader.onload = (ev) => {
+  reader.onload = async (ev) => {
     project.value.logo = ev.target.result
+    try {
+      await projectStore.updateProject({ ...project.value })
+      ui.showSuccess('Client logo saved')
+    } catch (err) {
+      ui.showError('Failed to save client logo')
+    }
   }
   reader.readAsDataURL(f)
 }
 
-async function uploadLogo() {
+async function onCxaLogoSelected(e) {
+  const f = e.target.files && e.target.files[0]
+  if (!f) return
+  ensureCommissioningAgent()
+  const reader = new FileReader()
+  reader.onload = async (ev) => {
+    project.value.commissioning_agent.logo = ev.target.result
+    try {
+      await projectStore.updateProject({ ...project.value })
+      ui.showSuccess('Commissioning Agent logo saved')
+    } catch (err) {
+      ui.showError('Failed to save CxA logo')
+    }
+  }
+  reader.readAsDataURL(f)
+}
+
+async function removeClientLogo() {
+  project.value.logo = ''
   try {
-    // If backend expects a URL, upload to storage first. Here we'll just call updateProject
     await projectStore.updateProject({ ...project.value })
-  ui.showSuccess('Logo updated')
-  } catch (e) {
-  ui.showError('Failed to upload logo')
+    ui.showSuccess('Client logo removed')
+  } catch (err) {
+    ui.showError('Failed to remove client logo')
   }
 }
 
-function removeLogo() {
-  project.value.logo = ''
+async function removeCxaLogo() {
+  ensureCommissioningAgent()
+  project.value.commissioning_agent.logo = ''
+  try {
+    await projectStore.updateProject({ ...project.value })
+    ui.showSuccess('CxA logo removed')
+  } catch (err) {
+    ui.showError('Failed to remove CxA logo')
+  }
 }
 
+const saving = ref(false)
 async function save() {
+  if (saving.value) return
   try {
+    saving.value = true
     await projectStore.updateProject(project.value)
     ui.showSuccess('Saved')
   } catch (e) {
     ui.showError('Failed to save')
+  } finally {
+    saving.value = false
   }
 }
 
 // Your three monthly plan price IDs:
-const prices = [
-  { id: 'price_1MwoMXHUb4cunvDgueGxHOji',  label: 'Basic Plan – $29/mo' },
-  { id: 'price_1MwoOMHUb4cunvDgtbBKXDrN',    label: 'Standard Plan – $49/mo' },
-  { id: 'price_1MwoRJHUb4cunvDgehwhilRg',   label: 'Premium Plan – $79/mo' },
-];
-
+const prices = ref([]);
 const selectedPrice = ref(null);
 const loading = ref(false);
 
 const status = computed(() => project.value?.stripeSubscriptionStatus || project.value?.status || 'trialing');
 const planLabel = computed(() => {
   const id = project.value?.stripePriceId || selectedPrice.value;
-  const p = prices.find(x => x.id === id);
+  const p = (prices.value || []).find(x => x.id === id);
   return p ? p.label : (id || 'No plan');
 });
 
-const trialDaysLeft = computed(() => {
-  const end = Date.now() + 15*24*60*60*1000; // 15 days trial from now
-  if (!end) return 0;
-  const diff = Math.ceil((+end - Date.now()) / (1000*60*60*24));
-  return Math.max(diff, 0);
+// Plan details shown in the UI when a selection is made
+const planDetailsById = ref({});
+
+const selectedPlanDetails = computed(() => {
+  const id = selectedPrice.value;
+  if (!id) return null;
+  const info = (planDetailsById.value && planDetailsById.value[id]) || null;
+  if (info) return info;
+  const p = (prices.value || []).find(x => x.id === id);
+  if (!p) return null;
+  // Fallback: derive name/price from label if not found in map
+  const parts = String(p.label).split('–');
+  return {
+    name: parts[0]?.trim() || 'Selected Plan',
+    price: parts[1]?.trim() || '',
+    summary: '',
+    features: []
+  };
 });
+
+// Load plans from server and populate prices + details map
+onMounted(async () => {
+  try {
+  const { data } = await http.get('/api/plans');
+    const list = Array.isArray(data) ? data : [];
+    prices.value = list.map(p => ({ id: p.priceId, label: p.label, key: p.key }));
+    const details = {};
+    for (const p of list) {
+      // Derive name/price from label if not provided separately
+      const parts = String(p.label || '').split('–');
+      details[p.priceId] = {
+        key: p.key,
+        name: (p.name || parts[0] || 'Plan').toString().trim(),
+        price: (p.price || (parts[1] || '')).toString().trim(),
+        summary: p.summary || '',
+        features: Array.isArray(p.features) ? p.features : [],
+      };
+    }
+    planDetailsById.value = details;
+
+    // Set default selection based on project or first plan
+    if (project.value && (project.value.stripePriceId)) {
+      selectedPrice.value = project.value.stripePriceId;
+    } else if (prices.value.length) {
+      selectedPrice.value = prices.value[0].id;
+    }
+  } catch (err) {
+    // If fails, leave prices empty; UI will handle gracefully
+    console.error('Failed to load plans', err);
+  }
+});
+
+// Determine trial end date: prefer Stripe's current period end if trialing; else compute from trialStartedAt + 15 days
+const trialEndDate = computed(() => {
+  if (!project.value) return null
+  // Prefer explicit fixed trialEnd stored on the project when available
+  if (project.value.trialEnd) {
+    try { return new Date(project.value.trialEnd).toISOString() } catch { /* ignore */ }
+  }
+  // If Stripe has a current period end and status is trialing, prefer that timestamp
+  if ((project.value.stripeSubscriptionStatus === 'trialing') && project.value.stripeCurrentPeriodEnd) {
+    try { return new Date(project.value.stripeCurrentPeriodEnd).toISOString() } catch { /* ignore */ }
+  }
+  // Otherwise, compute from project.trialStartedAt if present
+  const started = project.value.trialStartedAt ? new Date(project.value.trialStartedAt) : null
+  if (!started || isNaN(started.getTime())) return null
+  const endMs = started.getTime() + (15 * 24 * 60 * 60 * 1000)
+  return new Date(endMs).toISOString()
+})
+
+const trialDaysLeft = computed(() => {
+  if (!trialEndDate.value) return 0
+  const end = new Date(trialEndDate.value).getTime()
+  const diff = Math.ceil((end - Date.now()) / (1000*60*60*24))
+  return Math.max(diff, 0)
+})
 
 async function refreshProject() {
   try {
@@ -394,7 +734,7 @@ async function refreshProject() {
 // when project loads, default the select to the project's saved stripePriceId
 watch(project, (pv) => {
   if (!pv) return;
-  selectedPrice.value = pv.stripePriceId || (prices[0] && prices[0].id) || null;
+  selectedPrice.value = pv.stripePriceId || ((prices.value && prices.value[0] && prices.value[0].id) || null);
 }, { immediate: true });
 
 async function startCheckout() {
@@ -402,14 +742,14 @@ async function startCheckout() {
   try {
   const authToken = auth.token || '';
     const pid = projectId || (project.value && (project.value._id || project.value.id));
-    console.log('startCheckout -> sending', { projectId: pid, priceId: selectedPrice.value, url: 'http://localhost:4242/api/stripe/create-checkout-session' });
+  console.log('startCheckout -> sending', { projectId: pid, priceId: selectedPrice.value, url: apiUrl('/api/stripe/create-checkout-session') });
     if (!pid) {
       ui.showError('No project selected');
       loading.value = false;
       return;
     }
     
-    const { data } = await axios.post('http://localhost:4242/api/stripe/create-checkout-session', {
+    const { data } = await http.post('/api/stripe/create-checkout-session', {
       projectId: pid,
       priceId: selectedPrice.value,
     }, { headers: getAuthHeaders() });
@@ -431,10 +771,8 @@ async function openBillingPortal() {
   loading.value = true;
   try {
   const authToken = auth.token || '';
-  console.log('openBillingPortal -> sending to', 'http://localhost:4242/api/stripe/portal-session');
-    const { data } = await axios.post('http://localhost:4242/api/stripe/portal-session', {}, {
-      headers: getAuthHeaders()
-    });
+  console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
+    const { data } = await http.post('/api/stripe/portal-session', {}, { headers: getAuthHeaders() });
     if (data && data.url) {
       ui.showSuccess('Opening billing portal...')
       window.location.href = data.url;

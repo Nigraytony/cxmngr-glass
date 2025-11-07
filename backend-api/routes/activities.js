@@ -4,10 +4,13 @@ const Activity = require('../models/activity');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const sanitizeHtml = require('sanitize-html');
 
 // multer memory storage for small images
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
+const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 function validatePhotosArray(photos) {
   if (!Array.isArray(photos)) return true;
@@ -119,6 +122,129 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
   } catch (error) {
     console.error('[activities] upload error', error);
     res.status(500).send({ error: 'Upload failed' });
+  }
+});
+
+// Allowed document mime types
+const ALLOWED_DOC_MIME = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'text/plain',
+  'text/csv',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/zip',
+]);
+
+function ensureDir(p) {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
+
+function getBackendBaseUrl(req) {
+  const envBase = process.env.BACKEND_URL;
+  if (envBase) return envBase.replace(/\/$/, '');
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.get('host') || `localhost:${process.env.PORT || 4242}`;
+  return `${proto}://${host}`;
+}
+
+// Upload attachments (documents) for an activity
+router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
+  try {
+    const activity = await Activity.findById(req.params.id);
+    if (!activity) return res.status(404).send({ error: 'Activity not found' });
+
+    const incoming = Array.isArray(req.files) ? req.files : [];
+    if (incoming.length === 0) return res.status(400).send({ error: 'No files uploaded' });
+
+    let useS3 = !!process.env.S3_BUCKET;
+    const urls = [];
+    if (useS3) {
+      // Best-effort S3 support; requires @aws-sdk/client-s3 in production
+      let S3Client, PutObjectCommand;
+      try {
+        ({ S3Client, PutObjectCommand } = require('@aws-sdk/client-s3'));
+      } catch (e) {
+        console.warn('[activities] S3 requested but @aws-sdk/client-s3 not installed; falling back to local storage');
+        useS3 = false;
+      }
+      if (useS3) {
+        const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+        for (const f of incoming) {
+          if (!ALLOWED_DOC_MIME.has(f.mimetype)) {
+            return res.status(400).send({ error: `Unsupported file type: ${f.mimetype}` });
+          }
+          const key = `activities/${activity._id}/${Date.now()}-${f.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          await s3.send(new PutObjectCommand({ Bucket: process.env.S3_BUCKET, Key: key, Body: f.buffer, ContentType: f.mimetype }));
+          const base = process.env.S3_PUBLIC_BASE || `https://${process.env.S3_BUCKET}.s3.amazonaws.com`;
+          urls.push({ filename: f.originalname, url: `${base}/${key}`, type: f.mimetype });
+        }
+      }
+    }
+    if (!useS3) {
+      // Local file storage to /uploads/activities/:id
+      const dir = path.join(__dirname, '..', 'uploads', 'activities', String(activity._id));
+      ensureDir(dir);
+      for (const f of incoming) {
+        if (!ALLOWED_DOC_MIME.has(f.mimetype)) {
+          return res.status(400).send({ error: `Unsupported file type: ${f.mimetype}` });
+        }
+        const safeName = `${Date.now()}-${f.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+        const fullPath = path.join(dir, safeName);
+        fs.writeFileSync(fullPath, f.buffer);
+        const base = getBackendBaseUrl(req);
+        const url = `${base}/uploads/activities/${activity._id}/${safeName}`;
+        urls.push({ filename: f.originalname, url, type: f.mimetype });
+      }
+    }
+
+    for (const u of urls) {
+      activity.attachments.push({ filename: u.filename, url: u.url, type: u.type, uploadedBy: req.user ? req.user._id : undefined, createdAt: new Date() });
+    }
+    await activity.save();
+    res.status(200).send(activity);
+  } catch (error) {
+    console.error('[activities] attachments upload error', error && (error.stack || error.message || error));
+    res.status(500).send({ error: 'Upload failed' });
+  }
+});
+
+// Remove an attachment by index; best-effort delete local file if under uploads
+router.delete('/:id/attachments/:index', auth, async (req, res) => {
+  try {
+    const idx = parseInt(req.params.index, 10);
+    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
+    const activity = await Activity.findById(req.params.id);
+    if (!activity) return res.status(404).send({ error: 'Activity not found' });
+    const arr = Array.isArray(activity.attachments) ? activity.attachments : [];
+    if (idx >= arr.length) return res.status(400).send({ error: 'Attachment index out of range' });
+    const [removed] = arr.splice(idx, 1);
+    activity.attachments = arr;
+    await activity.save();
+
+    // Try delete local file
+    if (removed && removed.url && removed.url.includes('/uploads/activities/')) {
+      try {
+        const urlPath = removed.url.split('/uploads/')[1];
+        if (urlPath) {
+          const full = path.join(__dirname, '..', 'uploads', urlPath);
+          if (fs.existsSync(full)) fs.unlinkSync(full);
+        }
+      } catch (_) {}
+    }
+
+    res.status(200).send(activity);
+  } catch (error) {
+    console.error('[activities] remove attachment error', error);
+    res.status(500).send({ error: 'Failed to remove attachment' });
   }
 });
 

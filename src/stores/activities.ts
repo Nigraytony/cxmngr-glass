@@ -38,7 +38,8 @@ export interface Activity {
   updatedAt?: string
 }
 
-const API_BASE = 'http://localhost:4242/api/activities'
+import { getApiBase } from '../utils/api'
+const API_BASE = `${getApiBase()}/api/activities`
 
 export const useActivitiesStore = defineStore('activities', () => {
   const activities = ref<Activity[]>([])

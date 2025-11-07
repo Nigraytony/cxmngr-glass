@@ -31,6 +31,13 @@ const spaceSchema = new mongoose.Schema({
   },
   subSpaces: [{ type: mongoose.Schema.Types.ObjectId, required: false, ref: 'Space' }],
   equipment: [{ type: mongoose.Schema.Types.ObjectId, required: false, ref: 'Equipment' }],
+  // Free-form attributes for a space (key/value pairs)
+  attributes: [
+    {
+      key: { type: String, required: false, trim: true },
+      value: { type: String, required: false, trim: true }
+    }
+  ],
   attachments: { type: [String], required: false },
   settings: {type: String, required: false},
   notes: { type: String, required: false },

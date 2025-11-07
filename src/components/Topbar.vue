@@ -1,18 +1,30 @@
 <template>
   <header
-    class="h-16 px-4 flex items-center justify-between
+    class="h-16 px-4 grid grid-cols-3 items-center
            bg-white/10 dark:bg-white/10 backdrop-blur-xl
            border-b border-white/20 ring-1 ring-white/10
            shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
   >
-    <div class="flex items-center gap-2">
+    <!-- Left: menu + client logo -->
+    <div class="flex items-center gap-3">
       <button @click="$emit('toggleSidebar')" class="px-3 py-1 rounded-lg bg-white/30 border border-white/40 text-white">
         ☰
       </button>
-      <span class="text-white font-semibold">{{ defaultProjectName }}</span>
+      <div v-if="clientLogo" class="h-10 w-auto max-w-[160px] flex items-center">
+        <img :src="clientLogo" alt="Client logo" class="h-10 w-auto object-contain rounded-lg" />
+      </div>
     </div>
 
-    <div class="relative" ref="userWrap">
+    <!-- Center: project name -->
+    <div class="flex items-center justify-center">
+      <span class="text-white font-semibold text-center truncate max-w-[60vw]">{{ defaultProjectName }}</span>
+    </div>
+
+    <!-- Right: CxA logo + user menu -->
+    <div class="relative flex items-center justify-end gap-3" ref="userWrap">
+      <div v-if="cxaLogo" class="h-10 w-auto max-w-[160px] flex items-center">
+        <img :src="cxaLogo" alt="CxA logo" class="h-10 w-auto object-contain rounded-lg" />
+      </div>
       <button @click="toggleMenu" class="flex items-center gap-2 px-2 py-1 rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10">
         <!-- thumbnail: avatar image when present, otherwise initials -->
         <div v-if="avatarSrc" class="w-8 h-8 rounded-full overflow-hidden bg-white/10">
@@ -39,6 +51,41 @@
                   <span>Profile</span>
                 </button>
               </li>
+
+              <!-- Projects list -->
+              <li class="my-1 border-t border-white/10"></li>
+              <li v-if="projectsList.length === 0" class="px-3 py-2 text-sm text-white/60">No projects</li>
+              <li v-for="p in projectsList" :key="p.id">
+                <button
+                  @click="onSelectProject(p)"
+                  class="w-full text-left px-3 py-2 rounded flex items-center justify-between gap-2 hover:bg-white/10"
+                  :class="isDefaultProject(p) ? 'bg-white/10 cursor-default' : ''"
+                  :title="p.name"
+                >
+                  <span class="truncate" :title="p.name">{{ p.name }}</span>
+                  <span class="flex items-center gap-1 text-xs" :class="isDefaultProject(p) ? 'text-green-300' : 'text-white/70'">
+                    <svg v-if="isDefaultProject(p)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+                      <path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <template v-else>
+                      <!-- thumbtack icon for 'make default' -->
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4" aria-label="Make default" title="Make default">
+                        <!-- tack head -->
+                        <circle cx="12" cy="6.5" r="2.5" stroke-width="1.4" />
+                        <!-- cross bar under head -->
+                        <path d="M9 10.5h6" stroke-width="1.4" stroke-linecap="round" />
+                        <!-- stem -->
+                        <path d="M12 10.5v5.5" stroke-width="1.4" stroke-linecap="round" />
+                        <!-- point -->
+                        <path d="M12 16l-1.8 5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </template>
+                    <span v-if="isDefaultProject(p)">Default</span>
+                  </span>
+                </button>
+              </li>
+
+              <li class="my-1 border-t border-white/10"></li>
               <li>
                 <button @click="emitLogout" class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2">
                   <!-- Logout icon -->
@@ -59,27 +106,40 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import { useAuthStore } from '../stores/auth'
+import { useUiStore } from '../stores/ui'
+import axios from 'axios'
+import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 
 const emit = defineEmits(['toggleSidebar','logout'])
 // Use auth store for current user name
 // import { useAuthStore } from '../stores/auth'
 const auth = useAuthStore()
 const projectStore = useProjectStore()
+const ui = useUiStore()
 
 const defaultProjectName = computed(() => {
-  // prefer the default project name from auth.user.projects if present
+  // Prefer the live current project from the project store
+  if (projectStore.currentProject && projectStore.currentProject.name) {
+    return projectStore.currentProject.name
+  }
+  // Fallback to default project entry from auth.user (may be hydrated by backend)
   try {
     if (auth.user && Array.isArray(auth.user.projects)) {
       const dp = auth.user.projects.find(p => (p && typeof p === 'object' && p.default))
       if (dp) return dp.name || dp.title || 'Projects'
     }
   } catch (e) {}
-  return projectStore.currentProject?.name || 'Liquid Glass Dashboard'
+  return 'Liquid Glass Dashboard'
 })
 
 const menuOpen = ref(false)
 const userWrap = ref(null)
 const dropdownStyle = ref({ position: 'fixed', top: '4rem', left: 'auto', right: '1rem' })
+
+// Logos from current project
+const clientLogo = computed(() => projectStore.currentProject?.logo || '')
+const cxaLogo = computed(() => projectStore.currentProject?.commissioning_agent?.logo || '')
 
 function updateDropdownPosition() {
   if (!userWrap.value) return
@@ -137,4 +197,60 @@ function onClickOutside(e) {
 
 onMounted(() => window.addEventListener('click', onClickOutside))
 onBeforeUnmount(() => window.removeEventListener('click', onClickOutside))
+
+// Ensure projects are loaded for the dropdown
+onMounted(async () => {
+  try {
+    if (!projectStore.projects || projectStore.projects.length === 0) {
+      await projectStore.fetchProjects()
+    }
+  } catch (e) { /* ignore */ }
+})
+
+const projectsList = computed(() => projectStore.projects || [])
+const defaultProjectId = computed(() => {
+  try {
+    const list = (auth.user && Array.isArray(auth.user.projects)) ? auth.user.projects : []
+    const dp = list.find((p) => p && p.default)
+    if (dp) {
+      const obj = dp
+      return typeof dp === 'string' ? dp : (obj._id || obj.id || null)
+    }
+  } catch (e) {}
+  return projectStore.currentProjectId || null
+})
+
+function isDefaultProject(p) {
+  const pid = p && (p.id || p._id)
+  return defaultProjectId.value && pid && String(defaultProjectId.value) === String(pid)
+}
+
+async function onSelectProject(p) {
+  if (!p) return
+  if (isDefaultProject(p)) return // already default
+  try {
+    const userId = auth.user && (auth.user._id || auth.user.id)
+    if (!userId) return
+    const projectId = p.id || p._id
+  const { data } = await http.post(`/api/projects/${projectId}/set-default`, { userId }, { headers: getAuthHeaders() })
+    // Update auth store's user while preserving token
+    const incoming = (data && data.user) ? data.user : data
+    const preserveToken = auth.token || (auth.user && auth.user.token) || null
+    if (incoming) {
+      auth.user = Object.assign({}, auth.user || {}, incoming)
+      if (preserveToken && auth.user) {
+        auth.user.token = preserveToken
+      }
+      // persist
+      try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) {}
+    }
+    // Switch current project in store
+    if (projectId) projectStore.setCurrentProject(String(projectId))
+    ui.showSuccess('Default project updated')
+  } catch (err) {
+    ui.showError(err?.response?.data?.error || 'Failed to set default project')
+  } finally {
+    // keep menu open so user sees the highlight update; optionally close
+  }
+}
 </script>

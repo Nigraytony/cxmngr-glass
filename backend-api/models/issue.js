@@ -12,15 +12,22 @@ const issueSchema = new mongoose.Schema({
   assignedTo: { type: String, required: false },
   severity: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
   status: { type: String, enum: ['Open', 'In Progress', 'Closed'], default: 'Open' },
+  // Closed metadata: who closed it and when (ISO date string, e.g., 2025-10-29)
+  closedDate: { type: String, required: false },
+  closedBy: { type: String, required: false },
   system: { type: String, required: false },
   location: { type: String, required: false },
   recommendation: { type: String, required: false },
   resolution: { type: String, required: false },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: false }, // Reference to an asset if applicable
   activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Activity', required: false }, // Reference to an activity if applicable
-  photos: { type: [String], default: [] },
-  documents: { type: [String], default: [] },
-  comments: { type: [String], default: [] },
+  // photos stored in DB as base64 strings (note: keep sizes small)
+  photos: [{ filename: String, data: String, contentType: String, size: Number, uploadedBy: mongoose.Schema.Types.ObjectId, uploadedByName: String, uploadedByAvatar: String, caption: { type: String, default: '' }, createdAt: { type: Date, default: Date.now } }],
+  // other attachments (documents) can be stored as external URLs or metadata
+  // Use Mixed to be backward compatible with any legacy string-based attachments
+  attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  // comments include user identity and optional avatar for display
+  comments: [{ userId: mongoose.Schema.Types.ObjectId, name: String, avatar: String, text: String, createdAt: { type: Date, default: Date.now } }],
   logs: { type: [String], default: [] },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() },

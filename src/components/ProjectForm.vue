@@ -68,6 +68,8 @@ const emit = defineEmits(['update:modelValue'])
 
 function toInputDate(val) {
   if (!val) return ''
+  // If already in YYYY-MM-DD format, return as-is to avoid TZ shifts
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val
   const d = new Date(val)
   if (isNaN(d.getTime())) return ''
   const yyyy = d.getFullYear()
@@ -78,10 +80,14 @@ function toInputDate(val) {
 
 function toISOStringDateFromInput(val) {
   if (!val) return ''
-  // val expected as YYYY-MM-DD
+  // val expected as YYYY-MM-DD; construct from parts to avoid UTC parsing quirks
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-').map(n => parseInt(n, 10))
+    const dt = new Date(y, m - 1, d)
+    return isNaN(dt.getTime()) ? '' : dt.toISOString()
+  }
   const d = new Date(val)
-  if (isNaN(d.getTime())) return ''
-  return d.toISOString()
+  return isNaN(d.getTime()) ? '' : d.toISOString()
 }
 
 const local = reactive({
@@ -152,11 +158,8 @@ watch(() => props.modelValue, (nv) => {
 }, { immediate: true, deep: true })
 
 watch(local, (v) => {
-  // emit with ISO date strings for backend compatibility
-  const out = { ...v }
-  out.startDate = v.startDate ? toISOStringDateFromInput(v.startDate) : ''
-  out.endDate = v.endDate ? toISOStringDateFromInput(v.endDate) : ''
-  emit('update:modelValue', out)
+  // Emit raw values including YYYY-MM-DD for date fields to prevent unexpected changes while typing
+  emit('update:modelValue', { ...v })
 }, { deep: true })
 
 // expose errors for template

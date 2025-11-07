@@ -36,7 +36,7 @@
         </div>
       </div>
 
-  <Toast v-model:show="toast.show" :message="toast.message" :variant="toast.variant" :top="toast.top" />
+  <!-- Local Toast removed; global UI toast is rendered by App.vue using the UI store -->
 
   <div>
         <div v-if="currentTab === 'Info'">
@@ -250,7 +250,7 @@ import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
-import Toast from '../../components/Toast.vue'
+import { useUiStore } from '../../stores/ui'
 
 const auth = useAuthStore()
 
@@ -325,7 +325,9 @@ const tabWidth = computed(() => 100 / tabs.length)
 const errors = reactive({})
 const status = ref('')
 const saving = ref(false)
-const toast = reactive({ show: false, message: '', variant: 'white', top: '4rem' })
+const ui = useUiStore()
+// Alias to store toast so existing assignments continue to show the global toast
+const toast = ui.toast
 const fileInput = ref(null)
 const preview = ref('')
 const avatarStatus = ref('')

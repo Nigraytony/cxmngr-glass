@@ -96,15 +96,17 @@ export default {
 
   issueTypes: [
     { value: null, text: "Select type" },
+    { value: "assessment", text: "Assessment" },
     { value: "checklist", text: "Checklist" },
     { value: "construction", text: "Construction Review" },
     { value: "design", text: "Design Review" },
     { value: "documentation", text: "O & M Manual Review" },
-    { value: "fpt", text: "Functional Testing" },
+    { value: "FPT", text: "Functional Testing" },
+    { value: "installation", text: "Installation Review" },
     { value: "leed", text: "LEED Review" },
     { value: "submittal", text: "Submittal Review" },
-    { value: "startup", text: "System Starup" },
-    { value: "tab", text: "Test & Balance" },
+    { value: "startup", text: "Equipment Startup" },
+    { value: "TAB", text: "Test & Balance" },
     { value: "training", text: "Training Review" },
   ],
 
@@ -153,6 +155,7 @@ export default {
     { value: "life safety", text: "Life Safety" },
     { value: "test & balance", text: "Test & Balance" },
     { value: "controls", text: "Controls" },
+    { value: "lighting_controls", text: "Lighting Controls" },
     { value: "lighting", text: "Lighting" },
     { value: "photovoltaic", text: "Photovoltaic" },
   ],

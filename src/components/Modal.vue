@@ -11,12 +11,12 @@
         leave-from="opacity-100 translate-y-0 scale-100"
         leave-to="opacity-0 translate-y-6 scale-90"
       >
-  <div v-if="modelValue" class="relative rounded-2xl p-6 w-full max-w-2xl bg-white/8 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 shadow-2xl z-10 pointer-events-auto">
+  <div v-if="modelValue" class="relative rounded-2xl p-6 w-full bg-white/8 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 shadow-2xl z-10 pointer-events-auto" :class="panelClass || 'max-w-2xl'">
           <header v-if="$slots.header" class="mb-4 text-white">
             <slot name="header" />
           </header>
 
-          <main class="mb-4">
+          <main :class="['mb-4', mainClass]">
             <slot />
           </main>
 
@@ -33,7 +33,7 @@
 
 <script setup>
 import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
-const props = defineProps({ modelValue: { type: Boolean, default: false }, zIndexClass: { type: String, default: 'z-50' }, zIndex: { type: Number, default: null } })
+const props = defineProps({ modelValue: { type: Boolean, default: false }, zIndexClass: { type: String, default: 'z-50' }, zIndex: { type: Number, default: null }, panelClass: { type: String, default: '' }, mainClass: { type: String, default: '' } })
 const emit = defineEmits(['update:modelValue'])
 
 function close() {

@@ -45,6 +45,7 @@ function close() {
 const cardClasses = computed(() => {
   switch (props.variant) {
     case 'yellow':
+    case 'warning':
       return 'bg-yellow-300/18 text-yellow-900 border border-yellow-200/30'
     case 'success':
       // green success toast
@@ -52,6 +53,9 @@ const cardClasses = computed(() => {
     case 'error':
       // red error toast
       return 'bg-red-700/70 text-white border border-red-600/60'
+    case 'info':
+      // blue info toast
+      return 'bg-blue-700/70 text-white border border-blue-600/60'
     default:
       // default white frosted
       return 'bg-white/20 text-white border border-white/20 backdrop-blur-md'
@@ -59,7 +63,7 @@ const cardClasses = computed(() => {
 })
 
 const closeClass = computed(() => {
-  if (props.variant === 'yellow') return 'text-yellow-900/80 hover:text-yellow-900 ml-3'
+  if (props.variant === 'yellow' || props.variant === 'warning') return 'text-yellow-900/80 hover:text-yellow-900 ml-3'
   return 'text-white/80 hover:text-white ml-3'
 })
 const closeLabel = computed(() => 'Close toast')

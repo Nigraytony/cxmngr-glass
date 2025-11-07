@@ -12,7 +12,10 @@ const equipmentSchema = new mongoose.Schema({
         enum: ['Ordered', 'Shipped', 'In Storage', 'Installed', 'Tested', 'Operational', 'Not Started'], 
         default: 'Not Started' 
     },
-    attributes: { type: String , required: false },
+    attributes: {
+        type: [ { key: { type: String, required: true }, value: { type: String, default: '' } } ],
+        default: [],
+    },
     description: { type: String, required: false },
     spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space', required: false },
     orderDate: { type: Date, required: false },
@@ -21,10 +24,17 @@ const equipmentSchema = new mongoose.Schema({
     testDate: { type: Date, required: false },
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
     issues: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Issue' }],
-    checklists: { type: String, required: false },
-    functionalTests: { type: String, required: false },
+    // Store checklists as structured JSON (array of sections)
+    checklists: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // Functional Performance Tests (array of test steps/records)
+    functionalTests: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // Components (array of sub-equipment items)
+    components: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // photos stored in DB as base64 strings (small images)
+    photos: [{ filename: String, data: String, contentType: String, size: Number, uploadedBy: mongoose.Schema.Types.ObjectId, uploadedByName: String, uploadedByAvatar: String, caption: { type: String, default: '' }, createdAt: { type: Date, default: Date.now } }],
     images: { type: String, required: false },
-    attachments: { type: String, required: false },
+    // other attachments (documents) stored as external URLs or metadata
+    attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
     history: { type: String, required: false },
     labels: { type: String, required: false },
     metadata: { type: String, required: false },

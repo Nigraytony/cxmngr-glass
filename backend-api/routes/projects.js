@@ -3,6 +3,8 @@ const router = express.Router();
 const Project = require('../models/project');
 const User = require('../models/user');
 const { requireActiveProject } = require('../middleware/subscription');
+const { auth } = require('../middleware/auth');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Create a new project
 router.post('/', async (req, res) => {
@@ -25,18 +27,8 @@ router.post('/', async (req, res) => {
     const project = new Project(incoming);
     await project.save();
 
-    // Add project to user's projects array (use name, not title)
-    user.projects.push({
-      _id: project._id,
-      name: project.name,
-      client: project.client,
-      role: 'admin',
-      location: project.location,
-      project_type: project.project_type,
-      status: project.status,
-      description: project.description,
-      default: false
-    });
+    // Add project to user's projects array (store minimally to avoid duplication)
+    user.projects.push({ _id: project._id, role: 'admin', default: false });
     await user.save();
 
     // Add the user to the project's users array with admin role
@@ -84,6 +76,10 @@ router.get('/:id', async (req, res) => {
 // Update a project by ID
 router.put('/:id', async (req, res) => {
   try {
+    // Prevent external updates to immutable fields like trialStartedAt
+    if (typeof req.body === 'object' && req.body) {
+      delete req.body.trialStartedAt;
+    }
     const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!project) {
       return res.status(404).send();
@@ -98,7 +94,6 @@ router.put('/:id', async (req, res) => {
 const Invitation = require('../models/invitation');
 const crypto = require('crypto');
 const { sendInviteEmail } = require('../utils/mailer');
-const { auth } = require('../middleware/auth');
 
 router.post('/addUser', auth, async (req, res) => {
   try {
@@ -121,6 +116,12 @@ router.post('/addUser', auth, async (req, res) => {
         role: req.body.role,
       });
       await project.save();
+      // Ensure user.projects includes the project ref (minimal shape)
+      const already = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
+      if (!already) {
+        user.projects.push({ _id: project._id, role: req.body.role || 'user', default: false })
+        await user.save()
+      }
       return res.status(200).send({ message: 'User was added to the project' });
     }
 
@@ -165,6 +166,13 @@ router.post('/accept-invite', auth, async (req, res) => {
     if (!already) {
       project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
       await project.save();
+    }
+
+    // Ensure the project is present in the user's projects (minimal shape)
+    const hasProject = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
+    if (!hasProject) {
+      user.projects.push({ _id: project._id, role: 'user', default: false })
+      await user.save()
     }
 
     invite.accepted = true;
@@ -231,37 +239,12 @@ router.post('/:id/set-default', async (req, res) => {
 
     // Ensure user.projects entries that reference this projectId are updated
     const oldProjects = (user.projects || [])
-    const newProjects = []
-    for (const p of oldProjects) {
-      // If entry is a string id, try to look up project metadata and preserve fields
-      if (typeof p === 'string') {
-        const pid = p
-        const full = await Project.findById(pid).lean().catch(() => null)
-        const isDefault = String(pid) === String(projectId)
-        const obj = {
-          _id: pid,
-          name: full?.name,
-          client: full?.client,
-          role: full?.role || undefined,
-          location: full?.location,
-          project_type: full?.project_type,
-          status: full?.status,
-          description: full?.description,
-          default: isDefault
-        }
-        newProjects.push(obj)
-      } else if (typeof p === 'object') {
-        // preserve existing fields on object entries
-        const pid = p._id || p.id
-        const isDefault = String(pid) === String(projectId)
-        newProjects.push({ ...p, default: isDefault })
-      } else {
-        // unexpected type - convert to object with id if possible
-        newProjects.push({ _id: p, default: String(p) === String(projectId) })
-      }
-    }
-
-    user.projects = newProjects;
+    user.projects = oldProjects.map((p) => {
+      const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id)))
+      const isDefault = (pid === String(projectId))
+      const role = (typeof p === 'object' && p && p.role) ? p.role : 'user'
+      return { _id: pid, role, default: isDefault }
+    })
 
     await user.save();
 
@@ -271,9 +254,96 @@ router.post('/:id/set-default', async (req, res) => {
     // avoid returning internal fields
     if (userObj.__v) delete userObj.__v;
 
+    // Hydrate user.projects with live project data so UI has names immediately
+    try {
+      const projIds = Array.isArray(userObj.projects)
+        ? userObj.projects.map((p) => String(typeof p === 'string' ? p : (p && (p._id || p.id)))).filter(Boolean)
+        : []
+      if (projIds.length) {
+        const unique = Array.from(new Set(projIds))
+        const found = await Project.find({ _id: { $in: unique } }).lean()
+        const map = {}
+        for (const pr of found) map[String(pr._id)] = pr
+        userObj.projects = userObj.projects.map((p) => {
+          const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id)))
+          const role = (typeof p === 'object' && p && p.role) ? p.role : 'user'
+          const isDefault = Boolean(typeof p === 'object' && p && p.default)
+          const pr = map[pid] || null
+          return {
+            _id: pid,
+            name: pr ? pr.name : undefined,
+            client: pr ? pr.client : undefined,
+            location: pr ? pr.location : undefined,
+            project_type: pr ? pr.project_type : undefined,
+            status: pr ? pr.status : undefined,
+            description: pr ? pr.description : undefined,
+            role,
+            default: isDefault,
+          }
+        })
+      }
+    } catch (e) {
+      // fallback: leave minimal shape
+    }
+
     return res.status(200).send({ user: userObj });
   } catch (error) {
     return res.status(400).send(error);
+  }
+});
+
+// Change plan (update the price on the existing Stripe subscription item)
+// Preserves trial_end when subscription is in trialing state, so trial does not reset.
+// const { auth } = require('../middleware/auth');
+router.post('/:id/change-plan', auth, async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { priceId, proration_behavior } = req.body || {};
+    if (!priceId) return res.status(400).json({ error: 'priceId is required' });
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!project.stripeSubscriptionId) return res.status(400).json({ error: 'Project does not have an active subscription' });
+
+    // Retrieve subscription
+    const sub = await stripe.subscriptions.retrieve(String(project.stripeSubscriptionId));
+    const currentItem = sub.items && sub.items.data && sub.items.data[0];
+    if (!currentItem) return res.status(400).json({ error: 'Subscription has no items to update' });
+
+    const updateParams = {
+      items: [{ id: currentItem.id, price: priceId }],
+      // Default to Stripe's prorations unless explicitly disabled by client
+      proration_behavior: proration_behavior || 'create_prorations',
+    };
+    // If still in trial, explicitly preserve the original trial_end so it cannot be extended/reset
+    if (sub.status === 'trialing' && sub.trial_end) {
+      updateParams.trial_end = sub.trial_end;
+    }
+
+    const updated = await stripe.subscriptions.update(sub.id, updateParams);
+
+    // Mirror to DB (do not extend trialEnd – keep existing or the earlier of the two)
+    let nextTrialEnd = project.trialEnd || null;
+    const incomingTrialEnd = updated.trial_end ? new Date(updated.trial_end * 1000) : null;
+    if (incomingTrialEnd) {
+      nextTrialEnd = nextTrialEnd ? new Date(Math.min(nextTrialEnd.getTime(), incomingTrialEnd.getTime())) : incomingTrialEnd;
+    }
+
+    await Project.findByIdAndUpdate(projectId, {
+      stripeSubscriptionId: updated.id,
+      stripePriceId: priceId,
+      stripeSubscriptionStatus: updated.status,
+      stripeCurrentPeriodEnd: updated.current_period_end ? new Date(updated.current_period_end * 1000) : null,
+      isActive: ['active', 'trialing', 'past_due'].includes(updated.status),
+      trialEnd: nextTrialEnd || project.trialEnd || null,
+      trialStarted: project.trialStarted || Boolean(updated.trial_end),
+    });
+
+    return res.json({ ok: true, status: updated.status, priceId });
+  } catch (err) {
+    console.error('change-plan error', err && err.message ? err.message : err);
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message });
+    return res.status(500).json({ error: 'Failed to change plan' });
   }
 });
 
@@ -289,6 +359,60 @@ router.delete('/:id', async (req, res) => {
     res.status(500).send(error);
   }
 });
+
+// Project logs: append and read
+// GET /api/projects/:id/logs?limit=200&type=section_created
+router.get('/:id/logs', auth, async (req, res) => {
+  try {
+    const id = req.params.id
+    const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
+    const type = req.query.type ? String(req.query.type) : null
+    const project = await Project.findById(id).select('logs').lean()
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+    let logs = Array.isArray(project.logs) ? project.logs.slice() : []
+    if (type) logs = logs.filter((e) => e && e.type === type)
+    // Sort by ts descending; if missing ts, push to end
+    logs.sort((a, b) => {
+      const ta = a && a.ts ? new Date(a.ts).getTime() : 0
+      const tb = b && b.ts ? new Date(b.ts).getTime() : 0
+      return tb - ta
+    })
+    logs = logs.slice(0, limit)
+    return res.status(200).send(logs)
+  } catch (err) {
+    console.error('get project logs error', err)
+    return res.status(500).send({ error: 'Failed to load logs' })
+  }
+})
+
+// POST /api/projects/:id/logs -> append one log event
+router.post('/:id/logs', auth, async (req, res) => {
+  try {
+    const id = req.params.id
+    const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
+    if (!event.type) return res.status(400).send({ error: 'type is required' })
+    // Normalize fields
+    event.ts = event.ts ? new Date(event.ts) : new Date()
+    // Best-effort: if by not set, try to populate from auth user
+    if (!event.by && req.userId) {
+      try {
+        const u = await require('../models/user').findById(req.userId).lean()
+        if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
+      } catch {}
+    }
+    // Cap total size to last 5000 entries
+    const updated = await Project.findByIdAndUpdate(
+      id,
+      { $push: { logs: { $each: [event], $slice: -5000 } }, $set: { updatedAt: new Date() } },
+      { new: true, projection: { _id: 1 } }
+    )
+    if (!updated) return res.status(404).send({ error: 'Project not found' })
+    return res.status(201).send({ ok: true })
+  } catch (err) {
+    console.error('append project log error', err)
+    return res.status(500).send({ error: 'Failed to append log' })
+  }
+})
 
 // Example protected route that performs a sensitive action and requires an active subscription
 router.post('/:id/do-sensitive', requireActiveProject, async (req, res) => {

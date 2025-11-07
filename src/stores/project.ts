@@ -23,10 +23,13 @@ export interface Project {
     status?: string; // Optional status for team members
   }>;
   commissioning_agent?: {
-    name?: string;
+    firstName?: string;
+    lastName?: string;
     email?: string;
     company?: string;
+    role?: string;
     phone?: string;
+    logo?: string; // Optional logo for the commissioning agent
   };
   logo?: string; // URL or path to a project logo
   meta?: string[]; // Additional metadata
@@ -35,9 +38,22 @@ export interface Project {
   endDate?: string; // ISO date strings
   createdAt: string;
   updatedAt: string;
+  // Optional Stripe/Billing fields present on the project
+  stripeSubscriptionId?: string | null;
+  stripePriceId?: string | null;
+  stripeSubscriptionStatus?: string | null;
+  stripeCurrentPeriodEnd?: string | null;
+  stripeCancelAtPeriodEnd?: boolean;
+  trialStartedAt?: string | null;
+  trialStarted?: boolean;
+  trialStart?: string | null;
+  trialEnd?: string | null;
+  // Project-level search behavior applied across list pages
+  searchMode?: 'substring' | 'exact' | 'fuzzy';
 }
 
-const API_BASE = 'http://localhost:4242/api/projects';
+import { getApiBase } from '../utils/api'
+const API_BASE = `${getApiBase()}/api/projects`;
 
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
@@ -49,6 +65,7 @@ export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([]);
   const currentProjectId = ref<string | null>(null);
   const currentProject = ref<Project | null>(null);
+  const logsCache = ref<Record<string, any[]>>({});
 
   // Load selected project from localStorage on init
   if (typeof window !== 'undefined') {
@@ -166,6 +183,47 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  // Project logs API
+  type LogEvent = { ts?: string | Date; by?: string | null; type: string; [k: string]: any }
+  async function appendProjectLog(projectId: string, event: LogEvent): Promise<void> {
+    if (!projectId) return
+    try {
+      const payload = { ...event }
+      // Ensure actor is captured; fall back to auth user if not provided by caller
+      if (!('by' in payload) || payload.by == null || payload.by === '') {
+        try {
+          const auth = useAuthStore()
+          const u: any = auth?.user || null
+          if (u) {
+            const name = [u.firstName, u.lastName].filter(Boolean).join(' ')
+            payload.by = name || u.email || null
+          }
+        } catch { /* ignore */ }
+      }
+      await axios.post(`${API_BASE}/${projectId}/logs`, payload, { headers: getAuthHeaders() })
+      // optimistic cache update
+      const arr = logsCache.value[projectId] || []
+      const ts = payload.ts ? new Date(payload.ts).toISOString() : new Date().toISOString()
+      logsCache.value[projectId] = [{ ...payload, ts }, ...arr].slice(0, 200)
+    } catch (err) {
+      // swallow
+    }
+  }
+  async function fetchProjectLogs(projectId: string, opts?: { limit?: number; type?: string }): Promise<any[]> {
+    if (!projectId) return []
+    try {
+      const params: any = {}
+      if (opts?.limit) params.limit = opts.limit
+      if (opts?.type) params.type = opts.type
+      const res = await axios.get(`${API_BASE}/${projectId}/logs`, { params, headers: getAuthHeaders() })
+      const list = Array.isArray(res.data) ? res.data : []
+      logsCache.value[projectId] = list
+      return list
+    } catch (err) {
+      return []
+    }
+  }
+
   // Optionally, fetch projects on store init
   if (typeof window !== 'undefined') {
     // fetch all projects and then populate currentProject from localStorage if available
@@ -207,5 +265,9 @@ export const useProjectStore = defineStore('project', () => {
     addProject,
     updateProject,
     deleteProject,
+    // Logs
+    appendProjectLog,
+    fetchProjectLogs,
+    logsCache,
   };
 });

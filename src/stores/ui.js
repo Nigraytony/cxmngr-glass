@@ -31,6 +31,12 @@ export const useUiStore = defineStore('ui', {
     showError(message, opts = {}) {
       this.showToast({ message, variant: 'error', duration: opts.duration || 3500, top: opts.top || '4rem' })
     },
+    showInfo(message, opts = {}) {
+      this.showToast({ message, variant: 'info', duration: opts.duration || 2500, top: opts.top || '4rem' })
+    },
+    showWarning(message, opts = {}) {
+      this.showToast({ message, variant: 'warning', duration: opts.duration || 3000, top: opts.top || '4rem' })
+    },
     hideToast() {
       this.toast.show = false
     }

@@ -40,7 +40,8 @@ export interface User {
   };
 }
 
-const API_BASE = 'http://localhost:4242/api/users';
+import { getApiBase } from '../utils/api'
+const API_BASE = `${getApiBase()}/api/users`;
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);

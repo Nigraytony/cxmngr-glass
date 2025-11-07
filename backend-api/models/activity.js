@@ -15,7 +15,8 @@ const activitySchema = new mongoose.Schema({
   // photos stored in DB as base64 strings (note: keep sizes small)
   photos: [{ filename: String, data: String, contentType: String, size: Number, uploadedBy: mongoose.Schema.Types.ObjectId, uploadedByName: String, uploadedByAvatar: String, caption: { type: String, default: '' }, createdAt: { type: Date, default: Date.now } }],
   // other attachments (documents) can be stored as external URLs or metadata
-  attachments: [{ filename: String, url: String, type: String, uploadedBy: mongoose.Schema.Types.ObjectId, createdAt: { type: Date, default: Date.now } }],
+  // Use Mixed to be backward compatible with any legacy string-based attachments
+  attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
   // reviewer info and location
   reviewer: { _id: mongoose.Schema.Types.ObjectId, firstName: String, lastName: String, email: String },
   location: { type: String },

@@ -88,6 +88,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
 import { getAuthHeaders } from '../../utils/auth'
+import { apiUrl } from '../../utils/api'
 
 const events = ref([])
 const filter = ref({ status: '', date_from: '', date_to: '' })
@@ -109,9 +110,7 @@ function authHeaders() {
 async function load() {
   const q = new URLSearchParams()
   if (filter.value.status) q.set('status', filter.value.status)
-  // Use full backend URL to avoid the Vite dev server returning index.html
-  const backend = 'http://localhost:4242'
-  const url = `${backend}/api/admin/webhook-events?${q.toString()}`
+  const url = `${apiUrl('/api/admin/webhook-events')}?${q.toString()}`
   try {
     error.value = ''
     const pagedUrl = `${url}&skip=${skip.value}&limit=${limit.value}`
@@ -163,8 +162,7 @@ async function performReplay() {
   try {
     error.value = ''
     replayInProgress.value = true
-    const backend = 'http://localhost:4242'
-    const res = await fetch(`${backend}/api/admin/webhook-events/${encodeURIComponent(pendingReplay.value.eventId)}/replay`, { method: 'POST', headers: authHeaders() })
+  const res = await fetch(apiUrl(`/api/admin/webhook-events/${encodeURIComponent(pendingReplay.value.eventId)}/replay`), { method: 'POST', headers: authHeaders() })
     replayInProgress.value = false
     if (!res.ok) {
       const text = await res.text().catch(() => '')

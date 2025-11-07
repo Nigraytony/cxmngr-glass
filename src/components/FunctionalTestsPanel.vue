@@ -1,0 +1,1020 @@
+<template>
+  <div class="space-y-4">
+    <!-- Header: add, progress, bulk actions -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <button @click="openNewFpt" class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 text-white/90" title="New test" aria-label="New test">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-5 h-5"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <input v-model="search" type="text" placeholder="Search tests…" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56" />
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="text-sm text-white/70">{{ passedCount }} / {{ local.length }} passed</div>
+        <div class="w-40 h-2 rounded-full bg-white/10 overflow-hidden">
+          <div class="h-full bg-emerald-400/80" :style="{ width: progressPct + '%' }" />
+        </div>
+        <button @click="markAll(true)" class="px-2 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 text-sm">All Pass</button>
+        <button @click="markAll(false)" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/60 text-red-100 hover:bg-red-500/35 text-sm">All Fail</button>
+        <button @click="markAll(null)" class="px-2 py-1 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm">All N/A</button>
+        <button @click="expandAll" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Expand All</button>
+        <button @click="collapseAll" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Collapse All</button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div v-if="!local.length" class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center">
+      <div class="text-white/80 font-medium">No functional tests yet</div>
+      <div class="text-white/60 text-sm mt-1">Create the first FPT for this equipment.</div>
+      <div class="mt-3">
+        <button @click="openNewFpt" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>New Test</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tests list -->
+    <div v-else class="space-y-3">
+      <div v-for="(t, i) in filtered" :key="t.number || i" class="rounded-md border border-white/10 bg-white/5"
+           :class="isOpen(t) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
+           :draggable="dragEnabled"
+           @dragstart="onDragStart(t, $event)"
+           @dragover.prevent="onDragOver(t, $event)"
+           @drop.prevent="onDrop(t, $event)">
+        <div v-if="isOpen(t)" class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/80 rounded-l-md"></div>
+        <div
+          class="w-full text-left px-3 py-2 flex items-center justify-between rounded-t-md cursor-pointer select-none"
+          :class="isOpen(t) ? 'bg-emerald-500/20 hover:bg-emerald-500/25' : 'bg-white/5'"
+          @click="toggleOpen(t)"
+          @keydown.enter.prevent="toggleOpen(t)"
+          @keydown.space.prevent="toggleOpen(t)"
+          tabindex="0"
+          role="button"
+          :aria-expanded="isOpen(t)"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': isOpen(t) }"><path d="M6 9l6 6 6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/20">#{{ t.number ?? (i+1) }}</span>
+            <span class="truncate" :class="isOpen(t) ? 'text-white font-medium' : ''">{{ t.name || 'Test' }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span v-if="t.pass === true" class="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-500/20 border-emerald-400/60 text-emerald-100">PASS</span>
+            <span v-else-if="t.pass === false" class="text-[10px] px-1.5 py-0.5 rounded border bg-red-500/20 border-red-400/60 text-red-100">FAIL</span>
+            <span v-else-if="getStatus(t) === 'na'" class="text-[10px] px-1.5 py-0.5 rounded border text-indigo-200 border-indigo-400/60">N/A</span>
+            <button v-if="!dragEnabled" @click.stop="move(i, -1)" :disabled="i===0" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40" title="Move up" aria-label="Move up">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5l-6 6h12l-6-6z" stroke-width="1.5"/></svg>
+            </button>
+            <button v-if="!dragEnabled" @click.stop="move(i, 1)" :disabled="i===local.length-1" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40" title="Move down" aria-label="Move down">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 19l6-6H6l6 6z" stroke-width="1.5"/></svg>
+            </button>
+            <span v-if="dragEnabled" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 opacity-80"><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"/></svg>
+            </span>
+            <button @click.stop="removeTest(i)" class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Delete" aria-label="Delete">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="px-3 py-3 space-y-3" v-show="isOpen(t)">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-white/70">Name</label>
+              <input v-model="local[i].name" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" @change="notifyChange" />
+            </div>
+            <div class="md:col-span-2">
+              <div class="flex items-center gap-2">
+                <button @click.stop="toggleDesc(local[i])" class="h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" :aria-expanded="isDescOpen(local[i])" :title="isDescOpen(local[i]) ? 'Hide description' : 'Show description'">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': isDescOpen(local[i]) }"><path d="M6 9l6 6 6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <label class="text-sm text-white/70">Description</label>
+                <span v-if="!isDescOpen(local[i]) && !(local[i].description||'').trim()" class="text-xs text-white/50">(hidden)</span>
+              </div>
+              <div v-if="isDescOpen(local[i])" class="mt-1">
+                <textarea v-model="local[i].description" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" rows="2" @change="notifyChange"></textarea>
+              </div>
+            </div>
+            <template v-if="!(local[i] as any).kind || (local[i] as any).kind === 'standard'">
+              <div class="md:col-span-2 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm text-white/70">Table</label>
+                  <div class="flex items-center gap-2">
+                    <button @click="addTableColumn(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Column</button>
+                    <button @click="addTableRow(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
+                  </div>
+                </div>
+                <div class="rounded-md border border-white/10 overflow-y-auto overflow-x-hidden">
+                  <table class="w-full table-fixed text-sm">
+                    <colgroup>
+                      <col style="width: 2rem" />
+                      <template v-for="(col, ci) in ((local[i] as any).table?.columns || [])" :key="col.key + ':col'">
+                        <col :style="colStyle(col.name)" />
+                      </template>
+                      <col style="width: 2.75rem" />
+                    </colgroup>
+                    <thead class="bg-white/5 text-white/80">
+                      <tr>
+                        <th class="px-1 py-1 text-left text-xs font-medium">#</th>
+                        <th v-for="(col, ci) in ((local[i] as any).table?.columns || [])" :key="col.key" class="px-1 py-1 text-left align-middle">
+                          <div class="flex items-center gap-1">
+                            <input
+                              v-model="(local[i] as any).table.columns[ci].name"
+                              type="text"
+                              class="px-2 py-1 rounded bg-white/10 border border-white/20 w-full disabled:opacity-70"
+                              :disabled="isPassColumnName((local[i] as any).table.columns[ci].name)"
+                              :title="isPassColumnName((local[i] as any).table.columns[ci].name) ? 'Locked: Pass column' : ''"
+                              @change="notifyChange"
+                            />
+                            <button @click="removeTableColumn(i, ci)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove column" aria-label="Remove column">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            </button>
+                          </div>
+                        </th>
+                        <th class="w-14"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, ri) in ((local[i] as any).table?.rows || [])" :key="'r'+ri" class="border-t border-white/10">
+                        <td class="px-1 py-1 text-white/60 text-xs align-top">{{ ri + 1 }}</td>
+                        <td v-for="(col, ci) in ((local[i] as any).table?.columns || [])" :key="col.key + ':' + ri" class="px-1 py-1 align-top">
+                          <template v-if="isPassColumnName(col.name)">
+                            <div class="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                role="switch"
+                                :aria-checked="ariaChecked(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                                :title="passLabel(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                                @click="cyclePassCell(i, ri, col.key)"
+                                @keydown.space.prevent="cyclePassCell(i, ri, col.key)"
+                                @keydown.enter.prevent="cyclePassCell(i, ri, col.key)"
+                                class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                                :class="passBgClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                              >
+                                <span class="sr-only">Pass/Fail</span>
+                                <span
+                                  class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                                  :style="{ transform: knobTransform(passCellState((local[i] as any).table.rows[ri][col.key])) }"
+                                />
+                              </button>
+                              <span class="text-[10px] leading-none"
+                                    :class="passTextClass(passCellState((local[i] as any).table.rows[ri][col.key]))">
+                                {{ passText(passCellState((local[i] as any).table.rows[ri][col.key])) }}
+                              </span>
+                            </div>
+                          </template>
+                          <template v-else>
+                            <textarea
+                              v-model="(local[i] as any).table.rows[ri][col.key]"
+                              rows="2"
+                              v-autogrow
+                              class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 resize-none overflow-hidden"
+                              @change="notifyChange"
+                            ></textarea>
+                          </template>
+                        </td>
+                        <td class="px-1 py-1 text-right align-top">
+                          <button @click="removeTableRow(i, ri)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove row" aria-label="Remove row">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr v-if="!(((local[i] as any).table?.columns || []).length) && !(((local[i] as any).table?.rows || []).length)">
+                        <td colspan="999" class="px-2 py-3 text-center text-white/60">
+                          No columns or rows yet. Use "Add Column" and "Add Row" to build your table.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+            <template v-else-if="(local[i] as any).kind === 'sheet'">
+              <div class="md:col-span-2 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm text-white/70">Spreadsheet</label>
+                  <div class="flex items-center gap-2">
+                    <button @click="addRow(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
+                    <button @click="clearRows(i)" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-sm">Clear</button>
+                  </div>
+                </div>
+                <div class="overflow-auto rounded-md border border-white/10">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-white/5 text-white/70">
+                      <tr>
+                        <th class="text-left px-2 py-1 font-medium">Step</th>
+                        <th class="text-left px-2 py-1 font-medium">Expected</th>
+                        <th class="text-left px-2 py-1 font-medium">Actual</th>
+                        <th class="px-2 py-1"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(r, ri) in (local[i] as any).rows" :key="ri" class="border-t border-white/10">
+                        <td class="px-2 py-1 align-top w-1/4"><input v-model="(local[i] as any).rows[ri].step" type="text" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange" /></td>
+                        <td class="px-2 py-1 align-top"><textarea v-model="(local[i] as any).rows[ri].expected" rows="2" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange"></textarea></td>
+                        <td class="px-2 py-1 align-top"><textarea v-model="(local[i] as any).rows[ri].actual" rows="2" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange"></textarea></td>
+                        <td class="px-2 py-1 align-top text-right"><button @click="removeRow(i, ri)" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-xs">Remove</button></td>
+                      </tr>
+                      <tr v-if="!(local[i] as any).rows || !(local[i] as any).rows.length">
+                        <td colspan="4" class="px-2 py-2 text-center text-white/60">No rows yet</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+            <template v-else-if="(local[i] as any).kind === 'table'">
+              <div class="md:col-span-2 space-y-2">
+                <div class="flex items-center justify-between">
+                  <label class="block text-sm text-white/70">Table</label>
+                  <div class="flex items-center gap-2">
+                    <button @click="addTableColumn(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Column</button>
+                    <button @click="addTableRow(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
+                  </div>
+                </div>
+                <div class="rounded-md border border-white/10 overflow-y-auto overflow-x-hidden">
+                  <table class="w-full table-fixed text-sm">
+                    <colgroup>
+                      <col style="width: 2rem" />
+                      <template v-for="(col, ci) in (local[i] as any).table.columns" :key="col.key + ':col'">
+                        <col :style="colStyle(col.name)" />
+                      </template>
+                      <col style="width: 2.75rem" />
+                    </colgroup>
+                    <thead class="bg-white/5 text-white/80">
+                      <tr>
+                        <th class="px-1 py-1 text-left text-xs font-medium">#</th>
+                        <th v-for="(col, ci) in (local[i] as any).table.columns" :key="col.key" class="px-1 py-1 text-left align-middle">
+                          <div class="flex items-center gap-1">
+                            <input
+                              v-model="(local[i] as any).table.columns[ci].name"
+                              type="text"
+                              class="px-2 py-1 rounded bg-white/10 border border-white/20 w-full disabled:opacity-70"
+                              :disabled="isPassColumnName((local[i] as any).table.columns[ci].name)"
+                              :title="isPassColumnName((local[i] as any).table.columns[ci].name) ? 'Locked: Pass column' : ''"
+                              @change="notifyChange"
+                            />
+                            <button @click="removeTableColumn(i, ci)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove column" aria-label="Remove column">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            </button>
+                          </div>
+                        </th>
+                        <th class="w-14"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, ri) in (local[i] as any).table.rows" :key="'r'+ri" class="border-t border-white/10">
+                        <td class="px-1 py-1 text-white/60 text-xs align-top">{{ ri + 1 }}</td>
+                        <td v-for="(col, ci) in (local[i] as any).table.columns" :key="col.key + ':' + ri" class="px-1 py-1 align-top">
+                          <template v-if="isPassColumnName(col.name)">
+                            <div class="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                role="switch"
+                                :aria-checked="ariaChecked(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                                :title="passLabel(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                                @click="cyclePassCell(i, ri, col.key)"
+                                @keydown.space.prevent="cyclePassCell(i, ri, col.key)"
+                                @keydown.enter.prevent="cyclePassCell(i, ri, col.key)"
+                                class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                                :class="passBgClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                              >
+                                <span class="sr-only">Pass/Fail</span>
+                                <span
+                                  class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                                  :style="{ transform: knobTransform(passCellState((local[i] as any).table.rows[ri][col.key])) }"
+                                />
+                              </button>
+                              <span class="text-[10px] leading-none"
+                                    :class="passTextClass(passCellState((local[i] as any).table.rows[ri][col.key]))">
+                                {{ passText(passCellState((local[i] as any).table.rows[ri][col.key])) }}
+                              </span>
+                            </div>
+                          </template>
+                          <template v-else>
+                            <input v-model="(local[i] as any).table.rows[ri][col.key]" type="text" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange" />
+                          </template>
+                        </td>
+                        <td class="px-1 py-1 text-right align-top">
+                          <button @click="removeTableRow(i, ri)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove row" aria-label="Remove row">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                      <tr v-if="!((local[i] as any).table.columns || []).length && !((local[i] as any).table.rows || []).length">
+                        <td colspan="999" class="px-2 py-3 text-center text-white/60">
+                          No columns or rows yet. Use "Add Column" and "Add Row" to build your table.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+            <div class="md:col-span-2">
+              <div class="flex items-center gap-2">
+                <button @click.stop="toggleNotes(local[i])" class="h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" :aria-expanded="isNotesOpen(local[i])" :title="isNotesOpen(local[i]) ? 'Hide notes' : 'Show notes'">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': isNotesOpen(local[i]) }"><path d="M6 9l6 6 6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <label class="text-sm text-white/70">Notes</label>
+                <span v-if="!isNotesOpen(local[i]) && !(local[i].notes||'').toString().trim()" class="text-xs text-white/50">(hidden)</span>
+              </div>
+              <div v-if="isNotesOpen(local[i])" class="mt-1">
+                <template v-if="!(local[i] as any).kind || (local[i] as any).kind === 'standard'">
+                  <textarea v-model="local[i].notes" rows="3" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" @change="notifyChange"></textarea>
+                </template>
+                <template v-else>
+                  <input v-model="local[i].notes" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" @change="notifyChange" />
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Issues quick attach + Pass/Fail/N/A row -->
+          <div class="pt-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <button @click="saveNow" class="px-3 py-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 inline-flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span>Save</span>
+                </button>
+                <button @click="openIssue(i)" class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span>Attach Issue</span>
+              </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <button @click="setPass(i, true)" :class="passClass(local[i].pass === true)" class="px-2 py-1 rounded-md border">Pass</button>
+                <button @click="setPass(i, false)" :class="failClass(local[i].pass === false)" class="px-2 py-1 rounded-md border">Fail</button>
+                <button @click="setPass(i, null)" :class="naClass(getStatus(local[i]) === 'na')" class="px-2 py-1 rounded-md border">N/A</button>
+              </div>
+            </div>
+            <div v-if="Array.isArray(t.issues) && t.issues.length" class="mt-2 space-y-1">
+              <div class="text-xs text-white/70">Attached Issues</div>
+              <ul class="space-y-1">
+                <li v-for="(iss, k) in t.issues" :key="(iss.id||iss._id)||k" class="text-sm">
+                  <RouterLink :to="{ name: 'issue-edit', params: { id: (iss.id||iss._id) } }" class="hover:underline">#{{ iss.number || '—' }} {{ iss.title || 'Issue' }}</RouterLink>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Issue Modal -->
+    <Modal v-model="issueOpen">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div class="font-medium">Attach Issue</div>
+          <div class="text-white/70 text-sm">Create an issue linked to this test</div>
+        </div>
+      </template>
+      <template #default>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm text-white/70">Type</label>
+            <input v-model="issueDraft.type" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="FPT" />
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Title</label>
+            <input v-model="issueDraft.title" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Description</label>
+            <textarea v-model="issueDraft.description" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" rows="3"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Priority</label>
+            <select v-model="issueDraft.priority" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
+              <option>Low</option>
+              <option>Medium</option>
+              <option>High</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Assign to</label>
+            <input v-model="issueDraft.assignedTo" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Name or email" />
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <button @click="closeIssue" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
+          <button @click="createIssueFromTest" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35">Create</button>
+        </div>
+      </template>
+    </Modal>
+
+    <!-- New FPT Modal -->
+    <Modal v-model="newOpen">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div class="font-medium">New FPT</div>
+          <div class="text-white/70 text-sm">Choose the test type</div>
+        </div>
+      </template>
+      <template #default>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm text-white/70 mb-1">Type</label>
+            <div class="flex items-center gap-3">
+              <label class="inline-flex items-center gap-2">
+                <input type="radio" class="accent-emerald-400" value="standard" v-model="newType" />
+                <span>Standard</span>
+              </label>
+              <label class="inline-flex items-center gap-2">
+                <input type="radio" class="accent-emerald-400" value="table" v-model="newType" />
+                <span>Table</span>
+              </label>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Name (optional)</label>
+            <input v-model="newName" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="e.g. Supply Fan Start/Stop" />
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Description (optional)</label>
+            <textarea v-model="newDesc" rows="2" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Short description"></textarea>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <button @click="closeNewFpt" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
+          <button @click="createNewFpt" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35">Create</button>
+        </div>
+      </template>
+    </Modal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { reactive, ref, computed, watch } from 'vue'
+import { RouterLink } from 'vue-router'
+import Modal from './Modal.vue'
+import { useUiStore } from '../stores/ui'
+import { useProjectStore } from '../stores/project'
+import { useIssuesStore } from '../stores/issues'
+import { confirm as inlineConfirm } from '../utils/confirm'
+// Removed GridEditor/XLSX usage in favor of a simple editable table per test
+
+export interface FunctionalTestItem {
+  number?: number | string | null
+  name?: string
+  description?: string
+  expected_result?: string
+  actual_result?: string | null
+  notes?: string | null
+  pass?: boolean | null
+  issues?: Array<any>
+  // New optional fields for typed tests
+  kind?: 'standard' | 'sheet' | 'table'
+  rows?: Array<{ step: string; expected: string; actual: string }>
+  table?: { columns: Array<{ key: string; name: string }>; rows: Array<Record<string, any>> }
+}
+
+const props = defineProps<{ 
+  modelValue: FunctionalTestItem[] | null | undefined,
+  projectId?: string,
+  equipmentId?: string,
+  equipmentTag?: string,
+}>()
+const emit = defineEmits<{
+  (e: 'update:modelValue', v: FunctionalTestItem[]): void
+  (e: 'change', v: FunctionalTestItem[]): void
+  (e: 'save', v: FunctionalTestItem[]): void
+}>()
+
+const ui = useUiStore()
+const projectStore = useProjectStore()
+const issuesStore = useIssuesStore()
+
+// Accordion open/close state per test item (by object identity)
+const openVersion = ref(0)
+const openState = new WeakMap<FunctionalTestItem, boolean>()
+function isOpen(t: FunctionalTestItem) { openVersion.value; return openState.get(t) ?? false }
+function toggleOpen(t: FunctionalTestItem) { openState.set(t, !isOpen(t)); openVersion.value++; writeOpenState() }
+
+// Explicit status tracking to distinguish default neutral vs explicit N/A
+// Values: 'pass' | 'fail' | 'na' | null (neutral/default)
+const statusVersion = ref(0)
+const statusMap = new WeakMap<FunctionalTestItem, 'pass' | 'fail' | 'na' | null>()
+function getStatus(t: FunctionalTestItem): 'pass' | 'fail' | 'na' | null {
+  // touch for reactivity
+  statusVersion.value
+  const s = statusMap.get(t)
+  if (s !== undefined) return s ?? null
+  // derive from persisted boolean for initial render
+  if (t.pass === true) return 'pass'
+  if (t.pass === false) return 'fail'
+  return null
+}
+function setStatus(t: FunctionalTestItem, s: 'pass' | 'fail' | 'na' | null) {
+  statusMap.set(t, s)
+  statusVersion.value++
+}
+
+function normalize(v: any): FunctionalTestItem[] {
+  return (Array.isArray(v) ? v : []).map((t) => {
+    const fromTable = (t?.table && Array.isArray((t.table as any).columns)) ? {
+      columns: (t.table as any).columns.map((c: any, idx: number) => typeof c === 'string' ? ({ key: `c${idx+1}`, name: c }) : ({ key: String(c?.key || `c${idx+1}`), name: String(c?.name ?? '') })),
+      rows: Array.isArray((t.table as any).rows) ? (t.table as any).rows.map((r: any) => ({ ...(r || {}) })) : []
+    } : null
+    const fromWorkbook = (t?.workbook && Array.isArray((t.workbook as any).sheets) && (t.workbook as any).sheets.length)
+      ? (() => {
+          const s = (t.workbook as any).sheets[0]
+          const columns = (Array.isArray(s?.columns) ? s.columns : []).map((c: any, idx: number) => ({ key: `c${idx+1}`, name: String(c ?? '') }))
+          const rows = Array.isArray(s?.rows) ? s.rows.map((r: any) => ({ ...(r || {}) })) : []
+          return { columns, rows }
+        })()
+      : null
+  const useTable = fromTable || fromWorkbook
+  // Determine kind with a bias toward 'standard' when not explicitly provided.
+  // - If a test explicitly declares kind, use it.
+  // - If kind is missing, default to 'standard' (even if a table exists) so
+  //   existing tests render textarea cells and auto-grow works as requested.
+  let kind: 'standard' | 'sheet' | 'table'
+  if (t?.kind === 'sheet') kind = 'sheet'
+  else if (t?.kind === 'table') kind = 'table'
+  else if (t?.kind === 'standard') kind = 'standard'
+  else kind = 'standard'
+    const result = ({
+    number: (t?.number ?? null) as any,
+    name: String(t?.name ?? ''),
+    description: String(t?.description ?? ''),
+    expected_result: String(t?.expected_result ?? ''),
+    actual_result: t?.actual_result == null ? '' : String(t.actual_result),
+    notes: t?.notes == null ? '' : String(t?.notes),
+    pass: (t?.pass === true || t?.pass === false) ? t.pass : null,
+    issues: Array.isArray(t?.issues) ? t.issues : [],
+      kind,
+    rows: Array.isArray(t?.rows) ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? '') })) : [],
+      table: useTable || (Array.isArray((t as any).columns) || Array.isArray((t as any).rows)) ? (
+        useTable || {
+          // very old shape fallback
+          columns: (Array.isArray((t as any).columns) ? (t as any).columns : []).map((c: any, idx: number) => ({ key: `c${idx+1}`, name: String(c ?? '') })),
+          rows: Array.isArray((t as any).rows) ? (t as any).rows : []
+        }
+      ) : undefined
+    }) as FunctionalTestItem
+    if (result.kind === 'standard' && !result.table) {
+      result.table = { columns: [], rows: [] }
+    }
+    return result
+  })
+}
+
+const local = reactive<FunctionalTestItem[]>(normalize(props.modelValue))
+watch(() => props.modelValue, (v) => { local.splice(0, local.length, ...normalize(v)) })
+
+// Persist accordion open/closed state per equipment
+const storageKey = computed(() => `fpt-open:${props.equipmentId || props.equipmentTag || 'global'}`)
+function readOpenState() {
+  try {
+    const raw = localStorage.getItem(storageKey.value)
+    if (!raw) return
+    const arr = JSON.parse(raw)
+    if (Array.isArray(arr)) {
+      local.forEach((t, i) => { openState.set(t, !!arr[i]) })
+      openVersion.value++
+    }
+  } catch {}
+}
+function writeOpenState() {
+  try {
+    const arr = local.map(t => !!isOpen(t))
+    localStorage.setItem(storageKey.value, JSON.stringify(arr))
+  } catch {}
+}
+// initialize and keep in sync on list changes
+readOpenState()
+readFieldOpenState()
+watch(() => props.modelValue, () => { readOpenState(); readFieldOpenState() })
+watch(() => local.length, () => { writeOpenState(); writeFieldOpenState() })
+
+function expandAll() { local.forEach(t => openState.set(t, true)); openVersion.value++; writeOpenState() }
+function collapseAll() { local.forEach(t => openState.set(t, false)); openVersion.value++; writeOpenState() }
+
+const search = ref('')
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return local
+  return local.filter(t =>
+    (t.name || '').toLowerCase().includes(q) ||
+    (t.description || '').toLowerCase().includes(q) ||
+    (t.expected_result || '').toLowerCase().includes(q)
+  )
+})
+
+const passedCount = computed(() => local.filter(t => t.pass === true).length)
+const progressPct = computed(() => local.length ? Math.round((passedCount.value / local.length) * 100) : 0)
+
+// Enable drag-and-drop when not searching (to avoid filtered indices mismatch)
+const dragEnabled = computed(() => !search.value.trim())
+
+// Drag-and-drop state and handlers
+const draggingTest = ref<FunctionalTestItem | null>(null)
+function onDragStart(t: FunctionalTestItem, e: DragEvent) {
+  if (!dragEnabled.value) return
+  draggingTest.value = t
+  if (e && e.dataTransfer) {
+    try { e.dataTransfer.setData('text/plain', 'fpt') } catch {}
+    e.dataTransfer.effectAllowed = 'move'
+  }
+}
+function onDragOver(_t: FunctionalTestItem, e: DragEvent) {
+  if (!dragEnabled.value) return
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+}
+function onDrop(target: FunctionalTestItem, e: DragEvent) {
+  if (!dragEnabled.value) return
+  e.preventDefault()
+  const src = draggingTest.value
+  draggingTest.value = null
+  if (!src || src === target) return
+  const fromIdx = local.indexOf(src as any)
+  const toIdx = local.indexOf(target as any)
+  if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return
+  const [moved] = local.splice(fromIdx, 1)
+  local.splice(toIdx, 0, moved)
+  renumber()
+  notifyChange()
+  writeOpenState()
+}
+
+function notifyChange() {
+  emit('update:modelValue', local)
+  emit('change', local)
+}
+
+function saveNow() {
+  // ensure v-model is updated and notify parent to persist immediately
+  emit('update:modelValue', local)
+  emit('save', local)
+}
+
+// Optional field visibility (Description, Notes) per test item
+const fieldOpenVersion = ref(0)
+const descOpenMap = new WeakMap<FunctionalTestItem, boolean>()
+const notesOpenMap = new WeakMap<FunctionalTestItem, boolean>()
+
+// Persist field open/closed state per equipment across sessions (by current list index)
+const storageFieldsKey = computed(() => `${storageKey.value}:fields`)
+function readFieldOpenState() {
+  try {
+    const raw = localStorage.getItem(storageFieldsKey.value)
+    const arr = raw ? JSON.parse(raw) : null
+    if (!Array.isArray(arr)) return
+    local.forEach((t, i) => {
+      const it = arr[i]
+      if (it && typeof it === 'object') {
+        if (typeof it.desc === 'boolean') descOpenMap.set(t, it.desc)
+        if (typeof it.notes === 'boolean') notesOpenMap.set(t, it.notes)
+      }
+    })
+    fieldOpenVersion.value++
+  } catch {}
+}
+function writeFieldOpenState() {
+  try {
+    const out = local.map((t) => ({ desc: !!descOpenMap.get(t), notes: !!notesOpenMap.get(t) }))
+    localStorage.setItem(storageFieldsKey.value, JSON.stringify(out))
+  } catch {}
+}
+
+function isDescOpen(t: FunctionalTestItem) {
+  fieldOpenVersion.value // touch for reactivity
+  const v = descOpenMap.get(t)
+  if (v !== undefined) return v
+  const def = !!(t.description && String(t.description).trim())
+  descOpenMap.set(t, def)
+  return def
+}
+function toggleDesc(t: FunctionalTestItem) {
+  descOpenMap.set(t, !isDescOpen(t))
+  fieldOpenVersion.value++
+  writeFieldOpenState()
+}
+function isNotesOpen(t: FunctionalTestItem) {
+  fieldOpenVersion.value
+  const v = notesOpenMap.get(t)
+  if (v !== undefined) return v
+  const def = !!(t.notes && String(t.notes).trim())
+  notesOpenMap.set(t, def)
+  return def
+}
+function toggleNotes(t: FunctionalTestItem) {
+  notesOpenMap.set(t, !isNotesOpen(t))
+  fieldOpenVersion.value++
+  writeFieldOpenState()
+}
+
+// Column width helper for table mode
+function colStyle(name: string) {
+  const n = (name || '').toString().trim().toLowerCase()
+  // Special handling: let Notes flex by not forcing a large width
+  if (n === 'notes') return { width: '10.5rem' }
+  // Tighter widths for specific compact columns
+  if (n === '#' || n === 'index' || n === 'no.' || n === 'no') return { width: '2rem' }
+  if (n === 'point') return { width: '6.5rem' }
+  if (n === 'reading') return { width: '6.5rem' }
+  if (n === 'pass') return { width: '6rem' }
+  // Default more compact base width
+  return { width: '9rem' }
+}
+
+// Pass column helpers (tri-state: none | pass | fail)
+function isPassColumnName(name: string) {
+  const n = (name || '').toString().trim().toLowerCase()
+  return n === 'pass' || n === 'result' || n === 'status'
+}
+type PassState = 'none' | 'pass' | 'fail'
+function passCellState(v: any): PassState {
+  const x = v
+  if (x === true || x === 'true' || String(x).toLowerCase() === 'pass' || String(x) === '1' || String(x).toLowerCase() === 'yes') return 'pass'
+  if (x === false || x === 'false' || String(x).toLowerCase() === 'fail' || String(x) === '0' || String(x).toLowerCase() === 'no') return 'fail'
+  return 'none'
+}
+function ariaChecked(state: PassState) {
+  return state === 'none' ? 'mixed' : (state === 'pass')
+}
+function passLabel(state: PassState) {
+  return state === 'pass' ? 'Pass' : state === 'fail' ? 'Fail' : 'No response'
+}
+function passBgClass(state: PassState) {
+  if (state === 'pass') return 'bg-emerald-500/70 border-emerald-400/80'
+  if (state === 'fail') return 'bg-red-500/70 border-red-400/80'
+  return 'bg-white/10 border-white/30'
+}
+function knobTransform(state: PassState) {
+  // Track width ~48px (w-12), knob ~20px; positions: 2px, 16px, 30px
+  const tx = state === 'pass' ? 30 : state === 'fail' ? 2 : 16
+  return `translateX(${tx}px)`
+}
+function cyclePassCell(i: number, ri: number, key: string) {
+  const tbl = (local[i] as any).table
+  const curr: PassState = passCellState(tbl.rows[ri][key])
+  const next: PassState = curr === 'none' ? 'pass' : (curr === 'pass' ? 'fail' : 'none')
+  tbl.rows[ri][key] = next === 'pass' ? true : next === 'fail' ? false : null
+  notifyChange()
+}
+
+function passText(state: PassState) {
+  return state === 'pass' ? 'PASS' : state === 'fail' ? 'FAIL' : '—'
+}
+function passTextClass(state: PassState) {
+  if (state === 'pass') return 'text-emerald-200'
+  if (state === 'fail') return 'text-red-200'
+  return 'text-white/60'
+}
+
+// v-autogrow directive for standard table textarea cells
+function grow(el: HTMLTextAreaElement) {
+  if (!el) return
+  el.style.height = 'auto'
+  // small delay ensures value has updated
+  const h = el.scrollHeight
+  el.style.height = (h ? h : 0) + 'px'
+}
+const vAutogrow = {
+  mounted(el: HTMLTextAreaElement) {
+    requestAnimationFrame(() => grow(el))
+    const onInput = () => grow(el)
+    el.addEventListener('input', onInput)
+    ;(el as any)._ag = onInput
+  },
+  updated(el: HTMLTextAreaElement) {
+    requestAnimationFrame(() => grow(el))
+  },
+  unmounted(el: HTMLTextAreaElement) {
+    const onInput = (el as any)._ag
+    if (onInput) el.removeEventListener('input', onInput)
+  }
+}
+
+// New FPT creation modal state
+const newOpen = ref(false)
+const newType = ref<'standard'|'table'>('standard')
+const newName = ref('')
+const newDesc = ref('')
+
+function openNewFpt() { newOpen.value = true }
+function closeNewFpt() { newOpen.value = false; newType.value = 'standard'; newName.value = ''; newDesc.value = '' }
+
+function addTestOfType(kind: 'standard'|'sheet'|'table', name?: string, description?: string) {
+  const nextNum = (local.length ? Number(local[local.length-1].number || local.length) + 1 : 1)
+  const base: FunctionalTestItem = {
+    number: isFinite(nextNum) ? nextNum : local.length + 1,
+    name: name || '',
+    description: description || '',
+    expected_result: '',
+    actual_result: '',
+    notes: '',
+    pass: null,
+    issues: [],
+    kind: kind,
+    rows: kind === 'sheet' ? [{ step: '', expected: '', actual: '' }] : [],
+    table: (kind === 'table' || kind === 'standard') ? { columns: [], rows: [] } : undefined
+  }
+  local.push(base)
+  // Auto-open the newly created test for immediate visibility
+  openState.set(base as any, true)
+  openVersion.value++
+  setStatus(base, null)
+  notifyChange()
+}
+
+function createNewFpt() {
+  addTestOfType(newType.value, newName.value.trim(), newDesc.value.trim())
+  closeNewFpt()
+}
+
+// Spreadsheet (legacy sheet) row helpers
+function addRow(i: number) {
+  const t = local[i] as any
+  if (!Array.isArray(t.rows)) t.rows = []
+  t.rows.push({ step: '', expected: '', actual: '' })
+  notifyChange()
+}
+function removeRow(i: number, ri: number) {
+  const t = local[i] as any
+  if (!Array.isArray(t.rows)) return
+  t.rows.splice(ri, 1)
+  notifyChange()
+}
+function clearRows(i: number) {
+  const t = local[i] as any
+  t.rows = []
+  notifyChange()
+}
+
+// Table helpers
+function ensureTable(i: number) {
+  const t = local[i]
+  if (!t.table) t.table = { columns: [], rows: [] }
+}
+function newColKey() { return 'c' + Math.random().toString(36).slice(2, 8) }
+function addTableColumn(i: number) {
+  ensureTable(i)
+  const cols = (local[i] as any).table.columns as Array<{ key: string; name: string }>
+  const idx = cols.length + 1
+  cols.push({ key: newColKey(), name: `Column ${idx}` })
+  notifyChange()
+}
+function removeTableColumn(i: number, ci: number) {
+  ensureTable(i)
+  const tbl = (local[i] as any).table
+  const col = tbl.columns[ci]
+  if (!col) return
+  // Remove data from rows
+  for (const r of tbl.rows) delete r[col.key]
+  tbl.columns.splice(ci, 1)
+  notifyChange()
+}
+function addTableRow(i: number) {
+  ensureTable(i)
+  const tbl = (local[i] as any).table
+  const row: Record<string, any> = {}
+  for (const c of tbl.columns) row[c.key] = ''
+  tbl.rows.push(row)
+  notifyChange()
+}
+function removeTableRow(i: number, ri: number) {
+  ensureTable(i)
+  const tbl = (local[i] as any).table
+  tbl.rows.splice(ri, 1)
+  notifyChange()
+}
+
+async function removeTest(i: number) {
+  await new Promise(r => setTimeout(r))
+  const ok = await inlineConfirm({ title: 'Delete test', message: 'Delete this test? This cannot be undone.', confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' })
+  if (!ok) return
+  local.splice(i, 1)
+  renumber()
+  notifyChange()
+}
+
+function move(i: number, dir: number) {
+  const j = i + dir
+  if (j < 0 || j >= local.length) return
+  const tmp = local[i]
+  local[i] = local[j]
+  local[j] = tmp
+  renumber()
+  notifyChange()
+}
+
+function renumber() {
+  // Always set numbers to match visual order
+  local.forEach((t, i) => { t.number = i + 1 })
+}
+
+function setPass(i: number, v: boolean | null) {
+  const t = local[i]
+  const curr = t.pass
+  if (v === true) {
+    if (curr === true) { t.pass = null; setStatus(t, null) }
+    else { t.pass = true; setStatus(t, 'pass') }
+  } else if (v === false) {
+    if (curr === false) { t.pass = null; setStatus(t, null) }
+    else { t.pass = false; setStatus(t, 'fail') }
+  } else {
+    // N/A is explicit when toggled on; toggling again clears to neutral
+    const s = getStatus(t)
+    if (s === 'na') { t.pass = null; setStatus(t, null) }
+    else { t.pass = null; setStatus(t, 'na') }
+  }
+  notifyChange()
+}
+function markAll(v: boolean | null) {
+  local.forEach(t => {
+    t.pass = v
+    setStatus(t, v === true ? 'pass' : v === false ? 'fail' : 'na')
+  })
+  notifyChange()
+}
+
+function passClass(active: boolean) { return ['px-2', 'py-1', 'rounded-md', 'border', 'text-sm', active ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35' : 'bg-white/10 border-white/20 hover:bg-white/15'] }
+function failClass(active: boolean) { return ['px-2', 'py-1', 'rounded-md', 'border', 'text-sm', active ? 'bg-red-500/20 border-red-400/60 text-red-100 hover:bg-red-500/35' : 'bg-white/10 border-white/20 hover:bg-white/15'] }
+function naClass(active: boolean) { return ['px-2', 'py-1', 'rounded-md', 'border', 'text-sm', active ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35' : 'bg-white/10 border-white/20 hover:bg-white/15'] }
+
+// Quick issue attach
+const issueOpen = ref(false)
+const issueCtx = ref<{ index: number } | null>(null)
+const issueDraft = reactive<{ title: string; description: string; type: string; priority: 'Low'|'Medium'|'High'; assignedTo: string }>({
+  title: '',
+  description: '',
+  type: 'FPT',
+  priority: 'Medium',
+  assignedTo: ''
+})
+
+function openIssue(i: number) {
+  issueCtx.value = { index: i }
+  const t = local[i]
+  const eq = props.equipmentTag || props.equipmentId || 'Equipment'
+  issueDraft.title = `FPT: ${eq} • #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`.slice(0, 120)
+  const lines: string[] = []
+  lines.push(`Equipment: ${eq}`)
+  lines.push(`Test: #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`)
+  if (t.expected_result) lines.push(`Expected: ${t.expected_result}`)
+  if (t.actual_result) lines.push(`Actual: ${t.actual_result}`)
+  if (t.notes) lines.push(`Notes: ${t.notes}`)
+  issueDraft.description = lines.join('\n')
+  issueDraft.type = 'FPT'
+  issueOpen.value = true
+}
+function closeIssue() { issueOpen.value = false; issueCtx.value = null }
+
+async function createIssueFromTest() {
+  try {
+    const ctx = issueCtx.value
+    if (!ctx) return
+    const i = ctx.index
+    const t = local[i]
+    const pid = String(props.projectId || projectStore.currentProjectId || '')
+    if (!pid) return
+    const payload: any = {
+      projectId: pid,
+      title: (issueDraft.title || '').trim() || 'FPT Issue',
+      description: (issueDraft.description || '').trim() || 'Created from FPT',
+      type: issueDraft.type || 'FPT',
+      severity: issueDraft.priority || 'Medium',
+      status: 'Open',
+      system: t && (t as any).system ? (t as any).system : undefined,
+      location: props.equipmentTag || undefined,
+      assetId: props.equipmentId || undefined,
+      assignedTo: issueDraft.assignedTo || undefined,
+    }
+    const created = await issuesStore.createIssue(payload)
+    if (!Array.isArray(t.issues)) t.issues = []
+    t.issues.push({ id: (created as any).id || (created as any)._id, number: (created as any).number, title: (created as any).title, type: (created as any).type })
+    notifyChange()
+    // best-effort log
+    try {
+      const who = (localStorage.getItem('userName') || '')
+      const by = who || ''
+      projectStore.appendProjectLog(String(pid), {
+        ts: new Date().toISOString(),
+        by,
+        type: 'fpt_issue_created',
+        module: 'fpt',
+        scope: { entity: 'equipment', equipmentId: props.equipmentId || null, equipmentTag: props.equipmentTag || null, projectId: pid },
+        test: { number: t.number ?? i+1, name: t.name || '' },
+        issue: { id: (created as any).id || (created as any)._id, number: (created as any).number }
+      }).catch(() => {})
+    } catch {}
+    issueOpen.value = false
+    issueCtx.value = null
+  } catch (err: any) {
+    console.error('create issue from FPT failed', err)
+    ui.showError(err?.response?.data?.error || err?.message || 'Failed to create issue')
+  }
+}
+</script>
+
+<script lang="ts">
+// Keep DnD helpers in a separate (merged) script block for clarity
+export default {}
+</script>

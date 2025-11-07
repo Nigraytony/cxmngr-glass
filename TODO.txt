@@ -6,3 +6,7 @@ DONE 4. Side Panel: Update the side panel to highlight the page that is active
 Done 5. Profile: Add Update Password logic to the app
 Done 6. Profile: Add project Cards in th projects tab of the user profile
 7. Profile: Implement a Forgot Password functionality in the app
+To run the Stripe webhook in the cli run the following at the terminal:
+stripe listen --forward-to localhost:4242/api/stripe/webhook
+8. Activities: Don't filter on projects. Only activities for the default project needs to be available
+9. Activities: Filter on Type and Start Date

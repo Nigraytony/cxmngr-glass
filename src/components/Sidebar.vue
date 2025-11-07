@@ -7,8 +7,20 @@
     :class="[ open ? 'w-64' : 'w-16' ]"
   >
     <div class="relative h-16 flex items-center gap-2 px-3">
-      <div class="size-8 rounded-xl bg-white/30 border border-white/30"></div>
-      <span v-if="open" class="text-white/90 font-semibold">cx manager</span>
+      <!-- Show full brand logo when sidebar is open (1.5x size) -->
+      <div v-if="open" class="h-12 max-w-[240px] flex items-center">
+        <picture>
+          <source srcset="/brand/logo.svg" type="image/svg+xml" />
+          <img src="/brand/logo.png" alt="App logo" class="h-12 w-auto object-contain invert" />
+        </picture>
+      </div>
+      <!-- Compact square logo when collapsed (1.5x size) -->
+      <div v-else class="h-12 w-12 rounded-xl overflow-hidden bg-white/30 border border-white/30 grid place-items-center">
+        <picture>
+          <source srcset="/brand/logo.svg" type="image/svg+xml" />
+          <img src="/brand/logo.png" alt="App logo" class="h-9 w-9 object-contain invert" />
+        </picture>
+      </div>
     </div>
 
     <nav class="px-2 space-y-1">
@@ -22,6 +34,39 @@
       >
         <span class="i">🏠</span>
         <span v-if="open">Dashboard</span>
+      </RouterLink>
+      <RouterLink
+        to="/spaces"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/spaces') ? 'page' : null"
+      >
+        <span class="i">🏢</span>
+        <span v-if="open">Spaces</span>
+      </RouterLink>
+      <RouterLink
+        to="/equipment"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/equipment') ? 'page' : null"
+      >
+        <span class="i">🧰</span>
+        <span v-if="open">Equipment</span>
+      </RouterLink>
+      <RouterLink
+        to="/templates"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/templates') ? 'page' : null"
+      >
+        <span class="i">📦</span>
+        <span v-if="open">Templates</span>
       </RouterLink>
       <RouterLink
         to="/issues"

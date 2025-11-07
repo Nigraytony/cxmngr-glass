@@ -8,7 +8,14 @@ const Project = require('../models/project');
  */
 async function requireActiveProject(req, res, next) {
   try {
-    const projectId = req.params.id || req.body.projectId || req.body.id || req.query.projectId;
+    // Prefer explicit projectId from body or query over generic route params like :id
+    // This avoids misinterpreting resource ids (e.g., issue id) as a project id
+    const projectId =
+      req.body?.projectId ||
+      req.query?.projectId ||
+      req.params?.projectId ||
+      req.params?.id ||
+      req.body?.id;
     if (!projectId) {
       return res.status(400).send({ error: 'projectId is required' });
     }

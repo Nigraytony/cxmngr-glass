@@ -1,7 +1,5 @@
 <template>
   <section class="space-y-6 relative" ref="pageSection">
-    <Toast :message="toast.message" v-model:show="toast.show" :top="toastTop" />
-
     <div>
       <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }]" />
     </div>
@@ -13,18 +11,16 @@
         </button>
 
         <div class="relative">
-          <input v-model="searchQuery" ref="searchInput" placeholder="Search projects..." class="rounded-lg p-2 bg-white/5 text-white/80 hidden sm:inline-block pr-10" />
+          <input
+            v-model="searchQuery"
+            ref="searchInput"
+            placeholder="Search projects..."
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 hidden sm:inline-block w-64 pr-8"
+          />
           <button v-if="searchQuery" @click="clearSearch" class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded">✕</button>
         </div>
 
-        <div class="flex items-center gap-2">
-          <label class="text-white/70 text-sm">Mode</label>
-          <select v-model="searchMode" class="rounded-lg bg-white/5 text-white p-1 text-sm">
-            <option value="substring">Substring</option>
-            <option value="exact">Exact</option>
-            <option value="fuzzy">Fuzzy</option>
-          </select>
-        </div>
+        <!-- Search mode is now a project-level setting (Project Settings) -->
 
         <div class="flex items-center gap-3">
           <label class="text-white/70 text-sm">Filter</label>
@@ -57,7 +53,11 @@
             <td class="px-4 py-3 text-white/90">
               <div class="flex items-center gap-2">
                 <span>{{ project.name }}</span>
-                <span v-if="project.default" class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">Default</span>
+                <span v-if="project.default" class="w-5 h-5 grid place-items-center rounded-full bg-white/10" aria-label="Default project" title="Default project">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-3.5 h-3.5 text-yellow-300" fill="currentColor" aria-hidden="true">
+                    <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z"/>
+                  </svg>
+                </span>
               </div>
             </td>
             <td class="px-4 py-3 text-white/90">{{ project.client }}</td>
@@ -65,11 +65,72 @@
             <td class="px-4 py-3"><span class="px-3 py-1 rounded-full text-xs bg-white/10 text-white">{{ project.status || 'unknown' }}</span></td>
             <td class="px-4 py-3 text-white/80">{{ formatDate(project.startDate) }} - {{ formatDate(project.endDate) }}</td>
             <td class="px-4 py-3">
-              <div class="flex gap-2">
-                <button @click="openView(project)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">View</button>
-                <button @click="openEdit(project)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">Edit</button>
-                <button @click="confirmDelete(project)" class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm border border-red-400/40">Delete</button>
-                <button v-if="!project.default" @click.prevent="makeDefault(project)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">Make default</button>
+              <div class="flex gap-2 items-center">
+                <!-- View icon button -->
+                <button
+                  @click="openView(project)"
+                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                  aria-label="View project"
+                  :title="`View ${project.name || 'project'}`"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke-width="1.5"/>
+                    <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
+                  </svg>
+                </button>
+                <!-- Edit icon button -->
+                <button
+                  @click="openEdit(project)"
+                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                  aria-label="Edit project"
+                  :title="`Edit ${project.name || 'project'}`"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke-width="1.5"/>
+                    <path d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77" stroke-width="1.5"/>
+                  </svg>
+                </button>
+                <!-- Delete icon button -->
+                <button
+                  @click="confirmDelete(project)"
+                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-400/40"
+                  aria-label="Delete project"
+                  :title="`Delete ${project.name || 'project'}`"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+                    <path d="M6 7h12" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke-width="1.5"/>
+                    <rect x="6" y="7" width="12" height="14" rx="2" stroke-width="1.5"/>
+                    <path d="M10 11v6M14 11v6" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <!-- Make default: icon button with custom tooltip -->
+                <div v-if="!project.default" class="relative inline-block group">
+                  <button
+                    @click.prevent="makeDefault(project)"
+                    aria-label="Make default"
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                  >
+                    <!-- star icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+                      <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z" stroke-width="1.5" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+                    Make default
+                  </div>
+                </div>
+                <!-- Default indicator at far right -->
+                <div v-if="project.default" class="relative ml-auto inline-block group" aria-hidden="false">
+                  <div class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 text-yellow-300 border border-white/8">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor" aria-hidden="true">
+                      <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z"/>
+                    </svg>
+                  </div>
+                  <div role="tooltip" class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+                    Default project
+                  </div>
+                </div>
               </div>
             </td>
           </tr>
@@ -122,62 +183,99 @@
       <template #header>
         <h3 class="text-lg font-semibold">Add New Project</h3>
       </template>
-      <template #body>
-        <div>
-          <div class="mb-4">
-            <div class="flex gap-2">
-              <button :class="['px-3 py-1 rounded', addTab === 'details' ? 'bg-white/10' : 'bg-white/5']" @click="addTab = 'details'">Details</button>
-              <button :class="['px-3 py-1 rounded', addTab === 'billing' ? 'bg-white/10' : 'bg-white/5']" @click="addTab = 'billing'">Billing</button>
+
+      <!-- Default slot (Modal doesn't support a #body slot) -->
+      <div>
+        <!-- Wizard tabs -->
+        <div class="mb-4">
+          <div class="flex gap-2">
+            <button :class="['px-3 py-1 rounded', addTab === 'details' ? 'bg-white/10' : 'bg-white/5']" @click="addTab = 'details'">Details</button>
+            <button :class="['px-3 py-1 rounded', addTab === 'subscription' ? 'bg-white/10' : 'bg-white/5']" @click="addTab = 'subscription'">Subscription</button>
+          </div>
+        </div>
+
+        <!-- Step: Details -->
+        <div v-if="addTab === 'details'">
+          <ProjectForm v-model="newProject" :errors="formErrors" />
+        </div>
+
+        <!-- Step: Subscription -->
+        <div v-else>
+          <div class="space-y-4">
+            <div>
+              <label class="text-white/80 text-sm block mb-2">Choose a plan</label>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label class="cursor-pointer">
+                  <input type="radio" class="hidden" value="basic" v-model="selectedPlan" />
+                  <div :class="['p-3 rounded-lg border', selectedPlan === 'basic' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
+                    <div class="text-white font-medium">Basic</div>
+                    <div class="text-white/80 text-sm">$29/mo</div>
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" class="hidden" value="standard" v-model="selectedPlan" />
+                  <div :class="['p-3 rounded-lg border', selectedPlan === 'standard' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
+                    <div class="text-white font-medium">Standard</div>
+                    <div class="text-white/80 text-sm">$49/mo</div>
+                  </div>
+                </label>
+                <label class="cursor-pointer">
+                  <input type="radio" class="hidden" value="premium" v-model="selectedPlan" />
+                  <div :class="['p-3 rounded-lg border', selectedPlan === 'premium' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
+                    <div class="text-white font-medium">Premium</div>
+                    <div class="text-white/80 text-sm">$79/mo</div>
+                  </div>
+                </label>
+              </div>
             </div>
-          </div>
-
-          <div v-if="addTab === 'details'">
-            <ProjectForm v-model="newProject" />
-          </div>
-
-          <div v-else>
-            <div class="space-y-3">
-              <div>
-                <label class="text-white/80 text-sm block mb-1">Select plan</label>
-                <select v-model="selectedPlan" class="w-full rounded bg-white/5 p-2 text-white">
-                  <option value="">No subscription (skip for now)</option>
-                  <option value="basic">Basic — $29/mo</option>
-                  <option value="standard">Standard — $49/mo</option>
-                  <option value="premium">Premium — $79/mo</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="text-white/80 text-sm block mb-1">Or provide a specific priceId</label>
-                <input v-model="priceIdOverride" placeholder="price_xxx (optional)" class="w-full rounded bg-white/5 p-2 text-white" />
-              </div>
+            <div>
+              <label class="text-white/80 text-sm block mb-1">Or provide a specific Stripe priceId</label>
+              <input v-model="priceIdOverride" placeholder="price_xxx (optional)" class="w-full rounded bg-white/5 p-2 text-white" />
+              <p class="text-xs text-white/60 mt-1">Leave blank to use one of the plans above or choose "No subscription" by not selecting a plan.</p>
             </div>
           </div>
         </div>
-      </template>
+      </div>
 
-        <template #footer>
+      <template #footer>
+        <div class="flex flex-wrap gap-2 items-center justify-between">
           <div class="flex gap-2">
-            <button @click="createAndMaybeCheckout" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Create</button>
+            <button v-if="addTab === 'subscription'" @click="addTab = 'details'" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Back</button>
+            <button v-else @click="goNextFromDetails" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Next</button>
+          </div>
+          <div class="flex gap-2 items-center">
+            <!-- Create only on Subscription step -->
+            <button v-if="addTab === 'subscription'"
+                    @click="createAndMaybeCheckout"
+                    :disabled="!chosenPriceId || submittingAdd"
+                    :class="['px-4 py-2 rounded-lg text-white', (!chosenPriceId || submittingAdd) ? 'bg-white/10 opacity-60 cursor-not-allowed' : 'bg-white/6 hover:bg-white/10']">
+              {{ submittingAdd ? 'Creating…' : 'Create' }}
+            </button>
             <button @click="showAddModal = false" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
           </div>
-        </template>
+        </div>
+      </template>
     </Modal>
 
   </section>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
-import Toast from '../../components/Toast.vue'
+import { confirm as inlineConfirm } from '../../utils/confirm'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
+import { useUiStore } from '../../stores/ui'
+import axios from 'axios'
+import { getAuthHeaders } from '../../utils/auth'
+import http from '../../utils/http'
 
 const projectStore = useProjectStore()
 const auth = useAuthStore()
+const ui = useUiStore()
 
 // Build display list from auth.user.projects (which may contain ids or objects) joined with full projects
 const projectsSource = computed(() => {
@@ -224,41 +322,28 @@ const newProject = ref({
   startDate: '',
   endDate: '',
 })
+// Add wizard state
+const addTab = ref('details') // 'details' | 'subscription'
+const selectedPlan = ref('')
+const priceIdOverride = ref('')
+const submittingAdd = ref(false)
+const chosenPriceId = computed(() => (priceIdOverride.value || PLAN_PRICE_IDS[selectedPlan.value] || ''))
 const editProject = ref(null)
 const formErrors = ref({})
-const toast = ref({ show: false, message: '' })
-const toastTop = ref('4rem')
 const pageSection = ref(null)
-
-function computeToastTop() {
-  nextTick(() => {
-    const hdr = document.querySelector('.page-header')
-    const rect = hdr ? hdr.getBoundingClientRect() : { bottom: 64 }
-    toastTop.value = `${rect.bottom + 12}px`
-  })
-}
-
-onMounted(() => {
-  computeToastTop()
-  window.addEventListener('resize', computeToastTop)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', computeToastTop)
-})
-
-function showToast(message, opts = {}) {
-  toast.value.message = message
-  toast.value.show = true
-  computeToastTop()
-  const ms = opts.duration || 2500
-  setTimeout(() => { toast.value.show = false }, ms)
-}
 
 function validateProject(p) {
   const e = {}
   if (!p.name || !p.name.trim()) e.name = 'Name is required'
   if (!p.client || !p.client.trim()) e.client = 'Client is required'
   return e
+}
+
+function goNextFromDetails() {
+  const e = validateProject(newProject.value)
+  formErrors.value = e
+  if (Object.keys(e).length) return
+  addTab.value = 'subscription'
 }
 
 // Pagination
@@ -268,7 +353,13 @@ const pageSizes = [5, 10, 20]
 
 const statusFilter = ref('All')
 const searchQuery = ref('')
-const searchMode = ref('substring')
+const searchMode = computed(() => {
+  try {
+    const p = projectStore.currentProject && projectStore.currentProject.value ? projectStore.currentProject.value : null
+    const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
+    return m || 'substring'
+  } catch (e) { return 'substring' }
+})
 
 function debounce(fn, wait = 200) {
   let t
@@ -347,9 +438,9 @@ async function saveEdit() {
   try {
     await projectStore.updateProject(editProject.value)
     showViewModal.value = false
-    showToast('Project updated')
+    ui.showSuccess('Project updated')
   } catch (err) {
-    showToast('Failed to update project')
+    ui.showError('Failed to update project')
   }
 }
 
@@ -358,7 +449,7 @@ async function addProject() {
   if (Object.keys(e).length) { formErrors.value = e; return }
   try {
     await projectStore.addProject(newProject.value)
-    showAddModal.value = false
+  showAddModal.value = false
     newProject.value = {
       name: '',
       number: '',
@@ -373,80 +464,139 @@ async function addProject() {
       endDate: '',
       tags: []
     }
-    showToast('Project created')
+    ui.showSuccess('Project created')
   } catch (err) {
-    showToast('Failed to create project')
+    ui.showError('Failed to create project')
   }
 }
 
 function cancelEdit() { showViewModal.value = false; editProject.value = null }
 
-function confirmDelete(p) {
-  if (!confirm('Delete this project?')) return
-  projectStore.deleteProject(p.id).then(() => showToast('Project deleted')).catch(() => showToast('Failed to delete'))
+async function confirmDelete(p) {
+  const confirmed = await inlineConfirm({
+    title: 'Delete project',
+    message: `Delete project "${p?.name || p?.id || ''}"? This cannot be undone.`,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    variant: 'danger'
+  })
+  if (!confirmed) return
+  projectStore
+    .deleteProject(p.id)
+    .then(() => ui.showSuccess('Project deleted'))
+    .catch(() => ui.showError('Failed to delete'))
 }
 
 async function makeDefault(project) {
-  // Build updated projects array based on auth.user.projects shape
+  // Mirror working logic from Topbar: call backend with auth headers and update auth/user + store
   try {
-    const auth = useAuthStore()
-    const uid = auth.user?._id || auth.user?.id
-    if (!uid) throw new Error('Not authenticated')
+    const userId = auth.user && (auth.user._id || auth.user.id)
+  if (!userId) { ui.showError('Not signed in'); return }
+    const projectId = project && (project.id || project._id)
+  if (!projectId) { ui.showError('Missing project id'); return }
 
-  const userProjList = Array.isArray(auth.user && auth.user.projects) ? auth.user.projects : []
-    const selectedId = project.id || project._id
+    const { data } = await http.post(
+      `/api/projects/${projectId}/set-default`,
+      { userId },
+      { headers: getAuthHeaders() }
+    )
 
-    const updated = userProjList.map(up => {
-      if (typeof up === 'string') {
-        // preserve id shape but convert to object to include default flag
-        return up === selectedId ? { _id: up, default: true } : { _id: up, default: false }
+    // Preserve existing token while updating returned user shape
+    const incoming = (data && data.user) ? data.user : data
+    const preserveToken = auth.token || (auth.user && auth.user.token) || null
+    if (incoming) {
+      auth.user = Object.assign({}, auth.user || {}, incoming)
+      if (preserveToken && auth.user) {
+        auth.user.token = preserveToken
       }
-      // object entry: set default flag accordingly
-      const id = up._id || up.id
-      return { ...up, default: (id === selectedId) }
-    })
-
-    // Prefer calling backend endpoint that updates only the default flag for safety
-    try {
-      const res = await fetch(`/api/projects/${selectedId}/set-default`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: auth.user?._id || auth.user?.id })
-      })
-      if (!res.ok) { showToast('Failed to update default project'); return }
-      const data = await res.json()
-
-      // Backend now returns { user } (sanitized). If present, replace auth.user with the returned user
-      if (data && data.user) {
-        // preserve existing token in the auth store
-        const existingToken = auth.token
-        auth.user = data.user
-        // keep token separate in localStorage
-        localStorage.setItem('user', JSON.stringify(auth.user))
-        if (existingToken) localStorage.setItem('token', existingToken)
-        // sync selected project
-        if (selectedId) projectStore.setCurrentProject(selectedId)
-        showToast('Default project updated')
-      } else if (data && data.projects) {
-        // fallback for older response shape
-        const ok2 = await auth.updateUser({ projects: data.projects })
-        if (ok2) {
-          if (selectedId) projectStore.setCurrentProject(selectedId)
-          showToast('Default project updated')
-        } else {
-          showToast('Failed to update default project')
-        }
-      } else {
-        showToast('Failed to update default project')
-      }
-    } catch (err) {
-      showToast('Failed to update default project')
+      try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) {}
     }
+
+    if (projectId) projectStore.setCurrentProject(String(projectId))
+    ui.showSuccess('Default project updated')
   } catch (err) {
-    showToast('Failed to update default project')
+    ui.showError(err?.response?.data?.error || 'Failed to update default project')
   }
 }
 
 function formatDate(d) { if (!d) return '' ; try { return new Date(d).toLocaleDateString() } catch { return d } }
+
+// Plan key to priceId mapping (keep in sync with backend config/plans.js)
+const PLAN_PRICE_IDS = {
+  basic: 'price_1MwoMXHUb4cunvDgueGxHOji',
+  standard: 'price_1MwoOMHUb4cunvDgtbBKXDrN',
+  premium: 'price_1MwoRJHUb4cunvDgehwhilRg',
+}
+
+async function createAndMaybeCheckout() {
+  if (submittingAdd.value) return
+  // Validate first
+  const e = validateProject(newProject.value)
+  formErrors.value = e
+  if (Object.keys(e).length) { addTab.value = 'details'; return }
+
+  try {
+    submittingAdd.value = true
+    // Build payload with ISO dates to satisfy backend
+    const payload = { ...newProject.value }
+    payload.startDate = normalizeToISODate(payload.startDate)
+    payload.endDate = normalizeToISODate(payload.endDate)
+
+    // Create the project
+    const created = await projectStore.addProject(payload)
+    if (!created || !created.id) {
+      ui.showError('Project created, but id missing')
+      showAddModal.value = false
+      return
+    }
+
+    // Reset wizard state
+    addTab.value = 'details'
+
+    // If a subscription is selected, kick off Stripe checkout
+    if (chosenPriceId.value) {
+      try {
+        const res = await http.post('/api/stripe/create-checkout-session', {
+          // Prefer planKey on server; also send priceId for backward-compat
+          planKey: selectedPlan.value || undefined,
+          priceId: chosenPriceId.value,
+          projectId: created.id,
+        }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+
+        const url = res?.data?.url
+        if (url) {
+          // Close modal then redirect
+          showAddModal.value = false
+          window.location.href = url
+          return
+        }
+        ui.showError('Project created, but failed to start checkout')
+      } catch (err) {
+        ui.showError('Project created, but checkout failed')
+      }
+    } else {
+      // No subscription selected: prevent submission; require plan selection on this step
+      ui.showError('Select a subscription plan or enter a priceId to continue')
+      addTab.value = 'subscription'
+    }
+  } catch (err) {
+    ui.showError('Failed to create project')
+  }
+  finally {
+    submittingAdd.value = false
+  }
+}
+
+// Convert 'YYYY-MM-DD' (or other parsable input) to ISO using local components to avoid TZ shift
+function normalizeToISODate(val) {
+  if (!val) return ''
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-').map(n => parseInt(n, 10))
+    const dt = new Date(y, m - 1, d)
+    return isNaN(dt.getTime()) ? '' : dt.toISOString()
+  }
+  const dt = new Date(val)
+  return isNaN(dt.getTime()) ? '' : dt.toISOString()
+}
 
 </script>

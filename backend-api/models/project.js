@@ -28,6 +28,10 @@ const projectSchema = new mongoose.Schema({
     email: String,
     company: String,
     role: String,
+    // Optional logo for the commissioning agent (stored like user avatar: URL or data URI)
+    logo: { type: String },
+    // Optional phone number for the commissioning agent contact
+    phone: { type: String },
   },
   logo: { type: String },
   meta: [{ type: String }],
@@ -45,6 +49,8 @@ const projectSchema = new mongoose.Schema({
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
   spaces: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Space' }],
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  // Project-level audit logs (flexible schema)
+  logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
   // Active flag for project (soft delete / enable/disable)
   isActive: { type: Boolean, default: true },
   // Stripe billing fields (per-project subscription)
@@ -55,7 +61,11 @@ const projectSchema = new mongoose.Schema({
   stripeCancelAtPeriodEnd: { type: Boolean, default: false },
   // Trial tracking: record when the project's trial started so we don't re-grant
   // the full trial window on subsequent subscription attempts.
-  trialStartedAt: { type: Date, default: null },
+  trialStartedAt: { type: Date, default: null, immutable: true },
+  // New explicit trial flags to lock a single trial per project
+  trialStarted: { type: Boolean, default: false },
+  trialStart: { type: Date, default: null },
+  trialEnd: { type: Date, default: null },
 });
 
 const Project = mongoose.model('Project', projectSchema);

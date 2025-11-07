@@ -8,16 +8,12 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['globaladmin','superadmin', 'admin', 'user'], default: 'user' },
+  // Minimal per-project membership entries to avoid duplicating project data.
+  // Keep only an id, role and a default flag; hydrate on read when needed.
   projects: [{
     _id: mongoose.Schema.Types.ObjectId,
-    name: String,
-    client: String,
-    role: String,
-    location: String,
-    project_type: String,
-    status: String,
-    description: String,
-    default: { type: Boolean, default: false }, // Indicates if this is the default project for the user
+    role: { type: String, default: 'user' },
+    default: { type: Boolean, default: false },
   }],
   contact: {
     company: { type: String, required: true },
@@ -60,13 +56,7 @@ userSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
 
-// Populate projects with specific fields
-userSchema.methods.populateProjects = function () {
-  return this.populate({
-    path: 'projects',
-    select: 'title, client, projectType, status, description' // Specify the fields to return
-  }).execPopulate();
-};
+// Note: Do not use populate() on projects – it's not a ref array. Hydration is done in routes.
 
 const User = mongoose.model('User', userSchema);
 

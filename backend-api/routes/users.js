@@ -1,7 +1,48 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
+const Project = require('../models/project');
 const jwt = require('jsonwebtoken');
+
+// Helper: hydrate user.projects from the Projects collection (avoid stale embedded fields)
+async function hydrateUserProjects(userObj) {
+  try {
+    const projects = Array.isArray(userObj.projects) ? userObj.projects : []
+    const ids = projects
+      .map((p) => (typeof p === 'string' ? p : (p && (p._id || p.id))))
+      .filter(Boolean)
+      .map(String)
+    if (!ids.length) { userObj.projects = []; return userObj }
+    const uniqueIds = Array.from(new Set(ids))
+    const found = await Project.find({ _id: { $in: uniqueIds } }).lean()
+    const map = {}
+    for (const pr of found) { map[String(pr._id)] = pr }
+    userObj.projects = projects.map((p) => {
+      const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id)))
+      const role = (typeof p === 'object' && p && p.role) ? p.role : undefined
+      const isDefault = Boolean(typeof p === 'object' && p && p.default)
+      const proj = map[pid] || null
+      // Return a flattened, backward-compatible shape while sourcing fields from the canonical project
+      return {
+        _id: pid,
+        name: proj ? proj.name : (typeof p === 'object' && p ? p.name : undefined),
+        client: proj ? proj.client : (typeof p === 'object' && p ? p.client : undefined),
+        location: proj ? proj.location : (typeof p === 'object' && p ? p.location : undefined),
+        project_type: proj ? proj.project_type : (typeof p === 'object' && p ? p.project_type : undefined),
+        status: proj ? proj.status : (typeof p === 'object' && p ? p.status : undefined),
+        description: proj ? proj.description : (typeof p === 'object' && p ? p.description : undefined),
+        role: role || 'user',
+        default: isDefault,
+      }
+    })
+    return userObj
+  } catch (e) {
+    // On failure, at least normalize to an array of {_id, role, default}
+    const projects = Array.isArray(userObj.projects) ? userObj.projects : []
+    userObj.projects = projects.map((p) => ({ _id: String(typeof p === 'string' ? p : (p && (p._id || p.id))), role: (p && p.role) || 'user', default: Boolean(p && p.default) }))
+    return userObj
+  }
+}
 
 // Register a new user
 router.post('/register', async (req, res) => {
@@ -48,6 +89,15 @@ router.post('/register', async (req, res) => {
       },
     });
 
+    // Ensure incoming projects are stored minimally to avoid duplication
+    if (Array.isArray(user.projects)) {
+      user.projects = user.projects.map((p) => {
+        const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id)))
+        const role = (typeof p === 'object' && p && p.role) ? p.role : 'user'
+        const isDefault = Boolean(typeof p === 'object' && p && p.default)
+        return { _id: pid, role, default: isDefault }
+      })
+    }
     await user.save();
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
@@ -56,9 +106,11 @@ router.post('/register', async (req, res) => {
     }
     const token = jwt.sign({ _id: user._id }, jwtSecret);
     // Remove password from response
-    const userObj = user.toObject();
+  const userObj = user.toObject();
     delete userObj.password;
-    res.status(201).send({ user: userObj, token });
+  // Hydrate projects with live data
+  const hydrated = await hydrateUserProjects(userObj)
+  res.status(201).send({ user: hydrated, token });
 
   } catch (error) {
     res.status(400).send({ error: error.message || error });
@@ -82,7 +134,8 @@ router.post('/login', async (req, res) => {
     }
     const token = jwt.sign({ _id: user._id }, jwtSecret);
     delete userDoc.password; // Remove password from response
-    res.send({ user: userDoc, token });
+    const hydrated = await hydrateUserProjects(userDoc)
+    res.send({ user: hydrated, token });
   } catch (error) {
     res.status(400).send(error);
   }
@@ -92,7 +145,17 @@ router.post('/login', async (req, res) => {
 router.put('/update/:_id', async (req, res) => {
   // console.log(req.params, req.body);
   try {
-    const user = await User.findByIdAndUpdate(req.params._id, req.body, { new: true, runValidators: true });
+    // Sanitize project items to avoid writing duplicated project fields
+    const payload = { ...(req.body || {}) }
+    if (Array.isArray(payload.projects)) {
+      payload.projects = payload.projects.map((p) => {
+        const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id)))
+        const role = (typeof p === 'object' && p && p.role) ? p.role : 'user'
+        const isDefault = Boolean(typeof p === 'object' && p && p.default)
+        return { _id: pid, role, default: isDefault }
+      })
+    }
+    const user = await User.findByIdAndUpdate(req.params._id, payload, { new: true, runValidators: true });
     if (!user) {
       return res.status(404).send({ error: 'User not found' });
     }
@@ -100,7 +163,8 @@ router.put('/update/:_id', async (req, res) => {
     const userObj = user.toObject ? user.toObject() : JSON.parse(JSON.stringify(user));
     if (userObj.password) delete userObj.password;
     if (userObj.__v) delete userObj.__v;
-    res.send({ user: userObj });
+    const hydrated = await hydrateUserProjects(userObj)
+    res.send({ user: hydrated });
   } catch (error) {
     res.status(400).send(error);
   }
