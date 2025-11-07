@@ -38,9 +38,20 @@ jobs:
           cd ${{ env.WORKING_DIR }}
           zip -r ../backend-api.zip . -x "node_modules/*"
 
+      - name: Validate required secrets/variables
+        run: |
+          missing=()
+          [ -z "${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}" ] && missing+=(AZURE_WEBAPP_PUBLISH_PROFILE)
+          [ -z "${{ vars.WEBAPP_NAME_BACKEND }}" ] && missing+=(WEBAPP_NAME_BACKEND)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required secrets/variables: ${missing[*]}" >&2
+            exit 1
+          fi
+          echo "Secrets/variables present. Proceeding to deploy."
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ vars.WEBAPP_NAME_BACKEND }}
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_BACKEND }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: backend-api.zip
