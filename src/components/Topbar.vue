@@ -25,7 +25,7 @@
       <div v-if="cxaLogo" class="h-10 w-auto max-w-[160px] flex items-center">
         <img :src="cxaLogo" alt="CxA logo" class="h-10 w-auto object-contain rounded-lg" />
       </div>
-      <button @click="toggleMenu" class="flex items-center gap-2 px-2 py-1 rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10">
+  <button @click="toggleMenu" class="flex items-center gap-2 px-2 py-1 rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10">
         <!-- thumbnail: avatar image when present, otherwise initials -->
         <div v-if="avatarSrc" class="w-8 h-8 rounded-full overflow-hidden bg-white/10">
           <img :src="avatarSrc" alt="User avatar" class="w-full h-full object-cover" />
@@ -34,6 +34,9 @@
           <span class="font-medium">{{ initials }}</span>
         </div>
         <span class="text-white/90 hidden sm:inline">{{ firstName }}</span>
+        <span v-if="invitationsStore.invites.length" class="inline-flex items-center justify-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/80 text-white shadow-sm">
+          {{ invitationsStore.invites.length }}
+        </span>
       </button>
 
       <!-- Dropdown -->
@@ -54,6 +57,18 @@
 
               <!-- Projects list -->
               <li class="my-1 border-t border-white/10"></li>
+              <!-- Invitations block -->
+              <template v-if="invitationsStore.invites.length">
+                <li class="px-3 py-1 text-xs font-semibold text-white/70">Invitations</li>
+                <li v-for="inv in invitationsStore.invites" :key="inv.id" class="px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2">
+                  <div class="flex-1 min-w-0">
+                    <div class="truncate text-sm" :title="inv.project?.name || 'Project'">{{ inv.project?.name || 'Project' }}</div>
+                    <div class="text-[11px] text-white/50">{{ formatInviteDate(inv.createdAt) }}</div>
+                  </div>
+                  <button @click="accept(inv.id)" class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white">Accept</button>
+                </li>
+                <li class="my-1 border-t border-white/10"></li>
+              </template>
               <li v-if="projectsList.length === 0" class="px-3 py-2 text-sm text-white/60">No projects</li>
               <li v-for="p in projectsList" :key="p.id">
                 <button
@@ -107,6 +122,7 @@ import { useRouter } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
+import { useInvitationsStore } from '../stores/invitations'
 import axios from 'axios'
 import { getAuthHeaders } from '../utils/auth'
 import http from '../utils/http'
@@ -117,6 +133,7 @@ const emit = defineEmits(['toggleSidebar','logout'])
 const auth = useAuthStore()
 const projectStore = useProjectStore()
 const ui = useUiStore()
+const invitationsStore = useInvitationsStore()
 
 const defaultProjectName = computed(() => {
   // Prefer the live current project from the project store
@@ -204,6 +221,7 @@ onMounted(async () => {
     if (!projectStore.projects || projectStore.projects.length === 0) {
       await projectStore.fetchProjects()
     }
+    try { await invitationsStore.fetchPending() } catch (e) {}
   } catch (e) { /* ignore */ }
 })
 
@@ -251,6 +269,24 @@ async function onSelectProject(p) {
     ui.showError(err?.response?.data?.error || 'Failed to set default project')
   } finally {
     // keep menu open so user sees the highlight update; optionally close
+  }
+}
+
+function formatInviteDate(d) {
+  try { return d ? new Date(d).toLocaleDateString() : '' } catch { return '' }
+}
+
+async function accept(id) {
+  try {
+    const ok = await invitationsStore.acceptInvite(id)
+    if (ok) {
+      ui.showSuccess('Invitation accepted')
+      try { await projectStore.fetchProjects() } catch (e) {}
+    } else {
+      ui.showError(invitationsStore.error || 'Failed to accept invitation')
+    }
+  } catch (e) {
+    ui.showError('Failed to accept invitation')
   }
 }
 </script>

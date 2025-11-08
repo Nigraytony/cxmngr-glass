@@ -185,6 +185,42 @@ router.post('/accept-invite', auth, async (req, res) => {
   }
 });
 
+// Accept invitation by ID (alternative to token-based flow when user logs in later)
+router.post('/invitations/:id/accept', auth, async (req, res) => {
+  try {
+    const inviteId = req.params.id;
+    const invite = await Invitation.findById(inviteId);
+    if (!invite) return res.status(404).send({ error: 'Invite not found' });
+    if (invite.accepted) return res.status(400).send({ error: 'Invite already accepted' });
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).send({ error: 'User not found' });
+    // Ensure the invite email matches the logged in user's email (security)
+    if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
+      return res.status(403).send({ error: 'Invite email mismatch' });
+    }
+    const project = await Project.findById(invite.projectId);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    // Add user to project if not present
+    const already = project.team.some(t => t.email === user.email);
+    if (!already) {
+      project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
+      await project.save();
+    }
+    const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
+    if (!hasProject) {
+      user.projects.push({ _id: project._id, role: 'user', default: false });
+      await user.save();
+    }
+    invite.accepted = true;
+    await invite.save();
+    return res.status(200).send({ message: 'Invite accepted', projectId: project._id });
+  } catch (err) {
+    console.error('accept invite by id error', err);
+    return res.status(400).send({ error: 'Failed to accept invite' });
+  }
+});
+
 // List invites for a project
 router.get('/:id/invites', auth, async (req, res) => {
   try {
@@ -224,6 +260,32 @@ router.post('/:id/resend-invite', auth, async (req, res) => {
   } catch (err) {
     console.error('resend-invite error', err);
     return res.status(500).send({ error: 'Failed to resend invite' });
+  }
+});
+
+// List my pending invitations (for logged-in user by email)
+router.get('/my-invites', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).lean();
+    if (!user) return res.status(404).send({ error: 'User not found' });
+    const invites = await Invitation.find({ email: user.email, accepted: false })
+      .sort({ createdAt: -1 })
+      .lean();
+    // Attach minimal project details to improve UX
+    const projectIds = [...new Set(invites.map(i => String(i.projectId)))];
+    const projects = await Project.find({ _id: { $in: projectIds } }).select('_id name logo').lean();
+    const projMap = Object.fromEntries(projects.map(p => [String(p._id), p]));
+    const result = invites.map(i => ({
+      id: String(i._id),
+      email: i.email,
+      token: i.token,
+      createdAt: i.createdAt,
+      project: projMap[String(i.projectId)] || { _id: i.projectId },
+    }));
+    return res.status(200).send(result);
+  } catch (err) {
+    console.error('my-invites error', err);
+    return res.status(500).send({ error: 'Failed to list invitations' });
   }
 });
 
