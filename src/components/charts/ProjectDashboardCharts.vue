@@ -1,5 +1,5 @@
 <template>
-  <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+  <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
     <!-- Issues by Status -->
     <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
@@ -38,6 +38,19 @@
            class="max-h-72" />
       <div v-else class="text-white/60 text-sm">No equipment data</div>
     </div>
+
+    <!-- Spaces by Type -->
+    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-white">Spaces by Type</h3>
+        <span v-if="spacesLoading" class="text-xs text-white/60">Loading…</span>
+      </div>
+      <Bar v-if="spacesChartData.datasets[0].data.length"
+           :data="spacesChartData"
+           :options="barOptions"
+           class="max-h-72" />
+      <div v-else class="text-white/60 text-sm">No spaces data</div>
+    </div>
   </div>
 </template>
 
@@ -46,6 +59,7 @@ import { onMounted, computed } from 'vue'
 import { useIssuesStore } from '../../stores/issues'
 import { useActivitiesStore } from '../../stores/activities'
 import { useEquipmentStore } from '../../stores/equipment'
+import { useSpacesStore } from '../../stores/spaces'
 import { useProjectStore } from '../../stores/project'
 import {
   Chart as ChartJS,
@@ -64,6 +78,7 @@ const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
 const activitiesStore = useActivitiesStore()
 const equipmentStore = useEquipmentStore()
+const spacesStore = useSpacesStore()
 
 onMounted(async () => {
   const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
@@ -73,6 +88,7 @@ onMounted(async () => {
       issuesStore.fetchIssues(pid).catch(() => {}),
       activitiesStore.fetchActivities(pid).catch(() => {}),
       pid ? equipmentStore.fetchByProject(String(pid)).catch(() => {}) : Promise.resolve(),
+      pid ? spacesStore.fetchByProject(String(pid)).catch(() => {}) : Promise.resolve(),
     ])
   } catch (e) {
     // soft-fail on dashboard
@@ -82,6 +98,7 @@ onMounted(async () => {
 const issuesLoading = computed(() => issuesStore.loading)
 const activitiesLoading = computed(() => activitiesStore.loading)
 const equipmentLoading = computed(() => equipmentStore.loading)
+const spacesLoading = computed(() => spacesStore.loading)
 
 // Issues by Status (normalize common variants)
 function normStatus(s?: string) {
@@ -144,6 +161,22 @@ const equipmentChartData = computed(() => {
   return {
     labels,
     datasets: [{ label: 'Count', data, backgroundColor: bg, borderRadius: 6, borderSkipped: false }]
+  }
+})
+
+// Spaces by Type
+const spacesChartData = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const s of spacesStore.items) {
+    const key = s.type || 'Unknown'
+    counts[key] = (counts[key] || 0) + 1
+  }
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1])
+  const labels = entries.map(e => e[0])
+  const data = entries.map(e => e[1])
+  return {
+    labels,
+    datasets: [{ label: 'Count', data, backgroundColor: '#34d399', borderRadius: 6, borderSkipped: false }]
   }
 })
 
