@@ -44,6 +44,11 @@ if (allowedOriginsEnv && allowedOriginsEnv.trim() && allowedOriginsEnv !== '*') 
 }
 
 // Middleware
+// Basic root for sanity
+app.get('/', (_req, res) => {
+  res.type('text').send('CXMNGR API alive');
+});
+
 // Capture raw body for Stripe webhook signature verification, then parse JSON normally
 app.use(express.json({
   limit: '1mb',
@@ -128,4 +133,12 @@ db.once('open', () => {
 // Start server regardless of DB state so health and CORS preflights work
 app.listen(port, () => {
   console.log(`🚀 Server is running on port ${port}`);
+});
+
+// Global diagnostics for unexpected errors
+process.on('unhandledRejection', (err) => {
+  console.error('UnhandledRejection:', err);
+});
+process.on('uncaughtException', (err) => {
+  console.error('UncaughtException:', err);
 });
