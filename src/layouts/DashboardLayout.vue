@@ -1,11 +1,11 @@
 <template>
-  <div class="app-bg min-h-screen text-white">
-    <div class="grid md:grid-cols-[auto,1fr]">
+  <div class="app-bg min-h-screen text-white overflow-x-hidden">
+    <div class="grid md:grid-cols-[auto,1fr] w-full">
       <Sidebar :open="ui.sidebarOpen" @toggle="ui.toggleSidebar()" />
 
-      <div class="min-h-screen md:ml-0" :class="ui.sidebarOpen ? 'ml-16 md:ml-0' : 'ml-16'">
+      <div class="min-h-screen md:ml-0 min-w-0" :class="ui.sidebarOpen ? 'ml-16 md:ml-0' : 'ml-16'">
         <Topbar :name="auth.name" @toggleSidebar="ui.toggleSidebar()" @logout="handleLogout" />
-        <main class="p-6">
+        <main class="p-6 min-w-0">
           <RouterView />
         </main>
       </div>

@@ -8,9 +8,9 @@
     <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
       <!-- Tabs header -->
       <div class="mb-4 md:mb-6">
-        <div role="tablist" class="relative flex items-center w-full">
+        <div role="tablist" ref="tablistRef" class="relative flex items-center w-full" :class="compactTabs ? 'gap-1' : ''">
           <div class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out" :style="{ left: tabLeft + '%', width: tabWidth + '%' }" />
-          <button v-for="t in tabs" :key="t" @click="currentTab = t" :aria-selected="currentTab === t" role="tab" class="flex-1 text-center px-3 py-2 text-sm flex items-center justify-center gap-2" :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'">
+          <button v-for="t in tabs" :key="t" @click="currentTab = t" :aria-selected="currentTab === t" role="tab" :title="t" :aria-label="t" class="flex-1 text-center px-2 py-2 text-sm flex items-center justify-center gap-2" :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'">
             <svg v-if="t === 'Info'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke-width="1.5"/><path d="M12 11v6" stroke-width="1.5" stroke-linecap="round"/><path d="M12 7h.01" stroke-width="2" stroke-linecap="round"/></svg>
             <svg v-else-if="t === 'SubSpaces'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="5" r="2.25"/><circle cx="7" cy="19" r="2.25"/><circle cx="17" cy="19" r="2.25"/><path d="M12 7.5v5.5" stroke-linecap="round"/><path d="M12 13h-3" stroke-linecap="round"/><path d="M12 13h3" stroke-linecap="round"/></svg>
             <svg v-else-if="t === 'Equipment'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="2" stroke-width="1.5"/><path d="M7 10h10M7 14h6" stroke-width="1.5"/></svg>
@@ -19,7 +19,7 @@
             <svg v-else-if="t === 'Attributes'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/></svg>
             <svg v-else-if="t === 'Settings'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z" stroke-width="1.5"/></svg>
             <svg v-else-if="t === 'MetaData'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5"/><path d="M8 9h8M8 13h8M8 17h8" stroke-width="1.5"/></svg>
-            <span>{{ t }}</span>
+            <span v-if="!compactTabs" class="truncate">{{ t }}</span>
             <span v-if="countForTab(t) > 0" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80">{{ countForTab(t) }}</span>
           </button>
         </div>
@@ -206,6 +206,21 @@ const currentTab = ref('Info')
 const tabIndex = computed(() => Math.max(0, tabs.indexOf(currentTab.value)))
 const tabWidth = computed(() => 100 / tabs.length)
 const tabLeft = computed(() => tabIndex.value * tabWidth.value)
+// Compact tabs: hide text labels if they overflow horizontally
+const compactTabs = ref(false)
+const tablistRef = ref<HTMLElement | null>(null)
+function updateCompactTabs() {
+  const el = tablistRef.value
+  if (!el) return
+  // Use scrollWidth vs clientWidth to detect overflow
+  compactTabs.value = el.scrollWidth > el.clientWidth + 2
+}
+onMounted(() => {
+  // Initial measurement after mount
+  updateCompactTabs()
+  window.addEventListener('resize', updateCompactTabs)
+})
+watch(currentTab, () => updateCompactTabs())
 
 const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '', description: '', attachments: [], attributes: [], notes: '', metaData: {} as any })
 const saving = ref(false)

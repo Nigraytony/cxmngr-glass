@@ -9,7 +9,7 @@
     </div>
 
     <!-- toolbar below breadcrumbs (search first) -->
-  <div class="flex items-center gap-2">
+  <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
       <!-- Add Space round button with hover tooltip, left of search -->
       <div class="relative inline-block group">
         <button
@@ -112,7 +112,7 @@
     </div>
 
     <!-- list -->
-    <div v-if="viewMode === 'list'" class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2">
+  <div v-if="viewMode === 'list'" class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto">
       <!-- pagination toolbar (top) -->
       <div class="flex items-center justify-between px-2 py-2">
         <div class="text-white/60 text-sm">

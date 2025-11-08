@@ -1,12 +1,12 @@
 <template>
   <header
-    class="h-16 px-4 grid grid-cols-3 items-center
+    class="h-16 px-4 grid grid-cols-3 items-center w-full overflow-x-hidden
            bg-white/10 dark:bg-white/10 backdrop-blur-xl
            border-b border-white/20 ring-1 ring-white/10
            shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
   >
     <!-- Left: menu + client logo -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 min-w-0">
       <button @click="$emit('toggleSidebar')" class="px-3 py-1 rounded-lg bg-white/30 border border-white/40 text-white">
         ☰
       </button>
@@ -16,12 +16,12 @@
     </div>
 
     <!-- Center: project name -->
-    <div class="flex items-center justify-center">
+    <div class="flex items-center justify-center min-w-0">
       <span class="text-white font-semibold text-center truncate max-w-[60vw]">{{ defaultProjectName }}</span>
     </div>
 
     <!-- Right: CxA logo + user menu -->
-    <div class="relative flex items-center justify-end gap-3" ref="userWrap">
+    <div class="relative flex items-center justify-end gap-3 min-w-0" ref="userWrap">
       <div v-if="cxaLogo" class="h-10 w-auto max-w-[160px] flex items-center">
         <img :src="cxaLogo" alt="CxA logo" class="h-10 w-auto object-contain rounded-lg" />
       </div>

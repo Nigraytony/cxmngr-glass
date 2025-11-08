@@ -1,28 +1,26 @@
 <template>
   <!-- Make this section the positioning context for the toast so it spans the RouterView area (right side without the sidebar) -->
-  <section class="space-y-6 relative" ref="pageSection">
+  <section class="space-y-6 relative w-full min-w-0" ref="pageSection">
     <div>
-        <BreadCrumbs :items="[
-          { text: 'Dashboard', to: '/' },
-          { text: 'Issues', to: '/issues' }
-        ]" />
+      <BreadCrumbs :items="[
+        { text: 'Dashboard', to: '/' },
+        { text: 'Issues', to: '/issues' }
+      ]" />
     </div>
-  <!-- Local Toast removed; using global UI toasts from the UI store -->
 
-      <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2">
-        <div class="flex items-center gap-3">
-          <div class="relative inline-block group">
-            <button :disabled="!projectStore.currentProjectId" @click="openAddModal" aria-label="Add issue" aria-describedby="add-issue-tooltip" :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-              </svg>
-            </button>
-
-            <!-- Styled tooltip: visible on hover and focus -->
-            <div id="add-issue-tooltip" role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
-              {{ projectStore.currentProjectId ? 'Add issue' : 'Select a project to add issues' }}
-            </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0">
+      <!-- Left group: add, search, filters -->
+      <div class="flex items-center gap-3">
+        <div class="relative inline-block group">
+          <button :disabled="!projectStore.currentProjectId" @click="openAddModal" aria-label="Add issue" aria-describedby="add-issue-tooltip" :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+          </button>
+          <div id="add-issue-tooltip" role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+            {{ projectStore.currentProjectId ? 'Add issue' : 'Select a project to add issues' }}
           </div>
+        </div>
 
         <!-- Search input -->
         <div class="relative">
@@ -35,78 +33,77 @@
           <button v-if="searchQuery" @click="clearSearch" class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded">✕</button>
         </div>
 
-        <!-- Search mode removed: now a project setting in Project Settings -->
-
-          <div class="flex items-center gap-3">
-            <label class="text-white/70 text-sm">Filter</label>
-            <div class="flex items-center gap-2">
-              <label class="text-white/70 text-sm">Priority</label>
-              <div class="relative" ref="priorityMenuRef">
-                <button @click="togglePriorityMenu" :aria-expanded="showPriorityMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
-                  <span class="flex items-center gap-2">
-                    <span>{{ priorityFilter }}</span>
-                    <span :class="priorityBadgeClass(priorityFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ priorityCount(priorityFilter) }}</span>
-                  </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <div v-if="showPriorityMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
-                  <div class="py-1">
-                    <button
-                      v-for="opt in priorityOptions"
-                      :key="opt.name"
-                      @click="priorityFilter = opt.name; closePriorityMenu()"
-                      role="menuitem"
-                      :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', priorityFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
-                      <span class="inline-flex items-center gap-2">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full" :class="priorityBgClass(opt.name)"></span>
-                        <span>{{ opt.name }}</span>
-                      </span>
-                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-                    </button>
-                  </div>
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-3 gap-y-2">
+          <label class="text-white/70 text-sm">Filter</label>
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Priority</label>
+            <div class="relative" ref="priorityMenuRef">
+              <button @click="togglePriorityMenu" :aria-expanded="showPriorityMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+                <span class="flex items-center gap-2">
+                  <span>{{ priorityFilter }}</span>
+                  <span :class="priorityBadgeClass(priorityFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ priorityCount(priorityFilter) }}</span>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div v-if="showPriorityMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+                <div class="py-1">
+                  <button
+                    v-for="opt in priorityOptions"
+                    :key="opt.name"
+                    @click="priorityFilter = opt.name; closePriorityMenu()"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', priorityFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="inline-block w-2.5 h-2.5 rounded-full" :class="priorityBgClass(opt.name)"></span>
+                      <span>{{ opt.name }}</span>
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <label class="text-white/70 text-sm">Status</label>
-              <div class="relative" ref="statusMenuRef">
-                <button @click="toggleStatusMenu" :aria-expanded="showStatusMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
-                  <span class="flex items-center gap-2">
-                    <span>{{ statusFilter }}</span>
-                    <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
-                  </span>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <div v-if="showStatusMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
-                  <div class="py-1">
-                    <button
-                      v-for="opt in statusOptions"
-                      :key="opt.name"
-                      @click="statusFilter = opt.name; closeStatusMenu()"
-                      role="menuitem"
-                      :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', statusFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
-                      <span class="inline-flex items-center gap-2">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full" :class="statusBgClass(opt.name)"></span>
-                        <span>{{ opt.name }}</span>
-                      </span>
-                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-                    </button>
-                  </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Status</label>
+            <div class="relative" ref="statusMenuRef">
+              <button @click="toggleStatusMenu" :aria-expanded="showStatusMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+                <span class="flex items-center gap-2">
+                  <span>{{ statusFilter }}</span>
+                  <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div v-if="showStatusMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+                <div class="py-1">
+                  <button
+                    v-for="opt in statusOptions"
+                    :key="opt.name"
+                    @click="statusFilter = opt.name; closeStatusMenu()"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', statusFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="inline-block w-2.5 h-2.5 rounded-full" :class="statusBgClass(opt.name)"></span>
+                      <span>{{ opt.name }}</span>
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
                 </div>
               </div>
-            </div>
-            <!-- Hide closed toggle -->
-            <div class="flex items-center gap-2 ml-2">
-              <input id="hideClosedChk" type="checkbox" v-model="hideClosed" class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80" />
-              <label for="hideClosedChk" class="text-white/70 text-sm select-none">Hide closed</label>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- right-side controls -->
-  <div class="relative" ref="downloadsRef">
+      <!-- Right group: hide closed + downloads -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <input id="hideClosedChk" type="checkbox" v-model="hideClosed" class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80" />
+          <label for="hideClosedChk" class="text-white/70 text-sm select-none">Hide closed</label>
+        </div>
+
+        <div class="relative" ref="downloadsRef">
           <button @click="toggleDownloadsMenu" :aria-expanded="showDownloadsMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2">
-            <!-- menu icon -->
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
               <path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
@@ -118,7 +115,6 @@
           <div v-if="showDownloadsMenu" class="absolute right-0 mt-2 w-64 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20">
             <div class="py-1" role="menu">
               <button @click="onChooseColumnsClick" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2">
-                <!-- settings icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
                   <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke-width="1.5"/>
                   <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z" stroke-width="1.5"/>
@@ -127,7 +123,6 @@
               </button>
               <div class="my-1 h-px bg-white/10"></div>
               <button @click="onDownloadCsvClick" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <!-- csv/download icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
                   <path d="M12 3v11" stroke-width="1.5" stroke-linecap="round"/>
                   <path d="M8 11l4 4 4-4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -136,7 +131,6 @@
                 <span>Download CSV</span>
               </button>
               <button @click="onDownloadXlsxClick" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <!-- spreadsheet icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="1.5"/>
                   <path d="M8 3v18M16 3v18M3 8h18M3 16h18" stroke-width="1.5"/>
@@ -146,7 +140,6 @@
               <div class="my-1 h-px bg-white/10"></div>
               <div class="px-3 py-1 text-xs text-white/60">Reports</div>
               <button @click="onDownloadDetailedReport" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <!-- file-pdf icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-width="1.5"/>
                   <path d="M14 2v6h6" stroke-width="1.5"/>
@@ -155,14 +148,12 @@
                 <span>Detailed PDF (one per issue)</span>
               </button>
               <button @click="onDownloadCompactReport" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <!-- compress/stack icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
                   <path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <span>Compact PDF (continuous)</span>
               </button>
               <button @click="onDownloadListReport" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <!-- table icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
                   <rect x="3" y="4" width="18" height="16" rx="2" ry="2" stroke-width="1.5"/>
                   <path d="M3 9h18M9 4v16M15 4v16" stroke-width="1.5"/>
@@ -173,8 +164,9 @@
           </div>
         </div>
       </div>
+    </div>
 
-    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto">
+  <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
       <table class="min-w-full text-left">
         <thead>
           <tr class="text-sm text-white/70">

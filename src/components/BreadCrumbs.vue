@@ -1,21 +1,21 @@
 <template>
-  <div class="flex items-center justify-between gap-4">
+  <div class="flex items-center justify-between gap-4 flex-wrap min-w-0">
     <!-- Page title on the left -->
-    <div>
-      <h1 class="text-2xl font-semibold text-white">{{ pageTitle }}</h1>
+    <div class="min-w-0">
+      <h1 class="text-2xl font-semibold text-white truncate">{{ pageTitle }}</h1>
     </div>
 
     <!-- Breadcrumbs and actions on the right -->
-    <div class="flex items-center gap-4">
-      <nav class="text-sm text-white/80" aria-label="Breadcrumb">
-        <ol class="flex items-center gap-2">
+    <div class="flex items-center gap-4 flex-wrap min-w-0">
+      <nav class="text-sm text-white/80 min-w-0" aria-label="Breadcrumb">
+        <ol class="flex items-center gap-2 flex-wrap min-w-0">
           <li v-for="(item, idx) in items" :key="idx" class="flex items-center gap-2">
             <template v-if="item.to && idx < items.length - 1">
               <RouterLink :to="item.to" class="text-white/80 hover:underline">{{ item.text }}</RouterLink>
               <span class="text-white/40">/</span>
             </template>
             <template v-else>
-              <span class="text-white/60">{{ item.text }}</span>
+              <span class="text-white/60 truncate">{{ item.text }}</span>
             </template>
           </li>
         </ol>

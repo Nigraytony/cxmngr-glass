@@ -8,8 +8,8 @@
       ]" title="Templates" />
     </div>
 
-    <!-- toolbar -->
-    <div class="flex items-center gap-2">
+  <!-- toolbar -->
+  <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
       <div class="relative inline-block group">
         <button
           :disabled="!projectStore.currentProjectId"
@@ -108,7 +108,7 @@
     </div>
 
     <!-- list -->
-    <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2">
+  <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto">
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
         <div class="col-span-1">Tag</div>
         <div class="col-span-3">Title</div>
