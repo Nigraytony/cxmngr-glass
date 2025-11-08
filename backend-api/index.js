@@ -20,6 +20,9 @@ const plansRoutes = require('./routes/plans');
 const app = express();
 const port = process.env.PORT || 3000;
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cxmngr-api';
+if (!process.env.MONGODB_URI) {
+  console.warn('[startup] MONGODB_URI not set; using local fallback.');
+}
 
 // CORS config: allow specific origins in production via env
 // CORS_ALLOWED_ORIGINS can be a comma-separated list or "*" for any
@@ -118,17 +121,26 @@ app.use('/api/stripe', webhookRoutes);
 app.use('/api/plans', plansRoutes);
 
 // Connect to MongoDB (Cosmos DB for MongoDB or Atlas or self-hosted)
-mongoose.connect(mongoUri, {
-  // Mongoose 8+ sensible defaults; options kept minimal.
-});
-
-const db = mongoose.connection;
-db.on('error', (err) => {
-  console.error('MongoDB connection error:', err?.message || err);
-});
-db.once('open', () => {
-  console.log('Connected to MongoDB');
-});
+async function connectMongo(retries = 5, delayMs = 4000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 8000,
+        socketTimeoutMS: 45000
+      });
+      console.log('Connected to MongoDB');
+      return;
+    } catch (err) {
+      console.error(`[mongo] attempt ${attempt} failed:`, err && err.message ? err.message : err);
+      if (attempt === retries) {
+        console.error('[mongo] giving up after max retries; continuing without DB connection.');
+        return;
+      }
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+}
+connectMongo().catch(e => console.error('[mongo] unexpected connect error', e));
 
 // Start server regardless of DB state so health and CORS preflights work
 app.listen(port, () => {

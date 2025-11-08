@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  try {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  } catch (e) {
+    console.error('[startup] Failed to init Stripe:', e && e.message);
+  }
+} else {
+  console.warn('[startup] STRIPE_SECRET_KEY not set; billing endpoints disabled.');
+}
 const crypto = require('crypto');
 const Project = require('../models/project');
 const User = require('../models/user');
@@ -14,6 +23,7 @@ router.get('/ping', (req, res) => {
 });
 
 async function ensureStripeCustomer(user) {
+  if (!stripe) throw new Error('Stripe not configured');
   if (user.stripeCustomerId) return user.stripeCustomerId;
   const customer = await stripe.customers.create({ email: user.email, metadata: { userId: String(user._id) } });
   user.stripeCustomerId = customer.id;
@@ -24,6 +34,7 @@ async function ensureStripeCustomer(user) {
 // Create Checkout Session for subscribing a project
 router.post('/create-checkout-session', auth, async (req, res) => {
   try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
     const { projectId, planKey } = req.body;
     // Resolve planKey to priceId server-side; support direct priceId for backward-compat
     let priceId = null;
@@ -115,6 +126,7 @@ router.post('/create-checkout-session', auth, async (req, res) => {
 // Create Billing Portal Session
 router.post('/portal-session', auth, async (req, res) => {
   try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
     const user = req.user;
     const customerId = await ensureStripeCustomer(user);
     const session = await stripe.billingPortal.sessions.create({

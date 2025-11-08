@@ -1,11 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  try {
+    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  } catch (e) {
+    console.error('[startup] Failed to init Stripe (webhooks):', e && e.message);
+  }
+} else {
+  console.warn('[startup] STRIPE_SECRET_KEY not set; webhook processing disabled.');
+}
 const Project = require('../models/project');
 const WebhookEvent = require('../models/webhookEvent');
 
 // Stripe webhook endpoint mounted at /api/stripe/webhook
 router.post('/webhook', async (req, res) => {
+  if (!stripe) return res.status(503).send('Stripe not configured');
   const sig = req.headers['stripe-signature'];
   let event;
   try {

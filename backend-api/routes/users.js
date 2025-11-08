@@ -1,3 +1,7 @@
+// Safe guard: if critical JWT secret missing, warn but allow server to start
+if (!process.env.JWT_SECRET) {
+  console.warn('[startup] JWT_SECRET not set; auth features may fail.');
+}
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
