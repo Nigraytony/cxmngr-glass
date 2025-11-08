@@ -28,15 +28,19 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: npm ci
 
+      - name: Prune dev dependencies
+        working-directory: ${{ env.WORKING_DIR }}
+        run: npm prune --omit=dev
+
       - name: Build (skip if not needed)
         working-directory: ${{ env.WORKING_DIR }}
         run: |
           echo "No build step required for Node/Express."
 
-      - name: Zip artifact
+      - name: Zip artifact (include node_modules)
         run: |
           cd ${{ env.WORKING_DIR }}
-          zip -r ../backend-api.zip . -x "node_modules/*"
+          zip -r ../backend-api.zip . -x "*.log" "tmp/*" "coverage/*"
 
       - name: Validate required secrets/variables
         run: |
