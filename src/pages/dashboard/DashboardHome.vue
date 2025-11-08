@@ -17,7 +17,11 @@
           <span v-if="issuesLoading" class="text-xs text-white/60">Loading…</span>
         </div>
         <div class="mt-2 text-2xl font-semibold text-white">{{ issuesTotal }}</div>
-        <div class="mt-1 text-xs text-white/70">Open: <span class="text-white">{{ issuesOpen }}</span> · Closed: <span class="text-white">{{ issuesClosed }}</span></div>
+        <div class="mt-1 text-xs text-white/70 flex flex-wrap gap-x-2 gap-y-0.5">
+          <span>Open: <span class="text-white">{{ issuesOpen }}</span></span>
+          <span>Progress: <span class="text-white">{{ issuesProgress }}</span></span>
+          <span>Closed: <span class="text-white">{{ issuesClosed }}</span></span>
+        </div>
       </RouterLink>
 
       <!-- Activities -->
@@ -43,7 +47,10 @@
           <span v-if="equipmentLoading" class="text-xs text-white/60">Loading…</span>
         </div>
         <div class="mt-2 text-2xl font-semibold text-white">{{ equipmentTotal }}</div>
-        <div class="mt-1 text-xs text-white/70">Mech: <span class="text-white">{{ equipmentMechanical }}</span> · Elec: <span class="text-white">{{ equipmentElectrical }}</span></div>
+        <div class="mt-1 text-xs text-white/70 flex flex-wrap gap-x-2 gap-y-0.5">
+          <span>Mech: <span class="text-white">{{ equipmentMechanical }}</span></span>
+          <span>Elec: <span class="text-white">{{ equipmentElectrical }}</span></span>
+        </div>
       </RouterLink>
 
       <!-- Spaces -->
@@ -113,12 +120,14 @@ function normIssueStatus(s) {
 
 const issuesTotal = computed(() => issuesStore.issues?.length || 0)
 const issuesOpen = computed(() => (issuesStore.issues || []).filter(i => normIssueStatus(i && i.status) === 'Open').length)
+const issuesProgress = computed(() => (issuesStore.issues || []).filter(i => normIssueStatus(i && i.status) === 'In Progress').length)
 const issuesClosed = computed(() => (issuesStore.issues || []).filter(i => normIssueStatus(i && i.status) === 'Closed').length)
 
 const activitiesTotal = computed(() => activitiesStore.activities?.length || 0)
 const equipmentTotal = computed(() => equipmentStore.items?.length || 0)
 const spacesTotal = computed(() => spacesStore.items?.length || 0)
 
-const equipmentMechanical = computed(() => (equipmentStore.items || []).filter(e => String(e.type || '').toLowerCase().includes('mech')).length)
-const equipmentElectrical = computed(() => (equipmentStore.items || []).filter(e => String(e.type || '').toLowerCase().includes('elec')).length)
+// Mechanical/Electrical based on system field instead of type
+const equipmentMechanical = computed(() => (equipmentStore.items || []).filter(e => String(e.system || '').toLowerCase().includes('mech')).length)
+const equipmentElectrical = computed(() => (equipmentStore.items || []).filter(e => String(e.system || '').toLowerCase().includes('elec')).length)
 </script>
