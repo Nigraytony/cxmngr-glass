@@ -24,17 +24,22 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cxmngr-ap
 // CORS config: allow specific origins in production via env
 // CORS_ALLOWED_ORIGINS can be a comma-separated list or "*" for any
 const allowedOriginsEnv = process.env.CORS_ALLOWED_ORIGINS;
-let corsOptions = { origin: true, allowedHeaders: ['Content-Type', 'Authorization'] };
+let corsOptions = {
+  origin: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  optionsSuccessStatus: 204
+};
 if (allowedOriginsEnv && allowedOriginsEnv.trim() && allowedOriginsEnv !== '*') {
   const list = allowedOriginsEnv.split(',').map(s => s.trim()).filter(Boolean);
   corsOptions = {
+    ...corsOptions,
     origin: function(origin, callback) {
       // allow REST tools or same-origin (no origin header)
       if (!origin) return callback(null, true);
       if (list.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
-    },
-    allowedHeaders: ['Content-Type', 'Authorization']
+    }
   };
 }
 
@@ -55,6 +60,8 @@ app.use(express.json({
 }));
 // Enable CORS (restricted if CORS_ALLOWED_ORIGINS is set)
 app.use(cors(corsOptions));
+// Handle preflight requests for all routes explicitly
+app.options('*', cors(corsOptions));
 
 // Serve uploaded files (local storage)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -64,16 +71,10 @@ app.get('/api/', (req, res) => {
   res.send('Welcome to the CXMNGR API');
 });
 // Simple health endpoint for Azure health checks
-app.get('/apihealth', async (req, res) => {
-  try {
-    const client = await db.connect(); // or however you access Mongo
-    // For mongodb native driver:
-    await client.db().command({ ping: 1 });
-    res.json({ status: 'ok', db: 'connected' });
-  } catch (err) {
-    console.error('Healthcheck DB error:', err);
-    res.status(500).json({ status: 'error', error: err.message });
-  }
+app.get('/api/health', (req, res) => {
+  const state = mongoose.connection.readyState; // 1 = connected
+  const ok = state === 1;
+  res.status(ok ? 200 : 500).json({ status: ok ? 'ok' : 'error', dbState: state });
 });
 app.use('/api/projects', 
   // authorize(['admin', 'user']),
