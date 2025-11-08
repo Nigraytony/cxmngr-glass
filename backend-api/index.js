@@ -118,10 +118,14 @@ mongoose.connect(mongoUri, {
 });
 
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
+db.on('error', (err) => {
+  console.error('MongoDB connection error:', err?.message || err);
+});
 db.once('open', () => {
   console.log('Connected to MongoDB');
-  app.listen(port, () => {
-    console.log(`🚀 Server is running on port ${port}`);
-  });
+});
+
+// Start server regardless of DB state so health and CORS preflights work
+app.listen(port, () => {
+  console.log(`🚀 Server is running on port ${port}`);
 });
