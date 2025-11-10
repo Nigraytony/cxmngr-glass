@@ -93,131 +93,162 @@ router.put('/:id', async (req, res) => {
 // post route to add user to project (with invitation flow)
 const Invitation = require('../models/invitation');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const { sendInviteEmail } = require('../utils/mailer');
 
 router.post('/addUser', auth, async (req, res) => {
+  // Use a transaction so project and user updates (or invite creation) are atomic
+  const session = await mongoose.startSession();
+  let txResult = null
   try {
-    const project = await Project.findById(req.body.projectId);
-    if (!project) {
-      return res.status(404).send({ error: 'Project not found' });
-    }
-    // find user by email if they exist in the database
-    const user = await User.findOne({ email: req.body.email });
-    // If user exists, add them directly (if not already present)
-    if (user) {
-      const userExists = project.team.some((u) => u.email === req.body.email);
-      if (userExists) return res.status(400).send({ error: 'User is already on the project' });
-      project.team.push({
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        company: user.contact?.company || req.body.company || '',
-        role: req.body.role,
-      });
-      await project.save();
-      // Ensure user.projects includes the project ref (minimal shape)
-      const already = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
-      if (!already) {
-        user.projects.push({ _id: project._id, role: req.body.role || 'user', default: false })
-        await user.save()
+    await session.withTransaction(async () => {
+      const project = await Project.findById(req.body.projectId).session(session);
+      if (!project) {
+        throw { status: 404, error: 'Project not found' };
       }
-      return res.status(200).send({ message: 'User was added to the project' });
-    }
+      // find user by email if they exist in the database
+      const user = await User.findOne({ email: req.body.email }).session(session);
+      // If user exists, add them directly (if not already present)
+      if (user) {
+        const userExists = project.team.some((u) => String(u.email).toLowerCase() === String(req.body.email).toLowerCase());
+        if (userExists) throw { status: 400, error: 'User is already on the project' };
+        project.team.push({
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          company: user.contact?.company || req.body.company || '',
+          role: req.body.role,
+        });
+        await project.save({ session });
+        // Ensure user.projects includes the project ref (minimal shape)
+        const already = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
+        if (!already) {
+          user.projects.push({ _id: project._id, role: req.body.role || 'user', default: false })
+          await user.save({ session })
+        }
+        txResult = { status: 200, body: { message: 'User was added to the project' } }
+        return
+      }
 
-    // user does not exist: create an invitation
-    const token = crypto.randomBytes(20).toString('hex');
-    const inviterId = req.userId;
-    const invite = new Invitation({ email: req.body.email, projectId: project._id, inviterId, token });
-    await invite.save();
+      // user does not exist: create an invitation
+      const token = crypto.randomBytes(20).toString('hex');
+      const inviterId = req.userId;
+      const invite = new Invitation({ email: req.body.email, projectId: project._id, inviterId, token });
+      await invite.save({ session });
 
-    // send invite email with accept link
-    const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${token}`;
-    try {
-      await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
-    } catch (mailErr) {
-      console.error('sendInviteEmail error', mailErr);
-      // don't fail the entire request if email fails; still persist the invite
-    }
+      // send invite email with accept link (do not run in transaction because external IO shouldn't be in tx)
+      const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${token}`;
+      try {
+        await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
+      } catch (mailErr) {
+        console.error('sendInviteEmail error', mailErr);
+        // don't fail the entire request if email fails; invite persisted in DB via transaction
+      }
 
-    return res.status(200).send({ message: 'Invitation sent', inviteId: invite._id });
+      txResult = { status: 200, body: { message: 'Invitation sent', inviteId: invite._id } }
+    })
+    session.endSession();
+    if (txResult) return res.status(txResult.status).send(txResult.body)
+    // fallback
+    return res.status(200).send({ message: 'OK' })
   } catch (error) {
-    res.status(400).send(error);
+    try { session.endSession() } catch (e) {}
+    if (error && error.status) return res.status(error.status).send({ error: error.error || 'Error' })
+    console.error('addUser transaction error', error);
+    return res.status(400).send({ error: 'Failed to add user or create invite' })
   }
 });
 
 // Accept invitation: authenticated users can accept an invite token and be added to the project
 router.post('/accept-invite', auth, async (req, res) => {
+  const session = await mongoose.startSession();
   try {
-    const { token } = req.body;
-    if (!token) return res.status(400).send({ error: 'token is required' });
-    const invite = await Invitation.findOne({ token });
-    if (!invite) return res.status(404).send({ error: 'Invite not found' });
-    if (invite.accepted) return res.status(400).send({ error: 'Invite already accepted' });
+    let txResult = null
+    await session.withTransaction(async () => {
+      const { token } = req.body;
+      if (!token) throw { status: 400, error: 'token is required' };
+      const invite = await Invitation.findOne({ token }).session(session);
+      if (!invite) throw { status: 404, error: 'Invite not found' };
+      if (invite.accepted) throw { status: 400, error: 'Invite already accepted' };
 
-    const project = await Project.findById(invite.projectId);
-    if (!project) return res.status(404).send({ error: 'Project not found' });
+      const project = await Project.findById(invite.projectId).session(session);
+      if (!project) throw { status: 404, error: 'Project not found' };
 
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).send({ error: 'User not found' });
+      const user = await User.findById(req.userId).session(session);
+      if (!user) throw { status: 404, error: 'User not found' };
 
-    // Add user to project.team if not present
-    const already = project.team.some(t => t.email === user.email);
-    if (!already) {
-      project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
-      await project.save();
-    }
+      // Add user to project.team if not present
+      const already = project.team.some(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
+      if (!already) {
+        project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
+        await project.save({ session });
+      }
 
-    // Ensure the project is present in the user's projects (minimal shape)
-    const hasProject = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
-    if (!hasProject) {
-      user.projects.push({ _id: project._id, role: 'user', default: false })
-      await user.save()
-    }
+      // Ensure the project is present in the user's projects (minimal shape)
+      const hasProject = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
+      if (!hasProject) {
+        user.projects.push({ _id: project._id, role: 'user', default: false })
+        await user.save({ session })
+      }
 
-    invite.accepted = true;
-    await invite.save();
-
-    return res.status(200).send({ message: 'Invite accepted', projectId: project._id });
+      invite.accepted = true;
+      await invite.save({ session });
+      txResult = { status: 200, body: { message: 'Invite accepted', projectId: project._id } }
+    })
+    session.endSession();
+    if (txResult) return res.status(txResult.status).send(txResult.body)
+    return res.status(200).send({ message: 'Invite accepted', projectId: null })
   } catch (err) {
-    console.error('accept-invite error', err);
-    res.status(400).send(err);
+    try { session.endSession() } catch (e) {}
+    if (err && err.status) return res.status(err.status).send({ error: err.error })
+    console.error('accept-invite transaction error', err)
+    return res.status(400).send({ error: 'Failed to accept invite' })
   }
 });
 
 // Accept invitation by ID (alternative to token-based flow when user logs in later)
 router.post('/invitations/:id/accept', auth, async (req, res) => {
+  const session = await mongoose.startSession();
   try {
-    const inviteId = req.params.id;
-    const invite = await Invitation.findById(inviteId);
-    if (!invite) return res.status(404).send({ error: 'Invite not found' });
-    if (invite.accepted) return res.status(400).send({ error: 'Invite already accepted' });
-    const user = await User.findById(req.userId);
-    if (!user) return res.status(404).send({ error: 'User not found' });
-    // Ensure the invite email matches the logged in user's email (security)
-    if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
-      return res.status(403).send({ error: 'Invite email mismatch' });
-    }
-    const project = await Project.findById(invite.projectId);
-    if (!project) return res.status(404).send({ error: 'Project not found' });
+    let txResult = null
+    await session.withTransaction(async () => {
+      const inviteId = req.params.id;
+      const invite = await Invitation.findById(inviteId).session(session);
+      if (!invite) throw { status: 404, error: 'Invite not found' };
+      if (invite.accepted) throw { status: 400, error: 'Invite already accepted' };
+      const user = await User.findById(req.userId).session(session);
+      if (!user) throw { status: 404, error: 'User not found' };
+      // Ensure the invite email matches the logged in user's email (security)
+      if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
+        throw { status: 403, error: 'Invite email mismatch' };
+      }
+      const project = await Project.findById(invite.projectId).session(session);
+      if (!project) throw { status: 404, error: 'Project not found' };
 
-    // Add user to project if not present
-    const already = project.team.some(t => t.email === user.email);
-    if (!already) {
-      project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
-      await project.save();
-    }
-    const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
-    if (!hasProject) {
-      user.projects.push({ _id: project._id, role: 'user', default: false });
-      await user.save();
-    }
-    invite.accepted = true;
-    await invite.save();
-    return res.status(200).send({ message: 'Invite accepted', projectId: project._id });
+      // Add user to project if not present
+      const already = project.team.some(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
+      if (!already) {
+        project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
+        await project.save({ session });
+      }
+      const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
+      if (!hasProject) {
+        user.projects.push({ _id: project._id, role: 'user', default: false });
+        await user.save({ session });
+      }
+      invite.accepted = true;
+      await invite.save({ session });
+      txResult = { status: 200, body: { message: 'Invite accepted', projectId: project._id } }
+    })
+    session.endSession();
+    if (txResult) return res.status(txResult.status).send(txResult.body)
+    return res.status(200).send({ message: 'Invite accepted', projectId: null })
   } catch (err) {
-    console.error('accept invite by id error', err);
-    return res.status(400).send({ error: 'Failed to accept invite' });
+    try { session.endSession() } catch (e) {}
+    if (err && err.status) return res.status(err.status).send({ error: err.error })
+    console.error('accept invite by id transaction error', err)
+    return res.status(400).send({ error: 'Failed to accept invite' })
   }
 });
 
