@@ -1946,6 +1946,7 @@ const components = computed<any[]>({
   set(v: any[]) { componentsList.value = Array.isArray(v) ? v : [] }
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function attrSummary(attrs: any): string {
   if (!attrs) return ''
   let pairs: CompAttrPair[] = []
@@ -1965,6 +1966,7 @@ const compAttrEditingIndex = ref<number | null>(null)
 const compAttrKey = ref('')
 const compAttrValue = ref('')
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const compDraftIssueLinks = computed<any[]>(() => {
   const ids: string[] = Array.isArray(compDraft.value.issues) ? compDraft.value.issues.filter(Boolean) as string[] : []
   return ids.map(id => issuesById.value[String(id)]).filter(Boolean)
@@ -1981,6 +1983,7 @@ const compIssueDraft = ref<any>({
   location: '',
   system: ''
 })
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openCompIssueModal() {
   const eqTag = String((form.value as any)?.tag || '')
   const eqSystem = String((form.value as any)?.system || '')
@@ -1995,6 +1998,7 @@ function openCompIssueModal() {
   }
   showCompIssueModal.value = true
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function createCompIssue() {
   try {
     const pid = String(form.value.projectId || projectStore.currentProjectId || '')
@@ -2047,6 +2051,7 @@ function objectFromPairs(pairs: CompAttrPair[]): Record<string, any> {
   return out
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function startNewComponent() {
   editingComponentIndex.value = componentsList.value.length
   compDraft.value = { type: '', title: '', tag: '', attributes: {}, status: '', notes: '' }
@@ -2056,6 +2061,7 @@ function startNewComponent() {
   compAttrValue.value = ''
   showCompModal.value = true
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function editComponent(i: number) {
   const c: any = componentsList.value[i]
   editingComponentIndex.value = i
@@ -2082,6 +2088,7 @@ function editComponent(i: number) {
   compAttrValue.value = ''
   showCompModal.value = true
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function removeComponent(i: number) {
   const list = componentsList.value.slice()
   list.splice(i, 1)
@@ -2089,6 +2096,7 @@ async function removeComponent(i: number) {
   await persistComponents()
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function addCompAttr() {
   const k = String(compAttrKey.value || '').trim()
   if (!k) return
@@ -2096,18 +2104,21 @@ function addCompAttr() {
   compAttrKey.value = ''
   compAttrValue.value = ''
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function editCompAttr(i: number) {
   const it = compAttrList.value[i]
   compAttrEditingIndex.value = i
   compAttrKey.value = it?.key || ''
   compAttrValue.value = it?.value || ''
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function removeCompAttr(i: number) {
   const arr = compAttrList.value.slice()
   arr.splice(i, 1)
   compAttrList.value = arr
   if (compAttrEditingIndex.value === i) cancelCompAttr()
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function saveCompAttr(i: number) {
   const k = String(compAttrKey.value || '').trim()
   if (!k) return
@@ -2122,6 +2133,7 @@ function cancelCompAttr() {
   compAttrValue.value = ''
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function saveComponent() {
   const idx = editingComponentIndex.value
   if (idx === null) return
@@ -2211,6 +2223,7 @@ function onComponentsChange(list: any[]) {
 
 // Drag-and-drop reordering for components
 const draggingComponent = ref<any | null>(null)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onCompDragStart(c: any, e: DragEvent) {
   draggingComponent.value = c
   if (e && e.dataTransfer) {
@@ -2218,10 +2231,12 @@ function onCompDragStart(c: any, e: DragEvent) {
     e.dataTransfer.effectAllowed = 'move'
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function onCompDragOver(_i: number, e: DragEvent) {
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function onCompDrop(targetIndex: number, e: DragEvent) {
   e.preventDefault()
   const src = draggingComponent.value
@@ -2237,6 +2252,7 @@ async function onCompDrop(targetIndex: number, e: DragEvent) {
   if (ok) ui.showSuccess('Component order updated', { duration: 1400 })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function addComponentIssue() {
   try {
     const pid = String(form.value.projectId || projectStore.currentProjectId || '')

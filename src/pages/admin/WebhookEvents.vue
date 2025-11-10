@@ -199,7 +199,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
 import { getAuthHeaders } from '../../utils/auth'
 import { apiUrl } from '../../utils/api'
@@ -207,7 +206,6 @@ import { apiUrl } from '../../utils/api'
 const events = ref([])
 const filter = ref({ status: '', date_from: '', date_to: '' })
 const error = ref('')
-const auth = useAuthStore()
 const ui = useUiStore()
 const expanded = ref({})
 const skip = ref(0)
