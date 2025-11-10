@@ -1889,8 +1889,8 @@ async function submitUploadCreate() {
 
   creating.value = true
   try {
-    // Reuse createOne logic from submitCreate by inlining similar behavior here
-    async function createOneFromRow(row: { tag: string; title?: string; location?: string; status?: string }) {
+  // Reuse createOne logic from submitCreate by inlining similar behavior here
+  const createOneFromRow = async (row: { tag: string; title?: string; location?: string; status?: string }) => {
       const overrides: any = { tag: row.tag }
       if (row.title) overrides.title = row.title
       const rs = resolveStatus(row.status)
@@ -2034,7 +2034,7 @@ async function submitCreate() {
 
   creating.value = true
   try {
-    async function createOne(tag: string) {
+  const createOne = async (tag: string) => {
       const fullPayload = { ...base, tag }
       try {
         // Try full create first

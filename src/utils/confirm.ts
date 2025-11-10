@@ -12,7 +12,7 @@ export type ConfirmOptions = {
 
 export function confirm(options: ConfirmOptions = {}): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
-    try { console.debug('[confirm util] open', options) } catch {}
+  try { console.debug('[confirm util] open', options) } catch (e) { /* ignore */ }
 
     const container = document.createElement('div')
     document.body.appendChild(container)
@@ -28,7 +28,7 @@ export function confirm(options: ConfirmOptions = {}): Promise<boolean> {
             visible.value = v
             if (!v) {
               // Closed without choice => resolve false
-              try { console.debug('[confirm util] closed via overlay/X') } catch {}
+              try { console.debug('[confirm util] closed via overlay/X') } catch (e) { /* ignore */ }
               cleanup(false)
             }
           },
@@ -39,7 +39,7 @@ export function confirm(options: ConfirmOptions = {}): Promise<boolean> {
           variant: options.variant || 'default',
           zIndex: options.zIndex ?? 10000,
           onResolve: (val: boolean) => {
-            try { console.debug('[confirm util] resolved', val) } catch {}
+            try { console.debug('[confirm util] resolved', val) } catch (e) { /* ignore */ }
             cleanup(val)
           }
         })

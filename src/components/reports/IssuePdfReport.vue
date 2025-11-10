@@ -325,7 +325,7 @@ async function generateIssuePdf(issue: any) {
     if (dlWin) {
       const blob = doc.output('blob') as Blob
       const url = URL.createObjectURL(blob)
-      try { dlWin.document.title = fname } catch {}
+  try { dlWin.document.title = fname } catch (e) { /* ignore */ }
       dlWin.location.href = url
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } else {
@@ -351,7 +351,7 @@ async function generateIssuesDetailedPdf(issues: any[]) {
     if (dlWin) {
       const blob = doc.output('blob') as Blob
       const url = URL.createObjectURL(blob)
-      try { dlWin.document.title = fname } catch {}
+  try { dlWin.document.title = fname } catch (e) { /* ignore */ }
       dlWin.location.href = url
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } else {
