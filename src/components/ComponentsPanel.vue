@@ -626,7 +626,7 @@ function attrSummary(attrs: any): string {
   const shown = pairs.filter(p => p.key && (p.value || p.value === '')).slice(0, 3)
   return shown.map(p => `${p.key}: ${p.value}`).join(' • ')
 }
-function formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch { return String(d) } }
+function _formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch (e) { return String(d) } }
 
 // Modal editor state
 const editingIndex = ref<number | null>(null)

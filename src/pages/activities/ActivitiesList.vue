@@ -180,7 +180,7 @@ onMounted(async () => {
 
 function fmt(d?: string) {
   if (!d) return ''
-  try { return new Date(d).toLocaleDateString() } catch { return String(d) }
+  try { return new Date(d).toLocaleDateString() } catch (e) { return String(d) }
 }
 
 // Styled Type dropdown state and options (like Issues filters)

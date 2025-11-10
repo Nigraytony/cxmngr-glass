@@ -1457,7 +1457,6 @@ import { useEquipmentStore } from '../../stores/equipment'
 import { useSpacesStore } from '../../stores/spaces'
 
 // Accept route params passed as attrs to avoid extraneous attribute warnings when rendering fragments
-const props = defineProps<{ id?: string }>()
 
 const route = useRoute()
 const router = useRouter()
@@ -1677,7 +1676,7 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
     const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth || img.width; canvas.height = img.naturalHeight || img.height
     const ctx = canvas.getContext('2d'); if (!ctx) return null; ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', quality)
-  } catch { return null }
+  } catch (e) { return null }
 }
 async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: ImageFormat }> {
   try {
@@ -1701,7 +1700,7 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
       const conv = await convertDataUrlToJpeg(dataUrl); if (conv) return { dataUrl: conv, format: 'JPEG' }
     }
     return { dataUrl: dataUrl, format: fmt || 'PNG' }
-  } catch { return {} }
+  } catch (e) { return {} }
 }
 function htmlToLines(html: string): string[] {
   // Basic HTML -> lines preserving paragraphs and list items
@@ -1814,7 +1813,7 @@ async function downloadActivityPdf() {
           if (offsetPx < canvas.height - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader() }
         }
         y += 2
-      } catch {
+  } catch (e) {
         // Fallback to text if html render fails
         const lines = htmlToLines(form.descriptionHtml)
         for (const l of lines) { const wrapped = doc.splitTextToSize(l, pageWidth - margin*2) as string[]; for (const w of wrapped) { ensureSpace(6); doc.text(w, margin, y); y += 5 } }
@@ -2027,10 +2026,10 @@ async function downloadActivityPdf() {
         if (activityReport.value.include.attachments) {
           const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
           const pdfAtts = atts.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
-          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf, attPdf.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch {} }
+          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf, attPdf.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch (e) { /* ignore */ } }
         }
         baseBytes = await merged.save()
-      } catch { /* fallback keep baseBytes */ }
+  } catch (e) { /* fallback keep baseBytes */ }
     }
     // If no equipment reports requested, still append issues then attachments
     if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && (issuesBytes || attachmentsBytes)) {
@@ -2053,7 +2052,7 @@ async function downloadActivityPdf() {
         if (activityReport.value.include.attachments) {
           const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
           const pdfAtts = atts.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
-          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf2 = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf2, attPdf2.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch {} }
+          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf2 = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf2, attPdf2.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch (e) { /* ignore */ } }
         }
         baseBytes = await merged.save()
   } catch (e) { /* ignore */ }
@@ -2061,7 +2060,8 @@ async function downloadActivityPdf() {
     // Download merged
     const blob = new Blob([baseBytes], { type: 'application/pdf' })
     const fname = `activity-${id.value}.pdf`
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 60000)
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 60000)
+    }
   } catch (e:any) {
     ui.showError(e?.message || 'Failed to generate report')
   } finally {
@@ -2118,7 +2118,7 @@ async function onDeleteComment(comment: any, index?: number) {
 
 function formatDateTime(d?: any) {
   if (!d) return ''
-  try { return new Date(d).toLocaleString() } catch { return String(d) }
+  try { return new Date(d).toLocaleString() } catch (e) { return String(d) }
 }
 
 function displayName(c: any) {
@@ -2169,7 +2169,7 @@ function fileNameFromUrl(url?: string): string {
     const u = new URL(url)
     const base = u.pathname.split('/').filter(Boolean).pop() || url
     return decodeURIComponent(base)
-  } catch {
+  } catch (e) {
     const base = url.split('?')[0].split('#')[0]
     return decodeURIComponent(base.split('/').pop() || url)
   }
@@ -2451,7 +2451,7 @@ const selectedAttachment = computed<any>(() => {
 const selectedAttachmentUrl = computed<string>(() => {
   const a: any = selectedAttachment.value
   if (!a || !a.url) return ''
-  try { return new URL(a.url, window.location.origin).toString() } catch { return a.url }
+  try { return new URL(a.url, window.location.origin).toString() } catch (e) { return a.url }
 })
 const selectedKind = computed(() => selectedAttachment.value ? attachmentKind(selectedAttachment.value) : 'file')
 const viewerMaxH = computed(() => attachmentFullscreen.value ? '82vh' : '70vh')
@@ -2466,7 +2466,7 @@ function openInNewTab(u: string) {
 }
 async function downloadAttachment(a: any) {
   try {
-    const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch { return a?.url || '' } })()
+  const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch (e) { return a?.url || '' } })()
     if (!url) return
     const response = await axios.get(url, { responseType: 'blob' })
     const blob = new Blob([response.data])
@@ -2628,8 +2628,8 @@ watch(() => form.projectId, async (pid) => {
   if (pid) {
   try { await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch (e) { /* ignore */ }
   }
-})
-</script>
+  })
+  </script>
 
 <style scoped>
 /* Glassy theme for Quill to match other inputs */
@@ -2705,15 +2705,3 @@ watch(() => form.projectId, async (pid) => {
   opacity: 1; /* ensure full opacity */
 }
 </style>
-
-This report presents the findings from a point-to-point Building Automation System controls assessment performed at the Walter E. Hoffman U.S. Courthouse. The evaluation focused on approximately 20 air handling units (AHUs) and
-associated BAS components to assess operational integrity, point functionality, control logic accuracy, and system responsiveness.
-
-Key observations include widespread sensor inaccuracies, missing or unresponsive damper actuators, misaligned BAS graphics, and freeze protection issues not properly alarmed or configured. Several control panels were also found to be
-in poor physical condition, with missing pull box covers and inadequate wire management complicating serviceability. 
-
-A total of 109 system-specific recommendations were developed, prioritized by severity (High, Medium, Low), and categorized into themes such as sensor calibration, damper performance, alarm configuration, freeze protection, and
-unit condition. These recommendations are intended to enhance system reliability, improve environmental control, and support maintenance efficiency.
-
-This report also includes a system inventory of all AHUs, a detailed recommendations matrix, and a dashboard appendix highlighting trends by system, category, and priority. The findings are intended to guide corrective action, inform capital
-planning, and strengthen the courthouse’s long-term facility operations strategy.

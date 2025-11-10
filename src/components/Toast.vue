@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   message: { type: String, default: '' },

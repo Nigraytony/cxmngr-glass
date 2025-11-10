@@ -130,7 +130,7 @@ const initials = computed(() => {
   return (auth.user?.email || '?').slice(0,2).toUpperCase()
 })
 
-function formatDateTime(d) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch { return String(d) } }
+function formatDateTime(d) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch (e) { return String(d) } }
 function displayName(c) { return (c && (c.name || '')) || 'Anonymous' }
 function initialsFromName(n) {
   if (!n) return '?'

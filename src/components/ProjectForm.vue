@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { reactive, toRefs, watch, computed } from 'vue'
+import { reactive, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
@@ -117,17 +117,6 @@ function toInputDate(val) {
   return `${yyyy}-${mm}-${dd}`
 }
 
-function toISOStringDateFromInput(val) {
-  if (!val) return ''
-  // val expected as YYYY-MM-DD; construct from parts to avoid UTC parsing quirks
-  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    const [y, m, d] = val.split('-').map(n => parseInt(n, 10))
-    const dt = new Date(y, m - 1, d)
-    return isNaN(dt.getTime()) ? '' : dt.toISOString()
-  }
-  const d = new Date(val)
-  return isNaN(d.getTime()) ? '' : d.toISOString()
-}
 
 const local = reactive({
   // preserve identifiers so emitted model retains project id
@@ -155,10 +144,7 @@ const local = reactive({
   endDate: toInputDate(props.modelValue.endDate || props.modelValue.end_date),
 })
 
-const tagsText = computed({
-  get() { return local.tags.join(', ') },
-  set(v) { local.tags = v.split(',').map(s => s.trim()).filter(Boolean) }
-})
+// tagsText and toISOStringDateFromInput helper removed (unused)
 
 // keep local in sync when parent passes a new modelValue (e.g., async fetch)
 watch(() => props.modelValue, (nv) => {

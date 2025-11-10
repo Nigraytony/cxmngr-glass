@@ -1415,7 +1415,7 @@ function resolveSpaceId(name?: string): string | undefined {
 function parseJsonMaybe<T = any>(txt?: string): T | undefined {
   const s = String(txt || '').trim()
   if (!s) return undefined
-  try { return JSON.parse(s) as T } catch { return undefined }
+  try { return JSON.parse(s) as T } catch (e) { return undefined }
 }
 function normalizeComponentAttributes(attrs: any): any {
   if (!attrs) return {}
@@ -1718,7 +1718,7 @@ function downloadEquipmentList() {
   const url = URL.createObjectURL(blob)
   const proj: any = projectStore.currentProject as any
   const name = String(proj?.title || proj?.name || 'project')
-  const safeName = name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-]+/g, '')
+  const safeName = name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]+/g, '')
   const today = new Date().toISOString().slice(0, 10)
   const a = document.createElement('a')
   a.href = url

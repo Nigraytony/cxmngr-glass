@@ -329,7 +329,7 @@
                     <colgroup>
                       <col style="width: 2rem">
                       <template
-                        v-for="(col, ci) in ((local[i] as any).table?.columns || [])"
+                        v-for="col in ((local[i] as any).table?.columns || [])"
                         :key="col.key + ':col'"
                       >
                         <col :style="colStyle(col.name)">
@@ -388,7 +388,7 @@
                           {{ ri + 1 }}
                         </td>
                         <td
-                          v-for="(col, ci) in ((local[i] as any).table?.columns || [])"
+                          v-for="col in ((local[i] as any).table?.columns || [])"
                           :key="col.key + ':' + ri"
                           class="px-1 py-1 align-top"
                         >
@@ -574,7 +574,7 @@
                     <colgroup>
                       <col style="width: 2rem">
                       <template
-                        v-for="(col, ci) in (local[i] as any).table.columns"
+                        v-for="col in (local[i] as any).table.columns"
                         :key="col.key + ':col'"
                       >
                         <col :style="colStyle(col.name)">
@@ -633,7 +633,7 @@
                           {{ ri + 1 }}
                         </td>
                         <td
-                          v-for="(col, ci) in (local[i] as any).table.columns"
+                          v-for="col in (local[i] as any).table.columns"
                           :key="col.key + ':' + ri"
                           class="px-1 py-1 align-top"
                         >

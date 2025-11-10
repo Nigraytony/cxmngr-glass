@@ -20,7 +20,7 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
     const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth || img.width; canvas.height = img.naturalHeight || img.height
     const ctx = canvas.getContext('2d'); if (!ctx) return null; ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', quality)
-  } catch { return null }
+  } catch (e) { return null }
 }
 async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: ImageFormat }> {
   try {
@@ -44,7 +44,7 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
       const conv = await convertDataUrlToJpeg(dataUrl); if (conv) return { dataUrl: conv, format: 'JPEG' }
     }
     return { dataUrl: dataUrl, format: fmt || 'PNG' }
-  } catch { return {} }
+  } catch (e) { return {} }
 }
 function htmlToText(html: any): string {
   if (!html) return ''
@@ -53,7 +53,7 @@ function htmlToText(html: any): string {
     tmp.innerHTML = String(html)
     const t = (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim()
     return t
-  } catch {
+  } catch (e) {
     return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   }
 }
@@ -97,7 +97,9 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
     try {
       if (footerLogo.dataUrl) { const lh = 5.5; const lw = 12; doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(`${eq.tag || eq.title || 'Equipment'} Report`, margin + lw + 2, footerY - 2) }
         else { doc.setFillColor(220,220,220); doc.rect(margin, footerY - 5.5, 8,5,'F'); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(`${eq.tag || eq.title || 'Equipment'} Report`, margin + 10, footerY - 2) }
-  } catch (e) { /* ignore */ }
+        } catch (e) {
+          /* ignore */
+        }
     doc.setFont('helvetica','normal'); doc.text(String(pageNo), pageWidth/2, footerY - 2, { align: 'center' }); doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
     doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
   }
@@ -171,22 +173,82 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
           const allIssues = Object.values(issuesById || {}) as any[]
           iss = allIssues.filter(it => String((it as any)?.assetId || '') === eqId)
         }
-      } catch (e) { 
+      } catch (e) {
+        /* ignore */
+      }
     }
     if (iss.length){ sectionGap(); ensureSpace(12); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Issues', margin, y); y +=6; doc.setFont('helvetica','normal'); doc.setFontSize(9); const totalW = pageWidth - margin*2 -2; const numW=16; const typeW=26; const titleW=42; const statusW=24; const descW = totalW - numW - typeW - titleW - statusW; const tableX = margin + 1; const drawIssuesHeader = () => { ensureSpace(8); doc.setFont('helvetica','bold'); const headerH=6; doc.setFillColor(250,236,236); doc.rect(tableX,y,totalW,headerH,'F'); doc.rect(tableX,y,totalW,headerH); const colXs=[ tableX, tableX+numW, tableX+numW+typeW, tableX+numW+typeW+titleW, tableX+numW+typeW+titleW+descW ]; for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; doc.line(vx, y, vx, y+headerH) } doc.text('Number', tableX+1.5, y+4); doc.text('Type', tableX+numW+1.5, y+4); doc.text('Title', tableX+numW+typeW+1.5, y+4); doc.text('Description', tableX+numW+typeW+titleW+1.5, y+4); doc.text('Status', tableX+numW+typeW+titleW+descW+1.5, y+4); y += headerH; doc.setFont('helvetica','normal') }; drawIssuesHeader(); for (const it of iss){ const numTxt = (it.number != null && it.number !== undefined) ? `#${it.number}` : '—'; const typeTxt = String(it.type||'—'); const titleTxt = String(it.title||'—'); const descTxt = String(it.description||'—'); const statusTxt = String(it.status||'Open'); const numLines = splitText(doc, numTxt, numW - 3); const typeLines = splitText(doc, typeTxt, typeW - 3); const titleLines = splitText(doc, titleTxt, titleW - 3); const descLines = splitText(doc, descTxt, descW - 3); const statusLines = splitText(doc, statusTxt, statusW - 3); const hLines = Math.max(1, numLines.length, typeLines.length, titleLines.length, descLines.length, statusLines.length); const rowH = Math.max(6, hLines*4 + 2); if (ensureSpace(rowH + 2)){ drawIssuesHeader() } doc.rect(tableX, y, totalW, rowH); const colXs=[ tableX, tableX+numW, tableX+numW+typeW, tableX+numW+typeW+titleW, tableX+numW+typeW+titleW+descW ]; for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; doc.line(vx, y, vx, y+rowH) } let cx = tableX + 1.5; const colLines=[numLines, typeLines, titleLines, descLines, statusLines]; const colWidths=[numW, typeW, titleW, descW, statusW]; for (let col=0; col<colLines.length; col++){ const lines = colLines[col]; for (let k=0;k<lines.length;k++){ doc.text(lines[k], cx, y+4 + k*4) } cx += colWidths[col] } y += rowH } sectionGap(6) }
   }
   // Attachments
   if (include.attachments) {
     const atts: any[] = Array.isArray(eq.attachments)? eq.attachments : []
-    if (atts.length){ sectionGap(); ensureSpace(12); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y +=6; doc.setFont('helvetica','normal'); doc.setFontSize(9); for (let a=0; a< Math.min(8, atts.length); a++){ const name = String(atts[a]?.filename || atts[a]?.url || 'Attachment'); const lines = splitText(doc, name, pageWidth - margin*2); for (const l of lines){ ensureSpace(6); doc.text(l, margin+2, y); y +=4 } } const isImage = (a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }; async function getDims(dataUrl:string): Promise<{w:number;h:number}>{ return new Promise(res=> { const img = new Image(); img.onload=()=>res({w:img.naturalWidth||img.width, h:img.naturalHeight||img.height}); img.onerror=()=>res({w:0,h:0}); img.src = dataUrl }) } for (const a of atts){ if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader(); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; doc.setFont('helvetica','bold'); doc.setFontSize(10); ensureSpace(8); doc.text(label, margin, y); y +=4; doc.setFont('helvetica','normal'); const dims = await getDims(img.dataUrl); const maxW = pageWidth - margin*2; const maxH = bottomLimit - y; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0){ const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = y + (maxH - drawH)/2; try { doc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch {}  drawFooter() } }
+    if (atts.length) {
+      sectionGap(); ensureSpace(12);
+      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      for (let a = 0; a < Math.min(8, atts.length); a++) {
+        const name = String(atts[a]?.filename || atts[a]?.url || 'Attachment')
+        const lines = splitText(doc, name, pageWidth - margin*2)
+        for (const l of lines) { ensureSpace(6); doc.text(l, margin + 2, y); y += 4 }
+      }
+
+      const isImage = (a: any) => { const type = String(a?.type || '').toLowerCase(); const name = String(a?.filename || a?.url || '').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }
+      const getDims = async (dataUrl: string): Promise<{ w: number; h: number }> => {
+        return new Promise(res => {
+          const img = new Image()
+          img.onload = () => res({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height })
+          img.onerror = () => res({ w: 0, h: 0 })
+          img.src = dataUrl
+        })
+      }
+
+      for (const a of atts) {
+        if (!isImage(a)) continue
+        const src = a?.url || a?.data
+        const img = await loadImage(src)
+        if (!img.dataUrl) continue
+        drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader()
+        const label = `Attachment: ${String(a?.filename || a?.url || '')}`
+        doc.setFont('helvetica','bold'); doc.setFontSize(10); ensureSpace(8); doc.text(label, margin, y); y += 4; doc.setFont('helvetica','normal')
+        const dims = await getDims(img.dataUrl)
+        const maxW = pageWidth - margin*2; const maxH = bottomLimit - y
+        let drawW = maxW, drawH = maxH
+        if (dims.w > 0 && dims.h > 0) { const sc = Math.min(maxW / dims.w, maxH / dims.h); drawW = dims.w * sc; drawH = dims.h * sc }
+        const imgX = margin + (maxW - drawW) / 2; const imgY = y + (maxH - drawH) / 2
+        try {
+          doc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH)
+        } catch (e) {
+          /* ignore */
+        }
+        drawFooter()
+      }
+    }
   }
 
   drawFooter()
   // Merge PDF attachments
   try {
-    const atts: any[] = include.attachments ? (Array.isArray(eq.attachments)? eq.attachments : []) : []
-    const pdfAtts = atts.filter((a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
-    if (pdfAtts.length){ const { PDFDocument } = await import('pdf-lib'); const baseBytes = doc.output('arraybuffer') as ArrayBuffer; const merged = await PDFDocument.load(baseBytes); for (const a of pdfAtts){ const url = String(a?.url||''); if(!url) continue; try { const res = await fetch(url); if(!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf, attPdf.getPageIndices()); pages.forEach((p:any) => merged.addPage(p)) } catch {} } return await merged.save() }
-  } catch { /* ignore merge errors */ }
+    const atts: any[] = include.attachments ? (Array.isArray(eq.attachments) ? eq.attachments : []) : []
+    const pdfAtts = atts.filter((a: any) => { const type = String(a?.type || '').toLowerCase(); const name = String(a?.filename || a?.url || '').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''; return type.includes('pdf') || ext === 'pdf' })
+    if (pdfAtts.length) {
+      const { PDFDocument } = await import('pdf-lib')
+      const baseBytes = doc.output('arraybuffer') as ArrayBuffer
+      const merged = await PDFDocument.load(baseBytes)
+      for (const a of pdfAtts) {
+        const url = String(a?.url || '')
+        if (!url) continue
+        try {
+          const res = await fetch(url)
+          if (!res.ok) continue
+          const buf = await res.arrayBuffer()
+          const attPdf = await PDFDocument.load(buf)
+          const pages = await merged.copyPages(attPdf, attPdf.getPageIndices())
+          pages.forEach((p: any) => merged.addPage(p))
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      return await merged.save()
+    }
+  } catch (e) { /* ignore merge errors */ }
   return doc.output('arraybuffer') as ArrayBuffer
 }

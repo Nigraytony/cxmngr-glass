@@ -165,9 +165,8 @@ async function processFiles(files: File[]) {
   uploadingNow.value = true
   let index = 0
   const worker = async () => {
-    while (true) {
+    while (index < accepted.length) {
       const i = index++
-      if (i >= accepted.length) return
       const f = accepted[i]
       const item = addUpload(f)
       try {

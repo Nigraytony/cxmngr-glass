@@ -52,4 +52,5 @@ defineProps({
     default: () => [],
   },
 })
+defineEmits(['open'])
 </script>

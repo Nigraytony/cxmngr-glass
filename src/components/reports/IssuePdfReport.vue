@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+// ref not required here
 import jsPDF from 'jspdf'
 import { useProjectStore } from '../../stores/project'
 
@@ -32,7 +32,7 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
     if (!ctx) return null
     ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', quality)
-  } catch {
+  } catch (e) {
     return null
   }
 }
@@ -63,7 +63,7 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
       if (conv) return { dataUrl: conv, format: 'JPEG' }
     }
     return { dataUrl, format: fmt }
-  } catch {
+  } catch (e) {
     return {}
   }
 }
@@ -75,13 +75,13 @@ function htmlToText(html?: string): string {
     tmp.innerHTML = String(html)
     const t = tmp.textContent || tmp.innerText || ''
     return t.replace(/\s+/g, ' ').trim()
-  } catch {
+  } catch (e) {
     return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   }
 }
 
 function formatDate(dt?: string): string {
-  try { return dt ? new Date(dt).toLocaleDateString() : '' } catch { return '' }
+  try { return dt ? new Date(dt).toLocaleDateString() : '' } catch (e) { return '' }
 }
 
 function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
@@ -103,7 +103,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
   let project: any = (projectStore.currentProject && (projectStore.currentProject as any).value) || null
   const targetPid = issue.projectId || (typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null)
   if (!project || (targetPid && (String(project._id || project.id) !== String(targetPid)))) {
-    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
+      try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
   }
   project = project || {}
   const clientImg = await loadImage(project?.logo)
@@ -331,7 +331,7 @@ async function generateIssuePdf(issue: any) {
     } else {
       doc.save(fname)
     }
-  } catch {
+  } catch (e) {
     doc.save(fname)
   }
 }
@@ -357,7 +357,7 @@ async function generateIssuesDetailedPdf(issues: any[]) {
     } else {
       doc.save(fname)
     }
-  } catch {
+  } catch (e) {
     doc.save(fname)
   }
 }
@@ -413,7 +413,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
         doc.setFillColor(220, 220, 220)
         doc.rect(margin, footerY - 5.5, 8, 5, 'F')
       }
-    } catch {
+    } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
     }
@@ -528,7 +528,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
     } else {
       doc.save(fname)
     }
-  } catch {
+  } catch (e) {
     doc.save(fname)
   }
 }
@@ -591,7 +591,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
         doc.setFillColor(220, 220, 220)
         doc.rect(margin, footerY - 5.5, 8, 5, 'F')
       }
-    } catch {
+    } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
     }
@@ -657,16 +657,16 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
       if (key.toLowerCase().includes('comment')) return `${v.length} comment(s)`
       if (key.toLowerCase().includes('photo') || key.toLowerCase().includes('image')) return `${v.length} photo(s)`
       if (key.toLowerCase().includes('attach') || key.toLowerCase().includes('document')) return `${v.length} attachment(s)`
-      try { return v.join(', ') } catch { return String(v) }
+  try { return v.join(', ') } catch (e) { return String(v) }
     }
     if (typeof v === 'object') {
       // Try common fields; else JSON
       if ('name' in v && typeof (v as any).name === 'string') return String((v as any).name)
-      try { return JSON.stringify(v) } catch { return String(v) }
+  try { return JSON.stringify(v) } catch (e) { return String(v) }
     }
     // Dates
     if (/(date|created|updated)/i.test(key)) {
-      try { return v ? new Date(v).toLocaleDateString() : '' } catch { return String(v) }
+  try { return v ? new Date(v).toLocaleDateString() : '' } catch (e) { return String(v) }
     }
     return String(v)
   }
@@ -727,7 +727,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
     } else {
       doc.save(fname)
     }
-  } catch {
+  } catch (e) {
     doc.save(fname)
   }
 }

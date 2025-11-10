@@ -796,7 +796,7 @@ function truncate(str, n = 250) {
 }
 
 function formatInviteDate(d) {
-  try { return d ? new Date(d).toLocaleDateString() : '' } catch { return '' }
+  try { return d ? new Date(d).toLocaleDateString() : '' } catch (e) { return '' }
 }
 
 async function acceptInvite(id) {

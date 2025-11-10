@@ -164,9 +164,8 @@ async function processFiles(files: File[]) {
   let index = 0
 
   const worker = async () => {
-    while (true) {
+    while (index < toProcess.length) {
       const i = index++
-      if (i >= toProcess.length) return
       const f = toProcess[i]
       const item = addUpload(f)
       try {
@@ -196,11 +195,11 @@ async function processFiles(files: File[]) {
   emit('done')
 }
 
-function onDragOver(e: DragEvent) {
+function onDragOver(_e: DragEvent) {
   if (disabled.value || uploadingNow.value) return
   dragActive.value = true
 }
-function onDragLeave(e: DragEvent) {
+function onDragLeave(_e: DragEvent) {
   dragActive.value = false
 }
 async function onDrop(e: DragEvent) {

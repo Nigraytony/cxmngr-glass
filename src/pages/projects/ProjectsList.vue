@@ -750,7 +750,7 @@ async function makeDefault(project) {
   }
 }
 
-function formatDate(d) { if (!d) return '' ; try { return new Date(d).toLocaleDateString() } catch { return d } }
+function formatDate(d) { if (!d) return '' ; try { return new Date(d).toLocaleDateString() } catch (e) { return d } }
 
 // Plan key to priceId mapping (keep in sync with backend config/plans.js)
 const PLAN_PRICE_IDS = {

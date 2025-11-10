@@ -205,7 +205,7 @@
 </template>
 
 <script setup>
-import { reactive, toRefs, watch, computed } from 'vue'
+import { reactive, watch, computed } from 'vue'
 import lists from '../lists.js'
 import { useProjectStore } from '../stores/project'
 

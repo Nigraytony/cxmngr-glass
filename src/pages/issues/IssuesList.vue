@@ -1567,7 +1567,7 @@ function exportFilteredIssuesCsv() {
       if (v === null || v === undefined) return ''
       let s
       if (Array.isArray(v) || typeof v === 'object') {
-        try { s = JSON.stringify(v) } catch { s = String(v) }
+        try { s = JSON.stringify(v) } catch (e) { s = String(v) }
       } else { s = String(v) }
       s = s.replace(/"/g, '""')
       return `"${s}"`

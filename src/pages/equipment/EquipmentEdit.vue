@@ -1663,7 +1663,7 @@ import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 // Viewer helpers
-function formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch { return String(d) } }
+function formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch (e) { return String(d) } }
 function initialsFromName(n?: string) {
   if (!n) return '?'
   const parts = n.trim().split(/\s+/).filter(Boolean)
@@ -1683,7 +1683,7 @@ async function deleteCurrentPhoto() {
 // Attachments helpers (manual add/remove + upload/viewer)
 const newAttachment = ref<{ filename: string; url: string; type?: string }>({ filename: '', url: '' })
 function fileNameFromUrl(u?: string) {
-  try { if (!u) return ''; const url = new URL(u); return decodeURIComponent(url.pathname.split('/').pop() || '') } catch { return String(u || '').split('/').pop() || '' }
+  try { if (!u) return ''; const url = new URL(u); return decodeURIComponent(url.pathname.split('/').pop() || '') } catch (e) { return String(u || '').split('/').pop() || '' }
 }
 function addAttachment() {
   const fn = (newAttachment.value.filename || '').trim() || fileNameFromUrl(newAttachment.value.url)
@@ -1792,7 +1792,7 @@ const selectedAttachment = computed<any>(() => {
 const selectedAttachmentUrl = computed<string>(() => {
   const a: any = selectedAttachment.value
   if (!a || !a.url) return ''
-  try { return new URL(a.url, window.location.origin).toString() } catch { return a.url }
+  try { return new URL(a.url, window.location.origin).toString() } catch (e) { return a.url }
 })
 const selectedKind = computed(() => selectedAttachment.value ? attachmentKind(selectedAttachment.value) : 'file')
 const viewerMaxH = computed(() => attachmentFullscreen.value ? '82vh' : '70vh')
@@ -1802,7 +1802,7 @@ function openAttachment(i: number) { selectedAttachmentIndex.value = i; attachme
 function openInNewTab(u: string) { try { window.open(u, '_blank', 'noopener') } catch (e) { /* ignore window.open failures in some browsers */ } }
 async function downloadAttachment(a: any) {
   try {
-    const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch { return a?.url || '' } })()
+  const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch (e) { return a?.url || '' } })()
     if (!url) return
     const response = await axios.get(url, { responseType: 'blob' })
     const blob = new Blob([response.data])
@@ -2517,7 +2517,7 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
     if (!ctx) return null
     ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', quality)
-  } catch {
+  } catch (e) {
     return null
   }
 }
@@ -2547,7 +2547,7 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
       if (conv) return { dataUrl: conv, format: 'JPEG' }
     }
     return { dataUrl, format: fmt }
-  } catch { return {} }
+  } catch (e) { return {} }
 }
 function htmlToText(html: any): string {
   if (!html) return ''
@@ -2556,7 +2556,7 @@ function htmlToText(html: any): string {
     tmp.innerHTML = String(html)
     const t = (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim()
     return t
-  } catch {
+  } catch (e) {
     return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   }
 }
@@ -2628,7 +2628,7 @@ async function downloadEquipmentPdf() {
         const tail = String((form.value as any).tag || (form.value as any).title || 'Equipment')
         doc.text(`${tail} Report`, margin + 10, footerY - 2)
       }
-    } catch {
+    } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
@@ -3146,7 +3146,7 @@ async function downloadEquipmentPdf() {
         const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''
         return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext)
       }
-      async function getImageDims(dataUrl: string): Promise<{ w: number; h: number }> {
+      const getImageDims = async (dataUrl: string): Promise<{ w: number; h: number }> => {
         return new Promise((resolve) => {
           const img = new Image()
           img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height })
@@ -3226,7 +3226,7 @@ async function downloadEquipmentPdf() {
           setTimeout(() => URL.revokeObjectURL(url), 60_000)
         }
         return
-      } catch {
+      } catch (e) {
         // fall through to default download if merging fails
       }
     }
@@ -3240,6 +3240,6 @@ async function downloadEquipmentPdf() {
     } else {
       doc.save(fname)
     }
-  } catch { doc.save(fname) }
+  } catch (e) { doc.save(fname) }
 }
 </script>

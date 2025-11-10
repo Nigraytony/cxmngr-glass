@@ -259,7 +259,7 @@ import { useProjectStore } from '../stores/project'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 import { useInvitationsStore } from '../stores/invitations'
-import axios from 'axios'
+// axios removed; use `http` helper instead when needed
 import { getAuthHeaders } from '../utils/auth'
 import http from '../utils/http'
 
@@ -396,7 +396,7 @@ async function onSelectProject(p) {
         auth.user.token = preserveToken
       }
       // persist
-  try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
+        try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
     }
     // Switch current project in store
     if (projectId) projectStore.setCurrentProject(String(projectId))
@@ -409,7 +409,7 @@ async function onSelectProject(p) {
 }
 
 function formatInviteDate(d) {
-  try { return d ? new Date(d).toLocaleDateString() : '' } catch { return '' }
+  try { return d ? new Date(d).toLocaleDateString() : '' } catch (e) { return '' }
 }
 
 async function accept(id) {
@@ -417,7 +417,7 @@ async function accept(id) {
     const ok = await invitationsStore.acceptInvite(id)
     if (ok) {
       ui.showSuccess('Invitation accepted')
-  try { await projectStore.fetchProjects() } catch (e) { /* ignore */ }
+        try { await projectStore.fetchProjects() } catch (e) { /* ignore */ }
     } else {
       ui.showError(invitationsStore.error || 'Failed to accept invitation')
     }

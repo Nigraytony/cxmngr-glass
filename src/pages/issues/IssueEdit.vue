@@ -1504,7 +1504,7 @@ function htmlToText(html: any): string {
     tmp.innerHTML = String(html)
     const t = (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim()
     return t
-  } catch {
+  } catch (e) {
     return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   }
 }
@@ -1550,7 +1550,7 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
       if (conv) return { dataUrl: conv, format: 'JPEG' }
     }
     return { dataUrl, format: fmt }
-  } catch {
+  } catch (e) {
     return {}
   }
 }
@@ -1573,13 +1573,13 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
     if (!ctx) return null
     ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', quality)
-  } catch {
+  } catch (e) {
     return null
   }
 }
 
 function formatDate(dt?: string): string {
-  try { return dt ? new Date(dt).toLocaleDateString() : '' } catch { return '' }
+  try { return dt ? new Date(dt).toLocaleDateString() : '' } catch (e) { return '' }
 }
 
 function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
@@ -1605,7 +1605,7 @@ async function downloadIssuePdf() {
   if (!project || (targetPid && (String(project._id || project.id) !== String(targetPid)))) {
     try {
       if (targetPid) project = await projectStore.fetchProject(String(targetPid))
-    } catch { /* ignore, fallback to {} */ }
+  } catch (e) { /* ignore, fallback to {} */ }
   }
   project = project || {}
   const clientImg = await loadImage(project?.logo)
@@ -1639,7 +1639,7 @@ async function downloadIssuePdf() {
         const footerTitle = `Issue ${issueNumText} Report`
         doc.text(footerTitle, margin + 10, footerY - 2)
       }
-    } catch {
+    } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
@@ -2137,7 +2137,7 @@ function fileNameFromUrl(url?: string): string {
     const u = new URL(url)
     const base = u.pathname.split('/').filter(Boolean).pop() || url
     return decodeURIComponent(base)
-  } catch {
+  } catch (e) {
     const base = url.split('?')[0].split('#')[0]
     return decodeURIComponent(base.split('/').pop() || url)
   }
@@ -2183,7 +2183,7 @@ function formatBytes(bytes?: any): string {
 function attachmentSize(a: any): string { return formatBytes(a?.size ?? a?.fileSize ?? a?.contentLength) }
 function attachmentUploadedAt(a: any): string {
   const d = a?.uploadedAt || a?.createdAt || a?.date || a?.timestamp
-  try { return d ? new Date(d).toLocaleString() : '' } catch { return '' }
+  try { return d ? new Date(d).toLocaleString() : '' } catch (e) { return '' }
 }
 function attachmentUploadedBy(a: any): string {
   const by = a?.uploadedByName || a?.uploaderName || a?.userName || a?.ownerName || a?.uploadedBy?.name || a?.uploader?.name || a?.user?.name
@@ -2295,7 +2295,7 @@ function safeAvatarForSave(a?: string): string {
     const u = new URL(s)
     if (u.protocol === 'http:' || u.protocol === 'https:') return s
     return ''
-  } catch {
+  } catch (e) {
     return ''
   }
 }
@@ -2427,7 +2427,7 @@ const selectedAttachment = computed<any>(() => {
 const selectedAttachmentUrl = computed<string>(() => {
   const a: any = selectedAttachment.value
   if (!a || !a.url) return ''
-  try { return new URL(a.url, window.location.origin).toString() } catch { return a.url }
+  try { return new URL(a.url, window.location.origin).toString() } catch (e) { return a.url }
 })
 const selectedKind = computed(() => selectedAttachment.value ? attachmentKind(selectedAttachment.value) : 'file')
 const viewerMaxH = computed(() => attachmentFullscreen.value ? '82vh' : '70vh')
@@ -2437,7 +2437,7 @@ function openAttachment(i: number) { selectedAttachmentIndex.value = i; attachme
 function openInNewTab(u: string) { try { window.open(u, '_blank', 'noopener') } catch (e) { /* ignore window.open failures */ } }
 async function downloadAttachment(a: any) {
   try {
-    const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch { return a?.url || '' } })()
+  const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch (e) { return a?.url || '' } })()
     if (!url) return
     const response = await axios.get(url, { responseType: 'blob' })
     const blob = new Blob([response.data])

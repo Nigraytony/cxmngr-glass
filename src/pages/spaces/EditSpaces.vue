@@ -733,7 +733,7 @@ async function save() {
 
 // Helpers for attachments
 function fileNameFromUrl(u?: string) {
-  try { if (!u) return ''; const url = new URL(u); return decodeURIComponent(url.pathname.split('/').pop() || '') } catch { return String(u || '').split('/').pop() || '' }
+  try { if (!u) return ''; const url = new URL(u); return decodeURIComponent(url.pathname.split('/').pop() || '') } catch (e) { return String(u || '').split('/').pop() || '' }
 }
 const attachmentsList = computed(() => {
   const arr = Array.isArray(form.value.attachments) ? (form.value.attachments as any[]) : []

@@ -19,7 +19,7 @@ export function getApiBase(): string {
       }
     }
     return cleaned
-  } catch {
+  } catch (e) {
     return 'http://localhost:4242'
   }
 }

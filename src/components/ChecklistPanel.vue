@@ -1092,7 +1092,7 @@ const currentUserName = computed(() => {
 
 // Issues integration: quick attach an Issue from a checklist context
 const issuesStore = useIssuesStore()
-const router = useRouter()
+const _router = useRouter()
 const issueOpen = ref(false)
 const issueCtx = ref<{ si: number; qi: number | null } | null>(null)
 const issueDraft = reactive<{ title: string; description: string; type: string; priority: 'Low'|'Medium'|'High'; assignedTo: string }>(
@@ -1409,7 +1409,7 @@ function onCxAnswerChange(si: number, qi: number) {
 // Simple datetime formatter for display
 function formatDateTime(d?: any) {
   if (!d) return ''
-  try { return new Date(d).toLocaleString() } catch { return String(d) }
+  try { return new Date(d).toLocaleString() } catch (e) { return String(d) }
 }
 
 // New checklist flow

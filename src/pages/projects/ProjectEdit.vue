@@ -827,7 +827,7 @@ async function resendInvite(inviteId) {
   }
 }
 
-function fmt(d) { try { return d ? new Date(d).toLocaleString() : '' } catch { return String(d || '') } }
+function fmt(d) { try { return d ? new Date(d).toLocaleString() : '' } catch (e) { return String(d || '') } }
 const allTypes = computed(() => {
   const set = new Set()
   for (const e of (logs.value || [])) { if (e && e.type) set.add(String(e.type)) }
@@ -835,11 +835,11 @@ const allTypes = computed(() => {
 })
 const startDate = computed(() => {
   if (!startDateText.value) return null
-  try { return new Date(startDateText.value) } catch { return null }
+  try { return new Date(startDateText.value) } catch (e) { return null }
 })
 const endDate = computed(() => {
   if (!endDateText.value) return null
-  try { return new Date(endDateText.value) } catch { return null }
+  try { return new Date(endDateText.value) } catch (e) { return null }
 })
 const filteredLogs = computed(() => {
   const q = (logsSearch.value || '').toLowerCase()
@@ -1095,11 +1095,11 @@ const trialEndDate = computed(() => {
   if (!project.value) return null
   // Prefer explicit fixed trialEnd stored on the project when available
   if (project.value.trialEnd) {
-    try { return new Date(project.value.trialEnd).toISOString() } catch { /* ignore */ }
+  try { return new Date(project.value.trialEnd).toISOString() } catch (e) { /* ignore */ }
   }
   // If Stripe has a current period end and status is trialing, prefer that timestamp
   if ((project.value.stripeSubscriptionStatus === 'trialing') && project.value.stripeCurrentPeriodEnd) {
-    try { return new Date(project.value.stripeCurrentPeriodEnd).toISOString() } catch { /* ignore */ }
+  try { return new Date(project.value.stripeCurrentPeriodEnd).toISOString() } catch (e) { /* ignore */ }
   }
   // Otherwise, compute from project.trialStartedAt if present
   const started = project.value.trialStartedAt ? new Date(project.value.trialStartedAt) : null

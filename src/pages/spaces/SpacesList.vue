@@ -976,7 +976,7 @@ const openInitDone = ref(false)
 const OPEN_NODES_KEY = computed(() => `spacesTreeOpenNodes:${projectStore.currentProjectId || 'global'}`)
 
 function hasSessionStorage(): boolean {
-  try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch { return false }
+  try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
 }
 
 function saveOpenNodes() {
@@ -1240,7 +1240,7 @@ function downloadSpacesXlsx() {
     const a = document.createElement('a')
     const dt = new Date()
     const projName = (projectStore.currentProject?.name || '').trim()
-    const base = projName ? `spaces-${projName.replace(/[^a-z0-9\-]+/gi, '_')}` : 'spaces'
+  const base = projName ? `spaces-${projName.replace(/[^a-z0-9-]+/gi, '_')}` : 'spaces'
     const fn = `${base}-${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}.xlsx`
     a.href = href
     a.download = fn
