@@ -1273,9 +1273,16 @@ async function duplicateEquipment(e: Equipment) {
       let src: any = (equipmentStore as any).byId?.[srcId]
       if (!src) src = await equipmentStore.fetchOne(srcId)
       if (!src) throw new Error('Source equipment not found')
-      const { _id, id, number, createdAt, updatedAt, history, ...rest } = src
+      // build payload by shallow-copying src and removing internal fields we don't want to copy
+      const payloadObj = { ...src }
+      delete payloadObj._id
+      delete payloadObj.id
+      delete payloadObj.number
+      delete payloadObj.createdAt
+      delete payloadObj.updatedAt
+      delete payloadObj.history
       const payload: any = {
-        ...rest,
+        ...payloadObj,
         tag: newTag,
         projectId: src.projectId,
         spaceId: src.spaceId || undefined,

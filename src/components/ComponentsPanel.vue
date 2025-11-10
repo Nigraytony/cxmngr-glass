@@ -626,6 +626,8 @@ function attrSummary(attrs: any): string {
   const shown = pairs.filter(p => p.key && (p.value || p.value === '')).slice(0, 3)
   return shown.map(p => `${p.key}: ${p.value}`).join(' • ')
 }
+// _formatDateTime is a small helper kept for potential future use; silence unused warning
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function _formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch (e) { return String(d) } }
 
 // Modal editor state

@@ -1649,6 +1649,7 @@ async function saveAndGetId(): Promise<string> {
 
 async function download() {
   if (!id.value || isNew.value || downloading.value) return
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   try {
     downloading.value = true
     await store.downloadReport(id.value)
@@ -2121,6 +2122,7 @@ function formatDateTime(d?: any) {
   try { return new Date(d).toLocaleString() } catch (e) { return String(d) }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function displayName(c: any) {
   return (c && (c.name || '')) || 'Anonymous'
 }
@@ -2487,6 +2489,7 @@ async function downloadAttachment(a: any) {
 watch(attachmentViewerOpen, (v) => { if (!v) attachmentFullscreen.value = false })
 
 // Equipment Reviewed helpers
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const equipSearch = ref('')
 const equipmentInProject = computed<any[]>(() => Array.isArray(equipmentStore.items) ? equipmentStore.items : [])
 const equipmentLoading = computed<boolean>(() => !!equipmentStore.loading)

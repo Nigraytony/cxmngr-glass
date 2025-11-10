@@ -1092,6 +1092,9 @@ const currentUserName = computed(() => {
 
 // Issues integration: quick attach an Issue from a checklist context
 const issuesStore = useIssuesStore()
+// _router is intentionally kept for potential navigation usages from checklist actions;
+// it's currently unused in some codepaths — silence the unused-vars warning explicitly.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _router = useRouter()
 const issueOpen = ref(false)
 const issueCtx = ref<{ si: number; qi: number | null } | null>(null)

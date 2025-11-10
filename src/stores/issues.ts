@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { ref } from 'vue'
-import { useAuthStore } from './auth'
 import { getAuthHeaders } from '../utils/auth'
 import { useProjectStore } from './project'
 
