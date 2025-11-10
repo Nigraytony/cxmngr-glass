@@ -142,10 +142,16 @@ async function connectMongo(retries = 5, delayMs = 4000) {
 }
 connectMongo().catch(e => console.error('[mongo] unexpected connect error', e));
 
-// Start server regardless of DB state so health and CORS preflights work
-app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
-});
+// Start server only when this file is run directly. When required (tests) we
+// export the `app` without binding to a port so the test harness can control
+// the lifecycle.
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`🚀 Server is running on port ${port}`);
+  });
+}
+
+module.exports = app;
 
 // Global diagnostics for unexpected errors
 process.on('unhandledRejection', (err) => {

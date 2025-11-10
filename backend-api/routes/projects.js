@@ -60,6 +60,37 @@ router.get('/', async (req, res) => {
   }
 });
 
+// List pending invites for the authenticated user (case-insensitive email match).
+// This route is placed before the '/:id' route so the literal path doesn't get
+// interpreted as a project id by the '/:id' handler.
+router.get('/my-invites', auth, async (req, res) => {
+  try {
+    const User = require('../models/user');
+    const Invitation = require('../models/invitation');
+    const Project = require('../models/project');
+    const user = await User.findById(req.userId).lean();
+    if (!user) return res.status(404).send({ error: 'User not found' });
+    const emailRegex = new RegExp(`^${String(user.email).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$$`, 'i');
+    const invites = await Invitation.find({ email: { $regex: emailRegex }, accepted: false })
+      .sort({ createdAt: -1 })
+      .lean();
+    const projectIds = [...new Set(invites.map(i => String(i.projectId)))];
+    const projects = await Project.find({ _id: { $in: projectIds } }).select('_id name logo').lean();
+    const projMap = Object.fromEntries(projects.map(p => [String(p._id), p]));
+    const result = invites.map(i => ({
+      id: String(i._id),
+      email: i.email,
+      token: i.token,
+      createdAt: i.createdAt,
+      project: projMap[String(i.projectId)] || { _id: i.projectId },
+    }));
+    return res.status(200).send(result);
+  } catch (err) {
+    console.error('my-invites early handler error', err);
+    return res.status(500).send({ error: 'Failed to list invitations' });
+  }
+});
+
 // Read a single project by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -132,13 +163,29 @@ router.post('/addUser', auth, async (req, res) => {
       }
 
       // user does not exist: create an invitation
-      const token = crypto.randomBytes(20).toString('hex');
       const inviterId = req.userId;
-      const invite = new Invitation({ email: req.body.email, projectId: project._id, inviterId, token });
-      await invite.save({ session });
+      // generate a unique token and guard against rare duplicate-key collisions
+      let invite = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const token = crypto.randomBytes(20).toString('hex');
+        invite = new Invitation({ email: req.body.email, projectId: project._id, inviterId, token });
+        try {
+          await invite.save({ session });
+          break; // success
+        } catch (saveErr) {
+          // If duplicate key on token, try again; otherwise rethrow
+          if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) {
+            invite = null;
+            if (attempt === 4) throw saveErr;
+            // else generate another token and retry
+            continue;
+          }
+          throw saveErr;
+        }
+      }
 
       // send invite email with accept link (do not run in transaction because external IO shouldn't be in tx)
-      const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${token}`;
+  const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${invite && invite.token}`;
       try {
         await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
       } catch (mailErr) {

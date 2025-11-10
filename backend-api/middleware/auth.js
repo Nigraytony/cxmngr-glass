@@ -27,6 +27,8 @@ const auth = async (req, res, next) => {
 
     req.token = token;
     req.user = user;
+  // Backwards-compatible shorthand used across routes
+  req.userId = user._id;
     next();
   } catch (error) {
     console.error('[auth] unexpected error', error);

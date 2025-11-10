@@ -8,17 +8,37 @@
   >
     <div class="relative h-16 flex items-center gap-2 px-3">
       <!-- Show full brand logo when sidebar is open (1.5x size) -->
-      <div v-if="open" class="h-12 max-w-[240px] flex items-center">
+      <div
+        v-if="open"
+        class="h-12 max-w-[240px] flex items-center"
+      >
         <picture>
-          <source srcset="/brand/logo.svg" type="image/svg+xml" />
-          <img src="/brand/logo.png" alt="App logo" class="h-12 w-auto object-contain invert" />
+          <source
+            srcset="/brand/logo.svg"
+            type="image/svg+xml"
+          >
+          <img
+            src="/brand/logo.png"
+            alt="App logo"
+            class="h-12 w-auto object-contain invert"
+          >
         </picture>
       </div>
       <!-- Compact square logo when collapsed (1.5x size) -->
-      <div v-else class="h-12 w-12 rounded-xl overflow-hidden bg-white/30 border border-white/30 grid place-items-center">
+      <div
+        v-else
+        class="h-12 w-12 rounded-xl overflow-hidden bg-white/30 border border-white/30 grid place-items-center"
+      >
         <picture>
-          <source srcset="/brand/logo.svg" type="image/svg+xml" />
-          <img src="/brand/logo.png" alt="App logo" class="h-9 w-9 object-contain invert" />
+          <source
+            srcset="/brand/logo.svg"
+            type="image/svg+xml"
+          >
+          <img
+            src="/brand/logo.png"
+            alt="App logo"
+            class="h-9 w-9 object-contain invert"
+          >
         </picture>
       </div>
     </div>
@@ -120,10 +140,10 @@
 
     <!-- Expand affordance -->
     <button
-      @click="$emit('toggle')"
       class="absolute -right-3 top-6 size-6 grid place-items-center rounded-full
              bg-white/40 border border-white/50 text-white shadow"
       title="Toggle sidebar"
+      @click="$emit('toggle')"
     >
       <span v-if="open">‹</span>
       <span v-else>›</span>

@@ -1,80 +1,177 @@
 <template>
-  <section class="space-y-6 relative overflow-x-hidden" ref="pageSection">
+  <section
+    ref="pageSection"
+    class="space-y-6 relative overflow-x-hidden"
+  >
     <!-- header with breadcrumbs -->
     <div>
-      <BreadCrumbs :items="[
-        { text: 'Dashboard', to: '/' },
-        { text: 'Equipment', to: '/equipment' }
-      ]" title="Equipment" />
+      <BreadCrumbs
+        :items="[
+          { text: 'Dashboard', to: '/' },
+          { text: 'Equipment', to: '/equipment' }
+        ]"
+        title="Equipment"
+      />
     </div>
 
     <!-- toolbar -->
-  <div class="flex items-center gap-2 gap-y-2 flex-wrap w-full max-w-full">
+    <div class="flex items-center gap-2 gap-y-2 flex-wrap w-full max-w-full">
       <div class="relative inline-block group shrink-0">
         <button
           :disabled="!projectStore.currentProjectId"
-          @click="openCreate()"
           aria-label="Add equipment"
           :title="projectStore.currentProjectId ? 'Add equipment' : 'Select a project'"
           class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          @click="openCreate()"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+              clip-rule="evenodd"
+            />
           </svg>
         </button>
-        <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
           {{ projectStore.currentProjectId ? 'Add equipment' : 'Select a project to add equipment' }}
         </div>
       </div>
-  <div class="relative inline-block group shrink-0">
+      <div class="relative inline-block group shrink-0">
         <button
           :disabled="!projectStore.currentProjectId"
-          @click="showUploadDialog = true"
           aria-label="Upload equipment"
           :title="projectStore.currentProjectId ? 'Upload equipment from CSV/XLSX' : 'Select a project'"
           class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+          @click="showUploadDialog = true"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 3v12" stroke-width="1.5" stroke-linecap="round"/><path d="M7 8l5-5 5 5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="4" y="15" width="16" height="6" rx="1.5" stroke-width="1.5"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          ><path
+            d="M12 3v12"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          /><path
+            d="M7 8l5-5 5 5"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /><rect
+            x="4"
+            y="15"
+            width="16"
+            height="6"
+            rx="1.5"
+            stroke-width="1.5"
+          /></svg>
           <span class="text-sm">Upload</span>
         </button>
-        <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
           Upload equipment from CSV/XLSX
         </div>
       </div>
-  <div class="relative inline-block group shrink-0">
+      <div class="relative inline-block group shrink-0">
         <button
           :disabled="!projectStore.currentProjectId"
-          @click="downloadEquipmentList"
           aria-label="Download equipment"
           :title="projectStore.currentProjectId ? 'Download visible equipment as CSV' : 'Select a project'"
           class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+          @click="downloadEquipmentList"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 3v12" stroke-width="1.5" stroke-linecap="round"/><path d="M7 10l5 5 5-5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="4" y="17" width="16" height="4" rx="1.5" stroke-width="1.5"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          ><path
+            d="M12 3v12"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          /><path
+            d="M7 10l5 5 5-5"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /><rect
+            x="4"
+            y="17"
+            width="16"
+            height="4"
+            rx="1.5"
+            stroke-width="1.5"
+          /></svg>
           <span class="text-sm">Download</span>
         </button>
-        <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
           Download filtered equipment as CSV
         </div>
       </div>
-  <input v-model="search" type="text" placeholder="Search by tag, title or type" class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-full sm:w-64 flex-1 min-w-0" />
+      <input
+        v-model="search"
+        type="text"
+        placeholder="Search by tag, title or type"
+        class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-full sm:w-64 flex-1 min-w-0"
+      >
       <div class="flex items-center gap-2">
         <label class="text-white/70 text-sm">Type</label>
-        <div class="relative" ref="typeMenuRef">
-          <button @click="toggleTypeMenu" :aria-expanded="showTypeMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+        <div
+          ref="typeMenuRef"
+          class="relative"
+        >
+          <button
+            :aria-expanded="showTypeMenu ? 'true' : 'false'"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            @click="toggleTypeMenu"
+          >
             <span class="flex items-center gap-2">
               <span>{{ typeFilter || 'All' }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter || 'All') }}</span>
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-3 h-3 ml-1"
+            ><path
+              d="M6 9l6 6 6-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
-          <div v-if="showTypeMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+          <div
+            v-if="showTypeMenu"
+            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            role="menu"
+          >
             <div class="py-1">
               <button
                 v-for="opt in typeOptions"
                 :key="opt.name"
-                @click="typeFilter = (opt.name === 'All' ? '' : opt.name); closeTypeMenu()"
                 role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                @click="typeFilter = (opt.name === 'All' ? '' : opt.name); closeTypeMenu()"
+              >
                 <span>{{ opt.name }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
               </button>
@@ -84,22 +181,45 @@
       </div>
       <div class="flex items-center gap-2">
         <label class="text-white/70 text-sm">System</label>
-        <div class="relative" ref="systemMenuRef">
-          <button @click="toggleSystemMenu" :aria-expanded="showSystemMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+        <div
+          ref="systemMenuRef"
+          class="relative"
+        >
+          <button
+            :aria-expanded="showSystemMenu ? 'true' : 'false'"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            @click="toggleSystemMenu"
+          >
             <span class="flex items-center gap-2">
               <span>{{ systemFilterLabel }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ systemCount(systemFilter || 'All') }}</span>
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-3 h-3 ml-1"
+            ><path
+              d="M6 9l6 6 6-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
-          <div v-if="showSystemMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+          <div
+            v-if="showSystemMenu"
+            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            role="menu"
+          >
             <div class="py-1">
               <button
                 v-for="opt in systemOptions"
                 :key="opt.value || opt.name"
-                @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
                 role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
+              >
                 <span>{{ opt.name }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
               </button>
@@ -109,24 +229,50 @@
       </div>
       <div class="flex items-center gap-2">
         <label class="text-white/70 text-sm">Status</label>
-        <div class="relative" ref="statusMenuRef">
-          <button @click="toggleStatusMenu" :aria-expanded="showStatusMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+        <div
+          ref="statusMenuRef"
+          class="relative"
+        >
+          <button
+            :aria-expanded="showStatusMenu ? 'true' : 'false'"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            @click="toggleStatusMenu"
+          >
             <span class="flex items-center gap-2">
               <span>{{ statusFilter || 'All' }}</span>
               <span :class="statusBadgeClassEquipment(statusFilter || 'All') + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter || 'All') }}</span>
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-3 h-3 ml-1"
+            ><path
+              d="M6 9l6 6 6-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
-          <div v-if="showStatusMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+          <div
+            v-if="showStatusMenu"
+            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            role="menu"
+          >
             <div class="py-1">
               <button
                 v-for="opt in statusOptions"
                 :key="opt.name"
-                @click="statusFilter = (opt.name === 'All' ? '' : opt.name); closeStatusMenu()"
                 role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (statusFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (statusFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                @click="statusFilter = (opt.name === 'All' ? '' : opt.name); closeStatusMenu()"
+              >
                 <span class="inline-flex items-center gap-2">
-                  <span class="inline-block w-2.5 h-2.5 rounded-full" :class="statusDotClassEquipment(opt.name)"></span>
+                  <span
+                    class="inline-block w-2.5 h-2.5 rounded-full"
+                    :class="statusDotClassEquipment(opt.name)"
+                  />
                   <span>{{ opt.name }}</span>
                 </span>
                 <span :class="statusBadgeClassEquipment(opt.name) + ' text-xs px-2 py-0.5 rounded-full'">{{ opt.count }}</span>
@@ -138,24 +284,63 @@
     </div>
 
     <!-- list -->
-  <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 overflow-x-hidden">
+    <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 overflow-x-hidden">
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
-        <div class="col-span-1">Tag</div>
-        <div class="col-span-3">Title</div>
-        <div class="col-span-2">Type</div>
-        <div class="col-span-2">System</div>
-        <div class="col-span-2">Location</div>
-        <div class="col-span-1">Status</div>
-        <div class="col-span-1 text-right">Actions</div>
+        <div class="col-span-1">
+          Tag
+        </div>
+        <div class="col-span-3">
+          Title
+        </div>
+        <div class="col-span-2">
+          Type
+        </div>
+        <div class="col-span-2">
+          System
+        </div>
+        <div class="col-span-2">
+          Location
+        </div>
+        <div class="col-span-1">
+          Status
+        </div>
+        <div class="col-span-1 text-right">
+          Actions
+        </div>
       </div>
       <div class="divide-y divide-white/10">
-        <div v-for="e in paged" :key="e.id" class="grid grid-cols-12 items-center px-2 py-2 text-white/90">
-          <div class="col-span-1 truncate" :title="e.tag">{{ e.tag || '-' }}</div>
-          <div class="col-span-3 truncate" :title="e.title">{{ e.title }}</div>
-          <div class="col-span-2 truncate">{{ e.type }}</div>
-          <div class="col-span-2 truncate">{{ e.system || '-' }}</div>
-          <div class="col-span-2 truncate" :title="spaceName(e.spaceId)">{{ spaceName(e.spaceId) || '-' }}</div>
-          <div class="col-span-1 truncate">{{ e.status || '-' }}</div>
+        <div
+          v-for="e in paged"
+          :key="e.id"
+          class="grid grid-cols-12 items-center px-2 py-2 text-white/90"
+        >
+          <div
+            class="col-span-1 truncate"
+            :title="e.tag"
+          >
+            {{ e.tag || '-' }}
+          </div>
+          <div
+            class="col-span-3 truncate"
+            :title="e.title"
+          >
+            {{ e.title }}
+          </div>
+          <div class="col-span-2 truncate">
+            {{ e.type }}
+          </div>
+          <div class="col-span-2 truncate">
+            {{ e.system || '-' }}
+          </div>
+          <div
+            class="col-span-2 truncate"
+            :title="spaceName(e.spaceId)"
+          >
+            {{ spaceName(e.spaceId) || '-' }}
+          </div>
+          <div class="col-span-1 truncate">
+            {{ e.status || '-' }}
+          </div>
           <div class="col-span-1 flex items-center justify-end gap-2">
             <RouterLink
               :to="{ name: 'equipment-edit', params: { id: e.id || (e as any)._id } }"
@@ -163,102 +348,305 @@
               aria-label="Open"
               :title="'Open ' + (e.title || e.tag)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" stroke-width="1.5"/><circle cx="12" cy="12" r="3" stroke-width="1.5"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"
+                stroke-width="1.5"
+              /><circle
+                cx="12"
+                cy="12"
+                r="3"
+                stroke-width="1.5"
+              /></svg>
             </RouterLink>
-            <button @click="duplicateEquipment(e)" class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10" aria-label="Duplicate" title="Duplicate">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <rect x="9" y="3" width="12" height="12" rx="2" stroke-width="1.5"/>
-                <rect x="3" y="9" width="12" height="12" rx="2" stroke-width="1.5"/>
+            <button
+              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+              aria-label="Duplicate"
+              title="Duplicate"
+              @click="duplicateEquipment(e)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <rect
+                  x="9"
+                  y="3"
+                  width="12"
+                  height="12"
+                  rx="2"
+                  stroke-width="1.5"
+                />
+                <rect
+                  x="3"
+                  y="9"
+                  width="12"
+                  height="12"
+                  rx="2"
+                  stroke-width="1.5"
+                />
               </svg>
             </button>
-            <button @click="openEdit(e)" class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10" aria-label="Edit">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke-width="1.5"/><path d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77" stroke-width="1.5"/></svg>
+            <button
+              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+              aria-label="Edit"
+              @click="openEdit(e)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                stroke-width="1.5"
+              /><path
+                d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                stroke-width="1.5"
+              /></svg>
             </button>
-            <button @click="confirmRemove(e)" class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30" aria-label="Delete">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M6 7h12" stroke-width="1.5" stroke-linecap="round"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke-width="1.5"/><rect x="6" y="7" width="12" height="14" rx="2" stroke-width="1.5"/><path d="M10 11v6M14 11v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <button
+              class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+              aria-label="Delete"
+              @click="confirmRemove(e)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M6 7h12"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                stroke-width="1.5"
+              /><rect
+                x="6"
+                y="7"
+                width="12"
+                height="14"
+                rx="2"
+                stroke-width="1.5"
+              /><path
+                d="M10 11v6M14 11v6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /></svg>
             </button>
           </div>
         </div>
-        <div v-if="!equipment.length && !loading" class="p-6 text-white/60 text-center">No equipment yet.</div>
-        <div v-else-if="!filtered.length && !loading" class="p-6 text-white/60 text-center">No matching equipment.</div>
-        <div v-if="loading" class="p-6 text-white/60 text-center">Loading…</div>
+        <div
+          v-if="!equipment.length && !loading"
+          class="p-6 text-white/60 text-center"
+        >
+          No equipment yet.
+        </div>
+        <div
+          v-else-if="!filtered.length && !loading"
+          class="p-6 text-white/60 text-center"
+        >
+          No matching equipment.
+        </div>
+        <div
+          v-if="loading"
+          class="p-6 text-white/60 text-center"
+        >
+          Loading…
+        </div>
       </div>
       <!-- pagination controls -->
-      <div v-if="filtered.length" class="flex items-center justify-between px-2 py-3 text-white/70 text-sm">
+      <div
+        v-if="filtered.length"
+        class="flex items-center justify-between px-2 py-3 text-white/70 text-sm"
+      >
         <div class="flex items-center gap-2">
           <span>Rows per page</span>
-          <select v-model.number="pageSize" class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm">
-            <option v-for="s in pageSizes" :key="s" :value="s">{{ s }}</option>
+          <select
+            v-model.number="pageSize"
+            class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+          >
+            <option
+              v-for="s in pageSizes"
+              :key="s"
+              :value="s"
+            >
+              {{ s }}
+            </option>
           </select>
           <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ filtered.length }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40">Prev</button>
+          <button
+            :disabled="page === 1"
+            class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+            @click="prevPage"
+          >
+            Prev
+          </button>
           <span class="px-2">Page {{ page }} / {{ totalPages }}</span>
-          <button @click="nextPage" :disabled="page === totalPages" class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40">Next</button>
+          <button
+            :disabled="page === totalPages"
+            class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+            @click="nextPage"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
 
     <!-- modal -->
-    <div v-if="modalOpen" class="fixed inset-0 z-50 grid place-items-center bg-black/50">
+    <div
+      v-if="modalOpen"
+      class="fixed inset-0 z-50 grid place-items-center bg-black/50"
+    >
       <div class="w-[640px] max-w-[95vw] rounded-xl border border-white/20 bg-white/10 backdrop-blur p-4 text-white">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold">{{ editing ? 'Edit Equipment' : 'Create Equipment' }}</h2>
-          <button @click="closeModal" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 border border-white/20">✕</button>
+          <h2 class="text-lg font-semibold">
+            {{ editing ? 'Edit Equipment' : 'Create Equipment' }}
+          </h2>
+          <button
+            class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 border border-white/20"
+            @click="closeModal"
+          >
+            ✕
+          </button>
         </div>
         <form @submit.prevent="save">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-sm text-white/70">Tag</label>
-              <input v-model="form.tag" type="text" required class="w-full px-3 py-2 rounded bg-white/10 border border-white/20" />
+              <input
+                v-model="form.tag"
+                type="text"
+                required
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
             </div>
             <div>
               <label class="text-sm text-white/70">Type</label>
-              <select v-model="form.type" required class="w-full px-3 py-2 rounded bg-white/10 border border-white/20">
-                <option v-for="opt in modalTypeOptions" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+              <select
+                v-model="form.type"
+                required
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
+                <option
+                  v-for="opt in modalTypeOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.text }}
+                </option>
               </select>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Title</label>
-              <input v-model="form.title" type="text" required class="w-full px-3 py-2 rounded bg-white/10 border border-white/20" />
+              <input
+                v-model="form.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
             </div>
             <div>
               <label class="text-sm text-white/70">System</label>
-              <select v-model="form.system" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20">
-                <option v-for="opt in modalSystemOptions" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+              <select
+                v-model="form.system"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
+                <option
+                  v-for="opt in modalSystemOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.text }}
+                </option>
               </select>
             </div>
             <div>
               <label class="text-sm text-white/70">Status</label>
-              <select v-model="form.status" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20">
-                <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+              <select
+                v-model="form.status"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
+                <option
+                  v-for="s in statuses"
+                  :key="s"
+                  :value="s"
+                >
+                  {{ s }}
+                </option>
               </select>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Space</label>
-              <select v-model="form.spaceId" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20">
-                <option :value="''">None</option>
-                <option v-for="p in parentOptions" :key="p.id" :value="p.id">{{ p.title }} ({{ p.type }})</option>
+              <select
+                v-model="form.spaceId"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
+                <option :value="''">
+                  None
+                </option>
+                <option
+                  v-for="p in parentOptions"
+                  :key="p.id"
+                  :value="p.id"
+                >
+                  {{ p.title }} ({{ p.type }})
+                </option>
               </select>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Description</label>
-              <textarea v-model="form.description" rows="3" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"></textarea>
+              <textarea
+                v-model="form.description"
+                rows="3"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              />
             </div>
           </div>
           <div class="mt-4 flex items-center justify-end gap-2">
-            <button type="button" @click="closeModal" class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20">Cancel</button>
-            <button type="submit" class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30">Save</button>
+            <button
+              type="button"
+              class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
+              @click="closeModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
+            >
+              Save
+            </button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Upload equipment modal -->
-    <Modal v-model="showUploadDialog" :panel-class="'max-w-3xl'">
+    <Modal
+      v-model="showUploadDialog"
+      :panel-class="'max-w-3xl'"
+    >
       <template #header>
-        <div class="flex items-center justify-between"><div class="text-lg">Upload equipment</div></div>
+        <div class="flex items-center justify-between">
+          <div class="text-lg">
+            Upload equipment
+          </div>
+        </div>
       </template>
       <div class="space-y-4">
         <div class="text-sm text-white/70">
@@ -270,78 +658,198 @@
         </div>
         <div>
           <div class="flex items-center justify-between gap-3">
-            <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" @change="onUploadFileChange" class="block w-full text-sm" />
-            <button type="button" @click="downloadUploadTemplate" class="shrink-0 px-2 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 border border-white/15 text-white">Download CSV template</button>
+            <input
+              type="file"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              class="block w-full text-sm"
+              @change="onUploadFileChange"
+            >
+            <button
+              type="button"
+              class="shrink-0 px-2 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 border border-white/15 text-white"
+              @click="downloadUploadTemplate"
+            >
+              Download CSV template
+            </button>
           </div>
-          <div v-if="uploadFileName" class="mt-1 text-xs text-white/60">Selected: {{ uploadFileName }}</div>
+          <div
+            v-if="uploadFileName"
+            class="mt-1 text-xs text-white/60"
+          >
+            Selected: {{ uploadFileName }}
+          </div>
         </div>
-        <div class="flex items-center gap-3 text-sm" v-if="validUploadRows.length">
-          <div class="text-white/70">When tag exists:</div>
+        <div
+          v-if="validUploadRows.length"
+          class="flex items-center gap-3 text-sm"
+        >
+          <div class="text-white/70">
+            When tag exists:
+          </div>
           <label class="inline-flex items-center gap-2">
-            <input type="radio" value="update" v-model="duplicateMode" class="accent-emerald-400" />
+            <input
+              v-model="duplicateMode"
+              type="radio"
+              value="update"
+              class="accent-emerald-400"
+            >
             <span>Update existing</span>
           </label>
           <label class="inline-flex items-center gap-2">
-            <input type="radio" value="skip" v-model="duplicateMode" class="accent-emerald-400" />
+            <input
+              v-model="duplicateMode"
+              type="radio"
+              value="skip"
+              class="accent-emerald-400"
+            >
             <span>Skip row</span>
           </label>
         </div>
-        <div v-if="uploadParsing" class="text-sm text-white/70">Parsing…</div>
-        <div v-if="uploadError" class="text-sm text-red-300">{{ uploadError }}</div>
+        <div
+          v-if="uploadParsing"
+          class="text-sm text-white/70"
+        >
+          Parsing…
+        </div>
+        <div
+          v-if="uploadError"
+          class="text-sm text-red-300"
+        >
+          {{ uploadError }}
+        </div>
 
-        <div v-if="uploadRows.length" class="rounded-md bg-white/5 border border-white/10">
+        <div
+          v-if="uploadRows.length"
+          class="rounded-md bg-white/5 border border-white/10"
+        >
           <div class="px-3 py-2 text-xs text-white/60 flex items-center justify-between">
             <div>
               <span class="text-white/80">{{ uploadRows.length }}</span> rows parsed.
-              <span class="ml-2" v-if="uploadDuplicateTags.length">Duplicates: {{ uploadDuplicateTags.length }}</span>
-              <span class="ml-2" v-if="uploadInvalidRowsCount">Invalid: {{ uploadInvalidRowsCount }}</span>
-              <span class="ml-2" v-if="validUploadRows.length">Create: {{ plannedCreateCount }}</span>
-              <span class="ml-2" v-if="validUploadRows.length">Update: {{ plannedUpdateCount }}</span>
-              <span class="ml-2" v-if="validUploadRows.length && duplicateMode === 'skip'">Skip: {{ plannedSkipCount }}</span>
+              <span
+                v-if="uploadDuplicateTags.length"
+                class="ml-2"
+              >Duplicates: {{ uploadDuplicateTags.length }}</span>
+              <span
+                v-if="uploadInvalidRowsCount"
+                class="ml-2"
+              >Invalid: {{ uploadInvalidRowsCount }}</span>
+              <span
+                v-if="validUploadRows.length"
+                class="ml-2"
+              >Create: {{ plannedCreateCount }}</span>
+              <span
+                v-if="validUploadRows.length"
+                class="ml-2"
+              >Update: {{ plannedUpdateCount }}</span>
+              <span
+                v-if="validUploadRows.length && duplicateMode === 'skip'"
+                class="ml-2"
+              >Skip: {{ plannedSkipCount }}</span>
             </div>
           </div>
           <div class="max-h-64 overflow-auto">
             <table class="min-w-full text-xs">
               <thead class="bg-white/5 text-white/70">
                 <tr>
-                  <th class="px-2 py-1 text-left">Tag</th>
-                  <th class="px-2 py-1 text-left">Type</th>
-                  <th class="px-2 py-1 text-left">Title</th>
-                  <th class="px-2 py-1 text-left">System</th>
-                  <th class="px-2 py-1 text-left">Status</th>
-                  <th class="px-2 py-1 text-left">Space</th>
-                  <th class="px-2 py-1 text-left">Action</th>
+                  <th class="px-2 py-1 text-left">
+                    Tag
+                  </th>
+                  <th class="px-2 py-1 text-left">
+                    Type
+                  </th>
+                  <th class="px-2 py-1 text-left">
+                    Title
+                  </th>
+                  <th class="px-2 py-1 text-left">
+                    System
+                  </th>
+                  <th class="px-2 py-1 text-left">
+                    Status
+                  </th>
+                  <th class="px-2 py-1 text-left">
+                    Space
+                  </th>
+                  <th class="px-2 py-1 text-left">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(r, i) in uploadRows.slice(0, 10)" :key="i" class="border-t border-white/10">
-                  <td class="px-2 py-1">{{ r.tag }}</td>
-                  <td class="px-2 py-1">{{ r.type }}</td>
-                  <td class="px-2 py-1 truncate">{{ r.title }}</td>
-                  <td class="px-2 py-1">{{ r.system }}</td>
-                  <td class="px-2 py-1">{{ r.status }}</td>
-                  <td class="px-2 py-1 truncate">{{ r.space }}</td>
+                <tr
+                  v-for="(r, i) in uploadRows.slice(0, 10)"
+                  :key="i"
+                  class="border-t border-white/10"
+                >
                   <td class="px-2 py-1">
-                    <span v-if="rowAction(r) === 'create'" class="inline-block px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100">Create</span>
-                    <span v-else-if="rowAction(r) === 'update'" class="inline-block px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-100">Update</span>
-                    <span v-else class="inline-block px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/70">Skip</span>
+                    {{ r.tag }}
+                  </td>
+                  <td class="px-2 py-1">
+                    {{ r.type }}
+                  </td>
+                  <td class="px-2 py-1 truncate">
+                    {{ r.title }}
+                  </td>
+                  <td class="px-2 py-1">
+                    {{ r.system }}
+                  </td>
+                  <td class="px-2 py-1">
+                    {{ r.status }}
+                  </td>
+                  <td class="px-2 py-1 truncate">
+                    {{ r.space }}
+                  </td>
+                  <td class="px-2 py-1">
+                    <span
+                      v-if="rowAction(r) === 'create'"
+                      class="inline-block px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100"
+                    >Create</span>
+                    <span
+                      v-else-if="rowAction(r) === 'update'"
+                      class="inline-block px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-100"
+                    >Update</span>
+                    <span
+                      v-else
+                      class="inline-block px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-white/70"
+                    >Skip</span>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div v-if="uploadRows.length > 10" class="px-3 py-1 text-xs text-white/60">+{{ uploadRows.length - 10 }} more…</div>
+          <div
+            v-if="uploadRows.length > 10"
+            class="px-3 py-1 text-xs text-white/60"
+          >
+            +{{ uploadRows.length - 10 }} more…
+          </div>
         </div>
       </div>
       <template #footer>
         <div class="flex items-center justify-between gap-3">
-          <div v-if="uploadDuplicateTags.length" class="text-xs text-amber-200 bg-amber-500/10 border border-amber-400/30 rounded-md px-2 py-1">
-            <template v-if="duplicateMode === 'update'">Duplicate tags detected. Matching rows will update existing equipment.</template>
-            <template v-else>Duplicate tags detected. Matching rows will be skipped.</template>
+          <div
+            v-if="uploadDuplicateTags.length"
+            class="text-xs text-amber-200 bg-amber-500/10 border border-amber-400/30 rounded-md px-2 py-1"
+          >
+            <template v-if="duplicateMode === 'update'">
+              Duplicate tags detected. Matching rows will update existing equipment.
+            </template>
+            <template v-else>
+              Duplicate tags detected. Matching rows will be skipped.
+            </template>
           </div>
           <div class="flex items-center gap-2">
-            <button @click="showUploadDialog = false" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Cancel</button>
-            <button @click="submitUploadCreate" :disabled="creating || validUploadRows.length === 0" class="px-3 py-2 rounded-md border text-emerald-100 hover:bg-emerald-500/20" :class="[(creating || validUploadRows.length === 0) ? 'opacity-60 cursor-not-allowed' : '', uploadDuplicateTags.length ? 'bg-amber-500/10 border-amber-400/40 text-amber-100 hover:bg-amber-500/20' : 'bg-emerald-500/20 border-emerald-400/50']">
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="showUploadDialog = false"
+            >
+              Cancel
+            </button>
+            <button
+              :disabled="creating || validUploadRows.length === 0"
+              class="px-3 py-2 rounded-md border text-emerald-100 hover:bg-emerald-500/20"
+              :class="[(creating || validUploadRows.length === 0) ? 'opacity-60 cursor-not-allowed' : '', uploadDuplicateTags.length ? 'bg-amber-500/10 border-amber-400/40 text-amber-100 hover:bg-amber-500/20' : 'bg-emerald-500/20 border-emerald-400/50']"
+              @click="submitUploadCreate"
+            >
               <span v-if="creating">Processing…</span>
               <span v-else>Import</span>
             </button>
@@ -971,15 +1479,15 @@ async function submitUploadCreate() {
             notes: c?.notes || '',
             issues: Array.isArray(c?.issues) ? c.issues : undefined,
           }))
-          try { await (equipmentStore as any).updateFields(id, { components: mapped }) } catch {}
+          try { await (equipmentStore as any).updateFields(id, { components: mapped }) } catch (e) { /* ignore */ }
         }
         const cl = hasVal(r.checklists) ? parseJsonMaybe<any[]>(r.checklists) : undefined
         if (Array.isArray(cl)) {
-          try { await (equipmentStore as any).updateFields(id, { checklists: cl }) } catch {}
+          try { await (equipmentStore as any).updateFields(id, { checklists: cl }) } catch (e) { /* ignore */ }
         }
         const ft = hasVal(r.functionaltests) ? parseJsonMaybe<any[]>(r.functionaltests) : undefined
         if (Array.isArray(ft)) {
-          try { await (equipmentStore as any).updateFields(id, { functionalTests: ft }) } catch {}
+          try { await (equipmentStore as any).updateFields(id, { functionalTests: ft }) } catch (e) { /* best-effort */ }
         }
         updatedCount += 1
       } else if (!existing && action === 'create') {
@@ -1029,9 +1537,9 @@ async function submitUploadCreate() {
           if (payload.spaceId) minimal.spaceId = payload.spaceId
           const created = await equipmentStore.create(minimal)
           const createdId = String((created as any).id || (created as any)._id)
-          try { if (payload.components) await equipmentStore.updateFields(createdId, { components: payload.components } as any) } catch {}
-          try { if (payload.checklists) await equipmentStore.updateFields(createdId, { checklists: payload.checklists } as any) } catch {}
-          try { if (payload.functionalTests) await equipmentStore.updateFields(createdId, { functionalTests: payload.functionalTests } as any) } catch {}
+          try { if (payload.components) await equipmentStore.updateFields(createdId, { components: payload.components } as any) } catch (e) { /* best-effort */ }
+          try { if (payload.checklists) await equipmentStore.updateFields(createdId, { checklists: payload.checklists } as any) } catch (e) { /* best-effort */ }
+          try { if (payload.functionalTests) await equipmentStore.updateFields(createdId, { functionalTests: payload.functionalTests } as any) } catch (e) { /* best-effort */ }
         }
         createdCount += 1
       }

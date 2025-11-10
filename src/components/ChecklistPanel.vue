@@ -3,111 +3,355 @@
     <!-- Header: create, filters and progress -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div class="flex flex-wrap items-center gap-2">
-        <button @click="openNew" class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 text-white/90" title="New checklist" aria-label="New checklist">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-5 h-5"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <button
+          class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 text-white/90"
+          title="New checklist"
+          aria-label="New checklist"
+          @click="openNew"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          ><path
+            d="M12 5v14M5 12h14"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          /></svg>
         </button>
-        <input v-model="search" type="text" placeholder="Search questions…" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56" />
-        <select v-model="filterType" class="px-3 py-2 rounded-md bg-white/10 border border-white/20">
-          <option value="">All Types</option>
-          <option v-for="t in typeOptions" :key="t" :value="t">{{ t }}</option>
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Search questions…"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56"
+        >
+        <select
+          v-model="filterType"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20"
+        >
+          <option value="">
+            All Types
+          </option>
+          <option
+            v-for="t in typeOptions"
+            :key="t"
+            :value="t"
+          >
+            {{ t }}
+          </option>
         </select>
-        <select v-model="filterSystem" class="px-3 py-2 rounded-md bg-white/10 border border-white/20">
-          <option value="">All Systems</option>
-          <option v-for="s in systemOptions" :key="s" :value="s">{{ s }}</option>
+        <select
+          v-model="filterSystem"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20"
+        >
+          <option value="">
+            All Systems
+          </option>
+          <option
+            v-for="s in systemOptions"
+            :key="s"
+            :value="s"
+          >
+            {{ s }}
+          </option>
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <div class="text-sm text-white/70">{{ totalAnswered }} / {{ totalQuestions }} answered</div>
-        <div class="w-40 h-2 rounded-full bg-white/10 overflow-hidden">
-          <div class="h-full bg-emerald-400/80" :style="{ width: progressPct + '%' }" />
+        <div class="text-sm text-white/70">
+          {{ totalAnswered }} / {{ totalQuestions }} answered
         </div>
-        <button @click="expandAll" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Expand All</button>
-        <button @click="collapseAll" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Collapse All</button>
+        <div class="w-40 h-2 rounded-full bg-white/10 overflow-hidden">
+          <div
+            class="h-full bg-emerald-400/80"
+            :style="{ width: progressPct + '%' }"
+          />
+        </div>
+        <button
+          class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          @click="expandAll"
+        >
+          Expand All
+        </button>
+        <button
+          class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          @click="collapseAll"
+        >
+          Collapse All
+        </button>
       </div>
     </div>
 
     <!-- Empty state: no checklists yet -->
-    <div v-if="!local.length" class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center">
-      <div class="text-white/80 font-medium">No checklists yet</div>
-      <div class="text-white/60 text-sm mt-1">Create the first checklist for this equipment.</div>
+    <div
+      v-if="!local.length"
+      class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center"
+    >
+      <div class="text-white/80 font-medium">
+        No checklists yet
+      </div>
+      <div class="text-white/60 text-sm mt-1">
+        Create the first checklist for this equipment.
+      </div>
       <div class="mt-3">
-        <button @click="openNew" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+          @click="openNew"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          ><path
+            d="M12 5v14M5 12h14"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          /></svg>
           <span>New Checklist</span>
         </button>
       </div>
     </div>
 
     <!-- Empty filter result -->
-    <div v-else-if="filteredSections.length === 0" class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center">
-      <div class="text-white/80 font-medium">No matching checklists</div>
-      <div class="text-white/60 text-sm mt-1">Try clearing filters or adjusting your search.</div>
+    <div
+      v-else-if="filteredSections.length === 0"
+      class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center"
+    >
+      <div class="text-white/80 font-medium">
+        No matching checklists
+      </div>
+      <div class="text-white/60 text-sm mt-1">
+        Try clearing filters or adjusting your search.
+      </div>
       <div class="mt-3 flex items-center justify-center gap-2">
-        <button @click="clearFilters" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Clear filters</button>
-        <button @click="openNew" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">New Checklist</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+          @click="clearFilters"
+        >
+          Clear filters
+        </button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+          @click="openNew"
+        >
+          New Checklist
+        </button>
       </div>
     </div>
 
     <!-- Sections as accordions (drag to reorder when no filters/search) -->
-    <div v-for="(sec, si) in filteredSections" :key="sec.number || si" class="rounded-md border border-white/10 bg-white/5"
-         :class="isOpen(secKey(sec, si)) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
-         :draggable="sectionDragEnabled"
-         @dragstart="onSecDragStart(sec, $event)"
-         @dragover.prevent="onSecDragOver(sec, $event)"
-         @drop.prevent="onSecDrop(sec, $event)">
-      <div v-if="isOpen(secKey(sec, si))" class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/80 rounded-l-md"></div>
-      <button class="w-full text-left px-3 py-2 flex items-center justify-between rounded-t-md"
-              :class="isOpen(secKey(sec, si)) ? 'bg-emerald-500/20 hover:bg-emerald-500/25' : 'bg-white/5 hover:bg-white/10'"
-              @click="toggleSection(secKey(sec, si))">
+    <div
+      v-for="(sec, si) in filteredSections"
+      :key="sec.number || si"
+      class="rounded-md border border-white/10 bg-white/5"
+      :class="isOpen(secKey(sec, si)) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
+      :draggable="sectionDragEnabled"
+      @dragstart="onSecDragStart(sec, $event)"
+      @dragover.prevent="onSecDragOver(sec, $event)"
+      @drop.prevent="onSecDrop(sec, $event)"
+    >
+      <div
+        v-if="isOpen(secKey(sec, si))"
+        class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/80 rounded-l-md"
+      />
+      <button
+        class="w-full text-left px-3 py-2 flex items-center justify-between rounded-t-md"
+        :class="isOpen(secKey(sec, si)) ? 'bg-emerald-500/20 hover:bg-emerald-500/25' : 'bg-white/5 hover:bg-white/10'"
+        @click="toggleSection(secKey(sec, si))"
+      >
         <div class="flex items-center gap-2 min-w-0">
           <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/20">#{{ sec.number ?? (si+1) }}</span>
-          <span class="truncate" :class="isOpen(secKey(sec, si)) ? 'text-white font-medium' : ''">{{ sec.title || 'Section' }}</span>
+          <span
+            class="truncate"
+            :class="isOpen(secKey(sec, si)) ? 'text-white font-medium' : ''"
+          >{{ sec.title || 'Section' }}</span>
           <span class="text-xs text-white/60 truncate">· {{ (sec.type || 'type') }} · {{ (sec.system || 'system') }}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xs text-white/70">{{ counted(si).answered }} / {{ counted(si).total }}</span>
-          <span :class="sectionBadgeClass(si)" class="text-[10px] px-1.5 py-0.5 rounded border">{{ sectionStatusText(si) }}</span>
+          <span
+            :class="sectionBadgeClass(si)"
+            class="text-[10px] px-1.5 py-0.5 rounded border"
+          >{{ sectionStatusText(si) }}</span>
           <!-- Actions: reorder, edit, delete -->
-          <button v-if="!sectionDragEnabled" @click.stop="moveSection(si, -1)" :disabled="si===0" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40" title="Move up" aria-label="Move up">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5l-6 6h12l-6-6z" stroke-width="1.5"/></svg>
+          <button
+            v-if="!sectionDragEnabled"
+            :disabled="si===0"
+            class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40"
+            title="Move up"
+            aria-label="Move up"
+            @click.stop="moveSection(si, -1)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M12 5l-6 6h12l-6-6z"
+              stroke-width="1.5"
+            /></svg>
           </button>
-          <button v-if="!sectionDragEnabled" @click.stop="moveSection(si, 1)" :disabled="si===local.length-1" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40" title="Move down" aria-label="Move down">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 19l6-6H6l6 6z" stroke-width="1.5"/></svg>
+          <button
+            v-if="!sectionDragEnabled"
+            :disabled="si===local.length-1"
+            class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40"
+            title="Move down"
+            aria-label="Move down"
+            @click.stop="moveSection(si, 1)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M12 19l6-6H6l6 6z"
+              stroke-width="1.5"
+            /></svg>
           </button>
           <!-- Drag handle hint -->
-          <span v-if="sectionDragEnabled" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 opacity-80"><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"/></svg>
+          <span
+            v-if="sectionDragEnabled"
+            class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none drag-handle"
+            title="Drag to reorder"
+            aria-label="Drag to reorder"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="w-4 h-4 opacity-80"
+            ><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z" /></svg>
           </span>
-          <button @click.stop="startEdit(si)" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" title="Edit" aria-label="Edit">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 20h9" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.5l4 4-10 10H6.5v-4.5l10-10z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <button
+            class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            title="Edit"
+            aria-label="Edit"
+            @click.stop="startEdit(si)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M12 20h9"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M16.5 3.5l4 4-10 10H6.5v-4.5l10-10z"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
-          <button @click.stop="deleteSection(si)" class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Delete" aria-label="Delete">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <button
+            class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+            title="Delete"
+            aria-label="Delete"
+            @click.stop="deleteSection(si)"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M3 6h18"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M8 6l1-2h6l1 2"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><rect
+              x="6"
+              y="6"
+              width="12"
+              height="14"
+              rx="1.5"
+              stroke-width="1.5"
+            /><path
+              d="M10 10v6M14 10v6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /></svg>
           </button>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          ><path
+            d="M6 9l6 6 6-6"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /></svg>
         </div>
       </button>
-      <div v-show="isOpen(secKey(sec, si))" class="px-3 py-2 space-y-3">
+      <div
+        v-show="isOpen(secKey(sec, si))"
+        class="px-3 py-2 space-y-3"
+      >
         <!-- Section notes and actions -->
         <div class="flex items-center justify-between gap-3">
-          <input v-model="local[si].notes" type="text" placeholder="Section notes…" class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" @change="notifyChange" />
+          <input
+            v-model="local[si].notes"
+            type="text"
+            placeholder="Section notes…"
+            class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            @change="notifyChange"
+          >
           <div class="flex items-center gap-2">
-            <button @click="bulkSet(si, 'yes')" class="px-2 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 text-sm">All Yes</button>
-            <button @click="bulkSet(si, 'no')" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/60 text-red-100 hover:bg-red-500/35 text-sm">All No</button>
-            <button @click="bulkSet(si, 'na')" class="px-2 py-1 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm">All N/A</button>
+            <button
+              class="px-2 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 text-sm"
+              @click="bulkSet(si, 'yes')"
+            >
+              All Yes
+            </button>
+            <button
+              class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/60 text-red-100 hover:bg-red-500/35 text-sm"
+              @click="bulkSet(si, 'no')"
+            >
+              All No
+            </button>
+            <button
+              class="px-2 py-1 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm"
+              @click="bulkSet(si, 'na')"
+            >
+              All N/A
+            </button>
             <label class="inline-flex items-center gap-2 text-sm text-white/80">
-              <input type="checkbox" v-model="local[si].is_complete" @change="onSectionCompleteToggle(si)" />
+              <input
+                v-model="local[si].is_complete"
+                type="checkbox"
+                @change="onSectionCompleteToggle(si)"
+              >
               <span>Mark complete</span>
             </label>
           </div>
         </div>
         <!-- Questions list -->
         <ul class="space-y-2">
-          <li v-for="(q, qi) in local[si].questions" :key="q.number || qi" class="p-2 rounded-md bg-white/5 border border-white/10"
-              draggable="true"
-              @dragstart="onQDragStart(si, q, $event)"
-              @dragover.prevent="onQDragOver(si, qi, $event)"
-              @drop.prevent="onQDrop(si, qi, $event)">
+          <li
+            v-for="(q, qi) in local[si].questions"
+            :key="q.number || qi"
+            class="p-2 rounded-md bg-white/5 border border-white/10"
+            draggable="true"
+            @dragstart="onQDragStart(si, q, $event)"
+            @dragover.prevent="onQDragOver(si, qi, $event)"
+            @drop.prevent="onQDrop(si, qi, $event)"
+          >
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
               <div class="flex items-start gap-2 min-w-0">
                 <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/20 shrink-0">#{{ q.number ?? (qi+1) }}</span>
@@ -115,30 +359,104 @@
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <!-- Issues count badge as red triangle -->
-                <span v-if="issuesCount(si, qi) > 0"
-                      :title="issuesCount(si, qi) + ' issue' + (issuesCount(si, qi) > 1 ? 's' : '')"
-                      class="relative inline-flex items-center justify-center h-6 w-6 shrink-0 select-none">
-                  <svg viewBox="0 0 20 18" class="h-5 w-5 text-red-400/90">
-                    <path d="M10 0L20 18H0L10 0Z" fill="currentColor" />
+                <span
+                  v-if="issuesCount(si, qi) > 0"
+                  :title="issuesCount(si, qi) + ' issue' + (issuesCount(si, qi) > 1 ? 's' : '')"
+                  class="relative inline-flex items-center justify-center h-6 w-6 shrink-0 select-none"
+                >
+                  <svg
+                    viewBox="0 0 20 18"
+                    class="h-5 w-5 text-red-400/90"
+                  >
+                    <path
+                      d="M10 0L20 18H0L10 0Z"
+                      fill="currentColor"
+                    />
                   </svg>
                   <span class="absolute text-[11px] leading-none font-semibold text-white">{{ issuesCount(si, qi) }}</span>
                 </span>
-                <button @click="toggleQ(si, qi)" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" title="Show details" :aria-expanded="isQOpen(si, qi) ? 'true' : 'false'" aria-label="Toggle details">
-                  <svg v-if="!isQOpen(si, qi)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M18 15l-6-6-6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button
+                  class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                  title="Show details"
+                  :aria-expanded="isQOpen(si, qi) ? 'true' : 'false'"
+                  aria-label="Toggle details"
+                  @click="toggleQ(si, qi)"
+                >
+                  <svg
+                    v-if="!isQOpen(si, qi)"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  ><path
+                    d="M18 15l-6-6-6 6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                 </button>
-                <span class="hidden md:inline-flex h-7 w-7 mr-1 items-center justify-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none" title="Drag to reorder" aria-label="Drag question">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 opacity-80"><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"/></svg>
+                <span
+                  class="hidden md:inline-flex h-7 w-7 mr-1 items-center justify-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none"
+                  title="Drag to reorder"
+                  aria-label="Drag question"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    class="w-4 h-4 opacity-80"
+                  ><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z" /></svg>
                 </span>
-                <button @click="setAnswer(si, qi, 'yes')" :class="answerBtnClass(q.answer === 'yes','emerald')" title="Yes">Y</button>
-                <button @click="setAnswer(si, qi, 'no')" :class="answerBtnClass(q.answer === 'no','red')" title="No">N</button>
-                <button @click="setAnswer(si, qi, 'na')" :class="answerBtnClass(q.answer === 'na','indigo')" title="N/A">N/A</button>
+                <button
+                  :class="answerBtnClass(q.answer === 'yes','emerald')"
+                  title="Yes"
+                  @click="setAnswer(si, qi, 'yes')"
+                >
+                  Y
+                </button>
+                <button
+                  :class="answerBtnClass(q.answer === 'no','red')"
+                  title="No"
+                  @click="setAnswer(si, qi, 'no')"
+                >
+                  N
+                </button>
+                <button
+                  :class="answerBtnClass(q.answer === 'na','indigo')"
+                  title="N/A"
+                  @click="setAnswer(si, qi, 'na')"
+                >
+                  N/A
+                </button>
               </div>
             </div>
-            <div v-if="isQOpen(si, qi)" class="mt-2 space-y-2">
+            <div
+              v-if="isQOpen(si, qi)"
+              class="mt-2 space-y-2"
+            >
               <!-- Row 1: Notes, Answered by, Answered date -->
               <div class="flex flex-col md:flex-row md:items-center gap-2">
-                <textarea v-model="local[si].questions[qi].notes" @change="notifyChange" rows="1" placeholder="Notes…" class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 resize-y"></textarea>
+                <textarea
+                  v-model="local[si].questions[qi].notes"
+                  rows="1"
+                  placeholder="Notes…"
+                  class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 resize-y"
+                  @change="notifyChange"
+                />
                 <div class="text-sm text-white/80 flex items-center gap-2 shrink-0">
                   <span class="px-2 py-1 rounded-md bg-white/10 border border-white/20">Answered by:</span>
                   <span class="truncate max-w-[12rem]">{{ local[si].questions[qi].answered_by || '—' }}</span>
@@ -149,7 +467,13 @@
               </div>
               <!-- Row 2: CxA response, CxA responded by, CxA response date -->
               <div class="flex flex-col md:flex-row md:items-center gap-2">
-                <textarea v-model="local[si].questions[qi].cx_answer" @change="onCxAnswerChange(si, qi)" rows="1" placeholder="CxA response…" class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 resize-y"></textarea>
+                <textarea
+                  v-model="local[si].questions[qi].cx_answer"
+                  rows="1"
+                  placeholder="CxA response…"
+                  class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 resize-y"
+                  @change="onCxAnswerChange(si, qi)"
+                />
                 <div class="text-sm text-white/80 flex items-center gap-2 shrink-0">
                   <span class="px-2 py-1 rounded-md bg-white/10 border border-white/20">CxA responded by:</span>
                   <span class="truncate max-w-[12rem]">{{ local[si].questions[qi].cx_answered_by || '—' }}</span>
@@ -160,17 +484,39 @@
               </div>
               <!-- Actions: Attach issue -->
               <div class="pt-1">
-                <button @click="openAttachIssue(si, qi)" class="px-2 py-1 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-100 hover:bg-amber-500/30 text-sm inline-flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <button
+                  class="px-2 py-1 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-100 hover:bg-amber-500/30 text-sm inline-flex items-center gap-2"
+                  @click="openAttachIssue(si, qi)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  ><path
+                    d="M12 5v14M5 12h14"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  /></svg>
                   <span>Attach issue</span>
                 </button>
               </div>
               <!-- Attached issues for this question -->
               <div v-if="(local[si].issues || []).some((it:any) => it && it.questionIndex === qi)">
-                <div class="text-sm text-white/70">Attached issues:</div>
+                <div class="text-sm text-white/70">
+                  Attached issues:
+                </div>
                 <ul class="mt-1 flex flex-wrap gap-2">
-                  <li v-for="(it, k) in (local[si].issues || []).filter((it:any) => it && it.questionIndex === qi)" :key="k" class="text-xs px-2 py-1 rounded bg-white/10 border border-white/20">
-                    <router-link :to="{ name: 'issue-edit', params: { id: it.id } }" class="hover:underline">
+                  <li
+                    v-for="(it, k) in (local[si].issues || []).filter((it:any) => it && it.questionIndex === qi)"
+                    :key="k"
+                    class="text-xs px-2 py-1 rounded bg-white/10 border border-white/20"
+                  >
+                    <router-link
+                      :to="{ name: 'issue-edit', params: { id: it.id } }"
+                      class="hover:underline"
+                    >
                       #{{ it.number || '—' }} {{ it.title || 'Issue' }}
                     </router-link>
                   </li>
@@ -186,59 +532,152 @@
   <Modal v-model="newOpen">
     <template #header>
       <div class="flex items-center justify-between">
-        <div class="font-medium">New Checklist</div>
-        <div class="text-white/70 text-sm">Fill in details and add questions</div>
+        <div class="font-medium">
+          New Checklist
+        </div>
+        <div class="text-white/70 text-sm">
+          Fill in details and add questions
+        </div>
       </div>
     </template>
     <div class="space-y-3">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm text-white/70">Number</label>
-          <input :value="nextNumber" type="text" disabled class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/80" />
+          <input
+            :value="nextNumber"
+            type="text"
+            disabled
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/80"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Title</label>
-          <input v-model="draft.title" type="text" placeholder="Section title" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="draft.title"
+            type="text"
+            placeholder="Section title"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Type</label>
-          <input v-model="draft.type" type="text" placeholder="pre-functional" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="draft.type"
+            type="text"
+            placeholder="pre-functional"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">System</label>
-          <input v-model="draft.system" type="text" placeholder="mechanical" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="draft.system"
+            type="text"
+            placeholder="mechanical"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Status</label>
-          <select v-model="draft.status" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
-            <option value="not started">not started</option>
-            <option value="in progress">in progress</option>
-            <option value="complete">complete</option>
+          <select
+            v-model="draft.status"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          >
+            <option value="not started">
+              not started
+            </option>
+            <option value="in progress">
+              in progress
+            </option>
+            <option value="complete">
+              complete
+            </option>
           </select>
         </div>
         <div class="flex items-center gap-2 mt-6">
           <label class="inline-flex items-center gap-2 text-sm text-white/80">
-            <input type="checkbox" v-model="draft.is_complete" />
+            <input
+              v-model="draft.is_complete"
+              type="checkbox"
+            >
             <span>Mark complete</span>
           </label>
         </div>
       </div>
       <div>
         <label class="block text-sm text-white/70">Notes</label>
-        <input v-model="draft.notes" type="text" placeholder="Optional notes" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+        <input
+          v-model="draft.notes"
+          type="text"
+          placeholder="Optional notes"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+        >
       </div>
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="text-sm text-white/70">Questions</label>
-          <button @click="addDraftQuestion" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Question</button>
+          <button
+            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+            @click="addDraftQuestion"
+          >
+            Add Question
+          </button>
         </div>
-        <div v-if="!draft.questions.length" class="text-white/60 text-sm">No questions added yet.</div>
-        <ul v-else class="space-y-2">
-          <li v-for="(q, i) in draft.questions" :key="i" class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2">
+        <div
+          v-if="!draft.questions.length"
+          class="text-white/60 text-sm"
+        >
+          No questions added yet.
+        </div>
+        <ul
+          v-else
+          class="space-y-2"
+        >
+          <li
+            v-for="(q, i) in draft.questions"
+            :key="i"
+            class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2"
+          >
             <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/20">#{{ i+1 }}</span>
-            <input v-model="q.question_text" type="text" placeholder="Question text" class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
-            <button @click="removeDraftQuestion(i)" class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Remove question" aria-label="Remove question">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input
+              v-model="q.question_text"
+              type="text"
+              placeholder="Question text"
+              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            >
+            <button
+              class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+              title="Remove question"
+              aria-label="Remove question"
+              @click="removeDraftQuestion(i)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M3 6h18"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M8 6l1-2h6l1 2"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><rect
+                x="6"
+                y="6"
+                width="12"
+                height="14"
+                rx="1.5"
+                stroke-width="1.5"
+              /><path
+                d="M10 10v6M14 10v6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /></svg>
             </button>
           </li>
         </ul>
@@ -246,8 +685,20 @@
     </div>
     <template #footer>
       <div class="flex items-center justify-end gap-2">
-        <button @click="cancelNew" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
-        <button @click="saveNew" :disabled="!canSave" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35" :class="!canSave ? 'opacity-60 cursor-not-allowed' : ''">Create</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+          @click="cancelNew"
+        >
+          Cancel
+        </button>
+        <button
+          :disabled="!canSave"
+          class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35"
+          :class="!canSave ? 'opacity-60 cursor-not-allowed' : ''"
+          @click="saveNew"
+        >
+          Create
+        </button>
       </div>
     </template>
   </Modal>
@@ -256,42 +707,84 @@
   <Modal v-model="issueOpen">
     <template #header>
       <div class="flex items-center justify-between">
-        <div class="font-medium">Attach Issue</div>
-        <div class="text-white/70 text-sm">Create an issue linked to this checklist</div>
+        <div class="font-medium">
+          Attach Issue
+        </div>
+        <div class="text-white/70 text-sm">
+          Create an issue linked to this checklist
+        </div>
       </div>
     </template>
     <div class="space-y-3">
       <div>
         <label class="block text-sm text-white/70">Type</label>
-        <input v-model="issueDraft.type" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+        <input
+          v-model="issueDraft.type"
+          type="text"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+        >
       </div>
       <div>
         <label class="block text-sm text-white/70">Title</label>
-        <input v-model="issueDraft.title" type="text" placeholder="Short summary" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+        <input
+          v-model="issueDraft.title"
+          type="text"
+          placeholder="Short summary"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+        >
       </div>
       <div>
         <label class="block text-sm text-white/70">Description</label>
-        <textarea v-model="issueDraft.description" rows="5" placeholder="Describe the issue..." class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"></textarea>
+        <textarea
+          v-model="issueDraft.description"
+          rows="5"
+          placeholder="Describe the issue..."
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+        />
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm text-white/70">Priority</label>
-          <select v-model="issueDraft.priority" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
+          <select
+            v-model="issueDraft.priority"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          >
+            <option value="Low">
+              Low
+            </option>
+            <option value="Medium">
+              Medium
+            </option>
+            <option value="High">
+              High
+            </option>
           </select>
         </div>
         <div>
           <label class="block text-sm text-white/70">Assign to</label>
-          <input v-model="issueDraft.assignedTo" type="text" placeholder="Name or email" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+          <input
+            v-model="issueDraft.assignedTo"
+            type="text"
+            placeholder="Name or email"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          >
         </div>
       </div>
     </div>
     <template #footer>
       <div class="flex items-center justify-end gap-2">
-        <button @click="cancelAttachIssue" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
-        <button @click="saveAttachIssue" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35">Create</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+          @click="cancelAttachIssue"
+        >
+          Cancel
+        </button>
+        <button
+          class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35"
+          @click="saveAttachIssue"
+        >
+          Create
+        </button>
       </div>
     </template>
   </Modal>
@@ -299,59 +792,155 @@
   <Modal v-model="editOpen">
     <template #header>
       <div class="flex items-center justify-between">
-        <div class="font-medium">Edit Checklist</div>
-        <div class="text-white/70 text-sm">Update details and questions</div>
+        <div class="font-medium">
+          Edit Checklist
+        </div>
+        <div class="text-white/70 text-sm">
+          Update details and questions
+        </div>
       </div>
     </template>
     <div class="space-y-3">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm text-white/70">Number</label>
-          <input v-model="editDraft.number" type="number" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="editDraft.number"
+            type="number"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Title</label>
-          <input v-model="editDraft.title" type="text" placeholder="Section title" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="editDraft.title"
+            type="text"
+            placeholder="Section title"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Type</label>
-          <input v-model="editDraft.type" type="text" placeholder="pre-functional" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="editDraft.type"
+            type="text"
+            placeholder="pre-functional"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">System</label>
-          <input v-model="editDraft.system" type="text" placeholder="mechanical" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+          <input
+            v-model="editDraft.system"
+            type="text"
+            placeholder="mechanical"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Status</label>
-          <select v-model="editDraft.status" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
-            <option value="not started">not started</option>
-            <option value="in progress">in progress</option>
-            <option value="complete">complete</option>
+          <select
+            v-model="editDraft.status"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          >
+            <option value="not started">
+              not started
+            </option>
+            <option value="in progress">
+              in progress
+            </option>
+            <option value="complete">
+              complete
+            </option>
           </select>
         </div>
         <div class="flex items-center gap-2 mt-6">
           <label class="inline-flex items-center gap-2 text-sm text-white/80">
-            <input type="checkbox" v-model="editDraft.is_complete" />
+            <input
+              v-model="editDraft.is_complete"
+              type="checkbox"
+            >
             <span>Mark complete</span>
           </label>
         </div>
       </div>
       <div>
         <label class="block text-sm text-white/70">Notes</label>
-        <input v-model="editDraft.notes" type="text" placeholder="Optional notes" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+        <input
+          v-model="editDraft.notes"
+          type="text"
+          placeholder="Optional notes"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+        >
       </div>
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="text-sm text-white/70">Questions</label>
-          <button @click="addEditQuestion" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Question</button>
+          <button
+            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+            @click="addEditQuestion"
+          >
+            Add Question
+          </button>
         </div>
-        <div v-if="!editDraft.questions.length" class="text-white/60 text-sm">No questions yet.</div>
-        <ul v-else class="space-y-2">
-          <li v-for="(q, i) in editDraft.questions" :key="i" class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2">
-            <input v-model="q.number" type="number" class="w-20 px-2 py-1 rounded-md bg-white/10 border border-white/20" />
-            <input v-model="q.question_text" type="text" placeholder="Question text" class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
-            <button @click="removeEditQuestion(i)" class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Remove question" aria-label="Remove question">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <div
+          v-if="!editDraft.questions.length"
+          class="text-white/60 text-sm"
+        >
+          No questions yet.
+        </div>
+        <ul
+          v-else
+          class="space-y-2"
+        >
+          <li
+            v-for="(q, i) in editDraft.questions"
+            :key="i"
+            class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2"
+          >
+            <input
+              v-model="q.number"
+              type="number"
+              class="w-20 px-2 py-1 rounded-md bg-white/10 border border-white/20"
+            >
+            <input
+              v-model="q.question_text"
+              type="text"
+              placeholder="Question text"
+              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            >
+            <button
+              class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+              title="Remove question"
+              aria-label="Remove question"
+              @click="removeEditQuestion(i)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M3 6h18"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M8 6l1-2h6l1 2"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><rect
+                x="6"
+                y="6"
+                width="12"
+                height="14"
+                rx="1.5"
+                stroke-width="1.5"
+              /><path
+                d="M10 10v6M14 10v6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /></svg>
             </button>
           </li>
         </ul>
@@ -359,8 +948,20 @@
     </div>
     <template #footer>
       <div class="flex items-center justify-end gap-2">
-        <button @click="cancelEdit" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
-        <button @click="saveEditSection" :disabled="!canSaveEdit" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35" :class="!canSaveEdit ? 'opacity-60 cursor-not-allowed' : ''">Save</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+          @click="cancelEdit"
+        >
+          Cancel
+        </button>
+        <button
+          :disabled="!canSaveEdit"
+          class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35"
+          :class="!canSaveEdit ? 'opacity-60 cursor-not-allowed' : ''"
+          @click="saveEditSection"
+        >
+          Save
+        </button>
       </div>
     </template>
   </Modal>
@@ -583,7 +1184,7 @@ function logEvent(si: number, type: string, data: LogPayload = {}) {
       }
       ps.appendProjectLog(String(pid), payload).catch(() => {})
     }
-  } catch {}
+  } catch (e) { /* ignore normalization errors */ }
 }
 
 // Expand/collapse state
@@ -627,7 +1228,7 @@ function onSecDragStart(sec: ChecklistSection, e: DragEvent) {
   if (!sectionDragEnabled.value) return
   draggingSection.value = sec
   if (e && e.dataTransfer) {
-    try { e.dataTransfer.setData('text/plain', 'section') } catch {}
+  try { e.dataTransfer.setData('text/plain', 'section') } catch (e) { /* ignore dragdata set errors */ }
     e.dataTransfer.effectAllowed = 'move'
   }
 }
@@ -657,7 +1258,7 @@ const draggingQuestion = ref<{ secIdx: number; q: any } | null>(null)
 function onQDragStart(si: number, q: any, e: DragEvent) {
   draggingQuestion.value = { secIdx: si, q }
   if (e && e.dataTransfer) {
-    try { e.dataTransfer.setData('text/plain', 'question') } catch {}
+  try { e.dataTransfer.setData('text/plain', 'question') } catch (e) { /* ignore dragdata set errors */ }
     e.dataTransfer.effectAllowed = 'move'
   }
 }

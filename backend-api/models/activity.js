@@ -28,6 +28,24 @@ const activitySchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+// keep updatedAt current and normalize reviewer email for consistent lookups
+activitySchema.pre('save', function (next) {
+  try {
+    if (this.reviewer && this.reviewer.email) {
+      this.reviewer.email = String(this.reviewer.email).trim().toLowerCase()
+    }
+    this.updatedAt = new Date()
+  } catch (e) {
+    // best-effort - don't block save due to normalization errors
+  }
+  next()
+})
+
+// Useful indexes to speed up common queries
+activitySchema.index({ projectId: 1 })
+activitySchema.index({ startDate: 1 })
+activitySchema.index({ 'comments.userId': 1 })
+
 const Activity = mongoose.model('Activity', activitySchema);
 
 module.exports = Activity;

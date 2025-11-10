@@ -1,0 +1,7 @@
+node_modules
+dist
+backend-api/node_modules
+/.vite
+/.nuxt
+coverage
+*.min.js

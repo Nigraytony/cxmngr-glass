@@ -7,17 +7,142 @@
     <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
       <!-- Tabs header -->
       <div class="mb-4 md:mb-6">
-        <div role="tablist" class="relative flex items-center w-full">
-          <div class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out" :style="{ left: tabLeft + '%', width: tabWidth + '%' }" />
-          <button v-for="t in tabs" :key="t" @click="currentTab = t" :aria-selected="currentTab === t" role="tab" class="flex-1 text-center px-3 py-2 text-sm flex items-center justify-center gap-2" :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'">
-            <svg v-if="t === 'Info'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke-width="1.5"/><path d="M12 11v6" stroke-width="1.5" stroke-linecap="round"/><path d="M12 7h.01" stroke-width="2" stroke-linecap="round"/></svg>
-            <svg v-else-if="t === 'Photos'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2" ry="2" stroke-width="1.5"/><path d="M8 11l3 3 2-2 4 4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="9.5" r="1.5" stroke-width="1.5"/></svg>
-            <svg v-else-if="t === 'Attachments'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg v-else-if="t === 'Checklists'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke-width="1.5"/></svg>
-            <svg v-else-if="t === 'FPT'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 6v6l4 2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke-width="1.5"/></svg>
-            <svg v-else-if="t === 'Issues'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l9 16H3l9-16z" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 9v4" stroke-width="1.5" stroke-linecap="round"/><path d="M12 17h.01" stroke-width="2" stroke-linecap="round"/></svg>
+        <div
+          role="tablist"
+          class="relative flex items-center w-full"
+        >
+          <div
+            class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out"
+            :style="{ left: tabLeft + '%', width: tabWidth + '%' }"
+          />
+          <button
+            v-for="t in tabs"
+            :key="t"
+            :aria-selected="currentTab === t"
+            role="tab"
+            class="flex-1 text-center px-3 py-2 text-sm flex items-center justify-center gap-2"
+            :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'"
+            @click="currentTab = t"
+          >
+            <svg
+              v-if="t === 'Info'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke-width="1.5"
+            /><path
+              d="M12 11v6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M12 7h.01"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'Photos'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><rect
+              x="3"
+              y="5"
+              width="18"
+              height="14"
+              rx="2"
+              ry="2"
+              stroke-width="1.5"
+            /><path
+              d="M8 11l3 3 2-2 4 4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /><circle
+              cx="8.5"
+              cy="9.5"
+              r="1.5"
+              stroke-width="1.5"
+            /></svg>
+            <svg
+              v-else-if="t === 'Attachments'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'Checklists'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M9 11l3 3L22 4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /><path
+              d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+              stroke-width="1.5"
+            /></svg>
+            <svg
+              v-else-if="t === 'FPT'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M12 6v6l4 2"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /><circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke-width="1.5"
+            /></svg>
+            <svg
+              v-else-if="t === 'Issues'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M12 3l9 16H3l9-16z"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            /><path
+              d="M12 9v4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M12 17h.01"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg>
             <span>{{ t }}</span>
-            <span v-if="countForTab(t) > 0" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80">{{ countForTab(t) }}</span>
+            <span
+              v-if="countForTab(t) > 0"
+              class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80"
+            >{{ countForTab(t) }}</span>
           </button>
         </div>
       </div>
@@ -25,83 +150,280 @@
       <!-- Tab content -->
       <div>
         <!-- Info Tab -->
-      <div v-if="currentTab === 'Info'" class="grid md:grid-cols-2 gap-x-4 gap-y-2 items-start">
+        <div
+          v-if="currentTab === 'Info'"
+          class="grid md:grid-cols-2 gap-x-4 gap-y-2 items-start"
+        >
           <div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm text-white/70">Tag</label>
-                <input v-model="form.tag" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+                <input
+                  v-model="form.tag"
+                  type="text"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                >
               </div>
               <div>
                 <label class="block text-sm text-white/70">Type</label>
                 <div class="relative">
-                  <select v-model="form.type" class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none">
-                    <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+                  <select
+                    v-model="form.type"
+                    class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                  >
+                    <option
+                      v-for="opt in typeOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                    >
+                      {{ opt.text }}
+                    </option>
                   </select>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                 </div>
               </div>
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Title</label>
-              <input v-model="form.title" type="text" required class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+              <input
+                v-model="form.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              >
             </div>
             <div class="mt-2 grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm text-white/70">System</label>
                 <div class="relative">
-                  <select v-model="form.system" class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none">
-                    <option v-for="opt in systemSelectOptions" :key="opt.value" :value="opt.value">{{ opt.text }}</option>
+                  <select
+                    v-model="form.system"
+                    class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                  >
+                    <option
+                      v-for="opt in systemSelectOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                    >
+                      {{ opt.text }}
+                    </option>
                   </select>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                 </div>
               </div>
               <div>
                 <label class="block text-sm text-white/70">Status</label>
                 <div class="relative">
-                  <select v-model="form.status" class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none">
-                    <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                  <select
+                    v-model="form.status"
+                    class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                  >
+                    <option
+                      v-for="s in statuses"
+                      :key="s"
+                      :value="s"
+                    >
+                      {{ s }}
+                    </option>
                   </select>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                 </div>
               </div>
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Space</label>
               <div class="relative">
-                <select v-model="form.spaceId" class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none">
-                  <option :value="''">None</option>
-                  <option v-for="p in parentOptions" :key="p.id" :value="p.id">{{ p.title }} ({{ p.type }})</option>
+                <select
+                  v-model="form.spaceId"
+                  class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                >
+                  <option :value="''">
+                    None
+                  </option>
+                  <option
+                    v-for="p in parentOptions"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.title }} ({{ p.type }})
+                  </option>
                 </select>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
               </div>
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Description</label>
-              <textarea v-model="form.description" rows="4" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"></textarea>
+              <textarea
+                v-model="form.description"
+                rows="4"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              />
             </div>
             <div class="mt-4 flex items-center gap-2">
-              <button @click="save" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <button
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
+                @click="save"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M5 13l4 4L19 7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
                 <span>Save</span>
               </button>
-              <button @click="onDelete" class="px-3 py-2 rounded-md bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30 inline-flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg><span>Delete</span></button>
+              <button
+                class="px-3 py-2 rounded-md bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30 inline-flex items-center gap-2"
+                @click="onDelete"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M3 6h18"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><path
+                  d="M8 6l1-2h6l1 2"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><rect
+                  x="6"
+                  y="6"
+                  width="12"
+                  height="14"
+                  rx="1.5"
+                  stroke-width="1.5"
+                /><path
+                  d="M10 10v6M14 10v6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /></svg><span>Delete</span>
+              </button>
             </div>
           </div>
           <div>
-            <div class="text-white/70 text-sm mb-2">Attributes</div>
+            <div class="text-white/70 text-sm mb-2">
+              Attributes
+            </div>
             <!-- Existing attributes list -->
-            <div v-if="!currentAttributes.length" class="text-white/60 mb-2">No attributes yet.</div>
-            <ul v-else class="space-y-1.5 mb-3">
-              <li v-for="(a, i) in currentAttributes" :key="i" class="p-1 rounded bg-white/5 border border-white/10 flex items-center gap-1.5">
+            <div
+              v-if="!currentAttributes.length"
+              class="text-white/60 mb-2"
+            >
+              No attributes yet.
+            </div>
+            <ul
+              v-else
+              class="space-y-1.5 mb-3"
+            >
+              <li
+                v-for="(a, i) in currentAttributes"
+                :key="i"
+                class="p-1 rounded bg-white/5 border border-white/10 flex items-center gap-1.5"
+              >
                 <template v-if="editingIndex === i">
-                  <input v-model="editKey" @keyup.enter="saveEdit(i)" placeholder="Key" class="px-2 py-1 rounded bg-white/10 border border-white/20 flex-1 placeholder-gray-400 min-w-0" />
-                  <input v-model="editValue" @keyup.enter="saveEdit(i)" placeholder="Value" class="px-2 py-1 rounded bg-white/10 border border-white/20 flex-1 placeholder-gray-400 min-w-0" />
-                  <button @click="saveEdit(i)" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" title="Save" aria-label="Save">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <input
+                    v-model="editKey"
+                    placeholder="Key"
+                    class="px-2 py-1 rounded bg-white/10 border border-white/20 flex-1 placeholder-gray-400 min-w-0"
+                    @keyup.enter="saveEdit(i)"
+                  >
+                  <input
+                    v-model="editValue"
+                    placeholder="Value"
+                    class="px-2 py-1 rounded bg-white/10 border border-white/20 flex-1 placeholder-gray-400 min-w-0"
+                    @keyup.enter="saveEdit(i)"
+                  >
+                  <button
+                    class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                    title="Save"
+                    aria-label="Save"
+                    @click="saveEdit(i)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    ><path
+                      d="M5 13l4 4L19 7"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    /></svg>
                   </button>
-                  <button @click="cancelEdit" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" title="Cancel" aria-label="Cancel">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M6 6l12 12M18 6L6 18" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <button
+                    class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                    title="Cancel"
+                    aria-label="Cancel"
+                    @click="cancelEdit"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    ><path
+                      d="M6 6l12 12M18 6L6 18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /></svg>
                   </button>
                 </template>
                 <template v-else>
@@ -110,11 +432,61 @@
                     <span class="text-white/50">: </span>
                     <span class="text-white/90">{{ a.value }}</span>
                   </div>
-                  <button @click="startEdit(i)" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" title="Edit" aria-label="Edit">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 20h9" stroke-width="1.5" stroke-linecap="round"/><path d="M16.5 3.5l4 4-10 10H6.5v-4.5l10-10z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <button
+                    class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                    title="Edit"
+                    aria-label="Edit"
+                    @click="startEdit(i)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    ><path
+                      d="M12 20h9"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><path
+                      d="M16.5 3.5l4 4-10 10H6.5v-4.5l10-10z"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    /></svg>
                   </button>
-                  <button @click="removeAttr(i)" class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Delete" aria-label="Delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <button
+                    class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+                    title="Delete"
+                    aria-label="Delete"
+                    @click="removeAttr(i)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    ><path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    /><path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /></svg>
                   </button>
                 </template>
               </li>
@@ -122,10 +494,35 @@
 
             <!-- Add new attribute row -->
             <div class="flex items-center gap-2">
-              <input v-model="newAttrKey" @keyup.enter="addAttr" placeholder="Key" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 flex-1 min-w-0" />
-              <input v-model="newAttrValue" @keyup.enter="addAttr" placeholder="Value" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 flex-1 min-w-0" />
-              <button @click="addAttr" class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 shrink-0" title="Add" aria-label="Add">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-5 h-5"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <input
+                v-model="newAttrKey"
+                placeholder="Key"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 flex-1 min-w-0"
+                @keyup.enter="addAttr"
+              >
+              <input
+                v-model="newAttrValue"
+                placeholder="Value"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 flex-1 min-w-0"
+                @keyup.enter="addAttr"
+              >
+              <button
+                class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 shrink-0"
+                title="Add"
+                aria-label="Add"
+                @click="addAttr"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                ><path
+                  d="M12 5v14M5 12h14"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                /></svg>
               </button>
             </div>
           </div>
@@ -149,19 +546,52 @@
                 class="relative group w-20 h-20 rounded-md overflow-hidden border border-white/20"
               >
                 <div class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <button class="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 focus:outline-none focus:ring-2 focus:ring-white/40"
-                        title="Delete photo"
-                        aria-label="Delete photo"
-                        @click.stop="confirmRemove(idx)">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/>
-                    <rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/>
-                    <path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/>
+                <button
+                  class="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  title="Delete photo"
+                  aria-label="Delete photo"
+                  @click.stop="confirmRemove(idx)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
                   </svg>
                 </button>
-                <button class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40" @click="openViewer(idx)">
-                  <img :src="p.data" class="w-full h-full object-cover" />
+                <button
+                  class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40"
+                  @click="openViewer(idx)"
+                >
+                  <img
+                    :src="p.data"
+                    class="w-full h-full object-cover"
+                  >
                   <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                 </button>
               </div>
@@ -170,7 +600,10 @@
         </div>
 
         <!-- Attachments Tab -->
-        <div v-else-if="currentTab === 'Attachments'" class="space-y-4">
+        <div
+          v-else-if="currentTab === 'Attachments'"
+          class="space-y-4"
+        >
           <div>
             <label class="block text-sm text-white/70">Upload files</label>
             <DocumentUploader
@@ -180,82 +613,292 @@
               :multiple="true"
               :concurrency="3"
             />
-            <div class="mt-2 text-xs text-white/60">Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, images, and ZIP. Max ~10MB per file.</div>
+            <div class="mt-2 text-xs text-white/60">
+              Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, images, and ZIP. Max ~10MB per file.
+            </div>
           </div>
           <!-- Manual link add (optional) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <div>
               <label class="block text-sm text-white/70">Filename</label>
-              <input v-model="newAttachment.filename" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" placeholder="specs.pdf" />
+              <input
+                v-model="newAttachment.filename"
+                type="text"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                placeholder="specs.pdf"
+              >
             </div>
             <div>
               <label class="block text-sm text-white/70">URL</label>
-              <input v-model="newAttachment.url" type="url" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" placeholder="https://..." />
+              <input
+                v-model="newAttachment.url"
+                type="url"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                placeholder="https://..."
+              >
             </div>
             <div class="flex items-center gap-2">
-              <button @click="addAttachment" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Add</button>
+              <button
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+                @click="addAttachment"
+              >
+                Add
+              </button>
             </div>
           </div>
           <div>
             <label class="block text-sm text-white/70 mb-1">Attachments</label>
-            <div v-if="!((form as any).attachments && (form as any).attachments.length)" class="text-white/60">No attachments added.</div>
-            <ul v-else class="space-y-2">
-              <li v-for="(a, i) in (form as any).attachments" :key="i" class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+            <div
+              v-if="!((form as any).attachments && (form as any).attachments.length)"
+              class="text-white/60"
+            >
+              No attachments added.
+            </div>
+            <ul
+              v-else
+              class="space-y-2"
+            >
+              <li
+                v-for="(a, i) in (form as any).attachments"
+                :key="i"
+                class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3"
+              >
                 <div class="flex items-start gap-3 min-w-0">
                   <!-- Type icon (click to open viewer) -->
-                  <button class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30" @click="openAttachment(i)" title="Preview">
+                  <button
+                    class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    title="Preview"
+                    @click="openAttachment(i)"
+                  >
                     <!-- PDF -->
-                    <svg v-if="attachmentKind(a) === 'pdf'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-red-300">
-                      <path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke-width="1.5"/>
-                      <path d="M13 2v6h6" stroke-width="1.5"/>
+                    <svg
+                      v-if="attachmentKind(a) === 'pdf'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-red-300"
+                    >
+                      <path
+                        d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M13 2v6h6"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Sheet -->
-                    <svg v-else-if="attachmentKind(a) === 'sheet'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-green-300">
-                      <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="1.5"/>
-                      <path d="M3 9h18M8 4v16M14 4v16" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'sheet'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-green-300"
+                    >
+                      <rect
+                        x="3"
+                        y="4"
+                        width="18"
+                        height="16"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M3 9h18M8 4v16M14 4v16"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Word/Text -->
-                    <svg v-else-if="attachmentKind(a) === 'word' || attachmentKind(a) === 'txt'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4" :class="attachmentKind(a) === 'word' ? 'text-blue-300' : 'text-gray-300'">
-                      <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5"/>
-                      <path d="M7 9h10M7 12h10M7 15h7" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'word' || attachmentKind(a) === 'txt'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                      :class="attachmentKind(a) === 'word' ? 'text-blue-300' : 'text-gray-300'"
+                    >
+                      <rect
+                        x="4"
+                        y="4"
+                        width="16"
+                        height="16"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M7 9h10M7 12h10M7 15h7"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- PowerPoint -->
-                    <svg v-else-if="attachmentKind(a) === 'ppt'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-orange-300">
-                      <circle cx="12" cy="12" r="9" stroke-width="1.5"/>
-                      <path d="M12 12h6a6 6 0 0 0-6-6v6z" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'ppt'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-orange-300"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M12 12h6a6 6 0 0 0-6-6v6z"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Image -->
-                    <svg v-else-if="attachmentKind(a) === 'image'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-purple-300">
-                      <rect x="3" y="5" width="18" height="14" rx="2" ry="2" stroke-width="1.5"/>
-                      <path d="M8 13l3-3 5 6" stroke-width="1.5"/>
-                      <circle cx="8" cy="9" r="1.5" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'image'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-purple-300"
+                    >
+                      <rect
+                        x="3"
+                        y="5"
+                        width="18"
+                        height="14"
+                        rx="2"
+                        ry="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M8 13l3-3 5 6"
+                        stroke-width="1.5"
+                      />
+                      <circle
+                        cx="8"
+                        cy="9"
+                        r="1.5"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Zip -->
-                    <svg v-else-if="attachmentKind(a) === 'zip'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-yellow-300">
-                      <rect x="5" y="3" width="14" height="18" rx="2" stroke-width="1.5"/>
-                      <path d="M12 4v3m0 2v3m0 2v3" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'zip'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-yellow-300"
+                    >
+                      <rect
+                        x="5"
+                        y="3"
+                        width="14"
+                        height="18"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M12 4v3m0 2v3m0 2v3"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Link -->
-                    <svg v-else-if="attachmentKind(a) === 'link'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-indigo-300">
-                      <path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1" stroke-width="1.5"/>
-                      <path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'link'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-indigo-300"
+                    >
+                      <path
+                        d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Generic file -->
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-white/70">
-                      <rect x="4" y="3" width="16" height="18" rx="2" stroke-width="1.5"/>
-                      <path d="M8 7h8M8 11h8M8 15h6" stroke-width="1.5"/>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-white/70"
+                    >
+                      <rect
+                        x="4"
+                        y="3"
+                        width="16"
+                        height="18"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M8 7h8M8 11h8M8 15h6"
+                        stroke-width="1.5"
+                      />
                     </svg>
                   </button>
                   <div class="min-w-0">
-                    <div class="truncate text-sm">{{ a.filename || fileNameFromUrl(a.url) }}</div>
-                    <div class="text-xs text-white/60 truncate">{{ a.url }}</div>
-                    <div v-if="attachmentMeta(a)" class="text-xs text-white/50 mt-0.5">{{ attachmentMeta(a) }}</div>
+                    <div class="truncate text-sm">
+                      {{ a.filename || fileNameFromUrl(a.url) }}
+                    </div>
+                    <div class="text-xs text-white/60 truncate">
+                      {{ a.url }}
+                    </div>
+                    <div
+                      v-if="attachmentMeta(a)"
+                      class="text-xs text-white/50 mt-0.5"
+                    >
+                      {{ attachmentMeta(a) }}
+                    </div>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button @click="openAttachment(i)" class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Preview</button>
-                  <button @click="removeAttachment(i)" class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Remove" aria-label="Remove">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <button
+                    class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                    @click="openAttachment(i)"
+                  >
+                    Preview
+                  </button>
+                  <button
+                    class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+                    title="Remove"
+                    aria-label="Remove"
+                    @click="removeAttachment(i)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    ><path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    /><path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /></svg>
                   </button>
                 </div>
               </li>
@@ -264,7 +907,10 @@
         </div>
 
         <!-- Components Tab -->
-        <div v-else-if="currentTab === 'Components'" class="space-y-3">
+        <div
+          v-else-if="currentTab === 'Components'"
+          class="space-y-3"
+        >
           <ComponentsPanel
             v-model="components"
             :statuses="statuses"
@@ -277,7 +923,10 @@
         </div>
         
         <!-- Checklists Tab -->
-        <div v-else-if="currentTab === 'Checklists'" class="space-y-3">
+        <div
+          v-else-if="currentTab === 'Checklists'"
+          class="space-y-3"
+        >
           <ChecklistPanel
             v-model="checklists"
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
@@ -288,7 +937,10 @@
         </div>
 
         <!-- FPT Tab -->
-        <div v-else-if="currentTab === 'FPT'" class="space-y-3">
+        <div
+          v-else-if="currentTab === 'FPT'"
+          class="space-y-3"
+        >
           <FunctionalTestsPanel
             v-model="functionalTests"
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
@@ -299,26 +951,51 @@
           />
         </div>
         <!-- Issues Tab -->
-        <div v-else-if="currentTab === 'Issues'" class="space-y-4">
+        <div
+          v-else-if="currentTab === 'Issues'"
+          class="space-y-4"
+        >
           <!-- Equipment-related issues -->
           <div>
-            <h4 class="text-sm font-medium text-white/90 mb-2">Equipment-related</h4>
+            <h4 class="text-sm font-medium text-white/90 mb-2">
+              Equipment-related
+            </h4>
             <IssuesTable :issues="issuesForEquipment" />
           </div>
 
           
 
           <div class="pt-2">
-            <RouterLink to="/issues" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-block">Manage Issues</RouterLink>
+            <RouterLink
+              to="/issues"
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-block"
+            >
+              Manage Issues
+            </RouterLink>
           </div>
         </div>
       </div>
 
-  <!-- Bottom navigation: Report actions + Previous/Next across equipment -->
-  <div class="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sticky bottom-0 z-20 bg-white/6 backdrop-blur-xl">
+      <!-- Bottom navigation: Report actions + Previous/Next across equipment -->
+      <div class="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sticky bottom-0 z-20 bg-white/6 backdrop-blur-xl">
         <div class="flex items-center gap-2">
-          <button v-if="prevEquipmentId" @click="goPrev" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M15 6l-6 6 6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <button
+            v-if="prevEquipmentId"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+            @click="goPrev"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M15 6l-6 6 6 6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
             <span>Previous</span>
           </button>
         </div>
@@ -326,17 +1003,74 @@
           <span v-if="positionText">{{ positionText }}</span>
         </div>
         <div class="flex items-center gap-2">
-          <button @click="showReportDialog = true" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2" title="Report settings">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.297.07 2.573-1.065z" stroke-width="1.5"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-width="1.5"/></svg>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+            title="Report settings"
+            @click="showReportDialog = true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.297.07 2.573-1.065z"
+              stroke-width="1.5"
+            /><path
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              stroke-width="1.5"
+            /></svg>
             <span>Report Settings</span>
           </button>
-          <button @click="downloadEquipmentPdf" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2" title="Download PDF report">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 3v11" stroke-width="1.5" stroke-linecap="round"/><path d="M8 11l4 4 4-4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="4" y="18" width="16" height="2" rx="1" stroke-width="1.5"/></svg>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+            title="Download PDF report"
+            @click="downloadEquipmentPdf"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M12 3v11"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M8 11l4 4 4-4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /><rect
+              x="4"
+              y="18"
+              width="16"
+              height="2"
+              rx="1"
+              stroke-width="1.5"
+            /></svg>
             <span>Download PDF</span>
           </button>
-          <button v-if="nextEquipmentId" @click="goNext" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
+          <button
+            v-if="nextEquipmentId"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+            @click="goNext"
+          >
             <span>Next</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M9 6l6 6-6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            ><path
+              d="M9 6l6 6-6 6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
         </div>
       </div>
@@ -345,31 +1079,88 @@
     <!-- Report Settings Modal -->
     <Modal v-model="showReportDialog">
       <template #header>
-        <div class="flex items-center justify-between w-full"><div class="text-lg">Equipment Report Settings</div></div>
+        <div class="flex items-center justify-between w-full">
+          <div class="text-lg">
+            Equipment Report Settings
+          </div>
+        </div>
       </template>
       <div class="space-y-4 text-white/90">
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.info" class="accent-emerald-400"/> <span>Info</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.attributes" class="accent-emerald-400"/> <span>Attributes</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.components" class="accent-emerald-400"/> <span>Components</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.photos" class="accent-emerald-400"/> <span>Photos</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.attachments" class="accent-emerald-400"/> <span>Attachments</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.checklists" class="accent-emerald-400"/> <span>Checklists</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.fpt" class="accent-emerald-400"/> <span>Functional Tests</span></label>
-          <label class="inline-flex items-center gap-2"><input type="checkbox" v-model="report.include.issues" class="accent-emerald-400"/> <span>Issues</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.info"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Info</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.attributes"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Attributes</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.components"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Components</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.photos"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Photos</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.attachments"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Attachments</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.checklists"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Checklists</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.fpt"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Functional Tests</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.issues"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Issues</span></label>
         </div>
         <div class="flex items-center gap-3">
           <label class="text-white/70 text-sm">Max photos</label>
-          <input type="number" min="0" max="12" v-model.number="report.photoLimit" class="w-24 px-2 py-1 rounded-md bg-white/10 border border-white/20" />
+          <input
+            v-model.number="report.photoLimit"
+            type="number"
+            min="0"
+            max="12"
+            class="w-24 px-2 py-1 rounded-md bg-white/10 border border-white/20"
+          >
           <span class="text-xs text-white/60">Only the first {{ report.photoLimit }} will be included</span>
         </div>
       </div>
       <template #footer>
         <div class="flex items-center justify-between w-full">
-          <button @click="resetReportSettings" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Reset</button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="resetReportSettings"
+          >
+            Reset
+          </button>
           <div class="flex items-center gap-2">
-            <button @click="showReportDialog = false" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Close</button>
-            <button @click="saveReportSettings" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Save</button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="showReportDialog = false"
+            >
+              Close
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+              @click="saveReportSettings"
+            >
+              Save
+            </button>
           </div>
         </div>
       </template>
@@ -377,59 +1168,128 @@
 
     <!-- Photo Viewer Modal -->
     <Modal v-model="viewerOpen">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="font-medium">Photo {{ photos.length ? (viewerIndex + 1) : 0 }} / {{ photos.length }}</div>
-        <div class="text-white/70 text-sm">Click outside or press Esc to close</div>
-      </div>
-    </template>
-    <div class="flex items-center justify-center">
-      <div
-        v-if="photos.length"
-        class="max-h-[70vh] max-w-full overflow-auto rounded-md border border-white/10 bg-black/20"
-        @touchstart.passive="onTouchStart"
-        @touchend.passive="onTouchEnd"
-      >
-        <img
-          :src="photos[viewerIndex]?.data"
-          class="block select-none"
-          :style="{ transform: `rotate(${rotation}deg) scale(${zoom})`, transformOrigin: 'center center' }"
-          @dblclick.prevent="toggleZoom"
-        />
-        <div class="p-3 border-t border-white/10 bg-black/30">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center text-white/80 shrink-0">
-              <img v-if="photos[viewerIndex]?.uploadedByAvatar" :src="photos[viewerIndex]?.uploadedByAvatar" class="w-full h-full object-cover" alt="avatar" />
-              <span v-else class="text-[10px]">{{ initialsFromName(photos[viewerIndex]?.uploadedByName || '') }}</span>
-            </div>
-            <div class="text-xs text-white/80">
-              <div class="font-medium text-white/90">{{ photos[viewerIndex]?.uploadedByName || 'Unknown' }}</div>
-              <div class="text-white/60">Uploaded {{ formatDateTime(photos[viewerIndex]?.createdAt) }}</div>
-            </div>
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div class="font-medium">
+            Photo {{ photos.length ? (viewerIndex + 1) : 0 }} / {{ photos.length }}
           </div>
-          <div class="mt-3 flex items-center gap-2">
-            <input v-model="captionValue" type="text" placeholder="Add a caption..." class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
-            <button @click="saveCaption" :disabled="savingCaption" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30" :class="savingCaption ? 'opacity-60 cursor-not-allowed' : ''">Save</button>
+          <div class="text-white/70 text-sm">
+            Click outside or press Esc to close
           </div>
         </div>
-      </div>
-      <div v-else class="text-white/70">No photos</div>
-    </div>
-    <template #footer>
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <button @click="prevPhoto" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Prev</button>
-          <button @click="nextPhoto" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Next</button>
+      </template>
+      <div class="flex items-center justify-center">
+        <div
+          v-if="photos.length"
+          class="max-h-[70vh] max-w-full overflow-auto rounded-md border border-white/10 bg-black/20"
+          @touchstart.passive="onTouchStart"
+          @touchend.passive="onTouchEnd"
+        >
+          <img
+            :src="photos[viewerIndex]?.data"
+            class="block select-none"
+            :style="{ transform: `rotate(${rotation}deg) scale(${zoom})`, transformOrigin: 'center center' }"
+            @dblclick.prevent="toggleZoom"
+          >
+          <div class="p-3 border-t border-white/10 bg-black/30">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center text-white/80 shrink-0">
+                <img
+                  v-if="photos[viewerIndex]?.uploadedByAvatar"
+                  :src="photos[viewerIndex]?.uploadedByAvatar"
+                  class="w-full h-full object-cover"
+                  alt="avatar"
+                >
+                <span
+                  v-else
+                  class="text-[10px]"
+                >{{ initialsFromName(photos[viewerIndex]?.uploadedByName || '') }}</span>
+              </div>
+              <div class="text-xs text-white/80">
+                <div class="font-medium text-white/90">
+                  {{ photos[viewerIndex]?.uploadedByName || 'Unknown' }}
+                </div>
+                <div class="text-white/60">
+                  Uploaded {{ formatDateTime(photos[viewerIndex]?.createdAt) }}
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <input
+                v-model="captionValue"
+                type="text"
+                placeholder="Add a caption..."
+                class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              >
+              <button
+                :disabled="savingCaption"
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+                :class="savingCaption ? 'opacity-60 cursor-not-allowed' : ''"
+                @click="saveCaption"
+              >
+                Save
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button @click="zoomOut" :disabled="zoom <= 1" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-50">Zoom -</button>
-          <button @click="zoomIn" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Zoom +</button>
-          <button @click="rotateRight" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Rotate</button>
-          <button @click="deleteCurrentPhoto" class="px-3 py-2 rounded-md bg-red-500/20 border border-red-400/40 hover:bg-red-500/30 text-red-200">Delete</button>
-          <button @click="closeViewer" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Close</button>
+        <div
+          v-else
+          class="text-white/70"
+        >
+          No photos
         </div>
       </div>
-    </template>
+      <template #footer>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="prevPhoto"
+            >
+              Prev
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="nextPhoto"
+            >
+              Next
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              :disabled="zoom <= 1"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-50"
+              @click="zoomOut"
+            >
+              Zoom -
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="zoomIn"
+            >
+              Zoom +
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="rotateRight"
+            >
+              Rotate
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-red-500/20 border border-red-400/40 hover:bg-red-500/30 text-red-200"
+              @click="deleteCurrentPhoto"
+            >
+              Delete
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+              @click="closeViewer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </template>
     </Modal>
 
     <!-- Attachment Viewer Modal -->
@@ -441,48 +1301,158 @@
       <template #header>
         <div class="flex items-center justify-between">
           <div class="flex flex-col max-w-[65vw]">
-            <div class="font-medium truncate">{{ selectedAttachment?.filename || fileNameFromUrl(selectedAttachment?.url) }}</div>
-            <div v-if="selectedAttachment && attachmentMeta(selectedAttachment)" class="text-xs text-white/60 truncate">{{ attachmentMeta(selectedAttachment) }}</div>
+            <div class="font-medium truncate">
+              {{ selectedAttachment?.filename || fileNameFromUrl(selectedAttachment?.url) }}
+            </div>
+            <div
+              v-if="selectedAttachment && attachmentMeta(selectedAttachment)"
+              class="text-xs text-white/60 truncate"
+            >
+              {{ attachmentMeta(selectedAttachment) }}
+            </div>
           </div>
           <div class="flex items-center gap-2">
-            <button @click="attachmentFullscreen = !attachmentFullscreen" class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm inline-flex items-center gap-1" :title="attachmentFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'">
-              <svg v-if="!attachmentFullscreen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M4 9V4h5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M20 9V4h-5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M4 15v5h5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M20 15v5h-5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <button
+              class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm inline-flex items-center gap-1"
+              :title="attachmentFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+              @click="attachmentFullscreen = !attachmentFullscreen"
+            >
+              <svg
+                v-if="!attachmentFullscreen"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M4 9V4h5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M20 9V4h-5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M4 15v5h5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M20 15v5h-5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M4 4l5 5" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M20 4l-5 5" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M4 20l5-5" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M20 20l-5-5" stroke-width="1.5" stroke-linecap="round"/>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M4 4l5 5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 4l-5 5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M4 20l5-5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 20l-5-5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
               </svg>
               <span>{{ attachmentFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}</span>
             </button>
-            <button v-if="selectedAttachmentUrl" @click="openInNewTab(selectedAttachmentUrl)" class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Open in new tab</button>
-            <button v-if="selectedAttachment" @click="downloadAttachment(selectedAttachment)" class="px-3 py-1.5 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 text-sm transition-colors duration-150">Download</button>
+            <button
+              v-if="selectedAttachmentUrl"
+              class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+              @click="openInNewTab(selectedAttachmentUrl)"
+            >
+              Open in new tab
+            </button>
+            <button
+              v-if="selectedAttachment"
+              class="px-3 py-1.5 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 text-sm transition-colors duration-150"
+              @click="downloadAttachment(selectedAttachment)"
+            >
+              Download
+            </button>
           </div>
         </div>
       </template>
-      <div class="w-full overflow-auto" :style="{ maxHeight: viewerMaxH }">
-        <div v-if="selectedKind === 'image'" class="w-full h-full">
-          <img :src="selectedAttachmentUrl" class="max-w-full object-contain block mx-auto" :style="{ maxHeight: viewerInnerH }" />
+      <div
+        class="w-full overflow-auto"
+        :style="{ maxHeight: viewerMaxH }"
+      >
+        <div
+          v-if="selectedKind === 'image'"
+          class="w-full h-full"
+        >
+          <img
+            :src="selectedAttachmentUrl"
+            class="max-w-full object-contain block mx-auto"
+            :style="{ maxHeight: viewerInnerH }"
+          >
         </div>
-        <div v-else-if="selectedKind === 'pdf'" class="w-full">
-          <iframe :src="selectedAttachmentUrl" class="w-full rounded-md border border-white/10 bg-black/10" :style="{ height: viewerInnerH }"></iframe>
+        <div
+          v-else-if="selectedKind === 'pdf'"
+          class="w-full"
+        >
+          <iframe
+            :src="selectedAttachmentUrl"
+            class="w-full rounded-md border border-white/10 bg-black/10"
+            :style="{ height: viewerInnerH }"
+          />
         </div>
-        <div v-else class="p-4 text-white/80 space-y-3">
+        <div
+          v-else
+          class="p-4 text-white/80 space-y-3"
+        >
           <div>Preview not available for this file type.</div>
           <div class="flex items-center gap-2">
-            <button v-if="selectedAttachmentUrl" @click="openInNewTab(selectedAttachmentUrl)" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Open in new tab</button>
-            <button v-if="selectedAttachment" @click="downloadAttachment(selectedAttachment)" class="px-3 py-2 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition-colors duration-150">Download</button>
+            <button
+              v-if="selectedAttachmentUrl"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="openInNewTab(selectedAttachmentUrl)"
+            >
+              Open in new tab
+            </button>
+            <button
+              v-if="selectedAttachment"
+              class="px-3 py-2 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition-colors duration-150"
+              @click="downloadAttachment(selectedAttachment)"
+            >
+              Download
+            </button>
           </div>
         </div>
       </div>
       <template #footer>
         <div class="flex items-center justify-end">
-          <button @click="attachmentViewerOpen = false" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Close</button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+            @click="attachmentViewerOpen = false"
+          >
+            Close
+          </button>
         </div>
       </template>
     </Modal>
@@ -829,7 +1799,7 @@ const viewerMaxH = computed(() => attachmentFullscreen.value ? '82vh' : '70vh')
 const viewerInnerH = computed(() => attachmentFullscreen.value ? '80vh' : '68vh')
 
 function openAttachment(i: number) { selectedAttachmentIndex.value = i; attachmentViewerOpen.value = true }
-function openInNewTab(u: string) { try { window.open(u, '_blank', 'noopener') } catch {} }
+function openInNewTab(u: string) { try { window.open(u, '_blank', 'noopener') } catch (e) { /* ignore window.open failures in some browsers */ } }
 async function downloadAttachment(a: any) {
   try {
     const url = (() => { try { return new URL(a?.url || '', window.location.origin).toString() } catch { return a?.url || '' } })()
@@ -966,7 +1936,7 @@ const componentsList = computed<any[]>({
     return Array.isArray(arr) ? arr : []
   },
   set(v: any[]) {
-    ;(form.value as any).components = Array.isArray(v) ? v : []
+    (form.value as any).components = Array.isArray(v) ? v : []
   }
 })
 
@@ -1244,7 +2214,7 @@ const draggingComponent = ref<any | null>(null)
 function onCompDragStart(c: any, e: DragEvent) {
   draggingComponent.value = c
   if (e && e.dataTransfer) {
-    try { e.dataTransfer.setData('text/plain', 'component') } catch {}
+  try { e.dataTransfer.setData('text/plain', 'component') } catch (e) { /* ignore dragdata set errors */ }
     e.dataTransfer.effectAllowed = 'move'
   }
 }
@@ -1344,7 +2314,7 @@ const checklists = computed<any[]>({
     return []
   },
   set(v: any[]) {
-    ;(form.value as any).checklists = Array.isArray(v) ? v : []
+    (form.value as any).checklists = Array.isArray(v) ? v : []
   }
 })
 const functionalTests = computed<any[]>({
@@ -1355,7 +2325,7 @@ const functionalTests = computed<any[]>({
     return []
   },
   set(v: any[]) {
-    ;(form.value as any).functionalTests = Array.isArray(v) ? v : []
+    (form.value as any).functionalTests = Array.isArray(v) ? v : []
   }
 })
 // Persist functional tests when they change (debounced)
@@ -1438,7 +2408,7 @@ async function load() {
       }
     }
     // Ensure issues are loaded (to show linked ones)
-    try { await issuesStore.fetchIssues(String(form.value.projectId || projectStore.currentProjectId || '')) } catch {}
+  try { await issuesStore.fetchIssues(String(form.value.projectId || projectStore.currentProjectId || '')) } catch (e) { /* ignore fetch race */ }
   } finally {
     loading.value = false
   }
@@ -1504,10 +2474,10 @@ function loadReportSettingsFromSession() {
         photoLimit: Math.max(0, Number(parsed.photoLimit ?? report.value.photoLimit)),
       }
     }
-  } catch {}
+  } catch (e) { /* ignore */ }
 }
 function saveReportSettings() {
-  try { sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(report.value)) } catch {}
+  try { sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(report.value)) } catch (e) { /* ignore sessionStorage write errors */ }
   showReportDialog.value = false
 }
 function resetReportSettings() {
@@ -1517,7 +2487,7 @@ function resetReportSettings() {
   }
 }
 onMounted(loadReportSettingsFromSession)
-watch(report, () => { try { sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(report.value)) } catch {} }, { deep: true })
+watch(report, () => { try { sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(report.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
 
 // -----------------------------
 // PDF report helpers (mirrors Issue report style)
@@ -1628,7 +2598,7 @@ async function downloadEquipmentPdf() {
   let project: any = (projectStore.currentProject && (projectStore.currentProject as any).value) || null
   const targetPid = (form.value as any).projectId || (typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null)
   if (!project || (targetPid && (String(project._id || project.id) !== String(targetPid)))) {
-    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch {}
+  try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
   }
   project = project || {}
   const clientImg = await loadImage(project?.logo)
@@ -2206,7 +3176,7 @@ async function downloadEquipmentPdf() {
         }
         const imgX = margin + (maxW - drawW) / 2
         const imgY = y + (maxH - drawH) / 2
-        try { doc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch {}
+  try { doc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) { /* ignore image draw errors in PDF generation */ }
         // Finish this page with footer
         drawFooter()
       }
@@ -2240,13 +3210,13 @@ async function downloadEquipmentPdf() {
             const attPdf = await PDFDocument.load(buf)
             const pages = await merged.copyPages(attPdf, attPdf.getPageIndices())
             pages.forEach((p: any) => merged.addPage(p))
-          } catch {}
+          } catch (e) { /* ignore */ }
         }
         const mergedBytes = await merged.save()
         const blob = new Blob([mergedBytes], { type: 'application/pdf' })
         if (dlWin) {
           const url = URL.createObjectURL(blob)
-          try { dlWin.document.title = fname } catch {}
+          try { dlWin.document.title = fname } catch (e) { /* ignore cross-window access errors */ }
           dlWin.location.href = url
           setTimeout(() => URL.revokeObjectURL(url), 60_000)
         } else {
@@ -2264,7 +3234,7 @@ async function downloadEquipmentPdf() {
     if (dlWin) {
       const blob = doc.output('blob') as Blob
       const url = URL.createObjectURL(blob)
-      try { dlWin.document.title = fname } catch {}
+  try { dlWin.document.title = fname } catch (e) { /* ignore cross-window access errors */ }
       dlWin.location.href = url
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } else {

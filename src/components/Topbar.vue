@@ -7,11 +7,21 @@
   >
     <!-- Left: menu + client logo -->
     <div class="flex items-center gap-3 min-w-0">
-      <button @click="$emit('toggleSidebar')" class="px-3 py-1 rounded-lg bg-white/30 border border-white/40 text-white">
+      <button
+        class="px-3 py-1 rounded-lg bg-white/30 border border-white/40 text-white"
+        @click="$emit('toggleSidebar')"
+      >
         ☰
       </button>
-      <div v-if="clientLogo" class="h-10 w-auto max-w-[160px] flex items-center">
-        <img :src="clientLogo" alt="Client logo" class="h-10 w-auto object-contain rounded-lg" />
+      <div
+        v-if="clientLogo"
+        class="h-10 w-auto max-w-[160px] flex items-center"
+      >
+        <img
+          :src="clientLogo"
+          alt="Client logo"
+          class="h-10 w-auto object-contain rounded-lg"
+        >
       </div>
     </div>
 
@@ -21,20 +31,46 @@
     </div>
 
     <!-- Right: CxA logo + user menu -->
-    <div class="relative flex items-center justify-end gap-3 min-w-0" ref="userWrap">
-      <div v-if="cxaLogo" class="h-10 w-auto max-w-[160px] flex items-center">
-        <img :src="cxaLogo" alt="CxA logo" class="h-10 w-auto object-contain rounded-lg" />
+    <div
+      ref="userWrap"
+      class="relative flex items-center justify-end gap-3 min-w-0"
+    >
+      <div
+        v-if="cxaLogo"
+        class="h-10 w-auto max-w-[160px] flex items-center"
+      >
+        <img
+          :src="cxaLogo"
+          alt="CxA logo"
+          class="h-10 w-auto object-contain rounded-lg"
+        >
       </div>
-  <button @click="toggleMenu" class="flex items-center gap-2 px-2 py-1 rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10">
+      <button
+        class="flex items-center gap-2 px-2 py-1 rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+        @click="toggleMenu"
+      >
         <!-- thumbnail: avatar image when present, otherwise initials -->
-        <div v-if="avatarSrc" class="w-8 h-8 rounded-full overflow-hidden bg-white/10">
-          <img :src="avatarSrc" alt="User avatar" class="w-full h-full object-cover" />
+        <div
+          v-if="avatarSrc"
+          class="w-8 h-8 rounded-full overflow-hidden bg-white/10"
+        >
+          <img
+            :src="avatarSrc"
+            alt="User avatar"
+            class="w-full h-full object-cover"
+          >
         </div>
-        <div v-else class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
+        <div
+          v-else
+          class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
+        >
           <span class="font-medium">{{ initials }}</span>
         </div>
         <span class="text-white/90 hidden sm:inline">{{ firstName }}</span>
-        <span v-if="invitationsStore.invites.length" class="inline-flex items-center justify-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/80 text-white shadow-sm">
+        <span
+          v-if="invitationsStore.invites.length"
+          class="inline-flex items-center justify-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/80 text-white shadow-sm"
+        >
           {{ invitationsStore.invites.length }}
         </span>
       </button>
@@ -43,56 +79,142 @@
       <!-- Teleport dropdown to body to avoid local stacking context issues; position fixed using measured coords -->
       <transition name="fade">
         <teleport to="body">
-          <div v-if="menuOpen"
-               :style="dropdownStyle"
-               class="w-48 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]">
+          <div
+            v-if="menuOpen"
+            :style="dropdownStyle"
+            class="w-48 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
+          >
             <ul class="flex flex-col gap-1">
               <li>
-                <button @click="goProfile" class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2">
+                <button
+                  class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2"
+                  @click="goProfile"
+                >
                   <!-- Profile icon -->
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5S14.343 11 16 11zM6 20v-1a4 4 0 014-4h4a4 4 0 014 4v1"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4 text-white/90"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M16 11c1.657 0 3-1.567 3-3.5S17.657 4 16 4s-3 1.567-3 3.5S14.343 11 16 11zM6 20v-1a4 4 0 014-4h4a4 4 0 014 4v1"
+                  /></svg>
                   <span>Profile</span>
                 </button>
               </li>
 
               <!-- Projects list -->
-              <li class="my-1 border-t border-white/10"></li>
+              <li class="my-1 border-t border-white/10" />
               <!-- Invitations block -->
               <template v-if="invitationsStore.invites.length">
-                <li class="px-3 py-1 text-xs font-semibold text-white/70">Invitations</li>
-                <li v-for="inv in invitationsStore.invites" :key="inv.id" class="px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2">
-                  <div class="flex-1 min-w-0">
-                    <div class="truncate text-sm" :title="inv.project?.name || 'Project'">{{ inv.project?.name || 'Project' }}</div>
-                    <div class="text-[11px] text-white/50">{{ formatInviteDate(inv.createdAt) }}</div>
-                  </div>
-                  <button @click="accept(inv.id)" class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white">Accept</button>
+                <li class="px-3 py-1 text-xs font-semibold text-white/70">
+                  Invitations
                 </li>
-                <li class="my-1 border-t border-white/10"></li>
+                <li
+                  v-for="inv in invitationsStore.invites"
+                  :key="inv.id"
+                  class="px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2"
+                >
+                  <div class="flex-1 min-w-0">
+                    <div
+                      class="truncate text-sm"
+                      :title="inv.project?.name || 'Project'"
+                    >
+                      {{ inv.project?.name || 'Project' }}
+                    </div>
+                    <div class="text-[11px] text-white/50">
+                      {{ formatInviteDate(inv.createdAt) }}
+                    </div>
+                  </div>
+                  <button
+                    class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white"
+                    @click="accept(inv.id)"
+                  >
+                    Accept
+                  </button>
+                </li>
+                <li class="my-1 border-t border-white/10" />
               </template>
-              <li v-if="projectsList.length === 0" class="px-3 py-2 text-sm text-white/60">No projects</li>
-              <li v-for="p in projectsList" :key="p.id">
+              <li
+                v-if="projectsList.length === 0"
+                class="px-3 py-2 text-sm text-white/60"
+              >
+                No projects
+              </li>
+              <li
+                v-for="p in projectsList"
+                :key="p.id"
+              >
                 <button
-                  @click="onSelectProject(p)"
                   class="w-full text-left px-3 py-2 rounded flex items-center justify-between gap-2 hover:bg-white/10"
                   :class="isDefaultProject(p) ? 'bg-white/10 cursor-default' : ''"
                   :title="p.name"
+                  @click="onSelectProject(p)"
                 >
-                  <span class="truncate" :title="p.name">{{ p.name }}</span>
-                  <span class="flex items-center gap-1 text-xs" :class="isDefaultProject(p) ? 'text-green-300' : 'text-white/70'">
-                    <svg v-if="isDefaultProject(p)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                      <path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <span
+                    class="truncate"
+                    :title="p.name"
+                  >{{ p.name }}</span>
+                  <span
+                    class="flex items-center gap-1 text-xs"
+                    :class="isDefaultProject(p) ? 'text-green-300' : 'text-white/70'"
+                  >
+                    <svg
+                      v-if="isDefaultProject(p)"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M5 13l4 4L19 7"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
                     </svg>
                     <template v-else>
                       <!-- thumbtack icon for 'make default' -->
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4" aria-label="Make default" title="Make default">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                        aria-label="Make default"
+                        title="Make default"
+                      >
                         <!-- tack head -->
-                        <circle cx="12" cy="6.5" r="2.5" stroke-width="1.4" />
+                        <circle
+                          cx="12"
+                          cy="6.5"
+                          r="2.5"
+                          stroke-width="1.4"
+                        />
                         <!-- cross bar under head -->
-                        <path d="M9 10.5h6" stroke-width="1.4" stroke-linecap="round" />
+                        <path
+                          d="M9 10.5h6"
+                          stroke-width="1.4"
+                          stroke-linecap="round"
+                        />
                         <!-- stem -->
-                        <path d="M12 10.5v5.5" stroke-width="1.4" stroke-linecap="round" />
+                        <path
+                          d="M12 10.5v5.5"
+                          stroke-width="1.4"
+                          stroke-linecap="round"
+                        />
                         <!-- point -->
-                        <path d="M12 16l-1.8 5" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                        <path
+                          d="M12 16l-1.8 5"
+                          stroke-width="1.4"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </template>
                     <span v-if="isDefaultProject(p)">Default</span>
@@ -100,11 +222,25 @@
                 </button>
               </li>
 
-              <li class="my-1 border-t border-white/10"></li>
+              <li class="my-1 border-t border-white/10" />
               <li>
-                <button @click="emitLogout" class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2">
+                <button
+                  class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2"
+                  @click="emitLogout"
+                >
                   <!-- Logout icon -->
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7M3 21h8a2 2 0 002-2V5a2 2 0 00-2-2H3"/></svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4 text-white/90"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7M3 21h8a2 2 0 002-2V5a2 2 0 00-2-2H3"
+                  /></svg>
                   <span>Logout</span>
                 </button>
               </li>
@@ -146,7 +282,7 @@ const defaultProjectName = computed(() => {
       const dp = auth.user.projects.find(p => (p && typeof p === 'object' && p.default))
       if (dp) return dp.name || dp.title || 'Projects'
     }
-  } catch (e) {}
+  } catch (e) { /* ignore */ }
   return 'Liquid Glass Dashboard'
 })
 
@@ -221,7 +357,7 @@ onMounted(async () => {
     if (!projectStore.projects || projectStore.projects.length === 0) {
       await projectStore.fetchProjects()
     }
-    try { await invitationsStore.fetchPending() } catch (e) {}
+  try { await invitationsStore.fetchPending() } catch (e) { /* ignore */ }
   } catch (e) { /* ignore */ }
 })
 
@@ -234,7 +370,7 @@ const defaultProjectId = computed(() => {
       const obj = dp
       return typeof dp === 'string' ? dp : (obj._id || obj.id || null)
     }
-  } catch (e) {}
+  } catch (e) { /* ignore */ }
   return projectStore.currentProjectId || null
 })
 
@@ -260,7 +396,7 @@ async function onSelectProject(p) {
         auth.user.token = preserveToken
       }
       // persist
-      try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) {}
+  try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
     }
     // Switch current project in store
     if (projectId) projectStore.setCurrentProject(String(projectId))
@@ -281,7 +417,7 @@ async function accept(id) {
     const ok = await invitationsStore.acceptInvite(id)
     if (ok) {
       ui.showSuccess('Invitation accepted')
-      try { await projectStore.fetchProjects() } catch (e) {}
+  try { await projectStore.fetchProjects() } catch (e) { /* ignore */ }
     } else {
       ui.showError(invitationsStore.error || 'Failed to accept invitation')
     }

@@ -1,52 +1,99 @@
 <template>
-  <section class="space-y-6 relative" ref="pageSection">
+  <section
+    ref="pageSection"
+    class="space-y-6 relative"
+  >
     <!-- header with breadcrumbs at the top -->
     <div>
-      <BreadCrumbs :items="[
-        { text: 'Dashboard', to: '/' },
-        { text: 'Spaces', to: '/spaces' }
-      ]" title="Spaces" />
+      <BreadCrumbs
+        :items="[
+          { text: 'Dashboard', to: '/' },
+          { text: 'Spaces', to: '/spaces' }
+        ]"
+        title="Spaces"
+      />
     </div>
 
     <!-- toolbar below breadcrumbs (search first) -->
-  <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
+    <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
       <!-- Add Space round button with hover tooltip, left of search -->
       <div class="relative inline-block group">
         <button
           :disabled="!projectStore.currentProjectId"
-          @click="openCreate()"
           aria-label="Add space"
           :title="projectStore.currentProjectId ? 'Add space' : 'Select a project to add spaces'"
           class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          @click="openCreate()"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+              clip-rule="evenodd"
+            />
           </svg>
         </button>
-        <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
           {{ projectStore.currentProjectId ? 'Add space' : 'Select a project to add spaces' }}
         </div>
       </div>
-      <input v-model="search" type="text" placeholder="Search by tag or title" class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-64" />
+      <input
+        v-model="search"
+        type="text"
+        placeholder="Search by tag or title"
+        class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-64"
+      >
       <!-- Types filter styled like Issues status filter -->
       <div class="flex items-center gap-2">
         <label class="text-white/70 text-sm">Type</label>
-        <div class="relative" ref="typeMenuRef">
-          <button @click="toggleTypeMenu" :aria-expanded="showTypeMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+        <div
+          ref="typeMenuRef"
+          class="relative"
+        >
+          <button
+            :aria-expanded="showTypeMenu ? 'true' : 'false'"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            @click="toggleTypeMenu"
+          >
             <span class="flex items-center gap-2">
               <span>{{ typeFilterLabel }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilterLabel) }}</span>
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-3 h-3 ml-1"
+            ><path
+              d="M6 9l6 6 6-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
-          <div v-if="showTypeMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+          <div
+            v-if="showTypeMenu"
+            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            role="menu"
+          >
             <div class="py-1">
               <button
                 v-for="opt in typeOptions"
                 :key="opt.name"
-                @click="applyTypeFilter(opt.name)"
                 role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                @click="applyTypeFilter(opt.name)"
+              >
                 <span>{{ opt.name }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
               </button>
@@ -54,65 +101,182 @@
           </div>
         </div>
       </div>
-      <button @click="toggleView" class="px-3 py-2 rounded bg-white/10 hover:bg-white/15 text-white border border-white/20 min-w-[120px]">
-        <span v-if="viewMode === 'list'" class="inline-flex items-center gap-2">
+      <button
+        class="px-3 py-2 rounded bg-white/10 hover:bg-white/15 text-white border border-white/20 min-w-[120px]"
+        @click="toggleView"
+      >
+        <span
+          v-if="viewMode === 'list'"
+          class="inline-flex items-center gap-2"
+        >
           <!-- hierarchy/tree icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            aria-hidden="true"
+          >
             <!-- top node -->
-            <circle cx="12" cy="5" r="2.25" />
+            <circle
+              cx="12"
+              cy="5"
+              r="2.25"
+            />
             <!-- bottom left node -->
-            <circle cx="7" cy="19" r="2.25" />
+            <circle
+              cx="7"
+              cy="19"
+              r="2.25"
+            />
             <!-- bottom right node -->
-            <circle cx="17" cy="19" r="2.25" />
+            <circle
+              cx="17"
+              cy="19"
+              r="2.25"
+            />
             <!-- connectors -->
-            <path d="M12 7.5v5.5" stroke-linecap="round" />
-            <path d="M12 13h-3" stroke-linecap="round" />
-            <path d="M12 13h3" stroke-linecap="round" />
+            <path
+              d="M12 7.5v5.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M12 13h-3"
+              stroke-linecap="round"
+            />
+            <path
+              d="M12 13h3"
+              stroke-linecap="round"
+            />
           </svg>
           <span>Tree View</span>
         </span>
-        <span v-else class="inline-flex items-center gap-2">
+        <span
+          v-else
+          class="inline-flex items-center gap-2"
+        >
           <!-- list icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M5 7h14" stroke-linecap="round" />
-            <path d="M5 12h14" stroke-linecap="round" />
-            <path d="M5 17h14" stroke-linecap="round" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            aria-hidden="true"
+          >
+            <path
+              d="M5 7h14"
+              stroke-linecap="round"
+            />
+            <path
+              d="M5 12h14"
+              stroke-linecap="round"
+            />
+            <path
+              d="M5 17h14"
+              stroke-linecap="round"
+            />
           </svg>
           <span>List View</span>
         </span>
       </button>
       <!-- Download Excel button -->
-      <button @click="downloadSpacesXlsx" :disabled="!filtered.length" class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="1.5"/>
-          <path d="M8 3v18M16 3v18M3 8h18M3 16h18" stroke-width="1.5"/>
+      <button
+        :disabled="!filtered.length"
+        class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+        @click="downloadSpacesXlsx"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          class="w-4 h-4"
+        >
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="18"
+            rx="2"
+            ry="2"
+            stroke-width="1.5"
+          />
+          <path
+            d="M8 3v18M16 3v18M3 8h18M3 16h18"
+            stroke-width="1.5"
+          />
         </svg>
         <span>Download Excel</span>
       </button>
       <!-- Upload Excel button + hidden input -->
-      <div class="relative inline-block group" ref="uploadRef">
-        <button @click="triggerUpload" :disabled="!projectStore.currentProjectId || uploading" class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-            <path d="M12 3v11" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M8 7l4-4 4 4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M5 20h14" stroke-width="1.5" stroke-linecap="round"/>
+      <div
+        ref="uploadRef"
+        class="relative inline-block group"
+      >
+        <button
+          :disabled="!projectStore.currentProjectId || uploading"
+          class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+          @click="triggerUpload"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              d="M12 3v11"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M8 7l4-4 4 4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M5 20h14"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
           </svg>
           <span>{{ uploading ? 'Uploading…' : 'Upload Excel' }}</span>
         </button>
-        <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onFileChange" />
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          class="hidden"
+          @change="onFileChange"
+        >
         <!-- Tooltip with import guidance -->
-        <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-[320px] opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-3 py-2 border border-white/10 shadow backdrop-blur transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100 z-40">
-          <div class="text-white/90 font-medium mb-1">Import columns</div>
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-[320px] opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-3 py-2 border border-white/10 shadow backdrop-blur transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100 z-40"
+        >
+          <div class="text-white/90 font-medium mb-1">
+            Import columns
+          </div>
           <div><span class="text-white/70">Required:</span> title</div>
           <div><span class="text-white/70">Optional:</span> id, tag, type, description, parent id, parent tag, parent title</div>
-          <div class="mt-1 text-white/60">Upsert: id › tag › title · Parent: parent id › parent tag › parent title</div>
+          <div class="mt-1 text-white/60">
+            Upsert: id › tag › title · Parent: parent id › parent tag › parent title
+          </div>
         </div>
       </div>
-      
     </div>
 
     <!-- list -->
-  <div v-if="viewMode === 'list'" class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto">
+    <div
+      v-if="viewMode === 'list'"
+      class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto"
+    >
       <!-- pagination toolbar (top) -->
       <div class="flex items-center justify-between px-2 py-2">
         <div class="text-white/60 text-sm">
@@ -121,95 +285,232 @@
         </div>
         <div class="flex items-center gap-2">
           <label class="text-white/60 text-sm">Rows</label>
-          <select v-model.number="pageSize" class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm">
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
+          <select
+            v-model.number="pageSize"
+            class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+          >
+            <option :value="10">
+              10
+            </option>
+            <option :value="20">
+              20
+            </option>
+            <option :value="50">
+              50
+            </option>
+            <option :value="100">
+              100
+            </option>
           </select>
           <div class="flex items-center gap-1">
-            <button @click="prevPage" :disabled="page <= 1" class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40">‹</button>
+            <button
+              :disabled="page <= 1"
+              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
+              @click="prevPage"
+            >
+              ‹
+            </button>
             <span class="text-white/70 text-sm">Page {{ page }} / {{ totalPages || 1 }}</span>
-            <button @click="nextPage" :disabled="page >= totalPages" class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40">›</button>
+            <button
+              :disabled="page >= totalPages"
+              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
+              @click="nextPage"
+            >
+              ›
+            </button>
           </div>
         </div>
       </div>
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
-        <div class="col-span-2">Tag</div>
-        <div class="col-span-4">Title</div>
-        <div class="col-span-2">Type</div>
-        <div class="col-span-3">Parent</div>
-        <div class="col-span-1 text-right">Actions</div>
+        <div class="col-span-2">
+          Tag
+        </div>
+        <div class="col-span-4">
+          Title
+        </div>
+        <div class="col-span-2">
+          Type
+        </div>
+        <div class="col-span-3">
+          Parent
+        </div>
+        <div class="col-span-1 text-right">
+          Actions
+        </div>
       </div>
       <div class="divide-y divide-white/10">
-        <div v-for="s in paged" :key="s.id" class="grid grid-cols-12 items-center px-2 py-2 text-white/90">
-          <div class="col-span-2 truncate" :title="s.tag">{{ s.tag || '-' }}</div>
-          <div class="col-span-4 truncate" :title="s.title">{{ s.title }}</div>
-          <div class="col-span-2">{{ s.type }}</div>
-          <div class="col-span-3 truncate" :title="parentName(s)">{{ parentName(s) || '-' }}</div>
-            <div class="col-span-1 flex items-center justify-end gap-2">
-              <!-- Visit icon button -->
-              <button
-                @click="visit(s)"
-                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-                aria-label="Open space"
-                :title="`Open ${s.title || 'space'}`"
+        <div
+          v-for="s in paged"
+          :key="s.id"
+          class="grid grid-cols-12 items-center px-2 py-2 text-white/90"
+        >
+          <div
+            class="col-span-2 truncate"
+            :title="s.tag"
+          >
+            {{ s.tag || '-' }}
+          </div>
+          <div
+            class="col-span-4 truncate"
+            :title="s.title"
+          >
+            {{ s.title }}
+          </div>
+          <div class="col-span-2">
+            {{ s.type }}
+          </div>
+          <div
+            class="col-span-3 truncate"
+            :title="parentName(s)"
+          >
+            {{ parentName(s) || '-' }}
+          </div>
+          <div class="col-span-1 flex items-center justify-end gap-2">
+            <!-- Visit icon button -->
+            <button
+              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+              aria-label="Open space"
+              :title="`Open ${s.title || 'space'}`"
+              @click="visit(s)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke-width="1.5"/>
-                  <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
-                </svg>
-              </button>
-              <!-- Edit icon button -->
-              <button
-                @click="openEdit(s)"
-                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-                aria-label="Edit space"
-                :title="`Edit ${s.title || 'space'}`"
+                <path
+                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                  stroke-width="1.5"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </button>
+            <!-- Edit icon button -->
+            <button
+              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+              aria-label="Edit space"
+              :title="`Edit ${s.title || 'space'}`"
+              @click="openEdit(s)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke-width="1.5"/>
-                  <path d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77" stroke-width="1.5"/>
-                </svg>
-              </button>
-              <!-- Delete icon button -->
-              <button
-                @click="confirmRemove(s)"
-                class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
-                aria-label="Delete space"
-                :title="`Delete ${s.title || 'space'}`"
+                <path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </button>
+            <!-- Delete icon button -->
+            <button
+              class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+              aria-label="Delete space"
+              :title="`Delete ${s.title || 'space'}`"
+              @click="confirmRemove(s)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M6 7h12" stroke-width="1.5" stroke-linecap="round"/>
-                  <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke-width="1.5"/>
-                  <rect x="6" y="7" width="12" height="14" rx="2" stroke-width="1.5"/>
-                  <path d="M10 11v6M14 11v6" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-              </button>
-            </div>
+                <path
+                  d="M6 7h12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                  stroke-width="1.5"
+                />
+                <rect
+                  x="6"
+                  y="7"
+                  width="12"
+                  height="14"
+                  rx="2"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M10 11v6M14 11v6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div v-if="!spaces.length && !loading" class="p-6 text-white/60 text-center">No spaces yet.</div>
-        <div v-else-if="!filtered.length && !loading" class="p-6 text-white/60 text-center">No matching spaces.</div>
-        <div v-if="loading" class="p-6 text-white/60 text-center">Loading…</div>
+        <div
+          v-if="!spaces.length && !loading"
+          class="p-6 text-white/60 text-center"
+        >
+          No spaces yet.
+        </div>
+        <div
+          v-else-if="!filtered.length && !loading"
+          class="p-6 text-white/60 text-center"
+        >
+          No matching spaces.
+        </div>
+        <div
+          v-if="loading"
+          class="p-6 text-white/60 text-center"
+        >
+          Loading…
+        </div>
       </div>
       <!-- pagination toolbar (bottom) -->
       <div class="flex items-center justify-between px-2 py-2 mt-1">
-        <div class="text-white/60 text-sm" v-if="totalFiltered > 0">
+        <div
+          v-if="totalFiltered > 0"
+          class="text-white/60 text-sm"
+        >
           Showing {{ pageStart + 1 }}–{{ pageEnd }} of {{ totalFiltered }}
         </div>
-        <div class="flex-1"></div>
+        <div class="flex-1" />
         <div class="flex items-center gap-2">
           <div class="flex items-center gap-1">
-            <button @click="prevPage" :disabled="page <= 1" class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40">‹ Prev</button>
+            <button
+              :disabled="page <= 1"
+              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
+              @click="prevPage"
+            >
+              ‹ Prev
+            </button>
             <span class="text-white/70 text-sm">Page {{ page }} / {{ totalPages || 1 }}</span>
-            <button @click="nextPage" :disabled="page >= totalPages" class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40">Next ›</button>
+            <button
+              :disabled="page >= totalPages"
+              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
+              @click="nextPage"
+            >
+              Next ›
+            </button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- tree -->
-    <div v-else class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2">
+    <div
+      v-else
+      class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2"
+    >
       <div class="px-2 py-2 text-white/70 text-sm flex items-center gap-2">
         <span>Drag a space onto another to reparent.</span>
         <span class="text-white/50">(Building cannot have a parent; Floor must be under a Building; Room must be under a Floor)</span>
@@ -217,116 +518,250 @@
       <!-- Drop to root -->
       <div
         class="mx-2 mb-2 px-3 py-2 rounded border border-white/10 text-white/70 hover:bg-white/10"
+        :class="{ 'bg-white/15': rootDragOver }"
         @dragover.prevent="onRootDragOver"
         @dragleave="onRootDragLeave"
         @drop="onRootDrop"
-        :class="{ 'bg-white/15': rootDragOver }"
-      >Drop here to make top-level</div>
+      >
+        Drop here to make top-level
+      </div>
       <div class="divide-y divide-white/10">
-        <div v-for="row in visibleNodes" :key="row.node.id" class="flex items-center px-2 py-1 gap-2 text-white/90"
-             :class="{ 'bg-white/10': dragOverId === row.node.id }"
-             @dragover="(e) => onNodeDragOver(e, row.node)"
-             @dragleave="onNodeDragLeave"
-             @drop="(e) => onNodeDrop(e, row.node)"
+        <div
+          v-for="row in visibleNodes"
+          :key="row.node.id"
+          class="flex items-center px-2 py-1 gap-2 text-white/90"
+          :class="{ 'bg-white/10': dragOverId === row.node.id }"
+          @dragover="(e) => onNodeDragOver(e, row.node)"
+          @dragleave="onNodeDragLeave"
+          @drop="(e) => onNodeDrop(e, row.node)"
         >
-          <div class="flex items-center" :style="{ marginLeft: `${row.depth * 16}px` }">
-            <button v-if="row.node.children && row.node.children.length" @click="toggleOpen(row.node)" class="w-6 h-6 grid place-items-center rounded hover:bg-white/10 text-white/70">
+          <div
+            class="flex items-center"
+            :style="{ marginLeft: `${row.depth * 16}px` }"
+          >
+            <button
+              v-if="row.node.children && row.node.children.length"
+              class="w-6 h-6 grid place-items-center rounded hover:bg-white/10 text-white/70"
+              @click="toggleOpen(row.node)"
+            >
               <span>{{ isOpen(row.node) ? '▾' : '▸' }}</span>
             </button>
-            <span v-else class="w-6 h-6"></span>
-            <div class="flex items-center gap-2" draggable="true"
-                 @dragstart="(e) => onDragStart(e, row.node)"
-                 @dragend="onDragEnd"
+            <span
+              v-else
+              class="w-6 h-6"
+            />
+            <div
+              class="flex items-center gap-2"
+              draggable="true"
+              @dragstart="(e) => onDragStart(e, row.node)"
+              @dragend="onDragEnd"
             >
               <span class="text-white/60 text-xs px-1 py-0.5 rounded bg-white/10 border border-white/10 min-w-[56px] text-center">{{ row.node.type }}</span>
               <span class="font-medium">{{ row.node.title }}</span>
-              <span v-if="row.node.tag" class="text-white/60">({{ row.node.tag }})</span>
+              <span
+                v-if="row.node.tag"
+                class="text-white/60"
+              >({{ row.node.tag }})</span>
             </div>
           </div>
           <div class="ml-auto flex items-center gap-2">
             <!-- Visit icon button -->
             <button
-              @click="visit(row.node)"
               class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
               aria-label="Open space"
               :title="`Open ${row.node.title || 'space'}`"
+              @click="visit(row.node)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke-width="1.5"/>
-                <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                  stroke-width="1.5"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  stroke-width="1.5"
+                />
               </svg>
             </button>
             <!-- Edit icon button -->
             <button
-              @click="openEdit(row.node)"
               class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
               aria-label="Edit space"
               :title="`Edit ${row.node.title || 'space'}`"
+              @click="openEdit(row.node)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke-width="1.5"/>
-                <path d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77" stroke-width="1.5"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                  stroke-width="1.5"
+                />
               </svg>
             </button>
             <!-- Delete icon button -->
             <button
-              @click="confirmRemove(row.node)"
               class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
               aria-label="Delete space"
               :title="`Delete ${row.node.title || 'space'}`"
+              @click="confirmRemove(row.node)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M6 7h12" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke-width="1.5"/>
-                <rect x="6" y="7" width="12" height="14" rx="2" stroke-width="1.5"/>
-                <path d="M10 11v6M14 11v6" stroke-width="1.5" stroke-linecap="round"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M6 7h12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                  stroke-width="1.5"
+                />
+                <rect
+                  x="6"
+                  y="7"
+                  width="12"
+                  height="14"
+                  rx="2"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M10 11v6M14 11v6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
               </svg>
             </button>
           </div>
         </div>
-        <div v-if="!spaces.length && !loading" class="p-6 text-white/60 text-center">No spaces yet.</div>
-        <div v-if="loading" class="p-6 text-white/60 text-center">Loading…</div>
+        <div
+          v-if="!spaces.length && !loading"
+          class="p-6 text-white/60 text-center"
+        >
+          No spaces yet.
+        </div>
+        <div
+          v-if="loading"
+          class="p-6 text-white/60 text-center"
+        >
+          Loading…
+        </div>
       </div>
     </div>
 
     <!-- modal -->
-    <div v-if="modalOpen" class="fixed inset-0 z-50 grid place-items-center bg-black/50">
+    <div
+      v-if="modalOpen"
+      class="fixed inset-0 z-50 grid place-items-center bg-black/50"
+    >
       <div class="w-[640px] max-w-[95vw] rounded-xl border border-white/20 bg-white/10 backdrop-blur p-4 text-white">
         <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold">{{ editing ? 'Edit Space' : 'Create Space' }}</h2>
-          <button @click="closeModal" class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 border border-white/20">✕</button>
+          <h2 class="text-lg font-semibold">
+            {{ editing ? 'Edit Space' : 'Create Space' }}
+          </h2>
+          <button
+            class="px-2 py-1 rounded bg-white/10 hover:bg-white/20 border border-white/20"
+            @click="closeModal"
+          >
+            ✕
+          </button>
         </div>
         <form @submit.prevent="save">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-sm text-white/70">Tag</label>
-              <input v-model="form.tag" type="text" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20" />
+              <input
+                v-model="form.tag"
+                type="text"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
             </div>
             <div>
               <label class="text-sm text-white/70">Type</label>
-              <select v-model="form.type" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20">
-                <option v-for="t in spaceTypes" :key="t" :value="t">{{ t }}</option>
+              <select
+                v-model="form.type"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
+                <option
+                  v-for="t in spaceTypes"
+                  :key="t"
+                  :value="t"
+                >
+                  {{ t }}
+                </option>
               </select>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Title</label>
-              <input v-model="form.title" type="text" required class="w-full px-3 py-2 rounded bg-white/10 border border-white/20" />
+              <input
+                v-model="form.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Parent Space</label>
-              <select v-model="form.parentSpace" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20">
-                <option :value="''">None</option>
-                <option v-for="p in parentOptions" :key="p.id" :value="p.id">{{ p.title }} ({{ p.type }})</option>
+              <select
+                v-model="form.parentSpace"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              >
+                <option :value="''">
+                  None
+                </option>
+                <option
+                  v-for="p in parentOptions"
+                  :key="p.id"
+                  :value="p.id"
+                >
+                  {{ p.title }} ({{ p.type }})
+                </option>
               </select>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Description</label>
-              <textarea v-model="form.description" rows="3" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"></textarea>
+              <textarea
+                v-model="form.description"
+                rows="3"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              />
             </div>
           </div>
           <div class="mt-4 flex items-center justify-end gap-2">
-            <button type="button" @click="closeModal" class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20">Cancel</button>
-            <button type="submit" class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30">Save</button>
+            <button
+              type="button"
+              class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
+              @click="closeModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
+            >
+              Save
+            </button>
           </div>
         </form>
       </div>
@@ -549,7 +984,7 @@ function saveOpenNodes() {
     if (!hasSessionStorage()) return
     const arr = Array.from(openNodes.value)
     sessionStorage.setItem(OPEN_NODES_KEY.value, JSON.stringify(arr))
-  } catch (_) {}
+  } catch (_) { /* ignore */ }
 }
 function loadOpenNodes(): boolean {
   try {
@@ -981,7 +1416,7 @@ async function onFileChange(e: Event) {
     ui.showError(err?.message || 'Failed to import spaces')
   } finally {
     uploading.value = false
-    try { (e.target as HTMLInputElement).value = '' } catch {}
+  try { (e.target as HTMLInputElement).value = '' } catch (e) { /* ignore */ }
   }
 }
 </script>

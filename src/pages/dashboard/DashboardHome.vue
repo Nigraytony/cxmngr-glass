@@ -2,21 +2,45 @@
   <section class="space-y-6 relative">
     <!-- Breadcrumbs -->
     <div>
-      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }]" title="Dashboard" />
+      <BreadCrumbs
+        :items="[{ text: 'Dashboard', to: '/' }]"
+        title="Dashboard"
+      />
     </div>
 
     <!-- Top stats row -->
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <!-- Issues -->
-      <RouterLink :to="{ name: 'issues' }" class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40">
+      <RouterLink
+        :to="{ name: 'issues' }"
+        class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 text-sky-300/90"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v4m0 4h.01M10.29 3.86l-7.5 12.99A1.5 1.5 0 0 0 4.07 19.5h15.86a1.5 1.5 0 0 0 1.29-2.25l-7.5-12.99a1.5 1.5 0 0 0-2.58 0z"/></svg>
-            <div class="text-xs uppercase tracking-wide text-white/60">Issues</div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="h-5 w-5 text-sky-300/90"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M12 9v4m0 4h.01M10.29 3.86l-7.5 12.99A1.5 1.5 0 0 0 4.07 19.5h15.86a1.5 1.5 0 0 0 1.29-2.25l-7.5-12.99a1.5 1.5 0 0 0-2.58 0z"
+            /></svg>
+            <div class="text-xs uppercase tracking-wide text-white/60">
+              Issues
+            </div>
           </div>
-          <span v-if="issuesLoading" class="text-xs text-white/60">Loading…</span>
+          <span
+            v-if="issuesLoading"
+            class="text-xs text-white/60"
+          >Loading…</span>
         </div>
-        <div class="mt-2 text-2xl font-semibold text-white">{{ issuesTotal }}</div>
+        <div class="mt-2 text-2xl font-semibold text-white">
+          {{ issuesTotal }}
+        </div>
         <div class="mt-1 text-xs text-white/70 flex flex-wrap gap-x-2 gap-y-0.5">
           <span>Open: <span class="text-white">{{ issuesOpen }}</span></span>
           <span>Progress: <span class="text-white">{{ issuesProgress }}</span></span>
@@ -25,28 +49,72 @@
       </RouterLink>
 
       <!-- Activities -->
-      <RouterLink :to="{ name: 'activities' }" class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40">
+      <RouterLink
+        :to="{ name: 'activities' }"
+        class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 text-violet-300/90"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 5.25h16.5M3.75 9.75h16.5m-9 4.5h9m-9 4.5h9"/></svg>
-            <div class="text-xs uppercase tracking-wide text-white/60">Activities</div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="h-5 w-5 text-violet-300/90"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M3.75 5.25h16.5M3.75 9.75h16.5m-9 4.5h9m-9 4.5h9"
+            /></svg>
+            <div class="text-xs uppercase tracking-wide text-white/60">
+              Activities
+            </div>
           </div>
-          <span v-if="activitiesLoading" class="text-xs text-white/60">Loading…</span>
+          <span
+            v-if="activitiesLoading"
+            class="text-xs text-white/60"
+          >Loading…</span>
         </div>
-        <div class="mt-2 text-2xl font-semibold text-white">{{ activitiesTotal }}</div>
-        <div class="mt-1 text-xs text-white/70">Recent work and tasks</div>
+        <div class="mt-2 text-2xl font-semibold text-white">
+          {{ activitiesTotal }}
+        </div>
+        <div class="mt-1 text-xs text-white/70">
+          Recent work and tasks
+        </div>
       </RouterLink>
 
       <!-- Equipment -->
-      <RouterLink :to="{ name: 'equipment' }" class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40">
+      <RouterLink
+        :to="{ name: 'equipment' }"
+        class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 text-emerald-300/90"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.53 16.28a6 6 0 1 1 4.95 0l-.7 2.8a1 1 0 0 1-.97.77H11.2a1 1 0 0 1-.97-.77l-.7-2.8z"/></svg>
-            <div class="text-xs uppercase tracking-wide text-white/60">Equipment</div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="h-5 w-5 text-emerald-300/90"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M9.53 16.28a6 6 0 1 1 4.95 0l-.7 2.8a1 1 0 0 1-.97.77H11.2a1 1 0 0 1-.97-.77l-.7-2.8z"
+            /></svg>
+            <div class="text-xs uppercase tracking-wide text-white/60">
+              Equipment
+            </div>
           </div>
-          <span v-if="equipmentLoading" class="text-xs text-white/60">Loading…</span>
+          <span
+            v-if="equipmentLoading"
+            class="text-xs text-white/60"
+          >Loading…</span>
         </div>
-        <div class="mt-2 text-2xl font-semibold text-white">{{ equipmentTotal }}</div>
+        <div class="mt-2 text-2xl font-semibold text-white">
+          {{ equipmentTotal }}
+        </div>
         <div class="mt-1 text-xs text-white/70 flex flex-wrap gap-x-2 gap-y-0.5">
           <span>Mech: <span class="text-white">{{ equipmentMechanical }}</span></span>
           <span>Elec: <span class="text-white">{{ equipmentElectrical }}</span></span>
@@ -54,16 +122,39 @@
       </RouterLink>
 
       <!-- Spaces -->
-      <RouterLink :to="{ name: 'spaces' }" class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40">
+      <RouterLink
+        :to="{ name: 'spaces' }"
+        class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
+      >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="h-5 w-5 text-teal-300/90"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75A1.5 1.5 0 0 1 5.25 5.25h13.5a1.5 1.5 0 0 1 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75zM9 9h6v6H9z"/></svg>
-            <div class="text-xs uppercase tracking-wide text-white/60">Spaces</div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="h-5 w-5 text-teal-300/90"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M3.75 6.75A1.5 1.5 0 0 1 5.25 5.25h13.5a1.5 1.5 0 0 1 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V6.75zM9 9h6v6H9z"
+            /></svg>
+            <div class="text-xs uppercase tracking-wide text-white/60">
+              Spaces
+            </div>
           </div>
-          <span v-if="spacesLoading" class="text-xs text-white/60">Loading…</span>
+          <span
+            v-if="spacesLoading"
+            class="text-xs text-white/60"
+          >Loading…</span>
         </div>
-        <div class="mt-2 text-2xl font-semibold text-white">{{ spacesTotal }}</div>
-        <div class="mt-1 text-xs text-white/70">By type and hierarchy</div>
+        <div class="mt-2 text-2xl font-semibold text-white">
+          {{ spacesTotal }}
+        </div>
+        <div class="mt-1 text-xs text-white/70">
+          By type and hierarchy
+        </div>
       </RouterLink>
     </div>
 

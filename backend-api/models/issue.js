@@ -33,6 +33,14 @@ const issueSchema = new mongoose.Schema({
   updatedAt: { type: String, default: () => new Date().toISOString() },
 });
 
+// Keep updatedAt fresh and add useful index
+issueSchema.pre('save', function (next) {
+  try { this.updatedAt = new Date().toISOString() } catch (e) { /* ignore */ }
+  next()
+})
+
+issueSchema.index({ projectId: 1 })
+
 const Issue = mongoose.model('Issue', issueSchema);
 
 module.exports = Issue;

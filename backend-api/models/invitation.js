@@ -12,6 +12,18 @@ const invitationSchema = new mongoose.Schema({
 // Compound index to quickly lookup pending invites for a user
 invitationSchema.index({ email: 1, accepted: 1, createdAt: -1 });
 
+// Normalize email to lowercase before saving to ensure consistent matching
+invitationSchema.pre('save', function (next) {
+  try {
+    if (this.email && typeof this.email === 'string') {
+      this.email = String(this.email).trim().toLowerCase();
+    }
+  } catch (e) {
+    // ignore
+  }
+  next();
+});
+
 const Invitation = mongoose.model('Invitation', invitationSchema);
 
 module.exports = Invitation;

@@ -48,7 +48,7 @@ export const useInvitationsStore = defineStore('invitations', () => {
           const preservedToken = auth.token || (auth.user && (auth.user as any).token) || null
           auth.user = Object.assign({}, auth.user || {}, serverUser)
           if (preservedToken && auth.user) auth.user.token = preservedToken
-          try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) {}
+          try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
         }
       } catch (e) {
         // ignore refresh failures

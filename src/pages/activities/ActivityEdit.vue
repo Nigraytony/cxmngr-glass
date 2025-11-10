@@ -1,58 +1,172 @@
 <template>
   <div class="space-y-4 text-white">
     <div>
-      <BreadCrumbs :items="crumbs" class="mt-1 text-white/70" />
+      <BreadCrumbs
+        :items="crumbs"
+        class="mt-1 text-white/70"
+      />
     </div>
 
     <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
       <!-- Tabs header -->
       <div class="mb-4 md:mb-6">
-        <div role="tablist" class="relative flex items-center w-full">
+        <div
+          role="tablist"
+          class="relative flex items-center w-full"
+        >
           <!-- animated indicator -->
-          <div class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out" :style="{ left: tabLeft + '%', width: tabWidth + '%' }" />
+          <div
+            class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out"
+            :style="{ left: tabLeft + '%', width: tabWidth + '%' }"
+          />
           <button
             v-for="t in tabs"
             :key="t"
-            @click="currentTab = t"
             :aria-selected="currentTab === t"
             role="tab"
             class="flex-1 text-center px-3 py-2 text-sm flex items-center justify-center gap-2"
             :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'"
+            @click="currentTab = t"
           >
             <!-- Icons per tab -->
             <!-- Info -->
-            <svg v-if="t === 'Info'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <circle cx="12" cy="12" r="9" stroke-width="1.5"/>
-              <path d="M12 11v6" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M12 7h.01" stroke-width="2" stroke-linecap="round"/>
+            <svg
+              v-if="t === 'Info'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-white/90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke-width="1.5"
+              />
+              <path
+                d="M12 11v6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 7h.01"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
             </svg>
             <!-- Photos -->
-            <svg v-else-if="t === 'Photos'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <rect x="3" y="5" width="18" height="14" rx="2" ry="2" stroke-width="1.5"/>
-              <path d="M8 11l3 3 2-2 4 4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="8.5" cy="9.5" r="1.5" stroke-width="1.5"/>
+            <svg
+              v-else-if="t === 'Photos'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-white/90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <rect
+                x="3"
+                y="5"
+                width="18"
+                height="14"
+                rx="2"
+                ry="2"
+                stroke-width="1.5"
+              />
+              <path
+                d="M8 11l3 3 2-2 4 4"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <circle
+                cx="8.5"
+                cy="9.5"
+                r="1.5"
+                stroke-width="1.5"
+              />
             </svg>
             <!-- Issues -->
-            <svg v-else-if="t === 'Issues'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M12 3l9 16H3l9-16z" stroke-width="1.5" stroke-linejoin="round"/>
-              <path d="M12 9v4" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M12 17h.01" stroke-width="2" stroke-linecap="round"/>
+            <svg
+              v-else-if="t === 'Issues'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-white/90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                d="M12 3l9 16H3l9-16z"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M12 9v4"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 17h.01"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
             </svg>
             <!-- Comments -->
-            <svg v-else-if="t === 'Comments'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M21 12a8 8 0 0 1-8 8H7l-4 3 1.5-5A8 8 0 1 1 21 12z" stroke-width="1.5" stroke-linejoin="round"/>
+            <svg
+              v-else-if="t === 'Comments'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-white/90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                d="M21 12a8 8 0 0 1-8 8H7l-4 3 1.5-5A8 8 0 1 1 21 12z"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              />
             </svg>
             <!-- Attachments -->
-            <svg v-else-if="t === 'Attachments'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg
+              v-else-if="t === 'Attachments'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-white/90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
             <!-- Equipment -->
-            <svg v-else-if="t === 'Equipment' || t === 'Equipment Reviewed'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z" stroke-width="1.5"/>
-              <path d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15.98 19 1.7 1.7 0 0 0 15 20.5V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.51 1.7 1.7 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.27 17.4l.06-.06A1.7 1.7 0 0 0 2.66 15 1.7 1.7 0 0 0 1.15 14H1a2 2 0 1 1 0-4h.09c.6-.12 1.09-.57 1.37-1.17l.03-.06A1.7 1.7 0 0 0 2.6 7 1.7 1.7 0 0 0 2.27 5.18l-.06-.06A2 2 0 1 1 5.04 2.29l.06.06c.5.33 1.13.45 1.73.33H7a1.7 1.7 0 0 0 1-1.51V1a2 2 0 1 1 4 0v.09c.12.6.57 1.09 1.17 1.37l.06.03A2 2 0 1 1 19.73 3.6l-.06.06c-.33.5-.45 1.13-.33 1.73V6c.46.1.9.34 1.2.64.3.3.54.74.64 1.2H21a2 2 0 1 1 0 4h-.09c-.6.12-1.09.57-1.37 1.17l-.03.06z" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg
+              v-else-if="t === 'Equipment' || t === 'Equipment Reviewed'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 text-white/90"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"
+                stroke-width="1.5"
+              />
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15.98 19 1.7 1.7 0 0 0 15 20.5V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.51 1.7 1.7 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.27 17.4l.06-.06A1.7 1.7 0 0 0 2.66 15 1.7 1.7 0 0 0 1.15 14H1a2 2 0 1 1 0-4h.09c.6-.12 1.09-.57 1.37-1.17l.03-.06A1.7 1.7 0 0 0 2.6 7 1.7 1.7 0 0 0 2.27 5.18l-.06-.06A2 2 0 1 1 5.04 2.29l.06.06c.5.33 1.13.45 1.73.33H7a1.7 1.7 0 0 0 1-1.51V1a2 2 0 1 1 4 0v.09c.12.6.57 1.09 1.17 1.37l.06.03A2 2 0 1 1 19.73 3.6l-.06.06c-.33.5-.45 1.13-.33 1.73V6c.46.1.9.34 1.2.64.3.3.54.74.64 1.2H21a2 2 0 1 1 0 4h-.09c-.6.12-1.09.57-1.37 1.17l-.03.06z"
+                stroke-width="1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
             <span>{{ t }}</span>
-            <span v-if="countForTab(t) > 0" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80">{{ countForTab(t) }}</span>
+            <span
+              v-if="countForTab(t) > 0"
+              class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80"
+            >{{ countForTab(t) }}</span>
           </button>
         </div>
       </div>
@@ -60,23 +174,45 @@
       <!-- Tab content -->
       <div>
         <!-- Info Tab -->
-  <div v-if="currentTab === 'Info'" class="grid md:grid-cols-2 gap-x-4 gap-y-1 items-start">
+        <div
+          v-if="currentTab === 'Info'"
+          class="grid md:grid-cols-2 gap-x-4 gap-y-1 items-start"
+        >
           <div>
             <label class="block text-sm text-white/70">Name</label>
-            <input v-model="form.name" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" placeholder="Activity name" />
+            <input
+              v-model="form.name"
+              type="text"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              placeholder="Activity name"
+            >
           </div>
 
           <div class="md:row-span-4">
             <label class="block text-sm text-white/70">Description</label>
             <div class="rounded-md border border-white/20 bg-white/10">
-              <QuillEditor v-model:content="form.descriptionHtml" theme="snow" contentType="html" class="rounded-md" />
+              <QuillEditor
+                v-model:content="form.descriptionHtml"
+                theme="snow"
+                content-type="html"
+                class="rounded-md"
+              />
             </div>
           </div>
 
           <div>
             <label class="block text-sm text-white/70">Type</label>
-            <select v-model="form.type" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
-              <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
+            <select
+              v-model="form.type"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            >
+              <option
+                v-for="t in types"
+                :key="t"
+                :value="t"
+              >
+                {{ t }}
+              </option>
             </select>
           </div>
 
@@ -84,40 +220,119 @@
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-sm text-white/70">Start Date</label>
-                <input v-model="form.startDate" type="date" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+                <input
+                  v-model="form.startDate"
+                  type="date"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                >
               </div>
               <div>
                 <label class="block text-sm text-white/70">End Date</label>
-                <input v-model="form.endDate" type="date" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+                <input
+                  v-model="form.endDate"
+                  type="date"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                >
               </div>
             </div>
           </div>
 
           <div class="mt-1">
             <label class="block text-sm text-white/70">Location</label>
-            <input v-model="form.location" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" placeholder="Site / building / area" />
+            <input
+              v-model="form.location"
+              type="text"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              placeholder="Site / building / area"
+            >
           </div>
 
           <div class="md:col-span-2">
             <div class="flex items-center gap-3 mt-2 justify-end md:justify-start">
-              <button v-if="!isNew" @click="downloadActivityPdf" :disabled="downloading" class="px-3 py-2 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 inline-flex items-center gap-2 transition-colors duration-150" :class="downloading ? 'opacity-60 cursor-not-allowed' : ''">
+              <button
+                v-if="!isNew"
+                :disabled="downloading"
+                class="px-3 py-2 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 inline-flex items-center gap-2 transition-colors duration-150"
+                :class="downloading ? 'opacity-60 cursor-not-allowed' : ''"
+                @click="downloadActivityPdf"
+              >
                 <!-- PDF icon -->
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M6 2h7l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke-width="1.5"/>
-                  <path d="M13 2v6h6" stroke-width="1.5"/>
-                  <path d="M7.5 16v-4h1.75a1.75 1.75 0 1 1 0 3.5H7.5z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M13 12h2a2 2 0 0 1 0 4h-2v-4z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M19 12h-2.5v4H19" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M6 2h7l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M13 2v6h6"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M7.5 16v-4h1.75a1.75 1.75 0 1 1 0 3.5H7.5z"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M13 12h2a2 2 0 0 1 0 4h-2v-4z"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M19 12h-2.5v4H19"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
                 </svg>
                 <span>Download PDF</span>
               </button>
-              <button v-if="!isNew" @click="showActivityReportDialog = true" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2" title="Report settings">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.297.07 2.573-1.065z" stroke-width="1.5"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-width="1.5"/></svg>
+              <button
+                v-if="!isNew"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+                title="Report settings"
+                @click="showActivityReportDialog = true"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.297.07 2.573-1.065z"
+                  stroke-width="1.5"
+                /><path
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  stroke-width="1.5"
+                /></svg>
                 <span>Report Settings</span>
               </button>
-              <button @click="save()" :disabled="saving" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2" :class="saving ? 'opacity-60 cursor-not-allowed' : ''">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <button
+                :disabled="saving"
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
+                :class="saving ? 'opacity-60 cursor-not-allowed' : ''"
+                @click="save()"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M5 13l4 4L19 7"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
                 </svg>
                 <span>Save</span>
               </button>
@@ -145,19 +360,52 @@
               >
                 <!-- gradient overlay at bottom for contrast -->
                 <div class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <button class="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 focus:outline-none focus:ring-2 focus:ring-white/40"
-                        title="Delete photo"
-                        aria-label="Delete photo"
-                        @click.stop="confirmRemove(idx)">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/>
-                    <rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/>
-                    <path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/>
+                <button
+                  class="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  title="Delete photo"
+                  aria-label="Delete photo"
+                  @click.stop="confirmRemove(idx)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
                   </svg>
                 </button>
-                <button class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40" @click="openViewer(idx)">
-                  <img :src="p.data" class="w-full h-full object-cover" />
+                <button
+                  class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40"
+                  @click="openViewer(idx)"
+                >
+                  <img
+                    :src="p.data"
+                    class="w-full h-full object-cover"
+                  >
                   <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                 </button>
               </div>
@@ -166,32 +414,65 @@
         </div>
 
         <!-- Issues Tab -->
-        <div v-else-if="currentTab === 'Issues'" class="space-y-3">
+        <div
+          v-else-if="currentTab === 'Issues'"
+          class="space-y-3"
+        >
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            <div class="text-white/80">Issues linked to this activity</div>
+            <div class="text-white/80">
+              Issues linked to this activity
+            </div>
             <div class="flex items-center gap-2">
-              <button @click="openIssueModal" class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14" stroke-width="1.5" stroke-linecap="round"/><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <button
+                class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 inline-flex items-center gap-2"
+                @click="openIssueModal"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M12 5v14"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><path
+                  d="M5 12h14"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /></svg>
                 <span>Add Issue</span>
               </button>
-              <RouterLink to="/issues" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2">Manage Issues</RouterLink>
+              <RouterLink
+                to="/issues"
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
+              >
+                Manage Issues
+              </RouterLink>
             </div>
           </div>
           <IssuesTable :issues="issuesForActivity" />
         </div>
 
         <!-- Comments Tab -->
-        <div v-else-if="currentTab === 'Comments'" class="space-y-4">
+        <div
+          v-else-if="currentTab === 'Comments'"
+          class="space-y-4"
+        >
           <Comments
             :model-value="form.comments"
-            @update:modelValue="(v:any) => form.comments = v"
-            :onAdd="onAddComment"
-            :onDelete="onDeleteComment"
+            :on-add="onAddComment"
+            :on-delete="onDeleteComment"
+            @update:model-value="(v:any) => form.comments = v"
           />
         </div>
 
         <!-- Attachments Tab -->
-        <div v-else-if="currentTab === 'Attachments'" class="space-y-4">
+        <div
+          v-else-if="currentTab === 'Attachments'"
+          class="space-y-4"
+        >
           <div>
             <label class="block text-sm text-white/70">Upload files</label>
             <DocumentUploader
@@ -202,105 +483,318 @@
               :concurrency="3"
               @done="finalizeNewActivityIfNeeded"
             />
-            <div class="mt-2 text-xs text-white/60">Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, and images (JPG/PNG). Max ~10MB per file.</div>
+            <div class="mt-2 text-xs text-white/60">
+              Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, and images (JPG/PNG). Max ~10MB per file.
+            </div>
           </div>
           <!-- Manual link add (optional) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <div>
               <label class="block text-sm text-white/70">Filename</label>
-              <input v-model="newAttachment.filename" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" placeholder="specs.pdf" />
+              <input
+                v-model="newAttachment.filename"
+                type="text"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                placeholder="specs.pdf"
+              >
             </div>
             <div>
               <label class="block text-sm text-white/70">URL</label>
-              <input v-model="newAttachment.url" type="url" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" placeholder="https://..." />
+              <input
+                v-model="newAttachment.url"
+                type="url"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                placeholder="https://..."
+              >
             </div>
             <div class="flex items-center gap-2">
-              <button @click="addAttachment" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Add</button>
+              <button
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+                @click="addAttachment"
+              >
+                Add
+              </button>
             </div>
           </div>
           <div>
             <label class="block text-sm text-white/70 mb-1">Attachments</label>
-            <div v-if="!form.attachments.length" class="text-white/60">No attachments added.</div>
+            <div
+              v-if="!form.attachments.length"
+              class="text-white/60"
+            >
+              No attachments added.
+            </div>
             <ul class="space-y-2">
-              <li v-for="(a, i) in form.attachments" :key="i" class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+              <li
+                v-for="(a, i) in form.attachments"
+                :key="i"
+                class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3"
+              >
                 <div class="flex items-start gap-3 min-w-0">
                   <!-- Type icon (click to open viewer) -->
-                  <button class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30" @click="openAttachment(i)" title="Preview">
+                  <button
+                    class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    title="Preview"
+                    @click="openAttachment(i)"
+                  >
                     <!-- PDF -->
-                    <svg v-if="attachmentKind(a) === 'pdf'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-red-300">
-                      <path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke-width="1.5"/>
-                      <path d="M13 2v6h6" stroke-width="1.5"/>
+                    <svg
+                      v-if="attachmentKind(a) === 'pdf'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-red-300"
+                    >
+                      <path
+                        d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M13 2v6h6"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Sheet -->
-                    <svg v-else-if="attachmentKind(a) === 'sheet'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-green-300">
-                      <rect x="3" y="4" width="18" height="16" rx="2" stroke-width="1.5"/>
-                      <path d="M3 9h18M8 4v16M14 4v16" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'sheet'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-green-300"
+                    >
+                      <rect
+                        x="3"
+                        y="4"
+                        width="18"
+                        height="16"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M3 9h18M8 4v16M14 4v16"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Word/Text -->
-                    <svg v-else-if="attachmentKind(a) === 'word' || attachmentKind(a) === 'txt'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4" :class="attachmentKind(a) === 'word' ? 'text-blue-300' : 'text-gray-300'">
-                      <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5"/>
-                      <path d="M7 9h10M7 12h10M7 15h7" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'word' || attachmentKind(a) === 'txt'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                      :class="attachmentKind(a) === 'word' ? 'text-blue-300' : 'text-gray-300'"
+                    >
+                      <rect
+                        x="4"
+                        y="4"
+                        width="16"
+                        height="16"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M7 9h10M7 12h10M7 15h7"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- PowerPoint -->
-                    <svg v-else-if="attachmentKind(a) === 'ppt'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-orange-300">
-                      <circle cx="12" cy="12" r="9" stroke-width="1.5"/>
-                      <path d="M12 12h6a6 6 0 0 0-6-6v6z" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'ppt'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-orange-300"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M12 12h6a6 6 0 0 0-6-6v6z"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Image -->
-                    <svg v-else-if="attachmentKind(a) === 'image'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-purple-300">
-                      <rect x="3" y="5" width="18" height="14" rx="2" ry="2" stroke-width="1.5"/>
-                      <path d="M8 13l3-3 5 6" stroke-width="1.5"/>
-                      <circle cx="8" cy="9" r="1.5" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'image'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-purple-300"
+                    >
+                      <rect
+                        x="3"
+                        y="5"
+                        width="18"
+                        height="14"
+                        rx="2"
+                        ry="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M8 13l3-3 5 6"
+                        stroke-width="1.5"
+                      />
+                      <circle
+                        cx="8"
+                        cy="9"
+                        r="1.5"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Zip -->
-                    <svg v-else-if="attachmentKind(a) === 'zip'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-yellow-300">
-                      <rect x="5" y="3" width="14" height="18" rx="2" stroke-width="1.5"/>
-                      <path d="M12 4v3m0 2v3m0 2v3" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'zip'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-yellow-300"
+                    >
+                      <rect
+                        x="5"
+                        y="3"
+                        width="14"
+                        height="18"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M12 4v3m0 2v3m0 2v3"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Link -->
-                    <svg v-else-if="attachmentKind(a) === 'link'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-indigo-300">
-                      <path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1" stroke-width="1.5"/>
-                      <path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1" stroke-width="1.5"/>
+                    <svg
+                      v-else-if="attachmentKind(a) === 'link'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-indigo-300"
+                    >
+                      <path
+                        d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
+                        stroke-width="1.5"
+                      />
                     </svg>
                     <!-- Default file -->
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 text-white/80">
-                      <path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke-width="1.5"/>
-                      <path d="M13 2v6h6" stroke-width="1.5"/>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4 text-white/80"
+                    >
+                      <path
+                        d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M13 2v6h6"
+                        stroke-width="1.5"
+                      />
                     </svg>
                   </button>
                   <!-- Name + metadata -->
                   <div class="min-w-0">
                     <!-- File name (click to open viewer) -->
-                    <button class="truncate text-left text-sm hover:underline focus:outline-none" @click="openAttachment(i)">{{ a.filename || fileNameFromUrl(a.url) }}</button>
-                    <div v-if="attachmentMeta(a)" class="text-xs text-white/60 truncate">{{ attachmentMeta(a) }}</div>
+                    <button
+                      class="truncate text-left text-sm hover:underline focus:outline-none"
+                      @click="openAttachment(i)"
+                    >
+                      {{ a.filename || fileNameFromUrl(a.url) }}
+                    </button>
+                    <div
+                      v-if="attachmentMeta(a)"
+                      class="text-xs text-white/60 truncate"
+                    >
+                      {{ attachmentMeta(a) }}
+                    </div>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
                   <button
-                    @click="downloadAttachment(a)"
                     class="h-8 w-8 grid place-items-center rounded-md bg-indigo-500/20 border-2 border-indigo-400/80 text-indigo-200 hover:bg-indigo-500/50 hover:border-indigo-500/90 hover:text-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition-colors duration-150"
                     title="Download"
                     aria-label="Download"
+                    @click="downloadAttachment(a)"
                   >
                     <!-- Download icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                      <path d="M12 3v10" stroke-width="1.5" stroke-linecap="round"/>
-                      <path d="M8 11l4 4 4-4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M5 19h14" stroke-width="1.5" stroke-linecap="round"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M12 3v10"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M8 11l4 4 4-4"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M5 19h14"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
                     </svg>
                   </button>
                   <button
-                    @click="removeAttachment(i)"
                     class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border-2 border-red-400/80 text-red-200 hover:bg-red-500/50 hover:border-red-500/90 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors duration-150"
                     title="Remove"
                     aria-label="Remove"
+                    @click="removeAttachment(i)"
                   >
                     <!-- Trash icon (consistent with Photos delete) -->
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                      <path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/>
-                      <path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/>
-                      <rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/>
-                      <path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M3 6h18"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M8 6l1-2h6l1 2"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <rect
+                        x="6"
+                        y="6"
+                        width="12"
+                        height="14"
+                        rx="1.5"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M10 10v6M14 10v6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -310,30 +804,36 @@
         </div>
 
         <!-- Equipment Tab -->
-        <div v-else-if="currentTab === 'Equipment'" class="space-y-3">
+        <div
+          v-else-if="currentTab === 'Equipment'"
+          class="space-y-3"
+        >
           <!-- Quick chips showing currently selected systems/tags -->
           <div>
             <label class="block text-sm text-white/70">Search by tag/title/system to add</label>
             <div class="relative">
               <input
                 v-model="systemsText"
+                type="text"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                placeholder="Type a tag, title, or system, then press Enter"
                 @keydown.enter.prevent="addByQuery"
                 @keydown.down.prevent="onArrowDown"
                 @keydown.up.prevent="onArrowUp"
                 @keydown.esc.prevent="onEsc"
-                type="text"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                placeholder="Type a tag, title, or system, then press Enter"
-              />
+              >
               <!-- Suggestions dropdown -->
-              <div v-if="showSuggestions" class="absolute left-0 right-0 mt-1 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20 max-h-64 overflow-auto">
+              <div
+                v-if="showSuggestions"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20 max-h-64 overflow-auto"
+              >
                 <div class="py-1">
                   <button
                     v-for="(s, i) in suggestions"
                     :key="s.id"
-                    @click="addSuggestion(s)"
                     class="w-full px-3 py-2 text-left inline-flex items-center justify-between gap-3 text-white/90"
                     :class="i === highlightedIndex ? 'bg-white/15' : 'hover:bg-white/10'"
+                    @click="addSuggestion(s)"
                   >
                     <span class="min-w-0 flex-1 truncate">
                       <span class="font-medium">{{ s.tag }}</span>
@@ -344,39 +844,108 @@
                 </div>
               </div>
             </div>
-            <div class="text-xs text-white/60 mt-1">Press Enter to add. The table below shows only the selected equipment.</div>
+            <div class="text-xs text-white/60 mt-1">
+              Press Enter to add. The table below shows only the selected equipment.
+            </div>
           </div>
 
           <!-- Selected equipment table (no extra filter) -->
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            <div class="text-white/80">Selected equipment</div>
+            <div class="text-white/80">
+              Selected equipment
+            </div>
           </div>
 
-          <div v-if="!selectedEquip.length && !equipmentLoading" class="text-white/60">No equipment selected yet. Add tags above.</div>
-          <div v-else class="overflow-x-auto rounded-md border border-white/10">
+          <div
+            v-if="!selectedEquip.length && !equipmentLoading"
+            class="text-white/60"
+          >
+            No equipment selected yet. Add tags above.
+          </div>
+          <div
+            v-else
+            class="overflow-x-auto rounded-md border border-white/10"
+          >
             <table class="min-w-full text-sm">
               <thead class="bg-white/5 text-white/70">
                 <tr>
-                  <th class="text-left px-3 py-2">Tag</th>
-                  <th class="text-left px-3 py-2">Title</th>
-                  <th class="text-left px-3 py-2">Location</th>
-                  <th class="text-left px-3 py-2">Status</th>
-                  <th class="text-right px-3 py-2">Actions</th>
+                  <th class="text-left px-3 py-2">
+                    Tag
+                  </th>
+                  <th class="text-left px-3 py-2">
+                    Title
+                  </th>
+                  <th class="text-left px-3 py-2">
+                    Location
+                  </th>
+                  <th class="text-left px-3 py-2">
+                    Status
+                  </th>
+                  <th class="text-right px-3 py-2">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="e in filteredEquip" :key="e.id" class="border-t border-white/10 hover:bg-white/5">
-                  <td class="px-3 py-2 align-middle whitespace-nowrap">{{ e.tag || '—' }}</td>
-                  <td class="px-3 py-2 align-middle truncate">{{ e.title || '—' }}</td>
-                  <td class="px-3 py-2 align-middle truncate">{{ spaceName(e.spaceId) || '—' }}</td>
-                  <td class="px-3 py-2 align-middle whitespace-nowrap">{{ e.status || 'Not Started' }}</td>
+                <tr
+                  v-for="e in filteredEquip"
+                  :key="e.id"
+                  class="border-t border-white/10 hover:bg-white/5"
+                >
+                  <td class="px-3 py-2 align-middle whitespace-nowrap">
+                    {{ e.tag || '—' }}
+                  </td>
+                  <td class="px-3 py-2 align-middle truncate">
+                    {{ e.title || '—' }}
+                  </td>
+                  <td class="px-3 py-2 align-middle truncate">
+                    {{ spaceName(e.spaceId) || '—' }}
+                  </td>
+                  <td class="px-3 py-2 align-middle whitespace-nowrap">
+                    {{ e.status || 'Not Started' }}
+                  </td>
                   <td class="px-3 py-2 align-middle text-right">
                     <div class="inline-flex items-center gap-2">
-                      <button @click="removeReviewedTag(e)" class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25" title="Remove from Reviewed" aria-label="Remove">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      <button
+                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25"
+                        title="Remove from Reviewed"
+                        aria-label="Remove"
+                        @click="removeReviewedTag(e)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          class="w-4 h-4"
+                        ><path
+                          d="M5 12h14"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        /></svg>
                       </button>
-                      <RouterLink :to="{ name: 'equipment-edit', params: { id: e.id } }" class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" title="Open" aria-label="Open">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M4 12h16" stroke-width="1.5" stroke-linecap="round"/><path d="M14 6l6 6-6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      <RouterLink
+                        :to="{ name: 'equipment-edit', params: { id: e.id } }"
+                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                        title="Open"
+                        aria-label="Open"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          class="w-4 h-4"
+                        ><path
+                          d="M4 12h16"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        /><path
+                          d="M14 6l6 6-6 6"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        /></svg>
                       </RouterLink>
                     </div>
                   </td>
@@ -393,8 +962,12 @@
   <Modal v-model="viewerOpen">
     <template #header>
       <div class="flex items-center justify-between">
-        <div class="font-medium">Photo {{ photos.length ? (viewerIndex + 1) : 0 }} / {{ photos.length }}</div>
-        <div class="text-white/70 text-sm">Click outside or press Esc to close</div>
+        <div class="font-medium">
+          Photo {{ photos.length ? (viewerIndex + 1) : 0 }} / {{ photos.length }}
+        </div>
+        <div class="text-white/70 text-sm">
+          Click outside or press Esc to close
+        </div>
       </div>
     </template>
     <div class="flex items-center justify-center">
@@ -412,40 +985,105 @@
             transformOrigin: 'center center'
           }"
           @dblclick.prevent="toggleZoom"
-        />
+        >
         <!-- Photo meta -->
         <div class="p-3 border-t border-white/10 bg-black/30">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center text-white/80 shrink-0">
-              <img v-if="photos[viewerIndex]?.uploadedByAvatar" :src="photos[viewerIndex]?.uploadedByAvatar" class="w-full h-full object-cover" alt="avatar" />
-              <span v-else class="text-[10px]">{{ initialsFromName(photos[viewerIndex]?.uploadedByName || '') }}</span>
+              <img
+                v-if="photos[viewerIndex]?.uploadedByAvatar"
+                :src="photos[viewerIndex]?.uploadedByAvatar"
+                class="w-full h-full object-cover"
+                alt="avatar"
+              >
+              <span
+                v-else
+                class="text-[10px]"
+              >{{ initialsFromName(photos[viewerIndex]?.uploadedByName || '') }}</span>
             </div>
             <div class="text-xs text-white/80">
-              <div class="font-medium text-white/90">{{ photos[viewerIndex]?.uploadedByName || 'Unknown' }}</div>
-              <div class="text-white/60">Uploaded {{ formatDateTime(photos[viewerIndex]?.createdAt) }}</div>
+              <div class="font-medium text-white/90">
+                {{ photos[viewerIndex]?.uploadedByName || 'Unknown' }}
+              </div>
+              <div class="text-white/60">
+                Uploaded {{ formatDateTime(photos[viewerIndex]?.createdAt) }}
+              </div>
             </div>
           </div>
           <!-- Caption editor -->
           <div class="mt-3 flex items-center gap-2">
-            <input v-model="captionValue" type="text" placeholder="Add a caption..." class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
-            <button @click="saveCaption" :disabled="savingCaption" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30" :class="savingCaption ? 'opacity-60 cursor-not-allowed' : ''">Save</button>
+            <input
+              v-model="captionValue"
+              type="text"
+              placeholder="Add a caption..."
+              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            >
+            <button
+              :disabled="savingCaption"
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+              :class="savingCaption ? 'opacity-60 cursor-not-allowed' : ''"
+              @click="saveCaption"
+            >
+              Save
+            </button>
           </div>
         </div>
       </div>
-      <div v-else class="text-white/70">No photos</div>
+      <div
+        v-else
+        class="text-white/70"
+      >
+        No photos
+      </div>
     </div>
     <template #footer>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <button @click="prevPhoto" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Prev</button>
-          <button @click="nextPhoto" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Next</button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="prevPhoto"
+          >
+            Prev
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="nextPhoto"
+          >
+            Next
+          </button>
         </div>
         <div class="flex items-center gap-2">
-          <button @click="zoomOut" :disabled="zoom <= 1" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-50">Zoom -</button>
-          <button @click="zoomIn" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Zoom +</button>
-          <button @click="rotateRight" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Rotate</button>
-          <button @click="deleteCurrentPhoto" class="px-3 py-2 rounded-md bg-red-500/20 border border-red-400/40 hover:bg-red-500/30 text-red-200">Delete</button>
-          <button @click="closeViewer" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Close</button>
+          <button
+            :disabled="zoom <= 1"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-50"
+            @click="zoomOut"
+          >
+            Zoom -
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="zoomIn"
+          >
+            Zoom +
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="rotateRight"
+          >
+            Rotate
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-red-500/20 border border-red-400/40 hover:bg-red-500/30 text-red-200"
+            @click="deleteCurrentPhoto"
+          >
+            Delete
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+            @click="closeViewer"
+          >
+            Close
+          </button>
         </div>
       </div>
     </template>
@@ -460,50 +1098,160 @@
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex flex-col max-w-[65vw]">
-          <div class="font-medium truncate">{{ selectedAttachment?.filename || fileNameFromUrl(selectedAttachment?.url) }}</div>
-          <div v-if="selectedAttachment && attachmentMeta(selectedAttachment)" class="text-xs text-white/60 truncate">{{ attachmentMeta(selectedAttachment) }}</div>
+          <div class="font-medium truncate">
+            {{ selectedAttachment?.filename || fileNameFromUrl(selectedAttachment?.url) }}
+          </div>
+          <div
+            v-if="selectedAttachment && attachmentMeta(selectedAttachment)"
+            class="text-xs text-white/60 truncate"
+          >
+            {{ attachmentMeta(selectedAttachment) }}
+          </div>
         </div>
         <div class="flex items-center gap-2">
-          <button @click="attachmentFullscreen = !attachmentFullscreen" class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm inline-flex items-center gap-1" :title="attachmentFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'">
-            <svg v-if="!attachmentFullscreen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+          <button
+            class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm inline-flex items-center gap-1"
+            :title="attachmentFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+            @click="attachmentFullscreen = !attachmentFullscreen"
+          >
+            <svg
+              v-if="!attachmentFullscreen"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            >
               <!-- Previous fullscreen icon: outward corners -->
-              <path d="M4 9V4h5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M20 9V4h-5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M4 15v5h5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M20 15v5h-5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M4 9V4h5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M20 9V4h-5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M4 15v5h5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M20 15v5h-5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
+            <svg
+              v-else
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            >
               <!-- Arrows pointing inward -->
-              <path d="M4 4l5 5" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M20 4l-5 5" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M4 20l5-5" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M20 20l-5-5" stroke-width="1.5" stroke-linecap="round"/>
+              <path
+                d="M4 4l5 5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M20 4l-5 5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M4 20l5-5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M20 20l-5-5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
             </svg>
             <span>{{ attachmentFullscreen ? 'Exit Fullscreen' : 'Fullscreen' }}</span>
           </button>
-          <button v-if="selectedAttachmentUrl" @click="openInNewTab(selectedAttachmentUrl)" class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Open in new tab</button>
-          <button v-if="selectedAttachment" @click="downloadAttachment(selectedAttachment)" class="px-3 py-1.5 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 text-sm transition-colors duration-150">Download</button>
+          <button
+            v-if="selectedAttachmentUrl"
+            class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+            @click="openInNewTab(selectedAttachmentUrl)"
+          >
+            Open in new tab
+          </button>
+          <button
+            v-if="selectedAttachment"
+            class="px-3 py-1.5 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 text-sm transition-colors duration-150"
+            @click="downloadAttachment(selectedAttachment)"
+          >
+            Download
+          </button>
         </div>
       </div>
     </template>
-    <div class="w-full overflow-auto" :style="{ maxHeight: viewerMaxH }">
-      <div v-if="selectedKind === 'image'" class="w-full h-full">
-        <img :src="selectedAttachmentUrl" class="max-w-full object-contain block mx-auto" :style="{ maxHeight: viewerInnerH }" />
+    <div
+      class="w-full overflow-auto"
+      :style="{ maxHeight: viewerMaxH }"
+    >
+      <div
+        v-if="selectedKind === 'image'"
+        class="w-full h-full"
+      >
+        <img
+          :src="selectedAttachmentUrl"
+          class="max-w-full object-contain block mx-auto"
+          :style="{ maxHeight: viewerInnerH }"
+        >
       </div>
-      <div v-else-if="selectedKind === 'pdf'" class="w-full">
-        <iframe :src="selectedAttachmentUrl" class="w-full rounded-md border border-white/10 bg-black/10" :style="{ height: viewerInnerH }"></iframe>
+      <div
+        v-else-if="selectedKind === 'pdf'"
+        class="w-full"
+      >
+        <iframe
+          :src="selectedAttachmentUrl"
+          class="w-full rounded-md border border-white/10 bg-black/10"
+          :style="{ height: viewerInnerH }"
+        />
       </div>
-      <div v-else class="p-4 text-white/80 space-y-3">
+      <div
+        v-else
+        class="p-4 text-white/80 space-y-3"
+      >
         <div>Preview not available for this file type.</div>
         <div class="flex items-center gap-2">
-          <button v-if="selectedAttachmentUrl" @click="openInNewTab(selectedAttachmentUrl)" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Open in new tab</button>
-          <button v-if="selectedAttachment" @click="downloadAttachment(selectedAttachment)" class="px-3 py-2 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition-colors duration-150">Download</button>
+          <button
+            v-if="selectedAttachmentUrl"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="openInNewTab(selectedAttachmentUrl)"
+          >
+            Open in new tab
+          </button>
+          <button
+            v-if="selectedAttachment"
+            class="px-3 py-2 rounded-md bg-indigo-500/20 border-2 border-indigo-400/70 text-indigo-100 hover:bg-indigo-500/40 hover:border-indigo-500/90 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 transition-colors duration-150"
+            @click="downloadAttachment(selectedAttachment)"
+          >
+            Download
+          </button>
         </div>
       </div>
     </div>
     <template #footer>
       <div class="flex items-center justify-end">
-        <button @click="attachmentViewerOpen = false" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Close</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+          @click="attachmentViewerOpen = false"
+        >
+          Close
+        </button>
       </div>
     </template>
   </Modal>
@@ -511,25 +1259,45 @@
   <!-- Create Issue Modal -->
   <Modal v-model="showIssueModal">
     <template #header>
-      <div class="text-lg font-semibold">Add Issue for Activity</div>
+      <div class="text-lg font-semibold">
+        Add Issue for Activity
+      </div>
     </template>
     <div class="space-y-3">
       <div>
         <label class="block text-sm text-white/70">Title</label>
-        <input v-model="activityIssueDraft.title" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Issue title" />
+        <input
+          v-model="activityIssueDraft.title"
+          type="text"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          placeholder="Issue title"
+        >
       </div>
       <div>
         <label class="block text-sm text-white/70">Description</label>
-        <textarea v-model="activityIssueDraft.description" rows="4" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Describe the issue"></textarea>
+        <textarea
+          v-model="activityIssueDraft.description"
+          rows="4"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          placeholder="Describe the issue"
+        />
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label class="block text-sm text-white/70">Type</label>
-          <input v-model="activityIssueDraft.type" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Activity" />
+          <input
+            v-model="activityIssueDraft.type"
+            type="text"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            placeholder="Activity"
+          >
         </div>
         <div>
           <label class="block text-sm text-white/70">Priority</label>
-          <select v-model="activityIssueDraft.priority" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
+          <select
+            v-model="activityIssueDraft.priority"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+          >
             <option>Low</option>
             <option>Medium</option>
             <option>High</option>
@@ -537,14 +1305,29 @@
         </div>
         <div>
           <label class="block text-sm text-white/70">Assign To</label>
-          <input v-model="activityIssueDraft.assignedTo" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="email or name" />
+          <input
+            v-model="activityIssueDraft.assignedTo"
+            type="text"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            placeholder="email or name"
+          >
         </div>
       </div>
     </div>
     <template #footer>
       <div class="flex items-center justify-end gap-2">
-        <button @click="closeIssueModal" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Cancel</button>
-        <button @click="createActivityIssue" class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35">Create</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+          @click="closeIssueModal"
+        >
+          Cancel
+        </button>
+        <button
+          class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35"
+          @click="createActivityIssue"
+        >
+          Create
+        </button>
       </div>
     </template>
   </Modal>
@@ -553,47 +1336,93 @@
   <Modal v-model="showActivityReportDialog">
     <template #header>
       <div class="flex items-center justify-between w-full">
-        <div class="text-lg">Activity Report Settings</div>
+        <div class="text-lg">
+          Activity Report Settings
+        </div>
       </div>
     </template>
     <div class="space-y-4 text-sm">
       <div class="grid grid-cols-2 gap-3">
         <label class="inline-flex items-center gap-2">
-          <input type="checkbox" v-model="activityReport.include.info" class="rounded" />
+          <input
+            v-model="activityReport.include.info"
+            type="checkbox"
+            class="rounded"
+          >
           <span>Info</span>
         </label>
         <label class="inline-flex items-center gap-2">
-          <input type="checkbox" v-model="activityReport.include.description" class="rounded" />
+          <input
+            v-model="activityReport.include.description"
+            type="checkbox"
+            class="rounded"
+          >
           <span>Description</span>
         </label>
         <label class="inline-flex items-center gap-2">
-          <input type="checkbox" v-model="activityReport.include.photos" class="rounded" />
+          <input
+            v-model="activityReport.include.photos"
+            type="checkbox"
+            class="rounded"
+          >
           <span>Photos</span>
         </label>
         <label class="inline-flex items-center gap-2">
-          <input type="checkbox" v-model="activityReport.include.issues" class="rounded" />
+          <input
+            v-model="activityReport.include.issues"
+            type="checkbox"
+            class="rounded"
+          >
           <span>Issues</span>
         </label>
         <label class="inline-flex items-center gap-2">
-          <input type="checkbox" v-model="activityReport.include.attachments" class="rounded" />
+          <input
+            v-model="activityReport.include.attachments"
+            type="checkbox"
+            class="rounded"
+          >
           <span>Attachments</span>
         </label>
         <label class="inline-flex items-center gap-2">
-          <input type="checkbox" v-model="activityReport.include.equipmentReports" class="rounded" />
+          <input
+            v-model="activityReport.include.equipmentReports"
+            type="checkbox"
+            class="rounded"
+          >
           <span>Append Equipment Reports</span>
         </label>
       </div>
       <div class="grid grid-cols-2 gap-3 items-center">
         <label class="text-white/80">Photo limit</label>
-        <input type="number" min="0" v-model.number="activityReport.photoLimit" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28" />
+        <input
+          v-model.number="activityReport.photoLimit"
+          type="number"
+          min="0"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28"
+        >
       </div>
     </div>
     <template #footer>
       <div class="flex items-center justify-between w-full">
-        <button @click="resetActivityReportSettings" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Reset</button>
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+          @click="resetActivityReportSettings"
+        >
+          Reset
+        </button>
         <div class="flex items-center gap-2">
-          <button @click="showActivityReportDialog = false" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Cancel</button>
-          <button @click="saveActivityReportSettings" class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35">Save</button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="showActivityReportDialog = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35"
+            @click="saveActivityReportSettings"
+          >
+            Save
+          </button>
         </div>
       </div>
     </template>
@@ -678,16 +1507,16 @@ function loadActivityReportSettingsFromSession() {
         photoLimit: Math.max(0, Number(parsed.photoLimit ?? activityReport.value.photoLimit)),
       }
     }
-  } catch {}
+  } catch (e) { /* ignore sessionStorage read errors */ }
 }
 function saveActivityReportSettings() {
-  try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch {}
+  try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ }
   showActivityReportDialog.value = false
 }
 function resetActivityReportSettings() {
   activityReport.value = { include: { info: true, description: true, photos: true, issues: true, attachments: true, equipmentReports: true }, photoLimit: 6 }
 }
-watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch {} }, { deep: true })
+watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
 
 const types = [
   'Design Review', 'Submittal Review', 'Site Visit Review', 'Cx Meeting', 'Startup Review',
@@ -725,9 +1554,9 @@ onMounted(async () => {
   const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
   if (pid) form.projectId = String(pid)
   // Ensure issues are available for linking/rendering
-  try { await issuesStore.fetchIssues(String(form.projectId || pid)) } catch {}
+  try { await issuesStore.fetchIssues(String(form.projectId || pid)) } catch (e) { /* ignore issues fetch race */ }
   // Preload equipment and spaces for the current project so the Equipment Reviewed tab can list them
-  try { if (pid) await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch {}
+  try { if (pid) await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch (e) { /* ignore preload failures */ }
   const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()).padStart(2,'0')
   form.startDate = `${yyyy}-${mm}-${dd}`; form.endDate = `${yyyy}-${mm}-${dd}`
   if (!isNew.value) {
@@ -748,7 +1577,7 @@ onMounted(async () => {
   // Don't preload into the search box; it's used for adding by search only
   systemsText.value = ''
     // Ensure equipment/spaces reflect the activity's project
-    try { if (form.projectId) await Promise.all([ equipmentStore.fetchByProject(String(form.projectId)), spacesStore.fetchByProject(String(form.projectId)) ]) } catch {}
+  try { if (form.projectId) await Promise.all([ equipmentStore.fetchByProject(String(form.projectId)), spacesStore.fetchByProject(String(form.projectId)) ]) } catch (e) { /* ignore preload failures */ }
   }
 })
 
@@ -912,7 +1741,7 @@ async function downloadActivityPdf() {
       try {
         if (footerLogo.dataUrl) { const lh = 5.5; const lw = 12; doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + lw + 2, footerY - 2) }
         else { doc.setFillColor(220,220,220); doc.rect(margin, footerY - 5.5, 8,5,'F'); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + 10, footerY - 2) }
-      } catch {}
+      } catch (e) { /* ignore */ }
       doc.setFont('helvetica','normal'); doc.text(String(pageNo), pageWidth/2, footerY - 2, { align: 'center' }); doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
       doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
     }
@@ -979,7 +1808,7 @@ async function downloadActivityPdf() {
           const segUrl = seg.toDataURL('image/png')
           const segmentTargetHeightPx = Math.round(segmentSrcPx * scale)
           const segmentTargetHeightMm = segmentTargetHeightPx * mmPerPx
-          try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm) } catch {}
+      try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm) } catch (e) { /* ignore */ }
           y += segmentTargetHeightMm
           offsetPx += segmentSrcPx
           if (offsetPx < canvas.height - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader() }
@@ -1039,7 +1868,7 @@ async function downloadActivityPdf() {
           let eqObj: any = eq
           const hasInlineIssues = Array.isArray(eqObj?.issues) && eqObj.issues.length > 0
           if (!hasInlineIssues && (eqObj?.id || eqObj?._id)) {
-            try { const full = await equipmentStore.fetchOne(String(eqObj.id || eqObj._id)); if (full) eqObj = full } catch {}
+            try { const full = await equipmentStore.fetchOne(String(eqObj.id || eqObj._id)); if (full) eqObj = full } catch (e) { /* ignore */ }
           }
           const srcLabel = String(eqObj?.tag || eqObj?.title || 'Equipment')
           const refs: any[] = Array.isArray(eqObj?.issues) ? eqObj.issues : []
@@ -1057,7 +1886,7 @@ async function downloadActivityPdf() {
             }
           }
         }
-      } catch {}
+      } catch (e) { /* ignore */ }
       const issues = aggregated
       if (issues.length) {
         const iDoc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -1071,15 +1900,15 @@ async function downloadActivityPdf() {
           try {
             if (footerLogo?.dataUrl) { const lh = 5.5; const lw = 12; iDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh); iDoc.setFont('helvetica','bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + lw + 2, fY - 2) }
             else { iDoc.setFillColor(220,220,220); iDoc.rect(margin, fY - 5.5, 8,5,'F'); iDoc.setFont('helvetica','bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + 10, fY - 2) }
-          } catch {}
+          } catch (e) { /* ignore */ }
           iDoc.setFont('helvetica','normal'); iDoc.text(String(iPageNo), iPW/2, fY - 2, { align: 'center' });
-          try { if (typeof pageDate === 'string') iDoc.text(pageDate, iPW - margin, fY - 2, { align: 'right' }) } catch {}
+          try { if (typeof pageDate === 'string') iDoc.text(pageDate, iPW - margin, fY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
           iDoc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); iDoc.setFontSize(prevSize)
         }
         const drawIHeader = () => {
           const logoH = 12
-          try { if (clientImg?.dataUrl) iDoc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, logoH*2.5, logoH) } catch {}
-          try { if (cxaImg?.dataUrl) { const w = logoH*2.5; iDoc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', iPW - margin - w, margin, w, logoH) } } catch {}
+          try { if (clientImg?.dataUrl) iDoc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, logoH*2.5, logoH) } catch (e) { /* ignore */ }
+          try { if (cxaImg?.dataUrl) { const w = logoH*2.5; iDoc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', iPW - margin - w, margin, w, logoH) } } catch (e) { /* ignore */ }
           iDoc.setFontSize(20); iDoc.setFont('helvetica','bold'); iDoc.text('Issues', iPW/2, margin + 8, { align: 'center' })
           // Reset to body font after header
           iy = margin + 22
@@ -1137,7 +1966,7 @@ async function downloadActivityPdf() {
         // Image full pages
         const isImage = (a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }
         async function getDims(dataUrl:string): Promise<{w:number;h:number}> { return new Promise(res => { const img = new Image(); img.onload=()=>res({ w: img.naturalWidth||img.width, h: img.naturalHeight||img.height }); img.onerror=()=>res({w:0,h:0}); img.src = dataUrl }) }
-        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); attDoc.setFont('helvetica','bold'); attDoc.setFontSize(10); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; attDoc.setFont('helvetica','normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch {} ; drawAttFooter() }
+        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); attDoc.setFont('helvetica','bold'); attDoc.setFontSize(10); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; attDoc.setFont('helvetica','normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch {}  drawAttFooter() }
         drawAttFooter()
         attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
       }
@@ -1176,7 +2005,7 @@ async function downloadActivityPdf() {
             const eqPdf = await PDFDocument.load(eqBytes)
             const pages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
             pages.forEach((p: any) => merged.addPage(p))
-          } catch {}
+           } catch (e) { /* ignore */ }
         }
         // Insert issues pages after equipment reports (before attachments)
         if (issuesBytes) {
@@ -1184,7 +2013,7 @@ async function downloadActivityPdf() {
             const issuesPdf = await PDFDocument.load(issuesBytes)
             const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
             issuesPages.forEach((p:any) => merged.addPage(p))
-          } catch {}
+          } catch (e) { /* ignore */ }
         }
         // Insert attachments pages (non-PDF) after equipment reports & issues
         if (attachmentsBytes) {
@@ -1192,7 +2021,7 @@ async function downloadActivityPdf() {
             const attPdf = await PDFDocument.load(attachmentsBytes)
             const attPages = await merged.copyPages(attPdf, attPdf.getPageIndices())
             attPages.forEach((p:any) => merged.addPage(p))
-          } catch {}
+          } catch (e) { /* ignore */ }
         }
         // Append PDF attachments last
         if (activityReport.value.include.attachments) {
@@ -1213,7 +2042,7 @@ async function downloadActivityPdf() {
             const issuesPdf = await PDFDocument.load(issuesBytes)
             const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
             issuesPages.forEach((p:any) => merged.addPage(p))
-          } catch {}
+          } catch (e) { /* ignore */ }
         }
         if (attachmentsBytes) {
           const attPdf = await PDFDocument.load(attachmentsBytes)
@@ -1227,7 +2056,7 @@ async function downloadActivityPdf() {
           for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf2 = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf2, attPdf2.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch {} }
         }
         baseBytes = await merged.save()
-      } catch {}
+  } catch (e) { /* ignore */ }
     }
     // Download merged
     const blob = new Blob([baseBytes], { type: 'application/pdf' })
@@ -1633,7 +2462,7 @@ function openAttachment(i: number) {
   attachmentViewerOpen.value = true
 }
 function openInNewTab(u: string) {
-  try { window.open(u, '_blank', 'noopener') } catch {}
+  try { window.open(u, '_blank', 'noopener') } catch (e) { /* ignore */ }
 }
 async function downloadAttachment(a: any) {
   try {
@@ -1797,7 +2626,7 @@ function addByQuery() {
 // Keep equipment/spaces in sync if projectId changes while editing
 watch(() => form.projectId, async (pid) => {
   if (pid) {
-    try { await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch {}
+  try { await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch (e) { /* ignore */ }
   }
 })
 </script>

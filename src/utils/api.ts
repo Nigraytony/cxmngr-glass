@@ -8,9 +8,9 @@ export function getApiBase(): string {
     const cleaned = base.replace(/\/$/, '')
     // Expose and log once for runtime verification in production deployments
     if (typeof window !== 'undefined') {
-      ;(window as any).__API_BASE = cleaned
+      (window as any).__API_BASE = cleaned
       if (!(window as any).__API_BASE_LOGGED) {
-        ;(window as any).__API_BASE_LOGGED = true
+        (window as any).__API_BASE_LOGGED = true
         // Only log in production builds to help verify env injection
         // (Vite sets import.meta.env.MODE)
         if ((import.meta as any).env?.MODE === 'production') {

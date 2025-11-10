@@ -65,7 +65,7 @@ export const useIssuesStore = defineStore('issues', () => {
     try {
       // determine projectId: explicit param wins, otherwise use project store, otherwise localStorage
       const projectStore = useProjectStore()
-      let pid = projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || undefined
+      const pid = projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || undefined
       // If no project id is available, do not fetch global issues — return empty list.
       if (!pid) {
         issues.value = []

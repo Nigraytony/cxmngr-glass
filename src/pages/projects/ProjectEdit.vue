@@ -1,108 +1,214 @@
 <template>
   <section class="space-y-6 relative">
-  <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
+    <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
 
     <div>
-  <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }, { text: 'Edit Project', to: '#' }]" />
+      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }, { text: 'Edit Project', to: '#' }]" />
     </div>
 
     <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10">
       <div class="mt-4">
         <!-- Top tabs (evenly spaced) -->
         <div class="flex w-full mb-4 border-b border-white/10 pb-3">
-          <button @click="activeTab = 'info'" :class="tabClass('info')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('info')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'info'"
+          >
             <span class="i">ℹ️</span>
             <span>Info</span>
           </button>
 
-          <button @click="activeTab = 'team'" :class="tabClass('team')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('team')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'team'"
+          >
             <span class="i">👥</span>
             <span>Team</span>
           </button>
 
-          <button @click="activeTab = 'logo'" :class="tabClass('logo')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('logo')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'logo'"
+          >
             <span class="i">🖼️</span>
             <span>Logo</span>
           </button>
 
-          <button @click="activeTab = 'subscription'" :class="tabClass('subscription')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('subscription')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'subscription'"
+          >
             <span class="i">💳</span>
             <span>Subscription</span>
           </button>
 
-          <button @click="activeTab = 'settings'" :class="tabClass('settings')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('settings')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'settings'"
+          >
             <span class="i">⚙️</span>
             <span>Settings</span>
           </button>
 
-          <button @click="activeTab = 'logs'" :class="tabClass('logs')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('logs')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'logs'"
+          >
             <span class="i">📝</span>
             <span>Logs</span>
           </button>
         </div>
 
         <div>
-          <div v-if="!project" class="p-4 text-white/70">Loading project...</div>
+          <div
+            v-if="!project"
+            class="p-4 text-white/70"
+          >
+            Loading project...
+          </div>
           <div v-else>
             <div v-show="activeTab === 'info'">
-              <ProjectForm v-model="project" :errors="formErrors" />
+              <ProjectForm
+                v-model="project"
+                :errors="formErrors"
+              />
             </div>
 
             <div v-show="activeTab === 'team'">
-              <h3 class="text-md font-medium mb-2">Team</h3>
-              <p class="text-sm text-white/70 mb-4">Manage team membership and roles for this project.</p>
+              <h3 class="text-md font-medium mb-2">
+                Team
+              </h3>
+              <p class="text-sm text-white/70 mb-4">
+                Manage team membership and roles for this project.
+              </p>
               <div class="space-y-2">
-                <div v-for="member in (project.team || [])" :key="member._id || member.email" class="p-3 rounded bg-white/5">
+                <div
+                  v-for="member in (project.team || [])"
+                  :key="member._id || member.email"
+                  class="p-3 rounded bg-white/5"
+                >
                   <div class="flex items-center justify-between">
                     <div>
-                      <div class="font-medium">{{ member.firstName }} {{ member.lastName }}</div>
-                      <div class="text-xs text-white/70">{{ member.email }} • {{ member.role }}</div>
+                      <div class="font-medium">
+                        {{ member.firstName }} {{ member.lastName }}
+                      </div>
+                      <div class="text-xs text-white/70">
+                        {{ member.email }} • {{ member.role }}
+                      </div>
                     </div>
                     <div class="flex items-center gap-3">
                       <!-- Status badge (invited, rejected, active, etc.) -->
-                      <div v-if="member.status || member.inviteStatus" :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]">
+                      <div
+                        v-if="member.status || member.inviteStatus"
+                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]"
+                      >
                         {{ (member.status || member.inviteStatus) ? (member.status || member.inviteStatus) : 'status' }}
                       </div>
                       <div class="flex gap-2">
-                        <button @click="removeMember(member)" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                          @click="removeMember(member)"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="pt-2">
-                  <h4 class="font-medium mb-2">Add member</h4>
+                  <h4 class="font-medium mb-2">
+                    Add member
+                  </h4>
                   <div class="grid grid-cols-1 gap-2">
                     <!-- Row 1: First / Last -->
                     <div class="grid grid-cols-2 gap-2">
-                      <input v-model="newMember.firstName" placeholder="First" class="rounded p-2 bg-white/5 w-full" />
-                      <input v-model="newMember.lastName" placeholder="Last" class="rounded p-2 bg-white/5 w-full" />
+                      <input
+                        v-model="newMember.firstName"
+                        placeholder="First"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                      <input
+                        v-model="newMember.lastName"
+                        placeholder="Last"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
                     </div>
 
                     <!-- Row 2: Email / Company / Role -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input v-model="newMember.email" placeholder="Email" class="rounded p-2 bg-white/5 w-full" />
-                      <input v-model="newMember.company" placeholder="Company" class="rounded p-2 bg-white/5 w-full" />
-                      <select v-model="newMember.role" class="rounded p-2 bg-white/5 w-full">
-                        <option value="admin">admin</option>
-                        <option value="CxA">CxA</option>
-                        <option value="GC">GC</option>
-                        <option value="CM">CM</option>
-                        <option value="Architect">Architect</option>
-                        <option value="Designer">Designer</option>
-                        <option value="Mechanical Contractor">Mechanical Contractor</option>
-                        <option value="Electrical Contractor">Electrical Contractor</option>
-                        <option value="Plumbing Contractor">Plumbing Contractor</option>
-                        <option value="Controls Contractor">Controls Contractor</option>
-                        <option value="Life Safety Contractor">Life Safety Contractor</option>
-                        <option value="Other Contractor">Other Contractor</option>
-                        <option value="Client">Client</option>
-                        <option value="User">User</option>
+                      <input
+                        v-model="newMember.email"
+                        placeholder="Email"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                      <input
+                        v-model="newMember.company"
+                        placeholder="Company"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                      <select
+                        v-model="newMember.role"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                        <option value="admin">
+                          admin
+                        </option>
+                        <option value="CxA">
+                          CxA
+                        </option>
+                        <option value="GC">
+                          GC
+                        </option>
+                        <option value="CM">
+                          CM
+                        </option>
+                        <option value="Architect">
+                          Architect
+                        </option>
+                        <option value="Designer">
+                          Designer
+                        </option>
+                        <option value="Mechanical Contractor">
+                          Mechanical Contractor
+                        </option>
+                        <option value="Electrical Contractor">
+                          Electrical Contractor
+                        </option>
+                        <option value="Plumbing Contractor">
+                          Plumbing Contractor
+                        </option>
+                        <option value="Controls Contractor">
+                          Controls Contractor
+                        </option>
+                        <option value="Life Safety Contractor">
+                          Life Safety Contractor
+                        </option>
+                        <option value="Other Contractor">
+                          Other Contractor
+                        </option>
+                        <option value="Client">
+                          Client
+                        </option>
+                        <option value="User">
+                          User
+                        </option>
                       </select>
                     </div>
 
                     <div class="text-right">
-                      <button @click="addMember" class="px-3 py-1 rounded bg-white/6">Add</button>
+                      <button
+                        class="px-3 py-1 rounded bg-white/6"
+                        @click="addMember"
+                      >
+                        Add
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -110,22 +216,48 @@
             </div>
 
             <div v-show="activeTab === 'logo'">
-              <h3 class="text-md font-medium mb-2">Logos</h3>
-              <p class="text-sm text-white/70 mb-4">Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).</p>
+              <h3 class="text-md font-medium mb-2">
+                Logos
+              </h3>
+              <p class="text-sm text-white/70 mb-4">
+                Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).
+              </p>
 
               <!-- Client Logo -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="rounded-lg p-4 bg-white/5 border border-white/10">
-                  <div class="font-medium mb-2">Client logo</div>
+                  <div class="font-medium mb-2">
+                    Client logo
+                  </div>
                   <div class="flex items-center gap-4">
                     <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
-                      <img v-if="project.logo" :src="project.logo" alt="client logo" class="object-contain w-full h-full" />
-                      <div v-else class="text-white/60 text-xs">No logo</div>
+                      <img
+                        v-if="project.logo"
+                        :src="project.logo"
+                        alt="client logo"
+                        class="object-contain w-full h-full"
+                      >
+                      <div
+                        v-else
+                        class="text-white/60 text-xs"
+                      >
+                        No logo
+                      </div>
                     </div>
                     <div>
-                      <input type="file" ref="clientFileInput" @change="onClientLogoSelected" accept="image/*" />
+                      <input
+                        ref="clientFileInput"
+                        type="file"
+                        accept="image/*"
+                        @change="onClientLogoSelected"
+                      >
                       <div class="mt-2 flex gap-2">
-                        <button @click="removeClientLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                          @click="removeClientLogo"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -133,16 +265,38 @@
 
                 <!-- Commissioning Agent Logo -->
                 <div class="rounded-lg p-4 bg-white/5 border border-white/10">
-                  <div class="font-medium mb-2">Commissioning Agent logo</div>
+                  <div class="font-medium mb-2">
+                    Commissioning Agent logo
+                  </div>
                   <div class="flex items-center gap-4">
                     <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
-                      <img v-if="(project.commissioning_agent && project.commissioning_agent.logo)" :src="project.commissioning_agent.logo" alt="cxa logo" class="object-contain w-full h-full" />
-                      <div v-else class="text-white/60 text-xs">No logo</div>
+                      <img
+                        v-if="(project.commissioning_agent && project.commissioning_agent.logo)"
+                        :src="project.commissioning_agent.logo"
+                        alt="cxa logo"
+                        class="object-contain w-full h-full"
+                      >
+                      <div
+                        v-else
+                        class="text-white/60 text-xs"
+                      >
+                        No logo
+                      </div>
                     </div>
                     <div>
-                      <input type="file" ref="cxaFileInput" @change="onCxaLogoSelected" accept="image/*" />
+                      <input
+                        ref="cxaFileInput"
+                        type="file"
+                        accept="image/*"
+                        @change="onCxaLogoSelected"
+                      >
                       <div class="mt-2 flex gap-2">
-                        <button @click="removeCxaLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                          @click="removeCxaLogo"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -151,13 +305,19 @@
             </div>
 
             <div v-show="activeTab === 'subscription'">
-              <h3 class="text-md font-medium mb-2">Subscription</h3>
+              <h3 class="text-md font-medium mb-2">
+                Subscription
+              </h3>
               <div class="space-y-6">
-                <h2 class="text-xl font-semibold">Project Billing</h2>
+                <h2 class="text-xl font-semibold">
+                  Project Billing
+                </h2>
 
                 <div class="p-4 rounded-lg border">
                   <p><strong>Status:</strong> {{ status }}</p>
-                  <p class="mt-2"><strong>Plan:</strong> {{ planLabel }}</p>
+                  <p class="mt-2">
+                    <strong>Plan:</strong> {{ planLabel }}
+                  </p>
                   <p v-if="project.stripeCurrentPeriodEnd">
                     <strong>Current period end:</strong>
                     {{ new Date(project.stripeCurrentPeriodEnd).toLocaleString() }}
@@ -168,136 +328,331 @@
                   <p v-if="status === 'trialing'">
                     <strong>Trial days left:</strong> {{ trialDaysLeft }}
                   </p>
-                  <p v-if="status === 'trialing'" class="text-xs text-white/70 mt-1">
+                  <p
+                    v-if="status === 'trialing'"
+                    class="text-xs text-white/70 mt-1"
+                  >
                     Trial end is fixed from when the project was created and does not change when switching plans.
                   </p>
                 </div>
 
                 <div class="p-4 rounded-lg border">
-                <label class="block text-sm font-medium mb-2">Choose a plan</label>
-                <div class="relative inline-block w-full">
-                  <select v-model="selectedPrice" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
-                    <option v-for="p in prices" :key="p.id" :value="p.id">{{ p.label }}</option>
-                  </select>
-                  <!-- custom arrow -->
-                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                      <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                  <label class="block text-sm font-medium mb-2">Choose a plan</label>
+                  <div class="relative inline-block w-full">
+                    <select
+                      v-model="selectedPrice"
+                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                    >
+                      <option
+                        v-for="p in prices"
+                        :key="p.id"
+                        :value="p.id"
+                      >
+                        {{ p.label }}
+                      </option>
+                    </select>
+                    <!-- custom arrow -->
+                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
+                      >
+                        <path
+                          d="M6 8l4 4 4-4"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
                   </div>
-                </div>
 
-                <div class="mt-2">
-                  <span v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice" class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full">Current plan</span>
-                </div>
-
-                <!-- Selected plan details -->
-                <div v-if="selectedPlanDetails" class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                  <div class="flex items-center justify-between">
-                    <div class="font-medium text-white">{{ selectedPlanDetails.name }}</div>
-                    <div class="text-white/80">{{ selectedPlanDetails.price }}</div>
+                  <div class="mt-2">
+                    <span
+                      v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice"
+                      class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full"
+                    >Current plan</span>
                   </div>
-                  <p v-if="selectedPlanDetails.summary" class="text-sm text-white/70 mt-1">{{ selectedPlanDetails.summary }}</p>
-                  <ul v-if="selectedPlanDetails.features && selectedPlanDetails.features.length" class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1">
-                    <li v-for="(f, i) in selectedPlanDetails.features" :key="i">{{ f }}</li>
-                  </ul>
-                </div>
 
-                <div class="mt-4 flex gap-3">
-                    <button @click="startCheckout" :disabled="loading" class="px-4 py-2 rounded bg-blue-600 text-white">
-                    {{ loading ? '...' : 'Subscribe / Update' }}
+                  <!-- Selected plan details -->
+                  <div
+                    v-if="selectedPlanDetails"
+                    class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    <div class="flex items-center justify-between">
+                      <div class="font-medium text-white">
+                        {{ selectedPlanDetails.name }}
+                      </div>
+                      <div class="text-white/80">
+                        {{ selectedPlanDetails.price }}
+                      </div>
+                    </div>
+                    <p
+                      v-if="selectedPlanDetails.summary"
+                      class="text-sm text-white/70 mt-1"
+                    >
+                      {{ selectedPlanDetails.summary }}
+                    </p>
+                    <ul
+                      v-if="selectedPlanDetails.features && selectedPlanDetails.features.length"
+                      class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1"
+                    >
+                      <li
+                        v-for="(f, i) in selectedPlanDetails.features"
+                        :key="i"
+                      >
+                        {{ f }}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="mt-4 flex gap-3">
+                    <button
+                      :disabled="loading"
+                      class="px-4 py-2 rounded bg-blue-600 text-white"
+                      @click="startCheckout"
+                    >
+                      {{ loading ? '...' : 'Subscribe / Update' }}
                     </button>
 
                     
 
-                    <button @click="openBillingPortal" :disabled="loading" class="px-4 py-2 rounded border">
-                    Manage billing
+                    <button
+                      :disabled="loading"
+                      class="px-4 py-2 rounded border"
+                      @click="openBillingPortal"
+                    >
+                      Manage billing
                     </button>
+                  </div>
                 </div>
-                </div>
-            </div>
+              </div>
             </div>
 
             <div v-show="activeTab === 'settings'">
-              <h3 class="text-md font-medium mb-2">Settings</h3>
-              <p class="text-sm text-white/70 mb-4">Project-specific settings and flags.</p>
+              <h3 class="text-md font-medium mb-2">
+                Settings
+              </h3>
+              <p class="text-sm text-white/70 mb-4">
+                Project-specific settings and flags.
+              </p>
               <div class="rounded p-3 bg-white/5">
-                <label class="flex items-center gap-2"><input type="checkbox" v-model="project.settingsEnabled" /> Enable special behavior</label>
+                <label class="flex items-center gap-2"><input
+                  v-model="project.settingsEnabled"
+                  type="checkbox"
+                > Enable special behavior</label>
                 <div class="mt-4">
                   <label class="block text-white/80 mb-1">Tags (comma separated)</label>
-                  <input v-model="tagsText" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+                  <input
+                    v-model="tagsText"
+                    class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+                  >
                 </div>
                 <div class="mt-4">
                   <label class="block text-white/80 mb-1">Search mode</label>
                   <div class="relative inline-block w-full max-w-sm">
-                    <select v-model="project.searchMode" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
-                      <option value="substring">Substring</option>
-                      <option value="exact">Exact</option>
-                      <option value="fuzzy">Fuzzy</option>
+                    <select
+                      v-model="project.searchMode"
+                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                    >
+                      <option value="substring">
+                        Substring
+                      </option>
+                      <option value="exact">
+                        Exact
+                      </option>
+                      <option value="fuzzy">
+                        Fuzzy
+                      </option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                        <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
+                      >
+                        <path
+                          d="M6 8l4 4 4-4"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </div>
                   </div>
-                  <p class="text-xs text-white/60 mt-1">This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).</p>
+                  <p class="text-xs text-white/60 mt-1">
+                    This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
+                  </p>
                 </div>
                 <div class="mt-4">
                   <label class="block text-white/80 mb-1">Issues per page</label>
                   <div class="relative inline-block w-full max-w-sm">
-                    <select v-model.number="issuesPageSizeLocal" @change="persistIssuesPageSize()" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
-                      <option :value="5">5</option>
-                      <option :value="10">10</option>
-                      <option :value="25">25</option>
-                      <option :value="50">50</option>
-                      <option :value="100">100</option>
+                    <select
+                      v-model.number="issuesPageSizeLocal"
+                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                      @change="persistIssuesPageSize()"
+                    >
+                      <option :value="5">
+                        5
+                      </option>
+                      <option :value="10">
+                        10
+                      </option>
+                      <option :value="25">
+                        25
+                      </option>
+                      <option :value="50">
+                        50
+                      </option>
+                      <option :value="100">
+                        100
+                      </option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                        <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
+                      >
+                        <path
+                          d="M6 8l4 4 4-4"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </div>
                   </div>
-                  <p class="text-xs text-white/60 mt-1">Applies to the Issues list for this project. Saved locally.</p>
+                  <p class="text-xs text-white/60 mt-1">
+                    Applies to the Issues list for this project. Saved locally.
+                  </p>
                 </div>
               </div>
             </div>
 
             <div v-show="activeTab === 'logs'">
-              <h3 class="text-md font-medium mb-2">Project Logs</h3>
+              <h3 class="text-md font-medium mb-2">
+                Project Logs
+              </h3>
               <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3 items-stretch">
-                <input v-model="logsSearch" placeholder="Search logs…" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2" />
+                <input
+                  v-model="logsSearch"
+                  placeholder="Search logs…"
+                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2"
+                >
                 <div class="relative">
-                  <select v-model="selectedType" class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90">
-                    <option value="">All types</option>
-                    <option v-for="t in allTypes" :key="t" :value="t">{{ t }}</option>
+                  <select
+                    v-model="selectedType"
+                    class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90"
+                  >
+                    <option value="">
+                      All types
+                    </option>
+                    <option
+                      v-for="t in allTypes"
+                      :key="t"
+                      :value="t"
+                    >
+                      {{ t }}
+                    </option>
                   </select>
                 </div>
-                <input v-model="startDateText" type="datetime-local" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full" />
-                <input v-model="endDateText" type="datetime-local" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full" />
+                <input
+                  v-model="startDateText"
+                  type="datetime-local"
+                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+                >
+                <input
+                  v-model="endDateText"
+                  type="datetime-local"
+                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+                >
               </div>
               <div class="flex items-center gap-2 mb-3">
-                <button @click="loadLogs" class="px-3 py-2 rounded bg-white/10 border border-white/20">Refresh</button>
-                <button @click="loadMore" class="px-3 py-2 rounded bg-white/10 border border-white/20">Load more ({{ logsLimit + 200 }})</button>
-                <button @click="exportCsv" class="ml-auto px-3 py-2 rounded bg-white/10 border border-white/20">Export CSV</button>
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                  @click="loadLogs"
+                >
+                  Refresh
+                </button>
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                  @click="loadMore"
+                >
+                  Load more ({{ logsLimit + 200 }})
+                </button>
+                <button
+                  class="ml-auto px-3 py-2 rounded bg-white/10 border border-white/20"
+                  @click="exportCsv"
+                >
+                  Export CSV
+                </button>
               </div>
-              <div v-if="!logs.length" class="text-white/60">No logs yet.</div>
-              <ul v-else class="space-y-1">
-                <li v-for="(e, i) in filteredLogs" :key="i" class="p-2 rounded bg-white/5 border border-white/10">
+              <div
+                v-if="!logs.length"
+                class="text-white/60"
+              >
+                No logs yet.
+              </div>
+              <ul
+                v-else
+                class="space-y-1"
+              >
+                <li
+                  v-for="(e, i) in filteredLogs"
+                  :key="i"
+                  class="p-2 rounded bg-white/5 border border-white/10"
+                >
                   <div class="flex items-center justify-between gap-2">
-                    <div class="text-xs text-white/70">{{ fmt(e.ts) }}</div>
+                    <div class="text-xs text-white/70">
+                      {{ fmt(e.ts) }}
+                    </div>
                     <div class="flex items-center gap-2">
-                      <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">{{ e.type }}</div>
-                      <div v-if="e.by" class="text-xs text-white/70">by {{ e.by }}</div>
+                      <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">
+                        {{ e.type }}
+                      </div>
+                      <div
+                        v-if="e.by"
+                        class="text-xs text-white/70"
+                      >
+                        by {{ e.by }}
+                      </div>
                     </div>
                   </div>
                   <div class="mt-1 text-sm truncate">
-                    <span v-if="e.scope && e.scope.equipmentTag" class="text-white/80">{{ e.scope.equipmentTag }}</span>
-                    <span v-else-if="e.scope && e.scope.equipmentId" class="text-white/70">Eq#{{ e.scope.equipmentId }}</span>
-                    <span v-if="e.section && (e.section.number || e.section.title)" class="text-white/60"> • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
-                    <span v-if="e.question && (e.question.number || e.question.text)" class="text-white/60"> • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
-                    <span v-if="!e.by" class="text-white/60">&nbsp;</span>
+                    <span
+                      v-if="e.scope && e.scope.equipmentTag"
+                      class="text-white/80"
+                    >{{ e.scope.equipmentTag }}</span>
+                    <span
+                      v-else-if="e.scope && e.scope.equipmentId"
+                      class="text-white/70"
+                    >Eq#{{ e.scope.equipmentId }}</span>
+                    <span
+                      v-if="e.section && (e.section.number || e.section.title)"
+                      class="text-white/60"
+                    > • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
+                    <span
+                      v-if="e.question && (e.question.number || e.question.text)"
+                      class="text-white/60"
+                    > • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
+                    <span
+                      v-if="!e.by"
+                      class="text-white/60"
+                    >&nbsp;</span>
                   </div>
                 </li>
               </ul>
@@ -305,9 +660,25 @@
           </div>
 
           <div class="mt-6 text-right">
-            <button @click="save" :disabled="saving" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2" :class="saving ? 'opacity-60 cursor-not-allowed' : ''">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <button
+              :disabled="saving"
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
+              :class="saving ? 'opacity-60 cursor-not-allowed' : ''"
+              @click="save"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M5 13l4 4L19 7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Save</span>
             </button>
@@ -371,10 +742,10 @@ function loadIssuesPageSizeLocal() {
     if (!raw) return
     const n = parseInt(raw, 10)
     if ([5, 10, 25, 50, 100].includes(n)) issuesPageSizeLocal.value = n
-  } catch {}
+  } catch (e) { /* ignore localStorage read errors */ }
 }
 function persistIssuesPageSize() {
-  try { localStorage.setItem(issuesPageSizeStorageKey.value, String(issuesPageSizeLocal.value)) } catch {}
+  try { localStorage.setItem(issuesPageSizeStorageKey.value, String(issuesPageSizeLocal.value)) } catch (e) { /* ignore localStorage write errors */ }
 }
 watch(issuesPageSizeStorageKey, () => loadIssuesPageSizeLocal(), { immediate: true })
 

@@ -103,7 +103,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
   let project: any = (projectStore.currentProject && (projectStore.currentProject as any).value) || null
   const targetPid = issue.projectId || (typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null)
   if (!project || (targetPid && (String(project._id || project.id) !== String(targetPid)))) {
-    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch {}
+    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
   }
   project = project || {}
   const clientImg = await loadImage(project?.logo)
@@ -134,7 +134,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
         const footerTitle = `Issue ${issueNumText} Report`
         doc.text(footerTitle, margin + 10, footerY - 2)
       }
-    } catch {
+    } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
@@ -262,7 +262,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
         y += needed
       }
     }
-  } catch {}
+  } catch (e) { /* ignore */ }
 
   // Photos (up to 6 thumbnails; single page bias)
   try {
@@ -289,7 +289,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
       }
       y += Math.min(2, Math.ceil(imgs.length / 3)) * (thumbH + 4) + 2
     }
-  } catch {}
+  } catch (e) { /* ignore */ }
 
   // Attachments (list up to 5)
   try {
@@ -308,7 +308,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
         y += Math.min(10, lines.length * 4) + 1
       }
     }
-  } catch {}
+  } catch (e) { /* ignore */ }
 
   // Footer for final page of this issue
   drawFooter()
@@ -379,7 +379,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
   let project: any = (projectStore.currentProject && (projectStore.currentProject as any).value) || null
   const targetPid = (issues[0]?.projectId) || (typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null)
   if (!project || (targetPid && (String(project._id || project.id) !== String(targetPid)))) {
-    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch {}
+    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
   }
   project = project || {}
   const clientImg = await loadImage(project?.logo)
@@ -391,7 +391,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
         const w = headerLogoH * 2.5
         doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, headerTop, w, headerLogoH)
       }
-    } catch {}
+  } catch (e) { /* ignore */ }
     return Math.max(margin, headerTop + headerLogoH + 2)
   }
   let y = drawHeader()
@@ -522,7 +522,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
     if (dlWin) {
       const blob = doc.output('blob') as Blob
       const url = URL.createObjectURL(blob)
-      try { dlWin.document.title = fname } catch {}
+  try { dlWin.document.title = fname } catch (e) { /* ignore cross-window access errors */ }
       dlWin.location.href = url
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } else {
@@ -549,7 +549,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   let project: any = (projectStore.currentProject && (projectStore.currentProject as any).value) || null
   const targetPid = (issues[0]?.projectId) || (typeof window !== 'undefined' ? localStorage.getItem('selectedProjectId') : null)
   if (!project || (targetPid && (String(project._id || project.id) !== String(targetPid)))) {
-    try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch {}
+  try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
   }
   project = project || {}
   const clientImg = await loadImage(project?.logo)
@@ -568,7 +568,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
         const w = headerLogoH * 2.5
         doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, headerTop, w, headerLogoH)
       }
-    } catch {}
+  } catch (e) { /* ignore */ }
     // Title
     doc.setFont('helvetica', 'bold'); doc.setFontSize(14)
     const projName = (project && (project as any).name) ? String((project as any).name) : ''
@@ -698,7 +698,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
       try {
         doc.setFillColor(245, 245, 245) // subtle light gray to match app's soft surfaces
         doc.rect(margin, y - 1, tableWidth, rowHeight + 2, 'F')
-      } catch {}
+  } catch (e) { /* ignore */ }
     }
     // Draw row cells
     let cx = margin; let cy = y
@@ -721,7 +721,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
     if (dlWin) {
       const blob = doc.output('blob') as Blob
       const url = URL.createObjectURL(blob)
-      try { dlWin.document.title = fname } catch {}
+  try { dlWin.document.title = fname } catch (e) { /* ignore cross-window access errors */ }
       dlWin.location.href = url
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } else {
@@ -737,5 +737,5 @@ defineExpose({ generateIssuePdf, generateIssuesDetailedPdf, generateIssuesCompac
 
 <template>
   <!-- No UI; methods are invoked via ref -->
-  <div style="display:none"></div>
+  <div style="display:none" />
 </template>

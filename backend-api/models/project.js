@@ -68,6 +68,29 @@ const projectSchema = new mongoose.Schema({
   trialEnd: { type: Date, default: null },
 });
 
+// Keep updatedAt current and normalize embedded emails on save
+projectSchema.pre('save', function (next) {
+  try {
+    // normalize team emails
+    if (Array.isArray(this.team)) {
+      for (const m of this.team) {
+        if (m && m.email) m.email = String(m.email).trim().toLowerCase()
+      }
+    }
+    if (this.commissioning_agent && this.commissioning_agent.email) {
+      this.commissioning_agent.email = String(this.commissioning_agent.email).trim().toLowerCase()
+    }
+    this.updatedAt = new Date()
+  } catch (e) {
+    // best-effort
+  }
+  next()
+})
+
+// Useful indexes
+projectSchema.index({ name: 1 })
+projectSchema.index({ client: 1 })
+
 const Project = mongoose.model('Project', projectSchema);
 
 module.exports = Project;
