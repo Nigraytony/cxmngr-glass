@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useProjectStore } from './project';
 
 export type UserRole = 'admin' | 'manager' | 'viewer' | 'globaladmin' | 'superadmin' | 'user';
@@ -45,6 +45,7 @@ const API_BASE = `${getApiBase()}/api/users`;
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
+  const authReady = ref(false);
   const isAuthenticated = computed(() => !!user.value && !!user.value.token);
   const token = ref<string | null>(null);
   const error = ref<string | null>(null);
@@ -184,6 +185,9 @@ export const useAuthStore = defineStore('auth', () => {
           }
         }
 
+        // mark authReady regardless of refresh outcome so router can proceed
+        authReady.value = true;
+
         // sync default project into project store after refresh
         try {
           const projectStore = useProjectStore()
@@ -200,11 +204,27 @@ export const useAuthStore = defineStore('auth', () => {
     } else if (stored && !storedToken) {
       // No token: restore stored user without auth (useful for dev flows), but clear token state
       try { user.value = JSON.parse(stored); token.value = null } catch (e) { user.value = null }
+      // no token -> nothing to refresh; mark ready
+      authReady.value = true;
     }
   }
 
   // Call on store init
   loadUser();
+
+  // helper: wait for authReady (returns when ready or after optional timeout)
+  function waitForAuthReady(timeout = 3000) {
+    return new Promise((resolve) => {
+      if (authReady.value) return resolve(true)
+  const unwatch = watch(authReady, (v: boolean) => { if (v) { unwatch(); resolve(true) } })
+      if (timeout && timeout > 0) {
+        setTimeout(() => {
+          try { unwatch() } catch (e) {}
+          resolve(false)
+        }, timeout)
+      }
+    })
+  }
 
   async function updateUser(updated: Partial<User>) {
     if (!user.value) return false;
@@ -314,5 +334,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, isAuthenticated, token, error, login, logout, updateUser, register, updateAvatar, changePassword };
+  return { user, isAuthenticated, token, error, authReady, waitForAuthReady, login, logout, updateUser, register, updateAvatar, changePassword };
 });
