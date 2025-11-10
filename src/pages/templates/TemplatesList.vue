@@ -636,18 +636,7 @@ const filtered = computed(() => {
 
 const parentOptions = computed(() => spacesStore.items)
 
-const filterTypeOptions = computed(() => {
-  const base: Array<{ value: string; text: string }> = [{ value: '', text: 'All' }]
-  const arr: Array<any> = (lists as any)?.equipmentTypes || []
-  const seen = new Set<string>()
-  for (const opt of arr) {
-    if (!opt || !opt.value) continue
-    if (seen.has(opt.value)) continue
-    seen.add(String(opt.value))
-    base.push({ value: String(opt.value), text: String(opt.text ?? opt.value) })
-  }
-  return base
-})
+/* filterTypeOptions removed — not used in this component */
 
 const modalTypeOptions = computed(() => {
   const arr: Array<any> = (lists as any)?.equipmentTypes || []
@@ -911,9 +900,16 @@ async function duplicateTemplate(e: Template) {
       let src: any = (templatesStore as any).byId?.[srcId]
       if (!src) src = await templatesStore.fetchOne(srcId)
       if (!src) throw new Error('Source template not found')
-      const { _id, id, number, createdAt, updatedAt, history, ...rest } = src
+      // Avoid creating unused local bindings by shallow-copying and deleting identity fields
+      const payloadObj: any = { ...(src as any) }
+      delete payloadObj._id
+      delete payloadObj.id
+      delete payloadObj.number
+      delete payloadObj.createdAt
+      delete payloadObj.updatedAt
+      delete payloadObj.history
       const payload: any = {
-        ...rest,
+        ...payloadObj,
         tag: newTag,
         projectId: src.projectId,
         spaceId: src.spaceId || undefined,
