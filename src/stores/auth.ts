@@ -138,21 +138,68 @@ export const useAuthStore = defineStore('auth', () => {
   function loadUser() {
     const stored = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
-    if (stored && storedToken) {
-      user.value = JSON.parse(stored);
-      token.value = storedToken;
-      // sync default project into project store
-      try {
-        const projectStore = useProjectStore()
-        if (user.value && Array.isArray(user.value.projects)) {
-          const dp = user.value.projects.find((p: any) => p && p.default)
-          if (dp) {
-            const dpa: any = dp
-            const id = typeof dp === 'string' ? dp : (dpa._id || dpa.id || null)
-            if (id) projectStore.setCurrentProject(id)
+    // If a token exists in localStorage, set it immediately so route guards and other
+    // stores can treat the session as authenticated while we refresh the canonical user.
+    if (storedToken) {
+      token.value = storedToken
+      // optimistic local user from localStorage while /me refresh happens
+      if (stored) {
+        try { user.value = JSON.parse(stored) as User } catch (e) { user.value = null }
+      }
+
+      // Asynchronously refresh canonical user from server and update store when available
+      (async () => {
+        try {
+          const r = await fetch(`${API_BASE}/me`, { headers: { Authorization: `Bearer ${storedToken}` } })
+          if (r.ok) {
+            const data = await r.json()
+            const serverUser = data && data.user ? data.user : null
+            if (serverUser) {
+              user.value = {
+                _id: serverUser._id,
+                id: serverUser._id || serverUser.id,
+                avatar: serverUser.avatar || serverUser.contact?.avatar || '',
+                firstName: serverUser.firstName,
+                lastName: serverUser.lastName,
+                email: serverUser.email,
+                role: serverUser.role,
+                token: storedToken,
+                projects: serverUser.projects || [],
+                contact: serverUser.contact || { company: '', phone: '', address: { street: '', city: '', state: '', zip: '', country: '', taxId: '' }, bio: '', avatar: '' },
+                social_media: serverUser.social_media || {},
+              } as User
+              token.value = storedToken
+              try { localStorage.setItem('user', JSON.stringify(user.value)) } catch (e) {}
+            }
+          } else {
+            // if refresh failed, keep optimistic local user/token if present
+            if (stored) {
+              try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) {}
+            }
+          }
+        } catch (err) {
+          // network error: keep optimistic local user if available
+          if (stored) {
+            try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) {}
           }
         }
-      } catch (e) {}
+
+        // sync default project into project store after refresh
+        try {
+          const projectStore = useProjectStore()
+          if (user.value && Array.isArray(user.value.projects)) {
+            const dp = user.value.projects.find((p: any) => p && p.default)
+            if (dp) {
+              const dpa: any = dp
+              const id = typeof dp === 'string' ? dp : (dpa._id || dpa.id || null)
+              if (id) projectStore.setCurrentProject(id)
+            }
+          }
+        } catch (e) {}
+      })()
+    } else if (stored && !storedToken) {
+      // No token: restore stored user without auth (useful for dev flows), but clear token state
+      try { user.value = JSON.parse(stored); token.value = null } catch (e) { user.value = null }
     }
   }
 

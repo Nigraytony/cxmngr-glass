@@ -50,7 +50,6 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import axios from 'axios'
 import http from '../../utils/http'
-import { useRoute } from 'vue-router'
 
 const firstName = ref('')
 const lastName = ref('')
@@ -81,15 +80,7 @@ const submit = async () => {
   if (result.success) {
     // Optionally auto-login after registration
     await authStore.login(email.value, password.value)
-    // If an invite token was provided, accept the invite
-    const inviteToken = route.query.invite
-    if (inviteToken) {
-      try {
-  await http.post('/api/projects/accept-invite', { token: inviteToken }, { headers: { Authorization: `Bearer ${authStore.token}` } })
-      } catch (e) {
-        // ignore invite acceptance errors; user can accept later
-      }
-    }
+    // Do NOT auto-accept invite tokens here. Invited users must accept explicitly from the UI after logging in.
     router.push('/')
   } else {
     error.value = result.error || 'Signup failed.'

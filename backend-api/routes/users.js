@@ -7,6 +7,7 @@ const router = express.Router();
 const User = require('../models/user');
 const Project = require('../models/project');
 const jwt = require('jsonwebtoken');
+const { auth } = require('../middleware/auth');
 
 // Helper: hydrate user.projects from the Projects collection (avoid stale embedded fields)
 async function hydrateUserProjects(userObj) {
@@ -142,6 +143,25 @@ router.post('/login', async (req, res) => {
     res.send({ user: hydrated, token });
   } catch (error) {
     res.status(400).send(error);
+  }
+});
+
+// Return the currently authenticated, hydrated user
+router.get('/me', auth, async (req, res) => {
+  try {
+    // req.user is populated by auth middleware
+    const user = req.user;
+    if (!user) return res.status(404).send({ error: 'User not found' });
+
+    const userObj = user.toObject ? user.toObject() : JSON.parse(JSON.stringify(user));
+    if (userObj.password) delete userObj.password;
+    if (userObj.__v) delete userObj.__v;
+
+    const hydrated = await hydrateUserProjects(userObj);
+    return res.status(200).send({ user: hydrated });
+  } catch (err) {
+    console.error('get /me error', err);
+    return res.status(500).send({ error: 'Failed to load user' });
   }
 });
 

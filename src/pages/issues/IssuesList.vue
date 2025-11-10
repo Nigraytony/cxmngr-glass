@@ -167,6 +167,13 @@
     </div>
 
   <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
+    <template v-if="!projectStore.currentProjectId">
+      <div class="p-6 text-center text-white/80">
+        <div class="text-lg font-semibold">No project selected</div>
+        <div class="mt-2 text-sm">Select a project from the user menu or Projects page to view its issues.</div>
+      </div>
+    </template>
+    <template v-else>
       <table class="min-w-full text-left">
         <thead>
           <tr class="text-sm text-white/70">
@@ -253,6 +260,7 @@
           </tr>
         </tbody>
       </table>
+    </template>
     </div>
 
     <!-- Pagination controls -->

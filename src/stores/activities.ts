@@ -56,12 +56,19 @@ export const useActivitiesStore = defineStore('activities', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await axios.get(API_BASE, { headers: getAuthHeaders() })
-      const list = (res.data || []).map(normalize)
-      // If a projectId is provided or selected, filter client-side
+      // determine projectId: explicit param wins, otherwise use project store, otherwise localStorage
       const projectStore = useProjectStore()
-      const pid = projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
-  activities.value = pid ? list.filter((a: any) => String(a.projectId) === String(pid)) : list
+      const pid = projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || undefined
+
+      // If no project is selected, do not fetch global activities — return empty list
+      if (!pid) {
+        activities.value = []
+        return activities.value
+      }
+
+      const res = await axios.get(API_BASE, { params: { projectId: pid }, headers: getAuthHeaders() })
+      const list = (res.data || []).map(normalize)
+      activities.value = list
       return activities.value
     } catch (e: any) {
       console.error('fetchActivities error', e)

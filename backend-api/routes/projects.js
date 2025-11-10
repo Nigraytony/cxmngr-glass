@@ -268,7 +268,9 @@ router.get('/my-invites', auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId).lean();
     if (!user) return res.status(404).send({ error: 'User not found' });
-    const invites = await Invitation.find({ email: user.email, accepted: false })
+    // Match email case-insensitively to avoid issues with casing on invites
+    const emailRegex = new RegExp(`^${String(user.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+    const invites = await Invitation.find({ email: { $regex: emailRegex }, accepted: false })
       .sort({ createdAt: -1 })
       .lean();
     // Attach minimal project details to improve UX
@@ -487,6 +489,47 @@ router.post('/:id/do-sensitive', requireActiveProject, async (req, res) => {
     return res.status(200).send({ message: 'Sensitive action allowed: subscription active', projectId: project._id });
   } catch (err) {
     return res.status(500).send({ error: err.message || String(err) });
+  }
+});
+
+// Allow an authenticated user to leave a project. This is atomic on the server:
+// - removes the user from the project's team
+// - removes the project reference from the user's projects array
+// - prevents the last admin from leaving (requires ownership transfer or project delete)
+router.post('/:id/leave', auth, async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const userId = req.userId || (req.user && req.user._id);
+    if (!userId) return res.status(401).send({ error: 'Please authenticate.' });
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    // Find the team member entry for this user
+  const member = project.team.find((t) => String(t._id) === String(userId) || String(t.email).toLowerCase() === String(req.user.email).toLowerCase());
+    if (!member) return res.status(400).send({ error: 'You are not a member of this project' });
+
+    // If member is an admin, ensure they're not the last admin
+    const adminCount = project.team.reduce((acc, t) => acc + (t.role === 'admin' ? 1 : 0), 0);
+    if (member.role === 'admin' && adminCount <= 1) {
+      return res.status(400).send({ error: 'Cannot leave project as the last admin. Transfer admin role or delete the project first.' });
+    }
+
+    // Remove member from project.team
+    project.team = project.team.filter((t) => !(String(t._id) === String(userId) || String(t.email).toLowerCase() === String(req.user.email).toLowerCase()));
+    await project.save();
+
+    // Remove project reference from user.projects
+    const user = await User.findById(userId);
+    if (user) {
+      user.projects = (user.projects || []).filter((p) => String(typeof p === 'string' ? p : (p && (p._id || p.id))) !== String(projectId));
+      await user.save();
+    }
+
+    return res.status(200).send({ message: 'Left project successfully', projectId });
+  } catch (err) {
+    console.error('leave-project error', err);
+    return res.status(500).send({ error: 'Failed to leave project' });
   }
 });
 

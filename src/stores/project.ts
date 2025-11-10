@@ -111,6 +111,21 @@ export const useProjectStore = defineStore('project', () => {
 
   async function fetchProjects() {
     try {
+      // Prefer fetching the authenticated user's hydrated projects if available
+      try {
+        const auth = useAuthStore();
+        if (auth && auth.token) {
+          const resp = await axios.get(`${getApiBase()}/api/users/me`, { headers: getAuthHeaders() });
+          const userProjects = resp?.data?.user?.projects || [];
+          projects.value = Array.isArray(userProjects)
+            ? userProjects.map((p: any) => ({ ...p, id: p._id || p.id }))
+            : [];
+          return;
+        }
+      } catch (innerErr) {
+        // fall back to public projects list if fetching /me failed
+      }
+
       const res = await axios.get(API_BASE);
       // Map backend _id to id for frontend
       projects.value = Array.isArray(res.data) ? res.data.map((p: any) => ({ ...p, id: p._id })) : [];

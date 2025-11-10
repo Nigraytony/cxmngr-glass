@@ -66,8 +66,13 @@ export const useIssuesStore = defineStore('issues', () => {
       // determine projectId: explicit param wins, otherwise use project store, otherwise localStorage
       const projectStore = useProjectStore()
       let pid = projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || undefined
+      // If no project id is available, do not fetch global issues — return empty list.
+      if (!pid) {
+        issues.value = []
+        return issues.value
+      }
 
-      const res = await axios.get(API_BASE, { params: pid ? { projectId: pid } : {}, headers: authHeaders() })
+      const res = await axios.get(API_BASE, { params: { projectId: pid }, headers: authHeaders() })
       issues.value = (res.data || []).map(normalize)
       return issues.value
     } catch (err: any) {

@@ -53,12 +53,19 @@
     </div>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <RouterLink
-        v-for="a in filtered"
-        :key="a.id"
-        :to="{ name: 'activity-edit', params: { id: a.id || a._id } }"
-        class="group relative block p-4 rounded-xl bg-white/10 border border-white/20 text-white/90 transition-all duration-200 ease-out hover:bg-white/12 hover:border-white/30 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/30 overflow-hidden"
-      >
+      <template v-if="!projectStore.currentProjectId">
+        <div class="p-6 text-center text-white/80 w-full">
+          <div class="text-lg font-semibold">No project selected</div>
+          <div class="mt-2 text-sm">Select a project from the user menu or Projects page to view its activities.</div>
+        </div>
+      </template>
+      <template v-else>
+        <RouterLink
+          v-for="a in filtered"
+          :key="a.id"
+          :to="{ name: 'activity-edit', params: { id: a.id || a._id } }"
+          class="group relative block p-4 rounded-xl bg-white/10 border border-white/20 text-white/90 transition-all duration-200 ease-out hover:bg-white/12 hover:border-white/30 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/30 overflow-hidden"
+        >
         <!-- subtle hover overlay -->
         <div class="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
         <!-- bottom gradient like photo thumbnails -->
@@ -78,7 +85,8 @@
             <img v-for="(p,idx) in (a.photos || []).slice(0,3)" :key="idx" :src="p.data" class="w-10 h-10 object-cover rounded-md border border-white/20" />
           </div>
         </div>
-      </RouterLink>
+        </RouterLink>
+      </template>
     </div>
   </div>
 </template>

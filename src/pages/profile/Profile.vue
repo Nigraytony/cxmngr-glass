@@ -203,38 +203,75 @@
           </div>
         </div>
 
-        <div v-else-if="currentTab === 'Projects'" class="space-y-4">
-          <p class="text-white/80">Projects you're assigned to.</p>
+        <div v-else-if="currentTab === 'Projects'" class="space-y-6">
+                  <p class="text-white/80">Projects you're assigned to.</p>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div v-for="proj in local.projects" :key="proj._id || proj.id" class="rounded-xl p-4 bg-white/5 border border-white/10">
-              <div class="flex items-start justify-between gap-3">
-                <div>
-                  <h3 class="text-lg font-semibold text-white">{{ proj.name || 'Untitled Project' }}</h3>
-                  <p class="text-sm text-white/80 mt-1">{{ proj.client || 'No client' }} — <span class="italic">{{ proj.project_type || '—' }}</span></p>
-                </div>
-                <div class="text-right">
-                  <span v-if="proj.default" class="inline-block text-xs px-2 py-1 rounded bg-white/10 text-white">Default</span>
-                  <div class="text-sm text-white/70 mt-2">{{ proj.status || 'Unknown' }}</div>
-                </div>
-              </div>
+                  <!-- Pending Invitations Section -->
+                  <div v-if="invitationsStore.invites.length" class="space-y-4">
+                    <div class="flex items-center gap-2 text-white/90 font-medium">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4z"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 20v-1a4 4 0 0 1 4-4h3"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 3v4m4 4h-4m4 4h-4"/></svg>
+                      <span>Pending Invitations</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div v-for="inv in invitationsStore.invites" :key="inv.id" class="rounded-xl p-4 bg-amber-500/10 border border-amber-400/30">
+                        <div class="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 class="text-lg font-semibold text-white">{{ inv.project?.name || 'Project' }}</h3>
+                            <p class="text-xs text-white/70 mt-1">Invited {{ formatInviteDate(inv.createdAt) }}</p>
+                          </div>
+                          <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-amber-400/20 text-amber-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+                            Pending
+                          </span>
+                        </div>
+                        <div class="mt-4 flex items-center justify-between text-sm text-white/80">
+                          <div class="text-xs text-white/70">You haven't accepted this project yet.</div>
+                          <button @click="acceptInvite(inv.id)" class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40">Accept</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-              <p class="text-sm text-white/70 mt-3">{{ truncate(proj.description) || 'No description provided.' }}</p>
-
-              <div class="mt-4 flex items-center justify-between text-sm text-white/80">
-                <div>
-                  <div><span class="text-white/60">Role:</span> {{ proj.role || '—' }}</div>
-                  <div class="mt-1"><span class="text-white/60">Location:</span> {{ proj.location || '—' }}</div>
+                  <!-- Assigned Projects -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div
+                      v-for="proj in local.projects"
+                      :key="proj._id || proj.id"
+                      :class="[
+                        'rounded-xl p-4 border transition-shadow duration-200',
+                        proj.default
+                          ? 'bg-white/10 backdrop-blur-sm ring-1 ring-amber-400/20 border-amber-300/30 shadow-lg'
+                          : 'bg-white/5 border-white/10'
+                      ]"
+                    >
+                      <div class="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 class="text-lg font-semibold text-white">{{ proj.name || 'Untitled Project' }}</h3>
+                          <p class="text-sm text-white/80 mt-1">{{ proj.client || 'No client' }} — <span class="italic">{{ proj.project_type || '—' }}</span></p>
+                        </div>
+                        <div class="text-right">
+                          <span v-if="proj.default" class="inline-block text-xs px-2 py-1 rounded bg-white/10 text-white">Default</span>
+                          <div class="text-sm text-white/70 mt-2">{{ proj.status || 'Unknown' }}</div>
+                        </div>
+                      </div>
+                      <p class="text-sm text-white/70 mt-3">{{ truncate(proj.description) || 'No description provided.' }}</p>
+                      <div class="mt-4 flex items-center justify-between text-sm text-white/80">
+                        <div>
+                          <div><span class="text-white/60">Role:</span> {{ proj.role || '—' }}</div>
+                          <div class="mt-1"><span class="text-white/60">Location:</span> {{ proj.location || '—' }}</div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                          <button v-if="!proj.default" @click="makeDefault(proj)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">Select</button>
+                          <span v-else class="text-xs text-white/60">Default</span>
+                          <div class="flex flex-col items-end gap-2">
+                            <button @click="editProject(proj)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">Edit</button>
+                            <button v-if="canLeaveProject(proj)" @click="leaveProject(proj)" class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-red-300 text-sm border border-red-500/30">Leave</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="flex flex-col items-end gap-2">
-                  <button v-if="!proj.default" @click="makeDefault(proj)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">Select</button>
-                  <span v-else class="text-xs text-white/60">Default</span>
-                  <button @click="editProject(proj)" class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8">Edit</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div v-else-if="currentTab === 'Settings'" class="space-y-4">
           <p class="text-white/80">Account settings and preferences (placeholder).</p>
@@ -245,12 +282,14 @@
 </template>
 
 <script setup>
-import { reactive, ref, toRefs, computed } from 'vue'
+import { reactive, ref, toRefs, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { useUiStore } from '../../stores/ui'
+import { useInvitationsStore } from '../../stores/invitations'
+import { confirm as inlineConfirm } from '../../utils/confirm'
 
 const auth = useAuthStore()
 
@@ -326,6 +365,7 @@ const errors = reactive({})
 const status = ref('')
 const saving = ref(false)
 const ui = useUiStore()
+const invitationsStore = useInvitationsStore()
 // Alias to store toast so existing assignments continue to show the global toast
 const toast = ui.toast
 const fileInput = ref(null)
@@ -348,6 +388,41 @@ function truncate(str, n = 250) {
   if (!str) return ''
   return str.length > n ? str.slice(0, n) + '...' : str
 }
+
+function formatInviteDate(d) {
+  try { return d ? new Date(d).toLocaleDateString() : '' } catch { return '' }
+}
+
+async function acceptInvite(id) {
+  try {
+    const pid = await invitationsStore.acceptInvite(id)
+    if (pid) {
+      // Optimistically push project reference into auth.user.projects if returned
+      try {
+        if (pid && auth.user) {
+          const exists = Array.isArray(auth.user.projects) && auth.user.projects.some((p) => String((p && (p._id || p.id || p))) === String(pid))
+          if (!exists) {
+            // minimal object; full details will come from projectStore.fetchProjects
+            auth.user.projects = [...(auth.user.projects || []), { _id: pid, role: 'user', default: false }]
+            local.projects = normalizeProjects(auth.user.projects)
+            try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) {}
+          }
+        }
+      } catch {}
+      try { await projectStore.fetchProjects() } catch (e) {}
+      ui.showSuccess('Invitation accepted')
+    } else {
+      ui.showError(invitationsStore.error || 'Failed to accept invitation')
+    }
+  } catch (e) {
+    ui.showError('Failed to accept invitation')
+  }
+}
+
+onMounted(() => {
+  // Fetch invites if not already loaded (Topbar might have loaded them)
+  try { if (!invitationsStore.invites.length) invitationsStore.fetchPending() } catch {}
+})
 
 async function save() {
   status.value = ''
@@ -648,6 +723,61 @@ function editProject(proj) {
   } else {
     // fallback: open general projects page
     router.push({ path: '/projects' })
+  }
+}
+
+function canLeaveProject(proj) {
+  try {
+    if (!auth.user) return false
+    const uid = auth.user._id || auth.user.id
+    // simple heuristic: if user's projects contains this project id, they can leave
+    const pid = proj._id || proj.id
+    if (!pid) return false
+    return Array.isArray(auth.user.projects) && auth.user.projects.some(p => String((p && (p._id || p.id || p))) === String(pid))
+  } catch (e) { return false }
+}
+
+async function leaveProject(proj) {
+  try {
+    const pid = proj._id || proj.id
+    if (!pid) return ui.showError('Project id missing')
+
+    const confirmed = await inlineConfirm({ title: 'Leave project', message: `Are you sure you want to leave '${proj.name || 'this project'}'? You will lose access to its data.`, confirmText: 'Leave', cancelText: 'Cancel', variant: 'danger' })
+    if (!confirmed) return
+
+    // Attempt to remove the user from the project's team (server-side update)
+    try {
+      // fetch latest project then remove team member by email or user id
+      const full = await projectStore.fetchProject(pid)
+      if (full) {
+        const userEmail = auth.user?.email
+        full.team = (full.team || []).filter(t => {
+          const identifier = (t && (t._id || t.email || t.id))
+          return !(String(identifier) === String(auth.user._id) || String(t.email) === String(userEmail))
+        })
+        await projectStore.updateProject({ ...full })
+      }
+    } catch (e) {
+      // ignore if project update fails; proceed to remove from user so their view is updated
+      console.error('leaveProject: failed to remove from project team', e)
+    }
+
+    // Remove project reference from user and persist via auth.updateUser
+    try {
+      const updated = (auth.user.projects || []).filter(p => String((p && (p._id || p.id || p))) !== String(pid))
+      const ok = await auth.updateUser({ projects: updated })
+      if (ok) {
+        // sync local view
+        local.projects = normalizeProjects(auth.user?.projects)
+        ui.showSuccess('You left the project')
+      } else {
+        ui.showError('Failed to remove project from your account')
+      }
+    } catch (e) {
+      ui.showError('Failed to leave project')
+    }
+  } catch (e) {
+    ui.showError('Failed to leave project')
   }
 }
 

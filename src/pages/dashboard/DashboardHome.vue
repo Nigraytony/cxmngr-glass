@@ -73,7 +73,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectDashboardCharts from '../../components/charts/ProjectDashboardCharts.vue'
 import { useIssuesStore } from '../../stores/issues'
@@ -92,15 +92,46 @@ const spacesStore = useSpacesStore()
 onMounted(async () => {
   const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
   try {
+    if (!pid) {
+      // No project selected: ensure stores are empty so dashboard shows zero/empty charts
+      issuesStore.issues = []
+      activitiesStore.activities = []
+      equipmentStore.items = []
+      spacesStore.items = []
+      return
+    }
+
     await Promise.all([
       // Avoid duplicate fetches where possible; idempotent in stores
       issuesStore.issues?.length ? Promise.resolve() : issuesStore.fetchIssues(String(pid)).catch(() => {}),
       activitiesStore.activities?.length ? Promise.resolve() : activitiesStore.fetchActivities(String(pid)).catch(() => {}),
-      pid ? (equipmentStore.items?.length ? Promise.resolve() : equipmentStore.fetchByProject(String(pid)).catch(() => {})) : Promise.resolve(),
-      pid ? (spacesStore.items?.length ? Promise.resolve() : spacesStore.fetchByProject(String(pid)).catch(() => {})) : Promise.resolve()
+      equipmentStore.items?.length ? Promise.resolve() : equipmentStore.fetchByProject(String(pid)).catch(() => {}),
+      spacesStore.items?.length ? Promise.resolve() : spacesStore.fetchByProject(String(pid)).catch(() => {})
     ])
   } catch (e) {
     // Soft-fail; cards will show 0 if not loaded
+  }
+})
+
+// react to project selection changes: fetch scoped data or clear stores when none
+watch(() => projectStore.currentProjectId, async (newPid) => {
+  try {
+    if (!newPid) {
+      issuesStore.issues = []
+      activitiesStore.activities = []
+      equipmentStore.items = []
+      spacesStore.items = []
+      return
+    }
+    // fetch latest for the newly selected project
+    await Promise.all([
+      issuesStore.fetchIssues(String(newPid)).catch(() => {}),
+      activitiesStore.fetchActivities(String(newPid)).catch(() => {}),
+      equipmentStore.fetchByProject(String(newPid)).catch(() => {}),
+      spacesStore.fetchByProject(String(newPid)).catch(() => {})
+    ])
+  } catch (err) {
+    // ignore
   }
 })
 

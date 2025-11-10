@@ -58,8 +58,14 @@
                       <div class="font-medium">{{ member.firstName }} {{ member.lastName }}</div>
                       <div class="text-xs text-white/70">{{ member.email }} • {{ member.role }}</div>
                     </div>
-                    <div class="flex gap-2">
-                      <button @click="removeMember(member)" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                    <div class="flex items-center gap-3">
+                      <!-- Status badge (invited, rejected, active, etc.) -->
+                      <div v-if="member.status || member.inviteStatus" :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]">
+                        {{ (member.status || member.inviteStatus) ? (member.status || member.inviteStatus) : 'status' }}
+                      </div>
+                      <div class="flex gap-2">
+                        <button @click="removeMember(member)" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -324,6 +330,7 @@ import axios from 'axios'
 import http from '../../utils/http'
 import { apiUrl } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
+import { confirm as inlineConfirm } from '../../utils/confirm'
 
 const projectStore = useProjectStore()
 const route = useRoute()
@@ -535,26 +542,43 @@ function removeMember(m) {
   project.value.team = (project.value.team || []).filter(tm => (tm._id || tm.email) !== (m._id || m.email))
 }
 
+function statusBadgeClass(status) {
+  const s = String(status || '').toLowerCase()
+  if (s === 'invited' || s === 'pending') return 'bg-amber-400/20 text-amber-200 border border-amber-400/30'
+  if (s === 'rejected' || s === 'declined') return 'bg-gray-600/20 text-gray-200 border border-gray-600/30'
+  if (s === 'active' || s === 'accepted' || s === 'member') return 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30'
+  return 'bg-white/6 text-white/80 border border-white/10'
+}
+
 async function addMember() {
   if (!newMember.value.email) return ui.showError('Email required')
   // do not provide _id here; let the backend/mongoose generate a proper ObjectId for subdocs
   const member = { ...newMember.value }
-
-  // prepare an updated payload (do not mutate local project until server confirms)
-  const updatedPayload = { ...project.value, team: [ ...(project.value.team || []), member ] }
+  // Prefer calling the dedicated addUser API so the server can create an Invitation
   try {
-    const res = await projectStore.updateProject(updatedPayload)
-    // update local project.value from server response (map _id to id)
-    project.value = { ...(res || {}), id: (res && res._id) || (project.value && project.value.id) }
-    ui.showSuccess('Member added')
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return ui.showError('No project selected')
+    const payload = {
+      projectId: pid,
+      email: (newMember.value.email || '').trim(),
+      firstName: newMember.value.firstName || '',
+      lastName: newMember.value.lastName || '',
+      company: newMember.value.company || '',
+      role: newMember.value.role || 'User'
+    }
+    const { data } = await http.post('/api/projects/addUser', payload, { headers: getAuthHeaders() })
+    // If backend added user directly or created an invite, refresh project and invites
+    await refreshProject()
+    await loadInvites()
+    ui.showSuccess(data && data.message ? data.message : 'Member added')
   } catch (err) {
     console.error('addMember error', err)
-    // show server error message if available (stringify objects for clearer output)
     const serverData = err?.response?.data
-    const msg = serverData ? (typeof serverData === 'string' ? serverData : JSON.stringify(serverData)) : (err?.message || 'Failed to add member')
+    const msg = serverData ? (typeof serverData === 'string' ? serverData : (serverData.error || JSON.stringify(serverData))) : (err?.message || 'Failed to add member')
     ui.showError(msg)
+  } finally {
+    newMember.value = { email: '', firstName: '', lastName: '', company: '', role: 'User' }
   }
-  newMember.value = { email: '', firstName: '', lastName: '', company: '', role: 'User' }
 }
 
 function ensureCommissioningAgent() {
