@@ -97,10 +97,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { RouterLink, useRouter, useRoute } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
-import axios from 'axios'
-import http from '../../utils/http'
+// removed unused axios and http imports (register uses authStore.register)
 
 const firstName = ref('')
 const lastName = ref('')
@@ -108,7 +107,6 @@ const company = ref('')
 const email = ref('')
 const password = ref('')
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
 const error = ref('')
 

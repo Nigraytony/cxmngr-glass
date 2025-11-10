@@ -830,7 +830,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
@@ -839,7 +839,7 @@ import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
-import lists from '../../lists.js'
+// lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
 import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
