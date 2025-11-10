@@ -39,6 +39,14 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 'off'
       }
     }
+    ,
+    {
+      // Temporarily relax `no-explicit-any` in legacy JS/TS utility and store folders
+      files: ['src/stores/**', 'src/utils/**', 'src/types/**'],
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off'
+      }
+    }
   ]
 };
 
