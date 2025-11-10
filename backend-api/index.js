@@ -13,6 +13,7 @@ const userRoutes = require('./routes/users');
 const spaceRoutes = require('./routes/spaces');
 const { authorize } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
+const rbacRoutes = require('./routes/rbac');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
@@ -113,6 +114,7 @@ app.use('/api/spaces',
   spaceRoutes
 );
 app.use('/api/users', userRoutes);
+app.use('/api/rbac', rbacRoutes);
 app.use('/api/admin', authorize(['admin']), adminRoutes);
 // Stripe/Billing routes
 app.use('/api/stripe', billingRoutes);

@@ -310,4 +310,40 @@ describe('Invite flow integration', function () {
     const reloaded = await User.findById(u._id).lean();
     assert(reloaded && reloaded.email === 'changedcase@example.com', 'expected email normalization on update')
   });
+
+  // RBAC integration tests appended here to reuse the same in-memory replica set
+  it('permits a user with a role that has the permission', async () => {
+    const Role = require('../models/role');
+    // create a role with the test permission
+    await Role.create({ name: 'tester', permissions: ['rbac.test'] });
+
+    // create a user with that role via register
+    const reg = await request(app)
+      .post('/api/users/register')
+      .send({ email: 'rbac-user@example.com', password: 'password123', firstName: 'RBAC', lastName: 'User', company: 'TestCo', role: 'tester' });
+    assert(reg.status === 201, `register failed: ${reg.status} ${JSON.stringify(reg.body)}`);
+    const token = reg.body.token;
+
+    const res = await request(app)
+      .get('/api/rbac/check')
+      .set('Authorization', `Bearer ${token}`);
+    assert(res.status === 200, `expected 200 for permitted user, got ${res.status}`);
+    assert(res.body && res.body.ok === true, 'expected ok:true');
+  });
+
+  it('rejects a user whose role does not include the permission', async () => {
+    const Role = require('../models/role');
+    await Role.create({ name: 'nope', permissions: [] });
+
+    const reg = await request(app)
+      .post('/api/users/register')
+      .send({ email: 'rbac-nope@example.com', password: 'password123', firstName: 'No', lastName: 'Perm', company: 'TestCo', role: 'nope' });
+    assert(reg.status === 201);
+    const token = reg.body.token;
+
+    const res = await request(app)
+      .get('/api/rbac/check')
+      .set('Authorization', `Bearer ${token}`);
+    assert(res.status === 403, `expected 403 for forbidden user, got ${res.status}`);
+  });
 });
