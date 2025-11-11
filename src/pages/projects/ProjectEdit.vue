@@ -1161,7 +1161,7 @@ async function saveRoleInline(tpl) {
     ui.showSuccess('Role template updated')
     // update local template
     try {
-      const updated = resp && resp.data ? resp.data : null
+      const updated = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
       if (updated && project.value && Array.isArray(project.value.roleTemplates)) {
         const list = project.value.roleTemplates.slice()
         const idx = list.findIndex(r => (r && ((r._id || r.id) === id)))
@@ -1220,7 +1220,7 @@ async function saveRoleTemplate() {
       ui.showSuccess('Role template updated')
       // Update local project roleTemplates so the UI reflects changes immediately
       try {
-        const updated = resp && resp.data ? resp.data : null
+        const updated = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
         if (updated) {
           const list = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates : []
           const idx = list.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
@@ -1235,7 +1235,7 @@ async function saveRoleTemplate() {
       ui.showSuccess('Role template created')
       // Insert created role into local project roleTemplates so it shows immediately
       try {
-        const created = resp && resp.data ? resp.data : null
+        const created = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
         if (created) {
           const list = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates.slice() : []
           list.unshift(created)
