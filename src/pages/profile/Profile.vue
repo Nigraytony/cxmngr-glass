@@ -678,9 +678,22 @@
           v-else-if="currentTab === 'Settings'"
           class="space-y-4"
         >
-          <p class="text-white/80">
-            Account settings and preferences (placeholder).
-          </p>
+          <div class="space-y-4">
+            <p class="text-white/80">Account settings and preferences.</p>
+            <div class="rounded-md p-3 bg-white/6 border border-white/10">
+              <div class="text-sm text-white/70 mb-2">Signature on file</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input v-model="local.contact.signature.title" placeholder="Title (e.g. Commissioning Agent)" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white" />
+                <input v-model="local.contact.signature.person" placeholder="Full name" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white" />
+              </div>
+              <div class="mt-2">
+                <textarea v-model="local.contact.signature.block" rows="4" placeholder="Signature block (text or ASCII signature)" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white"></textarea>
+              </div>
+              <div class="mt-3 text-right">
+                <button class="px-3 py-2 rounded-md bg-white/20" @click="save">Save signature to profile</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -740,7 +753,9 @@ const local = reactive({
       taxId: auth.user?.contact?.address?.taxId || ''
     },
     bio: auth.user?.contact?.bio || '',
-    avatar: auth.user?.contact?.avatar || ''
+    avatar: auth.user?.contact?.avatar || '',
+    // optional signature stored on profile
+    signature: (auth.user && auth.user.contact && auth.user.contact.signature) || { title: '', person: '', block: '' }
   },
   social_media: {
     linkedin: auth.user?.social_media?.linkedin || '',

@@ -68,6 +68,141 @@
         >
           Collapse All
         </button>
+        <label class="inline-flex items-center gap-2 ml-2 text-sm">
+          <input
+            v-model="showSignatures"
+            type="checkbox"
+            class="accent-emerald-400"
+          >
+          <span>Show signatures</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Signatures accordion inside FPT panel -->
+    <div
+      v-if="showSignatures"
+      class="pt-2"
+    >
+      <div class="rounded-md border border-white/10 bg-white/5">
+        <div
+          class="w-full px-3 py-2 flex items-center justify-between rounded-t-md bg-white/5 cursor-pointer"
+          role="button"
+          :aria-expanded="signOpen"
+          @click="signOpen = !signOpen"
+        >
+          <div class="flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                d="M6 9l6 6 6-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="font-medium">Signatures</span>
+          </div>
+          <div class="text-xs text-white/70">
+            {{ sigList.length }} entries
+          </div>
+        </div>
+        <div
+          v-show="signOpen"
+          class="p-3 space-y-3"
+        >
+          <div
+            v-if="!sigList.length"
+            class="text-white/60"
+          >
+            No signatures yet.
+          </div>
+          <div
+            v-else
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
+          >
+            <div
+              v-for="(s, idx) in sigList"
+              :key="idx"
+              class="p-3 rounded bg-white/6 border border-white/10"
+            >
+              <div class="font-medium text-white/90 truncate">
+                {{ s.title || 'Signature' }}
+              </div>
+              <div class="text-sm text-white/70">
+                {{ s.person }}
+              </div>
+              <div class="mt-2">
+                <img
+                  v-if="isDataUrl(s.block)"
+                  :src="s.block"
+                  class="w-full h-24 object-contain bg-black/10"
+                >
+                <div
+                  v-else
+                  class="text-sm text-white/80 whitespace-pre-wrap"
+                >
+                  {{ s.block }}
+                </div>
+              </div>
+              <div class="mt-2 text-xs text-white/60">
+                Signed: {{ formatDateTime(s.date) }}
+              </div>
+              <div class="mt-2 flex items-center justify-end gap-2">
+                <button
+                  v-if="hasProfileSignature"
+                  class="px-2 py-1 rounded-md bg-white/10"
+                  @click="applyProfileSignatureTo(idx)"
+                >
+                  Use my profile signature
+                </button>
+                <button
+                  class="px-2 py-1 rounded-md bg-red-500/20 text-red-200"
+                  @click="removeSignature(idx)"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add new signature form -->
+          <div class="p-2 rounded bg-white/6 border border-white/10">
+            <div
+              class="grid grid-cols-1 sm:grid-cols-3 gap-2"
+            >
+              <input
+                v-model="newSig.title"
+                placeholder="Title"
+                class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
+              >
+              <input
+                v-model="newSig.person"
+                placeholder="Name"
+                class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
+              >
+              <div class="text-sm text-white/60">
+                Date: {{ formatDateTime(newSig.date) }}
+              </div>
+            </div>
+            <div class="mt-2">
+              <SignaturePad v-model="newSig.block" />
+            </div>
+            <div class="text-right mt-2">
+              <button
+                class="px-3 py-1 rounded-md bg-white/20"
+                @click="addSignature"
+              >
+                Add signature
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1014,6 +1149,8 @@ import { useUiStore } from '../stores/ui'
 import { useProjectStore } from '../stores/project'
 import { useIssuesStore } from '../stores/issues'
 import { confirm as inlineConfirm } from '../utils/confirm'
+import SignaturePad from './SignaturePad.vue'
+import { useAuthStore } from '../stores/auth'
 // Removed GridEditor/XLSX usage in favor of a simple editable table per test
 
 export interface FunctionalTestItem {
@@ -1031,21 +1168,24 @@ export interface FunctionalTestItem {
   table?: { columns: Array<{ key: string; name: string }>; rows: Array<Record<string, any>> }
 }
 
-const props = defineProps<{ 
+const props = defineProps<{
   modelValue: FunctionalTestItem[] | null | undefined,
   projectId?: string,
   equipmentId?: string,
   equipmentTag?: string,
+  signatures?: any[]
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', v: FunctionalTestItem[]): void
   (e: 'change', v: FunctionalTestItem[]): void
   (e: 'save', v: FunctionalTestItem[]): void
+  (e: 'update:signatures', v: any[]): void
 }>()
 
 const ui = useUiStore()
 const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
+const auth = useAuthStore()
 
 // Accordion open/close state per test item (by object identity)
 const openVersion = ref(0)
@@ -1336,6 +1476,56 @@ function passTextClass(state: PassState) {
   if (state === 'fail') return 'text-red-200'
   return 'text-white/60'
 }
+
+// Signatures UI state (panel-local controls; data stored in parent via update:signatures)
+const showSignatures = ref(false)
+const signOpen = ref(false)
+const sigList = computed(() => Array.isArray(props.signatures) ? props.signatures : [])
+const newSig = reactive({ title: '', person: '', block: '', date: new Date().toISOString() })
+
+function isDataUrl(s: any) {
+  return typeof s === 'string' && s.startsWith('data:')
+}
+
+  const hasProfileSignature = computed(() => Boolean((auth && (auth.user as any) && (auth.user as any).contact && (auth.user as any).contact.signature)))
+
+function emitSignatures(arr: any[]) {
+  emit('update:signatures', Array.isArray(arr) ? arr : [])
+}
+
+function addSignature() {
+  const payload = { title: String(newSig.title || '').trim(), person: String(newSig.person || '').trim(), block: newSig.block || '', date: newSig.date || new Date().toISOString() }
+  if (!payload.block) { ui.showError('Signature cannot be empty'); return }
+  const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+  arr.push(payload)
+  emitSignatures(arr)
+  // reset newSig
+  newSig.title = ''
+  newSig.person = ''
+  newSig.block = ''
+  newSig.date = new Date().toISOString()
+}
+
+function removeSignature(idx: number) {
+  const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+  arr.splice(idx, 1)
+  emitSignatures(arr)
+}
+
+function applyProfileSignatureTo(idx: number) {
+  try {
+    const profileSig = (auth && (auth.user as any) && (auth.user as any).contact && (auth.user as any).contact.signature) || null
+    if (!profileSig) { ui.showError('No saved signature on your profile'); return }
+    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+    const entry = { title: profileSig.title || '', person: profileSig.person || `${(auth.user && (auth.user as any).firstName) || ''} ${(auth.user && (auth.user as any).lastName) || ''}`.trim(), block: profileSig.block || '', date: new Date().toISOString() }
+    if (idx >= 0 && idx < arr.length) arr[idx] = entry
+    else arr.push(entry)
+    emitSignatures(arr)
+  } catch (e) { /* ignore */ }
+}
+
+// Small local helper to format dates consistently in this panel
+function formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch (e) { return String(d) } }
 
 // v-autogrow directive for standard table textarea cells
 function grow(el: HTMLTextAreaElement) {

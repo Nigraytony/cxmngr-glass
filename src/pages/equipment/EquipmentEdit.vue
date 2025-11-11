@@ -946,6 +946,8 @@
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
             :equipment-id="String(form.id || (form as any)._id || id)"
             :equipment-tag="String(form.tag || '')"
+            :signatures="fptSignatures"
+            @update:signatures="persistFptSignatures"
             @change="onFunctionalTestsChange"
             @save="onFunctionalTestsSave"
           />
@@ -2373,6 +2375,31 @@ function onFunctionalTestsSave(tests: any[]) {
   persistFunctionalTests(tests).then(() => {
     ui.showSuccess('Functional tests saved')
   })
+}
+
+// Signatures for FPT (stored on equipment as `fptSignatures`)
+const fptSignatures = computed<any[]>({
+  get() {
+    const s: any = (form.value as any).fptSignatures
+    if (Array.isArray(s)) return s
+    if (s && typeof s === 'object') return Object.values(s)
+    return []
+  },
+  set(v: any[]) {
+    (form.value as any).fptSignatures = Array.isArray(v) ? v : []
+  }
+})
+
+async function persistFptSignatures(sigs: any[]) {
+  try {
+    const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+    if (!eid) return
+    await equipmentStore.updateFields(eid, { fptSignatures: sigs } as any)
+    const fresh = await equipmentStore.fetchOne(eid)
+    if (fresh) form.value = { ...fresh }
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to save signatures')
+  }
 }
 
 // Persist checklists when they change (debounced)
