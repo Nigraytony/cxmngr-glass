@@ -901,8 +901,16 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <template v-if="!sigList.length">
               <div class="p-3 rounded bg-white/6 border border-white/10 md:col-span-2">
-                <div class="text-white/60">
-                  No signatures yet. Use the card below to add your first signature.
+                <div class="flex items-center gap-3">
+                  <button
+                    class="px-3 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                    @click.stop="createDraft"
+                  >
+                    Add signature
+                  </button>
+                  <div class="text-white/60">
+                    No signatures yet. Use the card below to add your first signature.
+                  </div>
                 </div>
               </div>
             </template>
@@ -964,28 +972,71 @@
               </div>
             </div>
 
-            <!-- Add new signature card (single) -->
-            <div v-if="sigList.length < 6" class="p-3 rounded bg-white/6 border border-white/10">
-              <div class="mb-2">
-                <div class="font-medium text-white/90">New signature</div>
-                <div class="text-sm text-white/70 mt-1">Add title and name, then capture signature</div>
-              </div>
-              <div class="mb-2">
-                <input v-model="newSig.title" placeholder="Title" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90 mb-2">
-                <input v-model="newSig.person" placeholder="Name" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90">
-              </div>
-              <div class="mb-2">
-                <SignaturePad v-model="newSig.block" />
-              </div>
-              <div class="mt-2 flex items-center justify-between">
-                <div class="text-sm text-white/60">Date: {{ formatDateTime(newSig.date) }}</div>
-                <div class="flex items-center gap-2">
-                  <button class="px-3 py-1 rounded-md bg-white/10" @click="clearNewSig">Clear</button>
-                  <button class="px-3 py-1 rounded-md bg-red-500/20 text-red-200" @click="removeNewSig">Remove</button>
-                  <button class="px-3 py-1 rounded-md bg-white/20" @click="addSignature">Save</button>
+            <!-- Draft signature cards -->
+            <template v-if="(sigList.length + drafts.length) <= 6">
+              <div
+                v-for="(d, di) in drafts"
+                :key="'draft-'+di"
+                class="p-3 rounded bg-white/6 border border-white/10"
+              >
+                <div class="mb-2">
+                  <div
+                    class="font-medium text-white/90"
+                  >
+                    New signature
+                  </div>
+                  <div
+                    class="text-sm text-white/70 mt-1"
+                  >
+                    Add title and name, then capture signature
+                  </div>
+                </div>
+                <div class="mb-2">
+                  <input
+                    v-model="d.title"
+                    placeholder="Title"
+                    class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90 mb-2"
+                  >
+                  <input
+                    v-model="d.person"
+                    placeholder="Name"
+                    class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
+                  >
+                </div>
+                <div class="mb-2">
+                  <SignaturePad v-model="d.block" />
+                </div>
+                <div
+                  class="mt-2 flex items-center justify-between"
+                >
+                  <div
+                    class="text-sm text-white/60"
+                  >
+                    Date: {{ formatDateTime(d.date) }}
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="px-3 py-1 rounded-md bg-white/10"
+                      @click="clearDraft(di)"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded-md bg-red-500/20 text-red-200"
+                      @click="removeDraft(di)"
+                    >
+                      Remove
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded-md bg-white/20"
+                      @click="saveDraft(di)"
+                    >
+                      Save
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </template>
           </div>
         </div>
       </div>
@@ -1510,7 +1561,8 @@ const vAutogrow = {
 const showSignatures = ref(false)
 const signOpen = ref(false)
 const sigList = computed(() => Array.isArray(props.signatures) ? props.signatures : [])
-const newSig = reactive({ title: '', person: '', block: '', date: new Date().toISOString() })
+// legacy single newSig removed in favor of `drafts` array
+const drafts = ref<Array<any>>([])
 
 function isDataUrl(s: any) {
   return typeof s === 'string' && s.startsWith('data:')
@@ -1543,31 +1595,42 @@ function saveExistingSignature(idx: number) {
 
 
 
-function addSignature() {
-  const payload = { title: String(newSig.title || '').trim(), person: String(newSig.person || '').trim(), block: newSig.block || '', date: newSig.date || new Date().toISOString() }
-  if (!payload.block) { ui.showError('Signature cannot be empty'); return }
+function createDraft() {
+  const savedCount = Array.isArray(sigList.value) ? sigList.value.length : 0
+  const total = savedCount + drafts.value.length
+  if (total >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
+  drafts.value.push({ title: '', person: '', block: '', date: new Date().toISOString() })
+}
+
+function saveDraft(idx: number) {
+  const d = drafts.value[idx]
+  if (!d || !d.block) { ui.showError('Signature cannot be empty'); return }
   const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
   if (arr.length >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
-  arr.push(payload)
+  arr.push({ title: String(d.title || '').trim(), person: String(d.person || '').trim(), block: d.block || '', date: d.date || new Date().toISOString() })
   emitSignatures(arr)
-  // reset newSig
-  newSig.title = ''
-  newSig.person = ''
-  newSig.block = ''
-  newSig.date = new Date().toISOString()
+  drafts.value.splice(idx, 1)
 }
 
-function clearNewSig() {
-  newSig.block = ''
-  newSig.date = new Date().toISOString()
+function removeDraft(idx: number) {
+  drafts.value.splice(idx, 1)
 }
 
-function removeNewSig() {
-  newSig.title = ''
-  newSig.person = ''
-  newSig.block = ''
-  newSig.date = new Date().toISOString()
+function clearDraft(idx: number) {
+  const d = drafts.value[idx]
+  if (!d) return
+  d.block = ''
+  d.date = new Date().toISOString()
 }
+
+// Auto-update draft timestamp when the signature block changes (auto-save metadata)
+watch(drafts, (list) => {
+  for (const d of list) {
+    try {
+      if (d && d.block) d.date = new Date().toISOString()
+    } catch (e) { /* ignore */ }
+  }
+}, { deep: true })
 
 function removeSignature(idx: number) {
   const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
