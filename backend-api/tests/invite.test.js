@@ -317,11 +317,15 @@ describe('Invite flow integration', function () {
     // create a role with the test permission
     await Role.create({ name: 'tester', permissions: ['rbac.test'] });
 
-    // create a user with that role via register
+    // create a user with default role via register, then set the role directly in DB
     const reg = await request(app)
       .post('/api/users/register')
-      .send({ email: 'rbac-user@example.com', password: 'password123', firstName: 'RBAC', lastName: 'User', company: 'TestCo', role: 'tester' });
+      .send({ email: 'rbac-user@example.com', password: 'password123', firstName: 'RBAC', lastName: 'User', company: 'TestCo' });
     assert(reg.status === 201, `register failed: ${reg.status} ${JSON.stringify(reg.body)}`);
+    const User = require('../models/user');
+    // Directly update underlying collection to set a custom role value that is not part of the enum
+    await mongoose.connection.db.collection('users').updateOne({ _id: new mongoose.Types.ObjectId(reg.body.user._id) }, { $set: { role: 'tester' } });
+    // perform a login (or reuse returned token) — register returned a token for the original role, but role is stored on the DB now
     const token = reg.body.token;
 
     const res = await request(app)
@@ -337,8 +341,9 @@ describe('Invite flow integration', function () {
 
     const reg = await request(app)
       .post('/api/users/register')
-      .send({ email: 'rbac-nope@example.com', password: 'password123', firstName: 'No', lastName: 'Perm', company: 'TestCo', role: 'nope' });
+      .send({ email: 'rbac-nope@example.com', password: 'password123', firstName: 'No', lastName: 'Perm', company: 'TestCo' });
     assert(reg.status === 201);
+    await mongoose.connection.db.collection('users').updateOne({ _id: new mongoose.Types.ObjectId(reg.body.user._id) }, { $set: { role: 'nope' } });
     const token = reg.body.token;
 
     const res = await request(app)
