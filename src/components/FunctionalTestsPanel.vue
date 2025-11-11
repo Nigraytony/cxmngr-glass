@@ -945,28 +945,30 @@
                 </div>
               </div>
 
-              <!-- Date below the signature (only when saved) -->
-              <div
-                v-if="s && s.block"
-                class="mt-2 text-xs text-white/60"
-              >
-                Signed: {{ formatDateTime(s.date) }}
-              </div>
-
-              <div class="mt-2 flex items-center justify-end gap-2">
-                <button
-                  v-if="hasProfileSignature"
-                  class="px-2 py-1 rounded-md bg-white/10"
-                  @click="applyProfileSignatureTo(idx)"
-                >
-                  Use my profile signature
-                </button>
-                <button
-                  class="px-2 py-1 rounded-md bg-red-500/20 text-red-200"
-                  @click="removeSignature(idx)"
-                >
-                  Delete
-                </button>
+              <div class="mt-2 flex items-center justify-between">
+                <div class="text-xs text-white/60">
+                  <span v-if="s && s.block">Signed: {{ formatDateTime(s.date) }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    class="px-3 py-1 rounded-md bg-white/10"
+                    @click="clearSavedSignature(idx)"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded-md bg-red-500/20 text-red-200"
+                    @click="removeSignature(idx)"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded-md bg-white/20"
+                    @click="saveExistingSignature(idx)"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1197,7 +1199,7 @@ import { useProjectStore } from '../stores/project'
 import { useIssuesStore } from '../stores/issues'
 import { confirm as inlineConfirm } from '../utils/confirm'
 import SignaturePad from './SignaturePad.vue'
-import { useAuthStore } from '../stores/auth'
+// import { useAuthStore } from '../stores/auth' (profile signature helpers removed)
 // Removed GridEditor/XLSX usage in favor of a simple editable table per test
 
 export interface FunctionalTestItem {
@@ -1548,7 +1550,6 @@ const vAutogrow = {
 }
 
 // Signatures UI state (panel-local controls; data stored in parent via update:signatures)
-const auth = useAuthStore()
 const showSignatures = ref(false)
 const signOpen = ref(false)
 const sigList = computed(() => Array.isArray(props.signatures) ? props.signatures : [])
@@ -1559,10 +1560,29 @@ function isDataUrl(s: any) {
   return typeof s === 'string' && s.startsWith('data:')
 }
 
-const hasProfileSignature = computed(() => Boolean((auth && (auth.user as any) && (auth.user as any).contact && (auth.user as any).contact.signature)))
-
 function emitSignatures(arr: any[]) {
   emit('update:signatures', Array.isArray(arr) ? arr : [])
+}
+
+// Clear a saved signature (keep title/person) for a specific index
+function clearSavedSignature(idx: number) {
+  try {
+    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+    if (!arr[idx]) return
+    arr[idx].block = ''
+    arr[idx].date = new Date().toISOString()
+    emitSignatures(arr)
+  } catch (e) { /* ignore */ }
+}
+
+// Re-save an existing saved signature (update its timestamp)
+function saveExistingSignature(idx: number) {
+  try {
+    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+    if (!arr[idx]) return
+    arr[idx].date = new Date().toISOString()
+    emitSignatures(arr)
+  } catch (e) { /* ignore */ }
 }
 
 
@@ -1588,23 +1608,22 @@ function removeDraft(idx: number) {
   drafts.value.splice(idx, 1)
 }
 
+// Auto-update draft timestamp when the signature block changes (auto-save metadata)
+watch(drafts, (list) => {
+  for (const d of list) {
+    try {
+      if (d && d.block) d.date = new Date().toISOString()
+    } catch (e) { /* ignore */ }
+  }
+}, { deep: true })
+
 function removeSignature(idx: number) {
   const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
   arr.splice(idx, 1)
   emitSignatures(arr)
 }
 
-function applyProfileSignatureTo(idx: number) {
-  try {
-    const profileSig = (auth && (auth.user as any) && (auth.user as any).contact && (auth.user as any).contact.signature) || null
-    if (!profileSig) { ui.showError('No saved signature on your profile'); return }
-    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
-    const entry = { title: profileSig.title || '', person: profileSig.person || `${(auth.user && (auth.user as any).firstName) || ''} ${(auth.user && (auth.user as any).lastName) || ''}`.trim(), block: profileSig.block || '', date: new Date().toISOString() }
-    if (idx >= 0 && idx < arr.length) arr[idx] = entry
-    else arr.push(entry)
-    emitSignatures(arr)
-  } catch (e) { /* ignore */ }
-}
+
 
 // Small local helper to format dates consistently in this panel
 function formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).toLocaleString() } catch (e) { return String(d) } }
