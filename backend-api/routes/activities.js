@@ -3,6 +3,9 @@ const router = express.Router();
 const Activity = require('../models/activity');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
+const { requireActiveProject } = require('../middleware/subscription');
+const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -23,7 +26,7 @@ function validatePhotosArray(photos) {
 }
 
 // Create a new activity
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requirePermission('activities.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
   try {
     // if photos provided, validate count and sizes
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
@@ -56,7 +59,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Read all activities
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const activities = await Activity.find();
     res.status(200).send(activities);
@@ -66,7 +69,7 @@ router.get('/', async (req, res) => {
 });
 
 // Read a single activity by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) {
@@ -83,6 +86,13 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
+
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {};
+    req.body.projectId = activity.projectId;
+
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
     const existingCount = Array.isArray(activity.photos) ? activity.photos.length : 0;
     const incomingFiles = Array.isArray(req.files) ? req.files : [];
@@ -101,9 +111,9 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
       }
 
       const b64 = file.buffer.toString('base64');
-      const uploader = req.user || {}
-      const uploadedByName = [uploader.firstName, uploader.lastName].filter(Boolean).join(' ') || uploader.email || ''
-      const uploadedByAvatar = uploader.avatar || (uploader.contact && uploader.contact.avatar) || ''
+      const uploader = req.user || {};
+      const uploadedByName = [uploader.firstName, uploader.lastName].filter(Boolean).join(' ') || uploader.email || '';
+      const uploadedByAvatar = uploader.avatar || (uploader.contact && uploader.contact.avatar) || '';
       activity.photos.push({
         filename: file.originalname,
         data: `data:${file.mimetype};base64,${b64}`,
@@ -156,11 +166,20 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+// runMiddleware extracted to ../middleware/runMiddleware.js
+
 // Upload attachments (documents) for an activity
 router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
+
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {};
+    req.body.projectId = activity.projectId;
+
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
     const incoming = Array.isArray(req.files) ? req.files : [];
     if (incoming.length === 0) return res.status(400).send({ error: 'No files uploaded' });
@@ -224,6 +243,13 @@ router.delete('/:id/attachments/:index', auth, async (req, res) => {
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {};
+    req.body.projectId = activity.projectId;
+
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
     const arr = Array.isArray(activity.attachments) ? activity.attachments : [];
     if (idx >= arr.length) return res.status(400).send({ error: 'Attachment index out of range' });
     const [removed] = arr.splice(idx, 1);
@@ -255,6 +281,13 @@ router.delete('/:id/photos/:index', auth, async (req, res) => {
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const activity = await Activity.findById(req.params.id)
     if (!activity) return res.status(404).send({ error: 'Activity not found' })
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {}
+    req.body.projectId = activity.projectId
+
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
     const arr = Array.isArray(activity.photos) ? activity.photos : []
     if (idx >= arr.length) return res.status(400).send({ error: 'Photo index out of range' })
     arr.splice(idx, 1)
@@ -274,6 +307,13 @@ router.patch('/:id/photos/:index', auth, async (req, res) => {
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const activity = await Activity.findById(req.params.id)
     if (!activity) return res.status(404).send({ error: 'Activity not found' })
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {}
+    req.body.projectId = activity.projectId
+
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
     const arr = Array.isArray(activity.photos) ? activity.photos : []
     if (idx >= arr.length) return res.status(400).send({ error: 'Photo index out of range' })
     // Only update safe, small metadata fields
@@ -305,11 +345,20 @@ router.patch('/:id', auth, async (req, res) => {
         },
       });
     }
-    const activity = await Activity.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!activity) {
-      return res.status(404).send();
-    }
-    res.status(200).send(activity);
+
+    // Load activity to determine project for RBAC/subscription checks
+    const activity = await Activity.findById(req.params.id);
+    if (!activity) return res.status(404).send();
+
+    req.body = req.body || {};
+    req.body.projectId = activity.projectId;
+
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    const updated = await Activity.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!updated) return res.status(404).send();
+    res.status(200).send(updated);
   } catch (error) {
     res.status(400).send(error);
   }
@@ -318,23 +367,31 @@ router.patch('/:id', auth, async (req, res) => {
 // Delete an activity by ID
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const activity = await Activity.findByIdAndDelete(req.params.id);
-    if (!activity) {
-      return res.status(404).send();
-    }
+    const activity = await Activity.findById(req.params.id);
+    if (!activity) return res.status(404).send();
+
+    req.body = req.body || {};
+    req.body.projectId = activity.projectId;
+
+    await runMiddleware(req, res, requirePermission('activities.delete', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    await Activity.findByIdAndDelete(req.params.id);
 
     // Remove activity from the corresponding project
-    const project = await Project.findById(activity.projectId);
-    project.activities.pull(activity._id);
-    await project.save();
+    try {
+      const project = await Project.findById(activity.projectId);
+      if (project && Array.isArray(project.activities)) {
+        project.activities.pull(activity._id);
+        await project.save();
+      }
+    } catch (_) {}
 
     res.status(200).send(activity);
   } catch (error) {
     res.status(500).send(error);
   }
 });
-
-module.exports = router;
 
 // Generate PDF report for an activity
 router.get('/:id/report', auth, async (req, res) => {
@@ -441,3 +498,5 @@ router.get('/:id/report', auth, async (req, res) => {
     res.status(500).send({ error: 'Failed to generate report' });
   }
 });
+
+    module.exports = router;

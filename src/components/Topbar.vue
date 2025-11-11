@@ -82,7 +82,7 @@
           <div
             v-if="menuOpen"
             :style="dropdownStyle"
-            class="w-48 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
+            class="w-72 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
           >
             <ul class="flex flex-col gap-1">
               <li>
@@ -361,7 +361,29 @@ onMounted(async () => {
   } catch (e) { /* ignore */ }
 })
 
-const projectsList = computed(() => projectStore.projects || [])
+const projectsList = computed(() => {
+  // Prefer the authenticated user's project membership list (hydrated by /api/users/me)
+  try {
+    if (auth.user && Array.isArray(auth.user.projects) && auth.user.projects.length > 0) {
+      return auth.user.projects
+        .map((p) => {
+          if (!p) return null
+          if (typeof p === 'string') return { id: p, name: p }
+          // p may be a lightweight project object coming from the user payload
+          return {
+            id: p._id || p.id,
+            _id: p._id || p.id,
+            name: p.name || p.title || (p.client ? `${p.client} - ${p.name}` : p.name) || 'Project',
+          }
+        })
+        .filter(Boolean)
+    }
+  } catch (e) {
+    /* ignore and fall back */
+  }
+  // Fallback to project store (may contain full project objects)
+  return projectStore.projects || []
+})
 const defaultProjectId = computed(() => {
   try {
     const list = (auth.user && Array.isArray(auth.user.projects)) ? auth.user.projects : []

@@ -30,6 +30,8 @@ const requirePermission = (permission, opts = {}) => {
             const userId = String(req.user._id || req.user.id || req.user._id);
             const member = project.team.find((t) => String(t._id || t.id || t._id) === userId || String((t.email || '')).toLowerCase() === String((req.user.email || '')).toLowerCase());
             if (member && member.role) {
+              // project admin short-circuit: a team member with role 'admin' is a project admin
+              if (String(member.role).trim() === 'admin') return next();
               // try to find a project-scoped Role with this name
               const roleDoc = await Role.findOne({ name: member.role, scope: 'project', projectId: project._id });
               if (checkRoleDoc(roleDoc)) return next();

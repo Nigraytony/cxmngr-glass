@@ -4,6 +4,7 @@ const Project = require('../models/project');
 const User = require('../models/user');
 const { requireActiveProject } = require('../middleware/subscription');
 const { auth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // Create a new project
@@ -105,7 +106,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update a project by ID
-router.put('/:id', async (req, res) => {
+router.put('/:id', auth, requirePermission('projects.update', { projectParam: 'id' }), async (req, res) => {
   try {
     // Prevent external updates to immutable fields like trialStartedAt
     if (typeof req.body === 'object' && req.body) {
@@ -127,7 +128,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { sendInviteEmail } = require('../utils/mailer');
 
-router.post('/addUser', auth, async (req, res) => {
+router.post('/addUser', auth, requirePermission('projects.users.manage', { projectParam: 'projectId' }), async (req, res) => {
   // Use a transaction so project and user updates (or invite creation) are atomic
   const session = await mongoose.startSession();
   let txResult = null
@@ -143,14 +144,31 @@ router.post('/addUser', auth, async (req, res) => {
       if (user) {
         const userExists = project.team.some((u) => String(u.email).toLowerCase() === String(req.body.email).toLowerCase());
         if (userExists) throw { status: 400, error: 'User is already on the project' };
-        project.team.push({
-          _id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          company: user.contact?.company || req.body.company || '',
-          role: req.body.role,
-        });
+            // Determine if a role template was selected and copy its permissions
+            let memberPermissions = [];
+            try {
+              const tplId = req.body.roleTemplateId || req.body.templateId || req.body.roleTemplate || null;
+              if (tplId) {
+                const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(tplId) || String(r._id) === String((tplId && tplId.toString && tplId.toString())) );
+                if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+              } else if (req.body.role) {
+                // allow selecting template by role name
+                const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
+                if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+              }
+            } catch (e) {
+              // best-effort; continue without template if lookup fails
+            }
+
+            project.team.push({
+              _id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              company: user.contact?.company || req.body.company || '',
+              role: req.body.role,
+              permissions: memberPermissions,
+            });
         await project.save({ session });
         // Ensure user.projects includes the project ref (minimal shape)
         const already = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
@@ -168,7 +186,27 @@ router.post('/addUser', auth, async (req, res) => {
       let invite = null;
       for (let attempt = 0; attempt < 5; attempt++) {
         const token = crypto.randomBytes(20).toString('hex');
-        invite = new Invitation({ email: req.body.email, projectId: project._id, inviterId, token });
+        // Persist chosen template id/snapshot on the invite so it can be applied upon acceptance
+        const invitePayload = { email: req.body.email, projectId: project._id, inviterId, token };
+        try {
+          if (req.body.roleTemplateId || req.body.templateId) {
+            const chosenId = req.body.roleTemplateId || req.body.templateId;
+            invitePayload.roleTemplateId = chosenId;
+            // try to snapshot permissions from project templates
+            const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(chosenId) || String(r._id) === String((chosenId && chosenId.toString && chosenId.toString())) );
+            if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
+          } else if (req.body.role) {
+            const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
+            if (tpl) {
+              invitePayload.roleTemplateId = tpl._id;
+              invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
+            }
+          }
+        } catch (e) {
+          // best-effort; continue without template info if lookup fails
+        }
+
+        invite = new Invitation(invitePayload);
         try {
           await invite.save({ session });
           break; // success
@@ -228,7 +266,14 @@ router.post('/accept-invite', auth, async (req, res) => {
       // Add user to project.team if not present
       const already = project.team.some(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
       if (!already) {
-        project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
+        // If the invite included a role template snapshot, apply those permissions
+        const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' };
+        if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+          const snap = invite.roleTemplateSnapshot || null;
+          if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
+          if (snap && snap.name) memberObj.role = snap.name;
+        }
+        project.team.push(memberObj);
         await project.save({ session });
       }
 
@@ -273,10 +318,16 @@ router.post('/invitations/:id/accept', auth, async (req, res) => {
       const project = await Project.findById(invite.projectId).session(session);
       if (!project) throw { status: 404, error: 'Project not found' };
 
-      // Add user to project if not present
+      // Add user to project if not present (apply invite snapshot if present)
       const already = project.team.some(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
       if (!already) {
-        project.team.push({ _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' });
+        const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' };
+        if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+          const snap = invite.roleTemplateSnapshot || null;
+          if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
+          if (snap && snap.name) memberObj.role = snap.name;
+        }
+        project.team.push(memberObj);
         await project.save({ session });
       }
       const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
@@ -300,7 +351,7 @@ router.post('/invitations/:id/accept', auth, async (req, res) => {
 });
 
 // List invites for a project
-router.get('/:id/invites', auth, async (req, res) => {
+router.get('/:id/invites', auth, requirePermission('projects.users.manage', { projectParam: 'id' }), async (req, res) => {
   try {
     const invites = await Invitation.find({ projectId: req.params.id }).lean();
     return res.status(200).send(invites);
@@ -311,7 +362,7 @@ router.get('/:id/invites', auth, async (req, res) => {
 });
 
 // Resend an invitation email
-router.post('/:id/resend-invite', auth, async (req, res) => {
+router.post('/:id/resend-invite', auth, requirePermission('projects.users.manage', { projectParam: 'id' }), async (req, res) => {
   try {
     const { inviteId } = req.body;
     if (!inviteId) return res.status(400).send({ error: 'inviteId is required' });
@@ -490,7 +541,7 @@ router.post('/:id/change-plan', auth, async (req, res) => {
 });
 
 // Delete a project by ID
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, requirePermission('projects.delete', { projectParam: 'id' }), async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) {
@@ -608,6 +659,138 @@ router.post('/:id/leave', auth, async (req, res) => {
   } catch (err) {
     console.error('leave-project error', err);
     return res.status(500).send({ error: 'Failed to leave project' });
+  }
+});
+
+// -------------------------
+// Project role template management (Phase A)
+// - GET  /api/projects/:id/roles        -> list project role templates (project members)
+// - POST /api/projects/:id/roles        -> create a project-scoped role template (project admin/globaladmin)
+// - PUT  /api/projects/:id/roles/:roleId -> update a template (project admin/globaladmin)
+// - DELETE /api/projects/:id/roles/:roleId -> delete a template (project admin/globaladmin)
+// -------------------------
+
+// List project role templates: visible to project members (or globaladmin)
+router.get('/:id/roles', auth, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id).lean();
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    // allow globaladmin to view
+    const userGlobalRole = String(req.user && req.user.role || '').trim();
+    if (userGlobalRole === 'globaladmin') return res.status(200).send({ roleTemplates: project.roleTemplates || [] });
+
+    // ensure user is a project member
+    const userId = String(req.user && (req.user._id || req.user.id));
+    const member = Array.isArray(project.team) ? project.team.find((t) => String(t._id || t.id) === userId || String((t.email || '')).toLowerCase() === String((req.user.email || '')).toLowerCase()) : null;
+    if (!member) return res.status(403).send({ error: 'Forbidden' });
+
+    return res.status(200).send({ roleTemplates: project.roleTemplates || [] });
+  } catch (err) {
+    console.error('list project role templates error', err);
+    return res.status(500).send({ error: 'Failed to list role templates' });
+  }
+});
+
+// Create a project role template - restricted to project admins or globaladmin via requirePermission
+router.post('/:id/roles', auth, requirePermission('projects.roles.manage', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    const { name, description, permissions } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).send({ error: 'name is required' });
+
+    const tpl = {
+      name: String(name).trim(),
+      description: description ? String(description) : '',
+      permissions: Array.isArray(permissions) ? permissions.map(String) : [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    project.roleTemplates = project.roleTemplates || [];
+    project.roleTemplates.push(tpl);
+    await project.save();
+
+    // return the newly created template (last item)
+    const created = project.roleTemplates[project.roleTemplates.length - 1];
+    return res.status(201).send({ roleTemplate: created });
+  } catch (err) {
+    console.error('create project role template error', err);
+    return res.status(500).send({ error: 'Failed to create role template' });
+  }
+});
+
+// Update a project role template
+router.put('/:id/roles/:roleId', auth, requirePermission('projects.roles.manage', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+    const roleId = req.params.roleId;
+    if (!roleId) return res.status(400).send({ error: 'roleId is required' });
+
+    const idx = project.roleTemplates ? project.roleTemplates.findIndex((r) => String(r._id) === String(roleId)) : -1;
+    if (idx === -1) return res.status(404).send({ error: 'Role template not found' });
+
+    const { name, description, permissions } = req.body || {};
+    if (typeof name !== 'undefined') project.roleTemplates[idx].name = String(name || project.roleTemplates[idx].name).trim();
+    if (typeof description !== 'undefined') project.roleTemplates[idx].description = description ? String(description) : '';
+    if (typeof permissions !== 'undefined') project.roleTemplates[idx].permissions = Array.isArray(permissions) ? permissions.map(String) : [];
+    project.roleTemplates[idx].updatedAt = new Date();
+
+    await project.save();
+    return res.status(200).send({ roleTemplate: project.roleTemplates[idx] });
+  } catch (err) {
+    console.error('update project role template error', err);
+    return res.status(500).send({ error: 'Failed to update role template' });
+  }
+});
+
+// Delete a project role template
+router.delete('/:id/roles/:roleId', auth, requirePermission('projects.roles.manage', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+    const roleId = req.params.roleId;
+    if (!roleId) return res.status(400).send({ error: 'roleId is required' });
+
+    const before = Array.isArray(project.roleTemplates) ? project.roleTemplates.length : 0;
+    project.roleTemplates = (project.roleTemplates || []).filter((r) => String(r._id) !== String(roleId));
+    const after = project.roleTemplates.length;
+    if (after === before) return res.status(404).send({ error: 'Role template not found' });
+
+    await project.save();
+    return res.status(200).send({ ok: true });
+  } catch (err) {
+    console.error('delete project role template error', err);
+    return res.status(500).send({ error: 'Failed to delete role template' });
+  }
+});
+
+// Update a team member's explicit permissions (project admins or globaladmin)
+router.put('/:id/team/:memberId/permissions', auth, requirePermission('projects.users.manage', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    const memberId = req.params.memberId;
+    if (!memberId) return res.status(400).send({ error: 'memberId is required' });
+
+    const idx = (project.team || []).findIndex((t) => String(t._id) === String(memberId) || String((t.email || '')).toLowerCase() === String(memberId).toLowerCase());
+    if (idx === -1) return res.status(404).send({ error: 'Team member not found' });
+
+    const incoming = req.body && Array.isArray(req.body.permissions) ? req.body.permissions.map(String) : null;
+    if (incoming === null) return res.status(400).send({ error: 'permissions array is required' });
+
+    project.team[idx].permissions = incoming;
+    project.team[idx].updatedAt = new Date();
+    await project.save();
+
+    return res.status(200).send({ member: project.team[idx] });
+  } catch (err) {
+    console.error('update member permissions error', err);
+    return res.status(500).send({ error: 'Failed to update member permissions' });
   }
 });
 
