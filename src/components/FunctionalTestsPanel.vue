@@ -897,28 +897,29 @@
           </div>
           <div
             v-else
-            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
+            class="grid grid-cols-1 md:grid-cols-2 gap-3"
           >
             <div
               v-for="(s, idx) in sigList"
               :key="idx"
               class="p-3 rounded bg-white/6 border border-white/10"
             >
-              <div
-                class="font-medium text-white/90 truncate"
-              >
-                {{ s.title || 'Signature' }}
+              <!-- Title / Name above the signature -->
+              <div class="mb-2">
+                <div class="font-medium text-white/90 truncate">
+                  {{ s.title || 'Signature' }}
+                </div>
+                <div class="text-sm text-white/70 mt-1">
+                  {{ s.person }}
+                </div>
               </div>
-              <div
-                class="text-sm text-white/70"
-              >
-                {{ s.person }}
-              </div>
-              <div class="mt-2">
+
+              <!-- Signature block -->
+              <div class="mb-2">
                 <img
                   v-if="isDataUrl(s.block)"
                   :src="s.block"
-                  class="w-full h-24 object-contain bg-black/10"
+                  class="w-full h-36 object-contain bg-black/10"
                 >
                 <div
                   v-else
@@ -927,11 +928,15 @@
                   {{ s.block }}
                 </div>
               </div>
+
+              <!-- Date below the signature (only when saved) -->
               <div
+                v-if="s && s.block"
                 class="mt-2 text-xs text-white/60"
               >
                 Signed: {{ formatDateTime(s.date) }}
               </div>
+
               <div class="mt-2 flex items-center justify-end gap-2">
                 <button
                   v-if="hasProfileSignature"
@@ -948,36 +953,46 @@
                 </button>
               </div>
             </div>
-          </div>
 
-          <div class="p-2 rounded bg-white/6 border border-white/10">
+            <!-- Add new signature card inside the grid so it appears next to existing ones -->
             <div
-              class="grid grid-cols-1 sm:grid-cols-3 gap-2"
+              v-if="sigList.length < 6"
+              class="p-3 rounded bg-white/6 border border-white/10"
             >
-              <input
-                v-model="newSig.title"
-                placeholder="Title"
-                class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
-              >
-              <input
-                v-model="newSig.person"
-                placeholder="Name"
-                class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
-              >
-              <div class="text-sm text-white/60">
-                Date: {{ formatDateTime(newSig.date) }}
+              <div class="mb-2">
+                <div class="font-medium text-white/90">
+                  New signature
+                </div>
+                <div class="text-sm text-white/70 mt-1">
+                  Add title and name, then capture signature
+                </div>
               </div>
-            </div>
-            <div class="mt-2">
-              <SignaturePad v-model="newSig.block" />
-            </div>
-            <div class="text-right mt-2">
-              <button
-                class="px-3 py-1 rounded-md bg-white/20"
-                @click="addSignature"
-              >
-                Add signature
-              </button>
+              <div class="mb-2">
+                <input
+                  v-model="newSig.title"
+                  placeholder="Title"
+                  class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90 mb-2"
+                >
+                <input
+                  v-model="newSig.person"
+                  placeholder="Name"
+                  class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
+                >
+              </div>
+              <div class="mb-2">
+                <SignaturePad v-model="newSig.block" />
+              </div>
+              <div class="mt-2 text-right">
+                <div class="text-sm text-white/60 mb-2">
+                  Date: {{ formatDateTime(newSig.date) }}
+                </div>
+                <button
+                  class="px-3 py-1 rounded-md bg-white/20"
+                  @click="addSignature"
+                >
+                  Add signature
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1520,6 +1535,7 @@ function addSignature() {
   const payload = { title: String(newSig.title || '').trim(), person: String(newSig.person || '').trim(), block: newSig.block || '', date: newSig.date || new Date().toISOString() }
   if (!payload.block) { ui.showError('Signature cannot be empty'); return }
   const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+  if (arr.length >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
   arr.push(payload)
   emitSignatures(arr)
   // reset newSig
