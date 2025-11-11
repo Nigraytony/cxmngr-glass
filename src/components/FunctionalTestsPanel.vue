@@ -1006,24 +1006,32 @@
                 <div class="mb-2">
                   <SignaturePad v-model="d.block" />
                 </div>
-                <div class="mt-2 text-right">
+                <div
+                  class="mt-2 flex items-center justify-between"
+                >
                   <div
-                    class="text-sm text-white/60 mb-2"
+                    class="text-sm text-white/60"
                   >
                     Date: {{ formatDateTime(d.date) }}
                   </div>
-                  <div class="flex items-center justify-end gap-2">
+                  <div class="flex items-center gap-2">
                     <button
-                      class="px-3 py-1 rounded-md bg-white/20"
-                      @click="saveDraft(di)"
+                      class="px-3 py-1 rounded-md bg-white/10"
+                      @click="clearDraft(di)"
                     >
-                      Save
+                      Clear
                     </button>
                     <button
                       class="px-3 py-1 rounded-md bg-red-500/20 text-red-200"
                       @click="removeDraft(di)"
                     >
                       Remove
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded-md bg-white/20"
+                      @click="saveDraft(di)"
+                    >
+                      Save
                     </button>
                   </div>
                 </div>
@@ -1606,6 +1614,13 @@ function saveDraft(idx: number) {
 
 function removeDraft(idx: number) {
   drafts.value.splice(idx, 1)
+}
+
+function clearDraft(idx: number) {
+  const d = drafts.value[idx]
+  if (!d) return
+  d.block = ''
+  d.date = new Date().toISOString()
 }
 
 // Auto-update draft timestamp when the signature block changes (auto-save metadata)
