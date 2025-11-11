@@ -68,14 +68,6 @@
         >
           Collapse All
         </button>
-        <label class="inline-flex items-center gap-2 ml-2 text-sm">
-          <input
-            v-model="showSignatures"
-            type="checkbox"
-            class="accent-emerald-400"
-          >
-          <span>Show signatures</span>
-        </label>
       </div>
     </div>
 
