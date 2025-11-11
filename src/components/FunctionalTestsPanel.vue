@@ -68,6 +68,15 @@
         >
           Collapse All
         </button>
+        <label class="inline-flex items-center gap-2 text-sm text-white/70">
+          <input
+            v-model="showSignatures"
+            type="checkbox"
+            class="h-4 w-4 accent-emerald-400"
+            aria-label="Show signatures"
+          >
+          <span>Show signatures</span>
+        </label>
       </div>
     </div>
 
