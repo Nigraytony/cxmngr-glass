@@ -1477,6 +1477,7 @@ function toApiStatus(v) {
 
 const showCloseModal = ref(false)
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openClose(issue) {
   selectedIssue.value = issue
   showCloseModal.value = true
@@ -1547,6 +1548,7 @@ watch([() => priorityFilter.value, () => pageSize.value, () => issuesStore.issue
   if (page.value > totalPages.value) page.value = 1
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function togglePriority(name) {
   if (!name) return
   if (name === 'All' || name === priorityFilter.value) {

@@ -694,14 +694,12 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import { useUiStore } from '../../stores/ui'
-import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
 import http from '../../utils/http'
 import { apiUrl } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
-import { confirm as inlineConfirm } from '../../utils/confirm'
+// inlineConfirm removed (unused in this file)
 
 const projectStore = useProjectStore()
 const route = useRoute()
@@ -718,7 +716,6 @@ const endDateText = ref('')
 const logsLimit = ref(200)
 const formErrors = ref({})
 const ui = useUiStore()
-const auth = useAuthStore()
 const clientFileInput = ref(null)
 const cxaFileInput = ref(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
@@ -813,6 +810,7 @@ async function loadInvites() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function resendInvite(inviteId) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
@@ -924,7 +922,7 @@ function statusBadgeClass(status) {
 async function addMember() {
   if (!newMember.value.email) return ui.showError('Email required')
   // do not provide _id here; let the backend/mongoose generate a proper ObjectId for subdocs
-  const member = { ...newMember.value }
+  // member variable not used directly; payload built from newMember.value below
   // Prefer calling the dedicated addUser API so the server can create an Invitation
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
@@ -1135,7 +1133,6 @@ watch(project, (pv) => {
 async function startCheckout() {
   loading.value = true;
   try {
-  const authToken = auth.token || '';
     const pid = projectId || (project.value && (project.value._id || project.value.id));
   console.log('startCheckout -> sending', { projectId: pid, priceId: selectedPrice.value, url: apiUrl('/api/stripe/create-checkout-session') });
     if (!pid) {
@@ -1165,7 +1162,6 @@ async function startCheckout() {
 async function openBillingPortal() {
   loading.value = true;
   try {
-  const authToken = auth.token || '';
   console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
     const { data } = await http.post('/api/stripe/portal-session', {}, { headers: getAuthHeaders() });
     if (data && data.url) {

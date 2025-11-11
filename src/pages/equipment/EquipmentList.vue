@@ -916,6 +916,7 @@ const filtered = computed(() => {
 const parentOptions = computed(() => spacesStore.items)
 
 // options sourced from lists.js
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const filterTypeOptions = computed(() => {
   const base: Array<{ value: string; text: string }> = [{ value: '', text: 'All' }]
   const arr: Array<any> = (lists as any)?.equipmentTypes || []
@@ -965,6 +966,7 @@ const systemCounts = computed<Record<string, number>>(() => {
   return m
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const systemFilterOptions = computed(() => {
   const base: Array<{ value: string; text: string }> = [{ value: '', text: 'All' }]
   const arr: Array<any> = (lists as any)?.systemOptions || []

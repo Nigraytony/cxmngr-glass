@@ -688,7 +688,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, toRefs, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
@@ -1111,6 +1111,7 @@ async function removeAvatar() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function selectProject(proj) {
   // prefer _id then id
   const id = proj._id || proj.id
@@ -1135,8 +1136,7 @@ function editProject(proj) {
 function canLeaveProject(proj) {
   try {
     if (!auth.user) return false
-    const uid = auth.user._id || auth.user.id
-    // simple heuristic: if user's projects contains this project id, they can leave
+  // simple heuristic: if user's projects contains this project id, they can leave
     const pid = proj._id || proj.id
     if (!pid) return false
     return Array.isArray(auth.user.projects) && auth.user.projects.some(p => String((p && (p._id || p.id || p))) === String(pid))

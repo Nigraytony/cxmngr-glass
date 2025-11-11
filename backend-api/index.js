@@ -14,6 +14,7 @@ const spaceRoutes = require('./routes/spaces');
 const { authorize } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
 const rbacRoutes = require('./routes/rbac');
+const rolesAdminRoutes = require('./routes/roles_admin');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
@@ -116,6 +117,8 @@ app.use('/api/spaces',
 app.use('/api/users', userRoutes);
 app.use('/api/rbac', rbacRoutes);
 app.use('/api/admin', authorize(['admin']), adminRoutes);
+// Roles management - restricted to global-admin (see RBAC design)
+app.use('/api/admin/roles', authorize(['globaladmin']), rolesAdminRoutes);
 // Stripe/Billing routes
 app.use('/api/stripe', billingRoutes);
 app.use('/api/stripe', webhookRoutes);

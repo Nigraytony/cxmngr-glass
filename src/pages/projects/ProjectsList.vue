@@ -500,7 +500,6 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
-import axios from 'axios'
 import { getAuthHeaders } from '../../utils/auth'
 import http from '../../utils/http'
 
@@ -675,6 +674,7 @@ async function saveEdit() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function addProject() {
   const e = validateProject(newProject.value)
   if (Object.keys(e).length) { formErrors.value = e; return }

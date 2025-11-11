@@ -1647,6 +1647,7 @@ async function saveAndGetId(): Promise<string> {
   return String(created.id || created._id)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function download() {
   if (!id.value || isNew.value || downloading.value) return
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
