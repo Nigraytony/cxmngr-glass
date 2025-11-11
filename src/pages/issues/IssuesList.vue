@@ -1,23 +1,49 @@
 <template>
   <!-- Make this section the positioning context for the toast so it spans the RouterView area (right side without the sidebar) -->
-  <section class="space-y-6 relative w-full min-w-0" ref="pageSection">
+  <section
+    ref="pageSection"
+    class="space-y-6 relative w-full min-w-0"
+  >
     <div>
-      <BreadCrumbs :items="[
-        { text: 'Dashboard', to: '/' },
-        { text: 'Issues', to: '/issues' }
-      ]" />
+      <BreadCrumbs
+        :items="[
+          { text: 'Dashboard', to: '/' },
+          { text: 'Issues', to: '/issues' }
+        ]"
+      />
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0">
       <!-- Left group: add, search, filters -->
       <div class="flex items-center gap-3">
         <div class="relative inline-block group">
-          <button :disabled="!projectStore.currentProjectId" @click="openAddModal" aria-label="Add issue" aria-describedby="add-issue-tooltip" :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+          <button
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Add issue"
+            aria-describedby="add-issue-tooltip"
+            :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="openAddModal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                clip-rule="evenodd"
+              />
             </svg>
           </button>
-          <div id="add-issue-tooltip" role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+          <div
+            id="add-issue-tooltip"
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
             {{ projectStore.currentProjectId ? 'Add issue' : 'Select a project to add issues' }}
           </div>
         </div>
@@ -25,12 +51,18 @@
         <!-- Search input -->
         <div class="relative">
           <input
-            v-model="searchQuery"
             ref="searchInput"
+            v-model="searchQuery"
             placeholder="Search issues..."
             class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 hidden sm:inline-block w-64 pr-8"
-          />
-          <button v-if="searchQuery" @click="clearSearch" class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded">✕</button>
+          >
+          <button
+            v-if="searchQuery"
+            class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded"
+            @click="clearSearch"
+          >
+            ✕
+          </button>
         </div>
 
         <!-- Filters -->
@@ -38,24 +70,50 @@
           <label class="text-white/70 text-sm">Filter</label>
           <div class="flex items-center gap-2">
             <label class="text-white/70 text-sm">Priority</label>
-            <div class="relative" ref="priorityMenuRef">
-              <button @click="togglePriorityMenu" :aria-expanded="showPriorityMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+            <div
+              ref="priorityMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showPriorityMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="togglePriorityMenu"
+              >
                 <span class="flex items-center gap-2">
                   <span>{{ priorityFilter }}</span>
                   <span :class="priorityBadgeClass(priorityFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ priorityCount(priorityFilter) }}</span>
                 </span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
               </button>
-              <div v-if="showPriorityMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+              <div
+                v-if="showPriorityMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+                role="menu"
+              >
                 <div class="py-1">
                   <button
                     v-for="opt in priorityOptions"
                     :key="opt.name"
-                    @click="priorityFilter = opt.name; closePriorityMenu()"
                     role="menuitem"
-                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', priorityFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', priorityFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="priorityFilter = opt.name; closePriorityMenu()"
+                  >
                     <span class="inline-flex items-center gap-2">
-                      <span class="inline-block w-2.5 h-2.5 rounded-full" :class="priorityBgClass(opt.name)"></span>
+                      <span
+                        class="inline-block w-2.5 h-2.5 rounded-full"
+                        :class="priorityBgClass(opt.name)"
+                      />
                       <span>{{ opt.name }}</span>
                     </span>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
@@ -66,24 +124,50 @@
           </div>
           <div class="flex items-center gap-2">
             <label class="text-white/70 text-sm">Status</label>
-            <div class="relative" ref="statusMenuRef">
-              <button @click="toggleStatusMenu" :aria-expanded="showStatusMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between">
+            <div
+              ref="statusMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showStatusMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="toggleStatusMenu"
+              >
                 <span class="flex items-center gap-2">
                   <span>{{ statusFilter }}</span>
                   <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
                 </span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
               </button>
-              <div v-if="showStatusMenu" class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+              <div
+                v-if="showStatusMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+                role="menu"
+              >
                 <div class="py-1">
                   <button
                     v-for="opt in statusOptions"
                     :key="opt.name"
-                    @click="statusFilter = opt.name; closeStatusMenu()"
                     role="menuitem"
-                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', statusFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', statusFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="statusFilter = opt.name; closeStatusMenu()"
+                  >
                     <span class="inline-flex items-center gap-2">
-                      <span class="inline-block w-2.5 h-2.5 rounded-full" :class="statusBgClass(opt.name)"></span>
+                      <span
+                        class="inline-block w-2.5 h-2.5 rounded-full"
+                        :class="statusBgClass(opt.name)"
+                      />
                       <span>{{ opt.name }}</span>
                     </span>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
@@ -98,65 +182,228 @@
       <!-- Right group: hide closed + downloads -->
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex items-center gap-2">
-          <input id="hideClosedChk" type="checkbox" v-model="hideClosed" class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80" />
-          <label for="hideClosedChk" class="text-white/70 text-sm select-none">Hide closed</label>
+          <input
+            id="hideClosedChk"
+            v-model="hideClosed"
+            type="checkbox"
+            class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+          >
+          <label
+            for="hideClosedChk"
+            class="text-white/70 text-sm select-none"
+          >Hide closed</label>
         </div>
 
-        <div class="relative" ref="downloadsRef">
-          <button @click="toggleDownloadsMenu" :aria-expanded="showDownloadsMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/>
+        <div
+          ref="downloadsRef"
+          class="relative"
+        >
+          <button
+            :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
+            @click="toggleDownloadsMenu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
             </svg>
             <span>Downloads</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1">
-              <path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-3 h-3 ml-1"
+            >
+              <path
+                d="M6 9l6 6 6-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
           </button>
-          <div v-if="showDownloadsMenu" class="absolute right-0 mt-2 w-64 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20">
-            <div class="py-1" role="menu">
-              <button @click="onChooseColumnsClick" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke-width="1.5"/>
-                  <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z" stroke-width="1.5"/>
+          <div
+            v-if="showDownloadsMenu"
+            class="absolute right-0 mt-2 w-64 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+          >
+            <div
+              class="py-1"
+              role="menu"
+            >
+              <button
+                role="menuitem"
+                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
+                @click="onChooseColumnsClick"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
+                    stroke-width="1.5"
+                  />
                 </svg>
                 <span>Choose columns</span>
               </button>
-              <div class="my-1 h-px bg-white/10"></div>
-              <button @click="onDownloadCsvClick" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M12 3v11" stroke-width="1.5" stroke-linecap="round"/>
-                  <path d="M8 11l4 4 4-4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M5 20h14" stroke-width="1.5" stroke-linecap="round"/>
+              <div class="my-1 h-px bg-white/10" />
+              <button
+                :disabled="!filteredIssues.length"
+                role="menuitem"
+                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                @click="onDownloadCsvClick"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M12 3v11"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M8 11l4 4 4-4"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M5 20h14"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
                 </svg>
                 <span>Download CSV</span>
               </button>
-              <button @click="onDownloadXlsxClick" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke-width="1.5"/>
-                  <path d="M8 3v18M16 3v18M3 8h18M3 16h18" stroke-width="1.5"/>
+              <button
+                :disabled="!filteredIssues.length"
+                role="menuitem"
+                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                @click="onDownloadXlsxClick"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="2"
+                    ry="2"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M8 3v18M16 3v18M3 8h18M3 16h18"
+                    stroke-width="1.5"
+                  />
                 </svg>
                 <span>Download Excel</span>
               </button>
-              <div class="my-1 h-px bg-white/10"></div>
-              <div class="px-3 py-1 text-xs text-white/60">Reports</div>
-              <button @click="onDownloadDetailedReport" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke-width="1.5"/>
-                  <path d="M14 2v6h6" stroke-width="1.5"/>
-                  <path d="M9 15h3a2 2 0 1 0 0-4H9v6z" stroke-width="1.5"/>
+              <div class="my-1 h-px bg-white/10" />
+              <div class="px-3 py-1 text-xs text-white/60">
+                Reports
+              </div>
+              <button
+                :disabled="!filteredIssues.length"
+                role="menuitem"
+                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                @click="onDownloadDetailedReport"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M14 2v6h6"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M9 15h3a2 2 0 1 0 0-4H9v6z"
+                    stroke-width="1.5"
+                  />
                 </svg>
                 <span>Detailed PDF (one per issue)</span>
               </button>
-              <button @click="onDownloadCompactReport" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/>
+              <button
+                :disabled="!filteredIssues.length"
+                role="menuitem"
+                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                @click="onDownloadCompactReport"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M4 7h16M4 12h16M4 17h16"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
                 </svg>
                 <span>Compact PDF (continuous)</span>
               </button>
-              <button @click="onDownloadListReport" :disabled="!filteredIssues.length" role="menuitem" class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <rect x="3" y="4" width="18" height="16" rx="2" ry="2" stroke-width="1.5"/>
-                  <path d="M3 9h18M9 4v16M15 4v16" stroke-width="1.5"/>
+              <button
+                :disabled="!filteredIssues.length"
+                role="menuitem"
+                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                @click="onDownloadListReport"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <rect
+                    x="3"
+                    y="4"
+                    width="18"
+                    height="16"
+                    rx="2"
+                    ry="2"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M3 9h18M9 4v16M15 4v16"
+                    stroke-width="1.5"
+                  />
                 </svg>
                 <span>List PDF (table)</span>
               </button>
@@ -166,101 +413,183 @@
       </div>
     </div>
 
-  <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
-    <template v-if="!projectStore.currentProjectId">
-      <div class="p-6 text-center text-white/80">
-        <div class="text-lg font-semibold">No project selected</div>
-        <div class="mt-2 text-sm">Select a project from the user menu or Projects page to view its issues.</div>
-      </div>
-    </template>
-    <template v-else>
-      <table class="min-w-full text-left">
-        <thead>
-          <tr class="text-sm text-white/70">
-            <th class="px-4 py-3">#</th>
-            <th class="px-4 py-3">Type</th>
-            <th class="px-4 py-3">Description</th>
-            <th class="px-4 py-3">Priority</th>
-            <th class="px-4 py-3">Responsible</th>
-            <th class="px-4 py-3">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="mt-2">
-          <tr v-for="issue in pagedIssues" :key="issue.id" :class="['align-top', isClosedRow(issue) ? 'opacity-60' : '']">
-            <td class="px-4 py-3 text-white">{{ issue.number }}</td>
-            <td class="px-4 py-3 text-white/90">{{ issue.type }}</td>
-            <td class="px-4 py-3 text-white/70 max-w-xl">
-              {{ truncate(htmlToText(issue.description), 250) }}
-            </td>
-            <td class="px-4 py-3">
-              <span :class="priorityClass(issue.priority) + ' px-3 py-1 rounded-full text-xs font-medium'">{{ issue.priority }}</span>
-            </td>
-            <td class="px-4 py-3 text-white/90">{{ issue.responsible_person }}</td>
-            <td class="px-4 py-3">
-              <div class="flex gap-2">
-                <!-- Visit icon button -->
-                <button
-                  @click="openView(issue)"
-                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
-                  aria-label="Visit issue"
-                  :title="`Visit issue #${issue.number ?? ''}`"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke-width="1.5"/>
-                    <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
-                  </svg>
-                </button>
-                <!-- Edit icon button -->
-                <button
-                  @click="openEdit(issue)"
-                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
-                  aria-label="Edit issue"
-                  :title="`Edit issue #${issue.number ?? ''}`"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke-width="1.5"/>
-                    <path d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77" stroke-width="1.5"/>
-                  </svg>
-                </button>
-                <!-- Delete icon button -->
-                <button
-                  @click="onDelete(issue)"
-                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/40"
-                  aria-label="Delete issue"
-                  :title="`Delete issue #${issue.number ?? ''}`"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/>
-                    <rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/>
-                    <path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/>
-                  </svg>
-                </button>
-                <!-- Closed ON/OFF switch (exact match with IssueEdit.vue) -->
-                <div class="inline-flex items-center gap-2 ml-2 mr-1">
-                  <span class="text-sm select-none">Closed</span>
+    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
+      <template v-if="!projectStore.currentProjectId">
+        <div class="p-6 text-center text-white/80">
+          <div class="text-lg font-semibold">
+            No project selected
+          </div>
+          <div class="mt-2 text-sm">
+            Select a project from the user menu or Projects page to view its issues.
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <table class="min-w-full text-left">
+          <thead>
+            <tr class="text-sm text-white/70">
+              <th class="px-4 py-3">
+                #
+              </th>
+              <th class="px-4 py-3">
+                Type
+              </th>
+              <th class="px-4 py-3">
+                Description
+              </th>
+              <th class="px-4 py-3">
+                Priority
+              </th>
+              <th class="px-4 py-3">
+                Responsible
+              </th>
+              <th class="px-4 py-3">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="mt-2">
+            <tr
+              v-for="issue in pagedIssues"
+              :key="issue.id"
+              :class="['align-top', isClosedRow(issue) ? 'opacity-60' : '']"
+            >
+              <td class="px-4 py-3 text-white">
+                {{ issue.number }}
+              </td>
+              <td class="px-4 py-3 text-white/90">
+                {{ issue.type }}
+              </td>
+              <td class="px-4 py-3 text-white/70 max-w-xl">
+                {{ truncate(htmlToText(issue.description), 250) }}
+              </td>
+              <td class="px-4 py-3">
+                <span :class="priorityClass(issue.priority) + ' px-3 py-1 rounded-full text-xs font-medium'">{{ issue.priority }}</span>
+              </td>
+              <td class="px-4 py-3 text-white/90">
+                {{ issue.responsible_person }}
+              </td>
+              <td class="px-4 py-3">
+                <div class="flex gap-2">
+                  <!-- Visit icon button -->
                   <button
-                    type="button"
-                    role="switch"
-                    :aria-checked="isClosedRow(issue)"
-                    :aria-label="`Toggle Closed`"
-                    @click="toggleIssueClosed(issue)"
-                    @keydown.space.prevent="toggleIssueClosed(issue)"
-                    @keydown.enter.prevent="toggleIssueClosed(issue)"
-                    class="relative inline-flex h-7 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
-                    :class="isClosedRow(issue) ? 'bg-emerald-500/70 border-emerald-400/80' : 'bg-white/10 border-white/30'"
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                    aria-label="Visit issue"
+                    :title="`Visit issue #${issue.number ?? ''}`"
+                    @click="openView(issue)"
                   >
-                    <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
-                          :class="isClosedRow(issue) ? 'translate-x-6' : 'translate-x-1'" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                        stroke-width="1.5"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                        stroke-width="1.5"
+                      />
+                    </svg>
                   </button>
-                  <span class="text-xs select-none" :class="isClosedRow(issue) ? 'text-emerald-200' : 'text-white/60'">{{ isClosedRow(issue) ? 'YES' : 'NO' }}</span>
+                  <!-- Edit icon button -->
+                  <button
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                    aria-label="Edit issue"
+                    :title="`Edit issue #${issue.number ?? ''}`"
+                    @click="openEdit(issue)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                  </button>
+                  <!-- Delete icon button -->
+                  <button
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/40"
+                    aria-label="Delete issue"
+                    :title="`Delete issue #${issue.number ?? ''}`"
+                    @click="onDelete(issue)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M3 6h18"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M8 6l1-2h6l1 2"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <rect
+                        x="6"
+                        y="6"
+                        width="12"
+                        height="14"
+                        rx="1.5"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M10 10v6M14 10v6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                  </button>
+                  <!-- Closed ON/OFF switch (exact match with IssueEdit.vue) -->
+                  <div class="inline-flex items-center gap-2 ml-2 mr-1">
+                    <span class="text-sm select-none">Closed</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      :aria-checked="isClosedRow(issue)"
+                      :aria-label="`Toggle Closed`"
+                      class="relative inline-flex h-7 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                      :class="isClosedRow(issue) ? 'bg-emerald-500/70 border-emerald-400/80' : 'bg-white/10 border-white/30'"
+                      @click="toggleIssueClosed(issue)"
+                      @keydown.space.prevent="toggleIssueClosed(issue)"
+                      @keydown.enter.prevent="toggleIssueClosed(issue)"
+                    >
+                      <span
+                        class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                        :class="isClosedRow(issue) ? 'translate-x-6' : 'translate-x-1'"
+                      />
+                    </button>
+                    <span
+                      class="text-xs select-none"
+                      :class="isClosedRow(issue) ? 'text-emerald-200' : 'text-white/60'"
+                    >{{ isClosedRow(issue) ? 'YES' : 'NO' }}</span>
+                  </div>
                 </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
     </div>
 
     <!-- Pagination controls -->
@@ -274,17 +603,46 @@
       <div class="flex items-center gap-3 min-w-0">
         <div class="flex items-center gap-2">
           <label class="text-white/70 text-sm">Per page</label>
-          <select v-model.number="pageSize" class="rounded-lg bg-white/5 text-white p-1 text-sm">
-            <option v-for="s in pageSizes" :key="s" :value="s">{{ s }}</option>
+          <select
+            v-model.number="pageSize"
+            class="rounded-lg bg-white/5 text-white p-1 text-sm"
+          >
+            <option
+              v-for="s in pageSizes"
+              :key="s"
+              :value="s"
+            >
+              {{ s }}
+            </option>
           </select>
         </div>
 
         <div class="flex items-center gap-1 flex-wrap max-w-full overflow-x-auto">
-          <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40">Prev</button>
-          <template v-for="n in pagesArray" :key="n">
-            <button @click="setPage(n)" :class="['px-2 py-1 rounded', n === page ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80']">{{ n }}</button>
+          <button
+            :disabled="page === 1"
+            class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40"
+            @click="prevPage"
+          >
+            Prev
+          </button>
+          <template
+            v-for="n in pagesArray"
+            :key="n"
+          >
+            <button
+              :class="['px-2 py-1 rounded', n === page ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80']"
+              @click="setPage(n)"
+            >
+              {{ n }}
+            </button>
           </template>
-          <button @click="nextPage" :disabled="page === totalPages" class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40">Next</button>
+          <button
+            :disabled="page === totalPages"
+            class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40"
+            @click="nextPage"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -292,21 +650,46 @@
     <!-- View Issue Modal -->
     <Modal v-model="showViewModal">
       <template #header>
-        <h3 class="text-lg font-semibold">Edit Issue #{{ editIssue?.number || selectedIssue?.number || '—' }}</h3>
+        <h3 class="text-lg font-semibold">
+          Edit Issue #{{ editIssue?.number || selectedIssue?.number || '—' }}
+        </h3>
       </template>
 
       <!-- Use the reusable IssueForm for editing; pass validation errors -->
-      <IssueForm v-model="editIssue" :errors="formErrors" />
+      <IssueForm
+        v-model="editIssue"
+        :errors="formErrors"
+      />
 
       <template #footer>
         <div class="flex items-center justify-between gap-3 w-full">
-          <p v-if="isEditReadOnly" class="text-sm text-white/60">
+          <p
+            v-if="isEditReadOnly"
+            class="text-sm text-white/60"
+          >
             Editing is disabled for closed/canceled issues.
           </p>
           <div class="flex gap-2 ml-auto">
-            <button v-if="isEditReadOnly" @click="reopenIssueFromEdit" class="px-4 py-2 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-400/30">Reopen</button>
-            <button @click="saveEdit" :disabled="isEditReadOnly" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white disabled:opacity-40">Save</button>
-            <button @click="cancelEdit" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
+            <button
+              v-if="isEditReadOnly"
+              class="px-4 py-2 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-400/30"
+              @click="reopenIssueFromEdit"
+            >
+              Reopen
+            </button>
+            <button
+              :disabled="isEditReadOnly"
+              class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white disabled:opacity-40"
+              @click="saveEdit"
+            >
+              Save
+            </button>
+            <button
+              class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+              @click="cancelEdit"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </template>
@@ -316,16 +699,32 @@
     <!-- Close Confirm Modal -->
     <Modal v-model="showCloseModal">
       <template #header>
-        <h3 class="text-lg font-semibold">Close Issue #{{ selectedIssue?.id }}</h3>
+        <h3 class="text-lg font-semibold">
+          Close Issue #{{ selectedIssue?.id }}
+        </h3>
       </template>
       <div>
-        <p class="text-white/80">Are you sure you want to close this issue?</p>
-  <p class="text-white/70 mt-2">{{ selectedIssue?.title || selectedIssue?.type }} — {{ truncate(htmlToText(selectedIssue?.description), 200) }}</p>
+        <p class="text-white/80">
+          Are you sure you want to close this issue?
+        </p>
+        <p class="text-white/70 mt-2">
+          {{ selectedIssue?.title || selectedIssue?.type }} — {{ truncate(htmlToText(selectedIssue?.description), 200) }}
+        </p>
       </div>
       <template #footer>
         <div class="flex gap-2">
-          <button @click="confirmClose" class="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/40">Close issue</button>
-          <button @click="showCloseModal = false" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
+          <button
+            class="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/40"
+            @click="confirmClose"
+          >
+            Close issue
+          </button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="showCloseModal = false"
+          >
+            Cancel
+          </button>
         </div>
       </template>
     </Modal>
@@ -333,13 +732,25 @@
     <!-- Add Issue Modal -->
     <Modal v-model="showAddModal">
       <template #header>
-        <h3 class="text-lg font-semibold">Add New Issue</h3>
+        <h3 class="text-lg font-semibold">
+          Add New Issue
+        </h3>
       </template>
       <IssueForm v-model="newIssue" />
       <template #footer>
         <div class="flex gap-2">
-          <button @click="addIssue" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Create</button>
-          <button @click="showAddModal = false" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="addIssue"
+          >
+            Create
+          </button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="showAddModal = false"
+          >
+            Cancel
+          </button>
         </div>
       </template>
     </Modal>
@@ -347,20 +758,49 @@
     <!-- Choose Columns Modal -->
     <Modal v-model="showColumnsModal">
       <template #header>
-        <h3 class="text-lg font-semibold">Choose columns to export</h3>
+        <h3 class="text-lg font-semibold">
+          Choose columns to export
+        </h3>
       </template>
       <div class="space-y-3">
-        <p class="text-white/70 text-sm">Your selection applies to both CSV and Excel exports. It will be remembered for this project.</p>
+        <p class="text-white/70 text-sm">
+          Your selection applies to both CSV and Excel exports. It will be remembered for this project.
+        </p>
         <div class="flex flex-wrap gap-2">
-          <button @click="selectCommonColumns" class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10">Common preset</button>
-          <button @click="selectAllColumns" class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10">Select all</button>
-          <button @click="clearAllColumns" class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10">Clear</button>
+          <button
+            class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            @click="selectCommonColumns"
+          >
+            Common preset
+          </button>
+          <button
+            class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            @click="selectAllColumns"
+          >
+            Select all
+          </button>
+          <button
+            class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            @click="clearAllColumns"
+          >
+            Clear
+          </button>
         </div>
 
         <div class="max-h-80 overflow-auto rounded-xl border border-white/10 p-3 bg-white/5">
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            <label v-for="col in sortedAvailableColumns" :key="col" class="inline-flex items-center gap-2 text-white/90">
-              <input type="checkbox" class="form-checkbox rounded bg-white/10 border-white/20" :value="col" :checked="selectedColumnsSet.has(col)" @change="onToggleColumn(col, $event.target.checked)" />
+            <label
+              v-for="col in sortedAvailableColumns"
+              :key="col"
+              class="inline-flex items-center gap-2 text-white/90"
+            >
+              <input
+                type="checkbox"
+                class="form-checkbox rounded bg-white/10 border-white/20"
+                :value="col"
+                :checked="selectedColumnsSet.has(col)"
+                @change="onToggleColumn(col, $event.target.checked)"
+              >
               <span class="text-sm">{{ col }}</span>
             </label>
           </div>
@@ -368,19 +808,29 @@
       </div>
       <template #footer>
         <div class="flex gap-2">
-          <button @click="applyAndCloseColumns" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Done</button>
-          <button @click="showColumnsModal = false" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="applyAndCloseColumns"
+          >
+            Done
+          </button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="showColumnsModal = false"
+          >
+            Cancel
+          </button>
         </div>
       </template>
-     </Modal>
+    </Modal>
 
-        <!-- Hidden report generator component -->
-        <IssuePdfReport ref="reportRef" />
+    <!-- Hidden report generator component -->
+    <IssuePdfReport ref="reportRef" />
   </section>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
@@ -389,7 +839,7 @@ import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
-import lists from '../../lists.js'
+// lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
 import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
@@ -579,14 +1029,14 @@ function loadSelectedColumns() {
         return
       }
     }
-  } catch (e) {}
+  } catch (e) { /* ignore */ }
   // default to preferred ∩ available
   const avail = new Set(availableColumns.value)
   selectedColumns.value = preferredColumns.filter(c => avail.has(c))
 }
 
 function persistSelectedColumns() {
-  try { localStorage.setItem(columnsStorageKey.value, JSON.stringify(selectedColumns.value || [])) } catch (e) {}
+  try { localStorage.setItem(columnsStorageKey.value, JSON.stringify(selectedColumns.value || [])) } catch (e) { /* ignore */ }
 }
 
 watch(columnsStorageKey, () => loadSelectedColumns(), { immediate: true })
@@ -673,7 +1123,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 onMounted(async () => {
   // fetch issues for current project on mount
-  try { await issuesStore.fetchIssues() } catch (e) {}
+  try { await issuesStore.fetchIssues() } catch (e) { /* ignore */ }
 })
 
 function validateIssue(obj) {
@@ -767,10 +1217,10 @@ function loadPageSizePref() {
     if (!raw) return
     const n = parseInt(raw, 10)
     if ([5,10,25,50,100].includes(n)) pageSize.value = n
-  } catch {}
+  } catch (e) { /* ignore localStorage read errors */ }
 }
 function persistPageSizePref() {
-  try { localStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch {}
+  try { localStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore localStorage write errors */ }
 }
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
 watch(pageSize, () => persistPageSizePref())
@@ -917,7 +1367,7 @@ const preferredProjectId = computed(() => {
       const dp = projects.find(p => p && p.default)
       if (dp) return typeof dp === 'string' ? dp : (dp._id || dp.id || null)
     }
-  } catch (e) {}
+  } catch (e) { /* ignore */ }
   return projectStore.currentProjectId
 })
 
@@ -1027,6 +1477,7 @@ function toApiStatus(v) {
 
 const showCloseModal = ref(false)
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openClose(issue) {
   selectedIssue.value = issue
   showCloseModal.value = true
@@ -1097,6 +1548,7 @@ watch([() => priorityFilter.value, () => pageSize.value, () => issuesStore.issue
   if (page.value > totalPages.value) page.value = 1
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function togglePriority(name) {
   if (!name) return
   if (name === 'All' || name === priorityFilter.value) {
@@ -1117,7 +1569,7 @@ function exportFilteredIssuesCsv() {
       if (v === null || v === undefined) return ''
       let s
       if (Array.isArray(v) || typeof v === 'object') {
-        try { s = JSON.stringify(v) } catch { s = String(v) }
+        try { s = JSON.stringify(v) } catch (e) { s = String(v) }
       } else { s = String(v) }
       s = s.replace(/"/g, '""')
       return `"${s}"`

@@ -3,6 +3,9 @@ const router = express.Router();
 const Issue = require('../models/issue');
 const Project = require('../models/project');
 const { requireActiveProject } = require('../middleware/subscription');
+const { auth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
+const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -43,9 +46,11 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+// runMiddleware extracted to ../middleware/runMiddleware.js
+
 // Create a new issue (assign project-scoped atomic number)
 // Creating an issue is a premium action and requires an active subscription for the project
-router.post('/', requireActiveProject, async (req, res) => {
+router.post('/', auth, requirePermission('issues.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
   try {
     const { projectId } = req.body || {};
     if (!projectId) return res.status(400).send({ error: 'projectId is required' });
@@ -78,7 +83,7 @@ router.post('/', requireActiveProject, async (req, res) => {
 });
 
 // Read issues (optionally filtered by ?projectId=...)
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const { projectId } = req.query || {};
     const filter = {};
@@ -98,7 +103,7 @@ router.get('/', async (req, res) => {
 });
 
 // Read a single issue by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) {
@@ -111,7 +116,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Upload photos for an issue (multipart/form-data)
-router.post('/:id/photos', upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id)
     if (!issue) return res.status(404).send({ error: 'Issue not found' })
@@ -120,40 +125,42 @@ router.post('/:id/photos', upload.array('photos', 16), async (req, res) => {
     req.body = req.body || {}
     req.body.projectId = issue.projectId
 
-    return requireActiveProject(req, res, async () => {
-      const existingCount = Array.isArray(issue.photos) ? issue.photos.length : 0
-      const incomingFiles = Array.isArray(req.files) ? req.files : []
-      if (existingCount + incomingFiles.length > 16) {
-        return res.status(400).send({ error: 'Total photos would exceed maximum of 16' })
-      }
+    // Check project-scoped permission then subscription
+    await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
-      for (const file of incomingFiles) {
-        if (!file.mimetype.startsWith('image/')) {
-          return res.status(400).send({ error: 'Only image files are allowed' })
-        }
-        if (file.size > 250 * 1024) {
-          return res.status(400).send({ error: `File ${file.originalname} exceeds 250KB` })
-        }
-        const b64 = file.buffer.toString('base64')
-        const uploader = req.user || {}
-        const uploadedByName = [uploader.firstName, uploader.lastName].filter(Boolean).join(' ') || uploader.email || ''
-        const uploadedByAvatar = uploader.avatar || (uploader.contact && uploader.contact.avatar) || ''
-        issue.photos.push({
-          filename: file.originalname,
-          data: `data:${file.mimetype};base64,${b64}`,
-          contentType: file.mimetype,
-          size: file.size,
-          uploadedBy: req.user ? req.user._id : undefined,
-          uploadedByName,
-          uploadedByAvatar,
-          caption: '',
-          createdAt: new Date(),
-        })
-      }
+    const existingCount = Array.isArray(issue.photos) ? issue.photos.length : 0;
+    const incomingFiles = Array.isArray(req.files) ? req.files : [];
+    if (existingCount + incomingFiles.length > 16) {
+      return res.status(400).send({ error: 'Total photos would exceed maximum of 16' });
+    }
 
-      await issue.save()
-      return res.status(200).send(issue)
-    })
+    for (const file of incomingFiles) {
+      if (!file.mimetype.startsWith('image/')) {
+        return res.status(400).send({ error: 'Only image files are allowed' });
+      }
+      if (file.size > 250 * 1024) {
+        return res.status(400).send({ error: `File ${file.originalname} exceeds 250KB` });
+      }
+      const b64 = file.buffer.toString('base64');
+      const uploader = req.user || {};
+      const uploadedByName = [uploader.firstName, uploader.lastName].filter(Boolean).join(' ') || uploader.email || '';
+      const uploadedByAvatar = uploader.avatar || (uploader.contact && uploader.contact.avatar) || '';
+      issue.photos.push({
+        filename: file.originalname,
+        data: `data:${file.mimetype};base64,${b64}`,
+        contentType: file.mimetype,
+        size: file.size,
+        uploadedBy: req.user ? req.user._id : undefined,
+        uploadedByName,
+        uploadedByAvatar,
+        caption: '',
+        createdAt: new Date(),
+      });
+    }
+
+    await issue.save();
+    return res.status(200).send(issue);
   } catch (error) {
     console.error('[issues] upload photos error', error && (error.stack || error.message || error))
     return res.status(500).send({ error: 'Upload failed' })
@@ -163,7 +170,7 @@ router.post('/:id/photos', upload.array('photos', 16), async (req, res) => {
 // Update an issue by ID
 // Updating an issue requires an active subscription. Load the issue first, set projectId so middleware can validate,
 // then perform the update if allowed.
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', auth, async (req, res) => {
   console.log('Issue is:', req.body, req.params);
   try {
     const issue = await Issue.findById(req.params.id);
@@ -173,48 +180,50 @@ router.patch('/:id', async (req, res) => {
     req.body = req.body || {}
     req.body.projectId = issue.projectId
 
-    return requireActiveProject(req, res, async () => {
-      try {
-        // If status is transitioning, set/clear closed metadata
-        const incoming = req.body || {}
-        const prevStatus = String(issue.status || '').toLowerCase()
-        const nextStatus = typeof incoming.status === 'string' ? String(incoming.status).toLowerCase() : prevStatus
+    // require project update permission then subscription
+    await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
-        // Helper to format ISO date (YYYY-MM-DD)
-        function isoDate(d) {
-          try {
-            const dt = d instanceof Date ? d : new Date(d)
-            const y = dt.getFullYear()
-            const m = String(dt.getMonth() + 1).padStart(2, '0')
-            const day = String(dt.getDate()).padStart(2, '0')
-            return `${y}-${m}-${day}`
-          } catch (_) { return undefined }
-        }
+    try {
+      // If status is transitioning, set/clear closed metadata
+      const incoming = req.body || {};
+      const prevStatus = String(issue.status || '').toLowerCase();
+      const nextStatus = typeof incoming.status === 'string' ? String(incoming.status).toLowerCase() : prevStatus;
 
-        const isClosing = nextStatus === 'closed' && prevStatus !== 'closed'
-        const isReopening = nextStatus !== 'closed' && prevStatus === 'closed'
-
-        if (isClosing) {
-          // If client didn't provide, stamp closedDate/closedBy
-          if (!incoming.closedDate) incoming.closedDate = isoDate(new Date())
-          if (!incoming.closedBy) {
-            const u = req.user || {}
-            const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim()
-            incoming.closedBy = name || u.email || 'System'
-          }
-        }
-        if (isReopening) {
-          incoming.closedDate = ''
-          incoming.closedBy = ''
-        }
-
-        const updated = await Issue.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
-        if (!updated) return res.status(404).send();
-        return res.status(200).send(updated);
-      } catch (err) {
-        return res.status(400).send(err);
+      // Helper to format ISO date (YYYY-MM-DD)
+      function isoDate(d) {
+        try {
+          const dt = d instanceof Date ? d : new Date(d);
+          const y = dt.getFullYear();
+          const m = String(dt.getMonth() + 1).padStart(2, '0');
+          const day = String(dt.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        } catch (_) { return undefined }
       }
-    });
+
+      const isClosing = nextStatus === 'closed' && prevStatus !== 'closed';
+      const isReopening = nextStatus !== 'closed' && prevStatus === 'closed';
+
+      if (isClosing) {
+        // If client didn't provide, stamp closedDate/closedBy
+        if (!incoming.closedDate) incoming.closedDate = isoDate(new Date());
+        if (!incoming.closedBy) {
+          const u = req.user || {};
+          const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+          incoming.closedBy = name || u.email || 'System';
+        }
+      }
+      if (isReopening) {
+        incoming.closedDate = '';
+        incoming.closedBy = '';
+      }
+
+      const updated = await Issue.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
+      if (!updated) return res.status(404).send();
+      return res.status(200).send(updated);
+    } catch (err) {
+      return res.status(400).send(err);
+    }
   } catch (error) {
     return res.status(500).send(error);
   }
@@ -223,7 +232,7 @@ router.patch('/:id', async (req, res) => {
 // Delete an issue by ID
 // Deleting an issue requires an active subscription for the parent project. Load the issue, set projectId for middleware,
 // then delete if allowed.
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).send();
@@ -231,29 +240,28 @@ router.delete('/:id', async (req, res) => {
     req.body = req.body || {}
     req.body.projectId = issue.projectId
 
-    return requireActiveProject(req, res, async () => {
-      try {
-        await Issue.findByIdAndDelete(req.params.id);
-        // Remove issue from the corresponding project
-        const project = await Project.findById(issue.projectId);
-        if (project) {
-          project.issues.pull(issue._id);
-          await project.save();
-        }
-        return res.status(200).send(issue);
-      } catch (err) {
-        return res.status(500).send(err);
+    await runMiddleware(req, res, requirePermission('issues.delete', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    try {
+      await Issue.findByIdAndDelete(req.params.id);
+      // Remove issue from the corresponding project
+      const project = await Project.findById(issue.projectId);
+      if (project) {
+        project.issues.pull(issue._id);
+        await project.save();
       }
-    });
+      return res.status(200).send(issue);
+    } catch (err) {
+      return res.status(500).send(err);
+    }
   } catch (error) {
     return res.status(500).send(error);
   }
 });
 
-module.exports = router;
-
 // Remove a single photo by index for an issue
-router.delete('/:id/photos/:index', async (req, res) => {
+router.delete('/:id/photos/:index', auth, async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
@@ -264,14 +272,15 @@ router.delete('/:id/photos/:index', async (req, res) => {
     req.body = req.body || {}
     req.body.projectId = issue.projectId
 
-    return requireActiveProject(req, res, async () => {
-      const arr = Array.isArray(issue.photos) ? issue.photos : []
-      if (idx >= arr.length) return res.status(400).send({ error: 'Photo index out of range' })
-      arr.splice(idx, 1)
-      issue.photos = arr
-      await issue.save()
-      return res.status(200).send(issue)
-    })
+    await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    const arr = Array.isArray(issue.photos) ? issue.photos : []
+    if (idx >= arr.length) return res.status(400).send({ error: 'Photo index out of range' })
+    arr.splice(idx, 1)
+    issue.photos = arr
+    await issue.save()
+    return res.status(200).send(issue)
   } catch (error) {
     console.error('[issues] remove photo error', error)
     return res.status(500).send({ error: 'Failed to remove photo' })
@@ -279,7 +288,7 @@ router.delete('/:id/photos/:index', async (req, res) => {
 })
 
 // Upload attachments (documents) for an issue
-router.post('/:id/attachments', uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).send({ error: 'Issue not found' });
@@ -288,9 +297,11 @@ router.post('/:id/attachments', uploadDocs.array('attachments', 16), async (req,
     req.body = req.body || {};
     req.body.projectId = issue.projectId;
 
-    return requireActiveProject(req, res, async () => {
-      const incoming = Array.isArray(req.files) ? req.files : [];
-      if (incoming.length === 0) return res.status(400).send({ error: 'No files uploaded' });
+    await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    const incoming = Array.isArray(req.files) ? req.files : [];
+    if (incoming.length === 0) return res.status(400).send({ error: 'No files uploaded' });
 
       let useS3 = !!process.env.S3_BUCKET;
       const urls = [];
@@ -337,7 +348,6 @@ router.post('/:id/attachments', uploadDocs.array('attachments', 16), async (req,
       }
       await issue.save();
       return res.status(200).send(issue);
-    });
   } catch (error) {
     console.error('[issues] attachments upload error', error && (error.stack || error.message || error));
     return res.status(500).send({ error: 'Upload failed' });
@@ -345,7 +355,7 @@ router.post('/:id/attachments', uploadDocs.array('attachments', 16), async (req,
 });
 
 // Remove an attachment by index; best-effort delete local file if under uploads
-router.delete('/:id/attachments/:index', async (req, res) => {
+router.delete('/:id/attachments/:index', auth, async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
@@ -356,28 +366,31 @@ router.delete('/:id/attachments/:index', async (req, res) => {
     req.body = req.body || {};
     req.body.projectId = issue.projectId;
 
-    return requireActiveProject(req, res, async () => {
-      const arr = Array.isArray(issue.attachments) ? issue.attachments : [];
-      if (idx >= arr.length) return res.status(400).send({ error: 'Attachment index out of range' });
-      const [removed] = arr.splice(idx, 1);
-      issue.attachments = arr;
-      await issue.save();
+    await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
-      // Try delete local file
-      if (removed && removed.url && removed.url.includes('/uploads/issues/')) {
-        try {
-          const urlPath = removed.url.split('/uploads/')[1];
-          if (urlPath) {
-            const full = path.join(__dirname, '..', 'uploads', urlPath);
-            if (fs.existsSync(full)) fs.unlinkSync(full);
-          }
-        } catch (_) {}
-      }
+    const arr = Array.isArray(issue.attachments) ? issue.attachments : [];
+    if (idx >= arr.length) return res.status(400).send({ error: 'Attachment index out of range' });
+    const [removed] = arr.splice(idx, 1);
+    issue.attachments = arr;
+    await issue.save();
 
-      return res.status(200).send(issue);
-    });
+    // Try delete local file
+    if (removed && removed.url && removed.url.includes('/uploads/issues/')) {
+      try {
+        const urlPath = removed.url.split('/uploads/')[1];
+        if (urlPath) {
+          const full = path.join(__dirname, '..', 'uploads', urlPath);
+          if (fs.existsSync(full)) fs.unlinkSync(full);
+        }
+      } catch (_) {}
+    }
+
+    return res.status(200).send(issue);
   } catch (error) {
     console.error('[issues] remove attachment error', error);
     return res.status(500).send({ error: 'Failed to remove attachment' });
   }
 });
+
+module.exports = router;

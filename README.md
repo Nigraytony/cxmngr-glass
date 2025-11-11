@@ -1,5 +1,8 @@
 # Vue Liquid Glass Dashboard Starter
 
+[![CI](https://github.com/Nigraytony/cxmngr-glass/actions/workflows/ci.yml/badge.svg)](https://github.com/Nigraytony/cxmngr-glass/actions/workflows/ci.yml)
+
+
 A tiny Vue 3 + Vite + Tailwind starter with a **liquid glass** look, a **dashboard layout** (collapsible sidebar + topbar), and basic **auth pages** (login/register) with **route guards** powered by Pinia.
 
 ## Tech

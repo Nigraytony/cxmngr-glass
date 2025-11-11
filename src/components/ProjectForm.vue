@@ -3,62 +3,101 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-white/80 mb-1">Name</label>
-        <input v-model="local.name" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
-        <p v-if="errors.name" class="text-sm text-red-400 mt-1">{{ errors.name }}</p>
+        <input
+          v-model="local.name"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
+        <p
+          v-if="errors.name"
+          class="text-sm text-red-400 mt-1"
+        >
+          {{ errors.name }}
+        </p>
       </div>
 
       <div>
         <label class="block text-white/80 mb-1">Client</label>
-        <input v-model="local.client" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
-        <p v-if="errors.client" class="text-sm text-red-400 mt-1">{{ errors.client }}</p>
+        <input
+          v-model="local.client"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
+        <p
+          v-if="errors.client"
+          class="text-sm text-red-400 mt-1"
+        >
+          {{ errors.client }}
+        </p>
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-white/80 mb-1">Project Number</label>
-        <input v-model="local.number" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="local.number"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
 
       <div>
         <label class="block text-white/80 mb-1">PO Number</label>
-        <input v-model="local.po_number" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="local.po_number"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-white/80 mb-1">Type</label>
-        <input v-model="local.project_type" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="local.project_type"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
 
       <div>
         <label class="block text-white/80 mb-1">Location</label>
-        <input v-model="local.location" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="local.location"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-white/80 mb-1">Start Date</label>
-        <input v-model="local.startDate" type="date" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="local.startDate"
+          type="date"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
       <div>
         <label class="block text-white/80 mb-1">End Date</label>
-        <input v-model="local.endDate" type="date" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="local.endDate"
+          type="date"
+          class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
     </div>
 
     <div>
       <label class="block text-white/80 mb-1">Description</label>
-      <textarea v-model="local.description" rows="3" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"></textarea>
+      <textarea
+        v-model="local.description"
+        rows="3"
+        class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+      />
     </div>
-
   </div>
 </template>
 
 <script setup>
-import { reactive, toRefs, watch, computed } from 'vue'
+import { reactive, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
@@ -78,17 +117,6 @@ function toInputDate(val) {
   return `${yyyy}-${mm}-${dd}`
 }
 
-function toISOStringDateFromInput(val) {
-  if (!val) return ''
-  // val expected as YYYY-MM-DD; construct from parts to avoid UTC parsing quirks
-  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    const [y, m, d] = val.split('-').map(n => parseInt(n, 10))
-    const dt = new Date(y, m - 1, d)
-    return isNaN(dt.getTime()) ? '' : dt.toISOString()
-  }
-  const d = new Date(val)
-  return isNaN(d.getTime()) ? '' : d.toISOString()
-}
 
 const local = reactive({
   // preserve identifiers so emitted model retains project id
@@ -116,10 +144,7 @@ const local = reactive({
   endDate: toInputDate(props.modelValue.endDate || props.modelValue.end_date),
 })
 
-const tagsText = computed({
-  get() { return local.tags.join(', ') },
-  set(v) { local.tags = v.split(',').map(s => s.trim()).filter(Boolean) }
-})
+// tagsText and toISOStringDateFromInput helper removed (unused)
 
 // keep local in sync when parent passes a new modelValue (e.g., async fetch)
 watch(() => props.modelValue, (nv) => {

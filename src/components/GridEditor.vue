@@ -1,17 +1,32 @@
 <template>
   <div class="space-y-2">
     <div class="flex items-center gap-2">
-      <button @click="addRow" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
-      <button @click="removeSelected" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-sm" :disabled="!hasSelection">Remove Selected</button>
+      <button
+        class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+        @click="addRow"
+      >
+        Add Row
+      </button>
+      <button
+        class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-sm"
+        :disabled="!hasSelection"
+        @click="removeSelected"
+      >
+        Remove Selected
+      </button>
     </div>
-    <div ref="containerEl" class="ag-theme-alpine w-full" :style="{ height, minHeight: minHeight }">
+    <div
+      ref="containerEl"
+      class="ag-theme-alpine w-full"
+      :style="{ height, minHeight: minHeight }"
+    >
       <AgGridVue
         class="w-full h-full"
-        :columnDefs="columnDefs"
-        :defaultColDef="defaultColDef"
-        :rowData="rowsRef"
-        :domLayout="'normal'"
-        rowSelection="multiple"
+        :column-defs="columnDefs"
+        :default-col-def="defaultColDef"
+        :row-data="rowsRef"
+        :dom-layout="'normal'"
+        row-selection="multiple"
         @grid-ready="onGridReady"
         @cell-value-changed="onCellValueChanged"
       />
@@ -20,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
@@ -66,7 +81,9 @@ function sizeToFitSoon() {
     if (!gridApi.value) return
     const el = containerEl.value
     if (!el || !el.offsetParent) { sizeToFitSoon(); return }
-    try { gridApi.value.sizeColumnsToFit() } catch {}
+    try { gridApi.value.sizeColumnsToFit() } catch (err) {
+      // ignore: AG Grid may throw while mounting/resizing in some environments
+    }
   }, 50)
 }
 

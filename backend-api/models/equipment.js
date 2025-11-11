@@ -42,6 +42,19 @@ const equipmentSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now },
 });
 
+    // Keep updatedAt fresh; normalize tag and trim title
+    equipmentSchema.pre('save', function (next) {
+        try {
+            if (this.tag && typeof this.tag === 'string') this.tag = String(this.tag).trim()
+            if (this.title && typeof this.title === 'string') this.title = String(this.title).trim()
+            this.updatedAt = new Date()
+        } catch (e) { /* ignore */ }
+        next()
+    })
+
+    equipmentSchema.index({ projectId: 1 })
+    equipmentSchema.index({ tag: 1 })
+
 const Equipment = mongoose.model('Equipment', equipmentSchema);
 
 module.exports = Equipment;

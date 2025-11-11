@@ -137,65 +137,49 @@ export const useProjectStore = defineStore('project', () => {
 
 
   async function addProject(project: Partial<Project>) {
-    try {
-      // Get current userId from auth store
-      const authStore = useAuthStore();
-      const userId = authStore.user?.id;
-      if (!userId) throw new Error('No user ID found. Please log in.');
-      const res = await axios.post( API_BASE, { ...project, userId });
-      const newProject = { ...res.data, id: res.data._id };
-      projects.value.push(newProject);
-      return newProject;
-    } catch (err) {
-      throw err;
-    }
+    // Get current userId from auth store
+    const authStore = useAuthStore();
+    const userId = authStore.user?.id;
+    if (!userId) throw new Error('No user ID found. Please log in.');
+    const res = await axios.post(API_BASE, { ...project, userId });
+    const newProject = { ...res.data, id: res.data._id };
+    projects.value.push(newProject);
+    return newProject;
   }
 
   async function fetchProject(id: string) {
-    try {
-      const res = await axios.get(`${API_BASE}/${id}`)
-      const p = { ...res.data, id: res.data._id }
-      const idx = projects.value.findIndex(pr => pr.id === p.id)
-      if (idx !== -1) projects.value.splice(idx, 1, p)
-      else projects.value.push(p)
-      // set the currentProject ref so consumers can react to it
-      currentProject.value = p
-      return p
-    } catch (err) {
-      throw err
-    }
+    const res = await axios.get(`${API_BASE}/${id}`)
+    const p = { ...res.data, id: res.data._id }
+    const idx = projects.value.findIndex(pr => pr.id === p.id)
+    if (idx !== -1) projects.value.splice(idx, 1, p)
+    else projects.value.push(p)
+    // set the currentProject ref so consumers can react to it
+    currentProject.value = p
+    return p
   }
 
   async function updateProject(updated: Partial<Project> & { id?: string, _id?: string }) {
-    try {
-      const id = (updated.id || (updated as any)._id)
-      if (!id) throw new Error('Missing project id')
-      // avoid sending immutable _id or id in the update payload
-      const payload: any = { ...updated };
-      if (payload.id) delete payload.id;
-      if (payload._id) delete payload._id;
-      const res = await axios.put(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() });
-      const idx = projects.value.findIndex(p => p.id === id);
-      if (idx !== -1) {
-        projects.value[idx] = { ...res.data, id: res.data._id };
-        // if we just updated the current project, refresh it
-        if (currentProject.value && (currentProject.value.id === id || (currentProject.value as any)._id === id)) {
-            currentProject.value = { ...res.data, id: res.data._id }
-        }
+    const id = (updated.id || (updated as any)._id)
+    if (!id) throw new Error('Missing project id')
+    // avoid sending immutable _id or id in the update payload
+    const payload: any = { ...updated };
+    if (payload.id) delete payload.id;
+    if (payload._id) delete payload._id;
+    const res = await axios.put(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() });
+    const idx = projects.value.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      projects.value[idx] = { ...res.data, id: res.data._id };
+      // if we just updated the current project, refresh it
+      if (currentProject.value && (currentProject.value.id === id || (currentProject.value as any)._id === id)) {
+        currentProject.value = { ...res.data, id: res.data._id }
       }
-      return res.data;
-    } catch (err) {
-      throw err;
     }
+    return res.data;
   }
 
   async function deleteProject(id: string) {
-    try {
-      await axios.delete(`/api/projects/${id}`);
-      projects.value = projects.value.filter(p => p.id !== id);
-    } catch (err) {
-      throw err;
-    }
+    await axios.delete(`/api/projects/${id}`);
+    projects.value = projects.value.filter(p => p.id !== id);
   }
 
   // Project logs API
@@ -213,7 +197,7 @@ export const useProjectStore = defineStore('project', () => {
             const name = [u.firstName, u.lastName].filter(Boolean).join(' ')
             payload.by = name || u.email || null
           }
-        } catch { /* ignore */ }
+  } catch (e) { /* ignore */ }
       }
       await axios.post(`${API_BASE}/${projectId}/logs`, payload, { headers: getAuthHeaders() })
       // optimistic cache update

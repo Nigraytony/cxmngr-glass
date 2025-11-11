@@ -51,6 +51,18 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// Normalize email to lowercase and trim to ensure consistent uniqueness and lookups
+userSchema.pre('save', function (next) {
+  try {
+    if (this.email && typeof this.email === 'string') {
+      this.email = String(this.email).trim().toLowerCase();
+    }
+  } catch (e) {
+    // best-effort normalization; don't block save on unexpected errors
+  }
+  next();
+});
+
 // Compare password method
 userSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);

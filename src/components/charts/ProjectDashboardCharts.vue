@@ -3,53 +3,101 @@
     <!-- Issues by Status -->
     <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-white">Issues by Status</h3>
-        <span v-if="issuesLoading" class="text-xs text-white/60">Loading…</span>
+        <h3 class="text-lg font-semibold text-white">
+          Issues by Status
+        </h3>
+        <span
+          v-if="issuesLoading"
+          class="text-xs text-white/60"
+        >Loading…</span>
       </div>
-      <Doughnut v-if="issuesChartData.datasets[0].data.length"
-                :data="issuesChartData"
-                :options="doughnutOptions"
-                class="max-h-72" />
-      <div v-else class="text-white/60 text-sm">No issue data</div>
+      <Doughnut
+        v-if="issuesChartData.datasets[0].data.length"
+        :data="issuesChartData"
+        :options="doughnutOptions"
+        class="max-h-72"
+      />
+      <div
+        v-else
+        class="text-white/60 text-sm"
+      >
+        No issue data
+      </div>
     </div>
 
     <!-- Activities by Type -->
     <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-white">Activities by Type</h3>
-        <span v-if="activitiesLoading" class="text-xs text-white/60">Loading…</span>
+        <h3 class="text-lg font-semibold text-white">
+          Activities by Type
+        </h3>
+        <span
+          v-if="activitiesLoading"
+          class="text-xs text-white/60"
+        >Loading…</span>
       </div>
-      <Bar v-if="activitiesChartData.datasets[0].data.length"
-           :data="activitiesChartData"
-           :options="barOptions"
-           class="max-h-72" />
-      <div v-else class="text-white/60 text-sm">No activity data</div>
+      <Bar
+        v-if="activitiesChartData.datasets[0].data.length"
+        :data="activitiesChartData"
+        :options="barOptions"
+        class="max-h-72"
+      />
+      <div
+        v-else
+        class="text-white/60 text-sm"
+      >
+        No activity data
+      </div>
     </div>
 
     <!-- Equipment by Status -->
     <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-white">Equipment by Status</h3>
-        <span v-if="equipmentLoading" class="text-xs text-white/60">Loading…</span>
+        <h3 class="text-lg font-semibold text-white">
+          Equipment by Status
+        </h3>
+        <span
+          v-if="equipmentLoading"
+          class="text-xs text-white/60"
+        >Loading…</span>
       </div>
-      <Bar v-if="equipmentChartData.datasets[0].data.length"
-           :data="equipmentChartData"
-           :options="barOptions"
-           class="max-h-72" />
-      <div v-else class="text-white/60 text-sm">No equipment data</div>
+      <Bar
+        v-if="equipmentChartData.datasets[0].data.length"
+        :data="equipmentChartData"
+        :options="barOptions"
+        class="max-h-72"
+      />
+      <div
+        v-else
+        class="text-white/60 text-sm"
+      >
+        No equipment data
+      </div>
     </div>
 
     <!-- Spaces by Type -->
     <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-white">Spaces by Type</h3>
-        <span v-if="spacesLoading" class="text-xs text-white/60">Loading…</span>
+        <h3 class="text-lg font-semibold text-white">
+          Spaces by Type
+        </h3>
+        <span
+          v-if="spacesLoading"
+          class="text-xs text-white/60"
+        >Loading…</span>
       </div>
-      <Bar v-if="spacesChartData.datasets[0].data.length"
-           :data="spacesChartData"
-           :options="barOptions"
-           class="max-h-72" />
-      <div v-else class="text-white/60 text-sm">No spaces data</div>
+      <Bar
+        v-if="spacesChartData.datasets[0].data.length"
+        :data="spacesChartData"
+        :options="barOptions"
+        class="max-h-72"
+      />
+      <div
+        v-else
+        class="text-white/60 text-sm"
+      >
+        No spaces data
+      </div>
     </div>
   </div>
 </template>

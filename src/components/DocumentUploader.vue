@@ -2,28 +2,55 @@
   <div>
     <div
       class="flex items-center justify-between gap-2 w-full rounded-md transition-colors"
+      :class="dragActive ? 'bg-white/10 ring-2 ring-white/40' : ''"
       @dragover.prevent="onDragOver"
       @dragleave="onDragLeave"
       @drop.prevent="onDrop"
-      :class="dragActive ? 'bg-white/10 ring-2 ring-white/40' : ''"
     >
       <div class="flex items-center gap-2">
-        <label :for="inputId" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 cursor-pointer select-none" :class="(uploadingNow || disabled) ? 'opacity-60 cursor-not-allowed' : ''">
+        <label
+          :for="inputId"
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 cursor-pointer select-none"
+          :class="(uploadingNow || disabled) ? 'opacity-60 cursor-not-allowed' : ''"
+        >
           {{ buttonLabel }}
         </label>
-        <input :id="inputId" type="file" :accept="accept" :multiple="multiple" @change="onFiles" class="sr-only" :disabled="uploadingNow || disabled" />
+        <input
+          :id="inputId"
+          type="file"
+          :accept="accept"
+          :multiple="multiple"
+          class="sr-only"
+          :disabled="uploadingNow || disabled"
+          @change="onFiles"
+        >
       </div>
-      <div v-if="notice" class="text-xs text-white/60">{{ notice }}</div>
+      <div
+        v-if="notice"
+        class="text-xs text-white/60"
+      >
+        {{ notice }}
+      </div>
     </div>
 
-    <div v-if="uploads.length" class="mt-3 space-y-2">
-      <div v-for="u in uploads" :key="u.id" class="p-2 rounded-md bg-white/5 border border-white/10">
+    <div
+      v-if="uploads.length"
+      class="mt-3 space-y-2"
+    >
+      <div
+        v-for="u in uploads"
+        :key="u.id"
+        class="p-2 rounded-md bg-white/5 border border-white/10"
+      >
         <div class="flex items-center justify-between text-xs mb-1 gap-3">
           <span class="truncate">{{ u.name }} ({{ Math.round(u.size/1024) }}KB)</span>
           <span class="text-white/60 truncate">{{ u.status }}<span v-if="u.message"> — {{ u.message }}</span></span>
         </div>
         <div class="w-full h-2 bg-white/10 rounded overflow-hidden">
-          <div class="h-2 bg-white/60 rounded" :style="{ width: (u.progress || 0) + '%' }"></div>
+          <div
+            class="h-2 bg-white/60 rounded"
+            :style="{ width: (u.progress || 0) + '%' }"
+          />
         </div>
       </div>
     </div>
@@ -138,9 +165,8 @@ async function processFiles(files: File[]) {
   uploadingNow.value = true
   let index = 0
   const worker = async () => {
-    while (true) {
+    while (index < accepted.length) {
       const i = index++
-      if (i >= accepted.length) return
       const f = accepted[i]
       const item = addUpload(f)
       try {

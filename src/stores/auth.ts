@@ -91,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (id) projectStore.setCurrentProject(id)
           }
         }
-      } catch (e) {}
+  } catch (e) { /* ignore */ }
       return true;
     } catch (e) {
       error.value = 'Network error';
@@ -170,18 +170,18 @@ export const useAuthStore = defineStore('auth', () => {
                 social_media: serverUser.social_media || {},
               } as User
               token.value = storedToken
-              try { localStorage.setItem('user', JSON.stringify(user.value)) } catch (e) {}
+              try { localStorage.setItem('user', JSON.stringify(user.value)) } catch (e) { /* ignore */ }
             }
           } else {
             // if refresh failed, keep optimistic local user/token if present
             if (stored) {
-              try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) {}
+              try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) { /* ignore */ }
             }
           }
         } catch (err) {
           // network error: keep optimistic local user if available
           if (stored) {
-            try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) {}
+            try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) { /* ignore */ }
           }
         }
 
@@ -199,7 +199,7 @@ export const useAuthStore = defineStore('auth', () => {
               if (id) projectStore.setCurrentProject(id)
             }
           }
-        } catch (e) {}
+  } catch (e) { /* ignore */ }
       })()
     } else if (stored && !storedToken) {
       // No token: restore stored user without auth (useful for dev flows), but clear token state
@@ -219,7 +219,7 @@ export const useAuthStore = defineStore('auth', () => {
   const unwatch = watch(authReady, (v: boolean) => { if (v) { unwatch(); resolve(true) } })
       if (timeout && timeout > 0) {
         setTimeout(() => {
-          try { unwatch() } catch (e) {}
+          try { unwatch() } catch (e) { /* ignore */ }
           resolve(false)
         }, timeout)
       }
@@ -271,7 +271,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (id) projectStore.setCurrentProject(id)
           }
         }
-      } catch (e) {}
+  } catch (e) { /* ignore */ }
       return true;
     } catch (e) {
       error.value = 'Network error';

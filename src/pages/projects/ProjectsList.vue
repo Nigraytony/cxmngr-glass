@@ -1,23 +1,36 @@
 <template>
-  <section class="space-y-6 relative" ref="pageSection">
+  <section
+    ref="pageSection"
+    class="space-y-6 relative"
+  >
     <div>
       <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }]" />
     </div>
 
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <button @click="showAddModal = true" aria-label="Add project" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10">
+        <button
+          aria-label="Add project"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+          @click="showAddModal = true"
+        >
           +
         </button>
 
         <div class="relative">
           <input
-            v-model="searchQuery"
             ref="searchInput"
+            v-model="searchQuery"
             placeholder="Search projects..."
             class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 hidden sm:inline-block w-64 pr-8"
-          />
-          <button v-if="searchQuery" @click="clearSearch" class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded">✕</button>
+          >
+          <button
+            v-if="searchQuery"
+            class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded"
+            @click="clearSearch"
+          >
+            ✕
+          </button>
         </div>
 
         <!-- Search mode is now a project-level setting (Project Settings) -->
@@ -25,7 +38,13 @@
         <div class="flex items-center gap-3">
           <label class="text-white/70 text-sm">Filter</label>
           <div class="flex flex-wrap gap-2">
-            <button v-for="opt in statusOptions" :key="opt.name" @click="toggleStatus(opt.name)" :aria-pressed="opt.name === statusFilter" :class="['px-3 py-1 rounded-full text-sm flex items-center gap-2', opt.name === statusFilter ? 'bg-white/10 ring-2 ring-white/20' : 'bg-white/6']">
+            <button
+              v-for="opt in statusOptions"
+              :key="opt.name"
+              :aria-pressed="opt.name === statusFilter"
+              :class="['px-3 py-1 rounded-full text-sm flex items-center gap-2', opt.name === statusFilter ? 'bg-white/10 ring-2 ring-white/20' : 'bg-white/6']"
+              @click="toggleStatus(opt.name)"
+            >
               <span class="text-white">{{ opt.name }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
             </button>
@@ -33,101 +52,215 @@
         </div>
       </div>
 
-      <div></div>
+      <div />
     </div>
 
     <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto">
       <table class="min-w-full text-left">
         <thead>
           <tr class="text-sm text-white/70">
-            <th class="px-4 py-3">Name</th>
-            <th class="px-4 py-3">Client</th>
-            <th class="px-4 py-3">Type</th>
-            <th class="px-4 py-3">Status</th>
-            <th class="px-4 py-3">Dates</th>
-            <th class="px-4 py-3">Actions</th>
+            <th class="px-4 py-3">
+              Name
+            </th>
+            <th class="px-4 py-3">
+              Client
+            </th>
+            <th class="px-4 py-3">
+              Type
+            </th>
+            <th class="px-4 py-3">
+              Status
+            </th>
+            <th class="px-4 py-3">
+              Dates
+            </th>
+            <th class="px-4 py-3">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody class="mt-2">
-          <tr v-for="project in pagedProjects" :key="project.id" class="align-top">
+          <tr
+            v-for="project in pagedProjects"
+            :key="project.id"
+            class="align-top"
+          >
             <td class="px-4 py-3 text-white/90">
               <div class="flex items-center gap-2">
                 <span>{{ project.name }}</span>
-                <span v-if="project.default" class="w-5 h-5 grid place-items-center rounded-full bg-white/10" aria-label="Default project" title="Default project">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-3.5 h-3.5 text-yellow-300" fill="currentColor" aria-hidden="true">
-                    <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z"/>
+                <span
+                  v-if="project.default"
+                  class="w-5 h-5 grid place-items-center rounded-full bg-white/10"
+                  aria-label="Default project"
+                  title="Default project"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    class="w-3.5 h-3.5 text-yellow-300"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z" />
                   </svg>
                 </span>
               </div>
             </td>
-            <td class="px-4 py-3 text-white/90">{{ project.client }}</td>
-            <td class="px-4 py-3 text-white/80">{{ project.project_type }}</td>
-            <td class="px-4 py-3"><span class="px-3 py-1 rounded-full text-xs bg-white/10 text-white">{{ project.status || 'unknown' }}</span></td>
-            <td class="px-4 py-3 text-white/80">{{ formatDate(project.startDate) }} - {{ formatDate(project.endDate) }}</td>
+            <td class="px-4 py-3 text-white/90">
+              {{ project.client }}
+            </td>
+            <td class="px-4 py-3 text-white/80">
+              {{ project.project_type }}
+            </td>
+            <td class="px-4 py-3">
+              <span class="px-3 py-1 rounded-full text-xs bg-white/10 text-white">{{ project.status || 'unknown' }}</span>
+            </td>
+            <td class="px-4 py-3 text-white/80">
+              {{ formatDate(project.startDate) }} - {{ formatDate(project.endDate) }}
+            </td>
             <td class="px-4 py-3">
               <div class="flex gap-2 items-center">
                 <!-- View icon button -->
                 <button
-                  @click="openView(project)"
                   class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
                   aria-label="View project"
                   :title="`View ${project.name || 'project'}`"
+                  @click="openView(project)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke-width="1.5"/>
-                    <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                      stroke-width="1.5"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                      stroke-width="1.5"
+                    />
                   </svg>
                 </button>
                 <!-- Edit icon button -->
                 <button
-                  @click="openEdit(project)"
                   class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
                   aria-label="Edit project"
                   :title="`Edit ${project.name || 'project'}`"
+                  @click="openEdit(project)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke-width="1.5"/>
-                    <path d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77" stroke-width="1.5"/>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                      stroke-width="1.5"
+                    />
                   </svg>
                 </button>
                 <!-- Delete icon button -->
                 <button
-                  @click="confirmDelete(project)"
                   class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-400/40"
                   aria-label="Delete project"
                   :title="`Delete ${project.name || 'project'}`"
+                  @click="confirmDelete(project)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M6 7h12" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke-width="1.5"/>
-                    <rect x="6" y="7" width="12" height="14" rx="2" stroke-width="1.5"/>
-                    <path d="M10 11v6M14 11v6" stroke-width="1.5" stroke-linecap="round"/>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M6 7h12"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                      stroke-width="1.5"
+                    />
+                    <rect
+                      x="6"
+                      y="7"
+                      width="12"
+                      height="14"
+                      rx="2"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M10 11v6M14 11v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
                   </svg>
                 </button>
                 <!-- Make default: icon button with custom tooltip -->
-                <div v-if="!project.default" class="relative inline-block group">
+                <div
+                  v-if="!project.default"
+                  class="relative inline-block group"
+                >
                   <button
-                    @click.prevent="makeDefault(project)"
                     aria-label="Make default"
                     class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                    @click.prevent="makeDefault(project)"
                   >
                     <!-- star icon -->
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                      <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z" stroke-width="1.5" stroke-linejoin="round"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z"
+                        stroke-width="1.5"
+                        stroke-linejoin="round"
+                      />
                     </svg>
                   </button>
-                  <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+                  <div
+                    role="tooltip"
+                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                  >
                     Make default
                   </div>
                 </div>
                 <!-- Default indicator at far right -->
-                <div v-if="project.default" class="relative ml-auto inline-block group" aria-hidden="false">
+                <div
+                  v-if="project.default"
+                  class="relative ml-auto inline-block group"
+                  aria-hidden="false"
+                >
                   <div class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 text-yellow-300 border border-white/8">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor" aria-hidden="true">
-                      <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      class="w-4 h-4"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 3l2.6 5.3 5.8.9-4.2 4.1 1 5.7L12 16.9 6.8 19l1-5.7-4.2-4.1 5.8-.9L12 3z" />
                     </svg>
                   </div>
-                  <div role="tooltip" class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">
+                  <div
+                    role="tooltip"
+                    class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                  >
                     Default project
                   </div>
                 </div>
@@ -147,17 +280,46 @@
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">
           <label class="text-white/70 text-sm">Per page</label>
-          <select v-model.number="pageSize" class="rounded-lg bg-white/5 text-white p-1 text-sm">
-            <option v-for="s in pageSizes" :key="s" :value="s">{{ s }}</option>
+          <select
+            v-model.number="pageSize"
+            class="rounded-lg bg-white/5 text-white p-1 text-sm"
+          >
+            <option
+              v-for="s in pageSizes"
+              :key="s"
+              :value="s"
+            >
+              {{ s }}
+            </option>
           </select>
         </div>
 
         <div class="flex items-center gap-1">
-          <button @click="prevPage" :disabled="page === 1" class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40">Prev</button>
-          <template v-for="n in pagesArray" :key="n">
-            <button @click="setPage(n)" :class="['px-2 py-1 rounded', n === page ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80']">{{ n }}</button>
+          <button
+            :disabled="page === 1"
+            class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40"
+            @click="prevPage"
+          >
+            Prev
+          </button>
+          <template
+            v-for="n in pagesArray"
+            :key="n"
+          >
+            <button
+              :class="['px-2 py-1 rounded', n === page ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80']"
+              @click="setPage(n)"
+            >
+              {{ n }}
+            </button>
           </template>
-          <button @click="nextPage" :disabled="page === totalPages" class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40">Next</button>
+          <button
+            :disabled="page === totalPages"
+            class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40"
+            @click="nextPage"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -165,15 +327,30 @@
     <!-- View/Edit Modal -->
     <Modal v-model="showViewModal">
       <template #header>
-        <h3 class="text-lg font-semibold">Project {{ editProject?.id || selectedProject?.id }}</h3>
+        <h3 class="text-lg font-semibold">
+          Project {{ editProject?.id || selectedProject?.id }}
+        </h3>
       </template>
 
-      <ProjectForm v-model="editProject" :errors="formErrors" />
+      <ProjectForm
+        v-model="editProject"
+        :errors="formErrors"
+      />
 
       <template #footer>
         <div class="flex gap-2">
-          <button @click="saveEdit" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Save</button>
-          <button @click="cancelEdit" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="saveEdit"
+          >
+            Save
+          </button>
+          <button
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="cancelEdit"
+          >
+            Cancel
+          </button>
         </div>
       </template>
     </Modal>
@@ -181,7 +358,9 @@
     <!-- Add Modal -->
     <Modal v-model="showAddModal">
       <template #header>
-        <h3 class="text-lg font-semibold">Add New Project</h3>
+        <h3 class="text-lg font-semibold">
+          Add New Project
+        </h3>
       </template>
 
       <!-- Default slot (Modal doesn't support a #body slot) -->
@@ -189,14 +368,27 @@
         <!-- Wizard tabs -->
         <div class="mb-4">
           <div class="flex gap-2">
-            <button :class="['px-3 py-1 rounded', addTab === 'details' ? 'bg-white/10' : 'bg-white/5']" @click="addTab = 'details'">Details</button>
-            <button :class="['px-3 py-1 rounded', addTab === 'subscription' ? 'bg-white/10' : 'bg-white/5']" @click="addTab = 'subscription'">Subscription</button>
+            <button
+              :class="['px-3 py-1 rounded', addTab === 'details' ? 'bg-white/10' : 'bg-white/5']"
+              @click="addTab = 'details'"
+            >
+              Details
+            </button>
+            <button
+              :class="['px-3 py-1 rounded', addTab === 'subscription' ? 'bg-white/10' : 'bg-white/5']"
+              @click="addTab = 'subscription'"
+            >
+              Subscription
+            </button>
           </div>
         </div>
 
         <!-- Step: Details -->
         <div v-if="addTab === 'details'">
-          <ProjectForm v-model="newProject" :errors="formErrors" />
+          <ProjectForm
+            v-model="newProject"
+            :errors="formErrors"
+          />
         </div>
 
         <!-- Step: Subscription -->
@@ -206,21 +398,36 @@
               <label class="text-white/80 text-sm block mb-2">Choose a plan</label>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <label class="cursor-pointer">
-                  <input type="radio" class="hidden" value="basic" v-model="selectedPlan" />
+                  <input
+                    v-model="selectedPlan"
+                    type="radio"
+                    class="hidden"
+                    value="basic"
+                  >
                   <div :class="['p-3 rounded-lg border', selectedPlan === 'basic' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
                     <div class="text-white font-medium">Basic</div>
                     <div class="text-white/80 text-sm">$29/mo</div>
                   </div>
                 </label>
                 <label class="cursor-pointer">
-                  <input type="radio" class="hidden" value="standard" v-model="selectedPlan" />
+                  <input
+                    v-model="selectedPlan"
+                    type="radio"
+                    class="hidden"
+                    value="standard"
+                  >
                   <div :class="['p-3 rounded-lg border', selectedPlan === 'standard' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
                     <div class="text-white font-medium">Standard</div>
                     <div class="text-white/80 text-sm">$49/mo</div>
                   </div>
                 </label>
                 <label class="cursor-pointer">
-                  <input type="radio" class="hidden" value="premium" v-model="selectedPlan" />
+                  <input
+                    v-model="selectedPlan"
+                    type="radio"
+                    class="hidden"
+                    value="premium"
+                  >
                   <div :class="['p-3 rounded-lg border', selectedPlan === 'premium' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
                     <div class="text-white font-medium">Premium</div>
                     <div class="text-white/80 text-sm">$79/mo</div>
@@ -230,8 +437,14 @@
             </div>
             <div>
               <label class="text-white/80 text-sm block mb-1">Or provide a specific Stripe priceId</label>
-              <input v-model="priceIdOverride" placeholder="price_xxx (optional)" class="w-full rounded bg-white/5 p-2 text-white" />
-              <p class="text-xs text-white/60 mt-1">Leave blank to use one of the plans above or choose "No subscription" by not selecting a plan.</p>
+              <input
+                v-model="priceIdOverride"
+                placeholder="price_xxx (optional)"
+                class="w-full rounded bg-white/5 p-2 text-white"
+              >
+              <p class="text-xs text-white/60 mt-1">
+                Leave blank to use one of the plans above or choose "No subscription" by not selecting a plan.
+              </p>
             </div>
           </div>
         </div>
@@ -240,23 +453,41 @@
       <template #footer>
         <div class="flex flex-wrap gap-2 items-center justify-between">
           <div class="flex gap-2">
-            <button v-if="addTab === 'subscription'" @click="addTab = 'details'" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Back</button>
-            <button v-else @click="goNextFromDetails" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Next</button>
+            <button
+              v-if="addTab === 'subscription'"
+              class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+              @click="addTab = 'details'"
+            >
+              Back
+            </button>
+            <button
+              v-else
+              class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+              @click="goNextFromDetails"
+            >
+              Next
+            </button>
           </div>
           <div class="flex gap-2 items-center">
             <!-- Create only on Subscription step -->
-            <button v-if="addTab === 'subscription'"
-                    @click="createAndMaybeCheckout"
-                    :disabled="!chosenPriceId || submittingAdd"
-                    :class="['px-4 py-2 rounded-lg text-white', (!chosenPriceId || submittingAdd) ? 'bg-white/10 opacity-60 cursor-not-allowed' : 'bg-white/6 hover:bg-white/10']">
+            <button
+              v-if="addTab === 'subscription'"
+              :disabled="!chosenPriceId || submittingAdd"
+              :class="['px-4 py-2 rounded-lg text-white', (!chosenPriceId || submittingAdd) ? 'bg-white/10 opacity-60 cursor-not-allowed' : 'bg-white/6 hover:bg-white/10']"
+              @click="createAndMaybeCheckout"
+            >
               {{ submittingAdd ? 'Creating…' : 'Create' }}
             </button>
-            <button @click="showAddModal = false" class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white">Cancel</button>
+            <button
+              class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+              @click="showAddModal = false"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </template>
     </Modal>
-
   </section>
 </template>
 
@@ -269,7 +500,6 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
-import axios from 'axios'
 import { getAuthHeaders } from '../../utils/auth'
 import http from '../../utils/http'
 
@@ -310,7 +540,7 @@ const newProject = ref({
   status: 'active',
   building_type: '',
   description: '',
-  status: '',
+    // removed duplicate `status` key
   settings: [],
   photos: [],
   documents: [],
@@ -444,6 +674,7 @@ async function saveEdit() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function addProject() {
   const e = validateProject(newProject.value)
   if (Object.keys(e).length) { formErrors.value = e; return }
@@ -509,7 +740,7 @@ async function makeDefault(project) {
       if (preserveToken && auth.user) {
         auth.user.token = preserveToken
       }
-      try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) {}
+  try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
     }
 
     if (projectId) projectStore.setCurrentProject(String(projectId))
@@ -519,7 +750,7 @@ async function makeDefault(project) {
   }
 }
 
-function formatDate(d) { if (!d) return '' ; try { return new Date(d).toLocaleDateString() } catch { return d } }
+function formatDate(d) { if (!d) return '' ; try { return new Date(d).toLocaleDateString() } catch (e) { return d } }
 
 // Plan key to priceId mapping (keep in sync with backend config/plans.js)
 const PLAN_PRICE_IDS = {

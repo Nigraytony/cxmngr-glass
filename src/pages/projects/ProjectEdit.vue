@@ -1,108 +1,258 @@
 <template>
   <section class="space-y-6 relative">
-  <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
+    <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
 
     <div>
-  <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }, { text: 'Edit Project', to: '#' }]" />
+      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }, { text: 'Edit Project', to: '#' }]" />
     </div>
 
     <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10">
       <div class="mt-4">
         <!-- Top tabs (evenly spaced) -->
         <div class="flex w-full mb-4 border-b border-white/10 pb-3">
-          <button @click="activeTab = 'info'" :class="tabClass('info')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('info')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'info'"
+          >
             <span class="i">ℹ️</span>
             <span>Info</span>
           </button>
 
-          <button @click="activeTab = 'team'" :class="tabClass('team')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('team')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'team'"
+          >
             <span class="i">👥</span>
             <span>Team</span>
           </button>
 
-          <button @click="activeTab = 'logo'" :class="tabClass('logo')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('logo')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'logo'"
+          >
             <span class="i">🖼️</span>
             <span>Logo</span>
           </button>
 
-          <button @click="activeTab = 'subscription'" :class="tabClass('subscription')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('subscription')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'subscription'"
+          >
             <span class="i">💳</span>
             <span>Subscription</span>
           </button>
 
-          <button @click="activeTab = 'settings'" :class="tabClass('settings')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('settings')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'settings'"
+          >
             <span class="i">⚙️</span>
             <span>Settings</span>
           </button>
 
-          <button @click="activeTab = 'logs'" :class="tabClass('logs')" class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center">
+          <button
+            :class="tabClass('logs')"
+            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+            @click="activeTab = 'logs'"
+          >
             <span class="i">📝</span>
             <span>Logs</span>
           </button>
         </div>
 
         <div>
-          <div v-if="!project" class="p-4 text-white/70">Loading project...</div>
+          <div
+            v-if="!project"
+            class="p-4 text-white/70"
+          >
+            Loading project...
+          </div>
           <div v-else>
             <div v-show="activeTab === 'info'">
-              <ProjectForm v-model="project" :errors="formErrors" />
+              <ProjectForm
+                v-model="project"
+                :errors="formErrors"
+              />
             </div>
 
             <div v-show="activeTab === 'team'">
-              <h3 class="text-md font-medium mb-2">Team</h3>
-              <p class="text-sm text-white/70 mb-4">Manage team membership and roles for this project.</p>
+              <h3 class="text-md font-medium mb-2">
+                Team
+              </h3>
+              <p class="text-sm text-white/70 mb-4">
+                Manage team membership and roles for this project.
+              </p>
               <div class="space-y-2">
-                <div v-for="member in (project.team || [])" :key="member._id || member.email" class="p-3 rounded bg-white/5">
+                <div
+                  v-for="member in (project.team || [])"
+                  :key="member._id || member.email"
+                  class="p-3 rounded bg-white/5"
+                >
                   <div class="flex items-center justify-between">
                     <div>
-                      <div class="font-medium">{{ member.firstName }} {{ member.lastName }}</div>
-                      <div class="text-xs text-white/70">{{ member.email }} • {{ member.role }}</div>
+                      <div class="font-medium">
+                        {{ member.firstName }} {{ member.lastName }}
+                      </div>
+                      <div class="text-xs text-white/70">
+                        {{ member.email }} • {{ member.role }}
+                      </div>
                     </div>
                     <div class="flex items-center gap-3">
                       <!-- Status badge (invited, rejected, active, etc.) -->
-                      <div v-if="member.status || member.inviteStatus" :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]">
+                      <div
+                        v-if="member.status || member.inviteStatus"
+                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]"
+                      >
                         {{ (member.status || member.inviteStatus) ? (member.status || member.inviteStatus) : 'status' }}
                       </div>
                       <div class="flex gap-2">
-                        <button @click="removeMember(member)" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                        <button
+                          v-if="isProjectAdmin"
+                          class="px-3 py-1 rounded bg-white/6"
+                          @click.prevent="openPermsModal(member)"
+                        >
+                          Permissions
+                        </button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                          @click="removeMember(member)"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div class="pt-2">
-                  <h4 class="font-medium mb-2">Add member</h4>
+                  <h4 class="font-medium mb-2">
+                    Add member
+                  </h4>
                   <div class="grid grid-cols-1 gap-2">
                     <!-- Row 1: First / Last -->
                     <div class="grid grid-cols-2 gap-2">
-                      <input v-model="newMember.firstName" placeholder="First" class="rounded p-2 bg-white/5 w-full" />
-                      <input v-model="newMember.lastName" placeholder="Last" class="rounded p-2 bg-white/5 w-full" />
+                      <input
+                        v-model="newMember.firstName"
+                        placeholder="First"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                      <input
+                        v-model="newMember.lastName"
+                        placeholder="Last"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
                     </div>
 
                     <!-- Row 2: Email / Company / Role -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input v-model="newMember.email" placeholder="Email" class="rounded p-2 bg-white/5 w-full" />
-                      <input v-model="newMember.company" placeholder="Company" class="rounded p-2 bg-white/5 w-full" />
-                      <select v-model="newMember.role" class="rounded p-2 bg-white/5 w-full">
-                        <option value="admin">admin</option>
-                        <option value="CxA">CxA</option>
-                        <option value="GC">GC</option>
-                        <option value="CM">CM</option>
-                        <option value="Architect">Architect</option>
-                        <option value="Designer">Designer</option>
-                        <option value="Mechanical Contractor">Mechanical Contractor</option>
-                        <option value="Electrical Contractor">Electrical Contractor</option>
-                        <option value="Plumbing Contractor">Plumbing Contractor</option>
-                        <option value="Controls Contractor">Controls Contractor</option>
-                        <option value="Life Safety Contractor">Life Safety Contractor</option>
-                        <option value="Other Contractor">Other Contractor</option>
-                        <option value="Client">Client</option>
-                        <option value="User">User</option>
+                      <input
+                        v-model="newMember.email"
+                        placeholder="Email"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                      <input
+                        v-model="newMember.company"
+                        placeholder="Company"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                      <select
+                        v-model="newMember.role"
+                        class="rounded p-2 bg-white/5 w-full"
+                      >
+                        <template v-if="roleTemplates && roleTemplates.length">
+                          <option
+                            v-for="rt in roleTemplates"
+                            :key="rt._id || rt.id"
+                            :value="rt.name"
+                          >
+                            {{ rt.name }}
+                          </option>
+                        </template>
+                        <template v-else>
+                          <option value="admin">
+                            admin
+                          </option>
+                          <option value="CxA">
+                            CxA
+                          </option>
+                          <option value="GC">
+                            GC
+                          </option>
+                          <option value="CM">
+                            CM
+                          </option>
+                          <option value="Architect">
+                            Architect
+                          </option>
+                          <option value="Designer">
+                            Designer
+                          </option>
+                          <option value="Mechanical Contractor">
+                            Mechanical Contractor
+                          </option>
+                          <option value="Electrical Contractor">
+                            Electrical Contractor
+                          </option>
+                          <option value="Plumbing Contractor">
+                            Plumbing Contractor
+                          </option>
+                          <option value="Controls Contractor">
+                            Controls Contractor
+                          </option>
+                          <option value="Life Safety Contractor">
+                            Life Safety Contractor
+                          </option>
+                          <option value="Other Contractor">
+                            Other Contractor
+                          </option>
+                          <option value="Client">
+                            Client
+                          </option>
+                          <option value="User">
+                            User
+                          </option>
+                        </template>
                       </select>
                     </div>
 
+                    <div
+                      v-if="selectedRoleTemplate"
+                      class="px-2 py-1 text-sm text-white/70 bg-white/3 rounded"
+                    >
+                      <div class="font-medium">
+                        Permissions for "{{ selectedRoleTemplate.name }}"
+                      </div>
+                      <div class="mt-1 text-xs">
+                        <template v-if="Array.isArray(selectedRoleTemplate.permissions) && selectedRoleTemplate.permissions.length">
+                          <ul class="list-disc pl-4">
+                            <li
+                              v-for="perm in selectedRoleTemplate.permissions"
+                              :key="perm"
+                            >
+                              {{ perm }}
+                            </li>
+                          </ul>
+                        </template>
+                        <template v-else>
+                          <div class="text-xs text-white/60">
+                            No explicit permissions on template
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+
                     <div class="text-right">
-                      <button @click="addMember" class="px-3 py-1 rounded bg-white/6">Add</button>
+                      <button
+                        class="px-3 py-1 rounded bg-white/6"
+                        @click="addMember"
+                      >
+                        Add
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -110,22 +260,48 @@
             </div>
 
             <div v-show="activeTab === 'logo'">
-              <h3 class="text-md font-medium mb-2">Logos</h3>
-              <p class="text-sm text-white/70 mb-4">Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).</p>
+              <h3 class="text-md font-medium mb-2">
+                Logos
+              </h3>
+              <p class="text-sm text-white/70 mb-4">
+                Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).
+              </p>
 
               <!-- Client Logo -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="rounded-lg p-4 bg-white/5 border border-white/10">
-                  <div class="font-medium mb-2">Client logo</div>
+                  <div class="font-medium mb-2">
+                    Client logo
+                  </div>
                   <div class="flex items-center gap-4">
                     <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
-                      <img v-if="project.logo" :src="project.logo" alt="client logo" class="object-contain w-full h-full" />
-                      <div v-else class="text-white/60 text-xs">No logo</div>
+                      <img
+                        v-if="project.logo"
+                        :src="project.logo"
+                        alt="client logo"
+                        class="object-contain w-full h-full"
+                      >
+                      <div
+                        v-else
+                        class="text-white/60 text-xs"
+                      >
+                        No logo
+                      </div>
                     </div>
                     <div>
-                      <input type="file" ref="clientFileInput" @change="onClientLogoSelected" accept="image/*" />
+                      <input
+                        ref="clientFileInput"
+                        type="file"
+                        accept="image/*"
+                        @change="onClientLogoSelected"
+                      >
                       <div class="mt-2 flex gap-2">
-                        <button @click="removeClientLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                          @click="removeClientLogo"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -133,16 +309,38 @@
 
                 <!-- Commissioning Agent Logo -->
                 <div class="rounded-lg p-4 bg-white/5 border border-white/10">
-                  <div class="font-medium mb-2">Commissioning Agent logo</div>
+                  <div class="font-medium mb-2">
+                    Commissioning Agent logo
+                  </div>
                   <div class="flex items-center gap-4">
                     <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
-                      <img v-if="(project.commissioning_agent && project.commissioning_agent.logo)" :src="project.commissioning_agent.logo" alt="cxa logo" class="object-contain w-full h-full" />
-                      <div v-else class="text-white/60 text-xs">No logo</div>
+                      <img
+                        v-if="(project.commissioning_agent && project.commissioning_agent.logo)"
+                        :src="project.commissioning_agent.logo"
+                        alt="cxa logo"
+                        class="object-contain w-full h-full"
+                      >
+                      <div
+                        v-else
+                        class="text-white/60 text-xs"
+                      >
+                        No logo
+                      </div>
                     </div>
                     <div>
-                      <input type="file" ref="cxaFileInput" @change="onCxaLogoSelected" accept="image/*" />
+                      <input
+                        ref="cxaFileInput"
+                        type="file"
+                        accept="image/*"
+                        @change="onCxaLogoSelected"
+                      >
                       <div class="mt-2 flex gap-2">
-                        <button @click="removeCxaLogo" class="px-3 py-1 rounded bg-red-500/20 text-red-400">Remove</button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                          @click="removeCxaLogo"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -151,13 +349,19 @@
             </div>
 
             <div v-show="activeTab === 'subscription'">
-              <h3 class="text-md font-medium mb-2">Subscription</h3>
+              <h3 class="text-md font-medium mb-2">
+                Subscription
+              </h3>
               <div class="space-y-6">
-                <h2 class="text-xl font-semibold">Project Billing</h2>
+                <h2 class="text-xl font-semibold">
+                  Project Billing
+                </h2>
 
                 <div class="p-4 rounded-lg border">
                   <p><strong>Status:</strong> {{ status }}</p>
-                  <p class="mt-2"><strong>Plan:</strong> {{ planLabel }}</p>
+                  <p class="mt-2">
+                    <strong>Plan:</strong> {{ planLabel }}
+                  </p>
                   <p v-if="project.stripeCurrentPeriodEnd">
                     <strong>Current period end:</strong>
                     {{ new Date(project.stripeCurrentPeriodEnd).toLocaleString() }}
@@ -168,136 +372,513 @@
                   <p v-if="status === 'trialing'">
                     <strong>Trial days left:</strong> {{ trialDaysLeft }}
                   </p>
-                  <p v-if="status === 'trialing'" class="text-xs text-white/70 mt-1">
+                  <p
+                    v-if="status === 'trialing'"
+                    class="text-xs text-white/70 mt-1"
+                  >
                     Trial end is fixed from when the project was created and does not change when switching plans.
                   </p>
                 </div>
 
                 <div class="p-4 rounded-lg border">
-                <label class="block text-sm font-medium mb-2">Choose a plan</label>
-                <div class="relative inline-block w-full">
-                  <select v-model="selectedPrice" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
-                    <option v-for="p in prices" :key="p.id" :value="p.id">{{ p.label }}</option>
-                  </select>
-                  <!-- custom arrow -->
-                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                      <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                  <label class="block text-sm font-medium mb-2">Choose a plan</label>
+                  <div class="relative inline-block w-full">
+                    <select
+                      v-model="selectedPrice"
+                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                    >
+                      <option
+                        v-for="p in prices"
+                        :key="p.id"
+                        :value="p.id"
+                      >
+                        {{ p.label }}
+                      </option>
+                    </select>
+                    <!-- custom arrow -->
+                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
+                      >
+                        <path
+                          d="M6 8l4 4 4-4"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
                   </div>
-                </div>
 
-                <div class="mt-2">
-                  <span v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice" class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full">Current plan</span>
-                </div>
-
-                <!-- Selected plan details -->
-                <div v-if="selectedPlanDetails" class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                  <div class="flex items-center justify-between">
-                    <div class="font-medium text-white">{{ selectedPlanDetails.name }}</div>
-                    <div class="text-white/80">{{ selectedPlanDetails.price }}</div>
+                  <div class="mt-2">
+                    <span
+                      v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice"
+                      class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full"
+                    >Current plan</span>
                   </div>
-                  <p v-if="selectedPlanDetails.summary" class="text-sm text-white/70 mt-1">{{ selectedPlanDetails.summary }}</p>
-                  <ul v-if="selectedPlanDetails.features && selectedPlanDetails.features.length" class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1">
-                    <li v-for="(f, i) in selectedPlanDetails.features" :key="i">{{ f }}</li>
-                  </ul>
-                </div>
 
-                <div class="mt-4 flex gap-3">
-                    <button @click="startCheckout" :disabled="loading" class="px-4 py-2 rounded bg-blue-600 text-white">
-                    {{ loading ? '...' : 'Subscribe / Update' }}
+                  <!-- Selected plan details -->
+                  <div
+                    v-if="selectedPlanDetails"
+                    class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    <div class="flex items-center justify-between">
+                      <div class="font-medium text-white">
+                        {{ selectedPlanDetails.name }}
+                      </div>
+                      <div class="text-white/80">
+                        {{ selectedPlanDetails.price }}
+                      </div>
+                    </div>
+                    <p
+                      v-if="selectedPlanDetails.summary"
+                      class="text-sm text-white/70 mt-1"
+                    >
+                      {{ selectedPlanDetails.summary }}
+                    </p>
+                    <ul
+                      v-if="selectedPlanDetails.features && selectedPlanDetails.features.length"
+                      class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1"
+                    >
+                      <li
+                        v-for="(f, i) in selectedPlanDetails.features"
+                        :key="i"
+                      >
+                        {{ f }}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="mt-4 flex gap-3">
+                    <button
+                      :disabled="loading"
+                      class="px-4 py-2 rounded bg-blue-600 text-white"
+                      @click="startCheckout"
+                    >
+                      {{ loading ? '...' : 'Subscribe / Update' }}
                     </button>
 
                     
 
-                    <button @click="openBillingPortal" :disabled="loading" class="px-4 py-2 rounded border">
-                    Manage billing
+                    <button
+                      :disabled="loading"
+                      class="px-4 py-2 rounded border"
+                      @click="openBillingPortal"
+                    >
+                      Manage billing
                     </button>
+                  </div>
                 </div>
-                </div>
-            </div>
+              </div>
             </div>
 
             <div v-show="activeTab === 'settings'">
-              <h3 class="text-md font-medium mb-2">Settings</h3>
-              <p class="text-sm text-white/70 mb-4">Project-specific settings and flags.</p>
+              <h3 class="text-md font-medium mb-2">
+                Settings
+              </h3>
+              <p class="text-sm text-white/70 mb-4">
+                Project-specific settings and flags.
+              </p>
               <div class="rounded p-3 bg-white/5">
-                <label class="flex items-center gap-2"><input type="checkbox" v-model="project.settingsEnabled" /> Enable special behavior</label>
+                <label class="flex items-center gap-2"><input
+                  v-model="project.settingsEnabled"
+                  type="checkbox"
+                > Enable special behavior</label>
                 <div class="mt-4">
                   <label class="block text-white/80 mb-1">Tags (comma separated)</label>
-                  <input v-model="tagsText" class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+                  <input
+                    v-model="tagsText"
+                    class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+                  >
                 </div>
                 <div class="mt-4">
                   <label class="block text-white/80 mb-1">Search mode</label>
                   <div class="relative inline-block w-full max-w-sm">
-                    <select v-model="project.searchMode" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
-                      <option value="substring">Substring</option>
-                      <option value="exact">Exact</option>
-                      <option value="fuzzy">Fuzzy</option>
+                    <select
+                      v-model="project.searchMode"
+                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                    >
+                      <option value="substring">
+                        Substring
+                      </option>
+                      <option value="exact">
+                        Exact
+                      </option>
+                      <option value="fuzzy">
+                        Fuzzy
+                      </option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                        <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
+                      >
+                        <path
+                          d="M6 8l4 4 4-4"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </div>
                   </div>
-                  <p class="text-xs text-white/60 mt-1">This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).</p>
+                  <p class="text-xs text-white/60 mt-1">
+                    This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
+                  </p>
                 </div>
                 <div class="mt-4">
                   <label class="block text-white/80 mb-1">Issues per page</label>
                   <div class="relative inline-block w-full max-w-sm">
-                    <select v-model.number="issuesPageSizeLocal" @change="persistIssuesPageSize()" class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20">
-                      <option :value="5">5</option>
-                      <option :value="10">10</option>
-                      <option :value="25">25</option>
-                      <option :value="50">50</option>
-                      <option :value="100">100</option>
+                    <select
+                      v-model.number="issuesPageSizeLocal"
+                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                      @change="persistIssuesPageSize()"
+                    >
+                      <option :value="5">
+                        5
+                      </option>
+                      <option :value="10">
+                        10
+                      </option>
+                      <option :value="25">
+                        25
+                      </option>
+                      <option :value="50">
+                        50
+                      </option>
+                      <option :value="100">
+                        100
+                      </option>
                     </select>
                     <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                        <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden
+                      >
+                        <path
+                          d="M6 8l4 4 4-4"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
                       </svg>
                     </div>
                   </div>
-                  <p class="text-xs text-white/60 mt-1">Applies to the Issues list for this project. Saved locally.</p>
+                  <p class="text-xs text-white/60 mt-1">
+                    Applies to the Issues list for this project. Saved locally.
+                  </p>
+                </div>
+              
+                <!-- Roles card: project-scoped role templates -->
+                <div
+                  class="mt-6 rounded p-3 bg-white/5"
+                >
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="font-medium">
+                      Roles
+                    </div>
+                    <div>
+                      <button
+                        v-if="isProjectAdmin"
+                        aria-label="Create role template"
+                        class="w-10 h-10 grid place-items-center rounded-lg bg-emerald-500 text-white border border-white/8 hover:bg-emerald-600"
+                        @click="openRoleModal(null)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          class="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <path
+                            d="M12 5v14M5 12h14"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    v-if="!(project && (project.roleTemplates && project.roleTemplates.length))"
+                    class="text-sm text-white/70"
+                  >
+                    No project role templates.
+                  </div>
+                  <div class="space-y-2">
+                    <div
+                      v-for="rt in (project && project.roleTemplates ? project.roleTemplates : roleTemplates)"
+                      :key="rt._id || rt.id"
+                      class="p-1 rounded"
+                    >
+                      <div
+                        class="p-3 rounded bg-white/6 cursor-pointer"
+                        @click.prevent="toggleRoleOpen(rt._id || rt.id)"
+                      >
+                        <div class="flex items-start justify-between">
+                          <div>
+                            <div class="font-medium text-white">
+                              {{ rt.name }}
+                            </div>
+                            <div class="text-xs text-white/70">
+                              {{ rt.description }}
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <div class="text-xs text-white/60 mr-2">
+                              {{ (rt.permissions || []).length }} perms
+                            </div>
+                            <div class="flex gap-2">
+                              <div
+                                v-if="isProjectAdmin"
+                                class="relative inline-block group"
+                              >
+                                <button
+                                  aria-label="Edit role"
+                                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                                  @click.stop.prevent="openRoleModal(rt)"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                                <div
+                                  role="tooltip"
+                                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                                >
+                                  Edit
+                                </div>
+                              </div>
+
+                              <div
+                                v-if="isProjectAdmin"
+                                class="relative inline-block group"
+                              >
+                                <button
+                                  aria-label="Delete role"
+                                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white border border-white/8"
+                                  @click.stop.prevent="deleteRoleTemplate(rt)"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                                <div
+                                  role="tooltip"
+                                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                                >
+                                  Delete
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        v-show="isRoleOpen(rt._id || rt.id)"
+                        class="mt-2 p-3 rounded bg-white/5"
+                      >
+                        <div class="grid grid-cols-2 gap-3 max-h-[260px] overflow-auto text-sm text-white/80">
+                          <div
+                            v-for="(ops, resource) in permMatrix"
+                            :key="resource"
+                            class="p-2 rounded"
+                          >
+                            <div class="font-medium text-white mb-2">
+                              {{ resource }}
+                            </div>
+                            <div class="grid grid-cols-4 gap-2 text-sm">
+                              <label
+                                v-for="op in ops"
+                                :key="op"
+                                class="inline-flex items-center gap-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  :checked="isPermChecked(rt._id || rt.id, `${resource}.${op}`)"
+                                  @change="togglePerm(rt._id || rt.id, `${resource}.${op}`)"
+                                >
+                                <span class="capitalize text-white/80">{{ op }}</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="mt-3 text-right">
+                          <button
+                            v-if="isProjectAdmin"
+                            class="px-3 py-1 rounded bg-white/6 mr-2"
+                            @click="cancelRoleEdits(rt._id || rt.id, rt)"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            v-if="isProjectAdmin"
+                            class="px-3 py-1 rounded bg-emerald-500 text-white"
+                            :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
+                            @click="saveRoleInline(rt)"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div v-show="activeTab === 'logs'">
-              <h3 class="text-md font-medium mb-2">Project Logs</h3>
+              <h3 class="text-md font-medium mb-2">
+                Project Logs
+              </h3>
               <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3 items-stretch">
-                <input v-model="logsSearch" placeholder="Search logs…" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2" />
+                <input
+                  v-model="logsSearch"
+                  placeholder="Search logs…"
+                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2"
+                >
                 <div class="relative">
-                  <select v-model="selectedType" class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90">
-                    <option value="">All types</option>
-                    <option v-for="t in allTypes" :key="t" :value="t">{{ t }}</option>
+                  <select
+                    v-model="selectedType"
+                    class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90"
+                  >
+                    <option value="">
+                      All types
+                    </option>
+                    <option
+                      v-for="t in allTypes"
+                      :key="t"
+                      :value="t"
+                    >
+                      {{ t }}
+                    </option>
                   </select>
                 </div>
-                <input v-model="startDateText" type="datetime-local" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full" />
-                <input v-model="endDateText" type="datetime-local" class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full" />
+                <input
+                  v-model="startDateText"
+                  type="datetime-local"
+                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+                >
+                <input
+                  v-model="endDateText"
+                  type="datetime-local"
+                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+                >
               </div>
               <div class="flex items-center gap-2 mb-3">
-                <button @click="loadLogs" class="px-3 py-2 rounded bg-white/10 border border-white/20">Refresh</button>
-                <button @click="loadMore" class="px-3 py-2 rounded bg-white/10 border border-white/20">Load more ({{ logsLimit + 200 }})</button>
-                <button @click="exportCsv" class="ml-auto px-3 py-2 rounded bg-white/10 border border-white/20">Export CSV</button>
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                  @click="loadLogs"
+                >
+                  Refresh
+                </button>
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                  @click="loadMore"
+                >
+                  Load more ({{ logsLimit + 200 }})
+                </button>
+                <button
+                  class="ml-auto px-3 py-2 rounded bg-white/10 border border-white/20"
+                  @click="exportCsv"
+                >
+                  Export CSV
+                </button>
               </div>
-              <div v-if="!logs.length" class="text-white/60">No logs yet.</div>
-              <ul v-else class="space-y-1">
-                <li v-for="(e, i) in filteredLogs" :key="i" class="p-2 rounded bg-white/5 border border-white/10">
+              <div
+                v-if="!logs.length"
+                class="text-white/60"
+              >
+                No logs yet.
+              </div>
+              <ul
+                v-else
+                class="space-y-1"
+              >
+                <li
+                  v-for="(e, i) in filteredLogs"
+                  :key="i"
+                  class="p-2 rounded bg-white/5 border border-white/10"
+                >
                   <div class="flex items-center justify-between gap-2">
-                    <div class="text-xs text-white/70">{{ fmt(e.ts) }}</div>
+                    <div class="text-xs text-white/70">
+                      {{ fmt(e.ts) }}
+                    </div>
                     <div class="flex items-center gap-2">
-                      <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">{{ e.type }}</div>
-                      <div v-if="e.by" class="text-xs text-white/70">by {{ e.by }}</div>
+                      <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">
+                        {{ e.type }}
+                      </div>
+                      <div
+                        v-if="e.by"
+                        class="text-xs text-white/70"
+                      >
+                        by {{ e.by }}
+                      </div>
                     </div>
                   </div>
                   <div class="mt-1 text-sm truncate">
-                    <span v-if="e.scope && e.scope.equipmentTag" class="text-white/80">{{ e.scope.equipmentTag }}</span>
-                    <span v-else-if="e.scope && e.scope.equipmentId" class="text-white/70">Eq#{{ e.scope.equipmentId }}</span>
-                    <span v-if="e.section && (e.section.number || e.section.title)" class="text-white/60"> • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
-                    <span v-if="e.question && (e.question.number || e.question.text)" class="text-white/60"> • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
-                    <span v-if="!e.by" class="text-white/60">&nbsp;</span>
+                    <span
+                      v-if="e.scope && e.scope.equipmentTag"
+                      class="text-white/80"
+                    >{{ e.scope.equipmentTag }}</span>
+                    <span
+                      v-else-if="e.scope && e.scope.equipmentId"
+                      class="text-white/70"
+                    >Eq#{{ e.scope.equipmentId }}</span>
+                    <span
+                      v-if="e.section && (e.section.number || e.section.title)"
+                      class="text-white/60"
+                    > • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
+                    <span
+                      v-if="e.question && (e.question.number || e.question.text)"
+                      class="text-white/60"
+                    > • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
+                    <span
+                      v-if="!e.by"
+                      class="text-white/60"
+                    >&nbsp;</span>
                   </div>
                 </li>
               </ul>
@@ -305,9 +886,25 @@
           </div>
 
           <div class="mt-6 text-right">
-            <button @click="save" :disabled="saving" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2" :class="saving ? 'opacity-60 cursor-not-allowed' : ''">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                <path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <button
+              :disabled="saving"
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
+              :class="saving ? 'opacity-60 cursor-not-allowed' : ''"
+              @click="save"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M5 13l4 4L19 7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>Save</span>
             </button>
@@ -316,21 +913,108 @@
       </div>
     </div>
   </section>
+  <!-- Role Template editor modal -->
+  <Modal
+    v-model="showRoleModal"
+    panel-class="max-w-[720px]"
+  >
+    <template #header>
+      <div class="font-medium text-white">
+        {{ editingRoleTemplate && editingRoleTemplate._id ? 'Edit Role Template' : 'Create Role Template' }}
+      </div>
+    </template>
+
+    <div class="mb-3 text-sm text-white/80">
+      <label class="block mb-1">Name</label>
+      <input
+        v-model="editingRoleTemplate.name"
+        class="w-full p-2 rounded bg-white/5 border border-white/10"
+      >
+    </div>
+    <div class="mb-3 text-sm text-white/80">
+      <label class="block mb-1">Description</label>
+      <input
+        v-model="editingRoleTemplate.description"
+        class="w-full p-2 rounded bg-white/5 border border-white/10"
+      >
+    </div>
+    <div class="mb-3 text-sm text-white/80">
+      <label class="block mb-1">Permissions</label>
+      <div class="grid grid-cols-2 gap-3 max-h-[340px] overflow-auto mb-3">
+        <div
+          v-for="(ops, resource) in permMatrix"
+          :key="resource"
+          class="p-3 rounded bg-white/5"
+        >
+          <div class="font-medium mb-2">
+            {{ resource }}
+          </div>
+          <div class="grid grid-cols-4 gap-2 text-sm">
+            <label
+              v-for="op in ops"
+              :key="op"
+              class="inline-flex items-center gap-2"
+            >
+              <input
+                v-model="selectedRolePermsArray"
+                type="checkbox"
+                :value="`${resource}.${op}`"
+              >
+              <span class="capitalize">{{ op }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="mt-3 text-right w-full">
+        <button
+          v-if="editingRoleTemplate && editingRoleTemplate._id"
+          class="px-3 py-1 rounded bg-red-500/20 text-red-400 mr-2"
+          @click="deleteRoleTemplate(editingRoleTemplate)"
+        >
+          Delete
+        </button>
+        <button
+          class="px-3 py-1 rounded bg-white/6 mr-2"
+          @click="closeRoleModal"
+        >
+          Cancel
+        </button>
+        <button
+          class="px-3 py-1 rounded bg-emerald-500 text-white"
+          @click="saveRoleTemplate"
+        >
+          Save
+        </button>
+      </div>
+    </template>
+  </Modal>
+  <PermissionsModal
+    :visible="showPermsModal"
+    :member="modalMember"
+    :project-id="projectId"
+    :role-templates="(project && project.roleTemplates) ? project.roleTemplates : roleTemplates"
+    @close="closePermsModal"
+    @saved="onMemberPermissionsSaved"
+  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
+import Modal from '../../components/Modal.vue'
 import { useUiStore } from '../../stores/ui'
-import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
 import http from '../../utils/http'
 import { apiUrl } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
-import { confirm as inlineConfirm } from '../../utils/confirm'
+import PermissionsModal from '../../components/PermissionsModal.vue'
+// inlineConfirm removed (unused in this file)
 
 const projectStore = useProjectStore()
 const route = useRoute()
@@ -347,11 +1031,295 @@ const endDateText = ref('')
 const logsLimit = ref(200)
 const formErrors = ref({})
 const ui = useUiStore()
-const auth = useAuthStore()
 const clientFileInput = ref(null)
 const cxaFileInput = ref(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
 const invites = ref([])
+const roleTemplates = ref([])
+const authStore = useAuthStore()
+
+// Modal-based permissions editor state & handlers
+const showPermsModal = ref(false)
+const modalMember = ref(null)
+
+function openPermsModal(member) {
+  modalMember.value = member
+  showPermsModal.value = true
+}
+
+function closePermsModal() {
+  modalMember.value = null
+  showPermsModal.value = false
+}
+
+async function onMemberPermissionsSaved() {
+  try {
+    await refreshProject()
+    ui.showSuccess('Member permissions updated')
+  } catch (err) {
+    console.error('onMemberPermissionsSaved error', err)
+  }
+  closePermsModal()
+}
+
+// Role template editor modal state & handlers
+const showRoleModal = ref(false)
+const editingRoleTemplate = ref({ name: '', description: '', permissionsText: '' })
+const selectedRolePerms = ref(new Set())
+const permMatrix = {
+  issues: ['create', 'read', 'update', 'delete'],
+  activities: ['create', 'read', 'update', 'delete'],
+  equipment: ['create', 'read', 'update', 'delete'],
+  projects: ['create', 'read', 'update', 'delete']
+}
+
+// Accordion state for role templates in the Settings card
+const openRoles = ref(new Set())
+
+const selectedRolePermsArray = computed({
+  get() { return Array.from(selectedRolePerms.value) },
+  set(v) { selectedRolePerms.value = new Set(Array.isArray(v) ? v : []) }
+})
+
+// Inline editing state for role templates
+const roleEdits = ref({}) // map roleId -> Set
+
+function getTemplateById(id) {
+  try {
+    const list = (project.value && project.value.roleTemplates) ? project.value.roleTemplates : roleTemplates.value
+    return (Array.isArray(list) ? list : []).find(r => (r && ((r._id || r.id) === id))) || null
+  } catch (e) { return null }
+}
+
+function toggleRoleOpen(id) {
+  try {
+    if (!id) return
+    const s = new Set(openRoles.value)
+    if (s.has(id)) s.delete(id)
+    else {
+      s.add(id)
+      // initialize edits snapshot when opening
+      if (!roleEdits.value[id]) {
+        const tpl = getTemplateById(id)
+        const perms = Array.isArray(tpl?.permissions) ? tpl.permissions : []
+        roleEdits.value = Object.assign({}, roleEdits.value, { [id]: new Set(perms) })
+      }
+    }
+    openRoles.value = s
+  } catch (e) { /* ignore */ }
+}
+
+function isRoleOpen(id) {
+  try { return openRoles.value.has(id) } catch (e) { return false }
+}
+
+function isPermChecked(roleId, perm) {
+  try {
+    const s = roleEdits.value[roleId]
+    if (s) return s.has(perm)
+    const tpl = getTemplateById(roleId)
+    return Array.isArray(tpl?.permissions) && tpl.permissions.includes(perm)
+  } catch (e) { return false }
+}
+
+function togglePerm(roleId, perm) {
+  try {
+    const current = roleEdits.value[roleId] || new Set()
+    const s = new Set(current)
+    if (s.has(perm)) s.delete(perm)
+    else s.add(perm)
+    roleEdits.value = Object.assign({}, roleEdits.value, { [roleId]: s })
+  } catch (e) { /* ignore */ }
+}
+
+function hasRoleChanges(roleId, tpl) {
+  try {
+    const s = roleEdits.value[roleId]
+    if (!s) return false
+    const orig = Array.isArray(tpl?.permissions) ? tpl.permissions : []
+    const a = Array.from(s).sort()
+    const b = Array.from(new Set(orig)).sort()
+    return JSON.stringify(a) !== JSON.stringify(b)
+  } catch (e) { return false }
+}
+
+function cancelRoleEdits(roleId, tpl) {
+  try {
+    const perms = Array.isArray(tpl?.permissions) ? tpl.permissions : []
+    roleEdits.value = Object.assign({}, roleEdits.value, { [roleId]: new Set(perms) })
+  } catch (e) { /* ignore */ }
+}
+
+async function saveRoleInline(tpl) {
+  try {
+    const id = tpl._id || tpl.id
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!id || !pid) return ui.showError('Missing project or role id')
+    const perms = Array.from(roleEdits.value[id] || [])
+    const body = { permissions: perms }
+    const resp = await http.put(`/api/projects/${pid}/roles/${id}`, body, { headers: getAuthHeaders() })
+    ui.showSuccess('Role template updated')
+    // update local template
+    try {
+      const updated = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
+      if (updated && project.value && Array.isArray(project.value.roleTemplates)) {
+        const list = project.value.roleTemplates.slice()
+        const idx = list.findIndex(r => (r && ((r._id || r.id) === id)))
+        if (idx >= 0) list.splice(idx, 1, updated)
+        else list.unshift(updated)
+        project.value.roleTemplates = list
+      }
+      if (updated && Array.isArray(roleTemplates.value)) {
+        const g = roleTemplates.value.slice()
+        const gi = g.findIndex(r => (r && ((r._id || r.id) === id)))
+        if (gi >= 0) g.splice(gi, 1, updated)
+        else g.unshift(updated)
+        roleTemplates.value = g
+      }
+    } catch (e) { /* ignore */ }
+    try { await refreshProject() } catch (e) { /* ignore */ }
+  } catch (err) {
+    console.error('saveRoleInline error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to save role')
+  }
+}
+
+function openRoleModal(template) {
+  if (template && (template._id || template.id)) {
+    // editing existing
+    editingRoleTemplate.value = {
+      _id: template._id || template.id,
+      name: template.name || '',
+      description: template.description || '',
+      permissionsText: Array.isArray(template.permissions) ? template.permissions.join('\n') : ''
+    }
+    // initialize selectedRolePerms from template
+    selectedRolePerms.value = new Set(Array.isArray(template.permissions) ? template.permissions : [])
+  } else {
+    editingRoleTemplate.value = { name: '', description: '', permissionsText: '' }
+    selectedRolePerms.value = new Set()
+  }
+  showRoleModal.value = true
+}
+
+function closeRoleModal() {
+  showRoleModal.value = false
+}
+
+async function saveRoleTemplate() {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return ui.showError('No project selected')
+    const body = {
+      name: editingRoleTemplate.value.name || '',
+      description: editingRoleTemplate.value.description || '',
+      permissions: Array.from(selectedRolePerms.value)
+    }
+    if (editingRoleTemplate.value._id) {
+      const resp = await http.put(`/api/projects/${pid}/roles/${editingRoleTemplate.value._id}`, body, { headers: getAuthHeaders() })
+      ui.showSuccess('Role template updated')
+      // Update local project roleTemplates so the UI reflects changes immediately
+      try {
+        const updated = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
+        if (updated) {
+          const list = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates : []
+          const idx = list.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
+          if (idx >= 0) list.splice(idx, 1, updated)
+          else list.push(updated)
+          // ensure reactive update
+          if (project.value) project.value.roleTemplates = list
+        }
+      } catch (e) { /* ignore local update errors */ }
+    } else {
+      const resp = await http.post(`/api/projects/${pid}/roles`, body, { headers: getAuthHeaders() })
+      ui.showSuccess('Role template created')
+      // Insert created role into local project roleTemplates so it shows immediately
+      try {
+        const created = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
+        if (created) {
+          const list = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates.slice() : []
+          list.unshift(created)
+          if (project.value) project.value.roleTemplates = list
+        }
+      } catch (e) { /* ignore */ }
+    }
+    // attempt to refresh from server but don't rely on it for immediate UI
+    try { await refreshProject() } catch (e) { /* ignore */ }
+    closeRoleModal()
+  } catch (err) {
+    console.error('saveRoleTemplate error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to save role template')
+  }
+}
+
+async function deleteRoleTemplate(tpl) {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return ui.showError('No project selected')
+    const id = tpl._id || tpl.id || editingRoleTemplate.value._id
+    if (!id) return ui.showError('No template selected')
+    if (!confirm('Delete this role template?')) return
+      await http.delete(`/api/projects/${pid}/roles/${id}`, { headers: getAuthHeaders() })
+      ui.showSuccess('Role template deleted')
+      // remove locally so UI updates immediately
+      try {
+        if (project.value && Array.isArray(project.value.roleTemplates)) {
+          project.value.roleTemplates = project.value.roleTemplates.filter(r => ((r._id || r.id) !== id))
+        }
+        // also update global roleTemplates cache if present
+        if (Array.isArray(roleTemplates.value)) roleTemplates.value = roleTemplates.value.filter(r => ((r._id || r.id) !== id))
+      } catch (e) { /* ignore */ }
+      try { await refreshProject() } catch (e) { /* ignore */ }
+      closeRoleModal()
+  } catch (err) {
+    console.error('deleteRoleTemplate error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to delete role template')
+  }
+}
+
+async function fetchRoleTemplates() {
+  try {
+    // Try loading global and project-scoped role templates. This endpoint is admin-protected;
+    // non-admin users will get a 403 and we silently fall back to the legacy hard-coded list.
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+  const globalResp = await http.get('/api/admin/roles?scope=global', { headers: getAuthHeaders() })
+    let list = Array.isArray(globalResp.data) ? globalResp.data : []
+    if (pid) {
+      try {
+  const resp = await http.get(`/api/admin/roles?scope=project&projectId=${pid}`, { headers: getAuthHeaders() })
+        if (Array.isArray(resp.data)) list = list.concat(resp.data)
+      } catch (e) {
+        // ignore project-scoped fetch failures (likely permission)
+      }
+    }
+    roleTemplates.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    // unable to load templates (likely not an admin) — leave roleTemplates empty
+    roleTemplates.value = []
+  }
+}
+
+const selectedRoleTemplate = computed(() => {
+  try {
+    const rv = roleTemplates.value || []
+    return rv.find(r => r && (r.name === (newMember.value.role || '')) ) || null
+  } catch (e) { return null }
+})
+// Determine whether current auth user is a project admin (team role 'admin' or 'CxA')
+const currentProjectMember = computed(() => {
+  try {
+    const me = authStore.user
+    if (!me || !project.value || !Array.isArray(project.value.team)) return null
+    return project.value.team.find((t) => (String(t._id) === String(me._id) || String((t.email || '')).toLowerCase() === String((me.email || '')).toLowerCase())) || null
+  } catch (e) { return null }
+})
+
+const isProjectAdmin = computed(() => {
+  const m = currentProjectMember.value
+  if (!m) return false
+  const r = String(m.role || '').toLowerCase()
+  return r === 'admin' || r === 'cxa' || r === 'cxa' || r === 'cxa'
+})
 // use auth store token; fall back to localStorage if necessary
 
 const tagsText = computed({
@@ -371,10 +1339,10 @@ function loadIssuesPageSizeLocal() {
     if (!raw) return
     const n = parseInt(raw, 10)
     if ([5, 10, 25, 50, 100].includes(n)) issuesPageSizeLocal.value = n
-  } catch {}
+  } catch (e) { /* ignore localStorage read errors */ }
 }
 function persistIssuesPageSize() {
-  try { localStorage.setItem(issuesPageSizeStorageKey.value, String(issuesPageSizeLocal.value)) } catch {}
+  try { localStorage.setItem(issuesPageSizeStorageKey.value, String(issuesPageSizeLocal.value)) } catch (e) { /* ignore localStorage write errors */ }
 }
 watch(issuesPageSizeStorageKey, () => loadIssuesPageSizeLocal(), { immediate: true })
 
@@ -390,6 +1358,8 @@ onMounted(async () => {
       const p = await projectStore.fetchProject(projectId)
       project.value = { ...p }
       if (!project.value.searchMode) project.value.searchMode = 'substring'
+      // attempt to load role templates for richer role selection (admins only)
+      try { await fetchRoleTemplates() } catch (e) { /* ignore */ }
     } catch (e) {
       ui.showError('Failed to load project')
       router.push('/projects')
@@ -442,6 +1412,7 @@ async function loadInvites() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function resendInvite(inviteId) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
@@ -456,7 +1427,7 @@ async function resendInvite(inviteId) {
   }
 }
 
-function fmt(d) { try { return d ? new Date(d).toLocaleString() : '' } catch { return String(d || '') } }
+function fmt(d) { try { return d ? new Date(d).toLocaleString() : '' } catch (e) { return String(d || '') } }
 const allTypes = computed(() => {
   const set = new Set()
   for (const e of (logs.value || [])) { if (e && e.type) set.add(String(e.type)) }
@@ -464,11 +1435,11 @@ const allTypes = computed(() => {
 })
 const startDate = computed(() => {
   if (!startDateText.value) return null
-  try { return new Date(startDateText.value) } catch { return null }
+  try { return new Date(startDateText.value) } catch (e) { return null }
 })
 const endDate = computed(() => {
   if (!endDateText.value) return null
-  try { return new Date(endDateText.value) } catch { return null }
+  try { return new Date(endDateText.value) } catch (e) { return null }
 })
 const filteredLogs = computed(() => {
   const q = (logsSearch.value || '').toLowerCase()
@@ -553,7 +1524,7 @@ function statusBadgeClass(status) {
 async function addMember() {
   if (!newMember.value.email) return ui.showError('Email required')
   // do not provide _id here; let the backend/mongoose generate a proper ObjectId for subdocs
-  const member = { ...newMember.value }
+  // member variable not used directly; payload built from newMember.value below
   // Prefer calling the dedicated addUser API so the server can create an Invitation
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
@@ -724,11 +1695,11 @@ const trialEndDate = computed(() => {
   if (!project.value) return null
   // Prefer explicit fixed trialEnd stored on the project when available
   if (project.value.trialEnd) {
-    try { return new Date(project.value.trialEnd).toISOString() } catch { /* ignore */ }
+  try { return new Date(project.value.trialEnd).toISOString() } catch (e) { /* ignore */ }
   }
   // If Stripe has a current period end and status is trialing, prefer that timestamp
   if ((project.value.stripeSubscriptionStatus === 'trialing') && project.value.stripeCurrentPeriodEnd) {
-    try { return new Date(project.value.stripeCurrentPeriodEnd).toISOString() } catch { /* ignore */ }
+  try { return new Date(project.value.stripeCurrentPeriodEnd).toISOString() } catch (e) { /* ignore */ }
   }
   // Otherwise, compute from project.trialStartedAt if present
   const started = project.value.trialStartedAt ? new Date(project.value.trialStartedAt) : null
@@ -748,8 +1719,14 @@ async function refreshProject() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
+    const prevRoleTemplates = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates.slice() : (Array.isArray(roleTemplates.value) ? roleTemplates.value.slice() : [])
     const p = await projectStore.fetchProject(pid);
+    // If backend returned no roleTemplates (possible due to permissions), preserve existing local templates
+    if (!Array.isArray(p.roleTemplates) || p.roleTemplates.length === 0) {
+      p.roleTemplates = prevRoleTemplates.slice()
+    }
     project.value = { ...p };
+    try { await fetchRoleTemplates() } catch (e) { /* ignore */ }
   } catch (err) {
     console.error('refreshProject error', err);
   }
@@ -764,7 +1741,6 @@ watch(project, (pv) => {
 async function startCheckout() {
   loading.value = true;
   try {
-  const authToken = auth.token || '';
     const pid = projectId || (project.value && (project.value._id || project.value.id));
   console.log('startCheckout -> sending', { projectId: pid, priceId: selectedPrice.value, url: apiUrl('/api/stripe/create-checkout-session') });
     if (!pid) {
@@ -794,7 +1770,6 @@ async function startCheckout() {
 async function openBillingPortal() {
   loading.value = true;
   try {
-  const authToken = auth.token || '';
   console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
     const { data } = await http.post('/api/stripe/portal-session', {}, { headers: getAuthHeaders() });
     if (data && data.url) {

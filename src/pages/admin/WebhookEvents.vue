@@ -1,56 +1,124 @@
 <template>
   <div class="p-4">
-    <h2 class="text-2xl mb-4">Webhook Events</h2>
+    <h2 class="text-2xl mb-4">
+      Webhook Events
+    </h2>
     <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-2">
       <div>
         <label class="block text-white/80">Status</label>
-        <select v-model="filter.status" class="rounded-lg p-2 bg-white/5 border border-white/10 text-white">
-          <option value="">All</option>
-          <option value="processing">processing</option>
-          <option value="processed">processed</option>
-          <option value="failed">failed</option>
+        <select
+          v-model="filter.status"
+          class="rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
+          <option value="">
+            All
+          </option>
+          <option value="processing">
+            processing
+          </option>
+          <option value="processed">
+            processed
+          </option>
+          <option value="failed">
+            failed
+          </option>
         </select>
       </div>
       <div>
         <label class="block text-white/80">Date from</label>
-        <input type="date" v-model="filter.date_from" class="rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="filter.date_from"
+          type="date"
+          class="rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
       <div>
         <label class="block text-white/80">Date to</label>
-        <input type="date" v-model="filter.date_to" class="rounded-lg p-2 bg-white/5 border border-white/10 text-white" />
+        <input
+          v-model="filter.date_to"
+          type="date"
+          class="rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+        >
       </div>
       <div class="flex items-end">
-        <button @click="load" class="ml-2 px-3 py-1 rounded bg-indigo-600">Refresh</button>
+        <button
+          class="ml-2 px-3 py-1 rounded bg-indigo-600"
+          @click="load"
+        >
+          Refresh
+        </button>
       </div>
     </div>
     <table class="w-full text-left border-collapse">
-      <div v-if="error" class="mb-4 text-red-400">{{ error }}</div>
+      <div
+        v-if="error"
+        class="mb-4 text-red-400"
+      >
+        {{ error }}
+      </div>
       <thead>
         <tr class="text-white/80">
-          <th class="p-2">ID</th>
-          <th class="p-2">Type</th>
-          <th class="p-2">Status</th>
-          <th class="p-2">Received</th>
-          <th class="p-2">Processed</th>
+          <th class="p-2">
+            ID
+          </th>
+          <th class="p-2">
+            Type
+          </th>
+          <th class="p-2">
+            Status
+          </th>
+          <th class="p-2">
+            Received
+          </th>
+          <th class="p-2">
+            Processed
+          </th>
         </tr>
       </thead>
       <tbody>
-        <template v-for="e in events" :key="e.eventId">
+        <template
+          v-for="e in events"
+          :key="e.eventId"
+        >
           <tr class="border-t border-white/5">
-            <td class="p-2 text-sm text-white break-all">{{ e.eventId }}</td>
-            <td class="p-2 text-sm text-white/80">{{ e.type }}</td>
+            <td class="p-2 text-sm text-white break-all">
+              {{ e.eventId }}
+            </td>
+            <td class="p-2 text-sm text-white/80">
+              {{ e.type }}
+            </td>
             <td class="p-2 text-sm">
               <span :class="e.status === 'failed' ? 'text-red-400' : 'text-white'">{{ e.status }}</span>
             </td>
-            <td class="p-2 text-sm text-white/80">{{ formatDate(e.receivedAt) }}</td>
-            <td class="p-2 text-sm text-white/80">{{ formatDate(e.processedAt) }}</td>
+            <td class="p-2 text-sm text-white/80">
+              {{ formatDate(e.receivedAt) }}
+            </td>
+            <td class="p-2 text-sm text-white/80">
+              {{ formatDate(e.processedAt) }}
+            </td>
             <td class="p-2 text-sm">
-              <button @click="toggleExpand(e)" class="mr-2 px-2 py-1 rounded bg-gray-700">{{ expanded[e.eventId] ? 'Hide' : 'Show' }}</button>
-              <button @click="replay(e)" class="px-2 py-1 rounded bg-green-600">Replay</button>
+              <button
+                class="mr-2 px-2 py-1 rounded bg-gray-700"
+                @click="toggleExpand(e)"
+              >
+                {{ expanded[e.eventId] ? 'Hide' : 'Show' }}
+              </button>
+              <button
+                class="px-2 py-1 rounded bg-green-600"
+                @click="replay(e)"
+              >
+                Replay
+              </button>
             </td>
           </tr>
-          <tr v-if="expanded[e.eventId]" class="bg-white/2">
-            <td colspan="6" class="p-2 text-xs text-white/70 break-words">
+          <tr
+            v-if="expanded[e.eventId]"
+            class="bg-white/2"
+          >
+            <td
+              colspan="6"
+              class="p-2 text-xs text-white/70 break-words"
+            >
               <pre class="whitespace-pre-wrap">{{ prettyPayload(e.meta && e.meta.raw) }}</pre>
             </td>
           </tr>
@@ -60,21 +128,67 @@
 
     <div class="mt-4 flex items-center justify-between">
       <div>
-        <button @click="prev" :disabled="skip === 0" class="px-3 py-1 rounded bg-gray-700 mr-2">Prev</button>
-        <button @click="next" :disabled="events.length < limit" class="px-3 py-1 rounded bg-gray-700">Next</button>
+        <button
+          :disabled="skip === 0"
+          class="px-3 py-1 rounded bg-gray-700 mr-2"
+          @click="prev"
+        >
+          Prev
+        </button>
+        <button
+          :disabled="events.length < limit"
+          class="px-3 py-1 rounded bg-gray-700"
+          @click="next"
+        >
+          Next
+        </button>
       </div>
-      <div class="text-white/80">Showing {{ skip + 1 }} - {{ skip + events.length }} of {{ total }}</div>
+      <div class="text-white/80">
+        Showing {{ skip + 1 }} - {{ skip + events.length }} of {{ total }}
+      </div>
     </div>
     
     <!-- Confirmation modal for replay (liquid glass style) -->
-    <div v-if="showModal" class="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div
+      v-if="showModal"
+      class="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    >
       <div class="w-11/12 max-w-lg p-6 rounded-lg bg-white/5 border border-white/10 backdrop-blur-md shadow-lg text-white">
-        <h3 class="text-lg mb-2">Confirm replay</h3>
-        <p class="mb-4">Are you sure you want to replay the webhook event <strong>{{ pendingReplay?.eventId }}</strong>? This will re-run processing and may update project billing state.</p>
+        <h3 class="text-lg mb-2">
+          Confirm replay
+        </h3>
+        <p class="mb-4">
+          Are you sure you want to replay the webhook event <strong>{{ pendingReplay?.eventId }}</strong>? This will re-run processing and may update project billing state.
+        </p>
         <div class="flex justify-end">
-          <button @click="cancelReplay" class="mr-3 px-4 py-2 rounded-lg bg-white/6 border border-white/8 text-white hover:bg-white/8">Cancel</button>
-          <button @click="performReplay" :disabled="replayInProgress" class="px-4 py-2 rounded-lg bg-gradient-to-br from-green-500 to-green-600 text-white shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2">
-            <svg v-if="replayInProgress" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+          <button
+            class="mr-3 px-4 py-2 rounded-lg bg-white/6 border border-white/8 text-white hover:bg-white/8"
+            @click="cancelReplay"
+          >
+            Cancel
+          </button>
+          <button
+            :disabled="replayInProgress"
+            class="px-4 py-2 rounded-lg bg-gradient-to-br from-green-500 to-green-600 text-white shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+            @click="performReplay"
+          >
+            <svg
+              v-if="replayInProgress"
+              class="w-4 h-4 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+            ><circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            /><path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            /></svg>
             <span>{{ replayInProgress ? 'Replaying...' : 'Confirm replay' }}</span>
           </button>
         </div>
@@ -85,7 +199,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
 import { getAuthHeaders } from '../../utils/auth'
 import { apiUrl } from '../../utils/api'
@@ -93,7 +206,6 @@ import { apiUrl } from '../../utils/api'
 const events = ref([])
 const filter = ref({ status: '', date_from: '', date_to: '' })
 const error = ref('')
-const auth = useAuthStore()
 const ui = useUiStore()
 const expanded = ref({})
 const skip = ref(0)

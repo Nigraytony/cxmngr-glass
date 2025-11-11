@@ -1,5 +1,8 @@
 <template>
-  <section class="space-y-4 text-white relative" ref="pageSection">
+  <section
+    ref="pageSection"
+    class="space-y-4 text-white relative"
+  >
     <div>
       <BreadCrumbs :items="crumbs" />
     </div>
@@ -8,19 +11,177 @@
     <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
       <!-- Tabs header -->
       <div class="mb-4 md:mb-6">
-        <div role="tablist" ref="tablistRef" class="relative flex items-center w-full" :class="compactTabs ? 'gap-1' : ''">
-          <div class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out" :style="{ left: tabLeft + '%', width: tabWidth + '%' }" />
-          <button v-for="t in tabs" :key="t" @click="currentTab = t" :aria-selected="currentTab === t" role="tab" :title="t" :aria-label="t" class="flex-1 text-center px-2 py-2 text-sm flex items-center justify-center gap-2" :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'">
-            <svg v-if="t === 'Info'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke-width="1.5"/><path d="M12 11v6" stroke-width="1.5" stroke-linecap="round"/><path d="M12 7h.01" stroke-width="2" stroke-linecap="round"/></svg>
-            <svg v-else-if="t === 'SubSpaces'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="5" r="2.25"/><circle cx="7" cy="19" r="2.25"/><circle cx="17" cy="19" r="2.25"/><path d="M12 7.5v5.5" stroke-linecap="round"/><path d="M12 13h-3" stroke-linecap="round"/><path d="M12 13h3" stroke-linecap="round"/></svg>
-            <svg v-else-if="t === 'Equipment'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="2" stroke-width="1.5"/><path d="M7 10h10M7 14h6" stroke-width="1.5"/></svg>
-            <svg v-else-if="t === 'Issues'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l9 16H3l9-16z" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 9v4" stroke-width="1.5" stroke-linecap="round"/><path d="M12 17h.01" stroke-width="2" stroke-linecap="round"/></svg>
-            <svg v-else-if="t === 'Attachments'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg v-else-if="t === 'Attributes'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16" stroke-width="1.5" stroke-linecap="round"/></svg>
-            <svg v-else-if="t === 'Settings'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z" stroke-width="1.5"/></svg>
-            <svg v-else-if="t === 'MetaData'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5"/><path d="M8 9h8M8 13h8M8 17h8" stroke-width="1.5"/></svg>
-            <span v-if="!compactTabs" class="truncate">{{ t }}</span>
-            <span v-if="countForTab(t) > 0" class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80">{{ countForTab(t) }}</span>
+        <div
+          ref="tablistRef"
+          role="tablist"
+          class="relative flex items-center w-full"
+          :class="compactTabs ? 'gap-1' : ''"
+        >
+          <div
+            class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out"
+            :style="{ left: tabLeft + '%', width: tabWidth + '%' }"
+          />
+          <button
+            v-for="t in tabs"
+            :key="t"
+            :aria-selected="currentTab === t"
+            role="tab"
+            :title="t"
+            :aria-label="t"
+            class="flex-1 text-center px-2 py-2 text-sm flex items-center justify-center gap-2"
+            :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'"
+            @click="currentTab = t"
+          >
+            <svg
+              v-if="t === 'Info'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke-width="1.5"
+            /><path
+              d="M12 11v6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M12 7h.01"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'SubSpaces'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><circle
+              cx="12"
+              cy="5"
+              r="2.25"
+            /><circle
+              cx="7"
+              cy="19"
+              r="2.25"
+            /><circle
+              cx="17"
+              cy="19"
+              r="2.25"
+            /><path
+              d="M12 7.5v5.5"
+              stroke-linecap="round"
+            /><path
+              d="M12 13h-3"
+              stroke-linecap="round"
+            /><path
+              d="M12 13h3"
+              stroke-linecap="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'Equipment'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><rect
+              x="3"
+              y="6"
+              width="18"
+              height="12"
+              rx="2"
+              stroke-width="1.5"
+            /><path
+              d="M7 10h10M7 14h6"
+              stroke-width="1.5"
+            /></svg>
+            <svg
+              v-else-if="t === 'Issues'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M12 3l9 16H3l9-16z"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            /><path
+              d="M12 9v4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /><path
+              d="M12 17h.01"
+              stroke-width="2"
+              stroke-linecap="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'Attachments'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'Attributes'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            /></svg>
+            <svg
+              v-else-if="t === 'Settings'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
+              stroke-width="1.5"
+            /></svg>
+            <svg
+              v-else-if="t === 'MetaData'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><rect
+              x="4"
+              y="4"
+              width="16"
+              height="16"
+              rx="2"
+              stroke-width="1.5"
+            /><path
+              d="M8 9h8M8 13h8M8 17h8"
+              stroke-width="1.5"
+            /></svg>
+            <span
+              v-if="!compactTabs"
+              class="truncate"
+            >{{ t }}</span>
+            <span
+              v-if="countForTab(t) > 0"
+              class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80"
+            >{{ countForTab(t) }}</span>
           </button>
         </div>
       </div>
@@ -28,59 +189,168 @@
       <!-- Tab content -->
       <div>
         <!-- Info Tab -->
-        <div v-if="currentTab === 'Info'" class="grid md:grid-cols-2 gap-x-4 gap-y-2 items-start">
+        <div
+          v-if="currentTab === 'Info'"
+          class="grid md:grid-cols-2 gap-x-4 gap-y-2 items-start"
+        >
           <div>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm text-white/70">Tag</label>
-                <input v-model="form.tag" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+                <input
+                  v-model="form.tag"
+                  type="text"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                >
               </div>
               <div>
                 <label class="block text-sm text-white/70">Type</label>
-                <select v-model="form.type" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
-                  <option v-for="t in spaceTypes" :key="t" :value="t">{{ t }}</option>
+                <select
+                  v-model="form.type"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                >
+                  <option
+                    v-for="t in spaceTypes"
+                    :key="t"
+                    :value="t"
+                  >
+                    {{ t }}
+                  </option>
                 </select>
               </div>
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Title</label>
-              <input v-model="form.title" type="text" required class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400" />
+              <input
+                v-model="form.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              >
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Parent Space</label>
-              <select v-model="form.parentSpace" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
-                <option :value="''">None</option>
-                <option v-for="p in parentOptions" :key="p.id" :value="p.id">{{ p.title }} ({{ p.type }})</option>
+              <select
+                v-model="form.parentSpace"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              >
+                <option :value="''">
+                  None
+                </option>
+                <option
+                  v-for="p in parentOptions"
+                  :key="p.id"
+                  :value="p.id"
+                >
+                  {{ p.title }} ({{ p.type }})
+                </option>
               </select>
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Description</label>
-              <textarea v-model="form.description" rows="4" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"></textarea>
+              <textarea
+                v-model="form.description"
+                rows="4"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              />
             </div>
             <div class="mt-4 flex items-center gap-2">
-              <button @click="save" :disabled="saving" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 13l4 4L19 7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <button
+                :disabled="saving"
+                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                @click="save"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M5 13l4 4L19 7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
                 <span>Save</span>
               </button>
-              <button @click="goPrev" :disabled="!prevId" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2 disabled:opacity-50"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M15 6l-6 6 6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Prev</span></button>
-              <button @click="goNext" :disabled="!nextId" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2 disabled:opacity-50"><span>Next</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M9 6l6 6-6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button
+                :disabled="!prevId"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2 disabled:opacity-50"
+                @click="goPrev"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M15 6l-6 6 6 6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg><span>Prev</span>
+              </button>
+              <button
+                :disabled="!nextId"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2 disabled:opacity-50"
+                @click="goNext"
+              >
+                <span>Next</span><svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M9 6l6 6-6 6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
             </div>
           </div>
           <div>
-            <div class="text-white/70 text-sm">Notes</div>
-            <textarea v-model="form.notes" rows="10" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"></textarea>
+            <div class="text-white/70 text-sm">
+              Notes
+            </div>
+            <textarea
+              v-model="form.notes"
+              rows="10"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            />
           </div>
         </div>
 
         <!-- SubSpaces Tab -->
-        <div v-else-if="currentTab === 'SubSpaces'" class="space-y-3">
-          <div class="text-white/70 text-sm">Sub-spaces under this space</div>
-          <div v-if="children.length === 0" class="text-white/60">No sub-spaces.</div>
+        <div
+          v-else-if="currentTab === 'SubSpaces'"
+          class="space-y-3"
+        >
+          <div class="text-white/70 text-sm">
+            Sub-spaces under this space
+          </div>
+          <div
+            v-if="children.length === 0"
+            class="text-white/60"
+          >
+            No sub-spaces.
+          </div>
           <ul class="space-y-1">
-            <li v-for="c in children" :key="c.id" class="flex items-center justify-between p-2 rounded-md bg-white/5 border border-white/10">
+            <li
+              v-for="c in children"
+              :key="c.id"
+              class="flex items-center justify-between p-2 rounded-md bg-white/5 border border-white/10"
+            >
               <div class="min-w-0">
-                <div class="font-medium truncate">{{ c.title }}</div>
-                <div class="text-xs text-white/60">{{ c.type }} <span v-if="c.tag">· {{ c.tag }}</span></div>
+                <div class="font-medium truncate">
+                  {{ c.title }}
+                </div>
+                <div class="text-xs text-white/60">
+                  {{ c.type }} <span v-if="c.tag">· {{ c.tag }}</span>
+                </div>
               </div>
               <RouterLink
                 :to="{ name: 'space-edit', params: { id: c.id || c._id } }"
@@ -88,9 +358,23 @@
                 aria-label="Open space"
                 :title="`Open ${c.title || 'space'}`"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" stroke-width="1.5"/>
-                  <circle cx="12" cy="12" r="3" stroke-width="1.5"/>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                    stroke-width="1.5"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                    stroke-width="1.5"
+                  />
                 </svg>
               </RouterLink>
             </li>
@@ -98,17 +382,28 @@
         </div>
 
         <!-- Equipment Tab -->
-        <div v-else-if="currentTab === 'Equipment'" class="space-y-2">
-          <div class="text-white/70">Equipment management coming soon.</div>
+        <div
+          v-else-if="currentTab === 'Equipment'"
+          class="space-y-2"
+        >
+          <div class="text-white/70">
+            Equipment management coming soon.
+          </div>
         </div>
 
         <!-- Issues Tab -->
-        <div v-else-if="currentTab === 'Issues'" class="space-y-3">
+        <div
+          v-else-if="currentTab === 'Issues'"
+          class="space-y-3"
+        >
           <IssuesTable :issues="issuesForSpace" />
         </div>
 
         <!-- Attachments Tab -->
-        <div v-else-if="currentTab === 'Attachments'" class="space-y-4">
+        <div
+          v-else-if="currentTab === 'Attachments'"
+          class="space-y-4"
+        >
           <div>
             <DocumentUploader
               :upload="uploadDocument"
@@ -121,17 +416,67 @@
           </div>
           <div>
             <label class="block text-sm text-white/70 mb-1">Attachments</label>
-            <div v-if="!attachmentsList.length" class="text-white/60">No attachments.</div>
-            <ul v-else class="space-y-2">
-              <li v-for="(a, i) in attachmentsList" :key="i" class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3">
+            <div
+              v-if="!attachmentsList.length"
+              class="text-white/60"
+            >
+              No attachments.
+            </div>
+            <ul
+              v-else
+              class="space-y-2"
+            >
+              <li
+                v-for="(a, i) in attachmentsList"
+                :key="i"
+                class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3"
+              >
                 <div class="min-w-0">
-                  <div class="truncate text-sm">{{ a.filename }}</div>
-                  <div class="text-xs text-white/60 truncate">{{ a.url }}</div>
+                  <div class="truncate text-sm">
+                    {{ a.filename }}
+                  </div>
+                  <div class="text-xs text-white/60 truncate">
+                    {{ a.url }}
+                  </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <a :href="a.url" target="_blank" class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Open</a>
-                  <button @click="deleteAttachment(i)" class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Remove" aria-label="Remove">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+                  <a
+                    :href="a.url"
+                    target="_blank"
+                    class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                  >Open</a>
+                  <button
+                    class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+                    title="Remove"
+                    aria-label="Remove"
+                    @click="deleteAttachment(i)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    ><path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /><rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    /><path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    /></svg>
                   </button>
                 </div>
               </li>
@@ -140,33 +485,92 @@
         </div>
 
         <!-- Attributes Tab -->
-        <div v-else-if="currentTab === 'Attributes'" class="space-y-2">
-          <div class="text-white/70 text-sm">Attributes (key/value)</div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center" v-for="(row, idx) in attributesRows" :key="idx">
-            <input v-model="row.key" placeholder="Key (e.g., Size)" class="px-3 py-2 rounded-md bg-white/10 border border-white/20" />
-            <input v-model="row.value" placeholder="Value (e.g., 1200 sqft)" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 md:col-span-2" />
+        <div
+          v-else-if="currentTab === 'Attributes'"
+          class="space-y-2"
+        >
+          <div class="text-white/70 text-sm">
+            Attributes (key/value)
+          </div>
+          <div
+            v-for="(row, idx) in attributesRows"
+            :key="idx"
+            class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center"
+          >
+            <input
+              v-model="row.key"
+              placeholder="Key (e.g., Size)"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            >
+            <input
+              v-model="row.value"
+              placeholder="Value (e.g., 1200 sqft)"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 md:col-span-2"
+            >
           </div>
           <div class="flex items-center gap-2 mt-2">
-            <button @click="addAttributeRow" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Add Row</button>
-            <button @click="applyAttributes" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Apply to Space</button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="addAttributeRow"
+            >
+              Add Row
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+              @click="applyAttributes"
+            >
+              Apply to Space
+            </button>
           </div>
         </div>
 
         <!-- Settings Tab -->
-        <div v-else-if="currentTab === 'Settings'" class="space-y-2">
-          <div class="text-white/70">Settings coming soon.</div>
+        <div
+          v-else-if="currentTab === 'Settings'"
+          class="space-y-2"
+        >
+          <div class="text-white/70">
+            Settings coming soon.
+          </div>
         </div>
 
         <!-- MetaData Tab -->
-        <div v-else-if="currentTab === 'MetaData'" class="space-y-2">
-          <div class="text-white/70 text-sm">Custom metadata (key/value)</div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center" v-for="(row, idx) in metadataRows" :key="idx">
-            <input v-model="row.key" placeholder="Key" class="px-3 py-2 rounded-md bg-white/10 border border-white/20" />
-            <input v-model="row.value" placeholder="Value" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 md:col-span-2" />
+        <div
+          v-else-if="currentTab === 'MetaData'"
+          class="space-y-2"
+        >
+          <div class="text-white/70 text-sm">
+            Custom metadata (key/value)
+          </div>
+          <div
+            v-for="(row, idx) in metadataRows"
+            :key="idx"
+            class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center"
+          >
+            <input
+              v-model="row.key"
+              placeholder="Key"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            >
+            <input
+              v-model="row.value"
+              placeholder="Value"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 md:col-span-2"
+            >
           </div>
           <div class="flex items-center gap-2 mt-2">
-            <button @click="addMetadataRow" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15">Add Row</button>
-            <button @click="applyMetadata" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Apply to Space</button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="addMetadataRow"
+            >
+              Add Row
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+              @click="applyMetadata"
+            >
+              Apply to Space
+            </button>
           </div>
         </div>
       </div>
@@ -197,6 +601,7 @@ const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
 
 const id = computed(() => String(route.params.id || ''))
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isNew = computed(() => id.value === 'new')
 
 const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'Roof']
@@ -329,7 +734,7 @@ async function save() {
 
 // Helpers for attachments
 function fileNameFromUrl(u?: string) {
-  try { if (!u) return ''; const url = new URL(u); return decodeURIComponent(url.pathname.split('/').pop() || '') } catch { return String(u || '').split('/').pop() || '' }
+  try { if (!u) return ''; const url = new URL(u); return decodeURIComponent(url.pathname.split('/').pop() || '') } catch (e) { return String(u || '').split('/').pop() || '' }
 }
 const attachmentsList = computed(() => {
   const arr = Array.isArray(form.value.attachments) ? (form.value.attachments as any[]) : []

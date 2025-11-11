@@ -202,9 +202,16 @@ export const useTemplatesStore = defineStore('templates', () => {
     }
     if (!src) throw new Error('Source template not found')
 
-    const { _id, id: _rid, number, createdAt, updatedAt, history, ...rest } = src as any
+    // Avoid creating unused local bindings by shallow-copying and deleting internal fields
+    const payloadObj: any = { ...(src as any) }
+    delete payloadObj._id
+    delete payloadObj.id
+    delete payloadObj.number
+    delete payloadObj.createdAt
+    delete payloadObj.updatedAt
+    delete payloadObj.history
     const payload: any = {
-      ...rest,
+      ...payloadObj,
       tag: desiredTag || src.tag,
       projectId: src.projectId,
       spaceId: src.spaceId || undefined,

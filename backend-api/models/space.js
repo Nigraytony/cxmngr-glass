@@ -46,6 +46,14 @@ const spaceSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now, required: false },
 });
 
+// Keep updatedAt current
+spaceSchema.pre('save', function (next) {
+  try { this.updatedAt = new Date() } catch (e) { /* ignore */ }
+  next()
+})
+
+spaceSchema.index({ project: 1 })
+
 // Method to find subSpaces by parentSpace ID
 spaceSchema.statics.findSubSpaces = async function (parentSpaceId) {
   return this.find({ parentSpace: parentSpaceId }).select('_id tag title type description');

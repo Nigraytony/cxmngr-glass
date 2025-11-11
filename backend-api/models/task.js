@@ -11,6 +11,14 @@ const taskSchema = new mongoose.Schema({
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
 });
 
+// Keep updatedAt in sync and add index for project queries
+taskSchema.pre('save', function (next) {
+    try { if (!this.startDate) this.startDate = new Date(); if (!this.endDate) this.endDate = new Date(); } catch (e) { /* ignore */ }
+    next()
+})
+
+taskSchema.index({ projectId: 1 })
+
 const Task = mongoose.model('Task', taskSchema);
 
 module.exports = Task;

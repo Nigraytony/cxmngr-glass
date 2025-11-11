@@ -10,6 +10,7 @@ const IssueEdit = () => import('../pages/issues/IssueEdit.vue')
 const Profile = () => import('../pages/profile/Profile.vue')
 const ProjectEdit = () => import('../pages/projects/ProjectEdit.vue')
 const WebhookEvents = () => import('../pages/admin/WebhookEvents.vue')
+const AdminRoles = () => import('../pages/admin/Roles.vue')
 const ActivitiesList = () => import('../pages/activities/ActivitiesList.vue')
 const ActivityEdit = () => import('../pages/activities/ActivityEdit.vue')
 const SpacesList = () => import('../pages/spaces/SpacesList.vue')
@@ -42,6 +43,7 @@ const routes = [
       { path: 'projects', name: 'projects', component: () => import('../pages/projects/ProjectsList.vue') },
       { path: 'projects/edit/:id?', name: 'project-settings', component: ProjectEdit },
       { path: 'admin/webhooks', name: 'admin-webhooks', component: WebhookEvents, meta: { adminOnly: true } },
+  { path: 'admin/roles', name: 'admin-roles', component: AdminRoles, meta: { adminOnly: true } },
       { path: 'profile', name: 'profile', component: Profile },
     ]
   },
@@ -56,7 +58,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   // wait briefly for auth bootstrap to complete so guards don't flash unauthenticated
-  try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) {}
+  try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) { /* ignore auth bootstrap timeout */ }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
@@ -64,8 +66,10 @@ router.beforeEach(async (to) => {
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return { name: 'dashboard' }
   }
-  if (to.meta.adminOnly && auth.user?.role !== 'admin') {
-    return { name: 'dashboard' }
+  if (to.meta.adminOnly) {
+    const r = auth.user?.role
+    const allowed = r === 'admin' || r === 'globaladmin' || r === 'superadmin'
+    if (!allowed) return { name: 'dashboard' }
   }
 })
 

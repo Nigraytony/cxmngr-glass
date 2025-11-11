@@ -182,12 +182,17 @@ export const useEquipmentStore = defineStore('equipment', () => {
     if (!src) throw new Error('Source equipment not found')
 
     // Build deep-ish copy payload, excluding identity fields
-    const {
-      _id, id: _rid, number, createdAt, updatedAt, history, ...rest
-    } = src as any
+    // Avoid creating unused local bindings by shallow-copying and deleting internal fields
+    const payloadObj: any = { ...(src as any) }
+    delete payloadObj._id
+    delete payloadObj.id
+    delete payloadObj.number
+    delete payloadObj.createdAt
+    delete payloadObj.updatedAt
+    delete payloadObj.history
 
     const payload: any = {
-      ...rest,
+      ...payloadObj,
       tag: desiredTag || src.tag,
       // Preserve same project and space
       projectId: src.projectId,

@@ -1,16 +1,37 @@
 <template>
-  <div class="absolute left-0 right-0 z-50 pointer-events-none" :style="{ top: top, transform: transformStyle }">
-    <div v-if="show" class="flex justify-center">
-      <div :class="cardClasses" class="max-w-3xl w-full mx-6 rounded-lg p-3 shadow-lg backdrop-blur-md pointer-events-auto flex items-center justify-between gap-4">
-        <div class="flex-1 text-sm" role="status" aria-live="polite">{{ message }}</div>
-        <button @click="close" :aria-label="closeLabel" :class="closeClass">✕</button>
+  <div
+    class="absolute left-0 right-0 z-50 pointer-events-none"
+    :style="{ top: top, transform: transformStyle }"
+  >
+    <div
+      v-if="show"
+      class="flex justify-center"
+    >
+      <div
+        :class="cardClasses"
+        class="max-w-3xl w-full mx-6 rounded-lg p-3 shadow-lg backdrop-blur-md pointer-events-auto flex items-center justify-between gap-4"
+      >
+        <div
+          class="flex-1 text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          {{ message }}
+        </div>
+        <button
+          :aria-label="closeLabel"
+          :class="closeClass"
+          @click="close"
+        >
+          ✕
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   message: { type: String, default: '' },

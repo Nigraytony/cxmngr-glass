@@ -42,6 +42,18 @@ const templateSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+// Keep updatedAt fresh and normalize title/tag
+templateSchema.pre('save', function (next) {
+  try {
+    if (this.title && typeof this.title === 'string') this.title = String(this.title).trim()
+    if (this.tag && typeof this.tag === 'string') this.tag = String(this.tag).trim()
+    this.updatedAt = new Date()
+  } catch (e) { /* ignore */ }
+  next()
+})
+
+templateSchema.index({ projectId: 1 })
+
 const Template = mongoose.model('Template', templateSchema);
 
 module.exports = Template;

@@ -1,7 +1,14 @@
 <template>
   <teleport to="body">
-    <div v-if="modelValue" :class="['fixed inset-0 grid place-items-center', zIndexClass]" :style="zIndexStyle">
-      <div class="absolute inset-0 bg-black/50" @click="close" />
+    <div
+      v-if="modelValue"
+      :class="['fixed inset-0 grid place-items-center', zIndexClass]"
+      :style="zIndexStyle"
+    >
+      <div
+        class="absolute inset-0 bg-black/50"
+        @click="close"
+      />
 
       <transition
         enter="transition transform ease-out duration-350"
@@ -11,8 +18,15 @@
         leave-from="opacity-100 translate-y-0 scale-100"
         leave-to="opacity-0 translate-y-6 scale-90"
       >
-  <div v-if="modelValue" class="relative rounded-2xl p-6 w-full bg-white/8 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 shadow-2xl z-10 pointer-events-auto" :class="panelClass || 'max-w-2xl'">
-          <header v-if="$slots.header" class="mb-4 text-white">
+        <div
+          v-if="modelValue"
+          class="relative rounded-2xl p-6 w-full bg-white/8 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 shadow-2xl z-10 pointer-events-auto"
+          :class="panelClass || 'max-w-2xl'"
+        >
+          <header
+            v-if="$slots.header"
+            class="mb-4 text-white"
+          >
             <slot name="header" />
           </header>
 
@@ -20,11 +34,19 @@
             <slot />
           </main>
 
-          <footer v-if="$slots.footer" class="mt-4">
+          <footer
+            v-if="$slots.footer"
+            class="mt-4"
+          >
             <slot name="footer" />
           </footer>
 
-          <button @click="close" class="absolute top-3 right-3 text-white/70">✕</button>
+          <button
+            class="absolute top-3 right-3 text-white/70"
+            @click="close"
+          >
+            ✕
+          </button>
         </div>
       </transition>
     </div>

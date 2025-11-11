@@ -21,6 +21,10 @@ const projectSchema = new mongoose.Schema({
     email: String,
     company: String,
     role: String,
+    // Explicit per-member permissions copied from project role templates or set manually
+    permissions: [{ type: String }],
+    // Optional timestamps per team member for auditing
+    updatedAt: { type: Date },
   }],
   commissioning_agent: {
     firstName: String,
@@ -49,6 +53,16 @@ const projectSchema = new mongoose.Schema({
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
   spaces: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Space' }],
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  // Project-scoped role templates for RBAC (Phase A)
+  // Each template is a lightweight object defining a name and permission strings
+  roleTemplates: [{
+    _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+    name: { type: String, required: true },
+    description: { type: String, default: '' },
+    permissions: [{ type: String }],
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  }],
   // Project-level audit logs (flexible schema)
   logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
   // Active flag for project (soft delete / enable/disable)
@@ -67,6 +81,29 @@ const projectSchema = new mongoose.Schema({
   trialStart: { type: Date, default: null },
   trialEnd: { type: Date, default: null },
 });
+
+// Keep updatedAt current and normalize embedded emails on save
+projectSchema.pre('save', function (next) {
+  try {
+    // normalize team emails
+    if (Array.isArray(this.team)) {
+      for (const m of this.team) {
+        if (m && m.email) m.email = String(m.email).trim().toLowerCase()
+      }
+    }
+    if (this.commissioning_agent && this.commissioning_agent.email) {
+      this.commissioning_agent.email = String(this.commissioning_agent.email).trim().toLowerCase()
+    }
+    this.updatedAt = new Date()
+  } catch (e) {
+    // best-effort
+  }
+  next()
+})
+
+// Useful indexes
+projectSchema.index({ name: 1 })
+projectSchema.index({ client: 1 })
 
 const Project = mongoose.model('Project', projectSchema);
 

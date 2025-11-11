@@ -1,21 +1,37 @@
 <template>
-  <Modal v-model="open" :z-index="zIndex">
+  <Modal
+    v-model="open"
+    :z-index="zIndex"
+  >
     <template #header>
       <div class="flex items-center justify-between text-white">
-        <div class="font-medium text-base">{{ title || 'Confirm' }}</div>
+        <div class="font-medium text-base">
+          {{ title || 'Confirm' }}
+        </div>
       </div>
     </template>
 
     <div class="text-white/90 text-sm">
-      <p class="whitespace-pre-line">{{ message }}</p>
+      <p class="whitespace-pre-line">
+        {{ message }}
+      </p>
     </div>
 
     <template #footer>
       <div class="flex items-center justify-end gap-2">
-        <button type="button" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white" @click="onCancel">
+        <button
+          type="button"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
+          @click="onCancel"
+        >
           {{ cancelText || 'Cancel' }}
         </button>
-        <button type="button" class="px-3 py-2 rounded-md text-white" :class="confirmClasses" @click="onConfirm">
+        <button
+          type="button"
+          class="px-3 py-2 rounded-md text-white"
+          :class="confirmClasses"
+          @click="onConfirm"
+        >
           {{ confirmText || 'Confirm' }}
         </button>
       </div>

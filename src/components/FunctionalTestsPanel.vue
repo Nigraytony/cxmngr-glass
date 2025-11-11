@@ -3,94 +3,306 @@
     <!-- Header: add, progress, bulk actions -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       <div class="flex items-center gap-2">
-        <button @click="openNewFpt" class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 text-white/90" title="New test" aria-label="New test">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-5 h-5"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <button
+          class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 text-white/90"
+          title="New test"
+          aria-label="New test"
+          @click="openNewFpt"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          ><path
+            d="M12 5v14M5 12h14"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          /></svg>
         </button>
-        <input v-model="search" type="text" placeholder="Search tests…" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56" />
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Search tests…"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56"
+        >
       </div>
       <div class="flex items-center gap-2">
-        <div class="text-sm text-white/70">{{ passedCount }} / {{ local.length }} passed</div>
-        <div class="w-40 h-2 rounded-full bg-white/10 overflow-hidden">
-          <div class="h-full bg-emerald-400/80" :style="{ width: progressPct + '%' }" />
+        <div class="text-sm text-white/70">
+          {{ passedCount }} / {{ local.length }} passed
         </div>
-        <button @click="markAll(true)" class="px-2 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 text-sm">All Pass</button>
-        <button @click="markAll(false)" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/60 text-red-100 hover:bg-red-500/35 text-sm">All Fail</button>
-        <button @click="markAll(null)" class="px-2 py-1 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm">All N/A</button>
-        <button @click="expandAll" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Expand All</button>
-        <button @click="collapseAll" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Collapse All</button>
+        <div class="w-40 h-2 rounded-full bg-white/10 overflow-hidden">
+          <div
+            class="h-full bg-emerald-400/80"
+            :style="{ width: progressPct + '%' }"
+          />
+        </div>
+        <button
+          class="px-2 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 text-sm"
+          @click="markAll(true)"
+        >
+          All Pass
+        </button>
+        <button
+          class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/60 text-red-100 hover:bg-red-500/35 text-sm"
+          @click="markAll(false)"
+        >
+          All Fail
+        </button>
+        <button
+          class="px-2 py-1 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm"
+          @click="markAll(null)"
+        >
+          All N/A
+        </button>
+        <button
+          class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          @click="expandAll"
+        >
+          Expand All
+        </button>
+        <button
+          class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          @click="collapseAll"
+        >
+          Collapse All
+        </button>
       </div>
     </div>
 
     <!-- Empty state -->
-    <div v-if="!local.length" class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center">
-      <div class="text-white/80 font-medium">No functional tests yet</div>
-      <div class="text-white/60 text-sm mt-1">Create the first FPT for this equipment.</div>
+    <div
+      v-if="!local.length"
+      class="rounded-2xl p-6 bg-white/5 border border-white/10 text-center"
+    >
+      <div class="text-white/80 font-medium">
+        No functional tests yet
+      </div>
+      <div class="text-white/60 text-sm mt-1">
+        Create the first FPT for this equipment.
+      </div>
       <div class="mt-3">
-        <button @click="openNewFpt" class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14M5 12h14" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+          @click="openNewFpt"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          ><path
+            d="M12 5v14M5 12h14"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          /></svg>
           <span>New Test</span>
         </button>
       </div>
     </div>
 
     <!-- Tests list -->
-    <div v-else class="space-y-3">
-      <div v-for="(t, i) in filtered" :key="t.number || i" class="rounded-md border border-white/10 bg-white/5"
-           :class="isOpen(t) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
-           :draggable="dragEnabled"
-           @dragstart="onDragStart(t, $event)"
-           @dragover.prevent="onDragOver(t, $event)"
-           @drop.prevent="onDrop(t, $event)">
-        <div v-if="isOpen(t)" class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/80 rounded-l-md"></div>
+    <div
+      v-else
+      class="space-y-3"
+    >
+      <div
+        v-for="(t, i) in filtered"
+        :key="t.number || i"
+        class="rounded-md border border-white/10 bg-white/5"
+        :class="isOpen(t) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
+        :draggable="dragEnabled"
+        @dragstart="onDragStart(t, $event)"
+        @dragover.prevent="onDragOver(t, $event)"
+        @drop.prevent="onDrop(t, $event)"
+      >
+        <div
+          v-if="isOpen(t)"
+          class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-400/80 rounded-l-md"
+        />
         <div
           class="w-full text-left px-3 py-2 flex items-center justify-between rounded-t-md cursor-pointer select-none"
           :class="isOpen(t) ? 'bg-emerald-500/20 hover:bg-emerald-500/25' : 'bg-white/5'"
-          @click="toggleOpen(t)"
-          @keydown.enter.prevent="toggleOpen(t)"
-          @keydown.space.prevent="toggleOpen(t)"
           tabindex="0"
           role="button"
           :aria-expanded="isOpen(t)"
+          @click="toggleOpen(t)"
+          @keydown.enter.prevent="toggleOpen(t)"
+          @keydown.space.prevent="toggleOpen(t)"
         >
           <div class="flex items-center gap-2 min-w-0">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': isOpen(t) }"><path d="M6 9l6 6 6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4 transition-transform"
+              :class="{ 'rotate-180': isOpen(t) }"
+            ><path
+              d="M6 9l6 6 6-6"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
             <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/20">#{{ t.number ?? (i+1) }}</span>
-            <span class="truncate" :class="isOpen(t) ? 'text-white font-medium' : ''">{{ t.name || 'Test' }}</span>
+            <span
+              class="truncate"
+              :class="isOpen(t) ? 'text-white font-medium' : ''"
+            >{{ t.name || 'Test' }}</span>
           </div>
           <div class="flex items-center gap-2">
-            <span v-if="t.pass === true" class="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-500/20 border-emerald-400/60 text-emerald-100">PASS</span>
-            <span v-else-if="t.pass === false" class="text-[10px] px-1.5 py-0.5 rounded border bg-red-500/20 border-red-400/60 text-red-100">FAIL</span>
-            <span v-else-if="getStatus(t) === 'na'" class="text-[10px] px-1.5 py-0.5 rounded border text-indigo-200 border-indigo-400/60">N/A</span>
-            <button v-if="!dragEnabled" @click.stop="move(i, -1)" :disabled="i===0" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40" title="Move up" aria-label="Move up">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5l-6 6h12l-6-6z" stroke-width="1.5"/></svg>
+            <span
+              v-if="t.pass === true"
+              class="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-500/20 border-emerald-400/60 text-emerald-100"
+            >PASS</span>
+            <span
+              v-else-if="t.pass === false"
+              class="text-[10px] px-1.5 py-0.5 rounded border bg-red-500/20 border-red-400/60 text-red-100"
+            >FAIL</span>
+            <span
+              v-else-if="getStatus(t) === 'na'"
+              class="text-[10px] px-1.5 py-0.5 rounded border text-indigo-200 border-indigo-400/60"
+            >N/A</span>
+            <button
+              v-if="!dragEnabled"
+              :disabled="i===0"
+              class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40"
+              title="Move up"
+              aria-label="Move up"
+              @click.stop="move(i, -1)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M12 5l-6 6h12l-6-6z"
+                stroke-width="1.5"
+              /></svg>
             </button>
-            <button v-if="!dragEnabled" @click.stop="move(i, 1)" :disabled="i===local.length-1" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40" title="Move down" aria-label="Move down">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 19l6-6H6l6 6z" stroke-width="1.5"/></svg>
+            <button
+              v-if="!dragEnabled"
+              :disabled="i===local.length-1"
+              class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40"
+              title="Move down"
+              aria-label="Move down"
+              @click.stop="move(i, 1)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M12 19l6-6H6l6 6z"
+                stroke-width="1.5"
+              /></svg>
             </button>
-            <span v-if="dragEnabled" class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none drag-handle" title="Drag to reorder" aria-label="Drag to reorder">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 opacity-80"><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z"/></svg>
+            <span
+              v-if="dragEnabled"
+              class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none drag-handle"
+              title="Drag to reorder"
+              aria-label="Drag to reorder"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="w-4 h-4 opacity-80"
+              ><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z" /></svg>
             </span>
-            <button @click.stop="removeTest(i)" class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30" title="Delete" aria-label="Delete">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M3 6h18" stroke-width="1.5" stroke-linecap="round"/><path d="M8 6l1-2h6l1 2" stroke-width="1.5" stroke-linecap="round"/><rect x="6" y="6" width="12" height="14" rx="1.5" stroke-width="1.5"/><path d="M10 10v6M14 10v6" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <button
+              class="h-7 w-7 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+              title="Delete"
+              aria-label="Delete"
+              @click.stop="removeTest(i)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M3 6h18"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M8 6l1-2h6l1 2"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><rect
+                x="6"
+                y="6"
+                width="12"
+                height="14"
+                rx="1.5"
+                stroke-width="1.5"
+              /><path
+                d="M10 10v6M14 10v6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /></svg>
             </button>
           </div>
         </div>
-        <div class="px-3 py-3 space-y-3" v-show="isOpen(t)">
+        <div
+          v-show="isOpen(t)"
+          class="px-3 py-3 space-y-3"
+        >
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label class="block text-sm text-white/70">Name</label>
-              <input v-model="local[i].name" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" @change="notifyChange" />
+              <input
+                v-model="local[i].name"
+                type="text"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                @change="notifyChange"
+              >
             </div>
             <div class="md:col-span-2">
               <div class="flex items-center gap-2">
-                <button @click.stop="toggleDesc(local[i])" class="h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" :aria-expanded="isDescOpen(local[i])" :title="isDescOpen(local[i]) ? 'Hide description' : 'Show description'">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': isDescOpen(local[i]) }"><path d="M6 9l6 6 6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button
+                  class="h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                  :aria-expanded="isDescOpen(local[i])"
+                  :title="isDescOpen(local[i]) ? 'Hide description' : 'Show description'"
+                  @click.stop="toggleDesc(local[i])"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4 transition-transform"
+                    :class="{ 'rotate-180': isDescOpen(local[i]) }"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                 </button>
                 <label class="text-sm text-white/70">Description</label>
-                <span v-if="!isDescOpen(local[i]) && !(local[i].description||'').trim()" class="text-xs text-white/50">(hidden)</span>
+                <span
+                  v-if="!isDescOpen(local[i]) && !(local[i].description||'').trim()"
+                  class="text-xs text-white/50"
+                >(hidden)</span>
               </div>
-              <div v-if="isDescOpen(local[i])" class="mt-1">
-                <textarea v-model="local[i].description" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" rows="2" @change="notifyChange"></textarea>
+              <div
+                v-if="isDescOpen(local[i])"
+                class="mt-1"
+              >
+                <textarea
+                  v-model="local[i].description"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                  rows="2"
+                  @change="notifyChange"
+                />
               </div>
             </div>
             <template v-if="!(local[i] as any).kind || (local[i] as any).kind === 'standard'">
@@ -98,23 +310,42 @@
                 <div class="flex items-center justify-between">
                   <label class="block text-sm text-white/70">Table</label>
                   <div class="flex items-center gap-2">
-                    <button @click="addTableColumn(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Column</button>
-                    <button @click="addTableRow(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
+                    <button
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                      @click="addTableColumn(i)"
+                    >
+                      Add Column
+                    </button>
+                    <button
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                      @click="addTableRow(i)"
+                    >
+                      Add Row
+                    </button>
                   </div>
                 </div>
                 <div class="rounded-md border border-white/10 overflow-y-auto overflow-x-hidden">
                   <table class="w-full table-fixed text-sm">
                     <colgroup>
-                      <col style="width: 2rem" />
-                      <template v-for="(col, ci) in ((local[i] as any).table?.columns || [])" :key="col.key + ':col'">
-                        <col :style="colStyle(col.name)" />
+                      <col style="width: 2rem">
+                      <template
+                        v-for="col in ((local[i] as any).table?.columns || [])"
+                        :key="col.key + ':col'"
+                      >
+                        <col :style="colStyle(col.name)">
                       </template>
-                      <col style="width: 2.75rem" />
+                      <col style="width: 2.75rem">
                     </colgroup>
                     <thead class="bg-white/5 text-white/80">
                       <tr>
-                        <th class="px-1 py-1 text-left text-xs font-medium">#</th>
-                        <th v-for="(col, ci) in ((local[i] as any).table?.columns || [])" :key="col.key" class="px-1 py-1 text-left align-middle">
+                        <th class="px-1 py-1 text-left text-xs font-medium">
+                          #
+                        </th>
+                        <th
+                          v-for="(col, ci) in ((local[i] as any).table?.columns || [])"
+                          :key="col.key"
+                          class="px-1 py-1 text-left align-middle"
+                        >
                           <div class="flex items-center gap-1">
                             <input
                               v-model="(local[i] as any).table.columns[ci].name"
@@ -123,19 +354,44 @@
                               :disabled="isPassColumnName((local[i] as any).table.columns[ci].name)"
                               :title="isPassColumnName((local[i] as any).table.columns[ci].name) ? 'Locked: Pass column' : ''"
                               @change="notifyChange"
-                            />
-                            <button @click="removeTableColumn(i, ci)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove column" aria-label="Remove column">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            >
+                            <button
+                              class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30"
+                              title="Remove column"
+                              aria-label="Remove column"
+                              @click="removeTableColumn(i, ci)"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                class="w-4 h-4"
+                              ><path
+                                d="M5 12h14"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                              /></svg>
                             </button>
                           </div>
                         </th>
-                        <th class="w-14"></th>
+                        <th class="w-14" />
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(row, ri) in ((local[i] as any).table?.rows || [])" :key="'r'+ri" class="border-t border-white/10">
-                        <td class="px-1 py-1 text-white/60 text-xs align-top">{{ ri + 1 }}</td>
-                        <td v-for="(col, ci) in ((local[i] as any).table?.columns || [])" :key="col.key + ':' + ri" class="px-1 py-1 align-top">
+                      <tr
+                        v-for="(row, ri) in ((local[i] as any).table?.rows || [])"
+                        :key="'r'+ri"
+                        class="border-t border-white/10"
+                      >
+                        <td class="px-1 py-1 text-white/60 text-xs align-top">
+                          {{ ri + 1 }}
+                        </td>
+                        <td
+                          v-for="col in ((local[i] as any).table?.columns || [])"
+                          :key="col.key + ':' + ri"
+                          class="px-1 py-1 align-top"
+                        >
                           <template v-if="isPassColumnName(col.name)">
                             <div class="flex items-center justify-center gap-1">
                               <button
@@ -143,11 +399,11 @@
                                 role="switch"
                                 :aria-checked="ariaChecked(passCellState((local[i] as any).table.rows[ri][col.key]))"
                                 :title="passLabel(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                                class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                                :class="passBgClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
                                 @click="cyclePassCell(i, ri, col.key)"
                                 @keydown.space.prevent="cyclePassCell(i, ri, col.key)"
                                 @keydown.enter.prevent="cyclePassCell(i, ri, col.key)"
-                                class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
-                                :class="passBgClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
                               >
                                 <span class="sr-only">Pass/Fail</span>
                                 <span
@@ -155,8 +411,10 @@
                                   :style="{ transform: knobTransform(passCellState((local[i] as any).table.rows[ri][col.key])) }"
                                 />
                               </button>
-                              <span class="text-[10px] leading-none"
-                                    :class="passTextClass(passCellState((local[i] as any).table.rows[ri][col.key]))">
+                              <span
+                                class="text-[10px] leading-none"
+                                :class="passTextClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                              >
                                 {{ passText(passCellState((local[i] as any).table.rows[ri][col.key])) }}
                               </span>
                             </div>
@@ -164,21 +422,39 @@
                           <template v-else>
                             <textarea
                               v-model="(local[i] as any).table.rows[ri][col.key]"
-                              rows="2"
                               v-autogrow
+                              rows="2"
                               class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 resize-none overflow-hidden"
                               @change="notifyChange"
-                            ></textarea>
+                            />
                           </template>
                         </td>
                         <td class="px-1 py-1 text-right align-top">
-                          <button @click="removeTableRow(i, ri)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove row" aria-label="Remove row">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                          <button
+                            class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30"
+                            title="Remove row"
+                            aria-label="Remove row"
+                            @click="removeTableRow(i, ri)"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-4 h-4"
+                            ><path
+                              d="M5 12h14"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            /></svg>
                           </button>
                         </td>
                       </tr>
                       <tr v-if="!(((local[i] as any).table?.columns || []).length) && !(((local[i] as any).table?.rows || []).length)">
-                        <td colspan="999" class="px-2 py-3 text-center text-white/60">
+                        <td
+                          colspan="999"
+                          class="px-2 py-3 text-center text-white/60"
+                        >
                           No columns or rows yet. Use "Add Column" and "Add Row" to build your table.
                         </td>
                       </tr>
@@ -192,29 +468,82 @@
                 <div class="flex items-center justify-between">
                   <label class="block text-sm text-white/70">Spreadsheet</label>
                   <div class="flex items-center gap-2">
-                    <button @click="addRow(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
-                    <button @click="clearRows(i)" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-sm">Clear</button>
+                    <button
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                      @click="addRow(i)"
+                    >
+                      Add Row
+                    </button>
+                    <button
+                      class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-sm"
+                      @click="clearRows(i)"
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
                 <div class="overflow-auto rounded-md border border-white/10">
                   <table class="min-w-full text-sm">
                     <thead class="bg-white/5 text-white/70">
                       <tr>
-                        <th class="text-left px-2 py-1 font-medium">Step</th>
-                        <th class="text-left px-2 py-1 font-medium">Expected</th>
-                        <th class="text-left px-2 py-1 font-medium">Actual</th>
-                        <th class="px-2 py-1"></th>
+                        <th class="text-left px-2 py-1 font-medium">
+                          Step
+                        </th>
+                        <th class="text-left px-2 py-1 font-medium">
+                          Expected
+                        </th>
+                        <th class="text-left px-2 py-1 font-medium">
+                          Actual
+                        </th>
+                        <th class="px-2 py-1" />
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(r, ri) in (local[i] as any).rows" :key="ri" class="border-t border-white/10">
-                        <td class="px-2 py-1 align-top w-1/4"><input v-model="(local[i] as any).rows[ri].step" type="text" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange" /></td>
-                        <td class="px-2 py-1 align-top"><textarea v-model="(local[i] as any).rows[ri].expected" rows="2" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange"></textarea></td>
-                        <td class="px-2 py-1 align-top"><textarea v-model="(local[i] as any).rows[ri].actual" rows="2" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange"></textarea></td>
-                        <td class="px-2 py-1 align-top text-right"><button @click="removeRow(i, ri)" class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-xs">Remove</button></td>
+                      <tr
+                        v-for="(r, ri) in (local[i] as any).rows"
+                        :key="ri"
+                        class="border-t border-white/10"
+                      >
+                        <td class="px-2 py-1 align-top w-1/4">
+                          <input
+                            v-model="(local[i] as any).rows[ri].step"
+                            type="text"
+                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
+                            @change="notifyChange"
+                          >
+                        </td>
+                        <td class="px-2 py-1 align-top">
+                          <textarea
+                            v-model="(local[i] as any).rows[ri].expected"
+                            rows="2"
+                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
+                            @change="notifyChange"
+                          />
+                        </td>
+                        <td class="px-2 py-1 align-top">
+                          <textarea
+                            v-model="(local[i] as any).rows[ri].actual"
+                            rows="2"
+                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
+                            @change="notifyChange"
+                          />
+                        </td>
+                        <td class="px-2 py-1 align-top text-right">
+                          <button
+                            class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-xs"
+                            @click="removeRow(i, ri)"
+                          >
+                            Remove
+                          </button>
+                        </td>
                       </tr>
                       <tr v-if="!(local[i] as any).rows || !(local[i] as any).rows.length">
-                        <td colspan="4" class="px-2 py-2 text-center text-white/60">No rows yet</td>
+                        <td
+                          colspan="4"
+                          class="px-2 py-2 text-center text-white/60"
+                        >
+                          No rows yet
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -226,23 +555,42 @@
                 <div class="flex items-center justify-between">
                   <label class="block text-sm text-white/70">Table</label>
                   <div class="flex items-center gap-2">
-                    <button @click="addTableColumn(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Column</button>
-                    <button @click="addTableRow(i)" class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm">Add Row</button>
+                    <button
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                      @click="addTableColumn(i)"
+                    >
+                      Add Column
+                    </button>
+                    <button
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                      @click="addTableRow(i)"
+                    >
+                      Add Row
+                    </button>
                   </div>
                 </div>
                 <div class="rounded-md border border-white/10 overflow-y-auto overflow-x-hidden">
                   <table class="w-full table-fixed text-sm">
                     <colgroup>
-                      <col style="width: 2rem" />
-                      <template v-for="(col, ci) in (local[i] as any).table.columns" :key="col.key + ':col'">
-                        <col :style="colStyle(col.name)" />
+                      <col style="width: 2rem">
+                      <template
+                        v-for="col in (local[i] as any).table.columns"
+                        :key="col.key + ':col'"
+                      >
+                        <col :style="colStyle(col.name)">
                       </template>
-                      <col style="width: 2.75rem" />
+                      <col style="width: 2.75rem">
                     </colgroup>
                     <thead class="bg-white/5 text-white/80">
                       <tr>
-                        <th class="px-1 py-1 text-left text-xs font-medium">#</th>
-                        <th v-for="(col, ci) in (local[i] as any).table.columns" :key="col.key" class="px-1 py-1 text-left align-middle">
+                        <th class="px-1 py-1 text-left text-xs font-medium">
+                          #
+                        </th>
+                        <th
+                          v-for="(col, ci) in (local[i] as any).table.columns"
+                          :key="col.key"
+                          class="px-1 py-1 text-left align-middle"
+                        >
                           <div class="flex items-center gap-1">
                             <input
                               v-model="(local[i] as any).table.columns[ci].name"
@@ -251,19 +599,44 @@
                               :disabled="isPassColumnName((local[i] as any).table.columns[ci].name)"
                               :title="isPassColumnName((local[i] as any).table.columns[ci].name) ? 'Locked: Pass column' : ''"
                               @change="notifyChange"
-                            />
-                            <button @click="removeTableColumn(i, ci)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove column" aria-label="Remove column">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            >
+                            <button
+                              class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30"
+                              title="Remove column"
+                              aria-label="Remove column"
+                              @click="removeTableColumn(i, ci)"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                class="w-4 h-4"
+                              ><path
+                                d="M5 12h14"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                              /></svg>
                             </button>
                           </div>
                         </th>
-                        <th class="w-14"></th>
+                        <th class="w-14" />
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(row, ri) in (local[i] as any).table.rows" :key="'r'+ri" class="border-t border-white/10">
-                        <td class="px-1 py-1 text-white/60 text-xs align-top">{{ ri + 1 }}</td>
-                        <td v-for="(col, ci) in (local[i] as any).table.columns" :key="col.key + ':' + ri" class="px-1 py-1 align-top">
+                      <tr
+                        v-for="(row, ri) in (local[i] as any).table.rows"
+                        :key="'r'+ri"
+                        class="border-t border-white/10"
+                      >
+                        <td class="px-1 py-1 text-white/60 text-xs align-top">
+                          {{ ri + 1 }}
+                        </td>
+                        <td
+                          v-for="col in (local[i] as any).table.columns"
+                          :key="col.key + ':' + ri"
+                          class="px-1 py-1 align-top"
+                        >
                           <template v-if="isPassColumnName(col.name)">
                             <div class="flex items-center justify-center gap-1">
                               <button
@@ -271,11 +644,11 @@
                                 role="switch"
                                 :aria-checked="ariaChecked(passCellState((local[i] as any).table.rows[ri][col.key]))"
                                 :title="passLabel(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                                class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                                :class="passBgClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
                                 @click="cyclePassCell(i, ri, col.key)"
                                 @keydown.space.prevent="cyclePassCell(i, ri, col.key)"
                                 @keydown.enter.prevent="cyclePassCell(i, ri, col.key)"
-                                class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
-                                :class="passBgClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
                               >
                                 <span class="sr-only">Pass/Fail</span>
                                 <span
@@ -283,24 +656,49 @@
                                   :style="{ transform: knobTransform(passCellState((local[i] as any).table.rows[ri][col.key])) }"
                                 />
                               </button>
-                              <span class="text-[10px] leading-none"
-                                    :class="passTextClass(passCellState((local[i] as any).table.rows[ri][col.key]))">
+                              <span
+                                class="text-[10px] leading-none"
+                                :class="passTextClass(passCellState((local[i] as any).table.rows[ri][col.key]))"
+                              >
                                 {{ passText(passCellState((local[i] as any).table.rows[ri][col.key])) }}
                               </span>
                             </div>
                           </template>
                           <template v-else>
-                            <input v-model="(local[i] as any).table.rows[ri][col.key]" type="text" class="w-full px-2 py-1 rounded bg-white/10 border border-white/20" @change="notifyChange" />
+                            <input
+                              v-model="(local[i] as any).table.rows[ri][col.key]"
+                              type="text"
+                              class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
+                              @change="notifyChange"
+                            >
                           </template>
                         </td>
                         <td class="px-1 py-1 text-right align-top">
-                          <button @click="removeTableRow(i, ri)" class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30" title="Remove row" aria-label="Remove row">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
+                          <button
+                            class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30"
+                            title="Remove row"
+                            aria-label="Remove row"
+                            @click="removeTableRow(i, ri)"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-4 h-4"
+                            ><path
+                              d="M5 12h14"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            /></svg>
                           </button>
                         </td>
                       </tr>
                       <tr v-if="!((local[i] as any).table.columns || []).length && !((local[i] as any).table.rows || []).length">
-                        <td colspan="999" class="px-2 py-3 text-center text-white/60">
+                        <td
+                          colspan="999"
+                          class="px-2 py-3 text-center text-white/60"
+                        >
                           No columns or rows yet. Use "Add Column" and "Add Row" to build your table.
                         </td>
                       </tr>
@@ -311,18 +709,51 @@
             </template>
             <div class="md:col-span-2">
               <div class="flex items-center gap-2">
-                <button @click.stop="toggleNotes(local[i])" class="h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15" :aria-expanded="isNotesOpen(local[i])" :title="isNotesOpen(local[i]) ? 'Hide notes' : 'Show notes'">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4 transition-transform" :class="{ 'rotate-180': isNotesOpen(local[i]) }"><path d="M6 9l6 6 6-6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button
+                  class="h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                  :aria-expanded="isNotesOpen(local[i])"
+                  :title="isNotesOpen(local[i]) ? 'Hide notes' : 'Show notes'"
+                  @click.stop="toggleNotes(local[i])"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4 transition-transform"
+                    :class="{ 'rotate-180': isNotesOpen(local[i]) }"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                 </button>
                 <label class="text-sm text-white/70">Notes</label>
-                <span v-if="!isNotesOpen(local[i]) && !(local[i].notes||'').toString().trim()" class="text-xs text-white/50">(hidden)</span>
+                <span
+                  v-if="!isNotesOpen(local[i]) && !(local[i].notes||'').toString().trim()"
+                  class="text-xs text-white/50"
+                >(hidden)</span>
               </div>
-              <div v-if="isNotesOpen(local[i])" class="mt-1">
+              <div
+                v-if="isNotesOpen(local[i])"
+                class="mt-1"
+              >
                 <template v-if="!(local[i] as any).kind || (local[i] as any).kind === 'standard'">
-                  <textarea v-model="local[i].notes" rows="3" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" @change="notifyChange"></textarea>
+                  <textarea
+                    v-model="local[i].notes"
+                    rows="3"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                    @change="notifyChange"
+                  />
                 </template>
                 <template v-else>
-                  <input v-model="local[i].notes" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" @change="notifyChange" />
+                  <input
+                    v-model="local[i].notes"
+                    type="text"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                    @change="notifyChange"
+                  >
                 </template>
               </div>
             </div>
@@ -332,26 +763,85 @@
           <div class="pt-1">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <button @click="saveNow" class="px-3 py-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 inline-flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M5 13l4 4L19 7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <button
+                  class="px-3 py-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35 inline-flex items-center gap-2"
+                  @click="saveNow"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  ><path
+                    d="M5 13l4 4L19 7"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
                   <span>Save</span>
                 </button>
-                <button @click="openIssue(i)" class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4"><path d="M12 5v14M5 12h14" stroke-width="1.5" stroke-linecap="round"/></svg>
-                <span>Attach Issue</span>
-              </button>
+                <button
+                  class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+                  @click="openIssue(i)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  ><path
+                    d="M12 5v14M5 12h14"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  /></svg>
+                  <span>Attach Issue</span>
+                </button>
               </div>
               <div class="flex items-center gap-2">
-                <button @click="setPass(i, true)" :class="passClass(local[i].pass === true)" class="px-2 py-1 rounded-md border">Pass</button>
-                <button @click="setPass(i, false)" :class="failClass(local[i].pass === false)" class="px-2 py-1 rounded-md border">Fail</button>
-                <button @click="setPass(i, null)" :class="naClass(getStatus(local[i]) === 'na')" class="px-2 py-1 rounded-md border">N/A</button>
+                <button
+                  :class="passClass(local[i].pass === true)"
+                  class="px-2 py-1 rounded-md border"
+                  @click="setPass(i, true)"
+                >
+                  Pass
+                </button>
+                <button
+                  :class="failClass(local[i].pass === false)"
+                  class="px-2 py-1 rounded-md border"
+                  @click="setPass(i, false)"
+                >
+                  Fail
+                </button>
+                <button
+                  :class="naClass(getStatus(local[i]) === 'na')"
+                  class="px-2 py-1 rounded-md border"
+                  @click="setPass(i, null)"
+                >
+                  N/A
+                </button>
               </div>
             </div>
-            <div v-if="Array.isArray(t.issues) && t.issues.length" class="mt-2 space-y-1">
-              <div class="text-xs text-white/70">Attached Issues</div>
+            <div
+              v-if="Array.isArray(t.issues) && t.issues.length"
+              class="mt-2 space-y-1"
+            >
+              <div class="text-xs text-white/70">
+                Attached Issues
+              </div>
               <ul class="space-y-1">
-                <li v-for="(iss, k) in t.issues" :key="(iss.id||iss._id)||k" class="text-sm">
-                  <RouterLink :to="{ name: 'issue-edit', params: { id: (iss.id||iss._id) } }" class="hover:underline">#{{ iss.number || '—' }} {{ iss.title || 'Issue' }}</RouterLink>
+                <li
+                  v-for="(iss, k) in t.issues"
+                  :key="(iss.id||iss._id)||k"
+                  class="text-sm"
+                >
+                  <RouterLink
+                    :to="{ name: 'issue-edit', params: { id: (iss.id||iss._id) } }"
+                    class="hover:underline"
+                  >
+                    #{{ iss.number || '—' }} {{ iss.title || 'Issue' }}
+                  </RouterLink>
                 </li>
               </ul>
             </div>
@@ -364,27 +854,47 @@
     <Modal v-model="issueOpen">
       <template #header>
         <div class="flex items-center justify-between">
-          <div class="font-medium">Attach Issue</div>
-          <div class="text-white/70 text-sm">Create an issue linked to this test</div>
+          <div class="font-medium">
+            Attach Issue
+          </div>
+          <div class="text-white/70 text-sm">
+            Create an issue linked to this test
+          </div>
         </div>
       </template>
       <template #default>
         <div class="space-y-3">
           <div>
             <label class="block text-sm text-white/70">Type</label>
-            <input v-model="issueDraft.type" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="FPT" />
+            <input
+              v-model="issueDraft.type"
+              type="text"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              placeholder="FPT"
+            >
           </div>
           <div>
             <label class="block text-sm text-white/70">Title</label>
-            <input v-model="issueDraft.title" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" />
+            <input
+              v-model="issueDraft.title"
+              type="text"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            >
           </div>
           <div>
             <label class="block text-sm text-white/70">Description</label>
-            <textarea v-model="issueDraft.description" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" rows="3"></textarea>
+            <textarea
+              v-model="issueDraft.description"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              rows="3"
+            />
           </div>
           <div>
             <label class="block text-sm text-white/70">Priority</label>
-            <select v-model="issueDraft.priority" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20">
+            <select
+              v-model="issueDraft.priority"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            >
               <option>Low</option>
               <option>Medium</option>
               <option>High</option>
@@ -392,14 +902,29 @@
           </div>
           <div>
             <label class="block text-sm text-white/70">Assign to</label>
-            <input v-model="issueDraft.assignedTo" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Name or email" />
+            <input
+              v-model="issueDraft.assignedTo"
+              type="text"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              placeholder="Name or email"
+            >
           </div>
         </div>
       </template>
       <template #footer>
         <div class="flex items-center justify-end gap-2">
-          <button @click="closeIssue" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
-          <button @click="createIssueFromTest" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35">Create</button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+            @click="closeIssue"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35"
+            @click="createIssueFromTest"
+          >
+            Create
+          </button>
         </div>
       </template>
     </Modal>
@@ -408,8 +933,12 @@
     <Modal v-model="newOpen">
       <template #header>
         <div class="flex items-center justify-between">
-          <div class="font-medium">New FPT</div>
-          <div class="text-white/70 text-sm">Choose the test type</div>
+          <div class="font-medium">
+            New FPT
+          </div>
+          <div class="text-white/70 text-sm">
+            Choose the test type
+          </div>
         </div>
       </template>
       <template #default>
@@ -418,29 +947,59 @@
             <label class="block text-sm text-white/70 mb-1">Type</label>
             <div class="flex items-center gap-3">
               <label class="inline-flex items-center gap-2">
-                <input type="radio" class="accent-emerald-400" value="standard" v-model="newType" />
+                <input
+                  v-model="newType"
+                  type="radio"
+                  class="accent-emerald-400"
+                  value="standard"
+                >
                 <span>Standard</span>
               </label>
               <label class="inline-flex items-center gap-2">
-                <input type="radio" class="accent-emerald-400" value="table" v-model="newType" />
+                <input
+                  v-model="newType"
+                  type="radio"
+                  class="accent-emerald-400"
+                  value="table"
+                >
                 <span>Table</span>
               </label>
             </div>
           </div>
           <div>
             <label class="block text-sm text-white/70">Name (optional)</label>
-            <input v-model="newName" type="text" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="e.g. Supply Fan Start/Stop" />
+            <input
+              v-model="newName"
+              type="text"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              placeholder="e.g. Supply Fan Start/Stop"
+            >
           </div>
           <div>
             <label class="block text-sm text-white/70">Description (optional)</label>
-            <textarea v-model="newDesc" rows="2" class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20" placeholder="Short description"></textarea>
+            <textarea
+              v-model="newDesc"
+              rows="2"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+              placeholder="Short description"
+            />
           </div>
         </div>
       </template>
       <template #footer>
         <div class="flex items-center justify-end gap-2">
-          <button @click="closeNewFpt" class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30">Cancel</button>
-          <button @click="createNewFpt" class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35">Create</button>
+          <button
+            class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+            @click="closeNewFpt"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/35"
+            @click="createNewFpt"
+          >
+            Create
+          </button>
         </div>
       </template>
     </Modal>
@@ -577,13 +1136,17 @@ function readOpenState() {
       local.forEach((t, i) => { openState.set(t, !!arr[i]) })
       openVersion.value++
     }
-  } catch {}
+  } catch (e) {
+    // ignore: localStorage may be unavailable or contain invalid data
+  }
 }
 function writeOpenState() {
   try {
     const arr = local.map(t => !!isOpen(t))
     localStorage.setItem(storageKey.value, JSON.stringify(arr))
-  } catch {}
+  } catch (e) {
+    // ignore: best-effort persistence only
+  }
 }
 // initialize and keep in sync on list changes
 readOpenState()
@@ -617,7 +1180,9 @@ function onDragStart(t: FunctionalTestItem, e: DragEvent) {
   if (!dragEnabled.value) return
   draggingTest.value = t
   if (e && e.dataTransfer) {
-    try { e.dataTransfer.setData('text/plain', 'fpt') } catch {}
+    try { e.dataTransfer.setData('text/plain', 'fpt') } catch (err) {
+      // ignore: some environments disallow setting drag data
+    }
     e.dataTransfer.effectAllowed = 'move'
   }
 }
@@ -673,13 +1238,17 @@ function readFieldOpenState() {
       }
     })
     fieldOpenVersion.value++
-  } catch {}
+  } catch (e) {
+    // ignore: localStorage may be unavailable or contain invalid data
+  }
 }
 function writeFieldOpenState() {
   try {
     const out = local.map((t) => ({ desc: !!descOpenMap.get(t), notes: !!notesOpenMap.get(t) }))
     localStorage.setItem(storageFieldsKey.value, JSON.stringify(out))
-  } catch {}
+  } catch (e) {
+    // ignore: best-effort persistence only
+  }
 }
 
 function isDescOpen(t: FunctionalTestItem) {
@@ -1003,8 +1572,8 @@ async function createIssueFromTest() {
         scope: { entity: 'equipment', equipmentId: props.equipmentId || null, equipmentTag: props.equipmentTag || null, projectId: pid },
         test: { number: t.number ?? i+1, name: t.name || '' },
         issue: { id: (created as any).id || (created as any)._id, number: (created as any).number }
-      }).catch(() => {})
-    } catch {}
+    }).catch(() => { /* ignore project log failures */ })
+  } catch (e) { /* ignore best-effort log errors */ }
     issueOpen.value = false
     issueCtx.value = null
   } catch (err: any) {

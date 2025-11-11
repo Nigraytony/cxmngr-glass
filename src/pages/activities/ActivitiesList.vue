@@ -2,17 +2,34 @@
   <div class="space-y-4">
     <!-- Breadcrumbs at top -->
     <div>
-      <BreadCrumbs :items="[
-        { text: 'Dashboard', to: '/' },
-        { text: 'Activities', to: '/activities' }
-      ]" />
+      <BreadCrumbs
+        :items="[
+          { text: 'Dashboard', to: '/' },
+          { text: 'Activities', to: '/activities' }
+        ]"
+      />
     </div>
 
     <div class="flex flex-wrap gap-3 items-end">
       <!-- New Activity round button placed left of Search -->
-      <RouterLink :to="{ name: 'activity-edit', params: { id: 'new' } }" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10" aria-label="Add activity" title="Add activity">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+      <RouterLink
+        :to="{ name: 'activity-edit', params: { id: 'new' } }"
+        class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+        aria-label="Add activity"
+        title="Add activity"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="w-5 h-5"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+            clip-rule="evenodd"
+          />
         </svg>
       </RouterLink>
       <div>
@@ -22,26 +39,49 @@
           type="text"
           placeholder="Search by name or type"
           class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-64"
-        />
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Type</label>
-        <div class="relative" ref="typeMenuRef">
-          <button @click="toggleTypeMenu" :aria-expanded="showTypeMenu ? 'true' : 'false'" class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[16rem] justify-between">
+        <div
+          ref="typeMenuRef"
+          class="relative"
+        >
+          <button
+            :aria-expanded="showTypeMenu ? 'true' : 'false'"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[16rem] justify-between"
+            @click="toggleTypeMenu"
+          >
             <span class="flex items-center gap-2">
               <span>{{ typeFilterLabel }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilterLabel) }}</span>
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3 h-3 ml-1"><path d="M6 9l6 6 6-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-3 h-3 ml-1"
+            ><path
+              d="M6 9l6 6 6-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            /></svg>
           </button>
-          <div v-if="showTypeMenu" class="absolute left-0 mt-2 w-80 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20" role="menu">
+          <div
+            v-if="showTypeMenu"
+            class="absolute left-0 mt-2 w-80 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            role="menu"
+          >
             <div class="py-1">
               <button
                 v-for="opt in typeOptions"
                 :key="opt.name"
-                @click="applyTypeFilter(opt.name)"
                 role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2 whitespace-nowrap', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']">
+                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2 whitespace-nowrap', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                @click="applyTypeFilter(opt.name)"
+              >
                 <span>{{ opt.name }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
               </button>
@@ -49,14 +89,23 @@
           </div>
         </div>
       </div>
-      <button @click="refresh()" class="px-3 py-2 rounded bg-white/10 text-white border border-white/20">Refresh</button>
+      <button
+        class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
+        @click="refresh()"
+      >
+        Refresh
+      </button>
     </div>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80 w-full">
-          <div class="text-lg font-semibold">No project selected</div>
-          <div class="mt-2 text-sm">Select a project from the user menu or Projects page to view its activities.</div>
+          <div class="text-lg font-semibold">
+            No project selected
+          </div>
+          <div class="mt-2 text-sm">
+            Select a project from the user menu or Projects page to view its activities.
+          </div>
         </div>
       </template>
       <template v-else>
@@ -66,25 +115,47 @@
           :to="{ name: 'activity-edit', params: { id: a.id || a._id } }"
           class="group relative block p-4 rounded-xl bg-white/10 border border-white/20 text-white/90 transition-all duration-200 ease-out hover:bg-white/12 hover:border-white/30 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/30 overflow-hidden"
         >
-        <!-- subtle hover overlay -->
-        <div class="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
-        <!-- bottom gradient like photo thumbnails -->
-        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <!-- subtle hover overlay -->
+          <div class="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+          <!-- bottom gradient like photo thumbnails -->
+          <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        <div class="relative">
-          <div class="flex items-center justify-between">
-            <h2 class="font-semibold">{{ a.name }}</h2>
-            <!-- optional chevron icon to indicate clickable card -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity">
-              <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+          <div class="relative">
+            <div class="flex items-center justify-between">
+              <h2 class="font-semibold">
+                {{ a.name }}
+              </h2>
+              <!-- optional chevron icon to indicate clickable card -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                class="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <path
+                  d="M9 6l6 6-6 6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+            <div class="text-sm text-white/70 mt-1">
+              Type: {{ a.type }}
+            </div>
+            <div class="text-xs text-white/60">
+              Start: {{ fmt(a.startDate) }} · End: {{ fmt(a.endDate) }}
+            </div>
+            <div class="mt-2 flex -space-x-2">
+              <img
+                v-for="(p,idx) in (a.photos || []).slice(0,3)"
+                :key="idx"
+                :src="p.data"
+                class="w-10 h-10 object-cover rounded-md border border-white/20"
+              >
+            </div>
           </div>
-          <div class="text-sm text-white/70 mt-1">Type: {{ a.type }}</div>
-          <div class="text-xs text-white/60">Start: {{ fmt(a.startDate) }} · End: {{ fmt(a.endDate) }}</div>
-          <div class="mt-2 flex -space-x-2">
-            <img v-for="(p,idx) in (a.photos || []).slice(0,3)" :key="idx" :src="p.data" class="w-10 h-10 object-cover rounded-md border border-white/20" />
-          </div>
-        </div>
         </RouterLink>
       </template>
     </div>
@@ -92,7 +163,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, computed, ref, watch } from 'vue'
+import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
 import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
 import lists from '../../lists.js'
@@ -109,7 +180,7 @@ onMounted(async () => {
 
 function fmt(d?: string) {
   if (!d) return ''
-  try { return new Date(d).toLocaleDateString() } catch { return String(d) }
+  try { return new Date(d).toLocaleDateString() } catch (e) { return String(d) }
 }
 
 // Styled Type dropdown state and options (like Issues filters)
