@@ -139,12 +139,12 @@
                       <input
                         v-model="newMember.firstName"
                         placeholder="First"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                       <input
                         v-model="newMember.lastName"
                         placeholder="Last"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                     </div>
 
@@ -153,12 +153,12 @@
                       <input
                         v-model="newMember.email"
                         placeholder="Email"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                       <input
                         v-model="newMember.company"
                         placeholder="Company"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                       <select
                         v-model="newMember.role"
