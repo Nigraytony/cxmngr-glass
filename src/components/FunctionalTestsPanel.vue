@@ -896,18 +896,15 @@
         </div>
         <div
           v-show="signOpen"
-          class="p-3 space-y-3"
+          class="p-3"
         >
-          <div
-            v-if="!sigList.length"
-            class="text-white/60"
-          >
-            No signatures yet.
-          </div>
-          <div
-            v-else
-            class="grid grid-cols-1 md:grid-cols-2 gap-3"
-          >
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <template v-if="!sigList.length">
+              <div class="p-3 rounded bg-white/6 border border-white/10 md:col-span-2 text-white/60">
+                No signatures yet. Use the card below to add your first signature.
+              </div>
+            </template>
+
             <div
               v-for="(s, idx) in sigList"
               :key="idx"
@@ -963,7 +960,7 @@
               </div>
             </div>
 
-            <!-- Add new signature card inside the grid so it appears next to existing ones -->
+            <!-- Add new signature card inside the grid so it appears next to existing ones or alone -->
             <div
               v-if="sigList.length < 6"
               class="p-3 rounded bg-white/6 border border-white/10"
