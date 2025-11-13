@@ -567,11 +567,13 @@ import { useTemplatesStore, type Template } from '../../stores/templates'
 import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
 import { confirm as inlineConfirm } from '../../utils/confirm'
+import { useAuthStore } from '../../stores/auth'
 
 const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const templatesStore = useTemplatesStore()
 const ui = useUiStore()
+const auth = useAuthStore()
 
 const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Started']
 
@@ -803,7 +805,8 @@ function statusBadgeClass(s: string) {
 
 // pagination state
 const page = ref(1)
-const pageSize = ref(10)
+// seed pageSize from user profile preference when available
+const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 10)
 const pageSizes = [10, 20, 50, 100]
 const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize.value)))
 const paged = computed(() => {

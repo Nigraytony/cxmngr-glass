@@ -2392,11 +2392,16 @@ const fptSignatures = computed<any[]>({
 
 async function persistFptSignatures(sigs: any[]) {
   try {
+    // Debug: log incoming signatures payload to help diagnose persistence issues
+    // (This will appear in the browser console when saving signatures)
+    console.debug('persistFptSignatures - payload:', sigs)
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     if (!eid) return
     await equipmentStore.updateFields(eid, { fptSignatures: sigs } as any)
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
+    // Give user feedback that signatures were saved
+    ui.showSuccess('Signatures saved')
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save signatures')
   }

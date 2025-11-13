@@ -864,6 +864,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { useProjectStore } from '../../stores/project'
+import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
 import lists from '../../lists.js'
@@ -873,6 +874,7 @@ import Modal from '../../components/Modal.vue'
 import * as XLSX from 'xlsx'
 
 const projectStore = useProjectStore()
+const auth = useAuthStore()
 const spacesStore = useSpacesStore()
 const equipmentStore = useEquipmentStore()
 const ui = useUiStore()
@@ -1143,10 +1145,15 @@ function statusBadgeClassEquipment(s: string) {
 
 // pagination state
 const page = ref(1)
-// derive default page size from project settings with a fallback of 10
+// derive default page size from user profile preference, then project settings with a fallback of 10
 const defaultPageSize = computed(() => {
-  const p: any = projectStore.currentProject as any
   const fallback = 10
+  try {
+    const pval = auth && auth.user && auth.user.contact && auth.user.contact.perPage
+    if (typeof pval === 'number' && !isNaN(pval)) return Math.max(1, Number(pval))
+  } catch (e) { /* ignore */ }
+
+  const p: any = projectStore.currentProject as any
   if (!p) return fallback
   const numericCandidates = [p.equipmentPageSize, p.listPageSize, p.pageSize, p.defaultPageSize]
   const foundNum = numericCandidates.find((v: any) => typeof v === 'number' && !isNaN(v))

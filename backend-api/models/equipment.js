@@ -28,6 +28,8 @@ const equipmentSchema = new mongoose.Schema({
     checklists: { type: [mongoose.Schema.Types.Mixed], default: [] },
     // Functional Performance Tests (array of test steps/records)
     functionalTests: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // Signatures captured for FPT (stored as array of objects: { title, person, block, date })
+    fptSignatures: { type: [mongoose.Schema.Types.Mixed], default: [] },
     // Components (array of sub-equipment items)
     components: { type: [mongoose.Schema.Types.Mixed], default: [] },
     // photos stored in DB as base64 strings (small images)

@@ -1206,7 +1206,8 @@ function openAddModal() {
 
 // Pagination
 const page = ref(1)
-const pageSize = ref(10)
+// seed pageSize from user's profile preference when available; per-project localStorage can override
+const pageSize = ref((authStore && authStore.user && authStore.user.contact && typeof authStore.user.contact.perPage === 'number') ? authStore.user.contact.perPage : 10)
 const pageSizes = [5, 10, 25, 50, 100]
 
 // Persist per-project page size preference
@@ -1214,7 +1215,17 @@ const pageSizeStorageKey = computed(() => `issuesPageSize:${projectStore.current
 function loadPageSizePref() {
   try {
     const raw = localStorage.getItem(pageSizeStorageKey.value)
-    if (!raw) return
+    if (!raw) {
+      // If there's no per-project override, fall back to the user's profile preference if available
+      try {
+        const p = authStore.user && authStore.user.contact && authStore.user.contact.perPage
+        const allowed = [5,10,25,50,100]
+        if (typeof p === 'number' && allowed.includes(p)) {
+          pageSize.value = p
+        }
+      } catch (e) { /* ignore */ }
+      return
+    }
     const n = parseInt(raw, 10)
     if ([5,10,25,50,100].includes(n)) pageSize.value = n
   } catch (e) { /* ignore localStorage read errors */ }

@@ -1,7 +1,9 @@
 <template>
   <div class="space-y-4">
     <!-- Header: add, progress, bulk actions -->
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div
+      class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+    >
       <div class="flex items-center gap-2">
         <button
           class="h-10 w-10 grid place-items-center rounded-full bg-white/20 border border-white/30 hover:bg-white/30 text-white/90"
@@ -15,11 +17,13 @@
             fill="none"
             stroke="currentColor"
             class="w-5 h-5"
-          ><path
-            d="M12 5v14M5 12h14"
-            stroke-width="1.8"
-            stroke-linecap="round"
-          /></svg>
+          >
+            <path
+              d="M12 5v14M5 12h14"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
         </button>
         <input
           v-model="search"
@@ -29,7 +33,9 @@
         >
       </div>
       <div class="flex items-center gap-2">
-        <div class="text-sm text-white/70">
+        <div
+          class="text-sm text-white/70"
+        >
           {{ passedCount }} / {{ local.length }} passed
         </div>
         <div class="w-40 h-2 rounded-full bg-white/10 overflow-hidden">
@@ -888,10 +894,39 @@
             </svg>
             <span class="font-medium">Signatures</span>
           </div>
-          <div
-            class="text-xs text-white/70"
-          >
-            {{ sigList.length }} entries
+          <div class="text-xs text-white/70 flex items-center gap-2">
+            <div>
+              {{ sigList.length }} entries
+            </div>
+            <button
+              class="h-7 w-7 grid place-items-center rounded-full bg-white/10 border border-white/20 hover:bg-white/15"
+              :class="{ 'opacity-40 cursor-not-allowed': ((sigList.length || 0) + (drafts.length || 0)) >= 6 }"
+              :title="((sigList.length || 0) + (drafts.length || 0)) >= 6 ? 'Maximum of 6 signatures reached' : 'Add signature'"
+              aria-label="Add signature"
+              @click.stop="((sigList.length || 0) + (drafts.length || 0)) < 6 ? createDraft() : ui.showError('Maximum of 6 signatures allowed per test')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-3 h-3"
+              >
+                <path
+                  d="M12 5v14M5 12h14"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <button
+              class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm ml-2"
+              title="Use my stored profile signature"
+              :disabled="!((authStore.user && authStore.user.contact && authStore.user.contact.signature && authStore.user.contact.signature.block) || false) || ((sigList.length || 0) + (drafts.length || 0)) >= 6"
+              @click.stop="insertProfileSignature"
+            >
+              Use my Stored Signature
+            </button>
           </div>
         </div>
         <div
@@ -918,56 +953,134 @@
             <div
               v-for="(s, idx) in sigList"
               :key="idx"
-              class="p-3 rounded bg-white/6 border border-white/10"
+              class="p-3 rounded bg-white/6 border border-white/10 relative"
             >
+              <!-- Trash icon to remove saved signature -->
+              <button
+                class="absolute top-2 right-2 h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                title="Delete signature"
+                aria-label="Delete signature"
+                @click.stop="removeSignature(idx)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M3 6h18"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M8 6l1-2h6l1 2"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <rect
+                    x="6"
+                    y="6"
+                    width="12"
+                    height="14"
+                    rx="1.5"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M10 10v6M14 10v6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+              <!-- Re-capture (redo) button -->
+              <button
+                class="absolute top-2 right-10 h-6 w-6 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                title="Re-capture signature"
+                aria-label="Re-capture signature"
+                @click.stop="startEditSignature(idx)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M21 12a9 9 0 1 0-9 9"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M21 3v6h-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
               <!-- Title / Name above the signature -->
               <div class="mb-2">
                 <div class="font-medium text-white/90 truncate">
-                  {{ s.title || 'Signature' }}
-                </div>
-                <div class="text-sm text-white/70 mt-1">
-                  {{ s.person }}
+                  <span class="truncate">{{ s.title || 'Signature' }}:</span>
+                  <span v-if="s && (s.role || s.person)" class="text-sm text-white/70 ml-2">
+                    <span v-if="s.role" class="mr-1">{{ s.role }}:</span>
+                    <span v-if="s.person">{{ s.person }}</span>
+                  </span>
                 </div>
               </div>
 
               <!-- Signature block -->
               <div class="mb-2">
-                <img
-                  v-if="isDataUrl(s.block)"
-                  :src="s.block"
-                  class="w-full h-36 object-contain bg-black/10"
-                >
-                <div
-                  v-else
-                  class="text-sm text-white/80 whitespace-pre-wrap"
-                >
-                  {{ s.block }}
-                </div>
+              <template v-if="editingIndex === idx">
+                  <div>
+                    <!-- <input
+                      v-model="editingDraft.title"
+                      placeholder="Title"
+                      class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90 mb-2"
+                    >
+                    <input
+                      v-model="editingDraft.person"
+                      placeholder="Name"
+                      class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90 mb-2"
+                    > -->
+                    <div class="mb-2">
+                      <SignaturePad
+                        v-model="editingDraft.block"
+                        v-model:title="editingDraft.title"
+                        v-model:person="editingDraft.person"
+                        v-model:role="editingDraft.role"
+                        :removable="true"
+                        @saved="onPadSavedEdited(idx, $event)"
+                        @remove="removeSignature(idx)"
+                      />
+                    </div>
+                    <!-- Date is shown only on saved signatures; hide while editing/recapturing -->
+                  </div>
+                </template>
+                <template v-else>
+                  <img
+                    v-if="isDataUrl(s.block)"
+                    :src="s.block"
+                    class="w-full h-36 object-contain bg-black/10"
+                  >
+                  <div
+                    v-else
+                    class="text-sm text-white/80 whitespace-pre-wrap"
+                  >
+                    {{ s.block }}
+                  </div>
+                </template>
               </div>
 
               <div class="mt-2 flex items-center justify-between">
                 <div class="text-xs text-white/60">
                   <span v-if="s && s.block">Signed: {{ formatDateTime(s.date) }}</span>
                 </div>
-                <div class="flex items-center gap-2">
-                  <button
-                    class="px-3 py-1 rounded-md bg-white/10"
-                    @click="clearSavedSignature(idx)"
-                  >
-                    Clear
-                  </button>
-                  <button
-                    class="px-3 py-1 rounded-md bg-red-500/20 text-red-200"
-                    @click="removeSignature(idx)"
-                  >
-                    Remove
-                  </button>
-                  <button
-                    class="px-3 py-1 rounded-md bg-white/20"
-                    @click="saveExistingSignature(idx)"
-                  >
-                    Save
-                  </button>
+                <!-- Buttons hidden for saved signatures per UX: display saved signature only -->
+                <div class="text-xs text-emerald-200">
+                  Saved
                 </div>
               </div>
             </div>
@@ -980,61 +1093,24 @@
                 class="p-3 rounded bg-white/6 border border-white/10"
               >
                 <div class="mb-2">
-                  <div
-                    class="font-medium text-white/90"
-                  >
-                    New signature
-                  </div>
-                  <div
-                    class="text-sm text-white/70 mt-1"
-                  >
+                  <div class="text-sm text-white/70 mt-1">
                     Add title and name, then capture signature
                   </div>
                 </div>
+
                 <div class="mb-2">
-                  <input
-                    v-model="d.title"
-                    placeholder="Title"
-                    class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90 mb-2"
-                  >
-                  <input
-                    v-model="d.person"
-                    placeholder="Name"
-                    class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 text-white/90"
-                  >
+                                  <SignaturePad
+                                  v-model="d.block"
+                                  v-model:title="d.title"
+                                  v-model:person="d.person"
+                                  v-model:role="d.role"
+                                  :removable="true"
+                                  @saved="onPadSavedDraft(di, $event)"
+                                  @remove="removeDraft(di)"
+                                />
                 </div>
-                <div class="mb-2">
-                  <SignaturePad v-model="d.block" />
-                </div>
-                <div
-                  class="mt-2 flex items-center justify-between"
-                >
-                  <div
-                    class="text-sm text-white/60"
-                  >
-                    Date: {{ formatDateTime(d.date) }}
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button
-                      class="px-3 py-1 rounded-md bg-white/10"
-                      @click="clearDraft(di)"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      class="px-3 py-1 rounded-md bg-red-500/20 text-red-200"
-                      @click="removeDraft(di)"
-                    >
-                      Remove
-                    </button>
-                    <button
-                      class="px-3 py-1 rounded-md bg-white/20"
-                      @click="saveDraft(di)"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
+
+                <!-- Date is shown only on saved signatures; hide while drafting before confirm -->
               </div>
             </template>
           </div>
@@ -1207,7 +1283,7 @@ import { useProjectStore } from '../stores/project'
 import { useIssuesStore } from '../stores/issues'
 import { confirm as inlineConfirm } from '../utils/confirm'
 import SignaturePad from './SignaturePad.vue'
-// import { useAuthStore } from '../stores/auth' (profile signature helpers removed)
+import { useAuthStore } from '../stores/auth'
 // Removed GridEditor/XLSX usage in favor of a simple editable table per test
 
 export interface FunctionalTestItem {
@@ -1242,6 +1318,7 @@ const emit = defineEmits<{
 const ui = useUiStore()
 const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
+const authStore = useAuthStore()
 
 // Accordion open/close state per test item (by object identity)
 const openVersion = ref(0)
@@ -1557,12 +1634,15 @@ const vAutogrow = {
   }
 }
 
-// Signatures UI state (panel-local controls; data stored in parent via update:signatures)
-const showSignatures = ref(false)
+// Signatures UI state (persisted in UI store per session)
+const showSignatures = computed({ get: () => ui.showSignatures, set: (v: any) => ui.setShowSignatures(!!v) })
 const signOpen = ref(false)
 const sigList = computed(() => Array.isArray(props.signatures) ? props.signatures : [])
 // legacy single newSig removed in favor of `drafts` array
 const drafts = ref<Array<any>>([])
+// Editing state for re-capturing an existing saved signature
+const editingIndex = ref<number | null>(null)
+const editingDraft = ref<any>(null)
 
 function isDataUrl(s: any) {
   return typeof s === 'string' && s.startsWith('data:')
@@ -1573,25 +1653,7 @@ function emitSignatures(arr: any[]) {
 }
 
 // Clear a saved signature (keep title/person) for a specific index
-function clearSavedSignature(idx: number) {
-  try {
-    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
-    if (!arr[idx]) return
-    arr[idx].block = ''
-    arr[idx].date = new Date().toISOString()
-    emitSignatures(arr)
-  } catch (e) { /* ignore */ }
-}
 
-// Re-save an existing saved signature (update its timestamp)
-function saveExistingSignature(idx: number) {
-  try {
-    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
-    if (!arr[idx]) return
-    arr[idx].date = new Date().toISOString()
-    emitSignatures(arr)
-  } catch (e) { /* ignore */ }
-}
 
 
 
@@ -1599,7 +1661,100 @@ function createDraft() {
   const savedCount = Array.isArray(sigList.value) ? sigList.value.length : 0
   const total = savedCount + drafts.value.length
   if (total >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
-  drafts.value.push({ title: '', person: '', block: '', date: new Date().toISOString() })
+  // Prevent a user from creating more than one signature draft if they already have one or a saved signature
+  const uid = authStore.user?._id || authStore.user?.id || null
+  const personName = ((authStore.user && (String(authStore.user.firstName || '').trim() + ' ' + String(authStore.user.lastName || '').trim()).trim()) || '').trim()
+  // determine project role if present
+  let projectRole = ''
+  try {
+    const projects = Array.isArray(authStore.user?.projects) ? authStore.user!.projects as any[] : []
+    const match = projects.find((p: any) => String(p?._id || p?.id || p) === String(props.projectId || ''))
+    if (match && match.role) projectRole = String(match.role || '')
+  } catch (e) { /* ignore */ }
+  if (!projectRole && authStore.user && authStore.user.role) projectRole = String(authStore.user.role || '')
+  const existingSaved = Array.isArray(sigList.value) ? sigList.value.find((s: any) => (s && ((s.createdBy && String(s.createdBy) === String(uid)) || (!s.createdBy && String(s.person || '') === personName)))) : null
+  const existingDraft = drafts.value.find((d: any) => (d && d.createdBy && String(d.createdBy) === String(uid)))
+  if (existingDraft) { ui.showError('You already have a signature draft for this test'); return }
+  // If user already has a saved signature, prefill a draft for recapture/replacement
+  if (existingSaved) {
+    drafts.value.push({ title: String(existingSaved.title || '').trim(), person: String(existingSaved.person || personName), role: String(existingSaved.role || projectRole), block: '', date: new Date().toISOString(), createdBy: uid })
+    return
+  }
+  drafts.value.push({ title: '', person: personName, role: projectRole, block: '', date: new Date().toISOString(), createdBy: uid })
+}
+
+// Insert the current user's stored profile signature as a new draft
+function insertProfileSignature() {
+  try {
+    // Use the already-instantiated authStore for consistent reactivity
+    const user = (authStore.user as any) || null
+    const profileSig = user?.contact?.signature
+    const savedBlock = profileSig && profileSig.block ? String(profileSig.block) : ''
+    if (!savedBlock) { ui.showError('No saved signature on your profile'); return }
+    const savedCount = Array.isArray(sigList.value) ? sigList.value.length : 0
+    const total = savedCount + drafts.value.length
+    if (total >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
+
+    const personName = ((user && (String(user.firstName || '').trim() + ' ' + String(user.lastName || '').trim()).trim()) || profileSig.person || '').trim()
+    // Determine project role if available, otherwise fall back to global role
+    let projectRole = ''
+    try {
+      const projects = Array.isArray(authStore.user?.projects) ? authStore.user!.projects as any[] : []
+      const match = projects.find((p: any) => String(p?._id || p?.id || p) === String(props.projectId || ''))
+      if (match && match.role) projectRole = String(match.role || '')
+    } catch (e) { /* ignore */ }
+    if (!projectRole && user && user.role) projectRole = String(user.role || '')
+    const person = personName
+
+      // Instead of creating a draft, auto-save the profile signature into the saved signatures
+    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+    if (arr.length >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
+    const uid = authStore.user?._id || authStore.user?.id || null
+    // Prevent duplicate by user - if exists, replace existing signature for that user
+    const personNamePlain = ((authStore.user && (String(authStore.user.firstName || '').trim() + ' ' + String(authStore.user.lastName || '').trim()).trim()) || profileSig.person || '').trim()
+    const existingIdx = arr.findIndex((s: any) => (s && ((s.createdBy && String(s.createdBy) === String(uid)) || (!s.createdBy && String(s.person || '') === personNamePlain))))
+    const newSig = { title: String(profileSig.title || '').trim(), person: person, role: projectRole, block: savedBlock, date: new Date().toISOString(), createdBy: uid }
+    if (existingIdx >= 0) {
+      arr[existingIdx] = newSig
+    } else {
+      arr.push(newSig)
+    }
+      emitSignatures(arr)
+      // ensure the signatures accordion is visible and open so user sees the new saved signature
+      showSignatures.value = true
+      signOpen.value = true
+      ui.showSuccess('Inserted profile signature')
+  } catch (e) {
+    ui.showError('Failed to insert profile signature')
+  }
+}
+
+function startEditSignature(idx: number) {
+  try {
+    const arr = Array.isArray(sigList.value) ? sigList.value : []
+    const src = arr[idx]
+    if (!src) return
+    editingIndex.value = idx
+    // shallow copy for editing
+    editingDraft.value = { title: src.title || '', person: src.person || '', role: src.role || '', block: src.block || '', date: src.date || new Date().toISOString(), createdBy: src.createdBy || null }
+  } catch (e) { /* ignore */ }
+}
+
+// Note: no explicit cancel handler needed; editing is cleared on save or when replaced
+
+function saveEditedSignature(idx: number) {
+  try {
+    const d = editingDraft.value
+    if (!d || !d.block) { ui.showError('Signature cannot be empty'); return }
+    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+    const existingCreatedBy = (Array.isArray(sigList.value) && sigList.value[idx] && sigList.value[idx].createdBy) ? sigList.value[idx].createdBy : null
+    const createdBy = existingCreatedBy || d.createdBy || (authStore.user?._id || authStore.user?.id) || null
+  arr[idx] = { title: String(d.title || '').trim(), person: String(d.person || '').trim(), role: String(d.role || '').trim(), block: d.block || '', date: new Date().toISOString(), createdBy }
+    emitSignatures(arr)
+    // clear editing state
+    editingIndex.value = null
+    editingDraft.value = null
+  } catch (e) { /* ignore */ }
 }
 
 function saveDraft(idx: number) {
@@ -1607,7 +1762,14 @@ function saveDraft(idx: number) {
   if (!d || !d.block) { ui.showError('Signature cannot be empty'); return }
   const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
   if (arr.length >= 6) { ui.showError('Maximum of 6 signatures allowed per test'); return }
-  arr.push({ title: String(d.title || '').trim(), person: String(d.person || '').trim(), block: d.block || '', date: d.date || new Date().toISOString() })
+  const uid = authStore.user?._id || authStore.user?.id || null
+  const personName = ((authStore.user && (String(authStore.user.firstName || '').trim() + ' ' + String(authStore.user.lastName || '').trim()).trim()) || '').trim()
+  const createdBy = d.createdBy || uid
+  // replace existing signature for same user (fallback to person name match)
+  const existingIdx = arr.findIndex((s: any) => (s && ((s.createdBy && String(s.createdBy) === String(createdBy)) || (!s.createdBy && String(s.person || '') === personName))))
+  const newSig = { title: String(d.title || '').trim(), person: String(d.person || '').trim(), role: String(d.role || '').trim(), block: d.block || '', date: d.date || new Date().toISOString(), createdBy }
+  if (existingIdx >= 0) arr[existingIdx] = newSig
+  else arr.push(newSig)
   emitSignatures(arr)
   drafts.value.splice(idx, 1)
 }
@@ -1616,11 +1778,27 @@ function removeDraft(idx: number) {
   drafts.value.splice(idx, 1)
 }
 
-function clearDraft(idx: number) {
+function onPadSavedDraft(idx: number, url: string) {
   const d = drafts.value[idx]
-  if (!d) return
-  d.block = ''
-  d.date = new Date().toISOString()
+  if (d) d.block = url
+  // delegate to existing saveDraft which will validate and emit
+  saveDraft(idx)
+}
+
+function onPadSavedEdited(idx: number, url: string) {
+  if (!editingDraft.value) return
+  editingDraft.value.block = url
+  saveEditedSignature(idx)
+}
+
+// Remove a saved signature at index and persist to parent
+function removeSignature(idx: number) {
+  try {
+    const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
+    if (idx < 0 || idx >= arr.length) return
+    arr.splice(idx, 1)
+    emitSignatures(arr)
+  } catch (e) { /* ignore */ }
 }
 
 // Auto-update draft timestamp when the signature block changes (auto-save metadata)
@@ -1632,11 +1810,7 @@ watch(drafts, (list) => {
   }
 }, { deep: true })
 
-function removeSignature(idx: number) {
-  const arr = Array.isArray(sigList.value) ? sigList.value.slice() : []
-  arr.splice(idx, 1)
-  emitSignatures(arr)
-}
+ 
 
 
 

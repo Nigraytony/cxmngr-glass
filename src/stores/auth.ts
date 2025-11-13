@@ -27,6 +27,12 @@ export interface User {
     };
     bio: string;
     avatar: string;
+      signature?: {
+        title?: string;
+        person?: string;
+        block?: string;
+      };
+      perPage?: number;
   },
   social_media?: {
     linkedin?: string;

@@ -82,6 +82,11 @@ function toPlainEquipment(doc) {
     try { e.functionalTests = JSON.parse(e.functionalTests) } catch { e.functionalTests = [] }
   }
   if (!Array.isArray(e.functionalTests)) e.functionalTests = []
+  // Back-compat: signatures may be stored as stringified JSON in some records
+  if (typeof e.fptSignatures === 'string') {
+    try { e.fptSignatures = JSON.parse(e.fptSignatures) } catch { e.fptSignatures = [] }
+  }
+  if (!Array.isArray(e.fptSignatures)) e.fptSignatures = []
   return e
 }
 
@@ -134,6 +139,18 @@ router.patch('/:id', auth, async (req, res) => {
 
     await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
     await runMiddleware(req, res, requireActiveProject);
+
+    // Server-side validation: ensure fptSignatures does not contain duplicate createdBy entries
+    if (req.body && Array.isArray(req.body.fptSignatures)) {
+      const seen = new Set()
+      for (const s of req.body.fptSignatures) {
+        if (s && s.createdBy) {
+          const id = String(s.createdBy)
+          if (seen.has(id)) return res.status(400).send({ error: 'Duplicate signature for the same user is not allowed' })
+          seen.add(id)
+        }
+      }
+    }
 
     const updated = await Equipment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) return res.status(404).send();

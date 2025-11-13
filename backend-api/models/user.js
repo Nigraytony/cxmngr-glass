@@ -28,6 +28,14 @@ const userSchema = new mongoose.Schema({
     },
     bio: { type: String, required: false }, // Optional biography or description
     avatar: { type: String, required: false }, // Optional avatar URL
+    // Optional profile signature (stored as simple strings; block typically a dataURL PNG)
+    signature: {
+      title: { type: String, required: false },
+      person: { type: String, required: false },
+      block: { type: String, required: false },
+    },
+    // Optional per-page preference for list pages (stored as a number of items per page)
+    perPage: { type: Number, required: false },
   },
   social_media: {
     linkedin: { type: String, required: false }, // Optional LinkedIn profile URL

@@ -238,13 +238,52 @@
           </div>
 
           <div class="mt-1">
-            <label class="block text-sm text-white/70">Location</label>
-            <input
-              v-model="form.location"
-              type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-              placeholder="Site / building / area"
-            >
+            <label class="block text-sm text-white/70">Space</label>
+            <div class="relative">
+              <input
+                v-model="spaceQuery"
+                type="text"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                placeholder="Search spaces by tag, title or parent..."
+                @input="onSpaceInput"
+                @keydown.down.prevent="onSpaceArrow(1)"
+                @keydown.up.prevent="onSpaceArrow(-1)"
+                @keydown.enter.prevent="chooseHighlightedSpace"
+                @keydown.esc="hideSpaceSuggestions"
+                @focus="showSpaceSuggestions = true"
+              >
+              <button
+                v-if="form.spaceId"
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                @click="clearSpace"
+                title="Clear selected space"
+              >
+                ✕
+              </button>
+
+              <div
+                v-if="showSpaceSuggestions && filteredSpaceSuggestions.length"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-white/20 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20 max-h-64 overflow-auto"
+              >
+                <div class="py-1">
+                  <button
+                    v-for="(s, i) in filteredSpaceSuggestions"
+                    :key="s.id || s._id"
+                    class="w-full px-3 py-2 text-left inline-flex items-center justify-between gap-3 text-white/90"
+                    :class="i === highlightedSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @mousedown.prevent="selectSpace(s)"
+                  >
+                    <span class="min-w-0 flex-1 truncate">
+                      <span class="font-medium">{{ s.tag || '(no tag)' }}</span>
+                      <span class="text-white/70 ml-2">{{ s.title }}</span>
+                    </span>
+                    <span class="text-xs text-white/60 truncate">{{ spaceParentChainLabel(s) }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <input type="hidden" v-model="form.spaceId">
           </div>
 
           <div class="md:col-span-2">
@@ -1532,6 +1571,8 @@ const form = reactive({
   endDate: '',
   projectId: '',
   location: '',
+  // selected space id (if chosen via the space picker)
+  spaceId: '',
   systems: [] as string[],
   comments: [] as any[],
   attachments: [] as any[],
@@ -1540,6 +1581,103 @@ const form = reactive({
 
 
 const systemsText = ref('')
+
+// Space fuzzy-picker state
+const spaceQuery = ref(form.location || '')
+const showSpaceSuggestions = ref(false)
+const highlightedSpaceIndex = ref(-1)
+
+function simpleFuzzyMatch(text: string, pattern: string) {
+  // subsequence match (characters in order)
+  if (!pattern) return true
+  let pi = 0
+  for (let i = 0; i < text.length && pi < pattern.length; i++) {
+    if (text[i] === pattern[pi]) pi++
+  }
+  return pi === pattern.length
+}
+
+const allSpaces = computed(() => (spacesStore.items || []).map(s => s))
+
+const filteredSpaceSuggestions = computed(() => {
+  const q = (spaceQuery.value || '').trim().toLowerCase()
+  if (!q) return allSpaces.value.slice(0, 50)
+  const out: any[] = []
+  for (const s of allSpaces.value) {
+    const tag = String(s.tag || '').toLowerCase()
+    const title = String(s.title || '').toLowerCase()
+    // parent chain label
+    const chain = String(spaceParentChainLabel(s)).toLowerCase()
+    if (tag.includes(q) || title.includes(q) || chain.includes(q) || simpleFuzzyMatch(tag + ' ' + title + ' ' + chain, q)) {
+      out.push(s)
+    }
+    if (out.length >= 200) break
+  }
+  return out
+})
+
+function spaceParentChainLabel(s: any) {
+  try {
+    const parts: string[] = []
+    let cur: any = s
+    // walk up parents to build Parent > Child chain (limit depth to avoid cycles)
+    let depth = 0
+    while (cur && depth < 10) {
+      const title = String(cur.title || cur.tag || '')
+      if (title) parts.unshift(title)
+      const pid = cur.parentSpace || cur.parent || null
+      if (!pid) break
+      cur = (spacesStore as any).byId?.[String(pid)] || (spacesStore.items || []).find((x: any) => String(x.id || x._id) === String(pid))
+      depth++
+    }
+    return parts.join(' > ')
+  } catch (e) { return '' }
+}
+
+function onSpaceInput() {
+  highlightedSpaceIndex.value = -1
+  showSpaceSuggestions.value = true
+}
+
+function onSpaceArrow(dir: number) {
+  const len = filteredSpaceSuggestions.value.length
+  if (!len) return
+  let idx = highlightedSpaceIndex.value
+  if (idx === -1) idx = dir > 0 ? -1 : 0
+  idx = (idx + dir + len) % len
+  highlightedSpaceIndex.value = idx
+}
+
+function chooseHighlightedSpace() {
+  const idx = highlightedSpaceIndex.value
+  const list = filteredSpaceSuggestions.value
+  if (idx >= 0 && idx < list.length) selectSpace(list[idx])
+  else if (list.length === 1) selectSpace(list[0])
+}
+
+function hideSpaceSuggestions() {
+  showSpaceSuggestions.value = false
+  highlightedSpaceIndex.value = -1
+}
+
+function selectSpace(s: any) {
+  try {
+    const id = String(s.id || s._id || '')
+    form.spaceId = id
+    // Use the Parent > ... > Child breadcrumb chain for the input display
+    const chain = spaceParentChainLabel(s) || (s.title || s.tag || '')
+    form.location = chain
+    spaceQuery.value = chain
+  } catch (e) { /* ignore */ }
+  hideSpaceSuggestions()
+}
+
+function clearSpace() {
+  form.spaceId = ''
+  form.location = ''
+  spaceQuery.value = ''
+  hideSpaceSuggestions()
+}
 
 const crumbs = computed(() => [
   { text: 'Dashboard', to: '/' },
@@ -1591,12 +1729,17 @@ async function save() {
     return
   }
   const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  // Ensure projectId is always present (fallback to current project if needed)
+  payload.projectId = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
   try {
     saving.value = true
     if (isNew.value) {
+      // Debug: show project context when attempting to create an activity
+  try { console.debug('[activity-save] creating activity', { payloadProjectId: payload.projectId, formProjectId: form.projectId, currentProjectId: projectStore.currentProjectId }) } catch (e) { console.debug('[activity-save] debug log error', e) }
       const created = await store.createActivity(payload)
       router.replace({ name: 'activity-edit', params: { id: created.id || created._id } })
     } else {
+  try { console.debug('[activity-save] updating activity', { payloadProjectId: payload.projectId, formProjectId: form.projectId, currentProjectId: projectStore.currentProjectId }) } catch (e) { console.debug('[activity-save] debug log error', e) }
       await store.updateActivity(id.value, payload)
     }
     ui.showSuccess('Activity saved')
@@ -1613,7 +1756,8 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   if (isNew.value) {
     if (!pendingCreatedId.value) {
       // Create the activity without navigating yet to avoid unmount during batch
-      const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  payload.projectId = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
       const created = await store.createActivity(payload)
       pendingCreatedId.value = String(created.id || created._id)
     }

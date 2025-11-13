@@ -775,6 +775,7 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
+import { useAuthStore } from '../../stores/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import * as XLSX from 'xlsx'
 import { useRouter } from 'vue-router'
@@ -783,6 +784,7 @@ const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const ui = useUiStore()
 const router = useRouter()
+const auth = useAuthStore()
 
 const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'Roof']
 
@@ -863,7 +865,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 
 // Pagination (list view only)
 const page = ref(1)
-const pageSize = ref(10)
+// seed pageSize from user's profile perPage preference when available
+const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 10)
 const totalFiltered = computed(() => filtered.value.length)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalFiltered.value / pageSize.value)))
 const pageStart = computed(() => {

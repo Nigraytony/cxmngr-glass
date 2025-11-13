@@ -3,6 +3,13 @@ import { defineStore } from 'pinia'
 export const useUiStore = defineStore('ui', {
   state: () => ({
     sidebarOpen: true,
+    // Persisted UI preferences
+    showSignatures: (() => {
+      try {
+        const v = localStorage.getItem('ui.showSignatures')
+        return v ? JSON.parse(v) : false
+      } catch (e) { return false }
+    })(),
     // toast state
     toast: {
       show: false,
@@ -39,6 +46,11 @@ export const useUiStore = defineStore('ui', {
     },
     hideToast() {
       this.toast.show = false
+    }
+    ,
+    setShowSignatures(val) {
+      this.showSignatures = !!val
+      try { localStorage.setItem('ui.showSignatures', JSON.stringify(this.showSignatures)) } catch (e) { /* ignore */ }
     }
   }
 })

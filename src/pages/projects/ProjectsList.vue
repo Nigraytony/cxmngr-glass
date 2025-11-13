@@ -578,7 +578,8 @@ function goNextFromDetails() {
 
 // Pagination
 const page = ref(1)
-const pageSize = ref(5)
+// Initialize pageSize from the user's profile preference when available
+const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 5)
 const pageSizes = [5, 10, 20]
 
 const statusFilter = ref('All')

@@ -26,6 +26,7 @@ export interface Equipment {
   issues?: string[]
   checklists?: any
   functionalTests?: any
+  fptSignatures?: any
   images?: any
   attachments?: any
   components?: Array<{
