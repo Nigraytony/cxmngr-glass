@@ -601,6 +601,7 @@ const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
 
 const id = computed(() => String(route.params.id || ''))
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isNew = computed(() => id.value === 'new')
 
 const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'Roof']

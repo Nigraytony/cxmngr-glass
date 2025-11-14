@@ -20,6 +20,8 @@ const activitySchema = new mongoose.Schema({
   // reviewer info and location
   reviewer: { _id: mongoose.Schema.Types.ObjectId, firstName: String, lastName: String, email: String },
   location: { type: String },
+  // linked space (optional) - stores the selected Space id when chosen via the UI
+  spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space' },
   // list of systems/equipment inspected
   systems: [{ type: String }],
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -45,6 +47,7 @@ activitySchema.pre('save', function (next) {
 activitySchema.index({ projectId: 1 })
 activitySchema.index({ startDate: 1 })
 activitySchema.index({ 'comments.userId': 1 })
+activitySchema.index({ spaceId: 1 })
 
 const Activity = mongoose.model('Activity', activitySchema);
 

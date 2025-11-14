@@ -105,12 +105,18 @@
                     <div class="flex items-center gap-3">
                       <!-- Status badge (invited, rejected, active, etc.) -->
                       <div
-                        v-if="member.status || member.inviteStatus"
-                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]"
+                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus || (member._id ? 'active' : 'invited'))]"
                       >
-                        {{ (member.status || member.inviteStatus) ? (member.status || member.inviteStatus) : 'status' }}
+                        {{ statusLabel(member) }}
                       </div>
                       <div class="flex gap-2">
+                        <button
+                          v-if="isProjectAdmin"
+                          class="px-3 py-1 rounded bg-white/6"
+                          @click.prevent="openPermsModal(member)"
+                        >
+                          Permissions
+                        </button>
                         <button
                           class="px-3 py-1 rounded bg-red-500/20 text-red-400"
                           @click="removeMember(member)"
@@ -132,12 +138,12 @@
                       <input
                         v-model="newMember.firstName"
                         placeholder="First"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                       <input
                         v-model="newMember.lastName"
                         placeholder="Last"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                     </div>
 
@@ -146,60 +152,97 @@
                       <input
                         v-model="newMember.email"
                         placeholder="Email"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                       <input
                         v-model="newMember.company"
                         placeholder="Company"
-                        class="rounded p-2 bg-white/5 w-full"
+                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                       >
                       <select
                         v-model="newMember.role"
                         class="rounded p-2 bg-white/5 w-full"
                       >
-                        <option value="admin">
-                          admin
-                        </option>
-                        <option value="CxA">
-                          CxA
-                        </option>
-                        <option value="GC">
-                          GC
-                        </option>
-                        <option value="CM">
-                          CM
-                        </option>
-                        <option value="Architect">
-                          Architect
-                        </option>
-                        <option value="Designer">
-                          Designer
-                        </option>
-                        <option value="Mechanical Contractor">
-                          Mechanical Contractor
-                        </option>
-                        <option value="Electrical Contractor">
-                          Electrical Contractor
-                        </option>
-                        <option value="Plumbing Contractor">
-                          Plumbing Contractor
-                        </option>
-                        <option value="Controls Contractor">
-                          Controls Contractor
-                        </option>
-                        <option value="Life Safety Contractor">
-                          Life Safety Contractor
-                        </option>
-                        <option value="Other Contractor">
-                          Other Contractor
-                        </option>
-                        <option value="Client">
-                          Client
-                        </option>
-                        <option value="User">
-                          User
-                        </option>
+                        <template v-if="roleTemplates && roleTemplates.length">
+                          <option
+                            v-for="rt in roleTemplates"
+                            :key="rt._id || rt.id"
+                            :value="rt.name"
+                          >
+                            {{ rt.name }}
+                          </option>
+                        </template>
+                        <template v-else>
+                          <option value="admin">
+                            admin
+                          </option>
+                          <option value="CxA">
+                            CxA
+                          </option>
+                          <option value="GC">
+                            GC
+                          </option>
+                          <option value="CM">
+                            CM
+                          </option>
+                          <option value="Architect">
+                            Architect
+                          </option>
+                          <option value="Designer">
+                            Designer
+                          </option>
+                          <option value="Mechanical Contractor">
+                            Mechanical Contractor
+                          </option>
+                          <option value="Electrical Contractor">
+                            Electrical Contractor
+                          </option>
+                          <option value="Plumbing Contractor">
+                            Plumbing Contractor
+                          </option>
+                          <option value="Controls Contractor">
+                            Controls Contractor
+                          </option>
+                          <option value="Life Safety Contractor">
+                            Life Safety Contractor
+                          </option>
+                          <option value="Other Contractor">
+                            Other Contractor
+                          </option>
+                          <option value="Client">
+                            Client
+                          </option>
+                          <option value="User">
+                            User
+                          </option>
+                        </template>
                       </select>
+                    </div>
+
+                    <div
+                      v-if="selectedRoleTemplate"
+                      class="px-2 py-1 text-sm text-white/70 bg-white/3 rounded"
+                    >
+                      <div class="font-medium">
+                        Permissions for "{{ selectedRoleTemplate.name }}"
+                      </div>
+                      <div class="mt-1 text-xs">
+                        <template v-if="Array.isArray(selectedRoleTemplate.permissions) && selectedRoleTemplate.permissions.length">
+                          <ul class="list-disc pl-4">
+                            <li
+                              v-for="perm in selectedRoleTemplate.permissions"
+                              :key="perm"
+                            >
+                              {{ perm }}
+                            </li>
+                          </ul>
+                        </template>
+                        <template v-else>
+                          <div class="text-xs text-white/60">
+                            No explicit permissions on template
+                          </div>
+                        </template>
+                      </div>
                     </div>
 
                     <div class="text-right">
@@ -540,6 +583,188 @@
                     Applies to the Issues list for this project. Saved locally.
                   </p>
                 </div>
+              
+                <!-- Roles card: project-scoped role templates -->
+                <div
+                  class="mt-6 rounded p-3 bg-white/5"
+                >
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="font-medium">
+                      Roles
+                    </div>
+                    <div>
+                      <button
+                        v-if="isProjectAdmin"
+                        aria-label="Create role template"
+                        class="w-10 h-10 grid place-items-center rounded-lg bg-emerald-500 text-white border border-white/8 hover:bg-emerald-600"
+                        @click="openRoleModal(null)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          class="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <path
+                            d="M12 5v14M5 12h14"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    v-if="!displayedRoleTemplates.length"
+                    class="text-sm text-white/70"
+                  >
+                    No project role templates.
+                  </div>
+                  <div class="space-y-2">
+                    <div
+                      v-for="rt in displayedRoleTemplates"
+                      :key="rt._id || rt.id"
+                      class="p-1 rounded"
+                    >
+                      <div
+                        class="p-3 rounded bg-white/6 cursor-pointer"
+                        @click.prevent="toggleRoleOpen(rt._id || rt.id)"
+                      >
+                        <div class="flex items-start justify-between">
+                          <div>
+                            <div class="font-medium text-white">
+                              {{ rt.name }}
+                            </div>
+                            <div class="text-xs text-white/70">
+                              {{ rt.description }}
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <div class="text-xs text-white/60 mr-2">
+                              {{ (rt.permissions || []).length }} perms
+                            </div>
+                            <div class="flex gap-2">
+                              <div
+                                v-if="isProjectAdmin"
+                                class="relative inline-block group"
+                              >
+                                <button
+                                  aria-label="Edit role"
+                                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                                  @click.stop.prevent="openRoleModal(rt)"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                                <div
+                                  role="tooltip"
+                                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                                >
+                                  Edit
+                                </div>
+                              </div>
+
+                              <div
+                                v-if="isProjectAdmin"
+                                class="relative inline-block group"
+                              >
+                                <button
+                                  aria-label="Delete role"
+                                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white border border-white/8"
+                                  @click.stop.prevent="deleteRoleTemplate(rt)"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    class="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"
+                                      stroke-width="1.5"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+                                <div
+                                  role="tooltip"
+                                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                                >
+                                  Delete
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        v-show="isRoleOpen(rt._id || rt.id)"
+                        class="mt-2 p-3 rounded bg-white/5"
+                      >
+                        <div class="grid grid-cols-2 gap-3 max-h-[260px] overflow-auto text-sm text-white/80">
+                          <div
+                            v-for="(ops, resource) in permMatrix"
+                            :key="resource"
+                            class="p-2 rounded"
+                          >
+                            <div class="font-medium text-white mb-2">
+                              {{ resource }}
+                            </div>
+                            <div class="grid grid-cols-4 gap-2 text-sm">
+                              <label
+                                v-for="op in ops"
+                                :key="op"
+                                class="inline-flex items-center gap-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  :checked="isPermChecked(rt._id || rt.id, `${resource}.${op}`)"
+                                  @change="togglePerm(rt._id || rt.id, `${resource}.${op}`)"
+                                >
+                                <span class="capitalize text-white/80">{{ op }}</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="mt-3 text-right">
+                          <button
+                            v-if="isProjectAdmin"
+                            class="px-3 py-1 rounded bg-white/6 mr-2"
+                            @click="cancelRoleEdits(rt._id || rt.id, rt)"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            v-if="isProjectAdmin"
+                            class="px-3 py-1 rounded bg-emerald-500 text-white"
+                            :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
+                            @click="saveRoleInline(rt)"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -687,21 +912,109 @@
       </div>
     </div>
   </section>
+  <!-- Role Template editor modal -->
+  <Modal
+    v-model="showRoleModal"
+    panel-class="max-w-[720px]"
+  >
+    <template #header>
+      <div class="font-medium text-white">
+        {{ editingRoleTemplate && editingRoleTemplate._id ? 'Edit Role Template' : 'Create Role Template' }}
+      </div>
+    </template>
+
+    <div class="mb-3 text-sm text-white/80">
+      <label class="block mb-1">Name</label>
+      <input
+        v-model="editingRoleTemplate.name"
+        class="w-full p-2 rounded bg-white/5 border border-white/10"
+      >
+    </div>
+    <div class="mb-3 text-sm text-white/80">
+      <label class="block mb-1">Description</label>
+      <input
+        v-model="editingRoleTemplate.description"
+        class="w-full p-2 rounded bg-white/5 border border-white/10"
+      >
+    </div>
+    <div class="mb-3 text-sm text-white/80">
+      <label class="block mb-1">Permissions</label>
+      <div class="grid grid-cols-2 gap-3 max-h-[340px] overflow-auto mb-3">
+        <div
+          v-for="(ops, resource) in permMatrix"
+          :key="resource"
+          class="p-3 rounded bg-white/5"
+        >
+          <div class="font-medium mb-2">
+            {{ resource }}
+          </div>
+          <div class="grid grid-cols-4 gap-2 text-sm">
+            <label
+              v-for="op in ops"
+              :key="op"
+              class="inline-flex items-center gap-2"
+            >
+              <input
+                v-model="selectedRolePermsArray"
+                type="checkbox"
+                :value="`${resource}.${op}`"
+              >
+              <span class="capitalize">{{ op }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="mt-3 text-right w-full">
+        <button
+          v-if="editingRoleTemplate && editingRoleTemplate._id"
+          class="px-3 py-1 rounded bg-red-500/20 text-red-400 mr-2"
+          @click="deleteRoleTemplate(editingRoleTemplate)"
+        >
+          Delete
+        </button>
+        <button
+          class="px-3 py-1 rounded bg-white/6 mr-2"
+          @click="closeRoleModal"
+        >
+          Cancel
+        </button>
+        <button
+          class="px-3 py-1 rounded bg-emerald-500 text-white"
+          @click="saveRoleTemplate"
+        >
+          Save
+        </button>
+      </div>
+    </template>
+  </Modal>
+  <PermissionsModal
+    v-if="showPermsModal && modalMember"
+    :visible="showPermsModal"
+    :member="modalMember"
+    :project-id="projectId"
+    :role-templates="(project && project.roleTemplates) ? project.roleTemplates : roleTemplates"
+    @close="closePermsModal"
+    @saved="onMemberPermissionsSaved"
+  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
+import Modal from '../../components/Modal.vue'
 import { useUiStore } from '../../stores/ui'
-import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
 import http from '../../utils/http'
 import { apiUrl } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
-import { confirm as inlineConfirm } from '../../utils/confirm'
+import PermissionsModal from '../../components/PermissionsModal.vue'
+// inlineConfirm removed (unused in this file)
 
 const projectStore = useProjectStore()
 const route = useRoute()
@@ -718,11 +1031,437 @@ const endDateText = ref('')
 const logsLimit = ref(200)
 const formErrors = ref({})
 const ui = useUiStore()
-const auth = useAuthStore()
 const clientFileInput = ref(null)
 const cxaFileInput = ref(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
 const invites = ref([])
+const roleTemplates = ref([])
+// Dedicated UI list that always preserves all visible roles
+const roleTemplatesView = ref([])
+const authStore = useAuthStore()
+
+// Modal-based permissions editor state & handlers
+const showPermsModal = ref(false)
+const modalMember = ref(null)
+
+function openPermsModal(member) {
+  modalMember.value = member
+  showPermsModal.value = true
+}
+
+function closePermsModal() {
+  modalMember.value = null
+  showPermsModal.value = false
+}
+
+async function onMemberPermissionsSaved() {
+  try {
+    await refreshProject()
+    ui.showSuccess('Member permissions updated')
+  } catch (err) {
+    console.error('onMemberPermissionsSaved error', err)
+  }
+  closePermsModal()
+}
+
+// Role template editor modal state & handlers
+const showRoleModal = ref(false)
+const editingRoleTemplate = ref({ name: '', description: '', permissionsText: '' })
+const selectedRolePerms = ref(new Set())
+const permMatrix = {
+  issues: ['create', 'read', 'update', 'delete'],
+  activities: ['create', 'read', 'update', 'delete'],
+  equipment: ['create', 'read', 'update', 'delete'],
+  templates: ['create', 'read', 'update', 'delete'],
+  spaces: ['create', 'read', 'update', 'delete'],
+  projects: ['create', 'read', 'update', 'delete']
+}
+
+// Accordion state for role templates in the Settings card
+const openRoles = ref(new Set())
+
+const selectedRolePermsArray = computed({
+  get() { return Array.from(selectedRolePerms.value) },
+  set(v) { selectedRolePerms.value = new Set(Array.isArray(v) ? v : []) }
+})
+
+// Inline editing state for role templates
+const roleEdits = ref({}) // map roleId -> Set
+
+function getTemplateById(id) {
+  try {
+    const list = displayedRoleTemplates.value || []
+    return list.find(r => (r && ((r._id || r.id) === id))) || null
+  } catch (e) { return null }
+}
+
+function toggleRoleOpen(id) {
+  try {
+    if (!id) return
+    const s = new Set(openRoles.value)
+    if (s.has(id)) {
+      s.delete(id)
+    } else {
+      s.add(id)
+      // initialize edits snapshot when opening
+      if (!roleEdits.value[id]) {
+        const tpl = getTemplateById(id)
+        const perms = Array.isArray(tpl?.permissions) ? tpl.permissions : []
+        roleEdits.value = Object.assign({}, roleEdits.value, { [id]: new Set(perms) })
+      }
+    }
+    openRoles.value = s
+  } catch (e) { /* ignore */ }
+}
+
+function isRoleOpen(id) {
+  try { return openRoles.value.has(id) } catch (e) { return false }
+}
+
+function isPermChecked(roleId, perm) {
+  try {
+    const s = roleEdits.value[roleId]
+    if (s) return s.has(perm)
+    const tpl = getTemplateById(roleId)
+    return Array.isArray(tpl?.permissions) && tpl.permissions.includes(perm)
+  } catch (e) { return false }
+}
+
+function togglePerm(roleId, perm) {
+  try {
+    const current = roleEdits.value[roleId] || new Set()
+    const s = new Set(current)
+    if (s.has(perm)) s.delete(perm)
+    else s.add(perm)
+    roleEdits.value = Object.assign({}, roleEdits.value, { [roleId]: s })
+  } catch (e) { /* ignore */ }
+}
+
+function hasRoleChanges(roleId, tpl) {
+  try {
+    const s = roleEdits.value[roleId]
+    if (!s) return false
+    const orig = Array.isArray(tpl?.permissions) ? tpl.permissions : []
+    const a = Array.from(s).sort()
+    const b = Array.from(new Set(orig)).sort()
+    return JSON.stringify(a) !== JSON.stringify(b)
+  } catch (e) { return false }
+}
+
+function cancelRoleEdits(roleId, tpl) {
+  try {
+    const perms = Array.isArray(tpl?.permissions) ? tpl.permissions : []
+    roleEdits.value = Object.assign({}, roleEdits.value, { [roleId]: new Set(perms) })
+  } catch (e) { /* ignore */ }
+}
+
+async function saveRoleInline(tpl) {
+  try {
+    const id = tpl._id || tpl.id
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!id || !pid) return ui.showError('Missing project or role id')
+    const perms = Array.from(roleEdits.value[id] || [])
+    const body = { permissions: perms }
+    
+    const resp = await http.put(`/api/projects/${pid}/roles/${id}`, body, { headers: getAuthHeaders() })
+    ui.showSuccess('Role template updated')
+    // update local template
+    try {
+      // Handle different possible response structures
+      let updated = null
+      if (resp && resp.data) {
+        // Check for nested roleTemplate object first
+        updated = resp.data.roleTemplate || 
+                 // Check if the response data itself is the role template
+                 (resp.data._id || resp.data.id ? resp.data : null) ||
+                 // Handle array response
+                 (Array.isArray(resp.data) && resp.data.length > 0 ? resp.data[0] : null)
+      }
+      
+      if (updated && project.value) {
+        // Build from the current UI list to preserve all items
+        const list = Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length
+          ? [...roleTemplatesView.value]
+          : (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length
+            ? [...project.value.roleTemplates]
+            : (Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []))
+
+        // Update the specific role in the complete list
+        const idx = list.findIndex(r => (r && ((r._id || r.id) === id)))
+        if (idx >= 0) {
+          list[idx] = updated
+        } else {
+          list.unshift(updated)
+        }
+
+        // Update project and the stable UI list with the complete roles
+        project.value = { ...project.value, roleTemplates: list }
+        roleTemplatesView.value = list
+      }
+      if (updated && Array.isArray(roleTemplates.value)) {
+        const g = [...roleTemplates.value]
+        const gi = g.findIndex(r => (r && ((r._id || r.id) === id)))
+        if (gi >= 0) {
+          g.splice(gi, 1, updated)
+        } else {
+          g.unshift(updated)
+        }
+        roleTemplates.value = g
+      }
+    } catch (e) { 
+      console.warn('Local role template inline update failed:', e)
+    }
+    // Refresh project to ensure full, authoritative role list is shown after inline save
+    try { await refreshProject() } catch (e) { /* ignore */ }
+  } catch (err) {
+    console.error('saveRoleInline error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to save role')
+  }
+}
+
+function openRoleModal(template) {
+  if (template && (template._id || template.id)) {
+    // editing existing
+    editingRoleTemplate.value = {
+      _id: template._id || template.id,
+      name: template.name || '',
+      description: template.description || '',
+      permissionsText: Array.isArray(template.permissions) ? template.permissions.join('\n') : ''
+    }
+    // initialize selectedRolePerms from template
+    selectedRolePerms.value = new Set(Array.isArray(template.permissions) ? template.permissions : [])
+  } else {
+    editingRoleTemplate.value = { name: '', description: '', permissionsText: '' }
+    selectedRolePerms.value = new Set()
+  }
+  showRoleModal.value = true
+}
+
+function closeRoleModal() {
+  showRoleModal.value = false
+}
+
+async function saveRoleTemplate() {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return ui.showError('No project selected')
+    const body = {
+      name: editingRoleTemplate.value.name || '',
+      description: editingRoleTemplate.value.description || '',
+      permissions: Array.from(selectedRolePerms.value)
+    }
+    if (editingRoleTemplate.value._id) {
+      const resp = await http.put(`/api/projects/${pid}/roles/${editingRoleTemplate.value._id}`, body, { headers: getAuthHeaders() })
+      ui.showSuccess('Role template updated')
+      // Update local project roleTemplates so the UI reflects changes immediately
+      try {
+        // Handle different possible response structures
+        let updated = null
+        if (resp && resp.data) {
+          // Check for nested roleTemplate object first
+          updated = resp.data.roleTemplate || 
+                   // Check if the response data itself is the role template
+                   (resp.data._id || resp.data.id ? resp.data : null) ||
+                   // Handle array response
+                   (Array.isArray(resp.data) && resp.data.length > 0 ? resp.data[0] : null)
+        }
+        
+        if (updated) {
+          // Build from the current UI list to preserve all items
+          const list = Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length
+            ? [...roleTemplatesView.value]
+            : (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length
+              ? [...project.value.roleTemplates]
+              : (Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []))
+          const idx = list.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
+          if (idx >= 0) {
+            // Replace the existing role
+            list.splice(idx, 1, updated)
+          } else {
+            // Add the new role
+            list.push(updated)
+          }
+          // Force reactive update by creating new reference
+          if (project.value) {
+            project.value = { ...project.value, roleTemplates: list }
+          }
+          // Update the stable UI list
+          roleTemplatesView.value = list
+          
+          // Also update global roleTemplates array for consistency
+          const globalList = Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []
+          const globalIdx = globalList.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
+          if (globalIdx >= 0) {
+            globalList.splice(globalIdx, 1, updated)
+          } else {
+            globalList.push(updated)
+          }
+          roleTemplates.value = globalList
+        }
+      } catch (e) { 
+        console.warn('Local role template update failed:', e)
+      }
+    } else {
+      const resp = await http.post(`/api/projects/${pid}/roles`, body, { headers: getAuthHeaders() })
+      ui.showSuccess('Role template created')
+      // Insert created role into local project roleTemplates so it shows immediately
+      try {
+        // Handle different possible response structures
+        let created = null
+        if (resp && resp.data) {
+          // Check for nested roleTemplate object first
+          created = resp.data.roleTemplate || 
+                   // Check if the response data itself is the role template
+                   (resp.data._id || resp.data.id ? resp.data : null) ||
+                   // Handle array response
+                   (Array.isArray(resp.data) && resp.data.length > 0 ? resp.data[0] : null)
+        }
+        
+        if (created) {
+          // Build from the current UI list to preserve all items
+          const list = Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length
+            ? [...roleTemplatesView.value]
+            : (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length
+              ? [...project.value.roleTemplates]
+              : (Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []))
+          // Add the new role at the beginning
+          list.unshift(created)
+          // Force reactive update by creating new reference
+          if (project.value) {
+            project.value = { ...project.value, roleTemplates: list }
+          }
+          // Update the stable UI list
+          roleTemplatesView.value = list
+          
+          // Also update global roleTemplates array for consistency
+          const globalList = Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []
+          const existingIdx = globalList.findIndex(r => (r && ((r._id || r.id) === (created._id || created.id))))
+          if (existingIdx >= 0) {
+            globalList.splice(existingIdx, 1, created)
+          } else {
+            globalList.unshift(created)
+          }
+          roleTemplates.value = globalList
+        }
+      } catch (e) { 
+        console.warn('Local role template creation failed:', e)
+      }
+    }
+    // Close modal immediately after successful local update
+    // Note: Removed refreshProject() call to prevent clearing roles due to timing/permission issues
+    closeRoleModal()
+  } catch (err) {
+    console.error('saveRoleTemplate error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to save role template')
+  }
+}
+
+async function deleteRoleTemplate(tpl) {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return ui.showError('No project selected')
+    const id = tpl._id || tpl.id || editingRoleTemplate.value._id
+    if (!id) return ui.showError('No template selected')
+    if (!confirm('Delete this role template?')) return
+      await http.delete(`/api/projects/${pid}/roles/${id}`, { headers: getAuthHeaders() })
+      ui.showSuccess('Role template deleted')
+      // remove locally so UI updates immediately
+      try {
+        // Get the source of currently displayed roles directly (avoid computed property circular dependency)
+        let currentlyDisplayed = []
+        if (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
+          currentlyDisplayed = [...project.value.roleTemplates]
+        } else if (Array.isArray(roleTemplates.value)) {
+          currentlyDisplayed = [...roleTemplates.value]
+        }
+        
+        // Remove the deleted role from the currently displayed roles
+        const filteredTemplates = currentlyDisplayed.filter(r => ((r._id || r.id) !== id))
+        
+        // Update project roleTemplates
+        if (project.value) {
+          project.value = { ...project.value, roleTemplates: filteredTemplates }
+        }
+        
+        // Also update global roleTemplates cache if present
+        if (Array.isArray(roleTemplates.value)) {
+          roleTemplates.value = [...roleTemplates.value.filter(r => ((r._id || r.id) !== id))]
+        }
+      } catch (e) { 
+        console.warn('Local role template deletion failed:', e)
+      }
+      // Note: Removed refreshProject() call to prevent clearing roles due to timing/permission issues
+      closeRoleModal()
+  } catch (err) {
+    console.error('deleteRoleTemplate error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to delete role template')
+  }
+}
+
+async function fetchRoleTemplates() {
+  try {
+    // Only global admins should call admin endpoints to avoid 403 noise in console
+    const userRole = String((authStore.user && authStore.user.role) || '').toLowerCase()
+    const isGlobalAdmin = userRole === 'globaladmin' || userRole === 'superadmin'
+    if (!isGlobalAdmin) {
+      roleTemplates.value = []
+      return
+    }
+
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    const globalResp = await http.get('/api/admin/roles?scope=global', { headers: getAuthHeaders(), validateStatus: (s) => s >= 200 && s < 300 })
+    let list = Array.isArray(globalResp.data) ? globalResp.data : []
+    if (pid) {
+      try {
+        const resp = await http.get(`/api/admin/roles?scope=project&projectId=${pid}`, { headers: getAuthHeaders(), validateStatus: (s) => s >= 200 && s < 300 })
+        if (Array.isArray(resp.data)) list = list.concat(resp.data)
+      } catch (e) {
+        // ignore project-scoped fetch failures (likely permission)
+      }
+    }
+    roleTemplates.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    // leave roleTemplates empty on any failure
+    roleTemplates.value = []
+  }
+}
+
+const selectedRoleTemplate = computed(() => {
+  try {
+    const rv = roleTemplates.value || []
+    return rv.find(r => r && (r.name === (newMember.value.role || '')) ) || null
+  } catch (e) { return null }
+})
+
+// Computed property for roles to display - prefer the stable UI list first
+const displayedRoleTemplates = computed(() => {
+  try {
+    if (Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length > 0) {
+      return roleTemplatesView.value
+    }
+    if (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
+      return project.value.roleTemplates
+    }
+    return Array.isArray(roleTemplates.value) ? roleTemplates.value : []
+  } catch (e) {
+    return []
+  }
+})
+// Determine whether current auth user is a project admin (team role 'admin' or 'CxA')
+const currentProjectMember = computed(() => {
+  try {
+    const me = authStore.user
+    if (!me || !project.value || !Array.isArray(project.value.team)) return null
+    return project.value.team.find((t) => (String(t._id) === String(me._id) || String((t.email || '')).toLowerCase() === String((me.email || '')).toLowerCase())) || null
+  } catch (e) { return null }
+})
+
+const isProjectAdmin = computed(() => {
+  const m = currentProjectMember.value
+  if (!m) return false
+  const r = String(m.role || '').toLowerCase()
+  return r === 'admin' || r === 'cxa' || r === 'cxa' || r === 'cxa'
+})
 // use auth store token; fall back to localStorage if necessary
 
 const tagsText = computed({
@@ -761,6 +1500,19 @@ onMounted(async () => {
       const p = await projectStore.fetchProject(projectId)
       project.value = { ...p }
       if (!project.value.searchMode) project.value.searchMode = 'substring'
+      // attempt to load role templates for richer role selection (global admins only)
+      try {
+        const role = String((authStore.user && authStore.user.role) || '').toLowerCase()
+        if (role === 'globaladmin' || role === 'superadmin') {
+          await fetchRoleTemplates()
+        }
+      } catch (e) { /* ignore */ }
+      // Seed UI list from project on first load
+      if (Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
+        roleTemplatesView.value = project.value.roleTemplates.slice()
+      } else if (Array.isArray(roleTemplates.value) && roleTemplates.value.length > 0) {
+        roleTemplatesView.value = roleTemplates.value.slice()
+      }
     } catch (e) {
       ui.showError('Failed to load project')
       router.push('/projects')
@@ -806,13 +1558,17 @@ async function loadInvites() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
-  const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
     invites.value = data || []
   } catch (err) {
-    console.error('loadInvites error', err)
+    const status = err?.response?.status
+    if (status !== 404) {
+      console.error('loadInvites error', err)
+    }
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function resendInvite(inviteId) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
@@ -921,10 +1677,20 @@ function statusBadgeClass(status) {
   return 'bg-white/6 text-white/80 border border-white/10'
 }
 
+function statusLabel(member) {
+  const raw = member && (member.status || member.inviteStatus) ? String(member.status || member.inviteStatus) : (member && member._id ? 'active' : 'invited')
+  const s = String(raw || '').toLowerCase()
+  if (s === 'invited' || s === 'pending') return 'Invited'
+  if (s === 'rejected' || s === 'declined') return 'Rejected'
+  if (s === 'active' || s === 'accepted' || s === 'member') return 'Active'
+  // fallback: humanize
+  return String(raw).toString()
+}
+
 async function addMember() {
   if (!newMember.value.email) return ui.showError('Email required')
   // do not provide _id here; let the backend/mongoose generate a proper ObjectId for subdocs
-  const member = { ...newMember.value }
+  // member variable not used directly; payload built from newMember.value below
   // Prefer calling the dedicated addUser API so the server can create an Invitation
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
@@ -1119,8 +1885,23 @@ async function refreshProject() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
+    const prevRoleTemplates = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates.slice() : (Array.isArray(roleTemplates.value) ? roleTemplates.value.slice() : [])
     const p = await projectStore.fetchProject(pid);
+    // If backend returned no roleTemplates (possible due to permissions), preserve existing local templates
+    if (!Array.isArray(p.roleTemplates) || p.roleTemplates.length === 0) {
+      p.roleTemplates = prevRoleTemplates.slice()
+    }
     project.value = { ...p };
+    // Keep the UI list in sync with authoritative project data when it includes roles
+    if (Array.isArray(p.roleTemplates) && p.roleTemplates.length > 0) {
+      roleTemplatesView.value = p.roleTemplates.slice()
+    }
+    try {
+      const role = String((authStore.user && authStore.user.role) || '').toLowerCase()
+      if (role === 'globaladmin' || role === 'superadmin') {
+        await fetchRoleTemplates()
+      }
+    } catch (e) { /* ignore */ }
   } catch (err) {
     console.error('refreshProject error', err);
   }
@@ -1135,7 +1916,6 @@ watch(project, (pv) => {
 async function startCheckout() {
   loading.value = true;
   try {
-  const authToken = auth.token || '';
     const pid = projectId || (project.value && (project.value._id || project.value.id));
   console.log('startCheckout -> sending', { projectId: pid, priceId: selectedPrice.value, url: apiUrl('/api/stripe/create-checkout-session') });
     if (!pid) {
@@ -1165,7 +1945,6 @@ async function startCheckout() {
 async function openBillingPortal() {
   loading.value = true;
   try {
-  const authToken = auth.token || '';
   console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
     const { data } = await http.post('/api/stripe/portal-session', {}, { headers: getAuthHeaders() });
     if (data && data.url) {

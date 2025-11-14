@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Space = require('../models/space');
 const Project = require('../models/project');
+const { auth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
+const { requireActiveProject } = require('../middleware/subscription');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const fs = require('fs');
@@ -40,8 +43,21 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+// Middleware to look up space and add project to request for RBAC
+const lookupSpaceProject = async (req, res, next) => {
+  try {
+    const space = await Space.findById(req.params.id).lean();
+    if (!space) return res.status(404).send({ error: 'Space not found' });
+    req.body.project = space.project;
+    req.params.project = space.project;
+    next();
+  } catch (error) {
+    res.status(500).send({ error: 'Error looking up space project' });
+  }
+};
+
 // Create a new space
-router.post('/', async (req, res) => {
+router.post('/', auth, requirePermission('spaces.create', { projectParam: 'project' }), requireActiveProject, async (req, res) => {
   // console.log(req.body);
   try {
     // Validate project field
@@ -73,7 +89,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get all spaces by project ID
-router.get('/project/:projectId', async (req, res) => {
+router.get('/project/:projectId', auth, requirePermission('spaces.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const spaces = await Space.find({ project: req.params.projectId });
     if (!spaces) {
@@ -86,7 +102,7 @@ router.get('/project/:projectId', async (req, res) => {
 });
 
 // Read a single space by ID and find subSpaces
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { projectParam: 'project' }), async (req, res) => {
   try {
     const space = await Space.findById(req.params.id);
     if (!space) {
@@ -100,7 +116,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update a space by ID
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), async (req, res) => {
   // console.log('Updating space:', req.params.id, req.body);
   try {
     const space = await Space.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
@@ -114,7 +130,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 // Delete a space by ID
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete', { projectParam: 'project' }), async (req, res) => {
   try {
     const space = await Space.findByIdAndDelete(req.params.id);
     if (!space) {
@@ -127,7 +143,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Upload attachments (documents) for a space
-router.post('/:id/attachments', uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const space = await Space.findById(req.params.id);
     if (!space) return res.status(404).send({ error: 'Space not found' });
@@ -188,7 +204,7 @@ router.post('/:id/attachments', uploadDocs.array('attachments', 16), async (req,
 });
 
 // Remove an attachment by index for a space; best-effort delete local file if under uploads
-router.delete('/:id/attachments/:index', async (req, res) => {
+router.delete('/:id/attachments/:index', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });

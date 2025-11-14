@@ -3,6 +3,9 @@ const router = express.Router();
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
+const { requireActiveProject } = require('../middleware/subscription');
+const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -44,8 +47,10 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+// runMiddleware extracted to ../middleware/runMiddleware.js
+
 // Create a new equipment
-router.post('/', async (req, res) => {
+router.post('/', auth, requirePermission('equipment.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
   console.log(req.body);
   try {
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
@@ -77,11 +82,16 @@ function toPlainEquipment(doc) {
     try { e.functionalTests = JSON.parse(e.functionalTests) } catch { e.functionalTests = [] }
   }
   if (!Array.isArray(e.functionalTests)) e.functionalTests = []
+  // Back-compat: signatures may be stored as stringified JSON in some records
+  if (typeof e.fptSignatures === 'string') {
+    try { e.fptSignatures = JSON.parse(e.fptSignatures) } catch { e.fptSignatures = [] }
+  }
+  if (!Array.isArray(e.fptSignatures)) e.fptSignatures = []
   return e
 }
 
 // Read all equipment
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const equipment = await Equipment.find();
     res.status(200).send(equipment.map(toPlainEquipment));
@@ -91,7 +101,7 @@ router.get('/', async (req, res) => {
 });
 
 // Read all equipment by project ID
-router.get('/project/:projectId', async (req, res) => {
+router.get('/project/:projectId', auth, async (req, res) => {
   try {
     const equipment = await Equipment.find({ projectId: req.params.projectId });
     res.status(200).send(equipment.map(toPlainEquipment));
@@ -101,7 +111,7 @@ router.get('/project/:projectId', async (req, res) => {
 });
 
 // Read a single equipment by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const equipment = await Equipment.findById(req.params.id);
     if (!equipment) {
@@ -114,16 +124,37 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update equipment by ID
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', auth, async (req, res) => {
   try {
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
       return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
     }
-    const equipment = await Equipment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!equipment) {
-      return res.status(404).send();
+
+    // Load equipment to determine project for RBAC/subscription checks
+    const equipment = await Equipment.findById(req.params.id);
+    if (!equipment) return res.status(404).send();
+
+    req.body = req.body || {};
+    req.body.projectId = equipment.projectId;
+
+    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    // Server-side validation: ensure fptSignatures does not contain duplicate createdBy entries
+    if (req.body && Array.isArray(req.body.fptSignatures)) {
+      const seen = new Set()
+      for (const s of req.body.fptSignatures) {
+        if (s && s.createdBy) {
+          const id = String(s.createdBy)
+          if (seen.has(id)) return res.status(400).send({ error: 'Duplicate signature for the same user is not allowed' })
+          seen.add(id)
+        }
+      }
     }
-    res.status(200).send(toPlainEquipment(equipment));
+
+    const updated = await Equipment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!updated) return res.status(404).send();
+    res.status(200).send(toPlainEquipment(updated));
   } catch (error) {
     res.status(400).send(error);
   }
@@ -134,6 +165,13 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
   try {
     const equipment = await Equipment.findById(req.params.id);
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' });
+
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {};
+    req.body.projectId = equipment.projectId;
+
+    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
     const existingCount = Array.isArray(equipment.photos) ? equipment.photos.length : 0;
     const incomingFiles = Array.isArray(req.files) ? req.files : [];
@@ -181,6 +219,13 @@ router.delete('/:id/photos/:index', auth, async (req, res) => {
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const equipment = await Equipment.findById(req.params.id)
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' })
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {}
+    req.body.projectId = equipment.projectId
+
+    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
     const arr = Array.isArray(equipment.photos) ? equipment.photos : []
     if (idx >= arr.length) return res.status(400).send({ error: 'Photo index out of range' })
     arr.splice(idx, 1)
@@ -200,6 +245,13 @@ router.patch('/:id/photos/:index', auth, async (req, res) => {
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const equipment = await Equipment.findById(req.params.id)
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' })
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {}
+    req.body.projectId = equipment.projectId
+
+    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
     const arr = Array.isArray(equipment.photos) ? equipment.photos : []
     if (idx >= arr.length) return res.status(400).send({ error: 'Photo index out of range' })
     if (typeof req.body.caption === 'string') {
@@ -215,12 +267,18 @@ router.patch('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Delete equipment by ID
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
-    const equipment = await Equipment.findByIdAndDelete(req.params.id);
-    if (!equipment) {
-      return res.status(404).send();
-    }
+    const equipment = await Equipment.findById(req.params.id);
+    if (!equipment) return res.status(404).send();
+
+    req.body = req.body || {};
+    req.body.projectId = equipment.projectId;
+
+    await runMiddleware(req, res, requirePermission('equipment.delete', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    await Equipment.findByIdAndDelete(req.params.id);
 
     // Remove equipment from the corresponding project (best-effort)
     try {
@@ -236,8 +294,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).send(error);
   }
 });
-
-module.exports = router;
 
 // Upload attachments (documents) for equipment
 router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
@@ -318,3 +374,5 @@ router.delete('/:id/attachments/:index', auth, async (req, res) => {
     res.status(500).send({ error: 'Failed to remove attachment' });
   }
 });
+
+module.exports = router;

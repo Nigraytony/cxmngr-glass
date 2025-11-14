@@ -82,7 +82,7 @@
           <div
             v-if="menuOpen"
             :style="dropdownStyle"
-            class="w-48 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
+            class="w-72 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
           >
             <ul class="flex flex-col gap-1">
               <li>
@@ -130,12 +130,20 @@
                       {{ formatInviteDate(inv.createdAt) }}
                     </div>
                   </div>
-                  <button
-                    class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white"
-                    @click="accept(inv.id)"
-                  >
-                    Accept
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white"
+                      @click="accept(inv.id)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      class="text-xs px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-white"
+                      @click="decline(inv.id)"
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </li>
                 <li class="my-1 border-t border-white/10" />
               </template>
@@ -283,7 +291,7 @@ const defaultProjectName = computed(() => {
       if (dp) return dp.name || dp.title || 'Projects'
     }
   } catch (e) { /* ignore */ }
-  return 'Liquid Glass Dashboard'
+  return 'Cx Manager Dashboard'
 })
 
 const menuOpen = ref(false)
@@ -361,7 +369,30 @@ onMounted(async () => {
   } catch (e) { /* ignore */ }
 })
 
-const projectsList = computed(() => projectStore.projects || [])
+const projectsList = computed(() => {
+  // Prefer the authenticated user's project membership list (hydrated by /api/users/me)
+  try {
+    if (auth.user && Array.isArray(auth.user.projects) && auth.user.projects.length > 0) {
+      return auth.user.projects
+        .map((p) => {
+          if (!p) return null
+          if (typeof p === 'string') return { id: p, name: p }
+          // p may be a lightweight project object coming from the user payload
+          return {
+            id: p._id || p.id,
+            _id: p._id || p.id,
+            name: p.name || p.title || (p.client ? `${p.client} - ${p.name}` : p.name) || 'Project',
+          }
+        })
+        .filter(Boolean)
+    }
+  } catch (e) {
+    /* ignore and fall back */
+  }
+  // No authenticated project list available -> return empty list so users
+  // don't see all projects in the app (fallback to project store would leak all projects).
+  return []
+})
 const defaultProjectId = computed(() => {
   try {
     const list = (auth.user && Array.isArray(auth.user.projects)) ? auth.user.projects : []
@@ -423,6 +454,16 @@ async function accept(id) {
     }
   } catch (e) {
     ui.showError('Failed to accept invitation')
+  }
+}
+
+async function decline(id) {
+  try {
+    const ok = await invitationsStore.rejectInvite(id)
+    if (ok) ui.showSuccess('Invitation declined')
+    else ui.showError(invitationsStore.error || 'Failed to decline invitation')
+  } catch (e) {
+    ui.showError('Failed to decline invitation')
   }
 }
 </script>

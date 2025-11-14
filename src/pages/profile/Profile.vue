@@ -589,12 +589,20 @@
                   <div class="text-xs text-white/70">
                     You haven't accepted this project yet.
                   </div>
-                  <button
-                    class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
-                    @click="acceptInvite(inv.id)"
-                  >
-                    Accept
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
+                      @click="acceptInvite(inv.id)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+                      @click="rejectInvite(inv.id)"
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -654,19 +662,38 @@
                     class="text-xs text-white/60"
                   >Default</span>
                   <div class="flex flex-col items-end gap-2">
-                    <button
-                      class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8"
-                      @click="editProject(proj)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      v-if="canLeaveProject(proj)"
-                      class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-red-300 text-sm border border-red-500/30"
-                      @click="leaveProject(proj)"
-                    >
-                      Leave
-                    </button>
+                    <!-- If there is a pending invite for this project, show Accept/Decline -->
+                    <template v-if="inviteForProject(proj)">
+                      <div class="flex items-center gap-2">
+                        <button
+                          class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
+                          @click="acceptProject(proj)"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+                          @click="declineProject(proj)"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <button
+                        class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8"
+                        @click="editProject(proj)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        v-if="canLeaveProject(proj)"
+                        class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-red-300 text-sm border border-red-500/30"
+                        @click="leaveProject(proj)"
+                      >
+                        Leave
+                      </button>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -678,9 +705,93 @@
           v-else-if="currentTab === 'Settings'"
           class="space-y-4"
         >
-          <p class="text-white/80">
-            Account settings and preferences (placeholder).
-          </p>
+          <div class="space-y-4">
+            <p class="text-white/80">
+              Account settings and preferences.
+            </p>
+            <div class="rounded-md p-3 bg-white/6 border border-white/10">
+              <div class="text-sm text-white/70 mb-2">
+                Signature on file
+              </div>
+              <div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                  <div>
+                    <div class="text-xs text-white/60 mb-1">
+                      Saved signature preview
+                    </div>
+                    <div class="border border-white/10 rounded-md bg-white/5 overflow-hidden">
+                      <img
+                        v-if="local.contact.signature?.block"
+                        :src="local.contact.signature.block"
+                        alt="signature preview"
+                        class="w-full h-40 object-contain"
+                      >
+                      <div
+                        v-else
+                        class="w-full h-40 flex items-center justify-center text-white/70"
+                      >
+                        No signature saved
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="text-xs text-white/60 mb-1">
+                      New signature
+                    </div>
+                    <div class="border border-white/10 rounded-md bg-white/5 overflow-hidden">
+                      <SignaturePad
+                        v-model="local.contact.signature.block"
+                        :removable="true"
+                        :show-fields="false"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3 text-right">
+                  <button
+                    class="px-3 py-2 rounded-md bg-white/20"
+                    @click="save"
+                  >
+                    Save signature to profile
+                  </button>
+                </div>
+              </div>
+              <div class="mt-4">
+                <label class="block text-white/80 mb-1">Items per page</label>
+                <select
+                  v-model="local.contact.perPage"
+                  class="w-40 rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+                >
+                  <option :value="null">
+                    Use default
+                  </option>
+                  <option :value="5">
+                    5
+                  </option>
+                  <option :value="10">
+                    10
+                  </option>
+                  <option :value="20">
+                    20
+                  </option>
+                  <option :value="25">
+                    25
+                  </option>
+                  <option :value="50">
+                    50
+                  </option>
+                  <option :value="100">
+                    100
+                  </option>
+                </select>
+                <p class="text-sm text-white/60 mt-2">
+                  This preference will be used as the default page size on list pages.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -688,11 +799,12 @@
 </template>
 
 <script setup>
-import { reactive, ref, toRefs, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SignaturePad from '../../components/SignaturePad.vue'
 import { useUiStore } from '../../stores/ui'
 import { useInvitationsStore } from '../../stores/invitations'
 import { confirm as inlineConfirm } from '../../utils/confirm'
@@ -740,7 +852,11 @@ const local = reactive({
       taxId: auth.user?.contact?.address?.taxId || ''
     },
     bio: auth.user?.contact?.bio || '',
-    avatar: auth.user?.contact?.avatar || ''
+    avatar: auth.user?.contact?.avatar || '',
+    // optional signature stored on profile
+    signature: (auth.user && auth.user.contact && auth.user.contact.signature) || { title: '', person: '', block: '' },
+    // optional per-page preference for list pages
+    perPage: auth.user?.contact?.perPage || null
   },
   social_media: {
     linkedin: auth.user?.social_media?.linkedin || '',
@@ -825,10 +941,48 @@ async function acceptInvite(id) {
   }
 }
 
+async function rejectInvite(id) {
+  try {
+    const ok = await invitationsStore.rejectInvite(id)
+    if (ok) ui.showSuccess('Invitation declined')
+    else ui.showError(invitationsStore.error || 'Failed to decline invitation')
+  } catch (e) {
+    ui.showError('Failed to decline invitation')
+  }
+}
+
+function inviteForProject(proj) {
+  try {
+    const pid = String(proj._id || proj.id || '')
+    return invitationsStore.invites.find(i => String(i.project && (i.project._id || i.project.id || '')) === pid) || null
+  } catch (e) { return null }
+}
+
+async function acceptProject(proj) {
+  const inv = inviteForProject(proj)
+  if (!inv) return ui.showError('No pending invitation found for this project')
+  await acceptInvite(inv.id)
+}
+
+async function declineProject(proj) {
+  const inv = inviteForProject(proj)
+  if (!inv) return ui.showError('No pending invitation found for this project')
+  await rejectInvite(inv.id)
+}
+
 onMounted(() => {
   // Fetch invites if not already loaded (Topbar might have loaded them)
   try { if (!invitationsStore.invites.length) invitationsStore.fetchPending() } catch (e) { /* ignore invites load race */ }
 })
+
+// Ensure the profile signature is kept in sync if the auth store refreshes the user after this
+watch(() => auth.user, (u) => {
+  try {
+    if (u && u.contact && u.contact.signature) {
+      local.contact.signature = u.contact.signature
+    }
+  } catch (e) { /* ignore */ }
+}, { immediate: true })
 
 async function save() {
   status.value = ''
@@ -845,7 +999,9 @@ async function save() {
       phone: local.contact.phone,
       address: local.contact.address,
       bio: local.contact.bio,
-      avatar: local.contact.avatar
+      avatar: local.contact.avatar,
+      signature: local.contact.signature,
+      perPage: local.contact.perPage
     },
     social_media: local.social_media,
     avatar: local.avatar
@@ -866,7 +1022,9 @@ async function save() {
         local.contact.phone = u.contact?.phone || ''
         local.contact.address = u.contact?.address || { street: '', city: '', state: '', zip: '', country: '', taxId: '' }
         local.contact.bio = u.contact?.bio || ''
-        local.contact.avatar = u.contact?.avatar || ''
+  local.contact.avatar = u.contact?.avatar || ''
+  local.contact.signature = u.contact?.signature || { title: '', person: '', block: '' }
+    local.contact.perPage = u.contact?.perPage || null
         local.social_media = u.social_media || { linkedin: '' }
   local.avatar = u.avatar || u.contact?.avatar || ''
       }
@@ -915,6 +1073,8 @@ function reset() {
   local.contact.address = auth.user?.contact?.address || { street: '', city: '', state: '', zip: '', country: '', taxId: '' }
   local.contact.bio = auth.user?.contact?.bio || ''
   local.contact.avatar = auth.user?.contact?.avatar || ''
+  local.contact.signature = auth.user?.contact?.signature || { title: '', person: '', block: '' }
+  local.contact.perPage = auth.user?.contact?.perPage || null
   local.social_media.linkedin = auth.user?.social_media?.linkedin || ''
   local.avatar = auth.user?.avatarUrl || auth.user?.contact?.avatar || ''
 }
@@ -1111,6 +1271,7 @@ async function removeAvatar() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function selectProject(proj) {
   // prefer _id then id
   const id = proj._id || proj.id
@@ -1135,8 +1296,7 @@ function editProject(proj) {
 function canLeaveProject(proj) {
   try {
     if (!auth.user) return false
-    const uid = auth.user._id || auth.user.id
-    // simple heuristic: if user's projects contains this project id, they can leave
+  // simple heuristic: if user's projects contains this project id, they can leave
     const pid = proj._id || proj.id
     if (!pid) return false
     return Array.isArray(auth.user.projects) && auth.user.projects.some(p => String((p && (p._id || p.id || p))) === String(pid))

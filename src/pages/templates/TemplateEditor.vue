@@ -1492,6 +1492,7 @@ async function onDelete() {
 }
 
 // Photos helpers
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const photos = computed<any[]>(() => {
   const arr: any = (form.value as any).photos
   return Array.isArray(arr) ? arr : []
@@ -1535,6 +1536,7 @@ async function removePhoto(index: number) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove photo')
   }
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function refreshAfterUpload(kind: 'photos' | 'attachments') {
   const tid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!tid) return

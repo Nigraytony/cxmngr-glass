@@ -179,6 +179,43 @@ router.put('/update/:_id', async (req, res) => {
         return { _id: pid, role, default: isDefault }
       })
     }
+    // Basic validation/sanitization for profile signature block to avoid huge payloads
+    try {
+      if (payload.contact && payload.contact.signature && typeof payload.contact.signature.block === 'string') {
+        const block = payload.contact.signature.block || ''
+        // limit roughly to 300 KB (base64 data length) to avoid large DB writes
+        const maxBytes = 300 * 1024
+        // approximate bytes from base64 length (strip data:...;base64, prefix)
+        const base64 = (block.split(',')[1] || '')
+        const approxBytes = Math.ceil((base64.length * 3) / 4)
+        if (approxBytes > maxBytes) {
+          return res.status(400).send({ error: 'Signature image too large' })
+        }
+        // ensure it looks like a data URL image
+        if (!block.startsWith('data:image/')) {
+          return res.status(400).send({ error: 'Invalid signature format' })
+        }
+      }
+    } catch (e) {
+      // if any unexpected error during validation, fail safely
+      return res.status(400).send({ error: 'Invalid signature payload' })
+    }
+    // Sanitize perPage preference if present: accept only common page sizes
+    try {
+      if (payload.contact && payload.contact.perPage !== undefined && payload.contact.perPage !== null) {
+        const n = parseInt(String(payload.contact.perPage), 10)
+        const allowed = [5, 10, 20, 25, 50, 100]
+        if (isNaN(n) || !allowed.includes(n)) {
+          // drop invalid value so it doesn't get written
+          delete payload.contact.perPage
+        } else {
+          payload.contact.perPage = n
+        }
+      }
+    } catch (e) {
+      // ignore perPage sanitization errors and drop the field
+      if (payload.contact) delete payload.contact.perPage
+    }
     const user = await User.findByIdAndUpdate(req.params._id, payload, { new: true, runValidators: true });
     if (!user) {
       return res.status(404).send({ error: 'User not found' });

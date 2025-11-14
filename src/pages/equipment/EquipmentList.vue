@@ -287,22 +287,130 @@
     <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 overflow-x-hidden">
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
         <div class="col-span-1">
-          Tag
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('tag')"
+          >
+            <span>Tag</span>
+            <span
+              v-if="sortKey==='tag' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='tag' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-3">
-          Title
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('title')"
+          >
+            <span>Title</span>
+            <span
+              v-if="sortKey==='title' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='title' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          Type
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('type')"
+          >
+            <span>Type</span>
+            <span
+              v-if="sortKey==='type' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='type' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          System
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('system')"
+          >
+            <span>System</span>
+            <span
+              v-if="sortKey==='system' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='system' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          Location
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('space')"
+          >
+            <span>Location</span>
+            <span
+              v-if="sortKey==='space' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='space' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-1">
-          Status
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('status')"
+          >
+            <span>Status</span>
+            <span
+              v-if="sortKey==='status' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='status' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-1 text-right">
           Actions
@@ -537,19 +645,52 @@
             </div>
             <div>
               <label class="text-sm text-white/70">Type</label>
-              <select
-                v-model="form.type"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="opt in modalTypeOptions"
-                  :key="opt.value"
-                  :value="opt.value"
+              <div class="relative">
+                <button
+                  type="button"
+                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                  @click="showModalTypeOptions"
+                  @keydown.down.prevent="onModalTypeArrow(1)"
+                  @keydown.up.prevent="onModalTypeArrow(-1)"
+                  @keydown.enter.prevent="chooseHighlightedModalType"
+                  @keydown.esc="hideModalTypeDropdown"
+                  @blur="hideModalTypeDropdown"
+                  @wheel.prevent="(e) => onModalTypeArrow(e.deltaY > 0 ? 1 : -1)"
                 >
-                  {{ opt.text }}
-                </option>
-              </select>
+                  <span>{{ modalTypeOptions.find(opt => opt.value === form.type)?.text || form.type }}</span>
+                  <svg
+                    class="w-4 h-4 text-white/50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="showModalTypeDropdown"
+                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                >
+                  <div class="py-1">
+                    <button
+                      v-for="(opt, i) in modalTypeOptions"
+                      :key="opt.value"
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="i === highlightedModalTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="selectModalType(opt.value)"
+                    >
+                      {{ opt.text }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Title</label>
@@ -562,51 +703,158 @@
             </div>
             <div>
               <label class="text-sm text-white/70">System</label>
-              <select
-                v-model="form.system"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="opt in modalSystemOptions"
-                  :key="opt.value"
-                  :value="opt.value"
+              <div class="relative">
+                <button
+                  type="button"
+                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                  @click="showModalSystemOptions"
+                  @keydown.down.prevent="onModalSystemArrow(1)"
+                  @keydown.up.prevent="onModalSystemArrow(-1)"
+                  @keydown.enter.prevent="chooseHighlightedModalSystem"
+                  @keydown.esc="hideModalSystemDropdown"
+                  @blur="hideModalSystemDropdown"
+                  @wheel.prevent="(e) => onModalSystemArrow(e.deltaY > 0 ? 1 : -1)"
                 >
-                  {{ opt.text }}
-                </option>
-              </select>
+                  <span>{{ modalSystemOptions.find(opt => opt.value === form.system)?.text || form.system || 'Select System' }}</span>
+                  <svg
+                    class="w-4 h-4 text-white/50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="showModalSystemDropdown"
+                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                >
+                  <div class="py-1">
+                    <button
+                      v-for="(opt, i) in modalSystemOptions"
+                      :key="opt.value"
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="i === highlightedModalSystemIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="selectModalSystem(opt.value)"
+                    >
+                      {{ opt.text }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div>
               <label class="text-sm text-white/70">Status</label>
-              <select
-                v-model="form.status"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="s in statuses"
-                  :key="s"
-                  :value="s"
+              <div class="relative">
+                <button
+                  type="button"
+                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                  @click="showModalStatusOptions"
+                  @keydown.down.prevent="onModalStatusArrow(1)"
+                  @keydown.up.prevent="onModalStatusArrow(-1)"
+                  @keydown.enter.prevent="chooseHighlightedModalStatus"
+                  @keydown.esc="hideModalStatusDropdown"
+                  @blur="hideModalStatusDropdown"
+                  @wheel.prevent="(e) => onModalStatusArrow(e.deltaY > 0 ? 1 : -1)"
                 >
-                  {{ s }}
-                </option>
-              </select>
+                  <span>{{ form.status || 'Select Status' }}</span>
+                  <svg
+                    class="w-4 h-4 text-white/50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="showModalStatusDropdown"
+                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                >
+                  <div class="py-1">
+                    <button
+                      v-for="(status, i) in statuses"
+                      :key="status"
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="i === highlightedModalStatusIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="selectModalStatus(status)"
+                    >
+                      {{ status }}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Space</label>
-              <select
-                v-model="form.spaceId"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option :value="''">
-                  None
-                </option>
-                <option
-                  v-for="p in parentOptions"
-                  :key="p.id"
-                  :value="p.id"
+              <div class="relative">
+                <button
+                  type="button"
+                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                  @click="showModalSpaceOptions"
+                  @keydown.down.prevent="onModalSpaceArrow(1)"
+                  @keydown.up.prevent="onModalSpaceArrow(-1)"
+                  @keydown.enter.prevent="chooseHighlightedModalSpace"
+                  @keydown.esc="hideModalSpaceDropdown"
+                  @blur="hideModalSpaceDropdown"
+                  @wheel.prevent="(e) => onModalSpaceArrow(e.deltaY > 0 ? 1 : -1)"
                 >
-                  {{ p.title }} ({{ p.type }})
-                </option>
-              </select>
+                  <span>{{ (form as any).spaceId ? parentOptions.find(p => p.id === (form as any).spaceId)?.title + ' (' + parentOptions.find(p => p.id === (form as any).spaceId)?.type + ')' : 'None' }}</span>
+                  <svg
+                    class="w-4 h-4 text-white/50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="showModalSpaceDropdown"
+                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                >
+                  <div class="py-1">
+                    <button
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="highlightedModalSpaceIndex === -1 ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="selectModalSpace('')"
+                    >
+                      None
+                    </button>
+                    <button
+                      v-for="(p, i) in parentOptions"
+                      :key="p.id"
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="i === highlightedModalSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="p.id && selectModalSpace(p.id)"
+                    >
+                      {{ p.title }} ({{ p.type }})
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="col-span-2">
               <label class="text-sm text-white/70">Description</label>
@@ -864,6 +1112,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { useProjectStore } from '../../stores/project'
+import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
 import lists from '../../lists.js'
@@ -873,6 +1122,7 @@ import Modal from '../../components/Modal.vue'
 import * as XLSX from 'xlsx'
 
 const projectStore = useProjectStore()
+const auth = useAuthStore()
 const spacesStore = useSpacesStore()
 const equipmentStore = useEquipmentStore()
 const ui = useUiStore()
@@ -913,9 +1163,40 @@ const filtered = computed(() => {
   })
 })
 
+// Sorting state for equipment table
+const sortKey = ref('')
+const sortDir = ref(1) // 1 = asc, -1 = desc
+
+const sorted = computed(() => {
+  if (!sortKey.value) return filtered.value
+  const arr = [...filtered.value]
+  arr.sort((a: any, b: any) => {
+    let av: string
+    let bv: string
+    if (sortKey.value === 'space') {
+      av = String(spaceName(a?.spaceId) || '').toLowerCase()
+      bv = String(spaceName(b?.spaceId) || '').toLowerCase()
+    } else {
+      av = String((a?.[sortKey.value] ?? '')).toLowerCase()
+      bv = String((b?.[sortKey.value] ?? '')).toLowerCase()
+    }
+    if (av < bv) return -1 * sortDir.value
+    if (av > bv) return 1 * sortDir.value
+    return 0
+  })
+  return arr
+})
+
+function setSort(key: string) {
+  if (sortKey.value === key) sortDir.value = -sortDir.value
+  else { sortKey.value = key; sortDir.value = 1 }
+  page.value = 1
+}
+
 const parentOptions = computed(() => spacesStore.items)
 
 // options sourced from lists.js
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const filterTypeOptions = computed(() => {
   const base: Array<{ value: string; text: string }> = [{ value: '', text: 'All' }]
   const arr: Array<any> = (lists as any)?.equipmentTypes || []
@@ -965,6 +1246,7 @@ const systemCounts = computed<Record<string, number>>(() => {
   return m
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const systemFilterOptions = computed(() => {
   const base: Array<{ value: string; text: string }> = [{ value: '', text: 'All' }]
   const arr: Array<any> = (lists as any)?.systemOptions || []
@@ -985,6 +1267,16 @@ const typeMenuRef = ref<HTMLElement | null>(null)
 const systemMenuRef = ref<HTMLElement | null>(null)
 const statusMenuRef = ref<HTMLElement | null>(null)
 
+// Modal dropdown state
+const showModalTypeDropdown = ref(false)
+const showModalSystemDropdown = ref(false)
+const showModalStatusDropdown = ref(false)
+const showModalSpaceDropdown = ref(false)
+const highlightedModalTypeIndex = ref(-1)
+const highlightedModalSystemIndex = ref(-1)
+const highlightedModalStatusIndex = ref(-1)
+const highlightedModalSpaceIndex = ref(-1)
+
 function toggleTypeMenu() { showTypeMenu.value = !showTypeMenu.value }
 function closeTypeMenu() { showTypeMenu.value = false }
 function toggleSystemMenu() { showSystemMenu.value = !showSystemMenu.value }
@@ -1003,6 +1295,141 @@ function handleClickOutside(e: MouseEvent) {
 }
 onMounted(() => document.addEventListener('click', handleClickOutside))
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
+
+// Modal Type dropdown functions
+function showModalTypeOptions() {
+  showModalTypeDropdown.value = true
+  highlightedModalTypeIndex.value = modalTypeOptions.value.findIndex(opt => opt.value === form.value.type)
+}
+
+function hideModalTypeDropdown() {
+  setTimeout(() => {
+    showModalTypeDropdown.value = false
+    highlightedModalTypeIndex.value = -1
+  }, 150)
+}
+
+function onModalTypeArrow(direction: number) {
+  if (!showModalTypeDropdown.value) {
+    showModalTypeOptions()
+    return
+  }
+  const newIndex = Math.max(0, Math.min(modalTypeOptions.value.length - 1, highlightedModalTypeIndex.value + direction))
+  highlightedModalTypeIndex.value = newIndex
+}
+
+function chooseHighlightedModalType() {
+  if (highlightedModalTypeIndex.value >= 0 && highlightedModalTypeIndex.value < modalTypeOptions.value.length) {
+    selectModalType(modalTypeOptions.value[highlightedModalTypeIndex.value].value)
+  }
+}
+
+function selectModalType(type: string) {
+  form.value.type = type
+  hideModalTypeDropdown()
+}
+
+// Modal System dropdown functions
+function showModalSystemOptions() {
+  showModalSystemDropdown.value = true
+  highlightedModalSystemIndex.value = modalSystemOptions.value.findIndex(opt => opt.value === form.value.system)
+}
+
+function hideModalSystemDropdown() {
+  setTimeout(() => {
+    showModalSystemDropdown.value = false
+    highlightedModalSystemIndex.value = -1
+  }, 150)
+}
+
+function onModalSystemArrow(direction: number) {
+  if (!showModalSystemDropdown.value) {
+    showModalSystemOptions()
+    return
+  }
+  const newIndex = Math.max(0, Math.min(modalSystemOptions.value.length - 1, highlightedModalSystemIndex.value + direction))
+  highlightedModalSystemIndex.value = newIndex
+}
+
+function chooseHighlightedModalSystem() {
+  if (highlightedModalSystemIndex.value >= 0 && highlightedModalSystemIndex.value < modalSystemOptions.value.length) {
+    selectModalSystem(modalSystemOptions.value[highlightedModalSystemIndex.value].value)
+  }
+}
+
+function selectModalSystem(system: string) {
+  form.value.system = system
+  hideModalSystemDropdown()
+}
+
+// Modal Status dropdown functions
+function showModalStatusOptions() {
+  showModalStatusDropdown.value = true
+  highlightedModalStatusIndex.value = statuses.findIndex(status => status === form.value.status)
+}
+
+function hideModalStatusDropdown() {
+  setTimeout(() => {
+    showModalStatusDropdown.value = false
+    highlightedModalStatusIndex.value = -1
+  }, 150)
+}
+
+function onModalStatusArrow(direction: number) {
+  if (!showModalStatusDropdown.value) {
+    showModalStatusOptions()
+    return
+  }
+  const newIndex = Math.max(0, Math.min(statuses.length - 1, highlightedModalStatusIndex.value + direction))
+  highlightedModalStatusIndex.value = newIndex
+}
+
+function chooseHighlightedModalStatus() {
+  if (highlightedModalStatusIndex.value >= 0 && highlightedModalStatusIndex.value < statuses.length) {
+    selectModalStatus(statuses[highlightedModalStatusIndex.value])
+  }
+}
+
+function selectModalStatus(status: string) {
+  form.value.status = status as any
+  hideModalStatusDropdown()
+}
+
+// Modal Space dropdown functions
+function showModalSpaceOptions() {
+  showModalSpaceDropdown.value = true
+  highlightedModalSpaceIndex.value = parentOptions.value.findIndex(opt => opt.id === (form.value as any).spaceId)
+}
+
+function hideModalSpaceDropdown() {
+  setTimeout(() => {
+    showModalSpaceDropdown.value = false
+    highlightedModalSpaceIndex.value = -1
+  }, 150)
+}
+
+function onModalSpaceArrow(direction: number) {
+  if (!showModalSpaceDropdown.value) {
+    showModalSpaceOptions()
+    return
+  }
+  const newIndex = Math.max(-1, Math.min(parentOptions.value.length - 1, highlightedModalSpaceIndex.value + direction))
+  highlightedModalSpaceIndex.value = newIndex
+}
+
+function chooseHighlightedModalSpace() {
+  if (highlightedModalSpaceIndex.value === -1) {
+    selectModalSpace('')
+  } else if (highlightedModalSpaceIndex.value >= 0 && highlightedModalSpaceIndex.value < parentOptions.value.length) {
+    const spaceId = parentOptions.value[highlightedModalSpaceIndex.value].id
+    if (spaceId) selectModalSpace(spaceId)
+  }
+}
+
+function selectModalSpace(spaceId: string) {
+  (form.value as any).spaceId = spaceId
+  hideModalSpaceDropdown()
+}
 
 // Counts and option lists for Type/System/Status
 const preTypeFiltered = computed(() => {
@@ -1141,10 +1568,15 @@ function statusBadgeClassEquipment(s: string) {
 
 // pagination state
 const page = ref(1)
-// derive default page size from project settings with a fallback of 10
+// derive default page size from user profile preference, then project settings with a fallback of 10
 const defaultPageSize = computed(() => {
-  const p: any = projectStore.currentProject as any
   const fallback = 10
+  try {
+    const pval = auth && auth.user && auth.user.contact && auth.user.contact.perPage
+    if (typeof pval === 'number' && !isNaN(pval)) return Math.max(1, Number(pval))
+  } catch (e) { /* ignore */ }
+
+  const p: any = projectStore.currentProject as any
   if (!p) return fallback
   const numericCandidates = [p.equipmentPageSize, p.listPageSize, p.pageSize, p.defaultPageSize]
   const foundNum = numericCandidates.find((v: any) => typeof v === 'number' && !isNaN(v))
@@ -1171,13 +1603,36 @@ const defaultPageSize = computed(() => {
 })
 const pageSize = ref(defaultPageSize.value)
 const pageSizes = [10, 20, 50, 100]
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize.value)))
+
+// Persist per-page (equipment) page size preference for the current session
+const pageSizeStorageKey = computed(() => `equipmentPageSize:${projectStore.currentProjectId || 'global'}`)
+function loadPageSizePref() {
+  try {
+    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
+    if (!raw) {
+      try {
+        const p = auth && auth.user && auth.user.contact && auth.user.contact.perPage
+        const allowed = [10,20,50,100]
+        if (typeof p === 'number' && allowed.includes(p)) {
+          pageSize.value = p
+        }
+      } catch (e) { /* ignore */ }
+      return
+    }
+    const n = parseInt(raw, 10)
+    if ([10,20,50,100].includes(n)) pageSize.value = n
+  } catch (e) { /* ignore sessionStorage read errors */ }
+}
+function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ } }
+watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
+watch(pageSize, () => persistPageSizePref())
+const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / pageSize.value)))
 const paged = computed(() => {
   const start = (page.value - 1) * pageSize.value
-  return filtered.value.slice(start, start + pageSize.value)
+  return sorted.value.slice(start, start + pageSize.value)
 })
-const startItem = computed(() => filtered.value.length ? (page.value - 1) * pageSize.value + 1 : 0)
-const endItem = computed(() => Math.min(filtered.value.length, page.value * pageSize.value))
+const startItem = computed(() => sorted.value.length ? (page.value - 1) * pageSize.value + 1 : 0)
+const endItem = computed(() => Math.min(sorted.value.length, page.value * pageSize.value))
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 
@@ -1193,7 +1648,18 @@ function openEdit(e: Equipment) {
   modalOpen.value = true
 }
 
-function closeModal() { modalOpen.value = false }
+function closeModal() { 
+  modalOpen.value = false
+  // Reset dropdown states
+  showModalTypeDropdown.value = false
+  showModalSystemDropdown.value = false
+  showModalStatusDropdown.value = false
+  showModalSpaceDropdown.value = false
+  highlightedModalTypeIndex.value = -1
+  highlightedModalSystemIndex.value = -1
+  highlightedModalStatusIndex.value = -1
+  highlightedModalSpaceIndex.value = -1
+}
 
 async function save() {
   try {
@@ -1241,7 +1707,7 @@ watch(() => projectStore.currentProjectId, async (id) => {
 }, { immediate: true })
 
 // reset pagination when filters/search change
-watch([filtered, pageSize], () => {
+watch([sorted, pageSize], () => {
   page.value = 1
 })
 

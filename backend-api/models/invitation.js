@@ -5,6 +5,12 @@ const invitationSchema = new mongoose.Schema({
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
   inviterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   token: { type: String, required: true, unique: true },
+  // Optional: store chosen project role template id and a small snapshot of it
+  roleTemplateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project.roleTemplates', required: false },
+  roleTemplateSnapshot: {
+    name: { type: String },
+    permissions: [{ type: String }],
+  },
   accepted: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now },
 });

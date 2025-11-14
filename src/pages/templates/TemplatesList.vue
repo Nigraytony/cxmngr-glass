@@ -207,22 +207,130 @@
     <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto">
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
         <div class="col-span-1">
-          Tag
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('tag')"
+          >
+            <span>Tag</span>
+            <span
+              v-if="sortKey === 'tag' && sortDir === 1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey === 'tag' && sortDir === -1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-3">
-          Title
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('title')"
+          >
+            <span>Title</span>
+            <span
+              v-if="sortKey === 'title' && sortDir === 1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey === 'title' && sortDir === -1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          Type
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('type')"
+          >
+            <span>Type</span>
+            <span
+              v-if="sortKey === 'type' && sortDir === 1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey === 'type' && sortDir === -1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          System
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('system')"
+          >
+            <span>System</span>
+            <span
+              v-if="sortKey === 'system' && sortDir === 1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey === 'system' && sortDir === -1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          Location
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('space')"
+          >
+            <span>Location</span>
+            <span
+              v-if="sortKey === 'space' && sortDir === 1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey === 'space' && sortDir === -1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-1">
-          Status
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('status')"
+          >
+            <span>Status</span>
+            <span
+              v-if="sortKey === 'status' && sortDir === 1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey === 'status' && sortDir === -1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-1 text-right">
           Actions
@@ -567,11 +675,13 @@ import { useTemplatesStore, type Template } from '../../stores/templates'
 import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
 import { confirm as inlineConfirm } from '../../utils/confirm'
+import { useAuthStore } from '../../stores/auth'
 
 const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const templatesStore = useTemplatesStore()
 const ui = useUiStore()
+const auth = useAuthStore()
 
 const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Started']
 
@@ -803,15 +913,69 @@ function statusBadgeClass(s: string) {
 
 // pagination state
 const page = ref(1)
-const pageSize = ref(10)
+// seed pageSize from user profile preference when available
+const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 10)
 const pageSizes = [10, 20, 50, 100]
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize.value)))
+
+// Persist per-page (templates) page size preference for the current session
+const pageSizeStorageKey = computed(() => `templatesPageSize:${projectStore.currentProjectId || 'global'}`)
+function loadPageSizePref() {
+  try {
+    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
+    if (!raw) {
+      try {
+        const p = auth && auth.user && auth.user.contact && auth.user.contact.perPage
+        const allowed = [10,20,50,100]
+        if (typeof p === 'number' && allowed.includes(p)) {
+          pageSize.value = p
+        }
+      } catch (e) { /* ignore */ }
+      return
+    }
+    const n = parseInt(raw, 10)
+    if ([10,20,50,100].includes(n)) pageSize.value = n
+  } catch (e) { /* ignore sessionStorage read errors */ }
+}
+function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ } }
+watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
+watch(pageSize, () => persistPageSizePref())
+// Sorting state for templates table
+const sortKey = ref('')
+const sortDir = ref(1) // 1 = asc, -1 = desc
+
+const sorted = computed(() => {
+  if (!sortKey.value) return filtered.value
+  const arr = [...filtered.value]
+  arr.sort((a, b) => {
+    let av
+    let bv
+    if (sortKey.value === 'space') {
+      av = String(spaceName(a && a.spaceId) || '').toLowerCase()
+      bv = String(spaceName(b && b.spaceId) || '').toLowerCase()
+    } else {
+      av = String(((a as any)?.[sortKey.value]) || '').toLowerCase()
+      bv = String(((b as any)?.[sortKey.value]) || '').toLowerCase()
+    }
+    if (av < bv) return -1 * sortDir.value
+    if (av > bv) return 1 * sortDir.value
+    return 0
+  })
+  return arr
+})
+
+function setSort(key: string) {
+  if (sortKey.value === key) sortDir.value = -sortDir.value
+  else { sortKey.value = key; sortDir.value = 1 }
+  page.value = 1
+}
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / pageSize.value)))
 const paged = computed(() => {
   const start = (page.value - 1) * pageSize.value
-  return filtered.value.slice(start, start + pageSize.value)
+  return sorted.value.slice(start, start + pageSize.value)
 })
-const startItem = computed(() => filtered.value.length ? (page.value - 1) * pageSize.value + 1 : 0)
-const endItem = computed(() => Math.min(filtered.value.length, page.value * pageSize.value))
+const startItem = computed(() => sorted.value.length ? (page.value - 1) * pageSize.value + 1 : 0)
+const endItem = computed(() => Math.min(sorted.value.length, page.value * pageSize.value))
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 
@@ -870,7 +1034,7 @@ watch(() => projectStore.currentProjectId, async (id) => {
   }
 }, { immediate: true })
 
-watch([filtered, pageSize], () => {
+watch([sorted, pageSize], () => {
   page.value = 1
 })
 
