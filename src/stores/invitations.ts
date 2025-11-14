@@ -24,8 +24,13 @@ export const useInvitationsStore = defineStore('invitations', () => {
       const { data } = await http.get('/api/projects/my-invites', { headers: getAuthHeaders() })
       invites.value = Array.isArray(data) ? data : []
     } catch (e: any) {
-      console.error('fetchPending invites error', e)
-      error.value = e?.response?.data?.error || e.message || 'Failed to load invitations'
+      const status = e?.response?.status
+      if (status !== 404) {
+        // Log non-404 errors for visibility; 404 likely means endpoint not implemented in backend yet
+        console.error('fetchPending invites error', e)
+      }
+      // Treat 404 as "no invites" without surfacing an error message
+      error.value = status === 404 ? null : (e?.response?.data?.error || e.message || 'Failed to load invitations')
       invites.value = []
     } finally {
       loading.value = false
@@ -62,5 +67,17 @@ export const useInvitationsStore = defineStore('invitations', () => {
     }
   }
 
-  return { invites, loading, error, fetchPending, acceptInvite }
+  async function rejectInvite(id: string) {
+    if (!id) return false
+    try {
+      await http.delete(`/api/projects/invitations/${id}`, { headers: getAuthHeaders() })
+      invites.value = invites.value.filter(i => i.id !== id)
+      return true
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || e.message || 'Failed to decline invitation'
+      return false
+    }
+  }
+
+  return { invites, loading, error, fetchPending, acceptInvite, rejectInvite }
 })

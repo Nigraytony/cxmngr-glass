@@ -202,18 +202,52 @@
 
           <div>
             <label class="block text-sm text-white/70">Type</label>
-            <select
-              v-model="form.type"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-            >
-              <option
-                v-for="t in types"
-                :key="t"
-                :value="t"
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                @click="showTypeOptions"
+                @keydown.down.prevent="onTypeArrow(1)"
+                @keydown.up.prevent="onTypeArrow(-1)"
+                @keydown.enter.prevent="chooseHighlightedType"
+                @keydown.esc="hideTypeDropdown"
+                @blur="hideTypeDropdown"
+                @wheel.prevent="(e) => onTypeArrow(e.deltaY > 0 ? 1 : -1)"
               >
-                {{ t }}
-              </option>
-            </select>
+                <span>{{ form.type }}</span>
+                <svg
+                  class="w-4 h-4 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+
+              <div
+                v-if="showTypeDropdown"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+              >
+                <div class="py-1">
+                  <button
+                    v-for="(type, i) in types"
+                    :key="type"
+                    type="button"
+                    class="w-full px-3 py-2 text-left text-white/90"
+                    :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="selectType(type)"
+                  >
+                    {{ type }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="space-y-1">
@@ -251,20 +285,21 @@
                 @keydown.enter.prevent="chooseHighlightedSpace"
                 @keydown.esc="hideSpaceSuggestions"
                 @focus="showSpaceSuggestions = true"
+                @blur="hideSpaceSuggestions"
               >
               <button
                 v-if="form.spaceId"
                 type="button"
                 class="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                @click="clearSpace"
                 title="Clear selected space"
+                @click="clearSpace"
               >
                 ✕
               </button>
 
               <div
                 v-if="showSpaceSuggestions && filteredSpaceSuggestions.length"
-                class="absolute left-0 right-0 mt-1 rounded-xl bg-white/20 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20 max-h-64 overflow-auto"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
               >
                 <div class="py-1">
                   <button
@@ -283,7 +318,10 @@
                 </div>
               </div>
             </div>
-            <input type="hidden" v-model="form.spaceId">
+            <input
+              v-model="form.spaceId"
+              type="hidden"
+            >
           </div>
 
           <div class="md:col-span-2">
@@ -854,7 +892,7 @@
               <input
                 v-model="systemsText"
                 type="text"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                class="w-full px-3 py-2 rounded-md bg-white/20 border border-white/30 placeholder-gray-400 backdrop-blur-sm"
                 placeholder="Type a tag, title, or system, then press Enter"
                 @keydown.enter.prevent="addByQuery"
                 @keydown.down.prevent="onArrowDown"
@@ -864,7 +902,7 @@
               <!-- Suggestions dropdown -->
               <div
                 v-if="showSuggestions"
-                class="absolute left-0 right-0 mt-1 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20 max-h-64 overflow-auto"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
               >
                 <div class="py-1">
                   <button
@@ -878,7 +916,7 @@
                       <span class="font-medium">{{ s.tag }}</span>
                       <span class="text-white/70 ml-2">{{ s.title }}</span>
                     </span>
-                    <span class="text-xs text-white/60 truncate">{{ spaceName(s.spaceId) }}</span>
+                    <span class="text-xs text-white/60 truncate max-w-[40%]">{{ equipmentBreadcrumbLabel(s) }}</span>
                   </button>
                 </div>
               </div>
@@ -938,7 +976,7 @@
                     {{ e.title || '—' }}
                   </td>
                   <td class="px-3 py-2 align-middle truncate">
-                    {{ spaceName(e.spaceId) || '—' }}
+                    {{ equipmentLocationBreadcrumb(e) }}
                   </td>
                   <td class="px-3 py-2 align-middle whitespace-nowrap">
                     {{ e.status || 'Not Started' }}
@@ -1557,8 +1595,8 @@ function resetActivityReportSettings() {
 watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
 
 const types = [
-  'Design Review', 'Submittal Review', 'Site Visit Review', 'Cx Meeting', 'Startup Review',
-  'O&M Manual Review', 'Training Review', 'Schedule Integration', 'Test and Balance Review'
+  'Assessment', 'BOD Review', 'Cx Meeting', 'Design Review', 'Functional Testing', 'Installation Review', 'O & M Manual Review', 'OPR Review', 'Submittal Review', 'Site Visit Review', 'Startup Review',
+  'Training Review', 'Schedule Integration', 'Test and Balance Review'
 ]
 
 const current = computed(() => store.current)
@@ -1572,7 +1610,7 @@ const form = reactive({
   projectId: '',
   location: '',
   // selected space id (if chosen via the space picker)
-  spaceId: '',
+  spaceId: null as string | null,
   systems: [] as string[],
   comments: [] as any[],
   attachments: [] as any[],
@@ -1586,6 +1624,10 @@ const systemsText = ref('')
 const spaceQuery = ref(form.location || '')
 const showSpaceSuggestions = ref(false)
 const highlightedSpaceIndex = ref(-1)
+
+// Type dropdown state
+const showTypeDropdown = ref(false)
+const highlightedTypeIndex = ref(-1)
 
 function simpleFuzzyMatch(text: string, pattern: string) {
   // subsequence match (characters in order)
@@ -1634,6 +1676,35 @@ function spaceParentChainLabel(s: any) {
   } catch (e) { return '' }
 }
 
+function equipmentBreadcrumbLabel(equipment: any) {
+  try {
+    if (!equipment?.spaceId) return equipment?.tag || ''
+    
+    const space = (spacesStore as any).byId?.[String(equipment.spaceId)] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === String(equipment.spaceId))
+    if (!space) return equipment?.tag || ''
+    
+    const spaceChain = spaceParentChainLabel(space)
+    const equipmentTag = String(equipment?.tag || '')
+    
+    return spaceChain ? `${spaceChain} > ${equipmentTag}` : equipmentTag
+  } catch (e) { 
+    return equipment?.tag || ''
+  }
+}
+
+function equipmentLocationBreadcrumb(equipment: any) {
+  try {
+    if (!equipment?.spaceId) return '—'
+    
+    const space = (spacesStore as any).byId?.[String(equipment.spaceId)] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === String(equipment.spaceId))
+    if (!space) return '—'
+    
+    return spaceParentChainLabel(space) || space.title || space.tag || '—'
+  } catch (e) { 
+    return '—'
+  }
+}
+
 function onSpaceInput() {
   highlightedSpaceIndex.value = -1
   showSpaceSuggestions.value = true
@@ -1673,10 +1744,51 @@ function selectSpace(s: any) {
 }
 
 function clearSpace() {
-  form.spaceId = ''
+  form.spaceId = null
   form.location = ''
   spaceQuery.value = ''
   hideSpaceSuggestions()
+}
+
+// Type dropdown functions
+function showTypeOptions() {
+  showTypeDropdown.value = true
+  highlightedTypeIndex.value = -1
+}
+
+function hideTypeDropdown() {
+  showTypeDropdown.value = false
+  highlightedTypeIndex.value = -1
+}
+
+function onTypeArrow(dir: number) {
+  const len = types.length
+  if (!len) return
+  
+  if (!showTypeDropdown.value) {
+    // If dropdown is closed, directly change the type
+    const currentIndex = types.indexOf(form.type)
+    const newIndex = (currentIndex + dir + len) % len
+    form.type = types[newIndex]
+  } else {
+    // If dropdown is open, navigate through options
+    let idx = highlightedTypeIndex.value
+    if (idx === -1) idx = dir > 0 ? -1 : 0
+    idx = (idx + dir + len) % len
+    highlightedTypeIndex.value = idx
+  }
+}
+
+function selectType(type: string) {
+  form.type = type
+  hideTypeDropdown()
+}
+
+function chooseHighlightedType() {
+  const idx = highlightedTypeIndex.value
+  if (idx >= 0 && idx < types.length) {
+    selectType(types[idx])
+  }
 }
 
 const crumbs = computed(() => [
@@ -1706,6 +1818,7 @@ onMounted(async () => {
       endDate: a?.endDate ? a.endDate.substring(0,10) : form.endDate,
       projectId: a?.projectId || form.projectId,
       location: a?.location || '',
+      spaceId: (a as any)?.spaceId || null,
       systems: a?.systems || [],
       comments: a?.comments || [],
       attachments: a?.attachments || [],
@@ -1731,19 +1844,27 @@ async function save() {
   const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
   // Ensure projectId is always present (fallback to current project if needed)
   payload.projectId = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  // Clean up spaceId - must be null or valid ObjectId string, not empty string
+  if (!payload.spaceId || payload.spaceId === '') {
+    payload.spaceId = null
+  }
   try {
     saving.value = true
+    console.log('[activity-save] Starting save process, payload:', payload)
     if (isNew.value) {
-      // Debug: show project context when attempting to create an activity
-  try { console.debug('[activity-save] creating activity', { payloadProjectId: payload.projectId, formProjectId: form.projectId, currentProjectId: projectStore.currentProjectId }) } catch (e) { console.debug('[activity-save] debug log error', e) }
+      console.log('[activity-save] Creating new activity')
       const created = await store.createActivity(payload)
       router.replace({ name: 'activity-edit', params: { id: created.id || created._id } })
     } else {
-  try { console.debug('[activity-save] updating activity', { payloadProjectId: payload.projectId, formProjectId: form.projectId, currentProjectId: projectStore.currentProjectId }) } catch (e) { console.debug('[activity-save] debug log error', e) }
+      console.log('[activity-save] Updating existing activity')
       await store.updateActivity(id.value, payload)
     }
     ui.showSuccess('Activity saved')
   } catch (e: any) {
+    console.error('[activity-save] Error occurred:', e)
+    console.error('[activity-save] Error response:', e?.response)
+    console.error('[activity-save] Error status:', e?.response?.status)
+    console.error('[activity-save] Error data:', e?.response?.data)
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save activity')
   } finally {
     saving.value = false

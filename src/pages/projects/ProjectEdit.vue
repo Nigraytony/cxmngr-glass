@@ -105,10 +105,9 @@
                     <div class="flex items-center gap-3">
                       <!-- Status badge (invited, rejected, active, etc.) -->
                       <div
-                        v-if="member.status || member.inviteStatus"
-                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus)]"
+                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus || (member._id ? 'active' : 'invited'))]"
                       >
-                        {{ (member.status || member.inviteStatus) ? (member.status || member.inviteStatus) : 'status' }}
+                        {{ statusLabel(member) }}
                       </div>
                       <div class="flex gap-2">
                         <button
@@ -618,14 +617,14 @@
                     </div>
                   </div>
                   <div
-                    v-if="!(project && (project.roleTemplates && project.roleTemplates.length))"
+                    v-if="!displayedRoleTemplates.length"
                     class="text-sm text-white/70"
                   >
                     No project role templates.
                   </div>
                   <div class="space-y-2">
                     <div
-                      v-for="rt in (project && project.roleTemplates ? project.roleTemplates : roleTemplates)"
+                      v-for="rt in displayedRoleTemplates"
                       :key="rt._id || rt.id"
                       class="p-1 rounded"
                     >
@@ -992,6 +991,7 @@
     </template>
   </Modal>
   <PermissionsModal
+    v-if="showPermsModal && modalMember"
     :visible="showPermsModal"
     :member="modalMember"
     :project-id="projectId"
@@ -1036,6 +1036,8 @@ const cxaFileInput = ref(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
 const invites = ref([])
 const roleTemplates = ref([])
+// Dedicated UI list that always preserves all visible roles
+const roleTemplatesView = ref([])
 const authStore = useAuthStore()
 
 // Modal-based permissions editor state & handlers
@@ -1070,6 +1072,8 @@ const permMatrix = {
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],
+  templates: ['create', 'read', 'update', 'delete'],
+  spaces: ['create', 'read', 'update', 'delete'],
   projects: ['create', 'read', 'update', 'delete']
 }
 
@@ -1086,8 +1090,8 @@ const roleEdits = ref({}) // map roleId -> Set
 
 function getTemplateById(id) {
   try {
-    const list = (project.value && project.value.roleTemplates) ? project.value.roleTemplates : roleTemplates.value
-    return (Array.isArray(list) ? list : []).find(r => (r && ((r._id || r.id) === id))) || null
+    const list = displayedRoleTemplates.value || []
+    return list.find(r => (r && ((r._id || r.id) === id))) || null
   } catch (e) { return null }
 }
 
@@ -1095,8 +1099,9 @@ function toggleRoleOpen(id) {
   try {
     if (!id) return
     const s = new Set(openRoles.value)
-    if (s.has(id)) s.delete(id)
-    else {
+    if (s.has(id)) {
+      s.delete(id)
+    } else {
       s.add(id)
       // initialize edits snapshot when opening
       if (!roleEdits.value[id]) {
@@ -1157,26 +1162,56 @@ async function saveRoleInline(tpl) {
     if (!id || !pid) return ui.showError('Missing project or role id')
     const perms = Array.from(roleEdits.value[id] || [])
     const body = { permissions: perms }
+    
     const resp = await http.put(`/api/projects/${pid}/roles/${id}`, body, { headers: getAuthHeaders() })
     ui.showSuccess('Role template updated')
     // update local template
     try {
-      const updated = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
-      if (updated && project.value && Array.isArray(project.value.roleTemplates)) {
-        const list = project.value.roleTemplates.slice()
+      // Handle different possible response structures
+      let updated = null
+      if (resp && resp.data) {
+        // Check for nested roleTemplate object first
+        updated = resp.data.roleTemplate || 
+                 // Check if the response data itself is the role template
+                 (resp.data._id || resp.data.id ? resp.data : null) ||
+                 // Handle array response
+                 (Array.isArray(resp.data) && resp.data.length > 0 ? resp.data[0] : null)
+      }
+      
+      if (updated && project.value) {
+        // Build from the current UI list to preserve all items
+        const list = Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length
+          ? [...roleTemplatesView.value]
+          : (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length
+            ? [...project.value.roleTemplates]
+            : (Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []))
+
+        // Update the specific role in the complete list
         const idx = list.findIndex(r => (r && ((r._id || r.id) === id)))
-        if (idx >= 0) list.splice(idx, 1, updated)
-        else list.unshift(updated)
-        project.value.roleTemplates = list
+        if (idx >= 0) {
+          list[idx] = updated
+        } else {
+          list.unshift(updated)
+        }
+
+        // Update project and the stable UI list with the complete roles
+        project.value = { ...project.value, roleTemplates: list }
+        roleTemplatesView.value = list
       }
       if (updated && Array.isArray(roleTemplates.value)) {
-        const g = roleTemplates.value.slice()
+        const g = [...roleTemplates.value]
         const gi = g.findIndex(r => (r && ((r._id || r.id) === id)))
-        if (gi >= 0) g.splice(gi, 1, updated)
-        else g.unshift(updated)
+        if (gi >= 0) {
+          g.splice(gi, 1, updated)
+        } else {
+          g.unshift(updated)
+        }
         roleTemplates.value = g
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { 
+      console.warn('Local role template inline update failed:', e)
+    }
+    // Refresh project to ensure full, authoritative role list is shown after inline save
     try { await refreshProject() } catch (e) { /* ignore */ }
   } catch (err) {
     console.error('saveRoleInline error', err)
@@ -1220,31 +1255,100 @@ async function saveRoleTemplate() {
       ui.showSuccess('Role template updated')
       // Update local project roleTemplates so the UI reflects changes immediately
       try {
-        const updated = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
-        if (updated) {
-          const list = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates : []
-          const idx = list.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
-          if (idx >= 0) list.splice(idx, 1, updated)
-          else list.push(updated)
-          // ensure reactive update
-          if (project.value) project.value.roleTemplates = list
+        // Handle different possible response structures
+        let updated = null
+        if (resp && resp.data) {
+          // Check for nested roleTemplate object first
+          updated = resp.data.roleTemplate || 
+                   // Check if the response data itself is the role template
+                   (resp.data._id || resp.data.id ? resp.data : null) ||
+                   // Handle array response
+                   (Array.isArray(resp.data) && resp.data.length > 0 ? resp.data[0] : null)
         }
-      } catch (e) { /* ignore local update errors */ }
+        
+        if (updated) {
+          // Build from the current UI list to preserve all items
+          const list = Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length
+            ? [...roleTemplatesView.value]
+            : (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length
+              ? [...project.value.roleTemplates]
+              : (Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []))
+          const idx = list.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
+          if (idx >= 0) {
+            // Replace the existing role
+            list.splice(idx, 1, updated)
+          } else {
+            // Add the new role
+            list.push(updated)
+          }
+          // Force reactive update by creating new reference
+          if (project.value) {
+            project.value = { ...project.value, roleTemplates: list }
+          }
+          // Update the stable UI list
+          roleTemplatesView.value = list
+          
+          // Also update global roleTemplates array for consistency
+          const globalList = Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []
+          const globalIdx = globalList.findIndex(r => (r && ((r._id || r.id) === (updated._id || updated.id))))
+          if (globalIdx >= 0) {
+            globalList.splice(globalIdx, 1, updated)
+          } else {
+            globalList.push(updated)
+          }
+          roleTemplates.value = globalList
+        }
+      } catch (e) { 
+        console.warn('Local role template update failed:', e)
+      }
     } else {
       const resp = await http.post(`/api/projects/${pid}/roles`, body, { headers: getAuthHeaders() })
       ui.showSuccess('Role template created')
       // Insert created role into local project roleTemplates so it shows immediately
       try {
-        const created = resp && resp.data && resp.data.roleTemplate ? resp.data.roleTemplate : null
-        if (created) {
-          const list = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates.slice() : []
-          list.unshift(created)
-          if (project.value) project.value.roleTemplates = list
+        // Handle different possible response structures
+        let created = null
+        if (resp && resp.data) {
+          // Check for nested roleTemplate object first
+          created = resp.data.roleTemplate || 
+                   // Check if the response data itself is the role template
+                   (resp.data._id || resp.data.id ? resp.data : null) ||
+                   // Handle array response
+                   (Array.isArray(resp.data) && resp.data.length > 0 ? resp.data[0] : null)
         }
-      } catch (e) { /* ignore */ }
+        
+        if (created) {
+          // Build from the current UI list to preserve all items
+          const list = Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length
+            ? [...roleTemplatesView.value]
+            : (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length
+              ? [...project.value.roleTemplates]
+              : (Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []))
+          // Add the new role at the beginning
+          list.unshift(created)
+          // Force reactive update by creating new reference
+          if (project.value) {
+            project.value = { ...project.value, roleTemplates: list }
+          }
+          // Update the stable UI list
+          roleTemplatesView.value = list
+          
+          // Also update global roleTemplates array for consistency
+          const globalList = Array.isArray(roleTemplates.value) ? [...roleTemplates.value] : []
+          const existingIdx = globalList.findIndex(r => (r && ((r._id || r.id) === (created._id || created.id))))
+          if (existingIdx >= 0) {
+            globalList.splice(existingIdx, 1, created)
+          } else {
+            globalList.unshift(created)
+          }
+          roleTemplates.value = globalList
+        }
+      } catch (e) { 
+        console.warn('Local role template creation failed:', e)
+      }
     }
-    // attempt to refresh from server but don't rely on it for immediate UI
-    try { await refreshProject() } catch (e) { /* ignore */ }
+    // Close modal immediately after successful local update
+    // Note: Removed refreshProject() call to prevent clearing roles due to timing/permission issues
     closeRoleModal()
   } catch (err) {
     console.error('saveRoleTemplate error', err)
@@ -1263,13 +1367,30 @@ async function deleteRoleTemplate(tpl) {
       ui.showSuccess('Role template deleted')
       // remove locally so UI updates immediately
       try {
-        if (project.value && Array.isArray(project.value.roleTemplates)) {
-          project.value.roleTemplates = project.value.roleTemplates.filter(r => ((r._id || r.id) !== id))
+        // Get the source of currently displayed roles directly (avoid computed property circular dependency)
+        let currentlyDisplayed = []
+        if (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
+          currentlyDisplayed = [...project.value.roleTemplates]
+        } else if (Array.isArray(roleTemplates.value)) {
+          currentlyDisplayed = [...roleTemplates.value]
         }
-        // also update global roleTemplates cache if present
-        if (Array.isArray(roleTemplates.value)) roleTemplates.value = roleTemplates.value.filter(r => ((r._id || r.id) !== id))
-      } catch (e) { /* ignore */ }
-      try { await refreshProject() } catch (e) { /* ignore */ }
+        
+        // Remove the deleted role from the currently displayed roles
+        const filteredTemplates = currentlyDisplayed.filter(r => ((r._id || r.id) !== id))
+        
+        // Update project roleTemplates
+        if (project.value) {
+          project.value = { ...project.value, roleTemplates: filteredTemplates }
+        }
+        
+        // Also update global roleTemplates cache if present
+        if (Array.isArray(roleTemplates.value)) {
+          roleTemplates.value = [...roleTemplates.value.filter(r => ((r._id || r.id) !== id))]
+        }
+      } catch (e) { 
+        console.warn('Local role template deletion failed:', e)
+      }
+      // Note: Removed refreshProject() call to prevent clearing roles due to timing/permission issues
       closeRoleModal()
   } catch (err) {
     console.error('deleteRoleTemplate error', err)
@@ -1279,14 +1400,20 @@ async function deleteRoleTemplate(tpl) {
 
 async function fetchRoleTemplates() {
   try {
-    // Try loading global and project-scoped role templates. This endpoint is admin-protected;
-    // non-admin users will get a 403 and we silently fall back to the legacy hard-coded list.
+    // Only global admins should call admin endpoints to avoid 403 noise in console
+    const userRole = String((authStore.user && authStore.user.role) || '').toLowerCase()
+    const isGlobalAdmin = userRole === 'globaladmin' || userRole === 'superadmin'
+    if (!isGlobalAdmin) {
+      roleTemplates.value = []
+      return
+    }
+
     const pid = projectId || (project.value && (project.value._id || project.value.id))
-  const globalResp = await http.get('/api/admin/roles?scope=global', { headers: getAuthHeaders() })
+    const globalResp = await http.get('/api/admin/roles?scope=global', { headers: getAuthHeaders(), validateStatus: (s) => s >= 200 && s < 300 })
     let list = Array.isArray(globalResp.data) ? globalResp.data : []
     if (pid) {
       try {
-  const resp = await http.get(`/api/admin/roles?scope=project&projectId=${pid}`, { headers: getAuthHeaders() })
+        const resp = await http.get(`/api/admin/roles?scope=project&projectId=${pid}`, { headers: getAuthHeaders(), validateStatus: (s) => s >= 200 && s < 300 })
         if (Array.isArray(resp.data)) list = list.concat(resp.data)
       } catch (e) {
         // ignore project-scoped fetch failures (likely permission)
@@ -1294,7 +1421,7 @@ async function fetchRoleTemplates() {
     }
     roleTemplates.value = Array.isArray(list) ? list : []
   } catch (e) {
-    // unable to load templates (likely not an admin) — leave roleTemplates empty
+    // leave roleTemplates empty on any failure
     roleTemplates.value = []
   }
 }
@@ -1304,6 +1431,21 @@ const selectedRoleTemplate = computed(() => {
     const rv = roleTemplates.value || []
     return rv.find(r => r && (r.name === (newMember.value.role || '')) ) || null
   } catch (e) { return null }
+})
+
+// Computed property for roles to display - prefer the stable UI list first
+const displayedRoleTemplates = computed(() => {
+  try {
+    if (Array.isArray(roleTemplatesView.value) && roleTemplatesView.value.length > 0) {
+      return roleTemplatesView.value
+    }
+    if (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
+      return project.value.roleTemplates
+    }
+    return Array.isArray(roleTemplates.value) ? roleTemplates.value : []
+  } catch (e) {
+    return []
+  }
 })
 // Determine whether current auth user is a project admin (team role 'admin' or 'CxA')
 const currentProjectMember = computed(() => {
@@ -1358,8 +1500,19 @@ onMounted(async () => {
       const p = await projectStore.fetchProject(projectId)
       project.value = { ...p }
       if (!project.value.searchMode) project.value.searchMode = 'substring'
-      // attempt to load role templates for richer role selection (admins only)
-      try { await fetchRoleTemplates() } catch (e) { /* ignore */ }
+      // attempt to load role templates for richer role selection (global admins only)
+      try {
+        const role = String((authStore.user && authStore.user.role) || '').toLowerCase()
+        if (role === 'globaladmin' || role === 'superadmin') {
+          await fetchRoleTemplates()
+        }
+      } catch (e) { /* ignore */ }
+      // Seed UI list from project on first load
+      if (Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
+        roleTemplatesView.value = project.value.roleTemplates.slice()
+      } else if (Array.isArray(roleTemplates.value) && roleTemplates.value.length > 0) {
+        roleTemplatesView.value = roleTemplates.value.slice()
+      }
     } catch (e) {
       ui.showError('Failed to load project')
       router.push('/projects')
@@ -1405,10 +1558,13 @@ async function loadInvites() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
-  const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
     invites.value = data || []
   } catch (err) {
-    console.error('loadInvites error', err)
+    const status = err?.response?.status
+    if (status !== 404) {
+      console.error('loadInvites error', err)
+    }
   }
 }
 
@@ -1519,6 +1675,16 @@ function statusBadgeClass(status) {
   if (s === 'rejected' || s === 'declined') return 'bg-gray-600/20 text-gray-200 border border-gray-600/30'
   if (s === 'active' || s === 'accepted' || s === 'member') return 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/30'
   return 'bg-white/6 text-white/80 border border-white/10'
+}
+
+function statusLabel(member) {
+  const raw = member && (member.status || member.inviteStatus) ? String(member.status || member.inviteStatus) : (member && member._id ? 'active' : 'invited')
+  const s = String(raw || '').toLowerCase()
+  if (s === 'invited' || s === 'pending') return 'Invited'
+  if (s === 'rejected' || s === 'declined') return 'Rejected'
+  if (s === 'active' || s === 'accepted' || s === 'member') return 'Active'
+  // fallback: humanize
+  return String(raw).toString()
 }
 
 async function addMember() {
@@ -1726,7 +1892,16 @@ async function refreshProject() {
       p.roleTemplates = prevRoleTemplates.slice()
     }
     project.value = { ...p };
-    try { await fetchRoleTemplates() } catch (e) { /* ignore */ }
+    // Keep the UI list in sync with authoritative project data when it includes roles
+    if (Array.isArray(p.roleTemplates) && p.roleTemplates.length > 0) {
+      roleTemplatesView.value = p.roleTemplates.slice()
+    }
+    try {
+      const role = String((authStore.user && authStore.user.role) || '').toLowerCase()
+      if (role === 'globaladmin' || role === 'superadmin') {
+        await fetchRoleTemplates()
+      }
+    } catch (e) { /* ignore */ }
   } catch (err) {
     console.error('refreshProject error', err);
   }

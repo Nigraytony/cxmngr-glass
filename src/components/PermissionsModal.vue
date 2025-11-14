@@ -104,21 +104,49 @@ const matrix = {
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],
+  templates: ['create', 'read', 'update', 'delete'],
+  spaces: ['create', 'read', 'update', 'delete'],
   projects: ['create', 'read', 'update', 'delete']
 }
 
 const selectedTemplateId = ref('')
 const selectedPerms = ref(new Set())
 
-const memberDisplay = computed(() => props.member?.email || `${props.member?.firstName || ''} ${props.member?.lastName || ''}`)
-
-watch(() => props.visible, (v) => {
-  if (v) {
-    // initialize selectedPerms from member.permissions
-    const arr = Array.isArray(props.member?.permissions) ? props.member.permissions : []
-    selectedPerms.value = new Set(arr)
-  }
+const memberDisplay = computed(() => {
+  if (!props.member) return ''
+  return props.member.email || `${props.member.firstName || ''} ${props.member.lastName || ''}`
 })
+
+function normalizePermValue(p) {
+  try {
+    if (!p && p !== 0) return ''
+    // If permission stored as object, try common fields
+    if (typeof p === 'object') {
+      if (p.permission) return String(p.permission).trim().toLowerCase()
+      if (p.permissions) return String(p.permissions).trim().toLowerCase()
+      return JSON.stringify(p)
+    }
+    return String(p).trim().toLowerCase()
+  } catch (e) { return String(p || '').trim().toLowerCase() }
+}
+
+// initialize selectedPerms when modal becomes visible or member changes
+watch([
+  () => props.visible,
+  () => props.member
+], ([visible, member]) => {
+  if (!visible || !member) return
+  const raw = Array.isArray(member.permissions) ? member.permissions : []
+  const arr = raw.map(normalizePermValue).filter(Boolean)
+  selectedPerms.value = new Set(arr)
+  // If the member has a role that matches a template name, pre-select that template id
+  if (member && member.role && Array.isArray(props.roleTemplates)) {
+    const match = props.roleTemplates.find(r => String(r.name).toLowerCase() === String(member.role).toLowerCase())
+    selectedTemplateId.value = match ? (match._id || match.id) : ''
+  } else {
+    selectedTemplateId.value = ''
+  }
+}, { immediate: true })
 
 const selectedPermsArray = computed({
   get() { return Array.from(selectedPerms.value) },
@@ -130,8 +158,8 @@ async function applyTemplate() {
     if (!selectedTemplateId.value) return
     const tpl = (props.roleTemplates || []).find(r => (r._id || r.id) === selectedTemplateId.value)
     if (!tpl) return
-    const perms = Array.isArray(tpl.permissions) ? tpl.permissions : []
-    selectedPerms.value = new Set(perms)
+    const perms = Array.isArray(tpl.permissions) ? tpl.permissions.map(normalizePermValue) : []
+    selectedPerms.value = new Set(perms.filter(Boolean))
   } catch (err) {
     console.error('applyTemplate error', err)
   }
@@ -141,7 +169,7 @@ async function save() {
   try {
     const pid = props.projectId
     const memberId = props.member._id || props.member.email
-    const body = { permissions: Array.from(selectedPerms.value) }
+    const body = { permissions: Array.from(selectedPerms.value).map(normalizePermValue) }
     await http.put(`/api/projects/${pid}/team/${memberId}/permissions`, body, { headers: getAuthHeaders() })
     emit('saved')
     emit('close')

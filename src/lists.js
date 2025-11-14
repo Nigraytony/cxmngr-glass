@@ -80,6 +80,7 @@ export default {
 
   activityOptions: [
     { value: null, text: "Please select an option" },
+    { value: "Assessment", text: "Assessment" },
     { value: "BOD Review", text: "BOD Review" },
     { value: "Construction Checklist", text: "Construction Checklist" },
     { value: "Design Review", text: "Design Review" },
@@ -149,15 +150,15 @@ export default {
 
   systemOptions: [
     { value: null, text: "Please select an option" },
-    { value: "mechanical", text: "Mechanical" },
-    { value: "electrical", text: "Electrical" },
-    { value: "plumbing", text: "Plumbing" },
-    { value: "life safety", text: "Life Safety" },
-    { value: "test & balance", text: "Test & Balance" },
-    { value: "controls", text: "Controls" },
-    { value: "lighting_controls", text: "Lighting Controls" },
-    { value: "lighting", text: "Lighting" },
-    { value: "photovoltaic", text: "Photovoltaic" },
+    { value: "Mechanical", text: "Mechanical" },
+    { value: "Electrical", text: "Electrical" },
+    { value: "Plumbing", text: "Plumbing" },
+    { value: "Life Safety", text: "Life Safety" },
+    { value: "Test & Balance", text: "Test & Balance" },
+    { value: "Controls", text: "Controls" },
+    { value: "Lighting Controls", text: "Lighting Controls" },
+    { value: "Lighting", text: "Lighting" },
+    { value: "Photovoltaic", text: "Photovoltaic" },
   ],
 
   divisionOptions: [

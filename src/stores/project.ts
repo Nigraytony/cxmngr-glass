@@ -123,9 +123,15 @@ export const useProjectStore = defineStore('project', () => {
           return;
         }
       } catch (innerErr) {
-        // fall back to public projects list if fetching /me failed
+        // If fetching authenticated user's projects failed, do NOT fall back to the
+        // public projects list (that would leak all projects to an authenticated
+        // user who doesn't yet have projects in their profile). Instead treat as
+        // no projects available for this user.
+        projects.value = [];
+        return;
       }
 
+      // If there is no auth token, fetch public projects list (e.g., for anonymous views)
       const res = await axios.get(API_BASE);
       // Map backend _id to id for frontend
       projects.value = Array.isArray(res.data) ? res.data.map((p: any) => ({ ...p, id: p._id })) : [];

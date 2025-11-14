@@ -87,31 +87,24 @@ app.get('/api/health', (req, res) => {
   res.status(ok ? 200 : 500).json({ status: ok ? 'ok' : 'error', dbState: state });
 });
 app.use('/api/projects', 
-  // authorize(['admin', 'user']),
   projectRoutes
 );
 app.use('/api/issues', 
-  // authorize(['admin', 'user']), 
   issueRoutes
 );
 app.use('/api/equipment', 
-  // authorize(['admin', 'user']), 
   equipmentRoutes
 );
 app.use('/api/templates', 
-  // authorize(['admin', 'user']), 
   templateRoutes
 );
 app.use('/api/tasks', 
-  authorize(['admin', 'user']), 
   taskRoutes
 );
 app.use('/api/activities', 
-  authorize(['admin', 'user']), 
   activityRoutes
 );
 app.use('/api/spaces', 
-  // authorize(['admin', 'user']), 
   spaceRoutes
 );
 app.use('/api/users', userRoutes);

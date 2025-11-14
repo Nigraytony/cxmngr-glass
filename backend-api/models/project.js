@@ -21,6 +21,8 @@ const projectSchema = new mongoose.Schema({
     email: String,
     company: String,
     role: String,
+    // member status: 'invited', 'active', 'declined', etc.
+    status: { type: String },
     // Explicit per-member permissions copied from project role templates or set manually
     permissions: [{ type: String }],
     // Optional timestamps per team member for auditing

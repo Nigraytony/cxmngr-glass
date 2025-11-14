@@ -130,12 +130,20 @@
                       {{ formatInviteDate(inv.createdAt) }}
                     </div>
                   </div>
-                  <button
-                    class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white"
-                    @click="accept(inv.id)"
-                  >
-                    Accept
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="text-xs px-2 py-1 rounded bg-green-500/70 hover:bg-green-500 text-white"
+                      @click="accept(inv.id)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      class="text-xs px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-white"
+                      @click="decline(inv.id)"
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </li>
                 <li class="my-1 border-t border-white/10" />
               </template>
@@ -283,7 +291,7 @@ const defaultProjectName = computed(() => {
       if (dp) return dp.name || dp.title || 'Projects'
     }
   } catch (e) { /* ignore */ }
-  return 'Liquid Glass Dashboard'
+  return 'Cx Manager Dashboard'
 })
 
 const menuOpen = ref(false)
@@ -381,8 +389,9 @@ const projectsList = computed(() => {
   } catch (e) {
     /* ignore and fall back */
   }
-  // Fallback to project store (may contain full project objects)
-  return projectStore.projects || []
+  // No authenticated project list available -> return empty list so users
+  // don't see all projects in the app (fallback to project store would leak all projects).
+  return []
 })
 const defaultProjectId = computed(() => {
   try {
@@ -445,6 +454,16 @@ async function accept(id) {
     }
   } catch (e) {
     ui.showError('Failed to accept invitation')
+  }
+}
+
+async function decline(id) {
+  try {
+    const ok = await invitationsStore.rejectInvite(id)
+    if (ok) ui.showSuccess('Invitation declined')
+    else ui.showError(invitationsStore.error || 'Failed to decline invitation')
+  } catch (e) {
+    ui.showError('Failed to decline invitation')
   }
 }
 </script>

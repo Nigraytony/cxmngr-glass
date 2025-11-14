@@ -27,9 +27,11 @@ function validatePhotosArray(photos) {
 
 // Create a new activity
 router.post('/', auth, requirePermission('activities.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
+  console.log('[activity-create] Request body:', JSON.stringify(req.body, null, 2));
   try {
     // if photos provided, validate count and sizes
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
+      console.log('[activity-create] Photos validation failed');
       return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
     }
 
@@ -54,6 +56,7 @@ router.post('/', auth, requirePermission('activities.create', { projectParam: 'p
 
     res.status(201).send(activity);
   } catch (error) {
+    console.log('[activity-create] Error creating activity:', error);
     res.status(400).send(error);
   }
 });

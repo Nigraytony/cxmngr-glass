@@ -18,6 +18,9 @@
           <th class="text-left px-3 py-2">
             Description
           </th>
+          <th class="text-left px-3 py-2 w-36">
+            Recommendation
+          </th>
           <th class="text-left px-3 py-2 w-28">
             Status
           </th>
@@ -54,6 +57,9 @@
           <td class="px-3 py-2 align-middle">
             <span class="block text-white/70 whitespace-normal break-words">{{ it.description || '—' }}</span>
           </td>
+          <td class="px-3 py-2 align-middle">
+            <span class="block text-white/70 whitespace-normal break-words">{{ it.recommendation || '—' }}</span>
+          </td>
           <td class="px-3 py-2 align-middle whitespace-nowrap w-28">
             <span
               class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
@@ -82,6 +88,7 @@ export type IssueLite = {
   title?: string
   description?: string
   type?: string
+  recommendation?: string
   status?: string
 }
 
@@ -95,6 +102,7 @@ const rows = computed<IssueLite[]>(() => {
     title: raw.title,
     description: raw.description,
     type: raw.type,
+    recommendation: raw.recommendation || raw.recommendationText || raw.recommendation_text || '',
     status: raw.status,
   })).filter(r => r.id)
 })

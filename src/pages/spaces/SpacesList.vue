@@ -323,16 +323,88 @@
       </div>
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
         <div class="col-span-2">
-          Tag
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('tag')"
+          >
+            <span>Tag</span>
+            <span
+              v-if="sortKey==='tag' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='tag' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-4">
-          Title
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('title')"
+          >
+            <span>Title</span>
+            <span
+              v-if="sortKey==='title' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='title' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-2">
-          Type
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('type')"
+          >
+            <span>Type</span>
+            <span
+              v-if="sortKey==='type' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='type' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-3">
-          Parent
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            @click="setSort('parent')"
+          >
+            <span>Parent</span>
+            <span
+              v-if="sortKey==='parent' && sortDir===1"
+              class="text-xs"
+            >▲</span>
+            <span
+              v-else-if="sortKey==='parent' && sortDir===-1"
+              class="text-xs"
+            >▼</span>
+            <span
+              v-else
+              class="text-xs opacity-40"
+            >⇅</span>
+          </button>
         </div>
         <div class="col-span-1 text-right">
           Actions
@@ -833,6 +905,36 @@ const filtered = computed(() => {
   })
 })
 
+// Sorting state for spaces table
+const sortKey = ref('')
+const sortDir = ref(1) // 1 = asc, -1 = desc
+
+const sorted = computed(() => {
+  if (!sortKey.value) return filtered.value
+  const arr = [...filtered.value]
+  arr.sort((a: any, b: any) => {
+    let av: string
+    let bv: string
+    if (sortKey.value === 'parent') {
+      av = String(parentName(a) || '').toLowerCase()
+      bv = String(parentName(b) || '').toLowerCase()
+    } else {
+      av = String((a?.[sortKey.value] ?? '')).toLowerCase()
+      bv = String((b?.[sortKey.value] ?? '')).toLowerCase()
+    }
+    if (av < bv) return -1 * sortDir.value
+    if (av > bv) return 1 * sortDir.value
+    return 0
+  })
+  return arr
+})
+
+function setSort(key: string) {
+  if (sortKey.value === key) sortDir.value = -sortDir.value
+  else { sortKey.value = key; sortDir.value = 1 }
+  page.value = 1
+}
+
 // Type filter dropdown like Issues status filter
 const showTypeMenu = ref(false)
 const typeMenuRef = ref<HTMLElement | null>(null)
@@ -867,21 +969,43 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 const page = ref(1)
 // seed pageSize from user's profile perPage preference when available
 const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 10)
-const totalFiltered = computed(() => filtered.value.length)
+// Persist per-page page size preference for the current session
+const pageSizeStorageKey = computed(() => `spacesPageSize:${projectStore.currentProjectId || 'global'}`)
+function loadPageSizePref() {
+  try {
+    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
+    if (!raw) {
+      try {
+        const p = auth && auth.user && auth.user.contact && auth.user.contact.perPage
+        const allowed = [5,10,25,50,100]
+        if (typeof p === 'number' && allowed.includes(p)) {
+          pageSize.value = p
+        }
+      } catch (e) { /* ignore */ }
+      return
+    }
+    const n = parseInt(raw, 10)
+    if ([5,10,25,50,100].includes(n)) pageSize.value = n
+  } catch (e) { /* ignore sessionStorage read errors */ }
+}
+function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore */ } }
+watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
+watch(pageSize, () => persistPageSizePref())
+const totalFiltered = computed(() => sorted.value.length)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalFiltered.value / pageSize.value)))
 const pageStart = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return Math.min(start, Math.max(0, Math.max(0, totalFiltered.value - 1)))
 })
 const pageEnd = computed(() => Math.min(pageStart.value + pageSize.value, totalFiltered.value))
-const paged = computed(() => filtered.value.slice(pageStart.value, pageEnd.value))
+const paged = computed(() => sorted.value.slice(pageStart.value, pageEnd.value))
 
 function prevPage() { if (page.value > 1) page.value -= 1 }
 function nextPage() { if (page.value < totalPages.value) page.value += 1 }
 
 watch([search, typeFilter], () => { page.value = 1 })
 watch(totalPages, (tp) => { if (page.value > tp) page.value = tp })
-watch(filtered, () => { if (page.value > totalPages.value) page.value = totalPages.value })
+watch(sorted, () => { if (page.value > totalPages.value) page.value = totalPages.value })
 
 // moved project watcher and tree init watchers below after declarations
 

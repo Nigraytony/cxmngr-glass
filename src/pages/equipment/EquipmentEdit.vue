@@ -167,30 +167,50 @@
               <div>
                 <label class="block text-sm text-white/70">Type</label>
                 <div class="relative">
-                  <select
-                    v-model="form.type"
-                    class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                    @click="showTypeOptions"
+                    @keydown.down.prevent="onTypeArrow(1)"
+                    @keydown.up.prevent="onTypeArrow(-1)"
+                    @keydown.enter.prevent="chooseHighlightedType"
+                    @keydown.esc="hideTypeDropdown"
+                    @blur="hideTypeDropdown"
+                    @wheel.prevent="(e) => onTypeArrow(e.deltaY > 0 ? 1 : -1)"
                   >
-                    <option
-                      v-for="opt in typeOptions"
-                      :key="opt.value"
-                      :value="opt.value"
+                    <span>{{ typeOptions.find(opt => opt.value === form.type)?.text || form.type }}</span>
+                    <svg
+                      class="w-4 h-4 text-white/50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {{ opt.text }}
-                    </option>
-                  </select>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
-                  ><path
-                    d="M6 9l6 6 6-6"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  /></svg>
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    v-if="showTypeDropdown"
+                    class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                  >
+                    <div class="py-1">
+                      <button
+                        v-for="(opt, i) in typeOptions"
+                        :key="opt.value"
+                        type="button"
+                        class="w-full px-3 py-2 text-left text-white/90"
+                        :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                        @click="selectType(opt.value)"
+                      >
+                        {{ opt.text }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -207,92 +227,157 @@
               <div>
                 <label class="block text-sm text-white/70">System</label>
                 <div class="relative">
-                  <select
-                    v-model="form.system"
-                    class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                    @click="showSystemOptions"
+                    @keydown.down.prevent="onSystemArrow(1)"
+                    @keydown.up.prevent="onSystemArrow(-1)"
+                    @keydown.enter.prevent="chooseHighlightedSystem"
+                    @keydown.esc="hideSystemDropdown"
+                    @blur="hideSystemDropdown"
+                    @wheel.prevent="(e) => onSystemArrow(e.deltaY > 0 ? 1 : -1)"
                   >
-                    <option
-                      v-for="opt in systemSelectOptions"
-                      :key="opt.value"
-                      :value="opt.value"
+                    <span>{{ systemSelectOptions.find(opt => opt.value === form.system)?.text || form.system || 'Select System' }}</span>
+                    <svg
+                      class="w-4 h-4 text-white/50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {{ opt.text }}
-                    </option>
-                  </select>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
-                  ><path
-                    d="M6 9l6 6 6-6"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  /></svg>
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    v-if="showSystemDropdown"
+                    class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                  >
+                    <div class="py-1">
+                      <button
+                        v-for="(opt, i) in systemSelectOptions"
+                        :key="opt.value"
+                        type="button"
+                        class="w-full px-3 py-2 text-left text-white/90"
+                        :class="i === highlightedSystemIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                        @click="selectSystem(opt.value)"
+                      >
+                        {{ opt.text }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div>
                 <label class="block text-sm text-white/70">Status</label>
                 <div class="relative">
-                  <select
-                    v-model="form.status"
-                    class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                    @click="showStatusOptions"
+                    @keydown.down.prevent="onStatusArrow(1)"
+                    @keydown.up.prevent="onStatusArrow(-1)"
+                    @keydown.enter.prevent="chooseHighlightedStatus"
+                    @keydown.esc="hideStatusDropdown"
+                    @blur="hideStatusDropdown"
+                    @wheel.prevent="(e) => onStatusArrow(e.deltaY > 0 ? 1 : -1)"
                   >
-                    <option
-                      v-for="s in statuses"
-                      :key="s"
-                      :value="s"
+                    <span>{{ form.status || 'Select Status' }}</span>
+                    <svg
+                      class="w-4 h-4 text-white/50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {{ s }}
-                    </option>
-                  </select>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
-                  ><path
-                    d="M6 9l6 6 6-6"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  /></svg>
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    v-if="showStatusDropdown"
+                    class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                  >
+                    <div class="py-1">
+                      <button
+                        v-for="(s, i) in statuses"
+                        :key="s"
+                        type="button"
+                        class="w-full px-3 py-2 text-left text-white/90"
+                        :class="i === highlightedStatusIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                        @click="selectStatus(s)"
+                      >
+                        {{ s }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
             <div class="mt-2">
               <label class="block text-sm text-white/70">Space</label>
               <div class="relative">
-                <select
-                  v-model="form.spaceId"
-                  class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                <button
+                  type="button"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                  @click="showSpaceOptions"
+                  @keydown.down.prevent="onSpaceArrow(1)"
+                  @keydown.up.prevent="onSpaceArrow(-1)"
+                  @keydown.enter.prevent="chooseHighlightedSpace"
+                  @keydown.esc="hideSpaceDropdown"
+                  @blur="hideSpaceDropdown"
+                  @wheel.prevent="(e) => onSpaceArrow(e.deltaY > 0 ? 1 : -1)"
                 >
-                  <option :value="''">
-                    None
-                  </option>
-                  <option
-                    v-for="p in parentOptions"
-                    :key="p.id"
-                    :value="p.id"
+                  <span>{{ (form as any).spaceId ? parentOptions.find(p => p.id === (form as any).spaceId)?.title + ' (' + parentOptions.find(p => p.id === (form as any).spaceId)?.type + ')' : 'None' }}</span>
+                  <svg
+                    class="w-4 h-4 text-white/50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    {{ p.title }} ({{ p.type }})
-                  </option>
-                </select>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/80"
-                ><path
-                  d="M6 9l6 6 6-6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                /></svg>
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="showSpaceDropdown"
+                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                >
+                  <div class="py-1">
+                    <button
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="highlightedSpaceIndex === -1 ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="selectSpace('')"
+                    >
+                      None
+                    </button>
+                    <button
+                      v-for="(p, i) in parentOptions"
+                      :key="p.id"
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="i === highlightedSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="p.id && selectSpace(p.id)"
+                    >
+                      {{ p.title }} ({{ p.type }})
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="mt-2">
@@ -1534,6 +1619,111 @@ const typeOptions = computed(() => {
   const arr: Array<any> = (lists as any)?.equipmentTypes || []
   return arr.filter((opt: any) => opt && opt.value).map((opt: any) => ({ value: String(opt.value), text: String(opt.text ?? opt.value) }))
 })
+
+// Styled dropdown state (Info tab)
+const showTypeDropdown = ref(false)
+const showSystemDropdown = ref(false)
+const showStatusDropdown = ref(false)
+const showSpaceDropdown = ref(false)
+const highlightedTypeIndex = ref(-1)
+const highlightedSystemIndex = ref(-1)
+const highlightedStatusIndex = ref(-1)
+const highlightedSpaceIndex = ref(-1)
+
+// Type dropdown handlers
+function showTypeOptions() {
+  showTypeDropdown.value = true
+  highlightedTypeIndex.value = typeOptions.value.findIndex(opt => opt.value === form.value.type)
+}
+function hideTypeDropdown() {
+  setTimeout(() => { showTypeDropdown.value = false; highlightedTypeIndex.value = -1 }, 150)
+}
+function onTypeArrow(direction: number) {
+  if (!showTypeDropdown.value) { showTypeOptions(); return }
+  const newIndex = Math.max(0, Math.min(typeOptions.value.length - 1, highlightedTypeIndex.value + direction))
+  highlightedTypeIndex.value = newIndex
+}
+function chooseHighlightedType() {
+  if (highlightedTypeIndex.value >= 0 && highlightedTypeIndex.value < typeOptions.value.length) {
+    selectType(typeOptions.value[highlightedTypeIndex.value].value)
+  }
+}
+function selectType(type: string) {
+  form.value.type = type
+  hideTypeDropdown()
+}
+
+// System dropdown handlers
+function showSystemOptions() {
+  showSystemDropdown.value = true
+  highlightedSystemIndex.value = systemSelectOptions.value.findIndex(opt => opt.value === form.value.system)
+}
+function hideSystemDropdown() {
+  setTimeout(() => { showSystemDropdown.value = false; highlightedSystemIndex.value = -1 }, 150)
+}
+function onSystemArrow(direction: number) {
+  if (!showSystemDropdown.value) { showSystemOptions(); return }
+  const newIndex = Math.max(0, Math.min(systemSelectOptions.value.length - 1, highlightedSystemIndex.value + direction))
+  highlightedSystemIndex.value = newIndex
+}
+function chooseHighlightedSystem() {
+  if (highlightedSystemIndex.value >= 0 && highlightedSystemIndex.value < systemSelectOptions.value.length) {
+    selectSystem(systemSelectOptions.value[highlightedSystemIndex.value].value)
+  }
+}
+function selectSystem(system: string) {
+  form.value.system = system
+  hideSystemDropdown()
+}
+
+// Status dropdown handlers
+function showStatusOptions() {
+  showStatusDropdown.value = true
+  highlightedStatusIndex.value = statuses.findIndex(s => s === form.value.status)
+}
+function hideStatusDropdown() {
+  setTimeout(() => { showStatusDropdown.value = false; highlightedStatusIndex.value = -1 }, 150)
+}
+function onStatusArrow(direction: number) {
+  if (!showStatusDropdown.value) { showStatusOptions(); return }
+  const newIndex = Math.max(0, Math.min(statuses.length - 1, highlightedStatusIndex.value + direction))
+  highlightedStatusIndex.value = newIndex
+}
+function chooseHighlightedStatus() {
+  if (highlightedStatusIndex.value >= 0 && highlightedStatusIndex.value < statuses.length) {
+    selectStatus(statuses[highlightedStatusIndex.value])
+  }
+}
+function selectStatus(status: string) {
+  // cast for TS union compatibility
+  form.value.status = status as any
+  hideStatusDropdown()
+}
+
+// Space dropdown handlers
+function showSpaceOptions() {
+  showSpaceDropdown.value = true
+  highlightedSpaceIndex.value = parentOptions.value.findIndex(opt => opt.id === (form.value as any).spaceId)
+}
+function hideSpaceDropdown() {
+  setTimeout(() => { showSpaceDropdown.value = false; highlightedSpaceIndex.value = -1 }, 150)
+}
+function onSpaceArrow(direction: number) {
+  if (!showSpaceDropdown.value) { showSpaceOptions(); return }
+  const newIndex = Math.max(-1, Math.min(parentOptions.value.length - 1, highlightedSpaceIndex.value + direction))
+  highlightedSpaceIndex.value = newIndex
+}
+function chooseHighlightedSpace() {
+  if (highlightedSpaceIndex.value === -1) { selectSpace(''); return }
+  if (highlightedSpaceIndex.value >= 0 && highlightedSpaceIndex.value < parentOptions.value.length) {
+    const sid = parentOptions.value[highlightedSpaceIndex.value].id
+    if (sid) selectSpace(sid)
+  }
+}
+function selectSpace(spaceId: string) {
+  (form.value as any).spaceId = spaceId
+  hideSpaceDropdown()
+}
 
 // Ordered equipment for navigation (same project), sorted by tag then title
 const projectIdForNav = computed(() => String(form.value.projectId || projectStore.currentProjectId || ''))

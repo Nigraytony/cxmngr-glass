@@ -429,19 +429,91 @@
           <thead>
             <tr class="text-sm text-white/70">
               <th class="px-4 py-3">
-                #
+                <button
+                  type="button"
+                  class="flex items-center gap-2"
+                  @click="setSort('number')"
+                >
+                  <span>#</span>
+                  <span
+                    v-if="sortKey === 'number' && sortDir === 1"
+                    class="text-xs"
+                  >▲</span>
+                  <span
+                    v-else-if="sortKey === 'number' && sortDir === -1"
+                    class="text-xs"
+                  >▼</span>
+                  <span
+                    v-else
+                    class="text-xs opacity-40"
+                  >⇅</span>
+                </button>
               </th>
               <th class="px-4 py-3">
-                Type
+                <button
+                  type="button"
+                  class="flex items-center gap-2"
+                  @click="setSort('type')"
+                >
+                  <span>Type</span>
+                  <span
+                    v-if="sortKey === 'type' && sortDir === 1"
+                    class="text-xs"
+                  >▲</span>
+                  <span
+                    v-else-if="sortKey === 'type' && sortDir === -1"
+                    class="text-xs"
+                  >▼</span>
+                  <span
+                    v-else
+                    class="text-xs opacity-40"
+                  >⇅</span>
+                </button>
               </th>
               <th class="px-4 py-3">
                 Description
               </th>
               <th class="px-4 py-3">
-                Priority
+                <button
+                  type="button"
+                  class="flex items-center gap-2"
+                  @click="setSort('priority')"
+                >
+                  <span>Priority</span>
+                  <span
+                    v-if="sortKey === 'priority' && sortDir === 1"
+                    class="text-xs"
+                  >▲</span>
+                  <span
+                    v-else-if="sortKey === 'priority' && sortDir === -1"
+                    class="text-xs"
+                  >▼</span>
+                  <span
+                    v-else
+                    class="text-xs opacity-40"
+                  >⇅</span>
+                </button>
               </th>
               <th class="px-4 py-3">
-                Responsible
+                <button
+                  type="button"
+                  class="flex items-center gap-2"
+                  @click="setSort('responsible_person')"
+                >
+                  <span>Responsible</span>
+                  <span
+                    v-if="sortKey === 'responsible_person' && sortDir === 1"
+                    class="text-xs"
+                  >▲</span>
+                  <span
+                    v-else-if="sortKey === 'responsible_person' && sortDir === -1"
+                    class="text-xs"
+                  >▼</span>
+                  <span
+                    v-else
+                    class="text-xs opacity-40"
+                  >⇅</span>
+                </button>
               </th>
               <th class="px-4 py-3">
                 Actions
@@ -1210,13 +1282,14 @@ const page = ref(1)
 const pageSize = ref((authStore && authStore.user && authStore.user.contact && typeof authStore.user.contact.perPage === 'number') ? authStore.user.contact.perPage : 10)
 const pageSizes = [5, 10, 25, 50, 100]
 
-// Persist per-project page size preference
+// Persist per-page (issues) page size preference for the current session
 const pageSizeStorageKey = computed(() => `issuesPageSize:${projectStore.currentProjectId || 'global'}`)
 function loadPageSizePref() {
   try {
-    const raw = localStorage.getItem(pageSizeStorageKey.value)
+    // Use sessionStorage so a new browser session falls back to the user's profile setting
+    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
     if (!raw) {
-      // If there's no per-project override, fall back to the user's profile preference if available
+      // If there's no session override, fall back to the user's profile preference if available
       try {
         const p = authStore.user && authStore.user.contact && authStore.user.contact.perPage
         const allowed = [5,10,25,50,100]
@@ -1228,10 +1301,10 @@ function loadPageSizePref() {
     }
     const n = parseInt(raw, 10)
     if ([5,10,25,50,100].includes(n)) pageSize.value = n
-  } catch (e) { /* ignore localStorage read errors */ }
+  } catch (e) { /* ignore sessionStorage read errors */ }
 }
 function persistPageSizePref() {
-  try { localStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore localStorage write errors */ }
+  try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ }
 }
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
 watch(pageSize, () => persistPageSizePref())
@@ -1386,11 +1459,41 @@ watch(preferredProjectId, (id) => {
   issuesStore.fetchIssues(id).catch(() => {})
 }, { immediate: true })
 
-const totalItems = computed(() => filteredIssues.value.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
-const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
-const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
-const pagedIssues = computed(() => filteredIssues.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
+const totalItems = computed(() => sortedIssues.value.length)
+// Sorting state for issues table
+const sortKey = ref('')
+const sortDir = ref(1) // 1 = asc, -1 = desc
+
+const sortedIssues = computed(() => {
+  if (!sortKey.value) return filteredIssues.value
+  const arr = [...filteredIssues.value]
+  arr.sort((a, b) => {
+    let av = a && a[sortKey.value]
+    let bv = b && b[sortKey.value]
+    if (sortKey.value === 'number') {
+      av = Number(av || 0)
+      bv = Number(bv || 0)
+      return (av - bv) * sortDir.value
+    }
+    av = String(av || '').toLowerCase()
+    bv = String(bv || '').toLowerCase()
+    if (av < bv) return -1 * sortDir.value
+    if (av > bv) return 1 * sortDir.value
+    return 0
+  })
+  return arr
+})
+
+function setSort(key) {
+  if (sortKey.value === key) sortDir.value = -sortDir.value
+  else { sortKey.value = key; sortDir.value = 1 }
+  page.value = 1
+}
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedIssues.value.length / pageSize.value)))
+const startItem = computed(() => sortedIssues.value.length === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
+const endItem = computed(() => Math.min(sortedIssues.value.length, page.value * pageSize.value))
+const pagedIssues = computed(() => sortedIssues.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
 
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
@@ -1555,8 +1658,13 @@ async function reopenIssueFromEdit() {
 }
 
 // Keep page within range when filter/pageSize/issue list changes
-watch([() => priorityFilter.value, () => pageSize.value, () => issuesStore.issues.length, () => filteredIssues.value.length, () => searchQuery.value, () => effectiveSearch.value, () => searchMode.value], () => {
+watch([() => priorityFilter.value, () => pageSize.value, () => issuesStore.issues.length, () => sortedIssues.value.length, () => searchQuery.value, () => effectiveSearch.value, () => searchMode.value], () => {
   if (page.value > totalPages.value) page.value = 1
+})
+
+// Reset page when sorting or page size changes
+watch([sortedIssues, pageSize], () => {
+  page.value = 1
 })
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

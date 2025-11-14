@@ -1024,8 +1024,14 @@
               <div class="mb-2">
                 <div class="font-medium text-white/90 truncate">
                   <span class="truncate">{{ s.title || 'Signature' }}:</span>
-                  <span v-if="s && (s.role || s.person)" class="text-sm text-white/70 ml-2">
-                    <span v-if="s.role" class="mr-1">{{ s.role }}:</span>
+                  <span
+                    v-if="s && (s.role || s.person)"
+                    class="text-sm text-white/70 ml-2"
+                  >
+                    <span
+                      v-if="s.role"
+                      class="mr-1"
+                    >{{ s.role }}:</span>
                     <span v-if="s.person">{{ s.person }}</span>
                   </span>
                 </div>
@@ -1033,7 +1039,7 @@
 
               <!-- Signature block -->
               <div class="mb-2">
-              <template v-if="editingIndex === idx">
+                <template v-if="editingIndex === idx">
                   <div>
                     <!-- <input
                       v-model="editingDraft.title"
@@ -1099,15 +1105,15 @@
                 </div>
 
                 <div class="mb-2">
-                                  <SignaturePad
-                                  v-model="d.block"
-                                  v-model:title="d.title"
-                                  v-model:person="d.person"
-                                  v-model:role="d.role"
-                                  :removable="true"
-                                  @saved="onPadSavedDraft(di, $event)"
-                                  @remove="removeDraft(di)"
-                                />
+                  <SignaturePad
+                    v-model="d.block"
+                    v-model:title="d.title"
+                    v-model:person="d.person"
+                    v-model:role="d.role"
+                    :removable="true"
+                    @saved="onPadSavedDraft(di, $event)"
+                    @remove="removeDraft(di)"
+                  />
                 </div>
 
                 <!-- Date is shown only on saved signatures; hide while drafting before confirm -->

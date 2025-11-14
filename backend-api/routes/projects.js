@@ -69,7 +69,7 @@ router.get('/my-invites', auth, async (req, res) => {
     const User = require('../models/user');
     const Invitation = require('../models/invitation');
     const Project = require('../models/project');
-    const user = await User.findById(req.userId).lean();
+    const user = await User.findById(req.user && (req.user._id || req.user.id)).lean();
     if (!user) return res.status(404).send({ error: 'User not found' });
     const emailRegex = new RegExp(`^${String(user.email).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$$`, 'i');
     const invites = await Invitation.find({ email: { $regex: emailRegex }, accepted: false })
@@ -129,70 +129,264 @@ const mongoose = require('mongoose');
 const { sendInviteEmail } = require('../utils/mailer');
 
 router.post('/addUser', auth, requirePermission('projects.users.manage', { projectParam: 'projectId' }), async (req, res) => {
-  // Use a transaction so project and user updates (or invite creation) are atomic
-  const session = await mongoose.startSession();
-  let txResult = null
+  // Support environments without Mongo replica set by attempting to detect transaction support.
+  let session = null;
+  let txResult = null;
   try {
-    await session.withTransaction(async () => {
-      const project = await Project.findById(req.body.projectId).session(session);
+    // Detect if server is replica set (supports transactions)
+    let isReplica = false;
+    try {
+      const admin = mongoose.connection.db.admin();
+      let info = null;
+      try { info = await admin.command({ hello: 1 }) } catch (e) { info = await admin.command({ isMaster: 1 }) }
+      isReplica = !!(info && info.setName);
+    } catch (e) {
+      isReplica = false;
+    }
+
+    if (isReplica) {
+      session = await mongoose.startSession();
+      await session.withTransaction(async () => {
+        const project = await Project.findById(req.body.projectId).session(session);
+        if (!project) {
+          throw { status: 404, error: 'Project not found' };
+        }
+        // find user by email if they exist in the database
+        const user = await User.findOne({ email: req.body.email }).session(session);
+        // If user exists, add them directly (if not already present)
+        if (user) {
+          const userExists = project.team.some((u) => String(u.email).toLowerCase() === String(req.body.email).toLowerCase());
+          if (userExists) throw { status: 400, error: 'User is already on the project' };
+          // Determine if a role template was selected and copy its permissions
+          let memberPermissions = [];
+          try {
+            const tplId = req.body.roleTemplateId || req.body.templateId || req.body.roleTemplate || null;
+            if (tplId) {
+              const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(tplId) || String(r._id) === String((tplId && tplId.toString && tplId.toString())) );
+              if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+            } else if (req.body.role) {
+              // allow selecting template by role name
+              const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
+              if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+            }
+          } catch (e) {
+            // best-effort; continue without template if lookup fails
+          }
+
+          // Add an invited entry for existing users; they must accept to become active.
+          project.team.push({
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            company: user.contact?.company || req.body.company || '',
+            role: req.body.role,
+            permissions: memberPermissions,
+            status: 'invited',
+          });
+          await project.save({ session });
+          // Persist an Invitation document as well so the invitee can accept/decline
+          // via the standard invitations API. Avoid creating duplicate invites.
+          try {
+            const emailRegex = new RegExp(`^${String(req.body.email).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$`, 'i')
+            let existingInvite = await Invitation.findOne({ projectId: project._id, email: { $regex: emailRegex }, accepted: false }).session(session);
+            if (!existingInvite) {
+              let created = null
+              for (let attempt = 0; attempt < 5; attempt++) {
+                const token = crypto.randomBytes(20).toString('hex')
+                const invitePayload = { email: req.body.email, projectId: project._id, inviterId: (req.user && (req.user._id || req.user.id)), token }
+                try {
+                  if (req.body.roleTemplateId || req.body.templateId) {
+                    const chosenId = req.body.roleTemplateId || req.body.templateId
+                    invitePayload.roleTemplateId = chosenId
+                    const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(chosenId) || String(r._id) === String((chosenId && chosenId.toString && chosenId.toString())) )
+                    if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] }
+                  } else if (req.body.role) {
+                    const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role))
+                    if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] }
+                  }
+                } catch (e) {}
+                const invDoc = new Invitation(invitePayload)
+                try {
+                  await invDoc.save({ session })
+                  created = invDoc
+                  existingInvite = created
+                  break
+                } catch (saveErr) {
+                  if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) {
+                    if (attempt === 4) throw saveErr
+                    continue
+                  }
+                  throw saveErr
+                }
+              }
+            }
+          } catch (invErr) {
+            console.error('failed to create Invitation for existing user (transaction)', invErr)
+          }
+          // Do NOT add the project to the user's `projects` list yet — that should
+          // happen when they accept the invitation.
+          txResult = { status: 200, body: { message: 'User invited to project' } }
+          return
+        }
+
+        // user does not exist: create an invitation
+        const inviterId = req.user && (req.user._id || req.user.id);
+        // generate a unique token and guard against rare duplicate-key collisions
+        let invite = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const token = crypto.randomBytes(20).toString('hex');
+          // Persist chosen template id/snapshot on the invite so it can be applied upon acceptance
+          const invitePayload = { email: req.body.email, projectId: project._id, inviterId, token };
+          try {
+            if (req.body.roleTemplateId || req.body.templateId) {
+              const chosenId = req.body.roleTemplateId || req.body.templateId;
+              invitePayload.roleTemplateId = chosenId;
+              // try to snapshot permissions from project templates
+              const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(chosenId) || String(r._id) === String((chosenId && chosenId.toString && chosenId.toString())) );
+              if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
+            } else if (req.body.role) {
+              const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
+              if (tpl) {
+                invitePayload.roleTemplateId = tpl._id;
+                invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
+              }
+            }
+          } catch (e) {
+            // best-effort; continue without template info if lookup fails
+          }
+
+          invite = new Invitation(invitePayload);
+          try {
+            await invite.save({ session });
+            // Add a lightweight invited member entry to the project.team so
+            // the invitee appears in project membership lists before they
+            // accept. Use the transaction session so this write is atomic.
+            try {
+              const invitedMember = {
+                firstName: (req.body && req.body.firstName) ? String(req.body.firstName).trim() : '',
+                lastName: (req.body && req.body.lastName) ? String(req.body.lastName).trim() : '',
+                email: String(req.body.email).trim().toLowerCase(),
+                company: req.body.company || '',
+                role: (invitePayload.roleTemplateSnapshot && invitePayload.roleTemplateSnapshot.name) || req.body.role || 'user',
+                permissions: (invitePayload.roleTemplateSnapshot && Array.isArray(invitePayload.roleTemplateSnapshot.permissions)) ? invitePayload.roleTemplateSnapshot.permissions.slice() : [],
+                status: 'invited',
+              };
+              project.team.push(invitedMember);
+              await project.save({ session });
+            } catch (pushErr) {
+              // Best-effort: if adding the invited team entry fails, log but don't
+              // fail the whole transaction since invitation itself is primary.
+              console.error('failed to add invited team entry (transaction)', pushErr);
+            }
+            break; // success
+          } catch (saveErr) {
+            // If duplicate key on token, try again; otherwise rethrow
+            if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) {
+              invite = null;
+              if (attempt === 4) throw saveErr;
+              // else generate another token and retry
+              continue;
+            }
+            throw saveErr;
+          }
+        }
+
+        // send invite email with accept link (do not run in transaction because external IO shouldn't be in tx)
+        const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${invite && invite.token}`;
+        try {
+          await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
+        } catch (mailErr) {
+          console.error('sendInviteEmail error', mailErr);
+          // don't fail the entire request if email fails; invite persisted in DB via transaction
+        }
+
+        txResult = { status: 200, body: { message: 'Invitation sent', inviteId: invite._id } }
+      })
+      session.endSession();
+      if (txResult) return res.status(txResult.status).send(txResult.body)
+      // fallback
+      return res.status(200).send({ message: 'OK' })
+    }
+
+    // Non-replica fallback: run the same logic without transactions/session
+    {
+      const project = await Project.findById(req.body.projectId);
       if (!project) {
-        throw { status: 404, error: 'Project not found' };
+        return res.status(404).send({ error: 'Project not found' });
       }
-      // find user by email if they exist in the database
-      const user = await User.findOne({ email: req.body.email }).session(session);
-      // If user exists, add them directly (if not already present)
+      const user = await User.findOne({ email: req.body.email });
       if (user) {
         const userExists = project.team.some((u) => String(u.email).toLowerCase() === String(req.body.email).toLowerCase());
-        if (userExists) throw { status: 400, error: 'User is already on the project' };
-            // Determine if a role template was selected and copy its permissions
-            let memberPermissions = [];
-            try {
-              const tplId = req.body.roleTemplateId || req.body.templateId || req.body.roleTemplate || null;
-              if (tplId) {
-                const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(tplId) || String(r._id) === String((tplId && tplId.toString && tplId.toString())) );
-                if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
-              } else if (req.body.role) {
-                // allow selecting template by role name
-                const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
-                if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+        if (userExists) return res.status(400).send({ error: 'User is already on the project' });
+        let memberPermissions = [];
+        try {
+          const tplId = req.body.roleTemplateId || req.body.templateId || req.body.roleTemplate || null;
+          if (tplId) {
+            const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(tplId) || String(r._id) === String((tplId && tplId.toString && tplId.toString())) );
+            if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+          } else if (req.body.role) {
+            const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
+            if (tpl && Array.isArray(tpl.permissions)) memberPermissions = tpl.permissions.slice();
+          }
+        } catch (e) {}
+        // Add existing user as invited; do not add to user's projects until acceptance
+        project.team.push({
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          company: user.contact?.company || req.body.company || '',
+          role: req.body.role,
+          permissions: memberPermissions,
+          status: 'invited',
+        });
+        await project.save();
+        // Create an Invitation document so the invited user sees a pending invite
+        try {
+          const emailRegex = new RegExp(`^${String(req.body.email).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}$`, 'i')
+          let existingInvite = await Invitation.findOne({ projectId: project._id, email: { $regex: emailRegex }, accepted: false });
+          if (!existingInvite) {
+            let created = null
+            for (let attempt = 0; attempt < 5; attempt++) {
+              const token = crypto.randomBytes(20).toString('hex')
+              const invitePayload = { email: req.body.email, projectId: project._id, inviterId: (req.user && (req.user._id || req.user.id)), token }
+              try {
+                if (req.body.roleTemplateId || req.body.templateId) {
+                  const chosenId = req.body.roleTemplateId || req.body.templateId
+                  invitePayload.roleTemplateId = chosenId
+                  const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(chosenId) || String(r._id) === String((chosenId && chosenId.toString && chosenId.toString())) );
+                  if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
+                } else if (req.body.role) {
+                  const tpl = (project.roleTemplates || []).find((r) => String(r.name) === String(req.body.role));
+                  if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
+                }
+              } catch (e) {}
+              const invDoc = new Invitation(invitePayload);
+              try {
+                await invDoc.save();
+                created = invDoc; existingInvite = created; break;
+              } catch (saveErr) {
+                if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) { if (attempt === 4) throw saveErr; continue }
+                throw saveErr;
               }
-            } catch (e) {
-              // best-effort; continue without template if lookup fails
             }
-
-            project.team.push({
-              _id: user._id,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              email: user.email,
-              company: user.contact?.company || req.body.company || '',
-              role: req.body.role,
-              permissions: memberPermissions,
-            });
-        await project.save({ session });
-        // Ensure user.projects includes the project ref (minimal shape)
-        const already = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
-        if (!already) {
-          user.projects.push({ _id: project._id, role: req.body.role || 'user', default: false })
-          await user.save({ session })
+          }
+        } catch (invErr) {
+          console.error('failed to create Invitation for existing user', invErr);
         }
-        txResult = { status: 200, body: { message: 'User was added to the project' } }
-        return
+        return res.status(200).send({ message: 'User invited to project' })
       }
 
-      // user does not exist: create an invitation
-      const inviterId = req.userId;
-      // generate a unique token and guard against rare duplicate-key collisions
+      // create invite
       let invite = null;
       for (let attempt = 0; attempt < 5; attempt++) {
         const token = crypto.randomBytes(20).toString('hex');
-        // Persist chosen template id/snapshot on the invite so it can be applied upon acceptance
-        const invitePayload = { email: req.body.email, projectId: project._id, inviterId, token };
+        const invitePayload = { email: req.body.email, projectId: project._id, inviterId: (req.user && (req.user._id || req.user.id)), token };
         try {
           if (req.body.roleTemplateId || req.body.templateId) {
             const chosenId = req.body.roleTemplateId || req.body.templateId;
             invitePayload.roleTemplateId = chosenId;
-            // try to snapshot permissions from project templates
             const tpl = (project.roleTemplates || []).find((r) => String(r._id) === String(chosenId) || String(r._id) === String((chosenId && chosenId.toString && chosenId.toString())) );
             if (tpl) invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
           } else if (req.body.role) {
@@ -202,150 +396,317 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
               invitePayload.roleTemplateSnapshot = { name: tpl.name, permissions: Array.isArray(tpl.permissions) ? tpl.permissions.slice() : [] };
             }
           }
-        } catch (e) {
-          // best-effort; continue without template info if lookup fails
-        }
+        } catch (e) {}
 
         invite = new Invitation(invitePayload);
         try {
-          await invite.save({ session });
-          break; // success
+          await invite.save();
+          // Best-effort: add invited member entry to project.team so the
+          // invitee is visible in membership lists before acceptance.
+          try {
+            const invitedMember = {
+              firstName: (req.body && req.body.firstName) ? String(req.body.firstName).trim() : '',
+              lastName: (req.body && req.body.lastName) ? String(req.body.lastName).trim() : '',
+              email: String(req.body.email).trim().toLowerCase(),
+              company: req.body.company || '',
+              role: (invitePayload.roleTemplateSnapshot && invitePayload.roleTemplateSnapshot.name) || req.body.role || 'user',
+              permissions: (invitePayload.roleTemplateSnapshot && Array.isArray(invitePayload.roleTemplateSnapshot.permissions)) ? invitePayload.roleTemplateSnapshot.permissions.slice() : [],
+              status: 'invited',
+            };
+            project.team.push(invitedMember);
+            await project.save();
+          } catch (pushErr) {
+            console.error('failed to add invited team entry (non-transactional)', pushErr);
+          }
+          break;
         } catch (saveErr) {
-          // If duplicate key on token, try again; otherwise rethrow
           if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) {
-            invite = null;
-            if (attempt === 4) throw saveErr;
-            // else generate another token and retry
-            continue;
+            invite = null; if (attempt === 4) throw saveErr; continue;
           }
           throw saveErr;
         }
       }
-
-      // send invite email with accept link (do not run in transaction because external IO shouldn't be in tx)
-  const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${invite && invite.token}`;
-      try {
-        await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
-      } catch (mailErr) {
-        console.error('sendInviteEmail error', mailErr);
-        // don't fail the entire request if email fails; invite persisted in DB via transaction
-      }
-
-      txResult = { status: 200, body: { message: 'Invitation sent', inviteId: invite._id } }
-    })
-    session.endSession();
-    if (txResult) return res.status(txResult.status).send(txResult.body)
-    // fallback
-    return res.status(200).send({ message: 'OK' })
+      const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${invite && invite.token}`;
+      try { await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl }) } catch (mailErr) { console.error('sendInviteEmail error', mailErr) }
+      return res.status(200).send({ message: 'Invitation sent', inviteId: invite._id })
+    }
   } catch (error) {
-    try { session.endSession() } catch (e) {}
+    try { if (session) session.endSession() } catch (e) {}
     if (error && error.status) return res.status(error.status).send({ error: error.error || 'Error' })
-    console.error('addUser transaction error', error);
+    console.error('addUser transaction error', error && error.stack ? error.stack : error);
+    if (process.env.NODE_ENV !== 'production') {
+      const detail = error && (error.message || JSON.stringify(error))
+      return res.status(400).send({ error: 'Failed to add user or create invite', details: detail })
+    }
     return res.status(400).send({ error: 'Failed to add user or create invite' })
   }
 });
 
 // Accept invitation: authenticated users can accept an invite token and be added to the project
 router.post('/accept-invite', auth, async (req, res) => {
-  const session = await mongoose.startSession();
+  // Support standalone Mongo by detecting replica set support and
+  // falling back to a non-transactional path if transactions are not available.
+  let session = null;
   try {
-    let txResult = null
-    await session.withTransaction(async () => {
-      const { token } = req.body;
-      if (!token) throw { status: 400, error: 'token is required' };
-      const invite = await Invitation.findOne({ token }).session(session);
-      if (!invite) throw { status: 404, error: 'Invite not found' };
-      if (invite.accepted) throw { status: 400, error: 'Invite already accepted' };
+    // detect replica set
+    let isReplica = false;
+    try {
+      const admin = mongoose.connection.db.admin();
+      let info = null;
+      try { info = await admin.command({ hello: 1 }) } catch (e) { info = await admin.command({ isMaster: 1 }) }
+      isReplica = !!(info && info.setName);
+    } catch (e) { isReplica = false }
 
-      const project = await Project.findById(invite.projectId).session(session);
-      if (!project) throw { status: 404, error: 'Project not found' };
+    if (isReplica) {
+      session = await mongoose.startSession();
+      let txResult = null
+      await session.withTransaction(async () => {
+        const { token } = req.body;
+        if (!token) throw { status: 400, error: 'token is required' };
+        const invite = await Invitation.findOne({ token }).session(session);
+        if (!invite) throw { status: 404, error: 'Invite not found' };
+        if (invite.accepted) throw { status: 400, error: 'Invite already accepted' };
 
-      const user = await User.findById(req.userId).session(session);
-      if (!user) throw { status: 404, error: 'User not found' };
+        const project = await Project.findById(invite.projectId).session(session);
+        if (!project) throw { status: 404, error: 'Project not found' };
 
-      // Add user to project.team if not present
-      const already = project.team.some(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
-      if (!already) {
-        // If the invite included a role template snapshot, apply those permissions
-        const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' };
+        const user = await User.findById(req.user && (req.user._id || req.user.id)).session(session);
+        if (!user) throw { status: 404, error: 'User not found' };
+
+        const existingIndex = project.team.findIndex(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
+        if (existingIndex === -1) {
+          const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user', status: 'active' };
+          if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+            const snap = invite.roleTemplateSnapshot || null;
+            if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
+            if (snap && snap.name) memberObj.role = snap.name;
+          }
+          project.team.push(memberObj);
+          await project.save({ session });
+        } else {
+          try {
+            const existing = project.team[existingIndex];
+            existing._id = user._id;
+            existing.firstName = user.firstName;
+            existing.lastName = user.lastName;
+            existing.company = user.contact?.company || existing.company || '';
+            existing.status = 'active';
+            if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+              const snap = invite.roleTemplateSnapshot || null;
+              if (snap && Array.isArray(snap.permissions)) existing.permissions = snap.permissions.slice();
+              if (snap && snap.name) existing.role = snap.name;
+            } else if (!existing.role) {
+              existing.role = existing.role || 'user';
+            }
+            await project.save({ session });
+          } catch (upgradeErr) {
+            console.error('failed to upgrade invited team entry during accept (transaction)', upgradeErr);
+          }
+        }
+
+        const hasProject = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
+        if (!hasProject) {
+          user.projects.push({ _id: project._id, role: 'user', default: false })
+          await user.save({ session })
+        }
+
+        invite.accepted = true;
+        await invite.save({ session });
+        txResult = { status: 200, body: { message: 'Invite accepted', projectId: project._id } }
+      })
+      session.endSession();
+      if (txResult) return res.status(txResult.status).send(txResult.body)
+      return res.status(200).send({ message: 'Invite accepted', projectId: null })
+    }
+
+    // Non-replica fallback: do not use transactions
+    const { token } = req.body;
+    if (!token) return res.status(400).send({ error: 'token is required' });
+    const invite = await Invitation.findOne({ token });
+    if (!invite) return res.status(404).send({ error: 'Invite not found' });
+    if (invite.accepted) return res.status(400).send({ error: 'Invite already accepted' });
+
+    const project = await Project.findById(invite.projectId);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    const user = await User.findById(req.user && (req.user._id || req.user.id));
+    if (!user) return res.status(404).send({ error: 'User not found' });
+
+    const existingIndex = project.team.findIndex(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
+    if (existingIndex === -1) {
+      const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user', status: 'active' };
+      if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+        const snap = invite.roleTemplateSnapshot || null;
+        if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
+        if (snap && snap.name) memberObj.role = snap.name;
+      }
+      project.team.push(memberObj);
+      await project.save();
+    } else {
+      try {
+        const existing = project.team[existingIndex];
+        existing._id = user._id;
+        existing.firstName = user.firstName;
+        existing.lastName = user.lastName;
+        existing.company = user.contact?.company || existing.company || '';
+        existing.status = 'active';
         if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
           const snap = invite.roleTemplateSnapshot || null;
-          if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
-          if (snap && snap.name) memberObj.role = snap.name;
+          if (snap && Array.isArray(snap.permissions)) existing.permissions = snap.permissions.slice();
+          if (snap && snap.name) existing.role = snap.name;
+        } else if (!existing.role) {
+          existing.role = existing.role || 'user';
         }
-        project.team.push(memberObj);
-        await project.save({ session });
+        await project.save();
+      } catch (upgradeErr) {
+        console.error('failed to upgrade invited team entry during accept (non-transactional)', upgradeErr);
       }
+    }
 
-      // Ensure the project is present in the user's projects (minimal shape)
-      const hasProject = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
-      if (!hasProject) {
-        user.projects.push({ _id: project._id, role: 'user', default: false })
-        await user.save({ session })
-      }
+    const hasProject = (user.projects || []).some((p) => String((p && (p._id || p.id || p))) === String(project._id))
+    if (!hasProject) {
+      user.projects.push({ _id: project._id, role: 'user', default: false })
+      await user.save()
+    }
 
-      invite.accepted = true;
-      await invite.save({ session });
-      txResult = { status: 200, body: { message: 'Invite accepted', projectId: project._id } }
-    })
-    session.endSession();
-    if (txResult) return res.status(txResult.status).send(txResult.body)
-    return res.status(200).send({ message: 'Invite accepted', projectId: null })
+    invite.accepted = true;
+    await invite.save();
+    return res.status(200).send({ message: 'Invite accepted', projectId: project._id })
   } catch (err) {
-    try { session.endSession() } catch (e) {}
+    try { if (session) session.endSession() } catch (e) {}
     if (err && err.status) return res.status(err.status).send({ error: err.error })
-    console.error('accept-invite transaction error', err)
+    console.error('accept-invite error', err)
     return res.status(400).send({ error: 'Failed to accept invite' })
   }
 });
 
 // Accept invitation by ID (alternative to token-based flow when user logs in later)
 router.post('/invitations/:id/accept', auth, async (req, res) => {
-  const session = await mongoose.startSession();
+  // Support standalone Mongo by detecting replica set support and falling back
+  // to a non-transactional path if transactions aren't available.
+  let session = null;
   try {
-    let txResult = null
-    await session.withTransaction(async () => {
-      const inviteId = req.params.id;
-      const invite = await Invitation.findById(inviteId).session(session);
-      if (!invite) throw { status: 404, error: 'Invite not found' };
-      if (invite.accepted) throw { status: 400, error: 'Invite already accepted' };
-      const user = await User.findById(req.userId).session(session);
-      if (!user) throw { status: 404, error: 'User not found' };
-      // Ensure the invite email matches the logged in user's email (security)
-      if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
-        throw { status: 403, error: 'Invite email mismatch' };
-      }
-      const project = await Project.findById(invite.projectId).session(session);
-      if (!project) throw { status: 404, error: 'Project not found' };
+    let isReplica = false;
+    try {
+      const admin = mongoose.connection.db.admin();
+      let info = null;
+      try { info = await admin.command({ hello: 1 }) } catch (e) { info = await admin.command({ isMaster: 1 }) }
+      isReplica = !!(info && info.setName);
+    } catch (e) { isReplica = false }
 
-      // Add user to project if not present (apply invite snapshot if present)
-      const already = project.team.some(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
-      if (!already) {
-        const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user' };
+    if (isReplica) {
+      session = await mongoose.startSession();
+      let txResult = null
+      await session.withTransaction(async () => {
+        const inviteId = req.params.id;
+        const invite = await Invitation.findById(inviteId).session(session);
+        if (!invite) throw { status: 404, error: 'Invite not found' };
+        if (invite.accepted) throw { status: 400, error: 'Invite already accepted' };
+        const user = await User.findById(req.user && (req.user._id || req.user.id)).session(session);
+        if (!user) throw { status: 404, error: 'User not found' };
+        if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
+          throw { status: 403, error: 'Invite email mismatch' };
+        }
+        const project = await Project.findById(invite.projectId).session(session);
+        if (!project) throw { status: 404, error: 'Project not found' };
+
+        const idx = project.team.findIndex(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
+        if (idx === -1) {
+          const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user', status: 'active' };
+          if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+            const snap = invite.roleTemplateSnapshot || null;
+            if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
+            if (snap && snap.name) memberObj.role = snap.name;
+          }
+          project.team.push(memberObj);
+          await project.save({ session });
+        } else {
+          try {
+            const existing = project.team[idx];
+            existing._id = user._id;
+            existing.firstName = user.firstName;
+            existing.lastName = user.lastName;
+            existing.company = user.contact?.company || existing.company || '';
+            existing.status = 'active';
+            if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+              const snap = invite.roleTemplateSnapshot || null;
+              if (snap && Array.isArray(snap.permissions)) existing.permissions = snap.permissions.slice();
+              if (snap && snap.name) existing.role = snap.name;
+            } else if (!existing.role) {
+              existing.role = existing.role || 'user';
+            }
+            await project.save({ session });
+          } catch (upgradeErr) {
+            console.error('failed to upgrade invited team entry during accept by id (transaction)', upgradeErr);
+          }
+        }
+        const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
+        if (!hasProject) {
+          user.projects.push({ _id: project._id, role: 'user', default: false });
+          await user.save({ session });
+        }
+        invite.accepted = true;
+        await invite.save({ session });
+        txResult = { status: 200, body: { message: 'Invite accepted', projectId: project._id } }
+      })
+      session.endSession();
+      if (txResult) return res.status(txResult.status).send(txResult.body)
+      return res.status(200).send({ message: 'Invite accepted', projectId: null })
+    }
+
+    // Non-replica fallback
+    const inviteId = req.params.id;
+    const invite = await Invitation.findById(inviteId);
+    if (!invite) return res.status(404).send({ error: 'Invite not found' });
+    if (invite.accepted) return res.status(400).send({ error: 'Invite already accepted' });
+    const user = await User.findById(req.user && (req.user._id || req.user.id));
+    if (!user) return res.status(404).send({ error: 'User not found' });
+    if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) return res.status(403).send({ error: 'Invite email mismatch' });
+    const project = await Project.findById(invite.projectId);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    const idx = project.team.findIndex(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
+    if (idx === -1) {
+      const memberObj = { _id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, company: user.contact?.company || '', role: 'user', status: 'active' };
+      if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
+        const snap = invite.roleTemplateSnapshot || null;
+        if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
+        if (snap && snap.name) memberObj.role = snap.name;
+      }
+      project.team.push(memberObj);
+      await project.save();
+    } else {
+      try {
+        const existing = project.team[idx];
+        existing._id = user._id;
+        existing.firstName = user.firstName;
+        existing.lastName = user.lastName;
+        existing.company = user.contact?.company || existing.company || '';
+        existing.status = 'active';
         if (invite && (invite.roleTemplateSnapshot || invite.roleTemplateId)) {
           const snap = invite.roleTemplateSnapshot || null;
-          if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
-          if (snap && snap.name) memberObj.role = snap.name;
+          if (snap && Array.isArray(snap.permissions)) existing.permissions = snap.permissions.slice();
+          if (snap && snap.name) existing.role = snap.name;
+        } else if (!existing.role) {
+          existing.role = existing.role || 'user';
         }
-        project.team.push(memberObj);
-        await project.save({ session });
+        await project.save();
+      } catch (upgradeErr) {
+        console.error('failed to upgrade invited team entry during accept by id (non-transactional)', upgradeErr);
       }
-      const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
-      if (!hasProject) {
-        user.projects.push({ _id: project._id, role: 'user', default: false });
-        await user.save({ session });
-      }
-      invite.accepted = true;
-      await invite.save({ session });
-      txResult = { status: 200, body: { message: 'Invite accepted', projectId: project._id } }
-    })
-    session.endSession();
-    if (txResult) return res.status(txResult.status).send(txResult.body)
-    return res.status(200).send({ message: 'Invite accepted', projectId: null })
+    }
+    const hasProject = (user.projects || []).some(p => String((p && (p._id || p.id || p))) === String(project._id));
+    if (!hasProject) {
+      user.projects.push({ _id: project._id, role: 'user', default: false });
+      await user.save();
+    }
+    invite.accepted = true;
+    await invite.save();
+    return res.status(200).send({ message: 'Invite accepted', projectId: project._id })
   } catch (err) {
-    try { session.endSession() } catch (e) {}
+    try { if (session) session.endSession() } catch (e) {}
     if (err && err.status) return res.status(err.status).send({ error: err.error })
-    console.error('accept invite by id transaction error', err)
+    console.error('accept invite by id error', err)
     return res.status(400).send({ error: 'Failed to accept invite' })
   }
 });
@@ -392,10 +753,37 @@ router.post('/:id/resend-invite', auth, requirePermission('projects.users.manage
   }
 });
 
+// Decline (delete) an invitation by ID for the logged-in user
+// Allows the invitee to remove an invite they do not want to accept.
+router.delete('/invitations/:id', auth, async (req, res) => {
+  try {
+    const inviteId = req.params.id
+    const invite = await Invitation.findById(inviteId)
+    if (!invite) return res.status(404).send({ error: 'Invite not found' })
+    const me = await User.findById(req.user && (req.user._id || req.user.id)).lean()
+    if (!me) return res.status(404).send({ error: 'User not found' })
+    // Security: only the invitee (email match) can decline their invite
+    if (String(me.email).toLowerCase() !== String(invite.email).toLowerCase()) {
+      return res.status(403).send({ error: 'Not authorized to decline this invite' })
+    }
+    await Invitation.deleteOne({ _id: invite._id })
+    // Also remove any lightweight invited team entry on the project (best-effort).
+    try {
+      await Project.updateOne({ _id: invite.projectId }, { $pull: { team: { email: String(invite.email).trim().toLowerCase(), status: 'invited' } } });
+    } catch (pullErr) {
+      console.error('failed to remove invited team entry on decline', pullErr);
+    }
+    return res.status(200).send({ message: 'Invitation declined' })
+  } catch (err) {
+    console.error('decline-invite error', err)
+    return res.status(500).send({ error: 'Failed to decline invite' })
+  }
+})
+
 // List my pending invitations (for logged-in user by email)
 router.get('/my-invites', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).lean();
+    const user = await User.findById(req.user && (req.user._id || req.user.id)).lean();
     if (!user) return res.status(404).send({ error: 'User not found' });
     // Match email case-insensitively to avoid issues with casing on invites
     const emailRegex = new RegExp(`^${String(user.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
@@ -587,9 +975,9 @@ router.post('/:id/logs', auth, async (req, res) => {
     // Normalize fields
     event.ts = event.ts ? new Date(event.ts) : new Date()
     // Best-effort: if by not set, try to populate from auth user
-    if (!event.by && req.userId) {
+    if (!event.by && req.user) {
       try {
-        const u = await require('../models/user').findById(req.userId).lean()
+        const u = await require('../models/user').findById(req.user && (req.user._id || req.user.id)).lean()
         if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
       } catch {}
     }
@@ -628,7 +1016,7 @@ router.post('/:id/do-sensitive', requireActiveProject, async (req, res) => {
 router.post('/:id/leave', auth, async (req, res) => {
   try {
     const projectId = req.params.id;
-    const userId = req.userId || (req.user && req.user._id);
+    const userId = (req.user && (req.user._id || req.user.id));
     if (!userId) return res.status(401).send({ error: 'Please authenticate.' });
 
     const project = await Project.findById(projectId);

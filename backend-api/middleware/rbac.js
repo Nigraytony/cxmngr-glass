@@ -9,7 +9,9 @@ const requirePermission = (permission, opts = {}) => {
 
       // global-admin short-circuit: full access to everything managed by RBAC
       const userGlobalRole = String(req.user.role || '').trim();
-      if (userGlobalRole === 'globaladmin') return next();
+      const lowerGlobalRole = userGlobalRole.toLowerCase();
+      // Global super roles: grant full access (only for explicit global admin roles)
+      if (['globaladmin','superadmin'].includes(lowerGlobalRole)) return next();
 
       // Helper to check permissions on a specific role document
       const checkRoleDoc = (roleDoc) => {
@@ -21,29 +23,24 @@ const requirePermission = (permission, opts = {}) => {
       // If projectParam is provided, attempt to resolve a project-scoped role first
       if (opts && opts.projectParam) {
         const projectId = req.params[opts.projectParam] || (req.body && req.body[opts.projectParam]) || (req.query && req.query[opts.projectParam]);
-        // Debug logging to assist diagnosing unexpected 403s during development
-        try {
-          // use console.log so output is visible in typical dev terminals
-          const uid = String((req.user && (req.user._id || req.user.id)) || '')
-          const uemail = String((req.user && req.user.email) || '')
-          console.log('[rbac] projectParam check', { permission, projectParam: opts.projectParam, projectId, userId: uid, userEmail: uemail, userRole: req.user && req.user.role })
-        } catch (e) { /* ignore logging errors */ }
         if (projectId) {
           // lazy-load Project model to avoid circular deps
           const Project = require('../models/project');
           const project = await Project.findById(projectId).lean();
-          try { console.log('[rbac] project loaded', { projectId, found: !!project, teamCount: project && Array.isArray(project.team) ? project.team.length : 0 }) } catch (e) { /* ignore */ }
           if (project && Array.isArray(project.team)) {
             // find user's role entry in project team
             const userId = String(req.user._id || req.user.id || req.user._id);
             const member = project.team.find((t) => String(t._id || t.id || t._id) === userId || String((t.email || '')).toLowerCase() === String((req.user.email || '')).toLowerCase());
-            try { console.log('[rbac] project member lookup', { userId, foundMember: !!member, memberRole: member && member.role }) } catch (e) { /* ignore */ }
-            if (member && member.role) {
+            if (member) {
+              // If the member document contains an explicit permissions array, respect it first
+              if (Array.isArray(member.permissions) && member.permissions.includes(permission)) return next();
               // project admin short-circuit: a team member with role 'admin' is a project admin
-              if (String(member.role).trim() === 'admin') return next();
+              if (String(member.role || '').trim().toLowerCase() === 'admin') return next();
               // try to find a project-scoped Role with this name
-              const roleDoc = await Role.findOne({ name: member.role, scope: 'project', projectId: project._id });
-              if (checkRoleDoc(roleDoc)) return next();
+              if (member.role) {
+                const roleDoc = await Role.findOne({ name: member.role, scope: 'project', projectId: project._id });
+                if (checkRoleDoc(roleDoc)) return next();
+              }
             }
           }
         }

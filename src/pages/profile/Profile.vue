@@ -589,12 +589,20 @@
                   <div class="text-xs text-white/70">
                     You haven't accepted this project yet.
                   </div>
-                  <button
-                    class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
-                    @click="acceptInvite(inv.id)"
-                  >
-                    Accept
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
+                      @click="acceptInvite(inv.id)"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+                      @click="rejectInvite(inv.id)"
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -654,19 +662,38 @@
                     class="text-xs text-white/60"
                   >Default</span>
                   <div class="flex flex-col items-end gap-2">
-                    <button
-                      class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8"
-                      @click="editProject(proj)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      v-if="canLeaveProject(proj)"
-                      class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-red-300 text-sm border border-red-500/30"
-                      @click="leaveProject(proj)"
-                    >
-                      Leave
-                    </button>
+                    <!-- If there is a pending invite for this project, show Accept/Decline -->
+                    <template v-if="inviteForProject(proj)">
+                      <div class="flex items-center gap-2">
+                        <button
+                          class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
+                          @click="acceptProject(proj)"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+                          @click="declineProject(proj)"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <button
+                        class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8"
+                        @click="editProject(proj)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        v-if="canLeaveProject(proj)"
+                        class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-red-300 text-sm border border-red-500/30"
+                        @click="leaveProject(proj)"
+                      >
+                        Leave
+                      </button>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -679,38 +706,57 @@
           class="space-y-4"
         >
           <div class="space-y-4">
-            <p class="text-white/80">Account settings and preferences.</p>
+            <p class="text-white/80">
+              Account settings and preferences.
+            </p>
             <div class="rounded-md p-3 bg-white/6 border border-white/10">
               <div class="text-sm text-white/70 mb-2">
                 Signature on file
               </div>
               <div>
-                <div
-                  v-if="local.contact.signature?.block"
-                  class="mb-2"
-                >
-                  <div class="text-xs text-white/60 mb-1">
-                    Saved signature preview
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                  <div>
+                    <div class="text-xs text-white/60 mb-1">
+                      Saved signature preview
+                    </div>
+                    <div class="border border-white/10 rounded-md bg-white/5 overflow-hidden">
+                      <img
+                        v-if="local.contact.signature?.block"
+                        :src="local.contact.signature.block"
+                        alt="signature preview"
+                        class="w-full h-40 object-contain"
+                      >
+                      <div
+                        v-else
+                        class="w-full h-40 flex items-center justify-center text-white/70"
+                      >
+                        No signature saved
+                      </div>
+                    </div>
                   </div>
-                  <img
-                    :src="local.contact.signature.block"
-                    alt="signature preview"
-                    class="w-48 h-20 object-contain rounded-md bg-white/5 border border-white/10"
-                  >
+
+                  <div>
+                    <div class="text-xs text-white/60 mb-1">
+                      New signature
+                    </div>
+                    <div class="border border-white/10 rounded-md bg-white/5 overflow-hidden">
+                      <SignaturePad
+                        v-model="local.contact.signature.block"
+                        :removable="true"
+                        :show-fields="false"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <SignaturePad
-                  v-model="local.contact.signature.block"
-                  :removable="true"
-                  :show-fields="false"
-                />
-              </div>
-              <div class="mt-3 text-right">
-                <button
-                  class="px-3 py-2 rounded-md bg-white/20"
-                  @click="save"
-                >
-                  Save signature to profile
-                </button>
+
+                <div class="mt-3 text-right">
+                  <button
+                    class="px-3 py-2 rounded-md bg-white/20"
+                    @click="save"
+                  >
+                    Save signature to profile
+                  </button>
+                </div>
               </div>
               <div class="mt-4">
                 <label class="block text-white/80 mb-1">Items per page</label>
@@ -893,6 +939,35 @@ async function acceptInvite(id) {
   } catch (e) {
     ui.showError('Failed to accept invitation')
   }
+}
+
+async function rejectInvite(id) {
+  try {
+    const ok = await invitationsStore.rejectInvite(id)
+    if (ok) ui.showSuccess('Invitation declined')
+    else ui.showError(invitationsStore.error || 'Failed to decline invitation')
+  } catch (e) {
+    ui.showError('Failed to decline invitation')
+  }
+}
+
+function inviteForProject(proj) {
+  try {
+    const pid = String(proj._id || proj.id || '')
+    return invitationsStore.invites.find(i => String(i.project && (i.project._id || i.project.id || '')) === pid) || null
+  } catch (e) { return null }
+}
+
+async function acceptProject(proj) {
+  const inv = inviteForProject(proj)
+  if (!inv) return ui.showError('No pending invitation found for this project')
+  await acceptInvite(inv.id)
+}
+
+async function declineProject(proj) {
+  const inv = inviteForProject(proj)
+  if (!inv) return ui.showError('No pending invitation found for this project')
+  await rejectInvite(inv.id)
 }
 
 onMounted(() => {

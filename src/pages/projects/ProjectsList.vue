@@ -60,19 +60,109 @@
         <thead>
           <tr class="text-sm text-white/70">
             <th class="px-4 py-3">
-              Name
+              <button
+                type="button"
+                class="flex items-center gap-2"
+                @click="setSort('name')"
+              >
+                <span>Name</span>
+                <span
+                  v-if="sortKey === 'name' && sortDir === 1"
+                  class="text-xs"
+                >▲</span>
+                <span
+                  v-else-if="sortKey === 'name' && sortDir === -1"
+                  class="text-xs"
+                >▼</span>
+                <span
+                  v-else
+                  class="text-xs opacity-40"
+                >⇅</span>
+              </button>
             </th>
             <th class="px-4 py-3">
-              Client
+              <button
+                type="button"
+                class="flex items-center gap-2"
+                @click="setSort('client')"
+              >
+                <span>Client</span>
+                <span
+                  v-if="sortKey === 'client' && sortDir === 1"
+                  class="text-xs"
+                >▲</span>
+                <span
+                  v-else-if="sortKey === 'client' && sortDir === -1"
+                  class="text-xs"
+                >▼</span>
+                <span
+                  v-else
+                  class="text-xs opacity-40"
+                >⇅</span>
+              </button>
             </th>
             <th class="px-4 py-3">
-              Type
+              <button
+                type="button"
+                class="flex items-center gap-2"
+                @click="setSort('project_type')"
+              >
+                <span>Type</span>
+                <span
+                  v-if="sortKey === 'project_type' && sortDir === 1"
+                  class="text-xs"
+                >▲</span>
+                <span
+                  v-else-if="sortKey === 'project_type' && sortDir === -1"
+                  class="text-xs"
+                >▼</span>
+                <span
+                  v-else
+                  class="text-xs opacity-40"
+                >⇅</span>
+              </button>
             </th>
             <th class="px-4 py-3">
-              Status
+              <button
+                type="button"
+                class="flex items-center gap-2"
+                @click="setSort('status')"
+              >
+                <span>Status</span>
+                <span
+                  v-if="sortKey === 'status' && sortDir === 1"
+                  class="text-xs"
+                >▲</span>
+                <span
+                  v-else-if="sortKey === 'status' && sortDir === -1"
+                  class="text-xs"
+                >▼</span>
+                <span
+                  v-else
+                  class="text-xs opacity-40"
+                >⇅</span>
+              </button>
             </th>
             <th class="px-4 py-3">
-              Dates
+              <button
+                type="button"
+                class="flex items-center gap-2"
+                @click="setSort('startDate')"
+              >
+                <span>Dates</span>
+                <span
+                  v-if="sortKey === 'startDate' && sortDir === 1"
+                  class="text-xs"
+                >▲</span>
+                <span
+                  v-else-if="sortKey === 'startDate' && sortDir === -1"
+                  class="text-xs"
+                >▼</span>
+                <span
+                  v-else
+                  class="text-xs opacity-40"
+                >⇅</span>
+              </button>
             </th>
             <th class="px-4 py-3">
               Actions
@@ -523,7 +613,10 @@ const projectsSource = computed(() => {
       return { ...(full || {}), ...(up || {}), id: id || (up.id || up._id) }
     })
   }
-  return projectStore.projects
+  // Do not expose the full project store as a fallback — only show projects
+  // which the user is explicitly a member of. If the authenticated user has
+  // no `projects` entries, return an empty list instead of leaking all projects.
+  return []
 })
 
 const selectedProject = ref(null)
@@ -581,6 +674,29 @@ const page = ref(1)
 // Initialize pageSize from the user's profile preference when available
 const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 5)
 const pageSizes = [5, 10, 20]
+
+// Persist per-page (projects) page size preference for the current session
+const pageSizeStorageKey = computed(() => `projectsPageSize:${projectStore.currentProjectId || 'global'}`)
+function loadPageSizePref() {
+  try {
+    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
+    if (!raw) {
+      try {
+        const p = auth.user && auth.user.contact && auth.user.contact.perPage
+        const allowed = [5,10,20]
+        if (typeof p === 'number' && allowed.includes(p)) {
+          pageSize.value = p
+        }
+      } catch (e) { /* ignore */ }
+      return
+    }
+    const n = parseInt(raw, 10)
+    if ([5,10,20].includes(n)) pageSize.value = n
+  } catch (e) { /* ignore sessionStorage read errors */ }
+}
+function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ } }
+watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
+watch(pageSize, () => persistPageSizePref())
 
 const statusFilter = ref('All')
 const searchQuery = ref('')
@@ -649,16 +765,51 @@ function toggleStatus(name) { statusFilter.value = (statusFilter.value === name)
 
 function clearSearch() { searchQuery.value = ''; effectiveSearch.value = '' }
 
-const totalItems = computed(() => filteredProjects.value.length)
+// Sorting state for projects table
+const sortKey = ref('')
+const sortDir = ref(1) // 1 = asc, -1 = desc
+
+const sortedProjects = computed(() => {
+  if (!sortKey.value) return filteredProjects.value
+  const arr = [...filteredProjects.value]
+  arr.sort((a, b) => {
+    let av = a && a[sortKey.value]
+    let bv = b && b[sortKey.value]
+    if (sortKey.value === 'startDate') {
+      av = Date.parse(String(av || '')) || 0
+      bv = Date.parse(String(bv || '')) || 0
+      return (av - bv) * sortDir.value
+    }
+    av = String(av || '').toLowerCase()
+    bv = String(bv || '').toLowerCase()
+    if (av < bv) return -1 * sortDir.value
+    if (av > bv) return 1 * sortDir.value
+    return 0
+  })
+  return arr
+})
+
+function setSort(key) {
+  if (sortKey.value === key) sortDir.value = -sortDir.value
+  else { sortKey.value = key; sortDir.value = 1 }
+  page.value = 1
+}
+
+const totalItems = computed(() => sortedProjects.value.length)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
 const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
-const pagedProjects = computed(() => filteredProjects.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
+const pagedProjects = computed(() => sortedProjects.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
 
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 function setPage(n) { if (n >= 1 && n <= totalPages.value) page.value = n }
 const pagesArray = computed(() => Array.from({ length: totalPages.value }, (_, i) => i + 1))
+
+// Reset page when sorting or pageSize changes
+watch([sortedProjects, pageSize], () => {
+  page.value = 1
+})
 
 function openView(p) { selectedProject.value = p; editProject.value = { ...p }; showViewModal.value = true }
 function openEdit(p) { selectedProject.value = p; editProject.value = { ...p }; showViewModal.value = true }

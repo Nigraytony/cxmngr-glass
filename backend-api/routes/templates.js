@@ -3,6 +3,8 @@ const router = express.Router();
 const Template = require('../models/template');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/rbac');
+const { requireActiveProject } = require('../middleware/subscription');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -60,7 +62,7 @@ function toPlainTemplate(doc) {
 }
 
 // Create
-router.post('/', async (req, res) => {
+router.post('/', auth, requirePermission('templates.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
   try {
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
       return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
@@ -74,7 +76,7 @@ router.post('/', async (req, res) => {
 });
 
 // Read all
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
     const list = await Template.find();
     res.status(200).send(list.map(toPlainTemplate));
@@ -84,7 +86,7 @@ router.get('/', async (req, res) => {
 });
 
 // Read by project
-router.get('/project/:projectId', async (req, res) => {
+router.get('/project/:projectId', auth, requirePermission('templates.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const list = await Template.find({ projectId: req.params.projectId });
     res.status(200).send(list.map(toPlainTemplate));
@@ -93,8 +95,21 @@ router.get('/project/:projectId', async (req, res) => {
   }
 });
 
+// Middleware to look up template and add projectId to request for RBAC
+const lookupTemplateProject = async (req, res, next) => {
+  try {
+    const template = await Template.findById(req.params.id).lean();
+    if (!template) return res.status(404).send({ error: 'Template not found' });
+    req.body.projectId = template.projectId;
+    req.params.projectId = template.projectId;
+    next();
+  } catch (error) {
+    res.status(500).send({ error: 'Error looking up template project' });
+  }
+};
+
 // Read one
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, lookupTemplateProject, requirePermission('templates.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send();
@@ -105,7 +120,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
   try {
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
       return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
@@ -119,7 +134,7 @@ router.patch('/:id', async (req, res) => {
 });
 
 // Delete
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, lookupTemplateProject, requirePermission('templates.delete', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const rec = await Template.findByIdAndDelete(req.params.id);
     if (!rec) return res.status(404).send();
@@ -138,7 +153,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Photos upload
-router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), upload.array('photos', 16), async (req, res) => {
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send({ error: 'Template not found' });
@@ -183,7 +198,7 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
 });
 
 // Remove photo
-router.delete('/:id/photos/:index', auth, async (req, res) => {
+router.delete('/:id/photos/:index', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
@@ -202,7 +217,7 @@ router.delete('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Update photo metadata
-router.patch('/:id/photos/:index', auth, async (req, res) => {
+router.patch('/:id/photos/:index', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
@@ -223,7 +238,7 @@ router.patch('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Upload attachments
-router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send({ error: 'Template not found' });
@@ -273,7 +288,7 @@ router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async
 });
 
 // Remove attachment
-router.delete('/:id/attachments/:index', auth, async (req, res) => {
+router.delete('/:id/attachments/:index', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
