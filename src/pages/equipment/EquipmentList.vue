@@ -328,7 +328,7 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-2">
+        <div class="col-span-1">
           <button
             type="button"
             class="flex items-center gap-2"
@@ -349,7 +349,7 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-2">
+        <div class="col-span-1">
           <button
             type="button"
             class="flex items-center gap-2"
@@ -370,13 +370,13 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-2">
+        <div class="col-span-4">
           <button
             type="button"
             class="flex items-center gap-2"
             @click="setSort('space')"
           >
-            <span>Location</span>
+            <span>Location (Space)</span>
             <span
               v-if="sortKey==='space' && sortDir===1"
               class="text-xs"
@@ -434,17 +434,17 @@
           >
             {{ e.title }}
           </div>
-          <div class="col-span-2 truncate">
+          <div class="col-span-1 truncate">
             {{ e.type }}
           </div>
-          <div class="col-span-2 truncate">
+          <div class="col-span-1 truncate">
             {{ e.system || '-' }}
           </div>
           <div
-            class="col-span-2 truncate"
-            :title="spaceName(e.spaceId)"
+            class="col-span-4 truncate text-sm"
+            :title="spaceParentChainLabelById(e.spaceId)"
           >
-            {{ spaceName(e.spaceId) || '-' }}
+            {{ spaceParentChainLabelById(e.spaceId) || '-' }}
           </div>
           <div class="col-span-1 truncate">
             {{ e.status || '-' }}
@@ -1148,6 +1148,28 @@ function spaceName(spaceId?: string | null) {
   return pid && parentMap.value[pid] ? parentMap.value[pid].title : ''
 }
 
+function spaceParentChainLabelById(spaceId?: string | null) {
+  try {
+    const pid = spaceId ? String(spaceId) : ''
+    if (!pid) return ''
+    let cur: any = parentMap.value[pid] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === pid)
+    if (!cur) return ''
+    const parts: string[] = []
+    let depth = 0
+    while (cur && depth < 20) {
+      const title = String(cur.title || cur.tag || '')
+      if (title) parts.unshift(title)
+      const parentId = cur.parentSpace || cur.parent || null
+      if (!parentId) break
+      cur = parentMap.value[String(parentId)] || (spacesStore.items || []).find((x: any) => String(x.id || x._id) === String(parentId))
+      depth++
+    }
+    return parts.join(' > ')
+  } catch (e) {
+    return ''
+  }
+}
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
@@ -1174,8 +1196,8 @@ const sorted = computed(() => {
     let av: string
     let bv: string
     if (sortKey.value === 'space') {
-      av = String(spaceName(a?.spaceId) || '').toLowerCase()
-      bv = String(spaceName(b?.spaceId) || '').toLowerCase()
+      av = String(spaceParentChainLabelById(a?.spaceId) || '').toLowerCase()
+      bv = String(spaceParentChainLabelById(b?.spaceId) || '').toLowerCase()
     } else {
       av = String((a?.[sortKey.value] ?? '')).toLowerCase()
       bv = String((b?.[sortKey.value] ?? '')).toLowerCase()

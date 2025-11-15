@@ -11,6 +11,10 @@ const Profile = () => import('../pages/profile/Profile.vue')
 const ProjectEdit = () => import('../pages/projects/ProjectEdit.vue')
 const WebhookEvents = () => import('../pages/admin/WebhookEvents.vue')
 const AdminRoles = () => import('../pages/admin/Roles.vue')
+const AdminDashboard = () => import('../pages/admin/AdminDashboard.vue')
+const AdminUsers = () => import('../pages/admin/Users.vue')
+const AdminProjects = () => import('../pages/admin/Projects.vue')
+const AdminTemplates = () => import('../pages/admin/Templates.vue')
 const ActivitiesList = () => import('../pages/activities/ActivitiesList.vue')
 const ActivityEdit = () => import('../pages/activities/ActivityEdit.vue')
 const SpacesList = () => import('../pages/spaces/SpacesList.vue')
@@ -44,6 +48,13 @@ const routes = [
       { path: 'projects/edit/:id?', name: 'project-settings', component: ProjectEdit },
       { path: 'admin/webhooks', name: 'admin-webhooks', component: WebhookEvents, meta: { adminOnly: true } },
   { path: 'admin/roles', name: 'admin-roles', component: AdminRoles, meta: { adminOnly: true } },
+        { path: 'admin', name: 'admin', component: AdminDashboard, meta: { adminOnly: true } },
+        { path: 'admin/users', name: 'admin-users', component: AdminUsers, meta: { adminOnly: true } },
+        { path: 'admin/users/:id', name: 'admin-users-edit', component: () => import('../pages/admin/UserEdit.vue'), meta: { adminOnly: true }, props: true },
+        { path: 'admin/projects', name: 'admin-projects', component: AdminProjects, meta: { adminOnly: true } },
+        { path: 'admin/projects/:id', name: 'admin-projects-edit', component: () => import('../pages/admin/ProjectEdit.vue'), meta: { adminOnly: true }, props: true },
+        { path: 'admin/templates', name: 'admin-templates', component: AdminTemplates, meta: { adminOnly: true } },
+        { path: 'admin/templates/:id', name: 'admin-templates-edit', component: () => import('../pages/admin/TemplateEdit.vue'), meta: { adminOnly: true }, props: true },
       { path: 'profile', name: 'profile', component: Profile },
     ]
   },

@@ -46,3 +46,7 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_LEMON_FOREST_0C47C5D0F }}
           action: "close"
+          # Provide repo/build config even for the close action to satisfy action input validation
+          app_location: "/"
+          api_location: ""
+          output_location: "dist"

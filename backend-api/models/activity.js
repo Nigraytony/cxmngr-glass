@@ -5,7 +5,26 @@ const activitySchema = new mongoose.Schema({
   // rich-text HTML description stored as string
   descriptionHtml: { type: String, default: '' },
   // activity type choices
-  type: { type: String, enum: ['Design Review', 'Submittal Review', 'Site Visit Review', 'Cx Meeting', 'Startup Review', 'O&M Manual Review', 'Training Review', 'Schedule Integration', 'Test and Balance Review'], default: 'Site Visit Review' },
+  type: { type: String, 
+    enum: [
+      'Assessment',
+      'BOD Review',
+      'Construction Checklist',
+      'Cx Meeting', 
+      'Design Review', 
+      'Functional Test',
+      'Installation Review',
+      'OPR Review', 
+      'Owners Manual Review',
+      'Schedule Integration', 
+      'Seasonal Test',
+      'Site Visit Review', 
+      'Startup Review', 
+      'Submittal Review', 
+      'Training Review', 
+      'Test and Balance Review',
+      'Other'
+    ], default: 'Site Visit Review' },
   startDate: { type: Date, default: Date.now },
   endDate: { type: Date, default: Date.now },
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },

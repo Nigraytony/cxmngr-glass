@@ -88,7 +88,7 @@ export default {
     { value: "Functional Test", text: "Functional Test" },
     { value: "Installation Review", text: "Installation Review" },
     { value: "OPR Review", text: "OPR Review" },
-    { value: "Owner Manual Review", text: "Owner Manual Review" },
+    { value: "Owners Manual Review", text: "Owners Manual Review" },
     { value: "Seasonal Test", text: "Seasonal Test" },
     { value: "Submittal Review", text: "Submittal Review" },
     { value: "Test and Balance Review", text: "Test and Balance Review" },

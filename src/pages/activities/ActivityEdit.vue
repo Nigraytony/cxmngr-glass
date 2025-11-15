@@ -241,7 +241,7 @@
                     type="button"
                     class="w-full px-3 py-2 text-left text-white/90"
                     :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                    @click="selectType(type)"
+                    @mousedown.prevent="selectType(type)"
                   >
                     {{ type }}
                   </button>
@@ -1341,15 +1341,12 @@
       </div>
     </template>
     <div class="space-y-3">
-      <div>
-        <label class="block text-sm text-white/70">Title</label>
-        <input
-          v-model="activityIssueDraft.title"
-          type="text"
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-          placeholder="Issue title"
-        >
-      </div>
+      <input
+        v-model="activityIssueDraft.title"
+        type="text"
+        class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+        placeholder="Issue title"
+      >
       <div>
         <label class="block text-sm text-white/70">Description</label>
         <textarea
@@ -1594,9 +1591,24 @@ function resetActivityReportSettings() {
 }
 watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
 
-const types = [
-  'Assessment', 'BOD Review', 'Cx Meeting', 'Design Review', 'Functional Testing', 'Installation Review', 'O & M Manual Review', 'OPR Review', 'Submittal Review', 'Site Visit Review', 'Startup Review',
-  'Training Review', 'Schedule Integration', 'Test and Balance Review'
+const types = [ 
+  'Assessment',
+  'BOD Review',
+  'Construction Checklist',
+  'Cx Meeting', 
+  'Design Review', 
+  'Functional Test',
+  'Installation Review',
+  'OPR Review', 
+  'Owners Manual Review',
+  'Schedule Integration', 
+  'Seasonal Test',
+  'Site Visit Review', 
+  'Startup Review', 
+  'Submittal Review', 
+  'Training Review', 
+  'Test and Balance Review',
+  'Other'
 ]
 
 const current = computed(() => store.current)
@@ -1824,6 +1836,19 @@ onMounted(async () => {
       attachments: a?.attachments || [],
       issues: a?.issues || [],
     })
+    // Normalize loaded spaceId to a string and populate the visible search box
+    try {
+      if (form.spaceId) {
+        const sid = String((form.spaceId as any) || '')
+        form.spaceId = sid
+        const sp = (spacesStore as any).byId?.[sid] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === sid)
+        const chain = sp ? (spaceParentChainLabel(sp) || (sp.title || sp.tag || '')) : (form.location || '')
+        form.location = chain || form.location || ''
+        spaceQuery.value = chain || String(form.location || '')
+      } else {
+        spaceQuery.value = String(form.location || '')
+      }
+    } catch (e) { /* ignore */ }
   // Don't preload into the search box; it's used for adding by search only
   systemsText.value = ''
     // Ensure equipment/spaces reflect the activity's project

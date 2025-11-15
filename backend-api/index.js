@@ -55,8 +55,10 @@ app.get('/', (_req, res) => {
 });
 
 // Capture raw body for Stripe webhook signature verification, then parse JSON normally
+// Allow larger payloads for equipment and other rich payloads; configurable via BODY_PARSER_LIMIT
+const bodyParserLimit = process.env.BODY_PARSER_LIMIT || '10mb'
 app.use(express.json({
-  limit: '1mb',
+  limit: bodyParserLimit,
   verify: (req, res, buf) => {
     // store raw buffer only for webhook endpoint
     try {
@@ -68,6 +70,9 @@ app.use(express.json({
     }
   }
 }));
+
+// Also accept urlencoded bodies with the same limit
+app.use(express.urlencoded({ extended: true, limit: bodyParserLimit }))
 // Enable CORS (restricted if CORS_ALLOWED_ORIGINS is set)
 app.use(cors(corsOptions));
 // Handle preflight requests for all routes explicitly
@@ -109,7 +114,8 @@ app.use('/api/spaces',
 );
 app.use('/api/users', userRoutes);
 app.use('/api/rbac', rbacRoutes);
-app.use('/api/admin', authorize(['admin']), adminRoutes);
+// Admin console - restrict to global-level admins
+app.use('/api/admin', authorize(['globaladmin', 'superadmin']), adminRoutes);
 // Roles management - restricted to global-admin (see RBAC design)
 app.use('/api/admin/roles', authorize(['globaladmin']), rolesAdminRoutes);
 // Stripe/Billing routes
