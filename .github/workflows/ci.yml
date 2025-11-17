@@ -31,6 +31,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-backend-node-
 
+      - name: Ensure OpenSSL 1.1 runtime (libcrypto.so.1.1)
+        run: |
+          set -e
+          echo "Checking for libcrypto.so.1.1"
+          if ldconfig -p | grep -q "libcrypto.so.1.1"; then
+            echo "libcrypto.so.1.1 already present"
+          else
+            echo "Attempting to install libssl1.1 via apt"
+            sudo apt-get update
+            if sudo apt-get install -y libssl1.1; then
+              echo "Installed libssl1.1 via apt"
+            else
+              echo "apt install failed, attempting fallback download of libssl1.1 deb"
+              # Try a fallback Ubuntu package (works on many runners); ignore failures
+              wget -qO /tmp/libssl1.1.deb https://security.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb || true
+              sudo dpkg -i /tmp/libssl1.1.deb || true
+            fi
+          fi
+
       - name: Install backend dependencies
         run: npm ci
 
