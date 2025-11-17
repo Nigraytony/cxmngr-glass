@@ -664,58 +664,43 @@
       </template>
     </div>
 
-    <!-- Pagination controls -->
-    <div class="flex flex-wrap items-center justify-between mt-3 gap-2">
-      <div class="text-white/70 text-sm">
-        Showing
-        <span class="font-medium text-white">{{ startItem }}-{{ endItem }}</span>
-        of <span class="font-medium text-white">{{ totalItems }}</span>
+    <!-- Pagination controls (Equipment-style): rows per page + range on left, page nav on right -->
+    <div
+      v-if="totalItems > 0"
+      class="flex items-center justify-between px-2 py-3 text-white/70 text-sm"
+    >
+      <div class="flex items-center gap-2">
+        <span>Rows per page</span>
+        <select
+          v-model.number="pageSize"
+          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+        >
+          <option
+            v-for="s in pageSizes"
+            :key="s"
+            :value="s"
+          >
+            {{ s }}
+          </option>
+        </select>
+        <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ totalItems }}</span>
       </div>
-
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="flex items-center gap-2">
-          <label class="text-white/70 text-sm">Per page</label>
-          <select
-            v-model.number="pageSize"
-            class="rounded-lg bg-white/5 text-white p-1 text-sm"
-          >
-            <option
-              v-for="s in pageSizes"
-              :key="s"
-              :value="s"
-            >
-              {{ s }}
-            </option>
-          </select>
-        </div>
-
-        <div class="flex items-center gap-1 flex-wrap max-w-full overflow-x-auto">
-          <button
-            :disabled="page === 1"
-            class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40"
-            @click="prevPage"
-          >
-            Prev
-          </button>
-          <template
-            v-for="n in pagesArray"
-            :key="n"
-          >
-            <button
-              :class="['px-2 py-1 rounded', n === page ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80']"
-              @click="setPage(n)"
-            >
-              {{ n }}
-            </button>
-          </template>
-          <button
-            :disabled="page === totalPages"
-            class="px-2 py-1 rounded bg-white/6 text-white disabled:opacity-40"
-            @click="nextPage"
-          >
-            Next
-          </button>
-        </div>
+      <div class="flex items-center gap-1">
+        <button
+          :disabled="page === 1"
+          class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+          @click="prevPage"
+        >
+          Prev
+        </button>
+        <span class="px-2">Page {{ page }} / {{ totalPages }}</span>
+        <button
+          :disabled="page === totalPages"
+          class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+          @click="nextPage"
+        >
+          Next
+        </button>
       </div>
     </div>
     

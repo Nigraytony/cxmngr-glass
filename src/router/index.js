@@ -3,6 +3,8 @@ import { useAuthStore } from '../stores/auth'
 
 const Login = () => import('../pages/auth/Login.vue')
 const Register = () => import('../pages/auth/Register.vue')
+const ForgotPassword = () => import('../pages/auth/ForgotPassword.vue')
+const ResetPassword = () => import('../pages/auth/ResetPassword.vue')
 const DashboardLayout = () => import('../layouts/DashboardLayout.vue')
 const DashboardHome = () => import('../pages/dashboard/DashboardHome.vue')
 const IssuesList = () => import('../pages/issues/IssuesList.vue')
@@ -28,6 +30,8 @@ const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { guestOnly: true } },
   { path: '/register', name: 'register', component: Register, meta: { guestOnly: true } },
+  { path: '/forgot-password', name: 'forgot-password', component: ForgotPassword, meta: { guestOnly: true } },
+  { path: '/reset-password', name: 'reset-password', component: ResetPassword, meta: { guestOnly: true } },
   {
     path: '/',
     component: DashboardLayout,

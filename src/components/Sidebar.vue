@@ -24,18 +24,18 @@
           >
         </picture>
       </div>
-      <!-- Compact square logo when collapsed (1.5x size) -->
+      <!-- Compact square logo when collapsed (use cropped PNG) -->
       <div
         v-else
         class="h-12 w-12 rounded-xl overflow-hidden bg-white/30 border border-white/30 grid place-items-center"
       >
         <picture>
           <source
-            srcset="/brand/logo.svg"
+            srcset="/brand/logo-2.svg"
             type="image/svg+xml"
           >
           <img
-            src="/brand/logo.png"
+            src="/brand/logo-2.png"
             alt="App logo"
             class="h-9 w-9 object-contain invert"
           >

@@ -1171,7 +1171,11 @@ router.put('/:id/team/:memberId/permissions', auth, requirePermission('projects.
     const incoming = req.body && Array.isArray(req.body.permissions) ? req.body.permissions.map(String) : null;
     if (incoming === null) return res.status(400).send({ error: 'permissions array is required' });
 
+    // Optionally update role if provided (allow permissions modal to change role via template)
+    const newRole = req.body && req.body.role ? String(req.body.role).trim() : null;
+
     project.team[idx].permissions = incoming;
+    if (newRole) project.team[idx].role = newRole;
     project.team[idx].updatedAt = new Date();
     await project.save();
 

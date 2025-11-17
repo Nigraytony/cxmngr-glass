@@ -53,6 +53,9 @@
         <button class="w-full py-2 rounded-lg bg-white/30 hover:bg-white/40 text-white border border-white/40 font-medium">
           Sign in
         </button>
+        <p class="mt-2 text-sm text-white/80 text-center">
+          <RouterLink class="underline" :to="{ name: 'forgot-password' }">Forgot password?</RouterLink>
+        </p>
       </form>
 
       <p class="mt-4 text-white/80 text-sm">

@@ -277,50 +277,7 @@
       v-if="viewMode === 'list'"
       class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto"
     >
-      <!-- pagination toolbar (top) -->
-      <div class="flex items-center justify-between px-2 py-2">
-        <div class="text-white/60 text-sm">
-          <span v-if="totalFiltered > 0">Showing {{ pageStart + 1 }}–{{ pageEnd }} of {{ totalFiltered }}</span>
-          <span v-else>No matching spaces</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <label class="text-white/60 text-sm">Rows</label>
-          <select
-            v-model.number="pageSize"
-            class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
-          >
-            <option :value="10">
-              10
-            </option>
-            <option :value="20">
-              20
-            </option>
-            <option :value="50">
-              50
-            </option>
-            <option :value="100">
-              100
-            </option>
-          </select>
-          <div class="flex items-center gap-1">
-            <button
-              :disabled="page <= 1"
-              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
-              @click="prevPage"
-            >
-              ‹
-            </button>
-            <span class="text-white/70 text-sm">Page {{ page }} / {{ totalPages || 1 }}</span>
-            <button
-              :disabled="page >= totalPages"
-              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
-              @click="nextPage"
-            >
-              ›
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- pagination toolbar (top) removed -- keep simpler single control block at bottom -->
       <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
         <div class="col-span-2">
           <button
@@ -385,7 +342,7 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-3">
+        <div class="col-span-3 hidden lg:block">
           <button
             type="button"
             class="flex items-center gap-2"
@@ -432,10 +389,10 @@
             {{ s.type }}
           </div>
           <div
-            class="col-span-3 truncate"
-            :title="parentName(s)"
+            class="col-span-3 hidden lg:block truncate text-sm"
+            :title="spaceParentChainLabelById(s.parentSpace)"
           >
-            {{ parentName(s) || '-' }}
+            {{ spaceParentChainLabelById(s.parentSpace) || '-' }}
           </div>
           <div class="col-span-1 flex items-center justify-end gap-2">
             <!-- Visit icon button -->
@@ -547,33 +504,41 @@
           Loading…
         </div>
       </div>
-      <!-- pagination toolbar (bottom) -->
-      <div class="flex items-center justify-between px-2 py-2 mt-1">
-        <div
-          v-if="totalFiltered > 0"
-          class="text-white/60 text-sm"
-        >
-          Showing {{ pageStart + 1 }}–{{ pageEnd }} of {{ totalFiltered }}
-        </div>
-        <div class="flex-1" />
+      <!-- pagination controls (matches EquipmentList layout) -->
+      <div
+        v-if="totalFiltered > 0"
+        class="flex items-center justify-between px-2 py-3 text-white/70 text-sm"
+      >
         <div class="flex items-center gap-2">
-          <div class="flex items-center gap-1">
-            <button
-              :disabled="page <= 1"
-              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
-              @click="prevPage"
-            >
-              ‹ Prev
-            </button>
-            <span class="text-white/70 text-sm">Page {{ page }} / {{ totalPages || 1 }}</span>
-            <button
-              :disabled="page >= totalPages"
-              class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white/80 disabled:opacity-40"
-              @click="nextPage"
-            >
-              Next ›
-            </button>
-          </div>
+          <span>Rows per page</span>
+          <select
+            v-model.number="pageSize"
+            class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+          >
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="25">25</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+          </select>
+          <span class="ml-2">{{ pageStart + 1 }}–{{ pageEnd }} of {{ totalFiltered }}</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <button
+            :disabled="page === 1"
+            class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+            @click="prevPage"
+          >
+            Prev
+          </button>
+          <span class="px-2">Page {{ page }} / {{ totalPages }}</span>
+          <button
+            :disabled="page === totalPages"
+            class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+            @click="nextPage"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -870,9 +835,27 @@ const spaces = computed(() => spacesStore.items)
 const loading = computed(() => spacesStore.loading)
 
 const parentMap = computed(() => spacesStore.byId)
-function parentName(s: Space) {
-  const pid = s.parentSpace ? String(s.parentSpace) : ''
-  return pid && parentMap.value[pid] ? parentMap.value[pid].title : ''
+
+function spaceParentChainLabelById(spaceId?: string | null) {
+  try {
+    const pid = spaceId ? String(spaceId) : ''
+    if (!pid) return ''
+    let cur: any = parentMap.value[pid] || (spaces.value || []).find((s: any) => String(s.id || s._id) === pid)
+    if (!cur) return ''
+    const parts: string[] = []
+    let depth = 0
+    while (cur && depth < 20) {
+      const title = String(cur.title || cur.tag || '')
+      if (title) parts.unshift(title)
+      const parentId = cur.parentSpace || cur.parent || null
+      if (!parentId) break
+      cur = parentMap.value[String(parentId)] || (spaces.value || []).find((x: any) => String(x.id || x._id) === String(parentId))
+      depth++
+    }
+    return parts.join(' > ')
+  } catch (e) {
+    return ''
+  }
 }
 
 const searchMode = computed(() => {
@@ -916,8 +899,8 @@ const sorted = computed(() => {
     let av: string
     let bv: string
     if (sortKey.value === 'parent') {
-      av = String(parentName(a) || '').toLowerCase()
-      bv = String(parentName(b) || '').toLowerCase()
+        av = String(spaceParentChainLabelById((a as any).parentSpace) || '').toLowerCase()
+        bv = String(spaceParentChainLabelById((b as any).parentSpace) || '').toLowerCase()
     } else {
       av = String((a?.[sortKey.value] ?? '')).toLowerCase()
       bv = String((b?.[sortKey.value] ?? '')).toLowerCase()
@@ -1310,6 +1293,7 @@ function downloadSpacesXlsx() {
       'title',
       'type',
       'description',
+      'attributes',
       // parent references (names aligned with importer candidates)
       'parent id',
       'parent tag',
@@ -1332,6 +1316,11 @@ function downloadSpacesXlsx() {
         title: s.title || '',
         type: s.type || '',
         description: (s as any).description || '',
+        attributes: (Array.isArray((s as any).attributes) ? (s as any).attributes.map((a: any) => {
+          const k = String(a && a.key != null ? a.key : '').trim()
+          const v = String(a && a.value != null ? a.value : '').trim()
+          return k || v ? (k ? `${k}: ${v}` : v) : ''
+        }).filter(Boolean).join('; ') : ''),
         'parent id': parent ? String((parent as any).id || (parent as any)._id || '') : '',
         'parent tag': parent?.tag || '',
         'parent title': parent?.title || '',
@@ -1350,6 +1339,7 @@ function downloadSpacesXlsx() {
       { wch: 30 }, // title
       { wch: 14 }, // type
       { wch: 60 }, // description
+      { wch: 40 }, // attributes
       { wch: 24 }, // parent id
       { wch: 14 }, // parent tag
       { wch: 30 }, // parent title
@@ -1415,7 +1405,7 @@ function getVal(obj: any, candidates: string[]): any {
   return ''
 }
 
-type UploadRow = { id?: string; tag: string; title: string; type: string; description: string; parentRef: string; parentId?: string }
+type UploadRow = { id?: string; tag: string; title: string; type: string; description: string; parentRef: string; parentId?: string; attributes?: Array<{ key: string; value: string }> }
 function normalizeRow(obj: Record<string, any>): UploadRow | null {
   const id = String(getVal(obj, ['id', '_id', 'space id', 'space_id'])).trim()
   const tag = String(getVal(obj, ['tag', 'space tag', 'space_tag'])).trim()
@@ -1424,8 +1414,37 @@ function normalizeRow(obj: Record<string, any>): UploadRow | null {
   const description = String(getVal(obj, ['description', 'desc', 'details'])).trim()
   const parentRef = String(getVal(obj, ['parentspace', 'parent space', 'parent', 'parent_title', 'parent title', 'parent_tag', 'parent tag'])).trim()
   const parentId = String(getVal(obj, ['parent id', 'parent_id', 'parentid'])).trim()
+  // Parse attributes from common column names. Support JSON or semicolon-separated `key: value` lists.
+  const rawAttrs = String(getVal(obj, ['attributes', 'attributes_json', 'attributes (json)', 'attr', 'attribute', 'attrs'])).trim()
+  let parsedAttrs: Array<{ key: string; value: string }> = []
+  if (rawAttrs) {
+    // Try JSON first
+    try {
+      const parsed = JSON.parse(rawAttrs)
+      if (Array.isArray(parsed)) {
+        parsedAttrs = parsed.map((p: any) => ({ key: String(p?.key || p?.name || '') , value: String(p?.value || p?.val || '') }))
+          .filter((a: any) => String(a.key || a.value).trim())
+      } else if (parsed && typeof parsed === 'object') {
+        parsedAttrs = Object.keys(parsed).map(k => ({ key: String(k), value: String(parsed[k]) }))
+      }
+    } catch (e) {
+      // Not JSON; parse semicolon or comma separated key:value pairs
+      const parts = rawAttrs.split(/;|,/) .map(p => String(p || '').trim()).filter(Boolean)
+      for (const part of parts) {
+        const sepIndex = part.indexOf(':') >= 0 ? part.indexOf(':') : (part.indexOf('=') >= 0 ? part.indexOf('=') : -1)
+        if (sepIndex > -1) {
+          const k = part.slice(0, sepIndex).trim()
+          const v = part.slice(sepIndex + 1).trim()
+          if (k || v) parsedAttrs.push({ key: k, value: v })
+        } else {
+          // value-only attribute
+          parsedAttrs.push({ key: '', value: part })
+        }
+      }
+    }
+  }
   if (!title) return null
-  return { id, tag, title, type, description, parentRef, parentId }
+  return { id, tag, title, type, description, parentRef, parentId, attributes: parsedAttrs }
 }
 
 function toLowerKey(s?: string | null) { return (s || '').trim().toLowerCase() }
@@ -1484,14 +1503,16 @@ async function onFileChange(e: Event) {
         type: r.type,
         tag: r.tag || '',
         description: r.description || '',
-        project: String(projectStore.currentProjectId)
+        project: String(projectStore.currentProjectId),
+        attributes: Array.isArray(r.attributes) && r.attributes.length ? r.attributes : []
       }
       if (existing) {
         const needsUpdate = (
           (existing.title || '') !== payloadBase.title ||
           (existing.type || '') !== payloadBase.type ||
           (existing.tag || '') !== payloadBase.tag ||
-          (existing.description || '') !== payloadBase.description
+          (existing.description || '') !== payloadBase.description ||
+          JSON.stringify(existing.attributes || []) !== JSON.stringify(payloadBase.attributes || [])
         )
         if (needsUpdate) {
           const saved = await spacesStore.update({ ...(existing as any), id: String(existing.id || (existing as any)._id), ...payloadBase })

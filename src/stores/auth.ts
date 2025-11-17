@@ -244,11 +244,16 @@ export const useAuthStore = defineStore('auth', () => {
         },
         body: JSON.stringify(updated),
       });
+      const data = await (async () => {
+        try { return await res.json() } catch (e) { return null }
+      })();
       if (!res.ok) {
-        error.value = 'Failed to update user';
+        // prefer server-provided message if available
+        error.value = (data && (data.error || data.message)) || `Failed to update user (${res.status})`;
         return false;
       }
-      const data = await res.json();
+      // if res.ok but no json, treat as success
+      if (!data) return true as unknown as any;
       // backend may return { user } or the raw user object
       const returned = data && data.user ? data.user : data;
 
@@ -299,7 +304,10 @@ export const useAuthStore = defineStore('auth', () => {
           body: JSON.stringify({ avatar: avatarUrl }),
         });
       if (!res.ok) {
-        error.value = 'Failed to update avatar';
+        // try to parse error body
+        let body = null
+        try { body = await res.json() } catch (e) { /* ignore */ }
+        error.value = (body && (body.error || body.message)) || 'Failed to update avatar'
         return false;
       }
       const data = await res.json();

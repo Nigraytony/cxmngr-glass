@@ -90,6 +90,9 @@ import Modal from './Modal.vue'
 import { ref, computed, watch } from 'vue'
 import http from '../utils/http'
 import { getAuthHeaders } from '../utils/auth'
+import { useUiStore } from '../stores/ui'
+
+const ui = useUiStore()
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -169,13 +172,27 @@ async function save() {
   try {
     const pid = props.projectId
     const memberId = props.member._id || props.member.email
-    const body = { permissions: Array.from(selectedPerms.value).map(normalizePermValue) }
-    await http.put(`/api/projects/${pid}/team/${memberId}/permissions`, body, { headers: getAuthHeaders() })
-    emit('saved')
+    const perms = Array.from(selectedPerms.value).map(normalizePermValue)
+    const body = { permissions: perms }
+    // If a template was selected, also send the template's name as the member role
+    try {
+      if (selectedTemplateId.value) {
+        const tpl = (props.roleTemplates || []).find(r => (r._id || r.id) === selectedTemplateId.value)
+        if (tpl && tpl.name) body.role = tpl.name
+      }
+    } catch (e) {
+      // ignore
+    }
+    const resp = await http.put(`/api/projects/${pid}/team/${memberId}/permissions`, body, { headers: getAuthHeaders() })
+    ui.showSuccess('Permissions saved')
+    // If backend returned the updated member, emit it so parent can update immediately
+    const updatedMember = resp && resp.data && resp.data.member ? resp.data.member : null
+    emit('saved', updatedMember)
     emit('close')
   } catch (err) {
     console.error('save permissions error', err)
-    // bubble up; consumer can show a toast
+    const msg = err?.response?.data?.error || err?.message || 'Failed to save permissions'
+    ui.showError(msg)
   }
 }
 

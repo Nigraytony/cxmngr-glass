@@ -8,6 +8,10 @@ const User = require('../models/user');
 const Project = require('../models/project');
 const jwt = require('jsonwebtoken');
 const { auth } = require('../middleware/auth');
+const crypto = require('crypto');
+const PasswordReset = require('../models/passwordReset');
+const { sendResetEmail } = require('../utils/mailer');
+const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
 // Helper: hydrate user.projects from the Projects collection (avoid stale embedded fields)
 async function hydrateUserProjects(userObj) {
@@ -181,7 +185,8 @@ router.put('/update/:_id', async (req, res) => {
     }
     // Basic validation/sanitization for profile signature block to avoid huge payloads
     try {
-      if (payload.contact && payload.contact.signature && typeof payload.contact.signature.block === 'string') {
+      // Only validate signature if a non-empty block is provided
+      if (payload.contact && payload.contact.signature && typeof payload.contact.signature.block === 'string' && payload.contact.signature.block.trim() !== '') {
         const block = payload.contact.signature.block || ''
         // limit roughly to 300 KB (base64 data length) to avoid large DB writes
         const maxBytes = 300 * 1024
@@ -216,15 +221,28 @@ router.put('/update/:_id', async (req, res) => {
       // ignore perPage sanitization errors and drop the field
       if (payload.contact) delete payload.contact.perPage
     }
-    const user = await User.findByIdAndUpdate(req.params._id, payload, { new: true, runValidators: true });
-    if (!user) {
+    // Use a find + merge + save flow so partial updates don't fail validation
+    const userDoc = await User.findById(req.params._id);
+    if (!userDoc) {
       return res.status(404).send({ error: 'User not found' });
     }
+
+    // Merge top-level fields from payload into the user document
+    for (const key of Object.keys(payload)) {
+      // avoid clobbering password unless explicitly provided
+      if (key === 'password') continue;
+      // simple assign for most fields; nested objects (contact, social_media) should be provided as objects
+      userDoc[key] = payload[key];
+    }
+
+    // If password needs to be changed via this endpoint, require a separate flow (change-password)
+    await userDoc.save();
+
     // sanitize user
-    const userObj = user.toObject ? user.toObject() : JSON.parse(JSON.stringify(user));
+    const userObj = userDoc.toObject ? userDoc.toObject() : JSON.parse(JSON.stringify(userDoc));
     if (userObj.password) delete userObj.password;
     if (userObj.__v) delete userObj.__v;
-    const hydrated = await hydrateUserProjects(userObj)
+    const hydrated = await hydrateUserProjects(userObj);
     res.send({ user: hydrated });
   } catch (error) {
     res.status(400).send(error);
@@ -264,6 +282,66 @@ router.post('/change-password', async (req, res) => {
   } catch (error) {
     console.error('change-password error', error);
     res.status(400).send({ error: error.message || error });
+  }
+});
+
+// Request a password reset: creates a short-lived token and emails reset link
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).send({ error: 'email is required' });
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (!user) return res.status(200).send({ message: 'If that account exists, a reset email has been sent' });
+
+    // generate token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+
+    // store token
+    const pr = new PasswordReset({ userId: user._id, token, expiresAt });
+    await pr.save();
+
+    const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+    // send email (best-effort)
+    try {
+      await sendResetEmail({ to: user.email, name: `${user.firstName || ''} ${user.lastName || ''}`.trim(), resetUrl });
+    } catch (e) {
+      console.error('forgot-password: failed to send reset email', e);
+    }
+
+    // Always respond with success message to avoid user enumeration
+    return res.status(200).send({ message: 'If that account exists, a reset email has been sent' });
+  } catch (err) {
+    console.error('forgot-password error', err);
+    return res.status(500).send({ error: 'Failed to process password reset' });
+  }
+});
+
+// Perform password reset using token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body || {};
+    if (!token || !newPassword) return res.status(400).send({ error: 'token and newPassword are required' });
+    if (typeof newPassword !== 'string' || newPassword.length < 8) return res.status(400).send({ error: 'New password must be at least 8 characters' });
+
+    const pr = await PasswordReset.findOne({ token });
+    if (!pr) return res.status(400).send({ error: 'Invalid or expired token' });
+    if (pr.used) return res.status(400).send({ error: 'Token already used' });
+    if (pr.expiresAt < new Date()) return res.status(400).send({ error: 'Token expired' });
+
+    const user = await User.findById(pr.userId).select('+password');
+    if (!user) return res.status(404).send({ error: 'User not found' });
+
+    user.password = newPassword;
+    await user.save();
+
+    pr.used = true;
+    await pr.save();
+
+    return res.status(200).send({ message: 'Password has been reset successfully' });
+  } catch (err) {
+    console.error('reset-password error', err);
+    return res.status(500).send({ error: 'Failed to reset password' });
   }
 });
 

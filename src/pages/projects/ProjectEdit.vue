@@ -103,30 +103,77 @@
                       </div>
                     </div>
                     <div class="flex items-center gap-3">
-                      <!-- Status badge (invited, rejected, active, etc.) -->
-                      <div
-                        :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus || (member._id ? 'active' : 'invited'))]"
-                      >
-                        {{ statusLabel(member) }}
+                      <!-- Resend invite icon (left of badge) -->
+                      <div v-if="isProjectAdmin && (member.status || member.inviteStatus || (member._id ? 'active' : 'invited')) === 'invited'" class="mr-2">
+                        <div class="relative inline-block group">
+                          <button
+                            aria-label="Resend invitation"
+                            :disabled="isResending(findInviteIdForMember(member))"
+                            class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+                            @click.prevent="resendInviteForMember(member)"
+                          >
+                            <svg v-if="!isResending(findInviteIdForMember(member))" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor">
+                              <path d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M3 8l9 6 9-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M16 11h6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M19 8l3 3-3 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <svg v-else class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                              <circle cx="12" cy="12" r="10" stroke-width="2" stroke-opacity="0.25"></circle>
+                              <path d="M22 12a10 10 0 0 1-10 10" stroke-width="2" stroke-linecap="round"></path>
+                            </svg>
+                          </button>
+                          <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">Resend invite</div>
+                        </div>
                       </div>
+                      <!-- Status badge (invited, rejected, active, etc.) -->
+                      <div :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus || (member._id ? 'active' : 'invited'))]">{{ statusLabel(member) }}</div>
+                      <!-- Action icons: Permissions, Remove -->
                       <div class="flex gap-2">
-                        <button
-                          v-if="isProjectAdmin"
-                          class="px-3 py-1 rounded bg-white/6"
-                          @click.prevent="openPermsModal(member)"
-                        >
-                          Permissions
-                        </button>
-                        <button
-                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
-                          @click="removeMember(member)"
-                        >
-                          Remove
-                        </button>
+                        <div v-if="isProjectAdmin" class="relative inline-block group">
+                          <button aria-label="Edit permissions" class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10" @click.prevent="openPermsModal(member)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor">
+                              <rect x="6" y="10" width="12" height="8" rx="2" stroke-width="1.5"/>
+                              <path d="M8 10V8a4 4 0 018 0v2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                          </button>
+                          <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">Permissions</div>
+                        </div>
+                        <div v-if="isProjectAdmin" class="relative inline-block group">
+                          <button aria-label="Edit member" class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10" @click.prevent="openEditMember(member)">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              class="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                            >
+                              <path
+                                d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">Edit member</div>
+                        </div>
+                        <div class="relative inline-block group">
+                          <button aria-label="Remove member" class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30" @click="removeMember(member)">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor">
+                              <path d="M6 7h12" stroke-width="1.5" stroke-linecap="round"/>
+                              <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke-width="1.5"/>
+                              <rect x="6" y="7" width="12" height="14" rx="2" stroke-width="1.5"/>
+                            </svg>
+                          </button>
+                          <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">Remove</div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                <!-- (Invites shown inline with team members; no separate invites list) -->
 
                 <div class="pt-2">
                   <h4 class="font-medium mb-2">
@@ -990,12 +1037,43 @@
       </div>
     </template>
   </Modal>
+  <Modal v-model="showEditMemberModal" panelClass="max-w-md">
+    <template #header>
+      <div class="text-lg font-medium">Edit member</div>
+    </template>
+
+    <div class="grid grid-cols-1 gap-3">
+      <div class="grid grid-cols-2 gap-2">
+        <input v-model="editMemberForm.firstName" placeholder="First name" class="rounded p-2 bg-white/5 w-full" />
+        <input v-model="editMemberForm.lastName" placeholder="Last name" class="rounded p-2 bg-white/5 w-full" />
+      </div>
+      <input v-model="editMemberForm.email" placeholder="Email" class="rounded p-2 bg-white/5 w-full" />
+      <input v-model="editMemberForm.company" placeholder="Company" class="rounded p-2 bg-white/5 w-full" />
+      <select v-model="editMemberForm.role" class="rounded p-2 bg-white/5 w-full">
+        <option value="admin">admin</option>
+        <option value="CxA">CxA</option>
+        <option value="GC">GC</option>
+        <option value="CM">CM</option>
+        <option value="Architect">Architect</option>
+        <option value="Designer">Designer</option>
+        <option value="Client">Client</option>
+        <option value="User">User</option>
+      </select>
+    </div>
+
+    <template #footer>
+      <div class="mt-3 text-right w-full">
+        <button class="px-3 py-1 rounded bg-white/6 mr-2" @click="closeEditMember">Cancel</button>
+        <button class="px-3 py-1 rounded bg-emerald-500 text-white" @click="saveEditedMember">Save</button>
+      </div>
+    </template>
+  </Modal>
   <PermissionsModal
     v-if="showPermsModal && modalMember"
     :visible="showPermsModal"
     :member="modalMember"
     :project-id="projectId"
-    :role-templates="(project && project.roleTemplates) ? project.roleTemplates : roleTemplates"
+    :role-templates="displayedRoleTemplates"
     @close="closePermsModal"
     @saved="onMemberPermissionsSaved"
   />
@@ -1035,6 +1113,8 @@ const clientFileInput = ref(null)
 const cxaFileInput = ref(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
 const invites = ref([])
+// track which invite ids are currently being resent
+const loadingInviteIds = ref([])
 const roleTemplates = ref([])
 // Dedicated UI list that always preserves all visible roles
 const roleTemplatesView = ref([])
@@ -1054,9 +1134,65 @@ function closePermsModal() {
   showPermsModal.value = false
 }
 
-async function onMemberPermissionsSaved() {
+// Modal-based member editor state & handlers
+const showEditMemberModal = ref(false)
+const editingMember = ref(null)
+const editMemberForm = ref({ firstName: '', lastName: '', email: '', company: '', role: '' })
+
+function openEditMember(member) {
+  editingMember.value = member
+  editMemberForm.value = {
+    firstName: member.firstName || '',
+    lastName: member.lastName || '',
+    email: member.email || '',
+    company: member.company || '',
+    role: member.role || ''
+  }
+  showEditMemberModal.value = true
+}
+
+function closeEditMember() {
+  editingMember.value = null
+  editMemberForm.value = { firstName: '', lastName: '', email: '', company: '', role: '' }
+  showEditMemberModal.value = false
+}
+
+async function saveEditedMember() {
+  if (!editingMember.value) return
   try {
-    await refreshProject()
+    // Update the local project.team entry and persist project
+    const idOrEmail = editingMember.value._id || editingMember.value.email
+    const list = Array.isArray(project.value.team) ? project.value.team.slice() : []
+    const idx = list.findIndex(m => ((m._id || m.email) === idOrEmail))
+    const updated = { ...list[idx], ...editMemberForm.value }
+    if (idx >= 0) list.splice(idx, 1, updated)
+    else list.push(updated)
+    project.value = { ...project.value, team: list }
+    await projectStore.updateProject(project.value)
+    ui.showSuccess('Member updated')
+    closeEditMember()
+  } catch (err) {
+    console.error('saveEditedMember error', err)
+    ui.showError(err?.response?.data?.error || 'Failed to save member')
+  }
+}
+
+async function onMemberPermissionsSaved(updatedMember) {
+  try {
+    if (updatedMember && project.value && Array.isArray(project.value.team)) {
+      const idOrEmail = updatedMember._id || updatedMember.email
+      const idx = project.value.team.findIndex(m => ((m._id || m.email) === idOrEmail))
+      if (idx >= 0) {
+        // Merge to preserve local fields and ensure reactivity
+        const merged = { ...project.value.team[idx], ...updatedMember }
+        const list = project.value.team.slice()
+        list.splice(idx, 1, merged)
+        project.value = { ...project.value, team: list }
+      }
+    } else {
+      // Fallback: refresh full project
+      try { await refreshProject() } catch (e) { /* ignore */ }
+    }
     ui.showSuccess('Member permissions updated')
   } catch (err) {
     console.error('onMemberPermissionsSaved error', err)
@@ -1580,6 +1716,39 @@ async function resendInvite(inviteId) {
   } catch (err) {
     console.error('resendInvite error', err)
     ui.showError(err?.response?.data?.error || 'Failed to resend invite')
+  }
+}
+
+function findInviteIdForMember(member) {
+  try {
+    if (!member || !member.email) return null
+    const e = String(member.email).toLowerCase()
+    const inv = (invites.value || []).find(i => i && i.email && String(i.email).toLowerCase() === e)
+    if (!inv) return null
+    return inv._id || inv.id || null
+  } catch (e) {
+    return null
+  }
+}
+
+function isResending(inviteId) {
+  return inviteId && loadingInviteIds.value.includes(inviteId)
+}
+
+async function resendInviteForMember(member) {
+  try {
+    const id = findInviteIdForMember(member)
+    if (!id) return ui.showError('No matching invite found for that member')
+    if (isResending(id)) return
+    loadingInviteIds.value.push(id)
+    await resendInvite(id)
+  } catch (err) {
+    console.error('resendInviteForMember error', err)
+    ui.showError('Failed to resend invite')
+  } finally {
+    const id = findInviteIdForMember(member)
+    const idx = id ? loadingInviteIds.value.indexOf(id) : -1
+    if (idx !== -1) loadingInviteIds.value.splice(idx, 1)
   }
 }
 
