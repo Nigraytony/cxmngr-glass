@@ -54,7 +54,12 @@
           Sign in
         </button>
         <p class="mt-2 text-sm text-white/80 text-center">
-          <RouterLink class="underline" :to="{ name: 'forgot-password' }">Forgot password?</RouterLink>
+          <RouterLink
+            class="underline"
+            :to="{ name: 'forgot-password' }"
+          >
+            Forgot password?
+          </RouterLink>
         </p>
       </form>
 

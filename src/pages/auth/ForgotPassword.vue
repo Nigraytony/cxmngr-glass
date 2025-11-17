@@ -8,30 +8,70 @@
       <span class="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-white/25 to-transparent opacity-40 mix-blend-overlay" />
       <div class="relative z-10 mb-4 flex items-center justify-center">
         <picture>
-          <source srcset="/brand/logo.svg" type="image/svg+xml">
-          <img src="/brand/logo.png" alt="App logo" class="h-[4.5rem] w-auto object-contain invert" />
+          <source
+            srcset="/brand/logo.svg"
+            type="image/svg+xml"
+          >
+          <img
+            src="/brand/logo.png"
+            alt="App logo"
+            class="h-[4.5rem] w-auto object-contain invert"
+          >
         </picture>
       </div>
 
-      <h1 class="text-2xl font-semibold text-white drop-shadow">Forgot password</h1>
-      <p class="text-white/80">Enter your account email and we'll send a reset link.</p>
+      <h1 class="text-2xl font-semibold text-white drop-shadow">
+        Forgot password
+      </h1>
+      <p class="text-white/80">
+        Enter your account email and we'll send a reset link.
+      </p>
 
-      <form class="mt-6 space-y-4 relative z-10" @submit.prevent="submit">
+      <form
+        class="mt-6 space-y-4 relative z-10"
+        @submit.prevent="submit"
+      >
         <div>
           <label class="block text-white/90 text-sm mb-1">Email</label>
-          <input v-model="email" type="email" required class="w-full rounded-lg bg-white/20 text-white placeholder-white/70 border-white/30 px-3 py-2" placeholder="you@example.com" />
+          <input
+            v-model="email"
+            type="email"
+            required
+            class="w-full rounded-lg bg-white/20 text-white placeholder-white/70 border-white/30 px-3 py-2"
+            placeholder="you@example.com"
+          >
         </div>
 
         <div class="flex items-center justify-between">
-          <button class="w-full py-2 rounded-lg bg-white/30 hover:bg-white/40 text-white border border-white/40 font-medium" :disabled="loading">Send reset link</button>
+          <button
+            class="w-full py-2 rounded-lg bg-white/30 hover:bg-white/40 text-white border border-white/40 font-medium"
+            :disabled="loading"
+          >
+            Send reset link
+          </button>
         </div>
       </form>
 
-      <p v-if="message" class="mt-4 text-sm text-green-400">{{ message }}</p>
-      <p v-if="error" class="mt-4 text-sm text-rose-400">{{ error }}</p>
+      <p
+        v-if="message"
+        class="mt-4 text-sm text-green-400"
+      >
+        {{ message }}
+      </p>
+      <p
+        v-if="error"
+        class="mt-4 text-sm text-rose-400"
+      >
+        {{ error }}
+      </p>
 
       <p class="mt-4 text-white/80 text-sm">
-        Remembered? <RouterLink class="underline" :to="{ name: 'login' }">Sign in</RouterLink>
+        Remembered? <RouterLink
+          class="underline"
+          :to="{ name: 'login' }"
+        >
+          Sign in
+        </RouterLink>
       </p>
     </div>
   </div>
