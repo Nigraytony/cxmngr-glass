@@ -8,7 +8,6 @@ const passwordResetSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-passwordResetSchema.index({ token: 1 });
 passwordResetSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('PasswordReset', passwordResetSchema);
