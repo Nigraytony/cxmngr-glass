@@ -1482,8 +1482,8 @@ const pagedIssues = computed(() => sortedIssues.value.slice((page.value - 1) * p
 
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
-function setPage(n) { if (n >= 1 && n <= totalPages.value) page.value = n }
-const pagesArray = computed(() => Array.from({ length: totalPages.value }, (_, i) => i + 1))
+// pagination helpers: explicit page setter and pages array removed
+// (not needed in this component — navigation uses prevPage/nextPage)
 
 function openView(issue) {
   const id = issue.id || issue._id
