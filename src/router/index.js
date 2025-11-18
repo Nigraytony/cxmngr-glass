@@ -7,7 +7,6 @@ const ForgotPassword = () => import('../pages/auth/ForgotPassword.vue')
 const ResetPassword = () => import('../pages/auth/ResetPassword.vue')
 const DashboardLayout = () => import('../layouts/DashboardLayout.vue')
 const DashboardHome = () => import('../pages/dashboard/DashboardHome.vue')
-const IssuesList = () => import('../pages/issues/IssuesList.vue')
 const IssueEdit = () => import('../pages/issues/IssueEdit.vue')
 const Profile = () => import('../pages/profile/Profile.vue')
 const ProjectEdit = () => import('../pages/projects/ProjectEdit.vue')
@@ -17,13 +16,9 @@ const AdminDashboard = () => import('../pages/admin/AdminDashboard.vue')
 const AdminUsers = () => import('../pages/admin/Users.vue')
 const AdminProjects = () => import('../pages/admin/Projects.vue')
 const AdminTemplates = () => import('../pages/admin/Templates.vue')
-const ActivitiesList = () => import('../pages/activities/ActivitiesList.vue')
 const ActivityEdit = () => import('../pages/activities/ActivityEdit.vue')
-const SpacesList = () => import('../pages/spaces/SpacesList.vue')
 const SpaceEdit = () => import('../pages/spaces/EditSpaces.vue')
 const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
-const EquipmentList = () => import('../pages/equipment/EquipmentList.vue')
-const TemplatesList = () => import('../pages/templates/TemplatesList.vue')
 // Use the cleaned up editor component to avoid malformed legacy file
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
 
@@ -38,15 +33,15 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'dashboard', component: DashboardHome },
-      { path: 'issues', name: 'issues', component: IssuesList },
+      { path: 'issues', name: 'issues', component: () => import(/* webpackChunkName: "issues" */ '../pages/issues/IssuesList.vue') },
     { path: 'issues/:id', name: 'issue-edit', component: IssueEdit, props: true },
-  { path: 'activities', name: 'activities', component: ActivitiesList },
+  { path: 'activities', name: 'activities', component: () => import(/* webpackChunkName: "activities" */ '../pages/activities/ActivitiesList.vue') },
   { path: 'activities/:id', name: 'activity-edit', component: ActivityEdit, props: true },
-      { path: 'spaces', name: 'spaces', component: SpacesList },
-      { path: 'equipment', name: 'equipment', component: EquipmentList },
+      { path: 'spaces', name: 'spaces', component: () => import(/* webpackChunkName: "spaces" */ '../pages/spaces/SpacesList.vue') },
+      { path: 'equipment', name: 'equipment', component: () => import(/* webpackChunkName: "equipment" */ '../pages/equipment/EquipmentList.vue') },
   { path: 'spaces/:id', name: 'space-edit', component: SpaceEdit, props: true },
       { path: 'equipment/:id', name: 'equipment-edit', component: EquipmentEdit, props: true },
-    { path: 'templates', name: 'templates', component: TemplatesList },
+    { path: 'templates', name: 'templates', component: () => import(/* webpackChunkName: "templates" */ '../pages/templates/TemplatesList.vue') },
     { path: 'templates/:id', name: 'template-edit', component: TemplateEdit, props: true },
       { path: 'projects', name: 'projects', component: () => import('../pages/projects/ProjectsList.vue') },
       { path: 'projects/edit/:id?', name: 'project-settings', component: ProjectEdit },

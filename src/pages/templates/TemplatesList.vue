@@ -489,9 +489,8 @@
         </div>
         <div
           v-if="loading"
-          class="p-6 text-white/60 text-center"
         >
-          Loading…
+          <Spinner />
         </div>
       </div>
       <!-- pagination controls -->
@@ -669,6 +668,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Spinner from '../../components/Spinner.vue'
+import http from '../../utils/http'
+import { getApiBase } from '../../utils/api'
+import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
 import { useTemplatesStore, type Template } from '../../stores/templates'
@@ -729,12 +732,14 @@ function spaceName(spaceId?: string | null) {
   return pid && parentMap.value[pid] ? parentMap.value[pid].title : ''
 }
 
+// Prefer server-provided page when available; otherwise filter the full store list
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
   const s = statusFilter.value
   const sys = systemFilter.value
-  return templates.value.filter(e => {
+  const baseList = (Number(serverTotal.value) > 0 && Array.isArray(serverTemplates.value) && serverTemplates.value.length > 0) ? listTemplates.value : templates.value
+  return (baseList || []).filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
@@ -943,6 +948,11 @@ watch(pageSize, () => persistPageSizePref())
 const sortKey = ref('')
 const sortDir = ref(1) // 1 = asc, -1 = desc
 
+// server-driven list for templates page
+const serverTemplates = ref([])
+const serverTotal = ref(0)
+const listTemplates = computed(() => serverTemplates.value)
+
 const sorted = computed(() => {
   if (!sortKey.value) return filtered.value
   const arr = [...filtered.value]
@@ -969,13 +979,19 @@ function setSort(key: string) {
   page.value = 1
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / pageSize.value)))
+// server-side totals and paging
+const totalPages = computed(() => Math.max(1, Math.ceil((Number(serverTotal.value || 0)) / pageSize.value)))
 const paged = computed(() => {
+  const list = sorted.value || []
+  const total = Number(serverTotal.value || 0)
+  const pageLen = Array.isArray(serverTemplates.value) ? serverTemplates.value.length : 0
+  if (total > pageLen) return list
   const start = (page.value - 1) * pageSize.value
-  return sorted.value.slice(start, start + pageSize.value)
+  const end = start + pageSize.value
+  return list.slice(start, end)
 })
-const startItem = computed(() => sorted.value.length ? (page.value - 1) * pageSize.value + 1 : 0)
-const endItem = computed(() => Math.min(sorted.value.length, page.value * pageSize.value))
+const startItem = computed(() => Number(serverTotal.value) ? (page.value - 1) * pageSize.value + 1 : 0)
+const endItem = computed(() => Math.min(Number(serverTotal.value || 0), page.value * pageSize.value))
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 
@@ -1027,12 +1043,94 @@ async function confirmRemove(e: Template) {
 }
 
 watch(() => projectStore.currentProjectId, async (id) => {
-  if (id) {
-    await spacesStore.fetchByProject(String(id))
-    await templatesStore.fetchByProject(String(id))
-    page.value = 1
-  }
+  if (!id) return
+  // fetch spaces for location lookups
+  await spacesStore.fetchByProject(String(id))
+  // load paged templates for list view
+  page.value = 1
+  fetchTemplatesPage(String(id)).catch(() => {})
 }, { immediate: true })
+
+async function fetchTemplatesPage(projectId?: string) {
+  // Try store fallback when API base is not configured or points to same hostname (avoid dev cross-port 404s)
+  try {
+    const rawEnvBase = (import.meta as any).env?.VITE_API_BASE
+    const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
+    if (typeof window !== 'undefined' && apiBase) {
+      try {
+        const apiHostname = (new URL(apiBase)).hostname
+        const pageHostname = window.location.hostname
+        if (apiHostname === pageHostname || !rawEnvBase) {
+          const pid = projectId ?? (projectStore.currentProjectId || '')
+          if (pid) {
+            await templatesStore.fetchByProject(String(pid))
+            const all = Array.isArray(templatesStore.items) ? templatesStore.items : []
+            const filteredByProject = all.filter((t: any) => String(t.projectId || t.project || '') === String(pid))
+            serverTemplates.value = filteredByProject.map((t: any) => ({ ...(t || {}), id: t._id || t.id }))
+            serverTotal.value = serverTemplates.value.length
+          } else {
+            serverTemplates.value = []
+            serverTotal.value = 0
+          }
+          return
+        }
+      } catch (err) {
+        // ignore URL parsing errors and continue
+      }
+    }
+  } catch (e) {
+    // ignore env access errors
+  }
+
+  try {
+    const params: any = { page: page.value, perPage: pageSize.value }
+    if (projectId) params.projectId = projectId
+    if (search.value) params.search = search.value
+    if (typeFilter) params.type = typeFilter
+    if (statusFilter) params.status = statusFilter
+    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+    const res = await http.get('/api/templates', { params, headers: getAuthHeaders() })
+    const data = res && res.data ? res.data : {}
+    if (Array.isArray(data.items)) serverTemplates.value = data.items.map(t => ({ ...(t || {}), id: t._id || t.id }))
+    else if (Array.isArray(data)) serverTemplates.value = data.map(t => ({ ...(t || {}), id: t._id || t.id }))
+    else serverTemplates.value = []
+    serverTotal.value = Number(data.total ?? data.count ?? serverTemplates.value.length)
+  } catch (e: any) {
+    if (e && e.response && e.response.status === 404) {
+      try {
+        const pid = projectId ?? (projectStore.currentProjectId || '')
+        if (pid) {
+          await templatesStore.fetchByProject(String(pid))
+          const all = Array.isArray(templatesStore.items) ? templatesStore.items : []
+          const filteredByProject = all.filter((t: any) => String(t.projectId || t.project || '') === String(pid))
+          serverTemplates.value = filteredByProject.map((t: any) => ({ ...(t || {}), id: t._id || t.id }))
+          serverTotal.value = serverTemplates.value.length
+        } else {
+          serverTemplates.value = []
+          serverTotal.value = 0
+        }
+      } catch (inner) {
+        serverTemplates.value = []
+        serverTotal.value = 0
+      }
+    } else {
+      serverTemplates.value = []
+      serverTotal.value = 0
+    }
+  }
+}
+
+// Debounce helper (small local utility)
+function debounce(fn: Function, wait = 200) {
+  let t: any
+  return (...args: any[]) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), wait)
+  }
+}
+
+const debouncedFetch = debounce(() => { fetchTemplatesPage().catch(() => {}) }, 150)
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter, () => statusFilter], () => debouncedFetch(), { immediate: false })
 
 watch([sorted, pageSize], () => {
   page.value = 1

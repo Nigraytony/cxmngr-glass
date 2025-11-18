@@ -413,7 +413,10 @@
       </div>
     </div>
 
-    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
+    <div
+      v-if="!loading"
+      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0"
+    >
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80">
           <div class="text-lg font-semibold">
@@ -896,6 +899,9 @@ import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
+import http from '../../utils/http'
+import { getAuthHeaders } from '../../utils/auth'
+import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
 import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
@@ -907,6 +913,8 @@ const issuesStore = useIssuesStore()
 const router = useRouter()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+
+import Spinner from '../../components/Spinner.vue'
 
 // Helper to get a stable id
 function idOf(issue) {
@@ -1294,6 +1302,12 @@ function persistPageSizePref() {
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
 watch(pageSize, () => persistPageSizePref())
 
+// Loading state and server-driven page
+const loading = ref(true)
+const serverIssues = ref([])
+const serverTotal = ref(0)
+const issuesSource = computed(() => serverIssues.value)
+
 const priorityFilter = ref('All')
 const statusFilter = ref('All')
 const searchQuery = ref('')
@@ -1364,44 +1378,24 @@ const statusOptions = computed(() => {
   return [{ name: 'All', count: issuesStore.issues.length }, ...entries]
 })
 
+// Apply client-side filter over the server-returned page so exports and UI behave
 const filteredIssues = computed(() => {
   const q = (effectiveSearch.value || '').trim().toLowerCase()
+  // prefer server-provided page when available; otherwise fall back to full store list
+  const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
+  const baseAll = useServer ? serverIssues.value : (Array.isArray(issuesStore.issues) ? issuesStore.issues : [])
   const list = (!priorityFilter.value || priorityFilter.value === 'All')
-    ? issuesStore.issues
-    : issuesStore.issues.filter(i => (i.priority || '').toLowerCase() === priorityFilter.value.toLowerCase())
+    ? baseAll
+    : baseAll.filter(i => (i.priority || '').toLowerCase() === priorityFilter.value.toLowerCase())
   const withStatus = (!statusFilter.value || statusFilter.value === 'All')
     ? list
     : list.filter(i => String(i.status || '').toLowerCase() === statusFilter.value.toLowerCase())
   const base = hideClosed.value ? withStatus.filter(i => !isClosedRow(i)) : withStatus
 
   if (!q) return base
-  const mode = searchMode.value || 'substring'
-
-  function fuzzyMatch(text, pattern) {
-    // simple subsequence fuzzy match: check chars in order
-    let pi = 0
-    for (let i = 0; i < text.length && pi < pattern.length; i++) {
-      if (text[i] === pattern[pi]) pi++
-    }
-    return pi === pattern.length
-  }
-
   return base.filter(i => {
-    const fields = [
-      String(i.id || ''),
-      i.type || '',
-      i.description || '',
-      i.responsible_person || '',
-      i.priority || ''
-    ].map(f => f.toLowerCase())
-
-    if (mode === 'exact') {
-      return fields.some(f => f === q)
-    }
-    if (mode === 'fuzzy') {
-      return fields.some(f => fuzzyMatch(f, q))
-    }
-    // default substring
+    const fields = [String(i.id || ''), i.type || '', i.description || '', i.responsible_person || '', i.priority || '']
+      .map(f => String(f).toLowerCase())
     return fields.some(f => f.includes(q))
   })
 })
@@ -1440,15 +1434,115 @@ const preferredProjectId = computed(() => {
   return projectStore.currentProjectId
 })
 
+// Fetch when preferred project changes: ask server for the first page
 watch(preferredProjectId, (id) => {
-  issuesStore.fetchIssues(id).catch(() => {})
+  page.value = 1
+  fetchIssuesPage(id).catch(() => {})
 }, { immediate: true })
 
-const totalItems = computed(() => sortedIssues.value.length)
+// Fetch when paging/sort/search/filter changes (debounced)
+function fetchIssuesPage(projectId) {
+  return (async () => {
+    loading.value = true
+    try {
+      const pid = projectId ?? preferredProjectId.value
+      // Provide a store fallback when API is missing or on same hostname to avoid dev cross-port 404s
+      try {
+      const rawEnvBase = import.meta.env?.VITE_API_BASE
+      const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
+        if (typeof window !== 'undefined' && apiBase) {
+          try {
+            const apiHostname = (new URL(apiBase)).hostname
+            const pageHostname = window.location.hostname
+            if (apiHostname === pageHostname || !rawEnvBase) {
+              if (pid) {
+                // ask store to populate (per-project)
+                if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
+                else await issuesStore.fetchIssues()
+                const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+                const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
+                serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
+                serverTotal.value = serverIssues.value.length
+              } else {
+                serverIssues.value = []
+                serverTotal.value = 0
+              }
+              loading.value = false
+              return
+            }
+          } catch (err) {
+            // ignore URL parsing errors and continue
+          }
+        }
+      } catch (e) {
+        // ignore env access errors and continue
+      }
+
+      const params = {
+        page: page.value,
+        perPage: pageSize.value,
+      }
+      if (pid) params.projectId = pid
+      if (effectiveSearch.value) params.search = effectiveSearch.value
+      if (sortKey.value) {
+        params.sortBy = sortKey.value
+        params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
+      }
+      if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
+      if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
+      if (hideClosed.value) params.hideClosed = true
+
+      const res = await http.get('/api/issues', { params, headers: getAuthHeaders() })
+      const data = res && res.data ? res.data : {}
+      if (Array.isArray(data.items)) {
+        serverIssues.value = data.items.map(i => ({ ...(i || {}), id: i._id || i.id }))
+      } else if (Array.isArray(data)) {
+        serverIssues.value = data.map(i => ({ ...(i || {}), id: i._id || i.id }))
+      } else {
+        serverIssues.value = []
+      }
+      serverTotal.value = Number(data.total ?? data.count ?? serverIssues.value.length)
+    } catch (e) {
+      // If endpoint missing (404), fall back to store-based data so UI still works
+      if (e && e.response && e.response.status === 404) {
+        try {
+          const pid = projectId ?? preferredProjectId.value
+            if (pid) {
+            if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
+            else await issuesStore.fetchIssues()
+            const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+            const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
+            serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
+            serverTotal.value = serverIssues.value.length
+          } else {
+            serverIssues.value = []
+            serverTotal.value = 0
+          }
+        } catch (inner) {
+          serverIssues.value = []
+          serverTotal.value = 0
+        }
+      } else {
+        serverIssues.value = []
+        serverTotal.value = 0
+      }
+    } finally {
+      loading.value = false
+    }
+  })()
+}
+
 // Sorting state for issues table
 const sortKey = ref('')
 const sortDir = ref(1) // 1 = asc, -1 = desc
 
+const debouncedFetch = debounce(() => { fetchIssuesPage().catch(() => {}) }, 150)
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
+
+// Server-driven totals (serverTotal is set by fetchIssuesPage)
+const totalItems = computed(() => Number(serverTotal.value || 0))
+
+// Client-side sorting fallback over current page
 const sortedIssues = computed(() => {
   if (!sortKey.value) return filteredIssues.value
   const arr = [...filteredIssues.value]
@@ -1475,10 +1569,20 @@ function setSort(key) {
   page.value = 1
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(sortedIssues.value.length / pageSize.value)))
-const startItem = computed(() => sortedIssues.value.length === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
-const endItem = computed(() => Math.min(sortedIssues.value.length, page.value * pageSize.value))
-const pagedIssues = computed(() => sortedIssues.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
+const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
+const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
+// Use client-side sortedIssues (operating over server-returned page) as the current page
+const pagedIssues = computed(() => {
+  const list = sortedIssues.value || []
+  const total = Number(serverTotal.value || 0)
+  const pageLen = Array.isArray(serverIssues.value) ? serverIssues.value.length : 0
+  // If server indicates there's more items than the returned page, assume server-side paging
+  if (total > pageLen) return list
+  const start = (page.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return list.slice(start, end)
+})
 
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }

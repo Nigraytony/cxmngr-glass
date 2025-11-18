@@ -55,7 +55,10 @@
       <div />
     </div>
 
-    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto">
+    <div
+      v-if="!loading"
+      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-visible"
+    >
       <table class="min-w-full text-left">
         <thead>
           <tr class="text-sm text-white/70">
@@ -179,15 +182,15 @@
               <div class="flex items-center gap-2">
                 <span>{{ project.name }}</span>
                 <span
-                  v-if="project.default"
-                  class="w-5 h-5 grid place-items-center rounded-full bg-white/10"
+                  v-if="isDefaultProject(project)"
+                  class="w-5 h-5 grid place-items-center rounded-full bg-amber-500/10 ring-1 ring-amber-300/20"
                   aria-label="Default project"
                   title="Default project"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
-                    class="w-3.5 h-3.5 text-yellow-300"
+                    class="w-3.5 h-3.5 text-amber-400"
                     fill="currentColor"
                     aria-hidden="true"
                   >
@@ -300,7 +303,7 @@
                 </button>
                 <!-- Make default: icon button with custom tooltip -->
                 <div
-                  v-if="!project.default"
+                  v-if="!isDefaultProject(project)"
                   class="relative inline-block group"
                 >
                   <button
@@ -332,11 +335,11 @@
                 </div>
                 <!-- Default indicator at far right -->
                 <div
-                  v-if="project.default"
+                  v-if="isDefaultProject(project)"
                   class="relative ml-auto inline-block group"
                   aria-hidden="false"
                 >
-                  <div class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 text-yellow-300 border border-white/8">
+                  <div class="w-8 h-8 grid place-items-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-300/20 ring-1 ring-amber-300/10">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
@@ -359,6 +362,12 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div
+      v-else
+    >
+      <Spinner />
     </div>
 
     <!-- Pagination -->
@@ -586,6 +595,7 @@ import { ref, computed, watch } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
+import Spinner from '../../components/Spinner.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
@@ -597,27 +607,63 @@ const projectStore = useProjectStore()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-// Build display list from auth.user.projects (which may contain ids or objects) joined with full projects
-const projectsSource = computed(() => {
-  const userProjects = auth.user && Array.isArray(auth.user.projects) ? auth.user.projects : null
-  if (userProjects && userProjects.length) {
-    return userProjects.map(up => {
-      // up may be a string id or an object
-      if (typeof up === 'string') {
-        const full = projectStore.projects.find(p => p.id === up || p._id === up)
-        return { ...(full || {}), id: up, default: false }
-      }
-      // object case: try to merge with full project record when available
-      const id = up._id || up.id
-  const full = id ? projectStore.projects.find(p => p.id === id || p._id === id) : null
-      return { ...(full || {}), ...(up || {}), id: id || (up.id || up._id) }
-    })
-  }
-  // Do not expose the full project store as a fallback — only show projects
-  // which the user is explicitly a member of. If the authenticated user has
-  // no `projects` entries, return an empty list instead of leaking all projects.
-  return []
+// Determine the default project id from the authenticated user payload when available
+const defaultProjectId = computed(() => {
+  try {
+    const list = (auth.user && Array.isArray(auth.user.projects)) ? auth.user.projects : []
+    const dp = list.find((p) => p && p.default)
+    if (dp) return typeof dp === 'string' ? dp : (dp._id || dp.id || null)
+  } catch (e) { /* ignore */ }
+  return projectStore.currentProjectId || null
 })
+
+function isDefaultProject(p) {
+  const pid = p && (p.id || p._id)
+  return defaultProjectId.value && pid && String(defaultProjectId.value) === String(pid)
+}
+
+// Loading state for projects fetch
+const loading = ref(true)
+
+// Server-provided paged projects for this view
+const serverProjects = ref([])
+const serverTotal = ref(0)
+const projectsSource = computed(() => serverProjects.value)
+
+async function fetchProjectsPage() {
+  loading.value = true
+  try {
+    const params = {
+      page: page.value,
+      perPage: pageSize.value,
+    }
+    // include status filter when set (server should honor this)
+    if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
+    if (effectiveSearch.value) params.search = effectiveSearch.value
+    if (sortKey.value) {
+      params.sortBy = sortKey.value
+      params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
+    }
+    const res = await http.get('/api/projects', { params, headers: getAuthHeaders() })
+    const data = res && res.data ? res.data : {}
+    if (Array.isArray(data.items)) {
+      serverProjects.value = data.items.map(p => ({ ...(p || {}), id: p._id || p.id }))
+    } else if (Array.isArray(data)) {
+      serverProjects.value = data.map(p => ({ ...(p || {}), id: p._id || p.id }))
+    } else {
+      serverProjects.value = []
+    }
+    serverTotal.value = Number(data.total ?? data.count ?? serverProjects.value.length)
+  } catch (e) {
+    serverProjects.value = []
+    serverTotal.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+// Fetch when page, pageSize, sort, or search changes (debounced)
+const debouncedFetch = debounce(() => { fetchProjectsPage().catch(() => {}) }, 150)
 
 const selectedProject = ref(null)
 const showViewModal = ref(false)
@@ -675,6 +721,9 @@ const page = ref(1)
 const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 5)
 const pageSizes = [5, 10, 20]
 
+// Re-fetch projects when paging/sort/search changes. `page` is declared above.
+// Watcher will be attached after sorting refs are declared to avoid TDZ errors.
+
 // Persist per-page (projects) page size preference for the current session
 const pageSizeStorageKey = computed(() => `projectsPageSize:${projectStore.currentProjectId || 'global'}`)
 function loadPageSizePref() {
@@ -700,13 +749,6 @@ watch(pageSize, () => persistPageSizePref())
 
 const statusFilter = ref('All')
 const searchQuery = ref('')
-const searchMode = computed(() => {
-  try {
-    const p = projectStore.currentProject && projectStore.currentProject.value ? projectStore.currentProject.value : null
-    const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
-    return m || 'substring'
-  } catch (e) { return 'substring' }
-})
 
 function debounce(fn, wait = 200) {
   let t
@@ -734,32 +776,8 @@ const statusOptions = computed(() => {
   return [{ name: 'All', count: projectsSource.value.length }, ...entries]
 })
 
-const filteredProjects = computed(() => {
-  const q = (effectiveSearch.value || '').trim().toLowerCase()
-  const list = (!statusFilter.value || statusFilter.value === 'All')
-    ? projectsSource.value
-    : projectsSource.value.filter(p => (p.status || '').toLowerCase() === statusFilter.value.toLowerCase())
-
-  if (!q) return list
-  const mode = searchMode.value || 'substring'
-
-  function fuzzyMatch(text, pattern) {
-    let pi = 0
-    for (let i = 0; i < text.length && pi < pattern.length; i++) {
-      if (text[i] === pattern[pi]) pi++
-    }
-    return pi === pattern.length
-  }
-
-  return list.filter(p => {
-    const fields = [String(p.id || ''), p.name || '', p.client || '', p.project_type || '', p.description || '', (p.tags || []).join(' ')]
-      .map(f => f.toLowerCase())
-
-    if (mode === 'exact') return fields.some(f => f === q)
-    if (mode === 'fuzzy') return fields.some(f => fuzzyMatch(f, q))
-    return fields.some(f => f.includes(q))
-  })
-})
+// Note: server-side paging provides the current page in `projectsSource`.
+// Client-side filtering/sorting was removed in favor of server-driven queries.
 
 function toggleStatus(name) { statusFilter.value = (statusFilter.value === name) ? 'All' : name }
 
@@ -769,9 +787,40 @@ function clearSearch() { searchQuery.value = ''; effectiveSearch.value = '' }
 const sortKey = ref('')
 const sortDir = ref(1) // 1 = asc, -1 = desc
 
-const sortedProjects = computed(() => {
-  if (!sortKey.value) return filteredProjects.value
-  const arr = [...filteredProjects.value]
+// Attach debounced fetch watcher after sort refs to ensure they exist
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value], () => debouncedFetch(), { immediate: true })
+
+// sortedProjects/client-side sorting removed; server returns sorted results when requested.
+
+function setSort(key) {
+  if (sortKey.value === key) sortDir.value = -sortDir.value
+  else { sortKey.value = key; sortDir.value = 1 }
+  page.value = 1
+}
+
+// Server-driven totals and paging
+const totalItems = computed(() => Number(serverTotal.value || 0))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
+const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
+const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
+// Apply client-side filter/sort on top of server-returned page so UI remains responsive
+const localFilteredProjects = computed(() => {
+  const q = (effectiveSearch.value || '').trim().toLowerCase()
+  let list = Array.isArray(serverProjects.value) ? serverProjects.value : []
+  if (statusFilter.value && statusFilter.value !== 'All') {
+    list = list.filter(p => (p.status || '').toLowerCase() === statusFilter.value.toLowerCase())
+  }
+  if (!q) return list
+  return list.filter(p => {
+    const fields = [String(p.id || ''), p.name || '', p.client || '', p.project_type || '', p.description || '', (p.tags || []).join(' ')]
+      .map(f => String(f).toLowerCase())
+    return fields.some(f => f.includes(q))
+  })
+})
+
+const localSortedProjects = computed(() => {
+  if (!sortKey.value) return localFilteredProjects.value
+  const arr = [...localFilteredProjects.value]
   arr.sort((a, b) => {
     let av = a && a[sortKey.value]
     let bv = b && b[sortKey.value]
@@ -789,27 +838,16 @@ const sortedProjects = computed(() => {
   return arr
 })
 
-function setSort(key) {
-  if (sortKey.value === key) sortDir.value = -sortDir.value
-  else { sortKey.value = key; sortDir.value = 1 }
-  page.value = 1
-}
-
-const totalItems = computed(() => sortedProjects.value.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
-const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
-const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
-const pagedProjects = computed(() => sortedProjects.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value))
+const pagedProjects = computed(() => localSortedProjects.value)
 
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 function setPage(n) { if (n >= 1 && n <= totalPages.value) page.value = n }
 const pagesArray = computed(() => Array.from({ length: totalPages.value }, (_, i) => i + 1))
 
-// Reset page when sorting or pageSize changes
-watch([sortedProjects, pageSize], () => {
-  page.value = 1
-})
+// Reset page when page size or client-side filters change
+watch([() => pageSize.value], () => { page.value = 1 })
+watch(() => statusFilter.value, () => { page.value = 1 })
 
 function openView(p) { selectedProject.value = p; editProject.value = { ...p }; showViewModal.value = true }
 function openEdit(p) { selectedProject.value = p; editProject.value = { ...p }; showViewModal.value = true }

@@ -16,7 +16,14 @@
           @logout="handleLogout"
         />
         <main class="p-6 min-w-0">
-          <RouterView />
+          <Suspense>
+            <template #default>
+              <RouterView />
+            </template>
+            <template #fallback>
+              <Spinner />
+            </template>
+          </Suspense>
         </main>
       </div>
     </div>
@@ -26,6 +33,7 @@
 <script setup>
 import Sidebar from '../components/Sidebar.vue'
 import Topbar from '../components/Topbar.vue'
+import Spinner from '../components/Spinner.vue'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'

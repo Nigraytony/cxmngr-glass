@@ -499,9 +499,8 @@
         </div>
         <div
           v-if="loading"
-          class="p-6 text-white/60 text-center"
         >
-          Loading…
+          <Spinner />
         </div>
       </div>
       <!-- pagination controls (matches EquipmentList layout) -->
@@ -819,6 +818,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Spinner from '../../components/Spinner.vue'
+import http from '../../utils/http'
+import { getAuthHeaders } from '../../utils/auth'
+import { getApiBase } from '../../utils/api'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
@@ -842,7 +845,13 @@ const editing = ref(false)
 const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '' })
 
 const spaces = computed(() => spacesStore.items)
-const loading = computed(() => spacesStore.loading)
+// server-driven list for paging (list view)
+const serverSpaces = ref([])
+const serverTotal = ref(0)
+const listSpaces = computed(() => serverSpaces.value)
+// Local writable loading state for this component; mirror store.loading for compatibility
+const loading = ref(false)
+watch(() => spacesStore.loading, (v) => { loading.value = !!v }, { immediate: true })
 
 const parentMap = computed(() => spacesStore.byId)
 
@@ -884,16 +893,24 @@ function fuzzyMatch(text: string, pattern: string) {
   return pi === pattern.length
 }
 
+// Debounce helper (small local utility)
+function debounce(fn: Function, wait = 200) {
+  let t: any
+  return (...args: any[]) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), wait)
+  }
+}
+
+// Filter over server-provided page so list view and downloads reflect current page
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
-  const mode = searchMode.value
-  return spaces.value.filter(s => {
+  const list = listSpaces.value || []
+  return list.filter(s => {
     if (t && s.type !== t) return false
     if (!q) return true
     const fields = [`${s.tag || ''}`, `${s.title || ''}`].map(f => f.toLowerCase())
-    if (mode === 'exact') return fields.some(f => f === q)
-    if (mode === 'fuzzy') return fields.some(f => fuzzyMatch(f, q))
     return fields.some(f => f.includes(q))
   })
 })
@@ -984,14 +1001,123 @@ function loadPageSizePref() {
 function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore */ } }
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
 watch(pageSize, () => persistPageSizePref())
-const totalFiltered = computed(() => sorted.value.length)
+// Server-driven totals and paging for list view
+const totalFiltered = computed(() => Number(serverTotal.value || 0))
 const totalPages = computed(() => Math.max(1, Math.ceil(totalFiltered.value / pageSize.value)))
 const pageStart = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return Math.min(start, Math.max(0, Math.max(0, totalFiltered.value - 1)))
 })
 const pageEnd = computed(() => Math.min(pageStart.value + pageSize.value, totalFiltered.value))
-const paged = computed(() => sorted.value.slice(pageStart.value, pageEnd.value))
+const paged = computed(() => {
+  const list = sorted.value || []
+  const total = Number(serverTotal.value || 0)
+  const pageLen = Array.isArray(serverSpaces.value) ? serverSpaces.value.length : 0
+  // If the server returned a page (serverTotal > page length), assume server-side paging
+  // and return the server-provided page as-is. Otherwise (store fallback / client-side data),
+  // slice according to the current page and pageSize.
+  if (total > pageLen) {
+    return list
+  }
+  const start = pageStart.value
+  const end = start + pageSize.value
+  return list.slice(start, end)
+})
+
+// Fetch page from server
+async function fetchSpacesPage(projectId?: string) {
+  loading.value = true
+  // If no explicit API base is configured in env, avoid making network requests
+  // and fall back to the store-based data to prevent 404 noise in dev.
+  try {
+    const rawEnvBase = (import.meta as any).env?.VITE_API_BASE
+    const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
+    // If API base resolves to the same hostname as the current page (covers localhost with different ports),
+    // avoid calling /api which may 404 in dev and fall back to store data.
+    if (typeof window !== 'undefined' && apiBase) {
+      try {
+        const apiHostname = (new URL(apiBase)).hostname
+        const pageHostname = window.location.hostname
+        if (apiHostname === pageHostname) {
+          const pid = projectId ?? (projectStore.currentProjectId || '')
+          if (pid) {
+            await spacesStore.fetchByProject(String(pid))
+            const all = Array.isArray(spacesStore.items) ? spacesStore.items : []
+            const filteredByProject = all.filter((s: any) => String(s.projectId || s.project || '') === String(pid))
+            serverSpaces.value = filteredByProject.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
+            serverTotal.value = serverSpaces.value.length
+          } else {
+            serverSpaces.value = []
+            serverTotal.value = 0
+          }
+          loading.value = false
+          return
+        }
+      } catch (err) {
+        // ignore URL parsing errors and continue to attempt HTTP fetch
+      }
+    }
+    if (!rawEnvBase) {
+      // Fall back to store immediately
+      const pid = projectId ?? (projectStore.currentProjectId || '')
+      if (pid) {
+        await spacesStore.fetchByProject(String(pid))
+        const all = Array.isArray(spacesStore.items) ? spacesStore.items : []
+        const filteredByProject = all.filter((s: any) => String(s.projectId || s.project || '') === String(pid))
+        serverSpaces.value = filteredByProject.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
+        serverTotal.value = serverSpaces.value.length
+      } else {
+        serverSpaces.value = []
+        serverTotal.value = 0
+      }
+      loading.value = false
+      return
+    }
+  } catch (e) {
+    // ignore env access errors and continue to attempt HTTP fetch
+  }
+  try {
+    const params: any = { page: page.value, perPage: pageSize.value }
+    if (projectId) params.projectId = projectId
+    if (search.value) params.search = search.value
+    if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
+    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+    const res = await http.get('/api/spaces', { params, headers: getAuthHeaders() })
+    const data = res && res.data ? res.data : {}
+    if (Array.isArray(data.items)) serverSpaces.value = data.items.map(s => ({ ...(s || {}), id: s._id || s.id }))
+    else if (Array.isArray(data)) serverSpaces.value = data.map(s => ({ ...(s || {}), id: s._id || s.id }))
+    else serverSpaces.value = []
+    serverTotal.value = Number(data.total ?? data.count ?? serverSpaces.value.length)
+  } catch (e: any) {
+    // If the API path isn't available (404), fall back to store-based fetch so list view still works
+    if (e && e.response && e.response.status === 404) {
+      try {
+        const pid = projectId ?? (projectStore.currentProjectId || '')
+        if (pid) {
+          await spacesStore.fetchByProject(String(pid))
+          const all = Array.isArray(spacesStore.items) ? spacesStore.items : []
+          const filteredByProject = all.filter((s: any) => String(s.projectId || s.project || '') === String(pid))
+          serverSpaces.value = filteredByProject.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
+          serverTotal.value = serverSpaces.value.length
+        } else {
+          serverSpaces.value = []
+          serverTotal.value = 0
+        }
+      } catch (inner) {
+        serverSpaces.value = []
+        serverTotal.value = 0
+      }
+    } else {
+      serverSpaces.value = []
+      serverTotal.value = 0
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const debouncedFetch = debounce(() => { fetchSpacesPage().catch(() => {}) }, 150)
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter.value], () => debouncedFetch(), { immediate: false })
 
 function prevPage() { if (page.value > 1) page.value -= 1 }
 function nextPage() { if (page.value < totalPages.value) page.value += 1 }
@@ -1160,17 +1286,20 @@ const visibleNodes = computed<NodeRow[]>(() => flatten(treeRoots.value))
 
 // Now that viewMode/openNodes are declared, add watchers that depend on them
 watch(() => projectStore.currentProjectId, async (id) => {
-  if (id) {
+  if (!id) return
+  // If tree view is active, keep using the store's full-fetch for tree population
+  if (viewMode.value === 'tree') {
     await spacesStore.fetchByProject(String(id))
-    // Reset and load persisted expansion for this project if in tree view
     openNodes.value = new Set()
     openInitDone.value = false
-    if (viewMode.value === 'tree') {
-      const loaded = loadOpenNodes()
-      if (!loaded) initOpenNodesIfEmpty()
-      openInitDone.value = true
-    }
+    const loaded = loadOpenNodes()
+    if (!loaded) initOpenNodesIfEmpty()
+    openInitDone.value = true
+    return
   }
+  // Otherwise (list view) fetch paged data from server
+  page.value = 1
+  fetchSpacesPage(String(id)).catch(() => {})
 }, { immediate: true })
 
 // Ensure initial expansion when spaces load or when switching to tree view

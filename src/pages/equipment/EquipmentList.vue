@@ -569,9 +569,8 @@
         </div>
         <div
           v-if="loading"
-          class="p-6 text-white/60 text-center"
         >
-          Loading…
+          <Spinner />
         </div>
       </div>
       <!-- pagination controls -->
@@ -1111,6 +1110,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Spinner from '../../components/Spinner.vue'
+import http from '../../utils/http'
+import { getAuthHeaders } from '../../utils/auth'
+import { getApiBase } from '../../utils/api'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
@@ -1170,12 +1173,14 @@ function spaceParentChainLabelById(spaceId?: string | null) {
   }
 }
 
+// Use server-provided page when available; otherwise fall back to full store list
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
   const s = statusFilter.value
   const sys = systemFilter.value
-  return equipment.value.filter(e => {
+  const baseList = (Number(serverTotal.value) > 0 && Array.isArray(serverEquipment.value) && serverEquipment.value.length > 0) ? listEquipment.value : equipment.value
+  return (baseList || []).filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
@@ -1245,11 +1250,17 @@ const modalSystemOptions = computed(() => {
 })
 
 // system filter options with counts based on current search/type/status filters
+// server-driven page for equipment list
+const serverEquipment = ref([])
+const serverTotal = ref(0)
+const listEquipment = computed(() => serverEquipment.value)
+
 const preSystemFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
   const s = statusFilter.value
-  return equipment.value.filter(e => {
+  const base = listEquipment.value || []
+  return base.filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
     if (!q) return true
@@ -1648,13 +1659,19 @@ function loadPageSizePref() {
 function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ } }
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
 watch(pageSize, () => persistPageSizePref())
-const totalPages = computed(() => Math.max(1, Math.ceil(sorted.value.length / pageSize.value)))
+const totalPages = computed(() => Math.max(1, Math.ceil((Number(serverTotal.value || 0)) / pageSize.value)))
 const paged = computed(() => {
+  const list = sorted.value || []
+  const total = Number(serverTotal.value || 0)
+  const pageLen = Array.isArray(serverEquipment.value) ? serverEquipment.value.length : 0
+  // If server returned a paged result (total larger than page length), return server page as-is
+  if (total > pageLen) return list
   const start = (page.value - 1) * pageSize.value
-  return sorted.value.slice(start, start + pageSize.value)
+  const end = start + pageSize.value
+  return list.slice(start, end)
 })
-const startItem = computed(() => sorted.value.length ? (page.value - 1) * pageSize.value + 1 : 0)
-const endItem = computed(() => Math.min(sorted.value.length, page.value * pageSize.value))
+const startItem = computed(() => Number(serverTotal.value) ? (page.value - 1) * pageSize.value + 1 : 0)
+const endItem = computed(() => Math.min(Number(serverTotal.value || 0), page.value * pageSize.value))
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 
@@ -1718,14 +1735,13 @@ async function confirmRemove(e: Equipment) {
 }
 
 watch(() => projectStore.currentProjectId, async (id) => {
-  if (id) {
-    // load spaces for dropdown and names
-    await spacesStore.fetchByProject(String(id))
-    await equipmentStore.fetchByProject(String(id))
-    // reset pagination per-project, pulling default from project settings
-    pageSize.value = defaultPageSize.value
-    page.value = 1
-  }
+  if (!id) return
+  // load spaces for dropdown and names
+  await spacesStore.fetchByProject(String(id))
+  // fetch paged equipment from server for list view
+  pageSize.value = defaultPageSize.value
+  page.value = 1
+  fetchEquipmentPage(String(id)).catch(() => {})
 }, { immediate: true })
 
 // reset pagination when filters/search change
@@ -1848,7 +1864,7 @@ function onUploadFileChange(e: Event) {
 const existingProjectTagSet = computed<Set<string>>(() => {
   const pid = String(projectStore.currentProjectId || '')
   const set = new Set<string>()
-  const list = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
+  const list = Array.isArray(listEquipment.value) ? listEquipment.value : []
   for (const e of list) {
     if (String((e as any).projectId || '') !== pid) continue
     const t = String((e as any).tag || '').trim().toLowerCase()
@@ -1859,7 +1875,7 @@ const existingProjectTagSet = computed<Set<string>>(() => {
 const existingByTagLower = computed<Map<string, any>>(() => {
   const pid = String(projectStore.currentProjectId || '')
   const map = new Map<string, any>()
-  const list = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
+  const list = Array.isArray(listEquipment.value) ? listEquipment.value : []
   for (const e of list) {
     if (String((e as any).projectId || '') !== pid) continue
     const t = String((e as any).tag || '').trim().toLowerCase()
@@ -1867,6 +1883,89 @@ const existingByTagLower = computed<Map<string, any>>(() => {
   }
   return map
 })
+
+async function fetchEquipmentPage(projectId?: string) {
+  // Provide a store fallback when no API is configured or when running on same hostname (to avoid dev cross-port 404s)
+  try {
+    const rawEnvBase = import.meta.env?.VITE_API_BASE
+    const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
+    if (typeof window !== 'undefined' && apiBase) {
+      try {
+        const apiHostname = (new URL(apiBase)).hostname
+        const pageHostname = window.location.hostname
+        if (apiHostname === pageHostname || !rawEnvBase) {
+          const pid = projectId ?? (projectStore.currentProjectId || '')
+          if (pid) {
+            await equipmentStore.fetchByProject(String(pid))
+            const all = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
+            const filteredByProject = all.filter((it) => String(it.projectId || it.project || '') === String(pid))
+            serverEquipment.value = filteredByProject.map((it) => ({ ...(it || {}), id: it._id || it.id }))
+            serverTotal.value = serverEquipment.value.length
+          } else {
+            serverEquipment.value = []
+            serverTotal.value = 0
+          }
+          return
+        }
+      } catch (err) {
+        // ignore URL parsing errors and continue to attempt HTTP fetch
+      }
+    }
+  } catch (e) {
+    // ignore env access errors and continue
+  }
+
+  try {
+    const params: any = { page: page.value, perPage: pageSize.value }
+    if (projectId) params.projectId = projectId
+    if (search.value) params.search = search.value
+    if (typeFilter.value) params.type = typeFilter.value
+    if (systemFilter.value) params.system = systemFilter.value
+    if (statusFilter.value) params.status = statusFilter.value
+    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+    const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
+    const data = res && res.data ? res.data : {}
+    if (Array.isArray(data.items)) serverEquipment.value = data.items.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
+    else if (Array.isArray(data)) serverEquipment.value = data.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
+    else serverEquipment.value = []
+    serverTotal.value = Number(data.total ?? data.count ?? serverEquipment.value.length)
+  } catch (e: any) {
+    // fallback to store when 404 or server not present
+    if (e && e.response && e.response.status === 404) {
+      try {
+        const pid = projectId ?? (projectStore.currentProjectId || '')
+        if (pid) {
+          await equipmentStore.fetchByProject(String(pid))
+          const all = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
+          const filteredByProject = all.filter((it: any) => String(it.projectId || it.project || '') === String(pid))
+          serverEquipment.value = filteredByProject.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
+          serverTotal.value = serverEquipment.value.length
+        } else {
+          serverEquipment.value = []
+          serverTotal.value = 0
+        }
+      } catch (inner) {
+        serverEquipment.value = []
+        serverTotal.value = 0
+      }
+    } else {
+      serverEquipment.value = []
+      serverTotal.value = 0
+    }
+  }
+}
+
+// Debounce helper (small local utility)
+function debounce(fn: Function, wait = 200) {
+  let t: any
+  return (...args: any[]) => {
+    clearTimeout(t)
+    t = setTimeout(() => fn(...args), wait)
+  }
+}
+
+const debouncedFetch = debounce(() => { fetchEquipmentPage().catch(() => {}) }, 150)
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter.value, () => systemFilter.value, () => statusFilter.value], () => debouncedFetch(), { immediate: false })
 const validUploadRows = computed(() => (uploadRows.value || []).filter(r => r.tag && r.type && r.title))
 const uploadInvalidRowsCount = computed(() => (uploadRows.value || []).length - validUploadRows.value.length)
 const uploadDuplicateTags = computed<string[]>(() => {
