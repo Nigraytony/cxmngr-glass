@@ -914,7 +914,7 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
 
-import Spinner from '../../components/Spinner.vue'
+// Spinner component import removed (not used)
 
 // Helper to get a stable id
 function idOf(issue) {
@@ -1306,7 +1306,8 @@ watch(pageSize, () => persistPageSizePref())
 const loading = ref(true)
 const serverIssues = ref([])
 const serverTotal = ref(0)
-const issuesSource = computed(() => serverIssues.value)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _issuesSource = computed(() => serverIssues.value)
 
 const priorityFilter = ref('All')
 const statusFilter = ref('All')

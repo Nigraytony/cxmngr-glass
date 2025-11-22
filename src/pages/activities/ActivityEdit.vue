@@ -931,6 +931,53 @@
             <div class="text-white/80">
               Selected equipment
             </div>
+            <div
+              v-if="selectedEquip.length"
+              class="flex items-center gap-3"
+            >
+              <div class="text-xs text-white/60">
+                Showing {{ (equipPage - 1) * equipPerPage + 1 }}–{{ Math.min(equipPage * equipPerPage, selectedEquip.length) }} of {{ selectedEquip.length }}
+              </div>
+              <div class="flex items-center gap-2">
+                <select
+                  v-model.number="equipPerPage"
+                  class="px-2 py-1 rounded bg-white/6 text-white/90 text-sm border border-white/10"
+                >
+                  <option :value="5">
+                    5
+                  </option>
+                  <option :value="10">
+                    10
+                  </option>
+                  <option :value="25">
+                    25
+                  </option>
+                  <option :value="50">
+                    50
+                  </option>
+                  <option :value="100">
+                    100
+                  </option>
+                </select>
+                <button
+                  :disabled="equipPage <= 1"
+                  class="px-2 py-1 rounded-md bg-white/6 border border-white/10 text-white/80 disabled:opacity-50"
+                  @click="equipPage = Math.max(1, equipPage - 1)"
+                >
+                  Prev
+                </button>
+                <div class="text-xs text-white/80">
+                  Page {{ equipPage }} / {{ equipTotalPages }}
+                </div>
+                <button
+                  :disabled="equipPage >= equipTotalPages"
+                  class="px-2 py-1 rounded-md bg-white/6 border border-white/10 text-white/80 disabled:opacity-50"
+                  @click="equipPage = Math.min(equipTotalPages, equipPage + 1)"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
 
           <div
@@ -965,8 +1012,8 @@
               </thead>
               <tbody>
                 <tr
-                  v-for="e in filteredEquip"
-                  :key="e.id"
+                  v-for="e in pagedEquip"
+                  :key="e.id || e._id"
                   class="border-t border-white/10 hover:bg-white/5"
                 >
                   <td class="px-3 py-2 align-middle whitespace-nowrap">
@@ -1036,6 +1083,66 @@
   </div>
 
   <!-- Photo Viewer Modal -->
+  <!-- Logs Tab -->
+  <div
+    v-if="currentTab === 'Logs'"
+    class="space-y-3"
+  >
+    <div class="flex items-center justify-between">
+      <div class="text-white/80">
+        Activity logs
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+          @click="loadLogs"
+        >
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div
+      v-if="logsLoading"
+      class="text-white/70"
+    >
+      Loading logs...
+    </div>
+    <div v-else>
+      <div
+        v-if="!logsList.length"
+        class="text-white/60"
+      >
+        No logs for this activity.
+      </div>
+      <ul
+        v-else
+        class="space-y-2"
+      >
+        <li
+          v-for="(l, idx) in logsList"
+          :key="(l.ts || '') + String(idx)"
+          class="p-2 rounded bg-white/5 border border-white/10"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-sm text-white/80">
+              <span class="font-medium">{{ l.type }}</span>
+              <span class="text-white/60"> — {{ l.message }}</span>
+            </div>
+            <div class="text-xs text-white/60">
+              {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
+            </div>
+          </div>
+          <div
+            v-if="l.details"
+            class="mt-2 text-xs text-white/60 truncate"
+          >
+            {{ JSON.stringify(l.details) }}
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
   <Modal v-model="viewerOpen">
     <template #header>
       <div class="flex items-center justify-between">
@@ -2362,7 +2469,7 @@ async function downloadActivityPdf() {
 }
 
 // Tabs logic
-const tabs = ['Info', 'Photos', 'Issues', 'Comments', 'Attachments', 'Equipment']
+const tabs = ['Info', 'Photos', 'Issues', 'Comments', 'Attachments', 'Equipment', 'Logs']
 const currentTab = ref('Info')
 const activeIndex = computed(() => {
   const i = tabs.indexOf(currentTab.value)
@@ -2389,6 +2496,31 @@ async function onAddComment(text: string) {
     throw e
   }
 }
+
+// Logs tab
+const logsList = ref<any[]>([])
+const logsLoading = ref(false)
+async function loadLogs() {
+  const aid = isNew.value ? (pendingCreatedId.value || '') : id.value
+  if (!aid) return
+  logsLoading.value = true
+  try {
+    const { useLogsStore } = await import('../../stores/logs')
+    const logs = useLogsStore()
+    const list = await logs.fetchLogs('activities', String(aid))
+    logsList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    logsList.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+watch(currentTab, (v) => {
+  if (v === 'Logs') {
+    loadLogs()
+  }
+})
 
 async function onDeleteComment(comment: any, index?: number) {
   // Ensure activity exists
@@ -2790,24 +2922,70 @@ function spaceName(spaceId?: string | null) {
   const sp: any = (spacesStore as any).byId?.[pid] || (spacesStore.items || []).find((s: any) => String((s.id || (s as any)._id || '')) === pid)
   return sp ? (sp.title || sp.tag || '') : ''
 }
-const filteredEquip = computed<any[]>(() => selectedEquip.value)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _filteredEquip = computed<any[]>(() => selectedEquip.value)
 function addReviewedTag(e: any) {
   const tag = String(e?.tag || '').trim()
   if (!tag) return
-  const exists = (form.systems || []).some(s => String(s).toLowerCase() === tag.toLowerCase())
+  // If there are multiple equipment with the same tag in the project,
+  // store an id-specific token so each instance can be selected separately.
+  const candidates = equipmentInProject.value.filter((eq: any) => String(eq?.tag || '').trim().toLowerCase() === tag.toLowerCase())
+  const useIdToken = candidates.length > 1 && (e?.id || e?._id)
+  const token = useIdToken ? `${tag}::${String(e.id || e._id)}` : tag
+  const exists = (form.systems || []).some(s => String(s).trim().toLowerCase() === String(token).toLowerCase())
   if (!exists) {
-    form.systems.push(tag)
+    form.systems.push(token)
   }
 }
 const selectedEquip = computed<any[]>(() => {
-  const sels = (form.systems || []).map(s => String(s || '').trim().toLowerCase()).filter(Boolean)
+  const sels = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
   if (!sels.length) return []
-  return equipmentInProject.value.filter((e: any) => sels.includes(String(e?.tag || '').trim().toLowerCase()))
+  const ids = new Set<string>()
+  const tags = new Set<string>()
+  for (const s of sels) {
+    if (s.includes('::')) {
+      const parts = s.split('::')
+      const t = parts[0] || ''
+      const id = parts.slice(1).join('::') || ''
+      if (id) ids.add(id)
+      if (t) tags.add(t.toLowerCase())
+    } else {
+      tags.add(s.toLowerCase())
+    }
+  }
+  return equipmentInProject.value.filter((e: any) => {
+    const id = String(e?.id || e?._id || '')
+    const tag = String(e?.tag || '').trim().toLowerCase()
+    if (ids.has(id)) return true
+    if (tags.has(tag)) return true
+    return false
+  })
 })
+
+// Equipment pagination state
+const equipPage = ref(1)
+const equipPerPage = ref(10)
+const equipTotalPages = computed(() => Math.max(1, Math.ceil(selectedEquip.value.length / equipPerPage.value)))
+watch([selectedEquip, equipPerPage], () => {
+  if (equipPage.value > equipTotalPages.value) equipPage.value = equipTotalPages.value
+}, { immediate: true })
+const pagedEquip = computed(() => {
+  const start = (equipPage.value - 1) * equipPerPage.value
+  return selectedEquip.value.slice(start, start + equipPerPage.value)
+})
+
 function removeReviewedTag(e: any) {
   const tag = String(e?.tag || '').trim()
   if (!tag) return
-  const idx = (form.systems || []).findIndex(s => String(s).trim().toLowerCase() === tag.toLowerCase())
+  const id = String(e?.id || e?._id || '')
+  let idx = -1
+  if (id) {
+    const token = `${tag}::${id}`
+    idx = (form.systems || []).findIndex(s => String(s).trim().toLowerCase() === token.toLowerCase())
+  }
+  if (idx === -1) {
+    idx = (form.systems || []).findIndex(s => String(s).trim().toLowerCase() === tag.toLowerCase())
+  }
   if (idx >= 0) {
     form.systems.splice(idx, 1)
     systemsText.value = ''
@@ -2839,8 +3017,12 @@ function addByQueryCore() {
   }
   if (pick) {
     const tag = String(pick.tag || '').trim()
-    if (tag && !(form.systems || []).some(s => String(s).toLowerCase() === tag.toLowerCase())) {
-      form.systems.push(tag)
+    if (tag) {
+      const candidates = equipmentInProject.value.filter((eq: any) => String(eq?.tag || '').trim().toLowerCase() === tag.toLowerCase())
+      const token = (candidates.length > 1 && (pick?.id || pick?._id)) ? `${tag}::${String(pick.id || pick._id)}` : tag
+      if (!(form.systems || []).some(s => String(s).trim().toLowerCase() === token.toLowerCase())) {
+        form.systems.push(token)
+      }
     }
     systemsText.value = ''
   }
@@ -2868,11 +3050,30 @@ function rankCandidate(e: any, q: string): number {
 const suggestions = computed<any[]>(() => {
   const q = String(systemsText.value || '').trim().toLowerCase()
   if (!q) return []
-  const selected = new Set((form.systems || []).map(s => String(s).trim().toLowerCase()))
+  // Build exclusion set: if a plain tag (no id token) is present, exclude that tag entirely.
+  // If only id-specific tokens exist for a tag, allow selecting other instances with the same tag.
+  const selectedRaw = (form.systems || []).map(s => String(s).trim()).filter(Boolean)
+  const selectedTags = new Set<string>()
+  const selectedIds = new Set<string>()
+  for (const r of selectedRaw) {
+    if (r.includes('::')) {
+      const parts = r.split('::')
+      const t = parts[0] || ''
+      const id = parts.slice(1).join('::') || ''
+      if (t) selectedTags.add(t.toLowerCase())
+      if (id) selectedIds.add(id)
+    } else {
+      selectedTags.add(r.toLowerCase())
+    }
+  }
   const list = equipmentInProject.value
     .filter((e: any) => {
       const tag = String(e?.tag || '').trim().toLowerCase()
-      if (selected.has(tag)) return false
+      const eid = String(e?.id || e?._id || '')
+      // If a plain tag was selected (no id tokens), exclude all items with that tag.
+      if (selectedTags.has(tag) && !(selectedIds.has(eid))) return false
+      // If this exact equipment was already selected via id token, exclude it.
+      if (selectedIds.has(eid)) return false
       const title = String(e?.title || '').toLowerCase()
       const type = String(e?.type || '').toLowerCase()
       const sys = String(e?.system || '').toLowerCase()

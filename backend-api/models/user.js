@@ -49,6 +49,9 @@ const userSchema = new mongoose.Schema({
   },
   // Stripe customer id for billing
   stripeCustomerId: { type: String, default: null },
+  // Support soft-delete and a simple status enum for frontend display
+  deleted: { type: Boolean, default: false },
+  status: { type: String, enum: ['Active', 'Deleted', 'Inactive', 'Invited', 'Pending'], default: 'Active' },
 });
 
 // Hash the password before saving the user
@@ -56,6 +59,16 @@ userSchema.pre('save', async function (next) {
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 8);
   }
+  // Keep deleted + status in sync: if deleted flag set, ensure status is 'Deleted'
+  try {
+    if (this.deleted) {
+      this.status = 'Deleted'
+    } else if (this.status === 'Deleted') {
+      this.deleted = true
+    } else if (!this.status) {
+      this.status = 'Active'
+    }
+  } catch (e) { /* ignore sync errors */ }
   next();
 });
 

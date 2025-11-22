@@ -45,6 +45,8 @@ const activitySchema = new mongoose.Schema({
   systems: [{ type: String }],
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   labels: [{ type: String }],
+  // Activity-level audit logs (flexible schema)
+  logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

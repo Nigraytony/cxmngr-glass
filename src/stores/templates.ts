@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { getApiBase } from '../utils/api'
 import { getAuthHeaders } from '../utils/auth'
+import { useProjectStore } from './project'
 
 export interface Template {
   id?: string
@@ -106,6 +107,14 @@ export const useTemplatesStore = defineStore('templates', () => {
     const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
     const saved = { ...data, id: data._id }
     items.value.push(saved)
+    // Log to project logs (best-effort, non-blocking)
+    try {
+      const projectStore = useProjectStore()
+      const pid = String(saved.projectId || saved.project || '')
+      if (pid) {
+        await projectStore.appendProjectLog(pid, { type: 'template.create', message: `Template created: ${saved.tag || saved.title || ''}`, details: { id: saved.id, tag: saved.tag, title: saved.title } })
+      }
+    } catch (err) { /* non-blocking */ }
     return saved
   }
 
@@ -129,6 +138,16 @@ export const useTemplatesStore = defineStore('templates', () => {
     const idx = items.value.findIndex(x => (x.id || (x as any)._id) === id)
     if (idx !== -1) items.value[idx] = saved
     else items.value.push(saved)
+    // Log to project logs (best-effort, non-blocking)
+    try {
+      const projectStore = useProjectStore()
+      // saved may not include projectId for partial field updates; fall back to cached record
+      const cached = byId.value[String(id)]
+      const pid = String(saved.projectId || saved.project || (cached && (cached.projectId || (cached as any).project)) || '')
+      if (pid) {
+        await projectStore.appendProjectLog(pid, { type: 'template.update', message: `Template updated: ${saved.tag || saved.title || id}`, details: { id: saved.id, tag: saved.tag, title: saved.title } })
+      }
+    } catch (err) { /* non-blocking */ }
     return saved
   }
 
@@ -148,6 +167,15 @@ export const useTemplatesStore = defineStore('templates', () => {
     const idx = items.value.findIndex(x => (x.id || (x as any)._id) === id)
     if (idx !== -1) items.value[idx] = { ...items.value[idx], ...saved }
     else items.value.push(saved)
+    // Log field updates to project logs (best-effort)
+    try {
+      const projectStore = useProjectStore()
+      const cached = byId.value[String(id)]
+      const pid = String(saved.projectId || saved.project || (cached && (cached.projectId || (cached as any).project)) || '')
+      if (pid) {
+        await projectStore.appendProjectLog(pid, { type: 'template.update', message: `Template fields updated: ${saved.id || id}`, details: { id, changes: payload } })
+      }
+    } catch (err) { /* non-blocking */ }
     return saved
   }
 
@@ -173,12 +201,39 @@ export const useTemplatesStore = defineStore('templates', () => {
         issues: Array.isArray(c?.issues) ? c.issues : undefined
       }
     })
-    return await updateFields(id, { components: payloadList } as any)
+    const res = await updateFields(id, { components: payloadList } as any)
+    // Log component updates to project logs
+    try {
+      const projectStore = useProjectStore()
+      const tpl = byId.value[id]
+      const pid = String((tpl && (tpl.projectId || (tpl as any).project)) || '')
+      if (pid) {
+        await projectStore.appendProjectLog(pid, { type: 'template.components.update', message: `Template components updated: ${tpl?.tag || tpl?.title || id}`, details: { id, components: payloadList } })
+      }
+    } catch (err) { /* non-blocking */ }
+    return res
   }
 
   async function remove(id: string) {
+    // Fetch record to read projectId for logging
+    const existing = byId.value[String(id)]
+    let pid = ''
+    if (existing) pid = String((existing as any).projectId || (existing as any).project || '')
     await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
     items.value = items.value.filter(e => (e.id || (e as any)._id) !== id)
+    try {
+      if (!pid) {
+        // attempt to read from server (best-effort)
+        try {
+          const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+          pid = String((data && (data.projectId || data.project)) || '')
+        } catch (e) { /* ignore */ }
+      }
+      if (pid) {
+        const projectStore = useProjectStore()
+        await projectStore.appendProjectLog(pid, { type: 'template.delete', message: `Template deleted: ${id}`, details: { id } })
+      }
+    } catch (err) { /* non-blocking */ }
   }
 
   async function duplicate(id: string, opts?: { tag?: string }) {
@@ -226,6 +281,14 @@ export const useTemplatesStore = defineStore('templates', () => {
       attributes: src.attributes ? JSON.parse(JSON.stringify(src.attributes)) : undefined,
     }
     const created = await create(payload as Template)
+    // Log duplication created event to project logs
+    try {
+      const projectStore = useProjectStore()
+      const pid = String(created.projectId || created.project || '')
+      if (pid) {
+        await projectStore.appendProjectLog(pid, { type: 'template.duplicate', message: `Template duplicated: ${created.tag || created.title || ''}`, details: { id: created.id } })
+      }
+    } catch (err) { /* non-blocking */ }
     return created
   }
 

@@ -104,6 +104,18 @@ export const useActivitiesStore = defineStore('activities', () => {
       const created = normalize(res.data)
       activities.value.unshift(created)
       current.value = created
+      try {
+        const { useLogsStore } = await import('./logs')
+        const logs = useLogsStore()
+        await logs.appendLog('activities', String(created.id || created._id), { type: 'create', message: `Activity created: ${created.name || ''}`, details: created })
+      } catch (e) { /* non-blocking */ }
+      try {
+        const projectStore = useProjectStore()
+        const pid = String(created.projectId || (created as any).project || '')
+        if (pid) {
+          await projectStore.appendProjectLog(pid, { type: 'activity.create', message: `Activity created: ${created.name || ''}`, details: { id: created.id || created._id, name: created.name } })
+        }
+      } catch (e) { /* non-blocking */ }
       return created
     } catch (e: any) {
       error.value = e.message || 'Failed to create activity'
@@ -122,6 +134,18 @@ export const useActivitiesStore = defineStore('activities', () => {
       current.value = updated
       const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
       if (idx !== -1) activities.value.splice(idx, 1, updated)
+      try {
+        const { useLogsStore } = await import('./logs')
+        const logs = useLogsStore()
+        await logs.appendLog('activities', String(updated.id || updated._id), { type: 'update', message: `Activity updated: ${updated.name || ''}`, details: payload })
+      } catch (e) { /* non-blocking */ }
+      try {
+        const projectStore = useProjectStore()
+        const pid = String(updated.projectId || (updated as any).project || '')
+        if (pid) {
+          await projectStore.appendProjectLog(pid, { type: 'activity.update', message: `Activity updated: ${updated.name || ''}`, details: { id: updated.id || updated._id, changes: payload } })
+        }
+      } catch (e) { /* non-blocking */ }
       return updated
     } catch (e: any) {
       error.value = e.message || 'Failed to update activity'
@@ -173,5 +197,49 @@ export const useActivitiesStore = defineStore('activities', () => {
     URL.revokeObjectURL(url)
   }
 
-  return { activities, current, loading, error, fetchActivities, fetchActivity, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport }
+  async function deleteActivity(id: string) {
+    loading.value = true
+    error.value = null
+    try {
+      if (!id) throw new Error('Missing activity id')
+      // try to find existing record to capture projectId/name for logging
+      const existing = activities.value.find(a => String(a.id || a._id) === String(id)) || current.value
+      let pid = existing ? String(existing.projectId || (existing as any).project || '') : ''
+      const name = existing ? (existing.name || '') : ''
+      await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      activities.value = activities.value.filter(a => String(a.id || a._id) !== String(id))
+      if (current.value && String(current.value.id || current.value?._id) === String(id)) current.value = null
+
+      // resource-specific logs
+      try {
+        const { useLogsStore } = await import('./logs')
+        const logs = useLogsStore()
+        await logs.appendLog('activities', String(id), { type: 'delete', message: `Activity deleted: ${name || id}`, details: { id } })
+      } catch (e) { /* non-blocking */ }
+
+      // project-level logs
+      try {
+        if (!pid) {
+          // best-effort: try to fetch the activity to get projectId
+          try {
+            const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+            pid = String((data && (data.projectId || data.project)) || '')
+          } catch (_) { /* ignore */ }
+        }
+        if (pid) {
+          const projectStore = useProjectStore()
+          await projectStore.appendProjectLog(pid, { type: 'activity.delete', message: `Activity deleted: ${name || id}`, details: { id } })
+        }
+      } catch (e) { /* non-blocking */ }
+
+      return true
+    } catch (e: any) {
+      error.value = e?.message || 'Failed to delete activity'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { activities, current, loading, error, fetchActivities, fetchActivity, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
 })

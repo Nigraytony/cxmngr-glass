@@ -242,7 +242,7 @@
                   :key="p.id"
                   :value="p.id"
                 >
-                  {{ p.title }} ({{ p.type }})
+                  {{ spaceParentChainLabelById(p.id) || p.title }} ({{ p.type }})
                 </option>
               </select>
             </div>
@@ -573,6 +573,67 @@
             </button>
           </div>
         </div>
+
+        <!-- Logs Tab -->
+        <div
+          v-else-if="currentTab === 'Logs'"
+          class="space-y-3"
+        >
+          <div class="flex items-center justify-between">
+            <div class="text-white/80">
+              Space logs
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                @click="loadLogs"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-if="logsLoading"
+            class="text-white/70"
+          >
+            Loading logs...
+          </div>
+          <div v-else>
+            <div
+              v-if="!logsList.length"
+              class="text-white/60"
+            >
+              No logs for this space.
+            </div>
+            <ul
+              v-else
+              class="space-y-2"
+            >
+              <li
+                v-for="(l, idx) in logsList"
+                :key="(l.ts || '') + String(idx)"
+                class="p-2 rounded bg-white/5 border border-white/10"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm text-white/80">
+                    <span class="font-medium">{{ l.type }}</span>
+                    <span class="text-white/60"> — {{ l.message }}</span>
+                  </div>
+                  <div class="text-xs text-white/60">
+                    {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
+                  </div>
+                </div>
+                <div
+                  v-if="l.details"
+                  class="mt-2 text-xs text-white/60 truncate"
+                >
+                  {{ JSON.stringify(l.details) }}
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -606,7 +667,7 @@ const isNew = computed(() => id.value === 'new')
 
 const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'Roof']
 
-const tabs = ['Info', 'SubSpaces', 'Equipment', 'Issues', 'Attachments', 'Attributes', 'Settings', 'MetaData']
+const tabs = ['Info', 'SubSpaces', 'Equipment', 'Issues', 'Attachments', 'Attributes', 'Settings', 'MetaData', 'Logs']
 const currentTab = ref('Info')
 const tabIndex = computed(() => Math.max(0, tabs.indexOf(currentTab.value)))
 const tabWidth = computed(() => 100 / tabs.length)
@@ -626,6 +687,27 @@ onMounted(() => {
   window.addEventListener('resize', updateCompactTabs)
 })
 watch(currentTab, () => updateCompactTabs())
+
+// Logs for space
+const logsList = ref<any[]>([])
+const logsLoading = ref(false)
+async function loadLogs() {
+  const sid = id.value
+  if (!sid || sid === 'new') return
+  logsLoading.value = true
+  try {
+    const { useLogsStore } = await import('../../stores/logs')
+    const logs = useLogsStore()
+    const list = await logs.fetchLogs('spaces', sid)
+    logsList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    logsList.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+watch(currentTab, (v) => { if (v === 'Logs') loadLogs() })
 
 const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '', description: '', attachments: [], attributes: [], notes: '', metaData: {} as any })
 const saving = ref(false)
@@ -660,6 +742,25 @@ const parentOptions = computed(() => {
   else if (type === 'Room') base = base.filter(s => s.type === 'Floor')
   return base
 })
+
+function spaceParentChainLabelById(pid?: string | null) {
+  try {
+    const idStr = pid ? String(pid) : ''
+    if (!idStr) return ''
+    const parts: string[] = []
+    let cur: any = (spaces as any).byId?.[idStr] || (spaces.items || []).find((s: any) => String(s.id || s._id) === idStr)
+    let depth = 0
+    while (cur && depth < 12) {
+      const title = String(cur.title || cur.tag || '')
+      if (title) parts.unshift(title)
+      const nextId = cur.parentSpace || cur.parent || null
+      if (!nextId) break
+      cur = (spaces as any).byId?.[String(nextId)] || (spaces.items || []).find((s: any) => String(s.id || s._id) === String(nextId))
+      depth++
+    }
+    return parts.join(' > ')
+  } catch (e) { return '' }
+}
 
 function countForTab(t: string) {
   if (t === 'SubSpaces') return children.value.length

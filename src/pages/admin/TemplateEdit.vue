@@ -1,5 +1,6 @@
 <template>
   <div class="p-4">
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Templates', to: '/admin/templates' }, { text: 'Edit Template' }]" />
     <h2 class="text-2xl mb-4">
       Edit Template
     </h2>
@@ -38,6 +39,7 @@
 
       <div>
         <button
+          v-if="isAdmin()"
           class="px-4 py-2 rounded bg-green-600"
           @click="save"
         >
@@ -57,8 +59,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { http } from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
+import http from '../../utils/http'
+import { useAuthStore } from '../../stores/auth'
+import BreadCrumbs from '../../components/BreadCrumbs.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,9 +69,17 @@ const id = route.params.id
 const template = ref(null)
 const error = ref('')
 
+const auth = useAuthStore()
+
+function isAdmin() {
+  const me = auth.user
+  if (!me) return false
+  return me.role === 'admin' || me.role === 'globaladmin' || me.role === 'superadmin'
+}
+
 async function load() {
   try {
-    const { data } = await http.get(`/api/admin/templates/${id}`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`/api/admin/templates/${id}`)
     Object.assign(template, data)
   } catch (err) {
     error.value = err?.message || String(err)
@@ -78,9 +89,9 @@ async function load() {
 async function save() {
   try {
     if (id === 'new') {
-      await http.post('/api/admin/templates', template, { headers: getAuthHeaders() })
+      await http.post('/api/admin/templates', template)
     } else {
-      await http.patch(`/api/admin/templates/${id}`, template, { headers: getAuthHeaders() })
+      await http.patch(`/api/admin/templates/${id}`, template)
     }
     router.push({ name: 'admin-templates' })
   } catch (err) {

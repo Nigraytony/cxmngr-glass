@@ -1956,7 +1956,7 @@ async function fetchEquipmentPage(projectId?: string) {
 }
 
 // Debounce helper (small local utility)
-function debounce(fn: Function, wait = 200) {
+function debounce(fn: (...args: any[]) => any, wait = 200) {
   let t: any
   return (...args: any[]) => {
     clearTimeout(t)

@@ -646,6 +646,119 @@
                     </button>
                   </div>
                 </div>
+
+                <!-- Past payments & charges moved here from Settings -->
+                <div class="p-4 rounded-lg border mt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="font-medium">
+                      Past payments & charges
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        class="px-2 py-1 rounded bg-white/6"
+                        :disabled="invoicesPage<=1"
+                        @click="invPrevPage"
+                      >
+                        Prev
+                      </button>
+                      <div class="text-white/70">
+                        Page {{ invoicesPage }} / {{ Math.max(1, Math.ceil((invoicesTotal || 0) / invoicesPerPage)) }}
+                      </div>
+                      <button
+                        class="px-2 py-1 rounded bg-white/6"
+                        :disabled="invoicesPage >= Math.max(1, Math.ceil((invoicesTotal || 0) / invoicesPerPage))"
+                        @click="invNextPage"
+                      >
+                        Next
+                      </button>
+                      <select
+                        v-model.number="invoicesPerPage"
+                        class="ml-3 px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+                        @change="invoicesPage=1; loadInvoices()"
+                      >
+                        <option :value="5">
+                          5
+                        </option>
+                        <option :value="10">
+                          10
+                        </option>
+                        <option :value="25">
+                          25
+                        </option>
+                        <option :value="50">
+                          50
+                        </option>
+                        <option :value="100">
+                          100
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                  <div
+                    v-if="invoicesLoading"
+                    class="text-white/70"
+                  >
+                    Loading…
+                  </div>
+                  <div
+                    v-else-if="!invoices.length"
+                    class="text-white/60"
+                  >
+                    No payments found.
+                  </div>
+                  <table
+                    v-else
+                    class="min-w-full text-sm"
+                  >
+                    <thead class="bg-white/5 text-white/70 text-xs">
+                      <tr>
+                        <th class="px-3 py-2 text-left">
+                          Date
+                        </th>
+                        <th class="px-3 py-2 text-left">
+                          Amount
+                        </th>
+                        <th class="px-3 py-2 text-left">
+                          Status
+                        </th>
+                        <th class="px-3 py-2 text-left">
+                          Description
+                        </th>
+                        <th class="px-3 py-2 text-left">
+                          Invoice
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="inv in invoices"
+                        :key="inv.id"
+                        class="border-t border-white/10 hover:bg-white/3"
+                      >
+                        <td class="px-3 py-2">
+                          {{ inv.ts ? new Date(inv.ts).toLocaleString() : '' }}
+                        </td>
+                        <td class="px-3 py-2">
+                          {{ inv.amount_due != null ? (inv.amount_due.toFixed(2) + ' ' + (inv.currency || '').toUpperCase()) : '' }}
+                        </td>
+                        <td class="px-3 py-2">
+                          {{ inv.status }}
+                        </td>
+                        <td class="px-3 py-2 truncate">
+                          {{ inv.description || '' }}
+                        </td>
+                        <td class="px-3 py-2">
+                          <a
+                            v-if="inv.hosted_invoice_url"
+                            :href="inv.hosted_invoice_url"
+                            target="_blank"
+                            class="text-white/80 hover:underline"
+                          >View</a>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
@@ -657,103 +770,96 @@
                 Project-specific settings and flags.
               </p>
               <div class="rounded p-3 bg-white/5">
-                <label class="flex items-center gap-2"><input
-                  v-model="project.settingsEnabled"
-                  type="checkbox"
-                > Enable special behavior</label>
-                <div class="mt-4">
-                  <label class="block text-white/80 mb-1">Tags (comma separated)</label>
-                  <input
-                    v-model="tagsText"
-                    class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
-                  >
-                </div>
-                <div class="mt-4">
-                  <label class="block text-white/80 mb-1">Search mode</label>
-                  <div class="relative inline-block w-full max-w-sm">
-                    <select
-                      v-model="project.searchMode"
-                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                    >
-                      <option value="substring">
-                        Substring
-                      </option>
-                      <option value="exact">
-                        Exact
-                      </option>
-                      <option value="fuzzy">
-                        Fuzzy
-                      </option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden
+                <!-- special behavior and tags removed -->
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-white/80 mb-1">Search mode</label>
+                    <div class="relative inline-block w-full max-w-sm">
+                      <select
+                        v-model="project.searchMode"
+                        class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
                       >
-                        <path
-                          d="M6 8l4 4 4-4"
-                          stroke="currentColor"
-                          stroke-width="1.75"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
+                        <option value="substring">
+                          Substring
+                        </option>
+                        <option value="exact">
+                          Exact
+                        </option>
+                        <option value="fuzzy">
+                          Fuzzy
+                        </option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden
+                        >
+                          <path
+                            d="M6 8l4 4 4-4"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
                     </div>
+                    <p class="text-xs text-white/60 mt-1">
+                      This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
+                    </p>
                   </div>
-                  <p class="text-xs text-white/60 mt-1">
-                    This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
-                  </p>
-                </div>
-                <div class="mt-4">
-                  <label class="block text-white/80 mb-1">Issues per page</label>
-                  <div class="relative inline-block w-full max-w-sm">
-                    <select
-                      v-model.number="issuesPageSizeLocal"
-                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                      @change="persistIssuesPageSize()"
-                    >
-                      <option :value="5">
-                        5
-                      </option>
-                      <option :value="10">
-                        10
-                      </option>
-                      <option :value="25">
-                        25
-                      </option>
-                      <option :value="50">
-                        50
-                      </option>
-                      <option :value="100">
-                        100
-                      </option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden
+
+                  <div>
+                    <label class="block text-white/80 mb-1">Issues per page</label>
+                    <div class="relative inline-block w-full max-w-sm">
+                      <select
+                        v-model.number="issuesPageSizeLocal"
+                        class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                        @change="persistIssuesPageSize()"
                       >
-                        <path
-                          d="M6 8l4 4 4-4"
-                          stroke="currentColor"
-                          stroke-width="1.75"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
+                        <option :value="5">
+                          5
+                        </option>
+                        <option :value="10">
+                          10
+                        </option>
+                        <option :value="25">
+                          25
+                        </option>
+                        <option :value="50">
+                          50
+                        </option>
+                        <option :value="100">
+                          100
+                        </option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden
+                        >
+                          <path
+                            d="M6 8l4 4 4-4"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
                     </div>
+                    <p class="text-xs text-white/60 mt-1">
+                      Applies to the Issues list for this project. Saved locally.
+                    </p>
                   </div>
-                  <p class="text-xs text-white/60 mt-1">
-                    Applies to the Issues list for this project. Saved locally.
-                  </p>
                 </div>
               
                 <!-- Roles card: project-scoped role templates -->
@@ -761,177 +867,215 @@
                   class="mt-6 rounded p-3 bg-white/5"
                 >
                   <div class="flex items-center justify-between mb-3">
-                    <div class="font-medium">
-                      Roles
-                    </div>
-                    <div>
+                    <div class="flex items-center gap-3">
                       <button
-                        v-if="isProjectAdmin"
-                        aria-label="Create role template"
-                        class="w-10 h-10 grid place-items-center rounded-lg bg-emerald-500 text-white border border-white/8 hover:bg-emerald-600"
-                        @click="openRoleModal(null)"
+                        aria-label="Toggle roles"
+                        class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 transform transition-transform"
+                        @click="toggleRolesOpen"
                       >
                         <svg
-                          xmlns="http://www.w3.org/2000/svg"
+                          :class="['w-4 h-4 transform transition-transform', rolesOpen ? '' : 'rotate-180']"
                           viewBox="0 0 24 24"
-                          class="w-5 h-5"
                           fill="none"
                           stroke="currentColor"
+                          xmlns="http://www.w3.org/2000/svg"
                         >
                           <path
-                            d="M12 5v14M5 12h14"
+                            d="M6 9l6 6 6-6"
                             stroke-width="1.5"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                           />
                         </svg>
                       </button>
+                      <div class="font-medium">
+                        Roles
+                      </div>
                     </div>
-                  </div>
-                  <div
-                    v-if="!displayedRoleTemplates.length"
-                    class="text-sm text-white/70"
-                  >
-                    No project role templates.
-                  </div>
-                  <div class="space-y-2">
-                    <div
-                      v-for="rt in displayedRoleTemplates"
-                      :key="rt._id || rt.id"
-                      class="p-1 rounded"
-                    >
+                    <div>
                       <div
-                        class="p-3 rounded bg-white/6 cursor-pointer"
-                        @click.prevent="toggleRoleOpen(rt._id || rt.id)"
+                        v-if="isProjectAdmin"
+                        class="relative inline-block group"
                       >
-                        <div class="flex items-start justify-between">
-                          <div>
-                            <div class="font-medium text-white">
-                              {{ rt.name }}
-                            </div>
-                            <div class="text-xs text-white/70">
-                              {{ rt.description }}
-                            </div>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <div class="text-xs text-white/60 mr-2">
-                              {{ (rt.permissions || []).length }} perms
-                            </div>
-                            <div class="flex gap-2">
-                              <div
-                                v-if="isProjectAdmin"
-                                class="relative inline-block group"
-                              >
-                                <button
-                                  aria-label="Edit role"
-                                  class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
-                                  @click.stop.prevent="openRoleModal(rt)"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
-                                      stroke-width="1.5"
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                    />
-                                  </svg>
-                                </button>
-                                <div
-                                  role="tooltip"
-                                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                                >
-                                  Edit
-                                </div>
-                              </div>
-
-                              <div
-                                v-if="isProjectAdmin"
-                                class="relative inline-block group"
-                              >
-                                <button
-                                  aria-label="Delete role"
-                                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white border border-white/8"
-                                  @click.stop.prevent="deleteRoleTemplate(rt)"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"
-                                      stroke-width="1.5"
-                                      stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                    />
-                                  </svg>
-                                </button>
-                                <div
-                                  role="tooltip"
-                                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                                >
-                                  Delete
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                        <button
+                          aria-label="Create role template"
+                          class="w-8 h-8 grid place-items-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                          @click="openRoleModal(null)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                          >
+                            <path
+                              d="M12 5v14M5 12h14"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <div
+                          role="tooltip"
+                          class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                        >
+                          Create project role
                         </div>
                       </div>
-
+                    </div>
+                  </div>
+                  <div v-show="rolesOpen">
+                    <div
+                      v-if="!displayedRoleTemplates.length"
+                      class="text-sm text-white/70"
+                    >
+                      No project role templates.
+                    </div>
+                    <div class="space-y-1">
                       <div
-                        v-show="isRoleOpen(rt._id || rt.id)"
-                        class="mt-2 p-3 rounded bg-white/5"
+                        v-for="(rt, idx) in displayedRoleTemplates"
+                        :key="rt._id || rt.id"
+                        class="p-0 rounded"
                       >
-                        <div class="grid grid-cols-2 gap-3 max-h-[260px] overflow-auto text-sm text-white/80">
-                          <div
-                            v-for="(ops, resource) in permMatrix"
-                            :key="resource"
-                            class="p-2 rounded"
-                          >
-                            <div class="font-medium text-white mb-2">
-                              {{ resource }}
+                        <div
+                          v-if="idx > 0"
+                          class="border-t border-white/10 mb-1"
+                        />
+                        <div
+                          class="p-2 rounded bg-white/6 cursor-pointer"
+                          @click.prevent="toggleRoleOpen(rt._id || rt.id)"
+                        >
+                          <div class="flex items-start justify-between">
+                            <div>
+                              <div class="font-medium text-white">
+                                {{ rt.name }}
+                              </div>
+                              <div class="text-xs text-white/70">
+                                {{ rt.description }}
+                              </div>
                             </div>
-                            <div class="grid grid-cols-4 gap-2 text-sm">
-                              <label
-                                v-for="op in ops"
-                                :key="op"
-                                class="inline-flex items-center gap-2"
-                              >
-                                <input
-                                  type="checkbox"
-                                  :checked="isPermChecked(rt._id || rt.id, `${resource}.${op}`)"
-                                  @change="togglePerm(rt._id || rt.id, `${resource}.${op}`)"
+                            <div class="flex items-center gap-2">
+                              <div class="text-xs text-white/60 mr-2">
+                                {{ (rt.permissions || []).length }} perms
+                              </div>
+                              <div class="flex gap-2">
+                                <div
+                                  v-if="isProjectAdmin"
+                                  class="relative inline-block group"
                                 >
-                                <span class="capitalize text-white/80">{{ op }}</span>
-                              </label>
+                                  <button
+                                    aria-label="Edit role"
+                                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                                    @click.stop.prevent="openRoleModal(rt)"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 24"
+                                      class="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <div
+                                    role="tooltip"
+                                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                                  >
+                                    Edit
+                                  </div>
+                                </div>
+
+                                <div
+                                  v-if="isProjectAdmin"
+                                  class="relative inline-block group"
+                                >
+                                  <button
+                                    aria-label="Delete role"
+                                    class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white border border-white/8"
+                                    @click.stop.prevent="deleteRoleTemplate(rt)"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 24"
+                                      class="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <div
+                                    role="tooltip"
+                                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                                  >
+                                    Delete
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        <div class="mt-3 text-right">
-                          <button
-                            v-if="isProjectAdmin"
-                            class="px-3 py-1 rounded bg-white/6 mr-2"
-                            @click="cancelRoleEdits(rt._id || rt.id, rt)"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            v-if="isProjectAdmin"
-                            class="px-3 py-1 rounded bg-emerald-500 text-white"
-                            :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
-                            @click="saveRoleInline(rt)"
-                          >
-                            Save
-                          </button>
+                        <div
+                          v-show="isRoleOpen(rt._id || rt.id)"
+                          class="mt-1 p-2 rounded bg-white/5"
+                        >
+                          <div class="grid grid-cols-2 gap-3 max-h-[260px] overflow-auto text-sm text-white/80">
+                            <div
+                              v-for="(ops, resource) in permMatrix"
+                              :key="resource"
+                              class="p-1 rounded"
+                            >
+                              <div class="font-medium text-white mb-2">
+                                {{ resource }}
+                              </div>
+                              <div class="grid grid-cols-4 gap-2 text-sm">
+                                <label
+                                  v-for="op in ops"
+                                  :key="op"
+                                  class="inline-flex items-center gap-2"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    :checked="isPermChecked(rt._id || rt.id, `${resource}.${op}`)"
+                                    @change="togglePerm(rt._id || rt.id, `${resource}.${op}`)"
+                                  >
+                                  <span class="capitalize text-white/80">{{ op }}</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="mt-3 text-right">
+                            <button
+                              v-if="isProjectAdmin"
+                              class="px-3 py-1 rounded bg-white/6 mr-2"
+                              @click="cancelRoleEdits(rt._id || rt.id, rt)"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              v-if="isProjectAdmin"
+                              class="px-3 py-1 rounded bg-emerald-500 text-white"
+                              :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
+                              @click="saveRoleInline(rt)"
+                            >
+                              Save
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -939,7 +1083,7 @@
                 </div>
               </div>
             </div>
-
+            <!-- end Roles accordion wrapper -->
             <div v-show="activeTab === 'logs'">
               <h3 class="text-md font-medium mb-2">
                 Project Logs
@@ -985,18 +1129,55 @@
                 >
                   Refresh
                 </button>
-                <button
-                  class="px-3 py-2 rounded bg-white/10 border border-white/20"
-                  @click="loadMore"
-                >
-                  Load more ({{ logsLimit + 200 }})
-                </button>
-                <button
-                  class="ml-auto px-3 py-2 rounded bg-white/10 border border-white/20"
-                  @click="exportCsv"
-                >
-                  Export CSV
-                </button>
+                <div class="ml-2 flex items-center gap-2 text-white/80">
+                  <button
+                    class="px-2 py-1 rounded bg-white/6"
+                    :disabled="logsPage<=1"
+                    @click="loadPrevPage"
+                  >
+                    Prev
+                  </button>
+                  <div>Page {{ logsPage }} / {{ Math.max(1, Math.ceil((logsTotal || 0) / logsPerPage)) }}</div>
+                  <button
+                    class="px-2 py-1 rounded bg-white/6"
+                    :disabled="logsPage >= Math.max(1, Math.ceil((logsTotal || 0) / logsPerPage))"
+                    @click="loadNextPage"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div class="ml-auto flex items-center gap-2">
+                  <div class="text-sm text-white/70">
+                    Per page
+                  </div>
+                  <select
+                    v-model.number="logsPerPage"
+                    class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+                    @change="logsPage=1; loadLogs()"
+                  >
+                    <option :value="5">
+                      5
+                    </option>
+                    <option :value="10">
+                      10
+                    </option>
+                    <option :value="25">
+                      25
+                    </option>
+                    <option :value="50">
+                      50
+                    </option>
+                    <option :value="100">
+                      100
+                    </option>
+                  </select>
+                  <button
+                    class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                    @click="exportCsv"
+                  >
+                    Export CSV
+                  </button>
+                </div>
               </div>
               <div
                 v-if="!logs.length"
@@ -1254,7 +1435,7 @@
   />
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
@@ -1281,7 +1462,9 @@ const logsSearch = ref('')
 const selectedType = ref('')
 const startDateText = ref('')
 const endDateText = ref('')
-const logsLimit = ref(200)
+const logsPerPage = ref(10)
+const logsPage = ref(1)
+const logsTotal = ref(0)
 const formErrors = ref({})
 const ui = useUiStore()
 const clientFileInput = ref(null)
@@ -1293,6 +1476,35 @@ const loadingInviteIds = ref([])
 const roleTemplates = ref([])
 // Dedicated UI list that always preserves all visible roles
 const roleTemplatesView = ref([])
+
+// Invoices / payments UI state
+const invoices = ref<any[]>([])
+const invoicesPage = ref(1)
+const invoicesPerPage = ref(10)
+const invoicesTotal = ref(0)
+const invoicesLoading = ref(false)
+
+async function loadInvoices() {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return
+    invoicesLoading.value = true
+    // Prefer DB-backed invoices endpoint when available
+    const res = await http.get(`/api/projects/${pid}/invoices`, { params: { page: invoicesPage.value, limit: invoicesPerPage.value }, headers: getAuthHeaders() })
+    const data = res.data || { items: [], total: 0 }
+    invoices.value = Array.isArray(data.items) ? data.items : []
+    invoicesTotal.value = Number(data.total || 0)
+  } catch (e) {
+    console.error('loadInvoices err', e)
+    invoices.value = []
+    invoicesTotal.value = 0
+  } finally {
+    invoicesLoading.value = false
+  }
+}
+
+function invPrevPage() { if (invoicesPage.value > 1) { invoicesPage.value -= 1; loadInvoices() } }
+function invNextPage() { const tot = Math.max(1, Math.ceil((invoicesTotal.value || 0) / invoicesPerPage.value)); if (invoicesPage.value < tot) { invoicesPage.value += 1; loadInvoices() } }
 const authStore = useAuthStore()
 
 // Modal-based permissions editor state & handlers
@@ -1390,6 +1602,13 @@ const permMatrix = {
 
 // Accordion state for role templates in the Settings card
 const openRoles = ref(new Set())
+
+// Collapsible state for the Roles card
+const rolesOpen = ref(true)
+
+function toggleRolesOpen() {
+  rolesOpen.value = !rolesOpen.value
+}
 
 const selectedRolePermsArray = computed({
   get() { return Array.from(selectedRolePerms.value) },
@@ -1775,7 +1994,8 @@ const isProjectAdmin = computed(() => {
 })
 // use auth store token; fall back to localStorage if necessary
 
-const tagsText = computed({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _tagsText = computed({
   get() { return (project.value && Array.isArray(project.value.tags)) ? project.value.tags.join(', ') : '' },
   set(v) { if (project.value) project.value.tags = v.split(',').map(s => s.trim()).filter(Boolean) }
 })
@@ -1961,17 +2181,26 @@ async function loadLogs() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
     if (!pid) return
-  const opts = { limit: logsLimit.value }
+    const opts: any = { limit: logsPerPage.value, page: logsPage.value }
     if (selectedType.value) opts.type = selectedType.value
-    const list = await projectStore.fetchProjectLogs(String(pid), opts)
-    logs.value = Array.isArray(list) ? list : []
+    const res = await projectStore.fetchProjectLogs(String(pid), opts)
+    logs.value = Array.isArray(res.items) ? res.items : []
+    logsTotal.value = Number(res.total || 0)
   } catch (err) {
     // noop
   }
 }
 
-function loadMore() {
-  logsLimit.value += 200
+function loadPrevPage() {
+  if (logsPage.value <= 1) return
+  logsPage.value -= 1
+  loadLogs()
+}
+
+function loadNextPage() {
+  const totalPages = Math.max(1, Math.ceil((logsTotal.value || 0) / logsPerPage.value))
+  if (logsPage.value >= totalPages) return
+  logsPage.value += 1
   loadLogs()
 }
 
@@ -2004,10 +2233,10 @@ function exportCsv() {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-// Lazy-load logs when tab is opened
-watch(activeTab, (t) => { if (t === 'logs' && !logs.value.length) loadLogs() })
-// Reload logs when type filter changes (server-side filter), reset limit
-watch(selectedType, () => { logsLimit.value = 200; loadLogs() })
+// Lazy-load logs when tab is opened (initialize page)
+watch(activeTab, (t) => { if (t === 'logs' && (!logs.value.length || logsTotal.value === 0)) { logsPage.value = 1; loadLogs() } if (t === 'subscription') { invoicesPage.value = 1; loadInvoices() } })
+// Reload logs when type filter changes (server-side filter), reset to first page
+watch(selectedType, () => { logsPage.value = 1; loadLogs() })
 
 function removeMember(m) {
   project.value.team = (project.value.team || []).filter(tm => (tm._id || tm.email) !== (m._id || m.email))
@@ -2130,7 +2359,20 @@ async function save() {
     await projectStore.updateProject(project.value)
     ui.showSuccess('Saved')
   } catch (e) {
-    ui.showError('Failed to save')
+    console.error('ProjectEdit.save error:', e)
+    let msg = 'Failed to save'
+    try {
+      if (e && e.response && e.response.data) {
+        msg = e.response.data.error || e.response.data.message || JSON.stringify(e.response.data)
+      } else if (e && e.message) {
+        msg = e.message
+      } else {
+        msg = String(e)
+      }
+    } catch (ex) {
+      msg = 'Failed to save'
+    }
+    ui.showError(msg)
   } finally {
     saving.value = false
   }

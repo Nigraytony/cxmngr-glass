@@ -125,21 +125,60 @@
               <h2 class="font-semibold">
                 {{ a.name }}
               </h2>
-              <!-- optional chevron icon to indicate clickable card -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                class="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <path
-                  d="M9 6l6 6-6 6"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+              <div class="flex items-center gap-2">
+                <button
+                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                  aria-label="Delete activity"
+                  :title="`Delete ${a.name || 'activity'}`"
+                  @click.stop.prevent="confirmDelete(a)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M6 7h12"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                      stroke-width="1.5"
+                    />
+                    <rect
+                      x="6"
+                      y="7"
+                      width="12"
+                      height="14"
+                      rx="2"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M10 11v6M14 11v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+                <!-- optional chevron icon to indicate clickable card -->
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  class="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <path
+                    d="M9 6l6 6-6 6"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </div>
             </div>
             <div class="text-sm text-white/70 mt-1">
               Type: {{ a.type }}
@@ -159,6 +198,38 @@
         </RouterLink>
       </template>
     </div>
+
+    <Modal
+      v-model="showDeleteModal"
+      panel-class="max-w-md"
+    >
+      <template #header>
+        <div class="text-lg font-semibold text-white">
+          Confirm deletion
+        </div>
+      </template>
+      <div class="text-white/90">
+        Are you sure you want to delete activity "<strong>{{ deletingName }}</strong>"? This action cannot be undone.
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button
+            class="px-3 py-2 rounded bg-white/6 text-white"
+            :disabled="deleting"
+            @click="cancelDelete"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded bg-red-600 text-white"
+            :disabled="deleting"
+            @click="doDelete"
+          >
+            {{ deleting ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -168,11 +239,16 @@ import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
 import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Modal from '../../components/Modal.vue'
 
 const store = useActivitiesStore()
 const projectStore = useProjectStore()
 const q = ref('')
 const typeFilter = ref<string>('')
+const showDeleteModal = ref(false)
+const deletingActivity = ref<string | null>(null)
+const deletingName = ref<string>('')
+const deleting = ref(false)
 
 onMounted(async () => {
   await store.fetchActivities().catch(() => {})
@@ -196,9 +272,14 @@ const typeCounts = computed<Record<string, number>>(() => {
   return counts
 })
 const typeOptions = computed(() => {
-  const opts = (lists.activityOptions || []).filter((o: any) => o && o.value)
-  const rest = opts.map((o: any) => ({ name: String(o.value), count: typeCounts.value[String(o.value)] || 0 }))
-  return [{ name: 'All', count: typeCounts.value['All'] }, ...rest]
+  // Only include types that are present in the current activities list (count > 0)
+  const counts = typeCounts.value
+  const presentNames = Object.keys(counts).filter(n => n !== 'All' && counts[n] > 0)
+  // Preserve ordering from lists.activityOptions where possible
+  const orderedFromList = (lists.activityOptions || []).map((o: any) => String(o.value)).filter(Boolean)
+  const ordered = orderedFromList.filter(n => presentNames.includes(n)).concat(presentNames.filter(n => !orderedFromList.includes(n)))
+  const rest = ordered.map((name: string) => ({ name, count: counts[name] || 0 }))
+  return [{ name: 'All', count: counts['All'] || 0 }, ...rest]
 })
 function typeCount(name: string) { return typeCounts.value[name] || 0 }
 function toggleTypeMenu() { showTypeMenu.value = !showTypeMenu.value }
@@ -247,6 +328,33 @@ const filtered = computed(() => {
 function refresh() {
   // Always fetch for the current project (store handles project scoping)
   store.fetchActivities().catch(() => {})
+}
+
+function confirmDelete(a: any) {
+  deletingActivity.value = String(a.id || a._id || '')
+  deletingName.value = a.name || ''
+  showDeleteModal.value = true
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false
+  deletingActivity.value = null
+  deletingName.value = ''
+}
+
+async function doDelete() {
+  if (!deletingActivity.value) return cancelDelete()
+  deleting.value = true
+  try {
+    await store.deleteActivity(deletingActivity.value)
+    // store already updates local cache; optionally refetch
+    // await store.fetchActivities().catch(() => {})
+  } catch (e) {
+    console.error('Failed to delete activity', e)
+  } finally {
+    deleting.value = false
+    cancelDelete()
+  }
 }
 </script>
 

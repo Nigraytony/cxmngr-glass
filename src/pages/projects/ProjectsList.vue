@@ -263,8 +263,9 @@
                     />
                   </svg>
                 </button>
-                <!-- Delete icon button -->
+                <!-- Delete icon button (only show when user may delete) -->
                 <button
+                  v-if="canDelete(project)"
                   class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-400/40"
                   aria-label="Delete project"
                   :title="`Delete ${project.name || 'project'}`"
@@ -427,7 +428,7 @@
     <Modal v-model="showViewModal">
       <template #header>
         <h3 class="text-lg font-semibold">
-          Project {{ editProject?.id || selectedProject?.id }}
+          Project: {{ editProject?.title || editProject?.name || selectedProject?.title || selectedProject?.name || editProject?.id || selectedProject?.id }}
         </h3>
       </template>
 
@@ -439,6 +440,7 @@
       <template #footer>
         <div class="flex gap-2">
           <button
+            v-if="canSave(editProject || selectedProject)"
             class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
             @click="saveEdit"
           >
@@ -628,6 +630,7 @@ const loading = ref(true)
 // Server-provided paged projects for this view
 const serverProjects = ref([])
 const serverTotal = ref(0)
+const lastFetchFilteredByMember = ref(false)
 const projectsSource = computed(() => serverProjects.value)
 
 async function fetchProjectsPage() {
@@ -644,6 +647,16 @@ async function fetchProjectsPage() {
       params.sortBy = sortKey.value
       params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
     }
+    // Prefer server-side filtering by membership when possible
+    lastFetchFilteredByMember.value = false
+    try {
+      const memberId = auth?.user && (auth.user._id || auth.user.id)
+      if (memberId) {
+        params.memberId = memberId
+        lastFetchFilteredByMember.value = true
+      }
+    } catch (e) { /* ignore */ }
+
     const res = await http.get('/api/projects', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}
     if (Array.isArray(data.items)) {
@@ -676,7 +689,7 @@ const newProject = ref({
   industry: '',
   client: '',
   location: '',
-  status: 'active',
+     status: 'Active',
   building_type: '',
   description: '',
     // removed duplicate `status` key
@@ -717,8 +730,8 @@ function goNextFromDetails() {
 
 // Pagination
 const page = ref(1)
-// Initialize pageSize from the user's profile preference when available
-const pageSize = ref((auth && auth.user && auth.user.contact && typeof auth.user.contact.perPage === 'number') ? auth.user.contact.perPage : 5)
+// Initialize pageSize default; we'll load the user's preference (profile or session) below
+const pageSize = ref(5)
 const pageSizes = [5, 10, 20]
 
 // Re-fetch projects when paging/sort/search changes. `page` is declared above.
@@ -728,23 +741,35 @@ const pageSizes = [5, 10, 20]
 const pageSizeStorageKey = computed(() => `projectsPageSize:${projectStore.currentProjectId || 'global'}`)
 function loadPageSizePref() {
   try {
-    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
-    if (!raw) {
-      try {
-        const p = auth.user && auth.user.contact && auth.user.contact.perPage
-        const allowed = [5,10,20]
-        if (typeof p === 'number' && allowed.includes(p)) {
-          pageSize.value = p
-        }
-      } catch (e) { /* ignore */ }
+    const allowed = [5, 10, 20]
+    // Prefer the user's profile setting when available
+    const p = auth?.user?.contact?.perPage
+    if (typeof p === 'number' && allowed.includes(p)) {
+      pageSize.value = p
       return
     }
-    const n = parseInt(raw, 10)
-    if ([5,10,20].includes(n)) pageSize.value = n
+
+    // Otherwise fall back to a session-stored preference
+    const raw = sessionStorage.getItem(pageSizeStorageKey.value)
+    if (raw) {
+      const n = parseInt(raw, 10)
+      if (allowed.includes(n)) {
+        pageSize.value = n
+      }
+    }
   } catch (e) { /* ignore sessionStorage read errors */ }
 }
 function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ } }
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
+// If the user's profile perPage is updated (Profile -> Settings), prefer that value
+watch(() => auth.user && auth.user.contact && auth.user.contact.perPage, (v) => {
+  try {
+    const allowed = [5, 10, 20]
+    if (typeof v === 'number' && allowed.includes(v)) {
+      pageSize.value = v
+    }
+  } catch (e) { /* ignore */ }
+})
 watch(pageSize, () => persistPageSizePref())
 
 const statusFilter = ref('All')
@@ -798,47 +823,91 @@ function setSort(key) {
   page.value = 1
 }
 
-// Server-driven totals and paging
-const totalItems = computed(() => Number(serverTotal.value || 0))
+// Server-driven totals and paging. If we asked the server to filter by memberId
+// then `serverTotal` is authoritative. Otherwise compute total from filtered results.
+const totalItems = computed(() => {
+  if (lastFetchFilteredByMember.value) return Number(serverTotal.value || 0)
+  // compute total from client-side filtered serverProjects
+  return pagedProjects.value.length ? Math.max(pagedProjects.value.length, 0) : 0
+})
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
 const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
-// Apply client-side filter/sort on top of server-returned page so UI remains responsive
-const localFilteredProjects = computed(() => {
-  const q = (effectiveSearch.value || '').trim().toLowerCase()
-  let list = Array.isArray(serverProjects.value) ? serverProjects.value : []
-  if (statusFilter.value && statusFilter.value !== 'All') {
-    list = list.filter(p => (p.status || '').toLowerCase() === statusFilter.value.toLowerCase())
+
+
+// Always use server-provided page results, but ensure we only display projects
+// where the current user is a team member. Server is preferred to filter by
+// member when available, but we also apply a client-side filter as a fallback.
+function isUserMemberOfProject(p) {
+  try {
+    const uid = auth?.user && (auth.user._id || auth.user.id)
+    if (!uid) return false
+    const team = Array.isArray(p.team) ? p.team : []
+    return team.some(m => (m._id || m.id || m) && String(m._id || m.id || m) === String(uid))
+  } catch (e) { return false }
+}
+
+// Determine whether the current user may delete the given project.
+function canDelete(p) {
+  try {
+    const me = auth && auth.user ? auth.user : null
+    if (!me) return false
+    // Global roles allowed
+    if (me.role === 'globaladmin' || me.role === 'superadmin') return true
+    const userId = me._id || me.id
+    const userEmail = me.email ? String(me.email).toLowerCase() : null
+    const team = Array.isArray(p.team) ? p.team : []
+    const member = team.find((t) => {
+      if (!t) return false
+      try {
+        if (t._id && String(t._id) === String(userId)) return true
+        if (t.email && userEmail && String(t.email).toLowerCase() === userEmail) return true
+      } catch (e) {
+        return false
+      }
+      return false
+    })
+    if (!member) return false
+    return (member.role === 'admin' || member.role === 'globaladmin')
+  } catch (e) {
+    return false
   }
-  if (!q) return list
-  return list.filter(p => {
-    const fields = [String(p.id || ''), p.name || '', p.client || '', p.project_type || '', p.description || '', (p.tags || []).join(' ')]
-      .map(f => String(f).toLowerCase())
-    return fields.some(f => f.includes(q))
-  })
-})
+}
 
-const localSortedProjects = computed(() => {
-  if (!sortKey.value) return localFilteredProjects.value
-  const arr = [...localFilteredProjects.value]
-  arr.sort((a, b) => {
-    let av = a && a[sortKey.value]
-    let bv = b && b[sortKey.value]
-    if (sortKey.value === 'startDate') {
-      av = Date.parse(String(av || '')) || 0
-      bv = Date.parse(String(bv || '')) || 0
-      return (av - bv) * sortDir.value
-    }
-    av = String(av || '').toLowerCase()
-    bv = String(bv || '').toLowerCase()
-    if (av < bv) return -1 * sortDir.value
-    if (av > bv) return 1 * sortDir.value
-    return 0
-  })
-  return arr
-})
+// Determine whether the current user may save/edit the given project.
+function canSave(p) {
+  try {
+    const me = auth && auth.user ? auth.user : null
+    if (!me) return false
+    if (me.role === 'globaladmin' || me.role === 'superadmin') return true
+    const userId = me._id || me.id
+    const userEmail = me.email ? String(me.email).toLowerCase() : null
+    const team = Array.isArray(p && p.team) ? p.team : []
+    const member = team.find((t) => {
+      if (!t) return false
+      try {
+        if (t._id && String(t._id) === String(userId)) return true
+        if (t.email && userEmail && String(t.email).toLowerCase() === userEmail) return true
+      } catch (e) {
+        return false
+      }
+      return false
+    })
+    if (!member) return false
+    // Allow admin or manager to edit projects (manager may have limited editing rights)
+    return (member.role === 'admin' || member.role === 'manager' || member.role === 'globaladmin')
+  } catch (e) {
+    return false
+  }
+}
 
-const pagedProjects = computed(() => localSortedProjects.value)
+const pagedProjects = computed(() => {
+  const arr = Array.isArray(serverProjects.value) ? serverProjects.value : []
+  // If server already filtered by memberId, the array should already be correct.
+  // Otherwise apply client-side filter to ensure membership constraint.
+  if (lastFetchFilteredByMember.value) return arr
+  return arr.filter(isUserMemberOfProject)
+})
 
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
@@ -860,7 +929,9 @@ async function saveEdit() {
     showViewModal.value = false
     ui.showSuccess('Project updated')
   } catch (err) {
-    ui.showError('Failed to update project')
+    console.error('Project update failed:', err)
+    const msg = err && err.response && err.response.data && err.response.data.error ? err.response.data.error : (err && err.message ? err.message : 'Failed to update project')
+    ui.showError(msg)
   }
 }
 

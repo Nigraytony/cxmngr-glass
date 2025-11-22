@@ -107,6 +107,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
     const saved = { ...data, id: data._id }
     items.value.push(saved)
+    try {
+      const { useLogsStore } = await import('./logs')
+      const logs = useLogsStore()
+      await logs.appendLog('equipment', String(saved.id || (saved as any)._id), { type: 'create', message: `Equipment created: ${saved.title || saved.tag || ''}`, details: saved })
+    } catch (e) { /* non-blocking */ }
     return saved
   }
 
@@ -131,6 +136,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const idx = items.value.findIndex(x => (x.id || (x as any)._id) === id)
     if (idx !== -1) items.value[idx] = saved
     else items.value.push(saved)
+    try {
+      const { useLogsStore } = await import('./logs')
+      const logs = useLogsStore()
+      await logs.appendLog('equipment', String(saved.id || (saved as any)._id), { type: 'update', message: `Equipment updated: ${saved.title || saved.tag || ''}`, details: payload })
+    } catch (e) { /* non-blocking */ }
     return saved
   }
 
@@ -157,6 +167,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
   async function remove(id: string) {
     await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
     items.value = items.value.filter(e => (e.id || (e as any)._id) !== id)
+    try {
+      const { useLogsStore } = await import('./logs')
+      const logs = useLogsStore()
+      await logs.appendLog('equipment', String(id), { type: 'delete', message: `Equipment deleted: ${id}` })
+    } catch (e) { /* non-blocking */ }
   }
 
   // Duplicate an equipment item, ideally on the server. Falls back to client-side deep copy.

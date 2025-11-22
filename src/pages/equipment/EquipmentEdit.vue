@@ -1061,6 +1061,66 @@
             </RouterLink>
           </div>
         </div>
+        <!-- Logs Tab -->
+        <div
+          v-else-if="currentTab === 'Logs'"
+          class="space-y-3"
+        >
+          <div class="flex items-center justify-between">
+            <div class="text-white/80">
+              Equipment logs
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                @click="loadLogs"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-if="logsLoading"
+            class="text-white/70"
+          >
+            Loading logs...
+          </div>
+          <div v-else>
+            <div
+              v-if="!logsList.length"
+              class="text-white/60"
+            >
+              No logs for this equipment.
+            </div>
+            <ul
+              v-else
+              class="space-y-2"
+            >
+              <li
+                v-for="(l, idx) in logsList"
+                :key="(l.ts || '') + String(idx)"
+                class="p-2 rounded bg-white/5 border border-white/10"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm text-white/80">
+                    <span class="font-medium">{{ l.type }}</span>
+                    <span class="text-white/60"> — {{ l.message }}</span>
+                  </div>
+                  <div class="text-xs text-white/60">
+                    {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
+                  </div>
+                </div>
+                <div
+                  v-if="l.details"
+                  class="mt-2 text-xs text-white/60 truncate"
+                >
+                  {{ JSON.stringify(l.details) }}
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       <!-- Bottom navigation: Report actions + Previous/Next across equipment -->
@@ -1593,7 +1653,7 @@ const eqTitle = computed(() => (form.value?.tag || form.value?.title || ''))
 const parentOptions = computed(() => spacesStore.items)
 
 // tabs state
-const tabs = ['Info', 'Components', 'Photos', 'Attachments', 'Checklists', 'FPT', 'Issues']
+const tabs = ['Info', 'Components', 'Photos', 'Attachments', 'Checklists', 'FPT', 'Issues', 'Logs']
 const currentTab = ref('Info')
 const tabIndex = computed(() => Math.max(0, tabs.indexOf(currentTab.value)))
 const tabWidth = computed(() => 100 / tabs.length)
@@ -1606,6 +1666,27 @@ function setTabFromQuery() {
 }
 // Initialize and react to query changes
 onMounted(() => setTabFromQuery())
+
+// Logs tab state
+const logsList = ref<any[]>([])
+const logsLoading = ref(false)
+async function loadLogs() {
+  const eid = String(route.params.id || '')
+  if (!eid || eid === 'new') return
+  logsLoading.value = true
+  try {
+    const { useLogsStore } = await import('../../stores/logs')
+    const logs = useLogsStore()
+    const list = await logs.fetchLogs('equipment', eid)
+    logsList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    logsList.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+watch(currentTab, (v) => { if (v === 'Logs') loadLogs() })
 watch(() => route.query, () => setTabFromQuery())
 
 const systemSelectOptions = computed(() => {

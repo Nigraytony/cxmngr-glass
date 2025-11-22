@@ -877,15 +877,16 @@ function spaceParentChainLabelById(spaceId?: string | null) {
   }
 }
 
-const searchMode = computed(() => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _searchMode = computed(() => {
   try {
     const p: any = projectStore.currentProject || null
     const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
     return m || 'substring'
   } catch (e) { return 'substring' }
 })
-
-function fuzzyMatch(text: string, pattern: string) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _fuzzyMatch(text: string, pattern: string) {
   let pi = 0
   for (let i = 0; i < text.length && pi < pattern.length; i++) {
     if (text[i] === pattern[pi]) pi++
@@ -894,7 +895,7 @@ function fuzzyMatch(text: string, pattern: string) {
 }
 
 // Debounce helper (small local utility)
-function debounce(fn: Function, wait = 200) {
+function debounce(fn: (...args: any[]) => any, wait = 200) {
   let t: any
   return (...args: any[]) => {
     clearTimeout(t)

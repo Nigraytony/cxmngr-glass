@@ -150,6 +150,9 @@ export const useProjectStore = defineStore('project', () => {
     const res = await axios.post(API_BASE, { ...project, userId });
     const newProject = { ...res.data, id: res.data._id };
     projects.value.push(newProject);
+    try {
+      await appendProjectLog(String(newProject.id || (newProject as any)._id), { type: 'create', message: `Project created: ${newProject.name || ''}`, details: newProject })
+    } catch (e) { /* non-blocking */ }
     return newProject;
   }
 
@@ -180,12 +183,18 @@ export const useProjectStore = defineStore('project', () => {
         currentProject.value = { ...res.data, id: res.data._id }
       }
     }
+    try {
+      await appendProjectLog(String(id), { type: 'update', message: `Project updated: ${(res.data && res.data.name) || id}`, details: payload })
+    } catch (e) { /* non-blocking */ }
     return res.data;
   }
 
   async function deleteProject(id: string) {
     await axios.delete(`/api/projects/${id}`);
     projects.value = projects.value.filter(p => p.id !== id);
+    try {
+      await appendProjectLog(String(id), { type: 'delete', message: `Project deleted: ${id}` })
+    } catch (e) { /* non-blocking */ }
   }
 
   // Project logs API
@@ -214,18 +223,22 @@ export const useProjectStore = defineStore('project', () => {
       // swallow
     }
   }
-  async function fetchProjectLogs(projectId: string, opts?: { limit?: number; type?: string }): Promise<any[]> {
-    if (!projectId) return []
+  async function fetchProjectLogs(projectId: string, opts?: { page?: number; limit?: number; type?: string }): Promise<any> {
+    if (!projectId) return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
     try {
       const params: any = {}
       if (opts?.limit) params.limit = opts.limit
+      if (opts?.page) params.page = opts.page
       if (opts?.type) params.type = opts.type
       const res = await axios.get(`${API_BASE}/${projectId}/logs`, { params, headers: getAuthHeaders() })
-      const list = Array.isArray(res.data) ? res.data : []
-      logsCache.value[projectId] = list
-      return list
+      const data = res.data || { items: [], total: 0, page: 1, limit: opts?.limit || 0, totalPages: 0 }
+      // cache the last fetched page of items (optimistic)
+      try {
+        logsCache.value[projectId] = data.items || []
+      } catch (e) { /* ignore */ }
+      return data
     } catch (err) {
-      return []
+      return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
     }
   }
 

@@ -1,5 +1,6 @@
 <template>
   <div class="p-4">
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Templates' }]" />
     <h2 class="text-2xl mb-4">
       Templates
     </h2>
@@ -18,6 +19,7 @@
         Search
       </button>
       <router-link
+        v-if="isAdmin()"
         to="/admin/templates/new"
         class="ml-2 px-3 py-1 rounded bg-green-600"
       >
@@ -60,6 +62,7 @@
           </td>
           <td class="p-2">
             <router-link
+              v-if="isAdmin()"
               :to="{ name: 'admin-templates-edit', params: { id: t._id } }"
               class="px-2 py-1 rounded bg-gray-700"
             >
@@ -96,8 +99,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { http } from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
+import http from '../../utils/http'
+import { useAuthStore } from '../../stores/auth'
+import BreadCrumbs from '../../components/BreadCrumbs.vue'
 
 const templates = ref([])
 const q = ref('')
@@ -106,12 +110,20 @@ const limit = ref(50)
 const total = ref(0)
 const error = ref('')
 
+const auth = useAuthStore()
+
+function isAdmin() {
+  const me = auth.user
+  if (!me) return false
+  return me.role === 'admin' || me.role === 'globaladmin' || me.role === 'superadmin'
+}
+
 async function load() {
   try {
     error.value = ''
     const params = { skip: skip.value, limit: limit.value }
     if (q.value) params.q = q.value
-    const { data } = await http.get('/api/admin/templates', { params, headers: getAuthHeaders() })
+    const { data } = await http.get('/api/admin/templates', { params })
     templates.value = data.templates || []
     total.value = data.total || 0
   } catch (err) {

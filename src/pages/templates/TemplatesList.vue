@@ -1086,8 +1086,8 @@ async function fetchTemplatesPage(projectId?: string) {
     const params: any = { page: page.value, perPage: pageSize.value }
     if (projectId) params.projectId = projectId
     if (search.value) params.search = search.value
-    if (typeFilter) params.type = typeFilter
-    if (statusFilter) params.status = statusFilter
+    if (typeFilter.value) params.type = typeFilter
+    if (statusFilter.value) params.status = statusFilter
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/templates', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}
@@ -1121,7 +1121,7 @@ async function fetchTemplatesPage(projectId?: string) {
 }
 
 // Debounce helper (small local utility)
-function debounce(fn: Function, wait = 200) {
+function debounce(fn: (...args: any[]) => any, wait = 200) {
   let t: any
   return (...args: any[]) => {
     clearTimeout(t)

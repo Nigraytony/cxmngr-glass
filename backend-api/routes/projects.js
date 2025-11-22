@@ -51,13 +51,100 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Read all projects
+// Read projects (supports pagination, filtering, search, memberId)
 router.get('/', async (req, res) => {
   try {
-    const projects = await Project.find();
-    res.status(200).send(projects);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const perPage = Math.max(1, Math.min(200, Number(req.query.perPage || req.query.limit) || 10));
+    const status = req.query.status ? String(req.query.status) : null;
+    const search = req.query.search ? String(req.query.search).trim() : null;
+    const sortBy = req.query.sortBy ? String(req.query.sortBy) : null;
+    const sortDir = req.query.sortDir === 'asc' || req.query.sortDir === 'ASC' ? 1 : (req.query.sortDir === 'desc' || req.query.sortDir === 'DESC' ? -1 : -1);
+
+    const filter = {};
+    // Status filter
+    if (status && status !== 'All') filter.status = status;
+
+    // Search across name and client and description
+    if (search) {
+      const regex = new RegExp(search.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { name: { $regex: regex } },
+        { client: { $regex: regex } },
+        { description: { $regex: regex } },
+      ];
+    }
+
+    // Member filter: require the member to be present in `team` or `users`.
+    // Use $elemMatch on team to avoid matching projects that lack a team array.
+    if (req.query.memberId) {
+      const memberId = String(req.query.memberId);
+      const or = [];
+      const mongoose = require('mongoose');
+      // Prefer ObjectId matches when valid
+      if (mongoose.Types.ObjectId.isValid(memberId)) {
+        or.push({ team: { $elemMatch: { _id: new mongoose.Types.ObjectId(memberId) } } });
+        or.push({ users: new mongoose.Types.ObjectId(memberId) });
+      }
+      // Also support string-stored ids (defensive)
+      or.push({ team: { $elemMatch: { _id: memberId } } });
+      or.push({ users: memberId });
+
+      // Also include projects referenced on the User record (some records
+      // may have the user referenced on the user's `projects` array but not
+      // in the project's `team` array). This makes the membership filter
+      // tolerant of denormalized/inconsistent data.
+      try {
+        const User = require('../models/user');
+        const u = await User.findById(memberId).select('projects').lean();
+        if (u && Array.isArray(u.projects) && u.projects.length) {
+          const projIds = u.projects.map((p) => {
+            try {
+              if (p && (p._id || p.id)) return (p._id || p.id)
+              return String(p)
+            } catch (e) { return String(p) }
+          }).filter(Boolean)
+          if (projIds.length) {
+            // coerce to ObjectId when possible
+            const mongoose = require('mongoose');
+            const coerced = projIds.map((pid) => (mongoose.Types.ObjectId.isValid(pid) ? new mongoose.Types.ObjectId(pid) : pid))
+            or.push({ _id: { $in: coerced } })
+          }
+        }
+      } catch (e) {
+        // best-effort: ignore user lookup failures
+      }
+
+      if (filter.$or) {
+        // Combine search $or with membership requirement via $and
+        filter.$and = [{ $or: filter.$or }, { $or: or }];
+        delete filter.$or;
+      } else {
+        filter.$or = or;
+      }
+    }
+
+    // Build sort
+    let sort = { updatedAt: -1 };
+    if (sortBy) {
+      const map = { name: 'name', client: 'client', project_type: 'project_type', status: 'status', startDate: 'startDate', createdAt: 'createdAt' };
+      const field = map[sortBy] || sortBy;
+      sort = {};
+      sort[field] = sortDir;
+    }
+
+    const total = await Project.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const items = await Project.find(filter)
+      .sort(sort)
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean();
+
+    return res.status(200).send({ items, total, page, limit: perPage, totalPages });
   } catch (error) {
-    res.status(500).send(error);
+    console.error('list projects error', error);
+    return res.status(500).send({ error: 'Failed to list projects' });
   }
 });
 
@@ -89,6 +176,46 @@ router.get('/my-invites', auth, async (req, res) => {
   } catch (err) {
     console.error('my-invites early handler error', err);
     return res.status(500).send({ error: 'Failed to list invitations' });
+  }
+});
+
+// DB-backed invoices listing for a project (paginated)
+router.get('/:id/invoices', auth, async (req, res) => {
+  try {
+    const Invoice = require('../models/invoice');
+    const id = req.params.id;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
+
+    // Ensure project exists
+    const project = await Project.findById(id).select('_id');
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const query = { projectId: String(id) };
+    const total = await Invoice.countDocuments(query);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const itemsRaw = await Invoice.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const items = (itemsRaw || []).map(inv => ({
+      id: inv.invoiceId,
+      ts: inv.createdAt ? (new Date(inv.createdAt)).toISOString() : (inv.createdAt ? inv.createdAt : null),
+      amount_due: inv.amount_due != null ? inv.amount_due : null,
+      currency: inv.currency || null,
+      status: inv.status || null,
+      hosted_invoice_url: inv.hosted_invoice_url || null,
+      description: inv.description || '',
+      subscription: inv.subscriptionId || null,
+      metadata: inv.metadata || {}
+    }));
+
+    return res.json({ items, total, page, limit, totalPages });
+  } catch (err) {
+    console.error('projects invoices err', err);
+    return res.status(500).json({ error: 'Failed to list invoices from DB' });
   }
 });
 
@@ -928,38 +1055,70 @@ router.post('/:id/change-plan', auth, async (req, res) => {
   }
 });
 
-// Delete a project by ID
+// Delete a project by ID (only project admin or globaladmin allowed)
+// Delete a project by ID (require RBAC permission and also ensure project admin/globaladmin)
 router.delete('/:id', auth, requirePermission('projects.delete', { projectParam: 'id' }), async (req, res) => {
   try {
-    const project = await Project.findByIdAndDelete(req.params.id);
+    const project = await Project.findById(req.params.id);
     if (!project) {
-      return res.status(404).send();
+      return res.status(404).send({ error: 'Project not found' });
     }
-    res.status(200).send(project);
+
+    const userId = req.user && (req.user._id || req.user.id);
+    const userEmail = req.user && req.user.email ? String(req.user.email).toLowerCase() : null;
+    const userRoles = Array.isArray(req.user && req.user.roles) ? req.user.roles : [];
+
+    // If not a globaladmin, ensure the user is a project admin
+    if (!userRoles.includes('globaladmin')) {
+      const team = Array.isArray(project.team) ? project.team : [];
+      const member = team.find((t) => {
+        try {
+          if (!t) return false;
+          if (t._id && String(t._id) === String(userId)) return true;
+          if (t.email && userEmail && String(t.email).toLowerCase() === userEmail) return true;
+          return false;
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (!member || !(member.role === 'admin' || member.role === 'globaladmin')) {
+        return res.status(403).send({ error: 'Not authorized to delete this project' });
+      }
+    }
+
+    const deleted = await Project.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).send({ error: 'Project not found' });
+    return res.status(200).send(deleted);
   } catch (error) {
-    res.status(500).send(error);
+    console.error('delete project error', error);
+    return res.status(500).send({ error: 'Failed to delete project' });
   }
 });
 
 // Project logs: append and read
-// GET /api/projects/:id/logs?limit=200&type=section_created
+// GET /api/projects/:id/logs?page=1&limit=50&type=section_created
 router.get('/:id/logs', auth, async (req, res) => {
   try {
     const id = req.params.id
-    const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
+    const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 50))
+    const page = Math.max(1, Number(req.query.page) || 1)
     const type = req.query.type ? String(req.query.type) : null
     const project = await Project.findById(id).select('logs').lean()
     if (!project) return res.status(404).send({ error: 'Project not found' })
     let logs = Array.isArray(project.logs) ? project.logs.slice() : []
     if (type) logs = logs.filter((e) => e && e.type === type)
-    // Sort by ts descending; if missing ts, push to end
+    // Sort by ts descending; if missing ts, treat as 0
     logs.sort((a, b) => {
       const ta = a && a.ts ? new Date(a.ts).getTime() : 0
       const tb = b && b.ts ? new Date(b.ts).getTime() : 0
       return tb - ta
     })
-    logs = logs.slice(0, limit)
-    return res.status(200).send(logs)
+    const total = logs.length
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+    const start = (page - 1) * limit
+    const items = logs.slice(start, start + limit)
+    return res.status(200).send({ items, total, page, limit, totalPages })
   } catch (err) {
     console.error('get project logs error', err)
     return res.status(500).send({ error: 'Failed to load logs' })

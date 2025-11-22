@@ -3,6 +3,11 @@
     <h2 class="text-2xl mb-4">
       Webhook Events
     </h2>
+
+    <p class="text-white/70 mb-4">
+      Browse and replay recent webhook events.
+    </p>
+
     <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-2">
       <div>
         <label class="block text-white/80">Status</label>
@@ -49,13 +54,15 @@
         </button>
       </div>
     </div>
+
+    <div
+      v-if="error"
+      class="mb-4 text-red-400"
+    >
+      {{ error }}
+    </div>
+
     <table class="w-full text-left border-collapse">
-      <div
-        v-if="error"
-        class="mb-4 text-red-400"
-      >
-        {{ error }}
-      </div>
       <thead>
         <tr class="text-white/80">
           <th class="p-2">
@@ -72,6 +79,9 @@
           </th>
           <th class="p-2">
             Processed
+          </th>
+          <th class="p-2">
+            Actions
           </th>
         </tr>
       </thead>
@@ -104,6 +114,7 @@
                 {{ expanded[e.eventId] ? 'Hide' : 'Show' }}
               </button>
               <button
+                v-if="canReplay()"
                 class="px-2 py-1 rounded bg-green-600"
                 @click="replay(e)"
               >
@@ -111,6 +122,7 @@
               </button>
             </td>
           </tr>
+
           <tr
             v-if="expanded[e.eventId]"
             class="bg-white/2"
@@ -120,6 +132,17 @@
               class="p-2 text-xs text-white/70 break-words"
             >
               <pre class="whitespace-pre-wrap">{{ prettyPayload(e.meta && e.meta.raw) }}</pre>
+              <div
+                v-if="isTruncated(e.meta && e.meta.raw)"
+                class="mt-2"
+              >
+                <button
+                  class="px-2 py-1 rounded bg-indigo-600"
+                  @click="viewFullPayload(e.meta && e.meta.raw)"
+                >
+                  View full
+                </button>
+              </div>
             </td>
           </tr>
         </template>
@@ -147,8 +170,8 @@
         Showing {{ skip + 1 }} - {{ skip + events.length }} of {{ total }}
       </div>
     </div>
-    
-    <!-- Confirmation modal for replay (liquid glass style) -->
+
+    <!-- Confirmation modal for replay -->
     <div
       v-if="showModal"
       class="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -158,7 +181,7 @@
           Confirm replay
         </h3>
         <p class="mb-4">
-          Are you sure you want to replay the webhook event <strong>{{ pendingReplay?.eventId }}</strong>? This will re-run processing and may update project billing state.
+          Are you sure you want to replay the webhook event <strong>{{ pendingReplay && pendingReplay.eventId }}</strong>? This will re-run processing and may update project billing state.
         </p>
         <div class="flex justify-end">
           <button
@@ -198,10 +221,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useUiStore } from '../../stores/ui'
-import { getAuthHeaders } from '../../utils/auth'
-import { apiUrl } from '../../utils/api'
+import { useAuthStore } from '../../stores/auth'
+import http from '../../utils/http'
 
 const events = ref([])
 const filter = ref({ status: '', date_from: '', date_to: '' })
@@ -215,31 +238,27 @@ const showModal = ref(false)
 const pendingReplay = ref(null)
 const replayInProgress = ref(false)
 
-function authHeaders() {
-  return getAuthHeaders()
+const auth = useAuthStore()
+
+function canReplay() {
+  const me = auth.user
+  if (!me) return false
+  return me.role === 'globaladmin' || me.role === 'superadmin' || me.role === 'admin'
 }
 
 async function load() {
-  const q = new URLSearchParams()
-  if (filter.value.status) q.set('status', filter.value.status)
-  const url = `${apiUrl('/api/admin/webhook-events')}?${q.toString()}`
   try {
     error.value = ''
-    const pagedUrl = `${url}&skip=${skip.value}&limit=${limit.value}`
-    const res = await fetch(pagedUrl, { headers: authHeaders() })
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      const msg = `Failed to fetch webhook events: ${res.status} ${text}`
-      console.error(msg)
-      error.value = msg
-      events.value = []
-      return
-    }
-    const data = await res.json()
+    const params = { skip: skip.value, limit: limit.value }
+    if (filter.value.status) params.status = filter.value.status
+    if (filter.value.date_from) params.date_from = filter.value.date_from
+    if (filter.value.date_to) params.date_to = filter.value.date_to
+    const res = await http.get('/api/admin/webhook-events', { params })
+    const data = res.data || {}
     events.value = data.events || []
     total.value = data.total || 0
   } catch (err) {
-    const msg = `Failed to fetch webhook events: ${err && err.message}`
+    const msg = `Failed to fetch webhook events: ${err?.response?.status || ''} ${err?.message || ''}`
     console.error(msg)
     error.value = msg
     events.value = []
@@ -252,14 +271,36 @@ function toggleExpand(e) {
 
 function prettyPayload(p) {
   try {
-    return JSON.stringify(p, null, 2)
+    const s = JSON.stringify(p, null, 2)
+    const max = 2000
+    if (!s) return ''
+    if (s.length <= max) return s
+    return s.slice(0, max) + '\n\n... (truncated)'
   } catch (e) {
     return String(p)
   }
 }
 
+function isTruncated(p) {
+  try {
+    const s = JSON.stringify(p)
+    return !!s && s.length > 2000
+  } catch (e) {
+    return false
+  }
+}
+
+function viewFullPayload(p) {
+  try {
+    const txt = JSON.stringify(p, null, 2) || ''
+    const url = 'data:text/json;charset=utf-8,' + encodeURIComponent(txt)
+    window.open(url, '_blank')
+  } catch (e) {
+    console.log(p)
+  }
+}
+
 async function replay(e) {
-  // Show confirmation modal
   pendingReplay.value = e
   showModal.value = true
 }
@@ -274,24 +315,17 @@ async function performReplay() {
   try {
     error.value = ''
     replayInProgress.value = true
-  const res = await fetch(apiUrl(`/api/admin/webhook-events/${encodeURIComponent(pendingReplay.value.eventId)}/replay`), { method: 'POST', headers: authHeaders() })
+    await http.post(`/api/admin/webhook-events/${encodeURIComponent(pendingReplay.value.eventId)}/replay`, {})
     replayInProgress.value = false
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      error.value = `Replay failed: ${res.status} ${text}`
-      ui.showError(`Replay failed: ${res.status} ${text}`)
-      showModal.value = false
-      pendingReplay.value = null
-      return
-    }
     showModal.value = false
     pendingReplay.value = null
     await load()
     ui.showSuccess('Replay queued/processed successfully')
   } catch (err) {
     replayInProgress.value = false
-    error.value = `Replay failed: ${err && err.message}`
-    ui.showError(`Replay failed: ${err && err.message}`)
+    const text = err?.response?.data ? JSON.stringify(err.response.data) : err?.message
+    error.value = `Replay failed: ${err?.response?.status || ''} ${text || ''}`
+    ui.showError(error.value)
     showModal.value = false
     pendingReplay.value = null
   }
@@ -312,7 +346,7 @@ function formatDate(d) {
   return new Date(d).toLocaleString()
 }
 
-load()
+onMounted(() => load())
 </script>
 
 <style scoped>

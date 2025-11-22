@@ -79,6 +79,11 @@ export const useSpacesStore = defineStore('spaces', () => {
     const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
     const saved = { ...data, id: data._id }
     items.value.push(saved)
+    try {
+      const { useLogsStore } = await import('./logs')
+      const logs = useLogsStore()
+      await logs.appendLog('spaces', String(saved.id || (saved as any)._id), { type: 'create', message: `Space created: ${saved.title || saved.tag || ''}`, details: saved })
+    } catch (e) { /* non-blocking */ }
     return saved
   }
 
@@ -91,12 +96,22 @@ export const useSpacesStore = defineStore('spaces', () => {
     const { data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() })
     const idx = items.value.findIndex(s => (s.id || (s as any)._id) === id)
     if (idx !== -1) items.value[idx] = { ...data, id: data._id }
+    try {
+      const { useLogsStore } = await import('./logs')
+      const logs = useLogsStore()
+      await logs.appendLog('spaces', String(id), { type: 'update', message: `Space updated: ${data?.title || id}`, details: space })
+    } catch (e) { /* non-blocking */ }
     return items.value[idx]
   }
 
   async function remove(id: string) {
     await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
     items.value = items.value.filter(s => (s.id || (s as any)._id) !== id)
+    try {
+      const { useLogsStore } = await import('./logs')
+      const logs = useLogsStore()
+      await logs.appendLog('spaces', String(id), { type: 'delete', message: `Space deleted: ${id}` })
+    } catch (e) { /* non-blocking */ }
   }
 
   function buildTree() {

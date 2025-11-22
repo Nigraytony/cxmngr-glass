@@ -28,7 +28,7 @@ const issueSchema = new mongoose.Schema({
   attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
   // comments include user identity and optional avatar for display
   comments: [{ userId: mongoose.Schema.Types.ObjectId, name: String, avatar: String, text: String, createdAt: { type: Date, default: Date.now } }],
-  logs: { type: [String], default: [] },
+  logs: { type: [mongoose.Schema.Types.Mixed], default: [] },
   createdAt: { type: String, default: () => new Date().toISOString() },
   updatedAt: { type: String, default: () => new Date().toISOString() },
 });

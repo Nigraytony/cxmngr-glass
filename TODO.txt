@@ -1,16 +1,18 @@
 TO DO FOR THE APP
-1. Issues:  Update the Issues to pull them from the DB instead of static issues
-2. Issues:  keep all issue interraction on the Issues page
-3. APP:     Add Project CRUD to the app
-DONE 4. Side Panel: Update the side panel to highlight the page that is active
-Done 5. Profile: Add Update Password logic to the app
-Done 6. Profile: Add project Cards in th projects tab of the user profile
-7. Profile: Implement a Forgot Password functionality in the app
+1.  Issues: Update the Issues to pull them from the DB instead of static issues
+2.  Issues: keep all issue interraction on the Issues page
+3.  APP: Add Project CRUD to the app
+DONE 4.  Side Panel: Update the side panel to highlight the page that is active
+Done 5.  Profile: Add Update Password logic to the app
+Done 6.  Profile: Add project Cards in th projects tab of the user profile
+7.  Profile: Implement a Forgot Password functionality in the app
 To run the Stripe webhook in the cli run the following at the terminal:
-stripe listen --forward-to localhost:4242/api/stripe/webhook
-8. Activities: Don't filter on projects. Only activities for the default project needs to be available
-9. Activities: Filter on Type and Start Date
+8.  Activities: Don't filter on projects. Only activities for the default project needs to be available
+9.  Activities: Filter on Type and Start Date
+Done 10. Activities: Fix the equipment list - if there are assets with the same tag on a project it can't choose between/among them.
+Done 11. Activities: Add pagination to this page.
 
+Stripe: stripe listen --forward-to localhost:4242/api/stripe/webhook
 Database Name: sample_mflix
 Database URL: mongodb://atlas-sql-690d76023ddd8e5fe7c2972a-xf3ud.z.query.mongodb.net/sample_mflix?ssl=true&authSource=admin
 
@@ -38,4 +40,30 @@ JWT_SECRET=emcx_super_Secret_jwt_key_12345
 MONGODB_URI=mongodb+srv://ngray_db_user:h7rd6FJ1opWFyXJx@cluster0.ymfn7gc.mongodb.net/cxmngr-api
 VITE_API_BASE=https://cxmngr-backend-api-brhhbng9crcxf6gp.westus3-01.azurewebsites.net
 WEBSITE_NODE_DEFAULT_VERSION=~20
+
+Wire the remaining resources (templates, activities already done for create/update; if you want create/update for other stores too).
+Replace per-page inline Logs UI with a reusable LogsPanel component to avoid duplication across edit pages.
+Add CSV export and server-side filtering support to logs.ts and the UI (ProjectEdit already has CSV export; we can reuse that pattern).
+Run the dev server and open a quick manual smoke test (if you want I can show the exact commands).
+Verify backend endpoints (I can attempt a quick request to a running backend if available, or you can point me to server routes).
+
+{
+"id": "hash53ganglasd0",
+"WBS": "1.1.0"
+"projectId": "dkjasd7asdnaa"
+"name": "Design review",
+"description": "Review design documents with CxA and stakeholders",
+"start": "2025-12-01T09:00:00Z",
+"finish": "2025-12-03T17:00:00Z",
+"duration": 3,
+"percentComplete": 25,
+"status": "In Progress",
+"cost": "$5000.00",
+"parentId": "Phase-1",
+"dependencies": ["T-50"],
+"assignee": "user-123",
+"tags": ["design","review"],
+"notes": "Lorem Ipsum Doller",
+"activityId": "adaewidasd79yaiehasdf"
+}
 

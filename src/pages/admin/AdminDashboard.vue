@@ -1,5 +1,6 @@
 <template>
   <div class="p-4">
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Dashboard' }]" />
     <h2
       class="text-2xl mb-4"
     >
@@ -24,11 +25,18 @@
       >
         Templates
       </router-link>
+      <router-link
+        to="/admin/webhook-events"
+        class="p-4 rounded bg-white/5 border border-white/10 text-white"
+      >
+        Webhook Events
+      </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
+import BreadCrumbs from '../../components/BreadCrumbs.vue'
 </script>
 
 <style scoped>

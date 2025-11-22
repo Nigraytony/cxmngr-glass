@@ -106,6 +106,11 @@ export const useIssuesStore = defineStore('issues', () => {
       const res = await axios.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json', ...authHeaders() } })
       const ni = normalize(res.data)
       issues.value.unshift(ni)
+      try {
+        const { useLogsStore } = await import('./logs')
+        const logs = useLogsStore()
+        await logs.appendLog('issues', String(ni.id || (ni as any)._id), { type: 'create', message: `Issue created: ${ni.title || ''}`, details: ni })
+      } catch (e) { /* non-blocking */ }
       return ni
     } catch (err: any) {
       // Surface subscription/payment errors explicitly so the UI can show a CTA
@@ -131,6 +136,11 @@ export const useIssuesStore = defineStore('issues', () => {
       const updated = normalize(res.data)
       const idx = issues.value.findIndex(i => (i.id || i._id) === (updated.id || updated._id))
       if (idx !== -1) issues.value.splice(idx, 1, updated)
+      try {
+        const { useLogsStore } = await import('./logs')
+        const logs = useLogsStore()
+        await logs.appendLog('issues', String(updated.id || updated._id), { type: 'update', message: `Issue updated: ${updated.title || ''}`, details: payload })
+      } catch (e) { /* non-blocking */ }
       return updated
     } catch (err: any) {
       if (err?.response?.status === 402) {
@@ -154,6 +164,11 @@ export const useIssuesStore = defineStore('issues', () => {
       const res = await axios.delete(`${API_BASE}/${id}`, { headers: authHeaders() })
       const removed = normalize(res.data)
       issues.value = issues.value.filter(i => (i.id || i._id) !== (removed.id || removed._id) && (i.id || i._id) !== id)
+      try {
+        const { useLogsStore } = await import('./logs')
+        const logs = useLogsStore()
+        await logs.appendLog('issues', String(id), { type: 'delete', message: `Issue deleted: ${id}` })
+      } catch (e) { /* non-blocking */ }
       return removed
     } catch (err: any) {
         if (err?.response?.status === 402) {

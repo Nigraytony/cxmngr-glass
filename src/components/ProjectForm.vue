@@ -85,6 +85,8 @@
       </div>
     </div>
 
+    
+
     <div>
       <label class="block text-white/80 mb-1">Description</label>
       <textarea
@@ -131,7 +133,8 @@ const local = reactive({
   location: props.modelValue.location || '',
   building_type: props.modelValue.building_type || '',
   description: props.modelValue.description || '',
-  status: props.modelValue.status || 'active',
+  status: props.modelValue.status || 'Active',
+  
   settings: props.modelValue.settings || [],
   photos: props.modelValue.photos || [],
   documents: props.modelValue.documents || [],
@@ -142,6 +145,7 @@ const local = reactive({
   tags: Array.isArray(props.modelValue.tags) ? props.modelValue.tags : (props.modelValue.tags ? props.modelValue.tags.split(',').map(s => s.trim()) : []),
   startDate: toInputDate(props.modelValue.startDate || props.modelValue.start_date),
   endDate: toInputDate(props.modelValue.endDate || props.modelValue.end_date),
+  
 })
 
 // tagsText and toISOStringDateFromInput helper removed (unused)
@@ -151,7 +155,7 @@ watch(() => props.modelValue, (nv) => {
   if (!nv) {
   Object.assign(local, {
       _id: null, id: null,
-      name: '', number: '', po_number: '', project_type: '', industry: '', client: '', location: '', building_type: '', description: '', status: 'active', settings: [], photos: [], documents: [], team: [], commissioning_agent: {}, logo: '', mata: [], tags: [], startDate: '', endDate: ''
+      name: '', number: '', po_number: '', project_type: '', industry: '', client: '', location: '', building_type: '', description: '', status: 'Active', settings: [], photos: [], documents: [], team: [], commissioning_agent: {}, logo: '', mata: [], tags: [], startDate: '', endDate: ''
     })
     return
   }
@@ -168,7 +172,7 @@ watch(() => props.modelValue, (nv) => {
     location: nv.location || '',
     building_type: nv.building_type || '',
     description: nv.description || '',
-    status: nv.status || 'active',
+    status: nv.status || 'Active',
     settings: nv.settings || [],
     photos: nv.photos || [],
     documents: nv.documents || [],

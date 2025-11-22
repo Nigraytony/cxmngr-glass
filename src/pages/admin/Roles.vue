@@ -1,5 +1,6 @@
 <template>
   <section class="p-4">
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Roles & Permissions' }]" />
     <h2 class="text-lg font-semibold text-white mb-4">
       Roles & Permissions
     </h2>
@@ -48,6 +49,7 @@
           />
           <div class="text-right">
             <button
+              v-if="isAdmin()"
               class="px-3 py-1 rounded bg-white/6"
               @click="createRole"
             >
@@ -90,6 +92,7 @@
               </div>
               <div class="flex items-center gap-2">
                 <button
+                  v-if="isAdmin()"
                   class="px-2 py-1 bg-red-600/20 text-red-300 rounded"
                   @click="deleteRole(r._id)"
                 >
@@ -107,18 +110,27 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
+import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
+import BreadCrumbs from '../../components/BreadCrumbs.vue'
 
 const ui = useUiStore()
 const roles = ref([])
 const loading = ref(false)
 const form = ref({ name: '', description: '', scope: 'global', projectId: '', permissionsText: '' })
 
+const auth = useAuthStore()
+
+function isAdmin() {
+  const me = auth.user
+  if (!me) return false
+  return me.role === 'admin' || me.role === 'globaladmin' || me.role === 'superadmin'
+}
+
 async function load() {
   loading.value = true
   try {
-    const { data } = await http.get('/api/admin/roles', { headers: getAuthHeaders() })
+    const { data } = await http.get('/api/admin/roles')
     roles.value = Array.isArray(data) ? data : []
   } catch (err) {
     console.error('load roles error', err)
@@ -135,7 +147,7 @@ async function createRole() {
       projectId: form.value.scope === 'project' ? form.value.projectId : undefined,
       permissions: form.value.permissionsText ? form.value.permissionsText.split('\n').map(s => s.trim()).filter(Boolean) : []
     }
-      await http.post('/api/admin/roles', payload, { headers: getAuthHeaders() })
+      await http.post('/api/admin/roles', payload)
     ui.showSuccess('Role created')
     form.value = { name: '', description: '', scope: 'global', projectId: '', permissionsText: '' }
     await load()
@@ -149,7 +161,7 @@ async function createRole() {
 async function deleteRole(id) {
   if (!confirm('Delete this role?')) return
   try {
-    await http.delete(`/api/admin/roles/${id}`, { headers: getAuthHeaders() })
+    await http.delete(`/api/admin/roles/${id}`)
     ui.showSuccess('Role deleted')
     await load()
   } catch (err) {

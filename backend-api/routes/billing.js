@@ -140,4 +140,58 @@ router.post('/portal-session', auth, async (req, res) => {
   }
 });
 
+// GET /api/stripe/project/:id/invoices?page=1&limit=10
+router.get('/project/:id/invoices', auth, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const id = req.params.id
+    const page = Math.max(1, Number(req.query.page) || 1)
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10))
+    const project = await Project.findById(id)
+    if (!project) return res.status(404).json({ error: 'Project not found' })
+
+    // Try to list invoices for the subscription first, otherwise fall back to customer (current user)
+    let invoices = []
+    if (project.stripeSubscriptionId) {
+      // list invoices for the subscription; request page*limit and slice (Stripe uses cursor pagination)
+      const fetchCount = Math.min(100, page * limit)
+      const resp = await stripe.invoices.list({ subscription: project.stripeSubscriptionId, limit: fetchCount })
+      invoices = Array.isArray(resp.data) ? resp.data : []
+      // filter by metadata.projectId when present
+      invoices = invoices.filter(inv => !inv.metadata || !inv.metadata.projectId || String(inv.metadata.projectId) === String(id))
+    } else {
+      // fallback: use current authenticated user's customer id if available
+      const user = req.user
+      if (user && user.stripeCustomerId) {
+        const fetchCount = Math.min(100, page * limit)
+        const resp = await stripe.invoices.list({ customer: user.stripeCustomerId, limit: fetchCount })
+        invoices = Array.isArray(resp.data) ? resp.data : []
+        invoices = invoices.filter(inv => !inv.metadata || !inv.metadata.projectId || String(inv.metadata.projectId) === String(id))
+      } else {
+        return res.status(400).json({ error: 'No subscription or customer available to list invoices' })
+      }
+    }
+
+    const total = invoices.length
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+    const start = (page - 1) * limit
+    const items = invoices.slice(start, start + limit).map(inv => ({
+      id: inv.id,
+      ts: inv.created ? new Date(inv.created * 1000).toISOString() : null,
+      amount_due: inv.amount_due != null ? (inv.amount_due / 100) : null,
+      currency: inv.currency || 'usd',
+      status: inv.status,
+      hosted_invoice_url: inv.hosted_invoice_url,
+      description: inv.description || inv.metadata && inv.metadata.description || '',
+      subscription: inv.subscription || null,
+      metadata: inv.metadata || {}
+    }))
+
+    return res.json({ items, total, page, limit, totalPages })
+  } catch (err) {
+    console.error('list project invoices err', err)
+    return res.status(500).json({ error: 'Failed to list invoices' })
+  }
+})
+
 module.exports = router;

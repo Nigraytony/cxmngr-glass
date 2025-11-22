@@ -27,7 +27,7 @@
       <!-- Compact square logo when collapsed (use cropped PNG) -->
       <div
         v-else
-        class="h-12 w-12 rounded-xl overflow-hidden bg-white/30 border border-white/30 grid place-items-center"
+        class="h-12 w-12 rounded-xl overflow-hidden grid place-items-center"
       >
         <picture>
           <source
@@ -109,6 +109,51 @@
       >
         <span class="i">📝</span>
         <span v-if="open">Activities</span>
+      </RouterLink>
+      <RouterLink
+        to="/tasks"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/tasks') ? 'page' : null"
+      >
+        <span class="i">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="M9 11l2 2 4-4"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M21 6H7"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M21 12H7"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M21 18H7"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <span v-if="open">Tasks</span>
       </RouterLink>
       <RouterLink
         to="/projects"

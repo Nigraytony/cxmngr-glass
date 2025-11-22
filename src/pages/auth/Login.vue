@@ -4,86 +4,129 @@
       <!-- Small login form positioned top-right on large screens, centered on small screens -->
       <div class="flex justify-center lg:justify-end">
         <div
-          class="lg:sticky top-6 z-40 w-full max-w-md lg:max-w-sm"
+          class="w-full max-w-md lg:max-w-sm z-50"
+          :class="['lg:fixed lg:top-6 lg:right-6']"
         >
-          <div class="relative rounded-2xl p-4 bg-white/8 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
+          <!-- Floating card with collapsible body -->
+          <div :class="['relative rounded-2xl bg-white/8 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.3)] overflow-hidden transition-all duration-300', collapsed ? 'max-h-14' : 'max-h-[720px]']">
             <span class="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-white/25 to-transparent opacity-30 mix-blend-overlay" />
-            <div class="relative z-10">
-              <div class="mb-4 flex items-center justify-center">
-                <picture>
+
+            <!-- Header: always visible (thin strip when collapsed) -->
+            <div class="relative z-20 flex items-center px-3 py-2">
+              <div class="flex items-center gap-3">
+                <picture class="flex items-center">
                   <source
-                    srcset="/brand/logo.svg"
+                    srcset="/brand/logo-2.svg"
                     type="image/svg+xml"
                   >
                   <img
-                    src="/brand/logo.png"
+                    src="/brand/logo-2.png"
                     alt="Cx Manager"
-                    class="h-12 w-auto object-contain invert"
+                    class="h-8 w-auto object-contain invert"
                   >
                 </picture>
               </div>
-              <h3 class="text-lg font-semibold text-white">
-                Sign in
-              </h3>
-              <p class="text-white/80 text-xs">
-                Quick access to your projects
-              </p>
+              <div class="flex-1 text-center text-white font-semibold">
+                Sign In
+              </div>
+              <div class="flex items-center">
+                <button
+                  :aria-expanded="!collapsed"
+                  class="p-2 text-white/90 hover:text-white"
+                  @click.prevent="toggleCollapse"
+                >
+                  <svg
+                    v-if="!collapsed"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><path
+                    d="M6 9l6-6 6 6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><path
+                    d="M18 15l-6 6-6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
+                </button>
+              </div>
+            </div>
 
-              <form
-                class="mt-3 space-y-3"
-                @submit.prevent="submit"
-              >
-                <div>
-                  <input
-                    v-model="email"
-                    type="email"
-                    required
-                    placeholder="you@example.com"
-                    class="w-full rounded-lg bg-white/15 text-white placeholder-white/70 border border-white/30 px-3 py-2 text-sm"
-                  >
-                </div>
-                <div>
-                  <input
-                    v-model="password"
-                    type="password"
-                    required
-                    placeholder="Password"
-                    class="w-full rounded-lg bg-white/15 text-white placeholder-white/70 border border-white/30 px-3 py-2 text-sm"
-                  >
-                </div>
-                <div class="flex items-center justify-between text-xs text-white/80">
-                  <label class="inline-flex items-center gap-2">
+            <!-- Body: collapsible content -->
+            <div
+              class="card-body px-4 pb-4 transition-all duration-300"
+              :class="collapsed ? 'opacity-0 pointer-events-none h-0 py-0' : 'opacity-100 pt-3'"
+            >
+              <div class="relative z-10">
+                <form
+                  class="mt-3 space-y-3"
+                  @submit.prevent="submit"
+                >
+                  <div>
                     <input
-                      v-model="remember"
-                      type="checkbox"
-                      class="form-checkbox h-4 w-4"
+                      v-model="email"
+                      type="email"
+                      required
+                      placeholder="you@example.com"
+                      class="w-full rounded-lg bg-white/15 text-white placeholder-white/70 border border-white/30 px-3 py-2 text-sm"
                     >
-                    Remember
-                  </label>
-                  <div class="flex items-center gap-3">
-                    <RouterLink
-                      :to="{ name: 'register' }"
-                      class="underline"
-                    >
-                      Register
-                    </RouterLink>
-                    <RouterLink
-                      :to="{ name: 'forgot-password' }"
-                      class="underline"
-                    >
-                      Forgot?
-                    </RouterLink>
                   </div>
-                </div>
-                <div>
-                  <button
-                    :disabled="loading"
-                    class="w-full py-2 rounded-md bg-green-700/70 hover:bg-green-700/80 text-white border border-green-600/60 text-sm backdrop-blur-sm"
-                  >
-                    {{ loading ? 'Signing in…' : 'Sign in' }}
-                  </button>
-                </div>
-              </form>
+                  <div>
+                    <input
+                      v-model="password"
+                      type="password"
+                      required
+                      placeholder="Password"
+                      class="w-full rounded-lg bg-white/15 text-white placeholder-white/70 border border-white/30 px-3 py-2 text-sm"
+                    >
+                  </div>
+                  <div class="flex items-center justify-between text-xs text-white/80">
+                    <label class="inline-flex items-center gap-2">
+                      <input
+                        v-model="remember"
+                        type="checkbox"
+                        class="form-checkbox h-4 w-4"
+                      >
+                      Remember
+                    </label>
+                    <div class="flex items-center gap-3">
+                      <RouterLink
+                        :to="{ name: 'register' }"
+                        class="underline"
+                      >
+                        Register
+                      </RouterLink>
+                      <RouterLink
+                        :to="{ name: 'forgot-password' }"
+                        class="underline"
+                      >
+                        Forgot?
+                      </RouterLink>
+                    </div>
+                  </div>
+                  <div>
+                    <button
+                      :disabled="loading"
+                      class="w-full py-2 rounded-md bg-green-700/70 hover:bg-green-700/80 text-white border border-green-600/60 text-sm backdrop-blur-sm"
+                    >
+                      {{ loading ? 'Signing in…' : 'Sign in' }}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -402,14 +445,20 @@
 
 <script setup>
 import { ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 
+// Collapse state for the floating card
+const collapsed = ref(false)
+function toggleCollapse() { collapsed.value = !collapsed.value }
+
+// form state
 const email = ref('')
 const password = ref('')
 const remember = ref(false)
 const error = ref('')
 const loading = ref(false)
+
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -435,3 +484,9 @@ const submit = async () => {
   }
 }
 </script>
+
+<style scoped>
+.card-body { transition: opacity 240ms ease, height 240ms ease, padding 240ms ease }
+.max-h-\[720px\] { max-height: 720px }
+.max-h-14 { max-height: 56px }
+</style>

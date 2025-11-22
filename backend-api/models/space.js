@@ -42,6 +42,8 @@ const spaceSchema = new mongoose.Schema({
   settings: {type: String, required: false},
   notes: { type: String, required: false },
   metaData: { type: String, required: false },
+  // Space-level audit logs (flexible schema)
+  logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
   createdAt: { type: Date, default: Date.now, required: false},
   updatedAt: { type: Date, default: Date.now, required: false },
 });

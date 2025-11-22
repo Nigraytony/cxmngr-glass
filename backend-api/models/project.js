@@ -69,6 +69,9 @@ const projectSchema = new mongoose.Schema({
   logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
   // Active flag for project (soft delete / enable/disable)
   isActive: { type: Boolean, default: true },
+  // Support soft-delete and a simple status enum for frontend display
+  deleted: { type: Boolean, default: false },
+  status: { type: String, enum: ['Active', 'Deleted', 'Inactive', 'Archived', 'Pending'], default: 'Active' },
   // Stripe billing fields (per-project subscription)
   stripeSubscriptionId: { type: String, default: null },
   stripePriceId: { type: String, default: null },
@@ -97,9 +100,86 @@ projectSchema.pre('save', function (next) {
       this.commissioning_agent.email = String(this.commissioning_agent.email).trim().toLowerCase()
     }
     this.updatedAt = new Date()
+    // Normalize status casing: accept case-insensitive inputs and store canonical enum value
+    try {
+      const allowedStatuses = ['Active', 'Deleted', 'Inactive', 'Archived', 'Pending']
+      if (this.status && typeof this.status === 'string') {
+        const found = allowedStatuses.find(s => s.toLowerCase() === String(this.status).toLowerCase())
+        if (found) this.status = found
+      }
+    } catch (e) {
+      // ignore normalization errors
+    }
+    // Keep deleted + status in sync
+    try {
+      if (this.deleted) {
+        this.status = 'Deleted'
+        this.isActive = false
+      } else if (this.status === 'Deleted') {
+        this.deleted = true
+        this.isActive = false
+      } else if (!this.status) {
+        this.status = this.isActive ? 'Active' : 'Inactive'
+      }
+    } catch (e) {
+      // ignore
+    }
   } catch (e) {
     // best-effort
   }
+  next()
+})
+
+// Normalize status on update queries (findOneAndUpdate, updateOne, updateMany, update)
+function _normalizeStatusForUpdate(update) {
+  try {
+    if (!update) return
+    const allowedStatuses = ['Active', 'Deleted', 'Inactive', 'Archived', 'Pending']
+    const apply = (val) => {
+      if (val && typeof val === 'string') {
+        const found = allowedStatuses.find(s => s.toLowerCase() === String(val).toLowerCase())
+        if (found) return found
+      }
+      return val
+    }
+    if (update.$set && Object.prototype.hasOwnProperty.call(update.$set, 'status')) {
+      update.$set.status = apply(update.$set.status)
+    } else if (Object.prototype.hasOwnProperty.call(update, 'status')) {
+      update.status = apply(update.status)
+    }
+    if (update.$setOnInsert && Object.prototype.hasOwnProperty.call(update.$setOnInsert, 'status')) {
+      update.$setOnInsert.status = apply(update.$setOnInsert.status)
+    }
+  } catch (e) {
+    // best-effort normalization; ignore errors
+  }
+}
+
+projectSchema.pre('findOneAndUpdate', function (next) {
+  try {
+    _normalizeStatusForUpdate(this.getUpdate())
+  } catch (e) {}
+  next()
+})
+
+projectSchema.pre('updateOne', function (next) {
+  try {
+    _normalizeStatusForUpdate(this.getUpdate())
+  } catch (e) {}
+  next()
+})
+
+projectSchema.pre('updateMany', function (next) {
+  try {
+    _normalizeStatusForUpdate(this.getUpdate())
+  } catch (e) {}
+  next()
+})
+
+projectSchema.pre('update', function (next) {
+  try {
+    _normalizeStatusForUpdate(this.getUpdate())
+  } catch (e) {}
   next()
 })
 

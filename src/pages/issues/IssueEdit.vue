@@ -1016,6 +1016,66 @@
     </Modal>
     
     <!-- Attachment Viewer Modal -->
+    <!-- Logs Tab -->
+    <div
+      v-if="currentTab === 'Logs'"
+      class="space-y-3"
+    >
+      <div class="flex items-center justify-between">
+        <div class="text-white/80">
+          Issue logs
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="loadLogs"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div
+        v-if="logsLoading"
+        class="text-white/70"
+      >
+        Loading logs...
+      </div>
+      <div v-else>
+        <div
+          v-if="!logsList.length"
+          class="text-white/60"
+        >
+          No logs for this issue.
+        </div>
+        <ul
+          v-else
+          class="space-y-2"
+        >
+          <li
+            v-for="(l, idx) in logsList"
+            :key="(l.ts || '') + String(idx)"
+            class="p-2 rounded bg-white/5 border border-white/10"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-sm text-white/80">
+                <span class="font-medium">{{ l.type }}</span>
+                <span class="text-white/60"> — {{ l.message }}</span>
+              </div>
+              <div class="text-xs text-white/60">
+                {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
+              </div>
+            </div>
+            <div
+              v-if="l.details"
+              class="mt-2 text-xs text-white/60 truncate"
+            >
+              {{ JSON.stringify(l.details) }}
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
     <Modal
       v-model="attachmentViewerOpen"
       :panel-class="attachmentFullscreen ? 'max-w-none w-screen h-[92vh]' : 'max-w-5xl w-[90vw]'"
@@ -2051,7 +2111,7 @@ async function saveAndGetId(): Promise<string> {
 }
 
 // Tabs logic
-const tabs = ['Info', 'Photos', 'Comments', 'Attachments']
+const tabs = ['Info', 'Photos', 'Comments', 'Attachments', 'Logs']
 const currentTab = ref('Info')
 const activeIndex = computed(() => {
   const i = tabs.indexOf(currentTab.value)
@@ -2059,6 +2119,29 @@ const activeIndex = computed(() => {
 })
 const tabLeft = computed(() => (activeIndex.value * 100) / tabs.length)
 const tabWidth = computed(() => 100 / tabs.length)
+
+// Logs tab
+const logsList = ref<any[]>([])
+const logsLoading = ref(false)
+async function loadLogs() {
+  const iid = String(route.params.id)
+  if (!iid || iid === 'new') return
+  logsLoading.value = true
+  try {
+    const { useLogsStore } = await import('../../stores/logs')
+    const logs = useLogsStore()
+    const list = await logs.fetchLogs('issues', iid)
+    logsList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    logsList.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+watch(currentTab, (v) => {
+  if (v === 'Logs') loadLogs()
+})
 
 // Ensure the issues list is available for navigation
 const issuesList = computed(() => Array.isArray(issues.issues) ? issues.issues : [])

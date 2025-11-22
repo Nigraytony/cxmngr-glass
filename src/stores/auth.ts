@@ -47,6 +47,8 @@ export interface User {
 }
 
 import { getApiBase } from '../utils/api'
+import http from '../utils/http'
+import { getAuthHeaders } from '../utils/auth'
 const API_BASE = `${getApiBase()}/api/users`;
 
 export const useAuthStore = defineStore('auth', () => {
@@ -59,17 +61,8 @@ export const useAuthStore = defineStore('auth', () => {
    async function login(email: string, password: string) {
     error.value = null;
     try {
-      const res = await fetch(`${API_BASE}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        error.value = err.error || 'Login failed';
-        return false;
-      }
-      const data = await res.json();
+      const res = await http.post('/api/users/login', { email, password })
+      const data = res.data
       user.value = {
         _id: data.user._id,
         id: data.user._id || data.user.id,
@@ -84,8 +77,8 @@ export const useAuthStore = defineStore('auth', () => {
         social_media: data.user.social_media || {},
       };
       token.value = data.token;
-    localStorage.setItem('user', JSON.stringify(user.value));
-    localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(user.value));
+      localStorage.setItem('token', data.token);
       // If user has a default project, set it in the project store
       try {
         const projectStore = useProjectStore()
@@ -97,10 +90,10 @@ export const useAuthStore = defineStore('auth', () => {
             if (id) projectStore.setCurrentProject(id)
           }
         }
-  } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore */ }
       return true;
-    } catch (e) {
-      error.value = 'Network error';
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Login failed'
       return false;
     }
   }
@@ -116,21 +109,11 @@ export const useAuthStore = defineStore('auth', () => {
   }) {
     error.value = null;
     try {
-      const res = await fetch(`${API_BASE}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        return { success: true, data };
-      } else {
-        error.value = data.message || data.error || 'Signup failed.';
-        return { success: false, error: error.value };
-      }
-    } catch (e) {
-      error.value = 'Network or server error.';
-      return { success: false, error: error.value };
+      const r = await http.post('/api/users/register', payload)
+      return { success: true, data: r.data }
+    } catch (e: any) {
+      error.value = e?.response?.data?.message || e?.response?.data?.error || 'Signup failed.'
+      return { success: false, error: error.value }
     }
   }
 
@@ -157,29 +140,27 @@ export const useAuthStore = defineStore('auth', () => {
       // Asynchronously refresh canonical user from server and update store when available
       (async () => {
         try {
-          const r = await fetch(`${API_BASE}/me`, { headers: { Authorization: `Bearer ${storedToken}` } })
-          if (r.ok) {
-            const data = await r.json()
-            const serverUser = data && data.user ? data.user : null
-            if (serverUser) {
-              user.value = {
-                _id: serverUser._id,
-                id: serverUser._id || serverUser.id,
-                avatar: serverUser.avatar || serverUser.contact?.avatar || '',
-                firstName: serverUser.firstName,
-                lastName: serverUser.lastName,
-                email: serverUser.email,
-                role: serverUser.role,
-                token: storedToken,
-                projects: serverUser.projects || [],
-                contact: serverUser.contact || { company: '', phone: '', address: { street: '', city: '', state: '', zip: '', country: '', taxId: '' }, bio: '', avatar: '' },
-                social_media: serverUser.social_media || {},
-              } as User
-              token.value = storedToken
-              try { localStorage.setItem('user', JSON.stringify(user.value)) } catch (e) { /* ignore */ }
-            }
+          const r = await http.get('/api/users/me', { headers: { Authorization: `Bearer ${storedToken}` } })
+          const data = r.data
+          const serverUser = data && data.user ? data.user : null
+          if (serverUser) {
+            user.value = {
+              _id: serverUser._id,
+              id: serverUser._id || serverUser.id,
+              avatar: serverUser.avatar || serverUser.contact?.avatar || '',
+              firstName: serverUser.firstName,
+              lastName: serverUser.lastName,
+              email: serverUser.email,
+              role: serverUser.role,
+              token: storedToken,
+              projects: serverUser.projects || [],
+              contact: serverUser.contact || { company: '', phone: '', address: { street: '', city: '', state: '', zip: '', country: '', taxId: '' }, bio: '', avatar: '' },
+              social_media: serverUser.social_media || {},
+            } as User
+            token.value = storedToken
+            try { localStorage.setItem('user', JSON.stringify(user.value)) } catch (e) { /* ignore */ }
           } else {
-            // if refresh failed, keep optimistic local user/token if present
+            // if refresh returned no user, keep optimistic local user/token if present
             if (stored) {
               try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) { /* ignore */ }
             }
@@ -205,7 +186,7 @@ export const useAuthStore = defineStore('auth', () => {
               if (id) projectStore.setCurrentProject(id)
             }
           }
-  } catch (e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
       })()
     } else if (stored && !storedToken) {
       // No token: restore stored user without auth (useful for dev flows), but clear token state
@@ -236,24 +217,8 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return false;
     try {
       const uid = user.value._id || user.value.id
-      const res = await fetch(`${API_BASE}/update/${uid}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token.value ? { Authorization: `Bearer ${token.value}` } : {})
-        },
-        body: JSON.stringify(updated),
-      });
-      const data = await (async () => {
-        try { return await res.json() } catch (e) { return null }
-      })();
-      if (!res.ok) {
-        // prefer server-provided message if available
-        error.value = (data && (data.error || data.message)) || `Failed to update user (${res.status})`;
-        return false;
-      }
-      // if res.ok but no json, treat as success
-      if (!data) return true as unknown as any;
+      const res = await http.put(`/api/users/update/${uid}`, updated, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+      const data = res.data
       // backend may return { user } or the raw user object
       const returned = data && data.user ? data.user : data;
 
@@ -282,10 +247,10 @@ export const useAuthStore = defineStore('auth', () => {
             if (id) projectStore.setCurrentProject(id)
           }
         }
-  } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore */ }
       return true;
-    } catch (e) {
-      error.value = 'Network error';
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Network error';
       return false;
     }
   }
@@ -295,30 +260,16 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value && !userId) return false;
     try {
       const uid = userId || user.value!._id || user.value!.id
-      const res = await fetch(`${API_BASE}/update/${uid}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token.value ? { Authorization: `Bearer ${token.value}` } : {})
-          },
-          body: JSON.stringify({ avatar: avatarUrl }),
-        });
-      if (!res.ok) {
-        // try to parse error body
-        let body = null
-        try { body = await res.json() } catch (e) { /* ignore */ }
-        error.value = (body && (body.error || body.message)) || 'Failed to update avatar'
-        return false;
-      }
-      const data = await res.json();
+      const res = await http.put(`/api/users/update/${uid}`, { avatar: avatarUrl }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+      const data = res.data
       const returned = data && data.user ? data.user : data;
       if (user.value) {
         user.value.avatar = returned.avatar || (returned.contact?.avatar) || avatarUrl;
         localStorage.setItem('user', JSON.stringify(user.value));
       }
       return true;
-    } catch (e) {
-      error.value = 'Network error';
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Network error';
       return false;
     }
   }
@@ -328,22 +279,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return { success: false, error: 'Not authenticated' };
     try {
       // Server expects { email, currentPassword, newPassword }
-      const res = await fetch(`${API_BASE}/change-password`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token.value ? { Authorization: `Bearer ${token.value}` } : {})
-          },
-          body: JSON.stringify({ email: user.value.email, currentPassword, newPassword }),
-        });
-      const data = await res.json();
-      if (!res.ok) {
-        error.value = data.error || data.message || 'Failed to change password'
-        return { success: false, error: error.value }
-      }
+      const res = await http.post('/api/users/change-password', { email: user.value.email, currentPassword, newPassword }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
       return { success: true }
-    } catch (e) {
-      error.value = 'Network error'
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Failed to change password'
       return { success: false, error: error.value }
     }
   }

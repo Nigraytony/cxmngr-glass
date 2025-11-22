@@ -40,6 +40,8 @@ const equipmentSchema = new mongoose.Schema({
     history: { type: String, required: false },
     labels: { type: String, required: false },
     metadata: { type: String, required: false },
+    // Equipment-level audit logs (flexible schema)
+    logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });

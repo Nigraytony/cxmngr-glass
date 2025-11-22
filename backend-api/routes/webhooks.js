@@ -12,6 +12,8 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 const Project = require('../models/project');
 const WebhookEvent = require('../models/webhookEvent');
+const Invoice = require('../models/invoice');
+const Charge = require('../models/charge');
 
 // Stripe webhook endpoint mounted at /api/stripe/webhook
 router.post('/webhook', async (req, res) => {
@@ -102,19 +104,103 @@ router.post('/webhook', async (req, res) => {
         }
         break;
       }
-      case 'invoice.payment_succeeded': {
+      case 'invoice.created':
+      case 'invoice.finalized':
+      case 'invoice.updated':
+      case 'invoice.payment_succeeded':
+      case 'invoice.payment_failed': {
         const invoice = event.data.object;
-        const subId = invoice.subscription;
-        if (subId) {
-          const sub = await stripe.subscriptions.retrieve(String(subId));
-          const projectId = sub.metadata && sub.metadata.projectId;
-          if (projectId) {
-            await Project.findByIdAndUpdate(projectId, {
-              stripeSubscriptionStatus: sub.status,
-              stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
-              isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
-            });
+        // Persist invoice to DB
+        try {
+          const projectIdFromMeta = invoice.metadata && invoice.metadata.projectId ? String(invoice.metadata.projectId) : null;
+          const mapped = {
+            invoiceId: invoice.id,
+            projectId: projectIdFromMeta,
+            subscriptionId: invoice.subscription || null,
+            customerId: invoice.customer || null,
+            amount_due: invoice.amount_due != null ? (invoice.amount_due / 100) : null,
+            amount_paid: invoice.amount_paid != null ? (invoice.amount_paid / 100) : null,
+            currency: invoice.currency || null,
+            status: invoice.status || null,
+            hosted_invoice_url: invoice.hosted_invoice_url || null,
+            description: invoice.description || (invoice.metadata && invoice.metadata.description) || '',
+            period_start: invoice.period_start ? new Date(invoice.period_start * 1000) : null,
+            period_end: invoice.period_end ? new Date(invoice.period_end * 1000) : null,
+            createdAt: invoice.created ? new Date(invoice.created * 1000) : null,
+            metadata: invoice.metadata || {},
+            raw: invoice,
+          };
+          await Invoice.findOneAndUpdate({ invoiceId: invoice.id }, { $set: mapped }, { upsert: true, new: true });
+        } catch (invErr) {
+          console.error('persist invoice err', invErr);
+        }
+
+        // Update project subscription status when payment succeeded
+        if (event.type === 'invoice.payment_succeeded') {
+          const subId = invoice.subscription;
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(String(subId));
+              const projectId = sub.metadata && sub.metadata.projectId;
+              if (projectId) {
+                await Project.findByIdAndUpdate(projectId, {
+                  stripeSubscriptionStatus: sub.status,
+                  stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+                  isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
+                });
+              }
+            } catch (e) {
+              console.warn('failed to update project from invoice payment_succeeded', e && e.message);
+            }
           }
+        }
+        break;
+      }
+      case 'charge.succeeded':
+      case 'charge.failed': {
+        const charge = event.data.object;
+        try {
+          // Try to determine projectId from charge metadata or linked invoice.
+          // Prefer a lookup in our Invoice DB first (cheaper, avoids Stripe API calls),
+          // then fall back to checking the Charge metadata and finally Stripe invoice metadata.
+          let projectId = charge.metadata && charge.metadata.projectId ? String(charge.metadata.projectId) : null;
+          if (!projectId && charge.invoice) {
+            try {
+              const invDoc = await Invoice.findOne({ invoiceId: String(charge.invoice) }).lean();
+              if (invDoc && invDoc.projectId) {
+                projectId = String(invDoc.projectId);
+              }
+            } catch (e) {
+              // ignore DB lookup errors and continue to fallback
+            }
+          }
+
+          if (!projectId && charge.invoice) {
+            // fallback to Stripe invoice metadata if DB didn't have it
+            try {
+              const inv = await stripe.invoices.retrieve(String(charge.invoice));
+              if (inv && inv.metadata && inv.metadata.projectId) projectId = String(inv.metadata.projectId);
+            } catch (e) {
+              // ignore invoice retrieval errors
+            }
+          }
+
+          const mapped = {
+            chargeId: charge.id,
+            invoiceId: charge.invoice || null,
+            projectId: projectId,
+            customerId: charge.customer || null,
+            amount: charge.amount != null ? (charge.amount / 100) : null,
+            currency: charge.currency || null,
+            status: charge.status || null,
+            payment_method_details: charge.payment_method_details || {},
+            createdAt: charge.created ? new Date(charge.created * 1000) : null,
+            metadata: charge.metadata || {},
+            raw: charge,
+          };
+          await Charge.findOneAndUpdate({ chargeId: charge.id }, { $set: mapped }, { upsert: true, new: true });
+        } catch (chErr) {
+          console.error('persist charge err', chErr);
         }
         break;
       }

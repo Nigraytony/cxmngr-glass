@@ -77,6 +77,56 @@ function toPlainEquipment(doc) {
   if (typeof e.checklists === 'string') {
     try { e.checklists = JSON.parse(e.checklists) } catch { e.checklists = [] }
   }
+
+// Equipment logs: append and read
+// GET /api/equipment/:id/logs?limit=200&type=section_created
+router.get('/:id/logs', auth, async (req, res) => {
+  try {
+    const id = req.params.id
+    const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
+    const type = req.query.type ? String(req.query.type) : null
+    const equipment = await Equipment.findById(id).select('logs').lean()
+    if (!equipment) return res.status(404).send({ error: 'Equipment not found' })
+    let logs = Array.isArray(equipment.logs) ? equipment.logs.slice() : []
+    if (type) logs = logs.filter((e) => e && e.type === type)
+    logs.sort((a, b) => {
+      const ta = a && a.ts ? new Date(a.ts).getTime() : 0
+      const tb = b && b.ts ? new Date(b.ts).getTime() : 0
+      return tb - ta
+    })
+    logs = logs.slice(0, limit)
+    return res.status(200).send(logs)
+  } catch (err) {
+    console.error('get equipment logs error', err)
+    return res.status(500).send({ error: 'Failed to load logs' })
+  }
+})
+
+// POST /api/equipment/:id/logs -> append one log event
+router.post('/:id/logs', auth, async (req, res) => {
+  try {
+    const id = req.params.id
+    const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
+    if (!event.type) return res.status(400).send({ error: 'type is required' })
+    event.ts = event.ts ? new Date(event.ts) : new Date()
+    if (!event.by && req.user) {
+      try {
+        const u = await require('../models/user').findById(req.user && (req.user._id || req.user.id)).lean()
+        if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
+      } catch {}
+    }
+    const updated = await Equipment.findByIdAndUpdate(
+      id,
+      { $push: { logs: { $each: [event], $slice: -5000 } }, $set: { updatedAt: new Date() } },
+      { new: true, projection: { _id: 1 } }
+    )
+    if (!updated) return res.status(404).send({ error: 'Equipment not found' })
+    return res.status(201).send({ ok: true })
+  } catch (err) {
+    console.error('append equipment log error', err)
+    return res.status(500).send({ error: 'Failed to append log' })
+  }
+})
   if (!Array.isArray(e.checklists)) e.checklists = []
   if (typeof e.functionalTests === 'string') {
     try { e.functionalTests = JSON.parse(e.functionalTests) } catch { e.functionalTests = [] }
