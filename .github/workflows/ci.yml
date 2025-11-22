@@ -39,16 +39,7 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
-      - name: Run integration tests (backend)
-        env:
-          CI: true
-          JWT_SECRET: test_jwt_secret
-          STRIPE_SECRET_KEY: dummy
-        run: |
-          set -e
-          cd backend-api
-          npm ci
-          npm run test:integration
+      # Integration tests are handled in the dedicated `backend-integration` job
 
   backend-integration:
     name: Backend integration tests
@@ -76,21 +67,42 @@ jobs:
 
       - name: Ensure OpenSSL 1.1 runtime (libcrypto.so.1.1)
         run: |
-          set -e
+          set -euo pipefail
           echo "Checking for libcrypto.so.1.1"
           if ldconfig -p | grep -q "libcrypto.so.1.1"; then
             echo "libcrypto.so.1.1 already present"
-          else
-            echo "Attempting to install libssl1.1 via apt"
-            sudo apt-get update
-            if sudo apt-get install -y libssl1.1; then
-              echo "Installed libssl1.1 via apt"
+            exit 0
+          fi
+
+          echo "Attempting to install libssl1.1 via apt"
+          sudo apt-get update
+          if sudo apt-get install -y libssl1.1; then
+            echo "Installed libssl1.1 via apt"
+            exit 0
+          fi
+
+          echo "apt install failed, attempting fallback downloads of libssl1.1 deb"
+          set +e
+          urls=(
+            "https://security.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb"
+            "https://security.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb"
+            "https://archive.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb"
+          )
+          for u in "${urls[@]}"; do
+            echo "Trying $u"
+            wget -4 -qO /tmp/libssl1.1.deb "$u"
+            if [ -s /tmp/libssl1.1.deb ]; then
+              sudo dpkg -i /tmp/libssl1.1.deb && sudo apt-get -f install -y && break
             else
-              echo "apt install failed, attempting fallback download of libssl1.1 deb"
-              # Try a fallback Ubuntu package (works on many runners); ignore failures
-              wget -qO /tmp/libssl1.1.deb https://security.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb || true
-              sudo dpkg -i /tmp/libssl1.1.deb || true
+              echo "download produced empty file, trying next mirror"
             fi
+          done
+          set -e
+          if ldconfig -p | grep -q "libcrypto.so.1.1"; then
+            echo "libcrypto.so.1.1 is now available"
+          else
+            echo "Warning: libcrypto.so.1.1 not available after attempted installs"
+            echo "MongoDB-memory-server tests may fail on this runner"
           fi
 
       - name: Install backend dependencies
