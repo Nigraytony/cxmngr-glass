@@ -37,16 +37,18 @@ jobs:
         run: npm run lint
 
       - name: Run unit tests
-        if: false
         run: npm run test:unit
 
-      - name: Run integration tests
-        if: false
+      - name: Run integration tests (backend)
         env:
           CI: true
           JWT_SECRET: test_jwt_secret
           STRIPE_SECRET_KEY: dummy
-        run: npm run test:integration
+        run: |
+          set -e
+          cd backend-api
+          npm ci
+          npm run test:integration
 
   backend-integration:
     name: Backend integration tests
@@ -95,7 +97,6 @@ jobs:
         run: npm ci
 
       - name: Run backend integration tests
-        if: false
         env:
           NODE_ENV: test
         run: npm run test:integration
