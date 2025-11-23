@@ -33,6 +33,16 @@
         >
       </div>
       <div>
+        <label class="block text-white/70 text-sm">Duration</label>
+        <input
+          v-model.number="task.duration"
+          type="number"
+          min="0"
+          step="1"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
+      </div>
+      <div>
         <label class="block text-white/70 text-sm">Completion (%)</label>
         <input
           v-model.number="task.percentComplete"
