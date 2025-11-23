@@ -292,7 +292,7 @@
                         </div>
                       </div>
                       <!-- thin progress bar positioned at the bottom of the name cell -->
-                      <div class="absolute left-3 right-3 bottom-0 h-4 flex items-center">
+                      <div class="absolute left-3 right-3 bottom-0 h-3 flex items-center">
                         <div class="relative w-full">
                           <div class="h-[3px] bg-white/10 rounded overflow-hidden">
                             <div
@@ -301,7 +301,7 @@
                             />
                           </div>
                           <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span class="text-[10px] leading-none text-white/80">{{ pct(t) + '%' }}</span>
+                            <span class="text-[9px] leading-none text-white/80">{{ pct(t) + '%' }}</span>
                           </div>
                         </div>
                       </div>
@@ -503,16 +503,57 @@ function isComplete(t) {
 
 async function toggleComplete(t, checked) {
   if (!t || !t._id) return
-  const old = { status: t.status, percentComplete: t.percentComplete }
-  // optimistic update
-  t.percentComplete = checked ? 100 : 0
-  t.status = checked ? 'Completed' : 'Not Started'
+
+  // Determine descendants by WBS prefix; if present, propagate toggle to all descendants
+  const cp = t.wbs ? canonicalDescendantPrefix(String(t.wbs)) : ''
+  const toUpdate = []
+  if (cp) {
+    // include the task itself and all descendants
+    const descendants = (tasks.value || []).filter(x => x && x.wbs && String(x.wbs).startsWith(cp))
+    toUpdate.push(t)
+    for (const d of descendants) toUpdate.push(d)
+  } else {
+    toUpdate.push(t)
+  }
+
+  // Save old values for rollback
+  const oldMap = new Map()
+  for (const item of toUpdate) {
+    oldMap.set(item._id || (item.wbs || ''), { status: item.status, percentComplete: item.percentComplete })
+    item.percentComplete = checked ? 100 : 0
+    item.status = checked ? 'Completed' : 'Not Started'
+  }
+
+  // Send PATCH requests in parallel
   try {
-    await http.patch(`/api/tasks/${t._id}`, { status: t.status, percentComplete: t.percentComplete })
+    const patches = toUpdate.map(item => {
+      if (!item || !item._id) return Promise.resolve()
+      return http.patch(`/api/tasks/${item._id}`, { status: item.status, percentComplete: item.percentComplete }).catch(err => ({ __err: err, id: item._id }))
+    })
+    const res = await Promise.all(patches)
+    // detect failures
+    const failed = res.filter(r => r && r.__err)
+    if (failed.length > 0) {
+      // rollback failed items
+      for (const f of failed) {
+        const id = f.id
+        const item = tasks.value.find(x => x._id === id)
+        if (item) {
+          const old = oldMap.get(id) || {}
+          item.status = old.status
+          item.percentComplete = old.percentComplete
+        }
+      }
+      try { alert('Failed to update some tasks') } catch (e) { console.error(e) }
+    }
   } catch (err) {
-    // revert on error
-    t.status = old.status
-    t.percentComplete = old.percentComplete
+    // revert all on unexpected error
+    for (const item of toUpdate) {
+      const key = item._id || (item.wbs || '')
+      const old = oldMap.get(key) || {}
+      item.status = old.status
+      item.percentComplete = old.percentComplete
+    }
     try { alert('Failed to update task status') } catch (e) { console.error(e) }
   }
 }
