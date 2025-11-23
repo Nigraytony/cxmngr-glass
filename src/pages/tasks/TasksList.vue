@@ -316,7 +316,7 @@
                       {{ fmt(t.end) }}
                     </td>
                     <td class="px-3 py-2 align-top">
-                      {{ typeof t.cost === 'number' ? ('$' + Number(t.cost).toFixed(2)) : (t.cost || '') }}
+                      <div>{{ costVal(t) != null ? ('$' + Number(costVal(t)).toFixed(2)) : '' }}</div>
                     </td>
                     <td class="px-3 py-2 text-right">
                       <div class="inline-flex items-center justify-end">
@@ -775,6 +775,33 @@ function dur(t) {
     return computeDurationRecursive(t)
   }
   return (t && typeof t.duration === 'number' && Number.isFinite(t.duration)) ? t.duration : null
+}
+
+function computeCostRecursive(task, seen = new Set()) {
+  if (!task) return null
+  const id = task._id || String(task.wbs || '')
+  if (seen.has(id)) return null
+  seen.add(id)
+
+  const children = getImmediateChildren(task)
+  if (!children || children.length === 0) {
+    const c = task && typeof task.cost === 'number' && Number.isFinite(task.cost) ? task.cost : null
+    return c
+  }
+
+  let sum = 0
+  let any = false
+  for (const c of children) {
+    const cc = computeCostRecursive(c, seen)
+    if (cc != null) { sum += cc; any = true }
+  }
+  return any ? sum : null
+}
+
+function costVal(t) {
+  const children = getImmediateChildren(t)
+  if (children && children.length > 0) return computeCostRecursive(t)
+  return (t && typeof t.cost === 'number' && Number.isFinite(t.cost)) ? t.cost : null
 }
 
 function descendantCount(t) {
