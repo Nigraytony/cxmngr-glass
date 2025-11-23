@@ -292,11 +292,18 @@
                         </div>
                       </div>
                       <!-- thin progress bar positioned at the bottom of the name cell -->
-                      <div class="absolute left-3 right-3 bottom-0 h-[3px] bg-white/10 rounded overflow-hidden">
-                        <div
-                          :style="{ width: (t.percentComplete != null ? t.percentComplete : 0) + '%' }"
-                          class="h-full bg-emerald-400/80"
-                        />
+                      <div class="absolute left-3 right-3 bottom-0 h-4 flex items-center">
+                        <div class="relative w-full">
+                          <div class="h-[3px] bg-white/10 rounded overflow-hidden">
+                            <div
+                              :style="{ width: pct(t) + '%' }"
+                              class="h-full bg-emerald-400/80"
+                            />
+                          </div>
+                          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span class="text-[10px] leading-none text-white/80">{{ pct(t) + '%' }}</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td class="px-3 py-2 align-top">
@@ -490,7 +497,8 @@ function onEditCancel() {
 }
 
 function isComplete(t) {
-  return (t && (t.percentComplete === 100 || (t.status && String(t.status).toLowerCase() === 'completed')))
+  const effective = pct(t)
+  return (t && (effective === 100 || (t.status && String(t.status).toLowerCase() === 'completed')))
 }
 
 async function toggleComplete(t, checked) {
@@ -637,6 +645,66 @@ function hasChildren(t) {
     if (String(x.wbs) === String(t.wbs)) return false
     return String(x.wbs).startsWith(cp)
   })
+}
+
+function getImmediateChildren(parent) {
+  if (!parent || !parent.wbs) return []
+  const parentWbs = String(parent.wbs)
+  const segs = parseWbs(parentWbs)
+  const last = segs[segs.length - 1] || 0
+
+  let childBasePrefix = ''
+  let childBaseLevel = 0
+  if (last === 0) {
+    childBasePrefix = segs.slice(0, -1).join('.')
+    childBaseLevel = segs.length - 1
+  } else {
+    childBasePrefix = parentWbs
+    childBaseLevel = segs.length
+  }
+
+  return (tasks.value || []).filter(x => {
+    if (!x || !x.wbs) return false
+    const k = String(x.wbs)
+    if (k === parentWbs) return false
+    const s = parseWbs(k)
+    if (s.length !== childBaseLevel + 1) return false
+    if (childBasePrefix) return k.startsWith(childBasePrefix + '.')
+    return true
+  })
+}
+
+function computePercentRecursive(task, seen = new Set()) {
+  if (!task) return 0
+  const id = task._id || String(task.wbs || '')
+  if (seen.has(id)) return 0
+  seen.add(id)
+
+  const children = getImmediateChildren(task)
+  if (!children || children.length === 0) {
+    const p = Number(task.percentComplete)
+    return Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
+  }
+
+  // compute weighted average by duration when available, otherwise equal weight
+  let totalWeight = 0
+  let weightedSum = 0
+  for (const c of children) {
+    const childPercent = computePercentRecursive(c, seen)
+    const dur = (c && typeof c.duration === 'number' && !Number.isNaN(c.duration) && c.duration > 0) ? c.duration : 1
+    weightedSum += childPercent * dur
+    totalWeight += dur
+  }
+  if (totalWeight === 0) return 0
+  return Math.max(0, Math.min(100, Math.round(weightedSum / totalWeight)))
+}
+
+function pct(t) {
+  // prefer computed percent if task has children
+  const children = getImmediateChildren(t)
+  if (children && children.length > 0) return computePercentRecursive(t)
+  const p = Number(t && t.percentComplete)
+  return Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
 }
 
 function descendantCount(t) {
