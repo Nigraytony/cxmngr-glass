@@ -183,7 +183,7 @@
             v-else
             class="overflow-x-auto rounded-md border border-white/10"
           >
-            <table class="min-w-full text-sm">
+            <table class="min-w-full text-sm compact-rows">
               <thead class="bg-white/5 text-white/70">
                 <tr>
                   <th class="w-8 px-2" />
@@ -242,7 +242,7 @@
                   >
                     <td class="px-2 py-2 align-top">
                       <span
-                        class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none"
+                        class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 text-white/70 cursor-grab active:cursor-grabbing select-none drag-handle"
                         title="Drag to reorder"
                         aria-label="Drag to reorder"
                       >
@@ -1015,5 +1015,23 @@ async function doDelete() {
 }
 .drop-move {
   transition: transform 200ms ease;
+}
+
+/* Compact rows: reduce vertical spacing by ~25% */
+.compact-rows td,
+.compact-rows th {
+  padding-top: 0.375rem; /* 0.5rem * 0.75 */
+  padding-bottom: 0.375rem;
+}
+.compact-rows .drag-handle {
+  height: 1.3125rem !important; /* 1.75rem * 0.75 */
+  width: 1.3125rem !important;
+}
+.compact-rows tr.h-6 {
+  height: 1.125rem !important; /* 1.5rem * 0.75 */
+}
+.compact-rows .drop-enter-to,
+.compact-rows .drop-leave-from {
+  height: 1.125rem !important;
 }
 </style>
