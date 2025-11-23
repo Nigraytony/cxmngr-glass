@@ -307,7 +307,7 @@
                       </div>
                     </td>
                     <td class="px-3 py-2 align-top">
-                      <div>{{ t.duration != null ? t.duration : '' }}</div>
+                      <div>{{ dur(t) != null ? dur(t) : '' }}</div>
                     </td>
                     <td class="px-3 py-2 align-top">
                       {{ fmt(t.start) }}
@@ -743,6 +743,38 @@ function pct(t) {
   if (children && children.length > 0) return computePercentRecursive(t)
   const p = Number(t && t.percentComplete)
   return Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
+}
+
+function computeDurationRecursive(task, seen = new Set()) {
+  if (!task) return null
+  const id = task._id || String(task.wbs || '')
+  if (seen.has(id)) return null
+  seen.add(id)
+
+  const children = getImmediateChildren(task)
+  if (!children || children.length === 0) {
+    const d = task && typeof task.duration === 'number' && Number.isFinite(task.duration) ? task.duration : null
+    return d
+  }
+
+  let sum = 0
+  let any = false
+  for (const c of children) {
+    const cd = computeDurationRecursive(c, seen)
+    if (cd != null) {
+      sum += cd
+      any = true
+    }
+  }
+  return any ? sum : null
+}
+
+function dur(t) {
+  const children = getImmediateChildren(t)
+  if (children && children.length > 0) {
+    return computeDurationRecursive(t)
+  }
+  return (t && typeof t.duration === 'number' && Number.isFinite(t.duration)) ? t.duration : null
 }
 
 function descendantCount(t) {
