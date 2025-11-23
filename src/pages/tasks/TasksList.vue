@@ -727,17 +727,14 @@ function computePercentRecursive(task, seen = new Set()) {
     return Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
   }
 
-  // compute weighted average by duration when available, otherwise equal weight
-  let totalWeight = 0
-  let weightedSum = 0
+  // simple average of immediate children's percents (each child equal weight)
+  let sum = 0
   for (const c of children) {
     const childPercent = computePercentRecursive(c, seen)
-    const dur = (c && typeof c.duration === 'number' && !Number.isNaN(c.duration) && c.duration > 0) ? c.duration : 1
-    weightedSum += childPercent * dur
-    totalWeight += dur
+    sum += childPercent
   }
-  if (totalWeight === 0) return 0
-  return Math.max(0, Math.min(100, Math.round(weightedSum / totalWeight)))
+  const avg = children.length > 0 ? (sum / children.length) : 0
+  return Math.max(0, Math.min(100, Math.round(avg)))
 }
 
 function pct(t) {
