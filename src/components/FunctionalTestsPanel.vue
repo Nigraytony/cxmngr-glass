@@ -839,7 +839,7 @@
               </div>
             </div>
             <div
-              v-if="Array.isArray(t.issues) && t.issues.length"
+              v-if="visibleIssues(t).length"
               class="mt-2 space-y-1"
             >
               <div class="text-xs text-white/70">
@@ -847,15 +847,15 @@
               </div>
               <ul class="space-y-1">
                 <li
-                  v-for="(iss, k) in t.issues"
+                  v-for="(iss, k) in visibleIssues(t)"
                   :key="(iss.id||iss._id)||k"
                   class="text-sm"
                 >
                   <RouterLink
-                    :to="{ name: 'issue-edit', params: { id: (iss.id||iss._id) } }"
+                    :to="{ name: 'issue-edit', params: { id: (iss.id||iss._id)||k } }"
                     class="hover:underline"
                   >
-                    #{{ iss.number || '—' }} {{ iss.title || 'Issue' }}
+                    #{{ iss.number ?? '—' }} {{ iss.title || 'Issue' }}
                   </RouterLink>
                 </li>
               </ul>
@@ -1312,6 +1312,7 @@ const props = defineProps<{
   projectId?: string,
   equipmentId?: string,
   equipmentTag?: string,
+  equipmentSpace?: string,
   signatures?: any[]
 }>()
 const emit = defineEmits<{
@@ -1325,6 +1326,67 @@ const ui = useUiStore()
 const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
 const authStore = useAuthStore()
+
+function normalizeId(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return undefined
+    return trimmed
+  }
+  if (value == null) return undefined
+  const str = String(value).trim()
+  return (!str || str === 'undefined' || str === 'null') ? undefined : str
+}
+
+function normalizeText(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || undefined
+  }
+  if (value == null) return undefined
+  const str = String(value).trim()
+  return str || undefined
+}
+
+function isIssueDeleted(issue: any): boolean {
+  if (!issue) return true
+  if (issue.deleted || issue.isDeleted) return true
+  const status = typeof issue.status === 'string' ? issue.status.trim().toLowerCase() : ''
+  return status === 'deleted' || status === 'archived'
+}
+
+const activeIssueMap = computed<Record<string, any>>(() => {
+  const map: Record<string, any> = {}
+  const list = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+  for (const entry of list) {
+    if (!entry || isIssueDeleted(entry)) continue
+    const key = normalizeId((entry as any).id || (entry as any)._id)
+    if (!key) continue
+    map[key] = entry
+  }
+  return map
+})
+
+function visibleIssues(t: FunctionalTestItem) {
+  const arr = Array.isArray(t.issues) ? t.issues : []
+  const map = activeIssueMap.value
+  return arr
+    .map((raw: any) => {
+      const key = normalizeId(raw?.id || raw?._id || raw)
+      if (!key) return null
+      const active = map[key]
+      if (!active) return null
+      return {
+        ...(active as any),
+        id: (active as any).id || (active as any)._id || key,
+        _id: (active as any)._id || (active as any).id || key,
+        number: (active as any).number ?? raw?.number ?? null,
+        title: (active as any).title ?? raw?.title ?? 'Issue',
+        type: (active as any).type ?? raw?.type ?? undefined,
+      }
+    })
+    .filter(Boolean) as any[]
+}
 
 // Accordion open/close state per test item (by object identity)
 const openVersion = ref(0)
@@ -1984,10 +2046,11 @@ const issueDraft = reactive<{ title: string; description: string; type: string; 
 function openIssue(i: number) {
   issueCtx.value = { index: i }
   const t = local[i]
-  const eq = props.equipmentTag || props.equipmentId || 'Equipment'
+  const eq = normalizeText(props.equipmentTag) || normalizeId(props.equipmentId) || 'Equipment'
   issueDraft.title = `FPT: ${eq} • #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`.slice(0, 120)
   const lines: string[] = []
   lines.push(`Equipment: ${eq}`)
+  if (props.equipmentSpace) lines.push(`Space: ${props.equipmentSpace}`)
   lines.push(`Test: #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`)
   if (t.expected_result) lines.push(`Expected: ${t.expected_result}`)
   if (t.actual_result) lines.push(`Actual: ${t.actual_result}`)
@@ -2004,8 +2067,10 @@ async function createIssueFromTest() {
     if (!ctx) return
     const i = ctx.index
     const t = local[i]
-    const pid = String(props.projectId || projectStore.currentProjectId || '')
+    const pid = normalizeId(props.projectId) || normalizeId((projectStore.currentProjectId as any)?.value ?? projectStore.currentProjectId) || ''
     if (!pid) return
+    const assetId = normalizeId(props.equipmentId)
+    const location = normalizeText(props.equipmentSpace) ?? normalizeText(props.equipmentTag)
     const payload: any = {
       projectId: pid,
       title: (issueDraft.title || '').trim() || 'FPT Issue',
@@ -2014,10 +2079,10 @@ async function createIssueFromTest() {
       severity: issueDraft.priority || 'Medium',
       status: 'Open',
       system: t && (t as any).system ? (t as any).system : undefined,
-      location: props.equipmentTag || undefined,
-      assetId: props.equipmentId || undefined,
       assignedTo: issueDraft.assignedTo || undefined,
     }
+    if (location) payload.location = location
+    if (assetId) payload.assetId = assetId
     const created = await issuesStore.createIssue(payload)
     if (!Array.isArray(t.issues)) t.issues = []
     t.issues.push({ id: (created as any).id || (created as any)._id, number: (created as any).number, title: (created as any).title, type: (created as any).type })

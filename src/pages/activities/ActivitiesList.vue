@@ -97,7 +97,11 @@
       </button>
     </div>
 
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-if="loading" class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/70 flex flex-col items-center justify-center">
+      <Spinner />
+      <p class="mt-3 text-sm uppercase tracking-wide">Loading activities…</p>
+    </div>
+    <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80 w-full">
           <div class="text-lg font-semibold">
@@ -237,8 +241,10 @@
 import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
 import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
+import { useUiStore } from '../../stores/ui'
 import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 
 const store = useActivitiesStore()
@@ -249,6 +255,7 @@ const showDeleteModal = ref(false)
 const deletingActivity = ref<string | null>(null)
 const deletingName = ref<string>('')
 const deleting = ref(false)
+const ui = useUiStore()
 
 onMounted(async () => {
   await store.fetchActivities().catch(() => {})
@@ -347,13 +354,15 @@ async function doDelete() {
   deleting.value = true
   try {
     await store.deleteActivity(deletingActivity.value)
-    // store already updates local cache; optionally refetch
-    // await store.fetchActivities().catch(() => {})
-  } catch (e) {
+    await store.fetchActivities().catch(() => {})
+    ui.showSuccess('Activity deleted')
+    cancelDelete()
+  } catch (e: any) {
     console.error('Failed to delete activity', e)
+    const msg = e?.response?.data?.error || e?.message || 'Failed to delete activity'
+    ui.showError(msg)
   } finally {
     deleting.value = false
-    cancelDelete()
   }
 }
 </script>

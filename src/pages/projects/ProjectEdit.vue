@@ -68,9 +68,15 @@
         <div>
           <div
             v-if="!project"
-            class="p-4 text-white/70"
+            class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/80 flex items-center gap-3"
+            role="status"
+            aria-live="polite"
           >
-            Loading project...
+            <Spinner />
+            <div>
+              <p class="text-sm uppercase tracking-wide">Loading project…</p>
+              <p class="text-xs text-white/60">Fetching project details</p>
+            </div>
           </div>
           <div v-else>
             <div v-show="activeTab === 'info'">
@@ -524,18 +530,54 @@
                 Subscription
               </h3>
               <div class="space-y-6">
+                <div v-if="billingLoading" class="text-white/70">
+                  Loading billing…
+                </div>
+                <div v-if="billingError" class="text-red-300 text-sm">
+                  {{ billingError }}
+                </div>
                 <h2 class="text-xl font-semibold">
                   Project Billing
                 </h2>
+
+                <div
+                  v-if="billingSummary?.dunning?.isPastDue || status === 'past_due'"
+                  class="p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-red-100"
+                >
+                  <div class="font-semibold">
+                    Payment issue
+                  </div>
+                  <div class="text-sm mt-1">
+                    We couldn’t process the last payment. Please update the payment method or retry. Last invoice:
+                    {{ billingSummary?.dunning?.lastInvoiceStatus || 'unknown' }} ({{ billingSummary?.dunning?.lastInvoiceId || 'n/a' }})
+                  </div>
+                </div>
 
                 <div class="p-4 rounded-lg border">
                   <p><strong>Status:</strong> {{ status }}</p>
                   <p class="mt-2">
                     <strong>Plan:</strong> {{ planLabel }}
                   </p>
-                  <p v-if="project.stripeCurrentPeriodEnd">
+                  <p v-if="billingSummary?.promotion" class="mt-2 text-sm text-white/80">
+                    <strong>Discount:</strong>
+                    <span>
+                      <template v-if="billingSummary.promotion.percentOff">
+                        -{{ billingSummary.promotion.percentOff }}%
+                      </template>
+                      <template v-else-if="billingSummary.promotion.amountOff">
+                        -{{ billingSummary.promotion.amountOff.toFixed(2) }} {{ (billingSummary.promotion.currency || 'usd').toUpperCase() }}
+                      </template>
+                      <template v-else>
+                        Applied
+                      </template>
+                      <span v-if="billingSummary.promotion.couponName">
+                        ({{ billingSummary.promotion.couponName }})
+                      </span>
+                    </span>
+                  </p>
+                  <p v-if="billingSummary?.currentPeriodEnd || project.stripeCurrentPeriodEnd">
                     <strong>Current period end:</strong>
-                    {{ new Date(project.stripeCurrentPeriodEnd).toLocaleString() }}
+                    {{ new Date(billingSummary?.currentPeriodEnd || project.stripeCurrentPeriodEnd).toLocaleString() }}
                   </p>
                   <p v-if="status === 'trialing' && trialEndDate">
                     <strong>Trial ends:</strong> {{ new Date(trialEndDate).toLocaleString() }}
@@ -549,6 +591,25 @@
                   >
                     Trial end is fixed from when the project was created and does not change when switching plans.
                   </p>
+
+                  <div
+                    v-if="billingSummary?.defaultPaymentMethod"
+                    class="mt-3 text-sm text-white/80"
+                  >
+                    <strong>Payment method:</strong>
+                    <span class="ml-2">
+                      {{ billingSummary.defaultPaymentMethod.brand || '' }} •••• {{ billingSummary.defaultPaymentMethod.last4 || '' }} exp {{ billingSummary.defaultPaymentMethod.exp_month }}/{{ billingSummary.defaultPaymentMethod.exp_year }}
+                    </span>
+                  </div>
+                  <div
+                    v-if="billingSummary?.billingAdmin"
+                    class="mt-2 text-sm text-white/80"
+                  >
+                    <strong>Billing admin:</strong>
+                    <span class="ml-2">
+                      {{ billingSummary.billingAdmin.name || billingSummary.billingAdmin.email || billingSummary.billingAdmin.userId }}
+                    </span>
+                  </div>
                 </div>
 
                 <div class="p-4 rounded-lg border">
@@ -630,51 +691,317 @@
                     <button
                       :disabled="loading"
                       class="px-4 py-2 rounded bg-blue-600 text-white"
-                      @click="startCheckout"
+                      @click="hasSubscription ? handleChangePlan() : startCheckout"
                     >
-                      {{ loading ? '...' : 'Subscribe / Update' }}
+                      {{ loading || planChangeLoading ? '...' : (hasSubscription ? 'Apply plan' : 'Subscribe') }}
                     </button>
 
-                    
+                    <button
+                      :disabled="planPreviewLoading || !selectedPrice"
+                      class="px-4 py-2 rounded border"
+                      @click="handlePreviewPlan"
+                    >
+                      {{ planPreviewLoading ? '...' : 'Preview proration' }}
+                    </button>
 
                     <button
-                      :disabled="loading"
+                      :disabled="loading || cancelLoading || resumeLoading"
                       class="px-4 py-2 rounded border"
-                      @click="openBillingPortal"
+                      @click="hasSubscription ? (billingSummary?.cancelAtPeriodEnd ? handleResume() : handleCancel(true)) : openBillingPortal"
                     >
-                      Manage billing
+                      {{ billingSummary?.cancelAtPeriodEnd ? (resumeLoading ? '...' : 'Resume') : (cancelLoading ? '...' : 'Cancel at period end') }}
+                    </button>
+                  </div>
+
+                  <div class="mt-3 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                    <input
+                      v-model="promotionCode"
+                      placeholder="Promotion code"
+                      class="w-full sm:w-64 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
+                    >
+                    <button
+                      class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                      :disabled="applyingPromotion || loading"
+                      @click="hasSubscription ? applyPromotionToSubscription() : startCheckout()"
+                    >
+                      {{ applyingPromotion ? 'Applying…' : (hasSubscription ? 'Apply to subscription' : 'Use at checkout') }}
+                    </button>
+                  </div>
+
+                  <div
+                    v-if="planPreview && planPreview.lines && planPreview.lines.length"
+                    class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10"
+                  >
+                    <div class="font-semibold mb-2">
+                      Proration preview
+                    </div>
+                    <ul class="space-y-1">
+                      <li
+                        v-for="line in planPreview.lines"
+                        :key="line.id"
+                        class="flex justify-between"
+                      >
+                        <span>{{ line.description }}</span>
+                        <span>{{ line.amount != null ? line.amount.toFixed(2) : '' }}</span>
+                      </li>
+                    </ul>
+                    <div class="mt-2">
+                      Amount due next invoice: {{ planPreview.amount_due != null ? planPreview.amount_due.toFixed(2) : 'n/a' }}
+                    </div>
+                    <div
+                      v-if="planPreview.total_discount_amounts && planPreview.total_discount_amounts.length"
+                      class="mt-2 text-xs text-white/70"
+                    >
+                      Discounts applied:
+                      <span
+                        v-for="(d, idx) in planPreview.total_discount_amounts"
+                        :key="idx"
+                        class="inline-block ml-1"
+                      >
+                        -{{ d.amount != null ? (d.amount / 100).toFixed(2) : '' }} {{ (planPreview.currency || 'usd').toUpperCase() }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="p-4 rounded-lg border space-y-3">
+                  <div class="font-medium">
+                    Billing admin
+                  </div>
+                  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <select
+                      v-model="billingAdminUserId"
+                      class="w-full sm:w-80 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
+                    >
+                      <option :value="null">
+                        Select billing admin
+                      </option>
+                      <option
+                        v-for="member in billingAdminOptions"
+                        :key="member._id || member.email"
+                        :value="member._id || member.email"
+                      >
+                        {{ member.firstName }} {{ member.lastName }} ({{ member.email }})
+                      </option>
+                    </select>
+                    <button
+                      class="px-4 py-2 rounded bg-white/10 border border-white/20"
+                      :disabled="billingAdminLoading || !billingAdminUserId"
+                      @click="handleChangeBillingAdmin"
+                    >
+                      {{ billingAdminLoading ? '...' : 'Update billing admin' }}
                     </button>
                   </div>
                 </div>
 
-                <!-- Past payments & charges moved here from Settings -->
+                <div class="p-4 rounded-lg border space-y-3">
+                  <div class="font-medium">
+                    Payment method
+                  </div>
+                  <div class="text-sm text-white/70">
+                    Use Stripe Elements to add a card, or paste a payment method ID to set default.
+                  </div>
+                  <div
+                    v-if="!stripePublishableKey"
+                    class="text-sm text-red-300"
+                  >
+                    Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY). Add to enable card capture.
+                  </div>
+                  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <button
+                      class="px-4 py-2 rounded bg-white/10 border border-white/20"
+                      :disabled="paymentMethodLoading || !stripePublishableKey"
+                      @click="handleSetupIntent"
+                    >
+                      {{ paymentMethodLoading ? '...' : 'Start card setup' }}
+                    </button>
+                  </div>
+                  <BillingCardForm
+                    v-if="showCardForm && cardSetupClientSecret && stripePublishableKey"
+                    :client-secret="cardSetupClientSecret"
+                    :publishable-key="String(stripePublishableKey)"
+                    @success="handleCardSaved"
+                    @error="handleCardError"
+                    @cancel="handleCardCancel"
+                  />
+
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-2 text-sm text-white/80">
+                      <span class="font-medium">Saved cards</span>
+                      <span
+                        v-if="paymentMethodsLoading"
+                        class="text-white/60"
+                      >Loading…</span>
+                      <button
+                        class="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs"
+                        :disabled="paymentMethodsLoading"
+                        @click="loadPaymentMethods"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                    <div
+                      v-if="paymentMethodsError"
+                      class="text-sm text-red-300"
+                    >
+                      {{ paymentMethodsError }}
+                    </div>
+                    <div
+                      v-if="!paymentMethodsLoading && (!paymentMethods || paymentMethods.length === 0)"
+                      class="text-white/60 text-sm"
+                    >
+                      No saved cards.
+                    </div>
+                    <div
+                      v-for="pm in paymentMethods"
+                      :key="pm.id"
+                      class="flex items-center justify-between px-3 py-2 rounded bg-white/5 border border-white/10"
+                    >
+                      <div class="text-sm text-white/80">
+                        {{ pm.brand }} •••• {{ pm.last4 }} exp {{ pm.exp_month }}/{{ pm.exp_year }}
+                        <span
+                          v-if="pm.isDefault"
+                          class="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-100"
+                        >
+                          Default
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button
+                          class="px-3 py-1 rounded bg-white/10 border border-white/20 text-xs"
+                          :disabled="paymentMethodLoading || pm.isDefault"
+                          @click="() => makeDefaultFromList(pm.id)"
+                        >
+                          Make default
+                        </button>
+                        <button
+                          class="px-3 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-200 text-xs"
+                          :disabled="paymentMethodsLoading"
+                          @click="handleDetach(pm.id)"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <button
+                      class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                      @click="showManualPm = !showManualPm"
+                    >
+                      {{ showManualPm ? 'Hide manual PM entry' : 'Manual payment method ID' }}
+                    </button>
+                  </div>
+                  <div
+                    v-if="showManualPm"
+                    class="flex flex-col sm:flex-row gap-3 items-start sm:items-center"
+                  >
+                    <input
+                      v-model="paymentMethodId"
+                      placeholder="pm_xxx"
+                      class="w-full sm:w-64 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
+                    >
+                    <button
+                      class="px-4 py-2 rounded bg-blue-600 text-white"
+                      :disabled="paymentMethodLoading"
+                      @click="handleUpdatePaymentMethod"
+                    >
+                      {{ paymentMethodLoading ? '...' : 'Set default' }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Transactions: invoices/charges -->
                 <div class="p-4 rounded-lg border mt-4">
-                  <div class="flex items-center justify-between mb-3">
-                    <div class="font-medium">
-                      Past payments & charges
+                  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
+                    <div class="font-medium text-base">
+                      Transactions
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                      <label class="flex items-center gap-1">
+                        <span>Status</span>
+                        <select
+                          v-model="transactionsStatus"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                          @change="transactionsPage=1; loadTransactions()"
+                        >
+                          <option value="all">All</option>
+                          <option value="paid">Paid</option>
+                          <option value="open">Open</option>
+                          <option value="void">Void</option>
+                          <option value="uncollectible">Uncollectible</option>
+                          <option value="failed">Failed</option>
+                          <option value="succeeded">Succeeded</option>
+                        </select>
+                      </label>
+                      <label class="flex items-center gap-1">
+                        <span>Type</span>
+                        <select
+                          v-model="transactionsType"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                          @change="transactionsPage=1; loadTransactions()"
+                        >
+                          <option value="all">All</option>
+                          <option value="invoice">Invoices</option>
+                          <option value="charge">Charges</option>
+                        </select>
+                      </label>
+                      <label class="flex items-center gap-1">
+                        <span>Start</span>
+                        <input
+                          v-model="transactionsStart"
+                          type="date"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                          @change="transactionsPage=1; loadTransactions()"
+                        >
+                      </label>
+                      <label class="flex items-center gap-1">
+                        <span>End</span>
+                        <input
+                          v-model="transactionsEnd"
+                          type="date"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                          @change="transactionsPage=1; loadTransactions()"
+                        >
+                      </label>
+                      <button
+                        class="px-3 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15"
+                        :disabled="transactionsLoading"
+                        @click="loadTransactions"
+                      >
+                        Refresh
+                      </button>
+                      <button
+                        class="px-3 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15"
+                        :disabled="transactionsLoading"
+                        @click="exportTransactionsCsv"
+                      >
+                        Export CSV
+                      </button>
                     </div>
                     <div class="flex items-center gap-2">
                       <button
                         class="px-2 py-1 rounded bg-white/6"
-                        :disabled="invoicesPage<=1"
-                        @click="invPrevPage"
+                        :disabled="transactionsPage<=1"
+                        @click="txnPrevPage"
                       >
                         Prev
                       </button>
                       <div class="text-white/70">
-                        Page {{ invoicesPage }} / {{ Math.max(1, Math.ceil((invoicesTotal || 0) / invoicesPerPage)) }}
+                        Page {{ transactionsPage }} / {{ Math.max(1, Math.ceil((transactionsTotal || 0) / transactionsPerPage)) }}
                       </div>
                       <button
                         class="px-2 py-1 rounded bg-white/6"
-                        :disabled="invoicesPage >= Math.max(1, Math.ceil((invoicesTotal || 0) / invoicesPerPage))"
-                        @click="invNextPage"
+                        :disabled="transactionsPage >= Math.max(1, Math.ceil((transactionsTotal || 0) / transactionsPerPage))"
+                        @click="txnNextPage"
                       >
                         Next
                       </button>
                       <select
-                        v-model.number="invoicesPerPage"
+                        v-model.number="transactionsPerPage"
                         class="ml-3 px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
-                        @change="invoicesPage=1; loadInvoices()"
+                        @change="transactionsPage=1; loadTransactions()"
                       >
                         <option :value="5">
                           5
@@ -695,16 +1022,16 @@
                     </div>
                   </div>
                   <div
-                    v-if="invoicesLoading"
+                    v-if="transactionsLoading"
                     class="text-white/70"
                   >
                     Loading…
                   </div>
                   <div
-                    v-else-if="!invoices.length"
+                    v-else-if="!transactions.length"
                     class="text-white/60"
                   >
-                    No payments found.
+                    No transactions found.
                   </div>
                   <table
                     v-else
@@ -713,47 +1040,87 @@
                     <thead class="bg-white/5 text-white/70 text-xs">
                       <tr>
                         <th class="px-3 py-2 text-left">
+                          Type
+                        </th>
+                        <th class="px-3 py-2 text-left">
                           Date
                         </th>
                         <th class="px-3 py-2 text-left">
-                          Amount
+                          Amount (gross)
+                        </th>
+                        <th class="px-3 py-2 text-left">
+                          Discount
+                        </th>
+                        <th class="px-3 py-2 text-left">
+                          Net
                         </th>
                         <th class="px-3 py-2 text-left">
                           Status
                         </th>
                         <th class="px-3 py-2 text-left">
+                          Coupon/Promo
+                        </th>
+                        <th class="px-3 py-2 text-left">
                           Description
                         </th>
                         <th class="px-3 py-2 text-left">
-                          Invoice
+                          Link
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr
-                        v-for="inv in invoices"
-                        :key="inv.id"
+                        v-for="txn in transactions"
+                        :key="txn.id"
                         class="border-t border-white/10 hover:bg-white/3"
                       >
-                        <td class="px-3 py-2">
-                          {{ inv.ts ? new Date(inv.ts).toLocaleString() : '' }}
+                        <td class="px-3 py-2 capitalize">
+                          {{ txn.type }}
                         </td>
                         <td class="px-3 py-2">
-                          {{ inv.amount_due != null ? (inv.amount_due.toFixed(2) + ' ' + (inv.currency || '').toUpperCase()) : '' }}
+                          {{ txn.ts ? new Date(txn.ts).toLocaleString() : '' }}
                         </td>
                         <td class="px-3 py-2">
-                          {{ inv.status }}
+                          {{ txn.amount != null ? (txn.amount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '' }}
+                        </td>
+                        <td class="px-3 py-2">
+                          {{ txn.discountAmount ? ('-' + txn.discountAmount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '—' }}
                         </td>
                         <td class="px-3 py-2 truncate">
-                          {{ inv.description || '' }}
+                          {{ txn.netAmount != null ? (txn.netAmount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '' }}
+                        </td>
+                        <td class="px-3 py-2">
+                          {{ txn.status }}
+                        </td>
+                        <td class="px-3 py-2">
+                          <div class="flex flex-col text-xs">
+                            <span v-if="txn.coupon && (txn.coupon.name || txn.coupon.id)">
+                              {{ txn.coupon.name || txn.coupon.id }}
+                            </span>
+                            <span v-if="txn.promotionCodeId">
+                              Code: {{ txn.promotionCodeId }}
+                            </span>
+                            <span v-if="!txn.coupon && !txn.promotionCodeId">
+                              —
+                            </span>
+                          </div>
+                        </td>
+                        <td class="px-3 py-2 truncate">
+                          {{ txn.description || '' }}
                         </td>
                         <td class="px-3 py-2">
                           <a
-                            v-if="inv.hosted_invoice_url"
-                            :href="inv.hosted_invoice_url"
+                            v-if="txn.invoiceUrl"
+                            :href="txn.invoiceUrl"
                             target="_blank"
                             class="text-white/80 hover:underline"
-                          >View</a>
+                          >Invoice</a>
+                          <a
+                            v-if="txn.receiptUrl"
+                            :href="txn.receiptUrl"
+                            target="_blank"
+                            class="ml-2 text-white/80 hover:underline"
+                          >Receipt</a>
                         </td>
                       </tr>
                     </tbody>
@@ -1442,12 +1809,14 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import Modal from '../../components/Modal.vue'
 import { useUiStore } from '../../stores/ui'
-import { useProjectStore } from '../../stores/project'
+import { useProjectStore, fetchBillingSummary, previewPlanChange, changePlan, cancelSubscription, resumeSubscription, changeBillingAdmin, createSetupIntent, updatePaymentMethod, listPaymentMethods, detachPaymentMethod } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
 import http from '../../utils/http'
 import { apiUrl } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
 import PermissionsModal from '../../components/PermissionsModal.vue'
+import BillingCardForm from '../../components/BillingCardForm.vue'
+import Spinner from '../../components/Spinner.vue'
 // inlineConfirm removed (unused in this file)
 
 const projectStore = useProjectStore()
@@ -1477,35 +1846,325 @@ const roleTemplates = ref([])
 // Dedicated UI list that always preserves all visible roles
 const roleTemplatesView = ref([])
 
-// Invoices / payments UI state
-const invoices = ref<any[]>([])
-const invoicesPage = ref(1)
-const invoicesPerPage = ref(10)
-const invoicesTotal = ref(0)
-const invoicesLoading = ref(false)
+// Transactions (invoices/charges) UI state
+const transactions = ref<any[]>([])
+const transactionsPage = ref(1)
+const transactionsPerPage = ref(10)
+const transactionsTotal = ref(0)
+const transactionsLoading = ref(false)
+const transactionsStatus = ref('all')
+const transactionsType = ref('all')
+const transactionsStart = ref('')
+const transactionsEnd = ref('')
+const billingSummary = ref<any | null>(null)
+const billingLoading = ref(false)
+const billingError = ref<string | null>(null)
+const planPreview = ref<any | null>(null)
+const planPreviewLoading = ref(false)
+const planChangeLoading = ref(false)
+const cancelLoading = ref(false)
+const resumeLoading = ref(false)
+const paymentMethodId = ref('')
+const paymentMethodLoading = ref(false)
+const billingAdminUserId = ref<string | null>(null)
+const billingAdminLoading = ref(false)
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || import.meta.env.VITE_STRIPE_PUBLIC_KEY || ''
+const cardSetupClientSecret = ref<string | null>(null)
+const showCardForm = ref(false)
+const showManualPm = ref(false)
+const paymentMethods = ref<any[]>([])
+const paymentMethodsLoading = ref(false)
+const paymentMethodsError = ref<string | null>(null)
+const promotionCode = ref('')
+const applyingPromotion = ref(false)
 
-async function loadInvoices() {
+async function loadTransactions() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
     if (!pid) return
-    invoicesLoading.value = true
-    // Prefer DB-backed invoices endpoint when available
-    const res = await http.get(`/api/projects/${pid}/invoices`, { params: { page: invoicesPage.value, limit: invoicesPerPage.value }, headers: getAuthHeaders() })
+    transactionsLoading.value = true
+    const params: any = {
+      page: transactionsPage.value,
+      limit: transactionsPerPage.value,
+    }
+    if (transactionsStatus.value && transactionsStatus.value !== 'all') params.status = transactionsStatus.value
+    if (transactionsType.value && transactionsType.value !== 'all') params.type = transactionsType.value
+    if (transactionsStart.value) params.start = transactionsStart.value
+    if (transactionsEnd.value) params.end = transactionsEnd.value
+    const res = await http.get(`/api/stripe/project/${pid}/transactions`, { params, headers: getAuthHeaders() })
     const data = res.data || { items: [], total: 0 }
-    invoices.value = Array.isArray(data.items) ? data.items : []
-    invoicesTotal.value = Number(data.total || 0)
+    transactions.value = Array.isArray(data.items) ? data.items : []
+    transactionsTotal.value = Number(data.total || 0)
   } catch (e) {
-    console.error('loadInvoices err', e)
-    invoices.value = []
-    invoicesTotal.value = 0
+    console.error('loadTransactions err', e)
+    transactions.value = []
+    transactionsTotal.value = 0
   } finally {
-    invoicesLoading.value = false
+    transactionsLoading.value = false
   }
 }
 
-function invPrevPage() { if (invoicesPage.value > 1) { invoicesPage.value -= 1; loadInvoices() } }
-function invNextPage() { const tot = Math.max(1, Math.ceil((invoicesTotal.value || 0) / invoicesPerPage.value)); if (invoicesPage.value < tot) { invoicesPage.value += 1; loadInvoices() } }
+function txnPrevPage() { if (transactionsPage.value > 1) { transactionsPage.value -= 1; loadTransactions() } }
+function txnNextPage() { const tot = Math.max(1, Math.ceil((transactionsTotal.value || 0) / transactionsPerPage.value)); if (transactionsPage.value < tot) { transactionsPage.value += 1; loadTransactions() } }
+function exportTransactionsCsv() {
+  const pid = projectId || (project.value && (project.value._id || project.value.id))
+  if (!pid) return
+  const params = new URLSearchParams()
+  params.set('page', String(transactionsPage.value))
+  params.set('limit', String(transactionsPerPage.value))
+  params.set('format', 'csv')
+  if (transactionsStatus.value && transactionsStatus.value !== 'all') params.set('status', transactionsStatus.value)
+  if (transactionsType.value && transactionsType.value !== 'all') params.set('type', transactionsType.value)
+  if (transactionsStart.value) params.set('start', transactionsStart.value)
+  if (transactionsEnd.value) params.set('end', transactionsEnd.value)
+  const url = `${apiUrl()}/api/stripe/project/${pid}/transactions?${params.toString()}`
+  window.open(url, '_blank')
+}
 const authStore = useAuthStore()
+
+async function loadBillingSummary() {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return
+    billingLoading.value = true
+    billingError.value = null
+    const data = await fetchBillingSummary(String(pid))
+    billingSummary.value = data
+    if (data && data.priceId) selectedPrice.value = data.priceId
+    if (data && data.billingAdmin && data.billingAdmin.userId) billingAdminUserId.value = data.billingAdmin.userId
+    await loadPaymentMethods()
+  } catch (e) {
+    console.error('loadBillingSummary err', e)
+    billingError.value = 'Failed to load billing summary'
+  } finally {
+    billingLoading.value = false
+  }
+}
+
+async function handlePreviewPlan() {
+  try {
+    if (!selectedPrice.value) return
+    planPreviewLoading.value = true
+    planPreview.value = await previewPlanChange(String(projectId || project.value?.id || project.value?._id), String(selectedPrice.value))
+  } catch (e) {
+    console.error('preview plan err', e)
+    ui.showError('Failed to preview plan change')
+  } finally {
+    planPreviewLoading.value = false
+  }
+}
+
+async function handleChangePlan() {
+  try {
+    if (!selectedPrice.value) return
+    planChangeLoading.value = true
+    await changePlan(String(projectId || project.value?.id || project.value?._id), String(selectedPrice.value))
+    ui.showSuccess('Plan updated')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('change plan err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to change plan')
+  } finally {
+    planChangeLoading.value = false
+  }
+}
+
+async function handleCancel(atPeriodEnd = true) {
+  try {
+    cancelLoading.value = true
+    await cancelSubscription(String(projectId || project.value?.id || project.value?._id), atPeriodEnd)
+    ui.showSuccess(atPeriodEnd ? 'Will cancel at period end' : 'Subscription canceled')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('cancel err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to cancel subscription')
+  } finally {
+    cancelLoading.value = false
+  }
+}
+
+async function handleResume() {
+  try {
+    resumeLoading.value = true
+    await resumeSubscription(String(projectId || project.value?.id || project.value?._id))
+    ui.showSuccess('Cancellation removed')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('resume err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to resume subscription')
+  } finally {
+    resumeLoading.value = false
+  }
+}
+
+async function handleChangeBillingAdmin() {
+  try {
+    if (!billingAdminUserId.value) return
+    billingAdminLoading.value = true
+    const member = billingAdminOptions.value.find((m: any) => String(m._id) === String(billingAdminUserId.value) || m.email === billingAdminUserId.value)
+    await changeBillingAdmin(
+      String(projectId || project.value?.id || project.value?._id),
+      member ? { userId: member._id, email: member.email } : { userId: String(billingAdminUserId.value), email: billingAdminUserId.value }
+    )
+    ui.showSuccess('Billing admin updated')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('billing admin change err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to update billing admin')
+  } finally {
+    billingAdminLoading.value = false
+  }
+}
+
+async function handleSetupIntent() {
+  try {
+    if (!stripePublishableKey) {
+      ui.showError('Stripe publishable key missing (VITE_STRIPE_PUBLISHABLE_KEY)')
+      return
+    }
+    paymentMethodLoading.value = true
+    const data = await createSetupIntent(String(projectId || project.value?.id || project.value?._id))
+    cardSetupClientSecret.value = data?.client_secret || null
+    if (!cardSetupClientSecret.value) {
+      ui.showError('Setup intent missing client secret')
+      return
+    }
+    showCardForm.value = true
+    ui.showInfo('Enter card details and click Save card')
+  } catch (e) {
+    console.error('setup intent err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to create setup intent')
+  } finally {
+    paymentMethodLoading.value = false
+  }
+}
+
+async function handleCardSaved(pmId: string) {
+  try {
+    await updatePaymentMethod(String(projectId || project.value?.id || project.value?._id), pmId)
+    ui.showSuccess('Payment method saved')
+    paymentMethodId.value = ''
+    cardSetupClientSecret.value = null
+    showCardForm.value = false
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e: any) {
+    console.error('update PM err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to update payment method')
+  }
+}
+
+function handleCardError(msg: string) {
+  if (msg) ui.showError(msg)
+}
+
+function handleCardCancel() {
+  cardSetupClientSecret.value = null
+  showCardForm.value = false
+}
+
+async function handleUpdatePaymentMethod() {
+  try {
+    if (!paymentMethodId.value) {
+      ui.showError('Enter a payment method ID')
+      return
+    }
+    paymentMethodLoading.value = true
+    await updatePaymentMethod(String(projectId || project.value?.id || project.value?._id), paymentMethodId.value)
+    ui.showSuccess('Payment method updated')
+    paymentMethodId.value = ''
+    await loadPaymentMethods()
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('update PM err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to update payment method')
+  } finally {
+    paymentMethodLoading.value = false
+  }
+}
+
+async function makeDefaultFromList(pmId: string) {
+  try {
+    paymentMethodLoading.value = true
+    await updatePaymentMethod(String(projectId || project.value?.id || project.value?._id), pmId)
+    ui.showSuccess('Default payment method updated')
+    await loadPaymentMethods()
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('make default err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to update default payment method')
+  } finally {
+    paymentMethodLoading.value = false
+  }
+}
+
+async function applyPromotionToSubscription() {
+  try {
+    if (!promotionCode.value) {
+      ui.showError('Enter a promotion code')
+      return
+    }
+    applyingPromotion.value = true
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) throw new Error('No project selected')
+    await http.post(`/api/stripe/project/${pid}/promotion`, { code: promotionCode.value }, { headers: getAuthHeaders() })
+    ui.showSuccess('Promotion applied')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e: any) {
+    console.error('apply promo err', e)
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to apply promotion')
+  } finally {
+    applyingPromotion.value = false
+  }
+}
+
+async function loadPaymentMethods() {
+  try {
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if (!pid) return
+    paymentMethodsLoading.value = true
+    paymentMethodsError.value = null
+    const data = await listPaymentMethods(String(pid))
+    paymentMethods.value = Array.isArray(data?.items) ? data.items : []
+  } catch (e) {
+    console.error('loadPaymentMethods err', e)
+    paymentMethodsError.value = 'Failed to load payment methods'
+    paymentMethods.value = []
+  } finally {
+    paymentMethodsLoading.value = false
+  }
+}
+
+async function handleDetach(pmId: string) {
+  try {
+    if (paymentMethods.value && paymentMethods.value.length <= 1) {
+      ui.showError('Cannot remove the only saved payment method')
+      return
+    }
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm('Remove this payment method?')
+      if (!ok) return
+    }
+    paymentMethodsLoading.value = true
+    await detachPaymentMethod(String(projectId || project.value?.id || project.value?._id), pmId)
+    ui.showSuccess('Payment method removed')
+    await loadPaymentMethods()
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('detach PM err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to detach payment method')
+  } finally {
+    paymentMethodsLoading.value = false
+  }
+}
 
 // Modal-based permissions editor state & handlers
 const showPermsModal = ref(false)
@@ -1592,6 +2251,7 @@ const showRoleModal = ref(false)
 const editingRoleTemplate = ref({ name: '', description: '', permissionsText: '' })
 const selectedRolePerms = ref(new Set())
 const permMatrix = {
+  tasks: ['create', 'read', 'update', 'delete'],
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],
@@ -2234,7 +2894,10 @@ function exportCsv() {
 }
 
 // Lazy-load logs when tab is opened (initialize page)
-watch(activeTab, (t) => { if (t === 'logs' && (!logs.value.length || logsTotal.value === 0)) { logsPage.value = 1; loadLogs() } if (t === 'subscription') { invoicesPage.value = 1; loadInvoices() } })
+watch(activeTab, (t) => {
+  if (t === 'logs' && (!logs.value.length || logsTotal.value === 0)) { logsPage.value = 1; loadLogs() }
+  if (t === 'subscription') { transactionsPage.value = 1; loadTransactions(); loadBillingSummary() }
+})
 // Reload logs when type filter changes (server-side filter), reset to first page
 watch(selectedType, () => { logsPage.value = 1; loadLogs() })
 
@@ -2383,12 +3046,17 @@ const prices = ref([]);
 const selectedPrice = ref(null);
 const loading = ref(false);
 
-const status = computed(() => project.value?.stripeSubscriptionStatus || project.value?.status || 'trialing');
+const status = computed(() => billingSummary.value?.status || project.value?.stripeSubscriptionStatus || project.value?.status || 'trialing');
 const planLabel = computed(() => {
-  const id = project.value?.stripePriceId || selectedPrice.value;
+  const id = billingSummary.value?.priceId || project.value?.stripePriceId || selectedPrice.value;
   const p = (prices.value || []).find(x => x.id === id);
   return p ? p.label : (id || 'No plan');
 });
+const hasSubscription = computed(() => Boolean(billingSummary.value?.subscriptionId || project.value?.stripeSubscriptionId))
+const billingAdminOptions = computed(() => {
+  const team = project.value && Array.isArray(project.value.team) ? project.value.team : []
+  return team.filter((m: any) => m && (m._id || m.email))
+})
 
 // Plan details shown in the UI when a selection is made
 const planDetailsById = ref({});
@@ -2513,6 +3181,7 @@ async function startCheckout() {
     const { data } = await http.post('/api/stripe/create-checkout-session', {
       projectId: pid,
       priceId: selectedPrice.value,
+      promotionCode: promotionCode.value || undefined,
     }, { headers: getAuthHeaders() });
     if (data && data.url) {
       ui.showSuccess('Redirecting to checkout...')

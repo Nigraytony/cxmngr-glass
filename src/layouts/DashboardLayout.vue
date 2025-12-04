@@ -1,21 +1,21 @@
 <template>
-  <div class="app-bg min-h-screen text-white overflow-x-hidden">
-    <div class="grid md:grid-cols-[auto,1fr] w-full">
+  <div class="app-bg h-screen text-white overflow-hidden">
+    <div class="flex h-full w-full">
       <Sidebar
         :open="ui.sidebarOpen"
         @toggle="ui.toggleSidebar()"
       />
 
       <div
-        class="min-h-screen md:ml-0 min-w-0"
-        :class="ui.sidebarOpen ? 'ml-16 md:ml-0' : 'ml-16'"
+        class="flex-1 flex flex-col min-w-0 h-full transition-all duration-300"
       >
         <Topbar
+          class="sticky top-0 z-30"
           :name="auth.name"
           @toggle-sidebar="ui.toggleSidebar()"
           @logout="handleLogout"
         />
-        <main class="p-6 min-w-0">
+        <main class="flex-1 overflow-y-auto p-6 min-w-0">
           <Suspense>
             <template #default>
               <RouterView />

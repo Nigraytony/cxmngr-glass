@@ -15,6 +15,46 @@ const Template = require('../models/template');
 const Task = require('../models/task');
 // Project model already required above (used by webhook replay logic)
 
+function auditAdminAction(actor, actionType, meta = {}) {
+  try {
+    const entry = new AdminAudit({
+      actorUserId: actor && actor._id ? actor._id : null,
+      actionType,
+      meta,
+    });
+    return entry.save().catch(() => null);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function ensureStripeCustomerForUser(user) {
+  if (!stripe) throw new Error('Stripe not configured');
+  if (user.stripeCustomerId) return user.stripeCustomerId;
+  const customer = await stripe.customers.create({ email: user.email, metadata: { userId: String(user._id) } });
+  user.stripeCustomerId = customer.id;
+  await user.save();
+  return customer.id;
+}
+
+async function resolveProjectCustomerId(project) {
+  // Prefer billing admin
+  if (project.billingAdminUserId) {
+    const user = await User.findById(project.billingAdminUserId);
+    if (user) return user.stripeCustomerId || (await ensureStripeCustomerForUser(user));
+  }
+  // Fall back to subscription's customer
+  if (project.stripeSubscriptionId && stripe) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(String(project.stripeSubscriptionId));
+      if (sub && sub.customer) return sub.customer;
+    } catch (e) {
+      console.warn('[admin.backfill] failed to retrieve subscription', e && e.message);
+    }
+  }
+  return null;
+}
+
 // GET /api/admin/webhook-events?limit=50&status=processed&skip=0&date_from=2025-10-01&date_to=2025-10-21&projectId=...
 router.get('/webhook-events', async (req, res) => {
   try {
@@ -181,6 +221,100 @@ router.post('/webhook-events/:eventId/replay', async (req, res) => {
     }
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Failed to replay event' });
+  }
+});
+
+// POST /api/admin/billing/backfill/:projectId
+// Fetch invoices and charges from Stripe for a project and persist to DB.
+router.post('/billing/backfill/:projectId', async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const projectId = req.params.projectId;
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+
+    const customerId = await resolveProjectCustomerId(project);
+    if (!customerId && !project.stripeSubscriptionId) {
+      return res.status(400).json({ error: 'No customer or subscription available for backfill' });
+    }
+
+    let invoiceCount = 0;
+    let chargeCount = 0;
+
+    // Invoices (prefer subscription when present)
+    const invParams = {
+      limit: 100,
+    };
+    if (project.stripeSubscriptionId) invParams.subscription = project.stripeSubscriptionId;
+    else if (customerId) invParams.customer = customerId;
+    const invResp = await stripe.invoices.list(invParams);
+    const invoices = Array.isArray(invResp.data) ? invResp.data : [];
+    for (const inv of invoices) {
+      if (inv.metadata && inv.metadata.projectId && String(inv.metadata.projectId) !== String(projectId)) continue;
+      const mapped = {
+        invoiceId: inv.id,
+        projectId: inv.metadata && inv.metadata.projectId ? String(inv.metadata.projectId) : String(projectId),
+        subscriptionId: inv.subscription || null,
+        customerId: inv.customer || null,
+        amount_due: inv.amount_due != null ? (inv.amount_due / 100) : null,
+        amount_paid: inv.amount_paid != null ? (inv.amount_paid / 100) : null,
+        currency: inv.currency || null,
+        status: inv.status || null,
+        hosted_invoice_url: inv.hosted_invoice_url || null,
+        description: inv.description || (inv.metadata && inv.metadata.description) || '',
+        period_start: inv.period_start ? new Date(inv.period_start * 1000) : null,
+        period_end: inv.period_end ? new Date(inv.period_end * 1000) : null,
+        createdAt: inv.created ? new Date(inv.created * 1000) : null,
+        metadata: inv.metadata || {},
+        raw: inv,
+      };
+      await Invoice.findOneAndUpdate({ invoiceId: inv.id }, { $set: mapped }, { upsert: true });
+      invoiceCount += 1;
+    }
+
+    // Charges (customer-scoped)
+    if (customerId) {
+      const chargeResp = await stripe.charges.list({ customer: customerId, limit: 100 });
+      const charges = Array.isArray(chargeResp.data) ? chargeResp.data : [];
+      for (const ch of charges) {
+        let projId = ch.metadata && ch.metadata.projectId ? String(ch.metadata.projectId) : null;
+        if (!projId && ch.invoice) {
+          // Try to map using invoice in DB or invoice metadata
+          const invDoc = await Invoice.findOne({ invoiceId: String(ch.invoice) }).lean();
+          if (invDoc && invDoc.projectId) projId = String(invDoc.projectId);
+          if (!projId) {
+            try {
+              const inv = await stripe.invoices.retrieve(String(ch.invoice));
+              if (inv && inv.metadata && inv.metadata.projectId) projId = String(inv.metadata.projectId);
+            } catch (e) {
+              // ignore
+            }
+          }
+        }
+        if (projId && projId !== String(projectId)) continue;
+        const mapped = {
+          chargeId: ch.id,
+          invoiceId: ch.invoice || null,
+          projectId: projId || String(projectId),
+          customerId: ch.customer || null,
+          amount: ch.amount != null ? (ch.amount / 100) : null,
+          currency: ch.currency || null,
+          status: ch.status || null,
+          payment_method_details: ch.payment_method_details || {},
+          createdAt: ch.created ? new Date(ch.created * 1000) : null,
+          metadata: ch.metadata || {},
+          raw: ch,
+        };
+        await Charge.findOneAndUpdate({ chargeId: ch.id }, { $set: mapped }, { upsert: true });
+        chargeCount += 1;
+      }
+    }
+
+    await auditAdminAction(req.user, 'billing.backfill', { projectId, invoices: invoiceCount, charges: chargeCount });
+    return res.json({ ok: true, invoices: invoiceCount, charges: chargeCount });
+  } catch (err) {
+    console.error('admin backfill error', err);
+    return res.status(500).json({ error: err && err.message ? err.message : 'Backfill failed' });
   }
 });
 
@@ -589,6 +723,166 @@ router.delete('/templates/:id', async (req, res) => {
   }
 });
 
+// -- Admin: Coupons / Promotion Codes / Credits --------------------------
+
+// GET /api/admin/billing/promotion-codes?limit=50&active=true
+router.get('/billing/promotion-codes', async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const limit = Math.min(parseInt(req.query.limit || '50', 10), 100);
+    const active = req.query.active !== undefined ? String(req.query.active) === 'true' : undefined;
+    const list = await stripe.promotionCodes.list({
+      limit,
+      active,
+      expand: ['data.coupon']
+    });
+    const items = Array.isArray(list.data) ? list.data.map((pc) => ({
+      id: pc.id,
+      code: pc.code,
+      active: pc.active,
+      max_redemptions: pc.max_redemptions,
+      times_redeemed: pc.times_redeemed,
+      expires_at: pc.expires_at ? new Date(pc.expires_at * 1000) : null,
+      coupon: pc.coupon ? {
+        id: pc.coupon.id,
+        name: pc.coupon.name,
+        duration: pc.coupon.duration,
+        amount_off: pc.coupon.amount_off != null ? pc.coupon.amount_off / 100 : null,
+        percent_off: pc.coupon.percent_off || null,
+        currency: pc.coupon.currency || null,
+      } : null,
+    })) : [];
+    res.json({ items });
+  } catch (err) {
+    console.error('list promotion codes err', err && err.raw ? err.raw : err);
+    res.status(500).json({ error: 'Failed to list promotion codes' });
+  }
+});
+
+// POST /api/admin/billing/promotion-codes
+// body: { code, name, amount_off (cents), percent_off, currency, duration='once'|'repeating'|'forever', duration_in_months, max_redemptions, expires_at, applies_to: { products, priceId }, metadata }
+router.post('/billing/promotion-codes', async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const {
+      code,
+      name,
+      amount_off,
+      percent_off,
+      currency = 'usd',
+      duration = 'once',
+      duration_in_months,
+      max_redemptions,
+      expires_at,
+      applies_to,
+      metadata,
+    } = req.body || {};
+
+    if (!code) return res.status(400).json({ error: 'code is required' });
+    if (!amount_off && !percent_off) return res.status(400).json({ error: 'amount_off or percent_off required' });
+
+    const couponParams = {
+      name: name || code,
+      duration,
+      ...(duration === 'repeating' && duration_in_months ? { duration_in_months } : {}),
+      ...(amount_off ? { amount_off: Math.round(Number(amount_off)), currency } : {}),
+      ...(percent_off ? { percent_off: Number(percent_off) } : {}),
+      metadata: metadata || {},
+    };
+    const coupon = await stripe.coupons.create(couponParams);
+
+    const promoParams = {
+      coupon: coupon.id,
+      code,
+      max_redemptions: max_redemptions ? Number(max_redemptions) : undefined,
+      expires_at: expires_at ? Math.floor(new Date(expires_at).getTime() / 1000) : undefined,
+      metadata: { ...(metadata || {}), couponId: coupon.id },
+    };
+    if (applies_to && applies_to.priceId) promoParams['restrictions'] = { price_ids: [applies_to.priceId] };
+    if (applies_to && applies_to.products) promoParams['restrictions'] = { products: applies_to.products };
+
+    const promo = await stripe.promotionCodes.create(promoParams);
+
+    try {
+      await auditAdminAction(req.user, 'billing.promotion_code.create', { code, couponId: coupon.id, promotionCodeId: promo.id });
+    } catch (e) {}
+
+    res.status(201).json({ promotionCode: promo, coupon });
+  } catch (err) {
+    console.error('create promotion code err', err && err.raw ? err.raw : err);
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message });
+    res.status(500).json({ error: 'Failed to create promotion code' });
+  }
+});
+
+// POST /api/admin/billing/credits
+// body: { userId or email or customerId, amount (positive decimal dollars), currency='usd', description, metadata }
+router.post('/billing/credits', async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const { userId, email, customerId, amount, currency = 'usd', description, metadata } = req.body || {};
+    if (!amount) return res.status(400).json({ error: 'amount is required' });
+
+    let customer = customerId || null;
+    let targetUser = null;
+
+    if (!customer && (userId || email)) {
+      if (userId) {
+        targetUser = await User.findById(userId);
+      } else if (email) {
+        const normalizedEmail = String(email).trim().toLowerCase();
+        targetUser = await User.findOne({ email: normalizedEmail });
+      }
+      if (!targetUser) return res.status(404).json({ error: 'User not found' });
+      customer = await ensureStripeCustomerForUser(targetUser);
+    }
+    if (!customer) return res.status(400).json({ error: 'customerId or userId required' });
+
+    // Stripe requires amount in cents; positive for credit balance
+    const cents = Math.round(Number(amount) * 100);
+    const tx = await stripe.customers.createBalanceTransaction(customer, {
+      amount: cents,
+      currency,
+      description: description || 'Admin credit',
+      metadata: metadata || {},
+    });
+
+    try {
+      await auditAdminAction(req.user, 'billing.credit.create', { customerId: customer, amount: cents, currency, description, txId: tx.id });
+    } catch (e) {}
+
+    res.status(201).json({ balanceTransaction: tx });
+  } catch (err) {
+    console.error('create credit err', err && err.raw ? err.raw : err);
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message });
+    res.status(500).json({ error: 'Failed to create credit' });
+  }
+});
+
+// PATCH /api/admin/billing/promotion-codes/:id - update promo code (e.g., active, max_redemptions, expires_at)
+router.patch('/billing/promotion-codes/:id', async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'promotion code id required' });
+
+    const payload = {};
+    if (req.body.active !== undefined) payload['active'] = !!req.body.active;
+    if (req.body.max_redemptions !== undefined) payload['max_redemptions'] = Number(req.body.max_redemptions);
+    if (req.body.expires_at) payload['expires_at'] = Math.floor(new Date(req.body.expires_at).getTime() / 1000);
+
+    const updated = await stripe.promotionCodes.update(id, payload);
+
+    try {
+      await auditAdminAction(req.user, 'billing.promotion_code.update', { promotionCodeId: id, payload });
+    } catch (e) { /* ignore audit errors */ }
+
+    res.json({ promotionCode: updated });
+  } catch (err) {
+    console.error('update promotion code err', err && err.raw ? err.raw : err);
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message });
+    res.status(500).json({ error: 'Failed to update promotion code' });
+  }
+});
+
 module.exports = router;
-
-

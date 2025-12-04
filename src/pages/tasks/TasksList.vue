@@ -41,20 +41,7 @@
             </div>
           </div>
 
-          <div class="relative inline-block group">
-            <button
-              :class="['px-3 py-1 rounded border border-white/20', viewMode === 'gantt' ? 'bg-white/10' : 'bg-transparent']"
-              @click="viewMode = 'gantt'"
-            >
-              Gantt
-            </button>
-            <div
-              role="tooltip"
-              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-            >
-              Gantt view
-            </div>
-          </div>
+          <!-- Gantt view removed for now -->
         </div>
       </div>
       <div>
@@ -71,6 +58,18 @@
       >
         Refresh
       </button>
+      <div class="ml-2">
+        <div class="relative inline-block group">
+          <button
+            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+            aria-label="Settings"
+            @click="showSettingsModal = true"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.35 17.3l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.67 0 1.26-.39 1.51-1a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.2.69 1.82.33.4-.2.8-.3 1.24-.3H12a1.65 1.65 0 0 0 1.24.3c.62.36 1.32.17 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.2.4-.3.8-.3 1.24V9c.3.7.96 1.2 1.66 1.2h.09a2 2 0 1 1 0 4h-.09c-.7 0-1.36.5-1.66 1.2v.3c.02.41.14.81.34 1.2z" stroke-width="1"/></svg>
+          </button>
+          <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">Settings</div>
+        </div>
+      </div>
       <div class="ml-2">
         <div class="relative inline-block group inline-block rounded-md border border-white/10 px-3 py-2">
           <input
@@ -163,9 +162,10 @@
     >
       <div
         v-if="loading"
-        class="text-white/70"
+        class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/70 flex flex-col items-center justify-center"
       >
-        Loading...
+        <Spinner />
+        <p class="mt-3 text-sm uppercase tracking-wide">Loading tasks…</p>
       </div>
       <div v-else>
         <div
@@ -175,14 +175,7 @@
           No tasks found for this project.
         </div>
         <template v-else>
-          <TaskGantt
-            v-if="viewMode === 'gantt'"
-            :tasks="tasks"
-          />
-          <div
-            v-else
-            class="overflow-x-auto rounded-md border border-white/10"
-          >
+          <div class="overflow-x-auto rounded-md border border-white/10">
             <table class="min-w-full text-sm compact-rows">
               <thead class="bg-white/5 text-white/70">
                 <tr>
@@ -194,7 +187,7 @@
                     Name
                   </th>
                   <th class="text-left px-3 py-2">
-                    Duration
+                    Duration (hours)
                   </th>
                   <th class="text-left px-3 py-2">
                     Start
@@ -202,7 +195,7 @@
                   <th class="text-left px-3 py-2">
                     Finish
                   </th>
-                  <th class="text-left px-3 py-2">
+                  <th v-if="showCostColumn" class="text-left px-3 py-2">
                     Cost
                   </th>
                   <th class="text-right px-3 py-2">
@@ -224,7 +217,7 @@
                     class="h-6"
                   >
                     <td
-                      :colspan="8"
+                      :colspan="headerColspan"
                       class="h-6 bg-emerald-400/10 border-t-2 border-emerald-400/60"
                     />
                   </tr>
@@ -310,13 +303,13 @@
                       <div>{{ dur(t) != null ? dur(t) : '' }}</div>
                     </td>
                     <td class="px-3 py-2 align-top">
-                      {{ fmt(t.start) }}
+                      {{ fmt(startVal(t)) }}
                     </td>
                     <td class="px-3 py-2 align-top">
-                      {{ fmt(t.end) }}
+                      {{ fmt(endVal(t)) }}
                     </td>
-                    <td class="px-3 py-2 align-top">
-                      <div>{{ costVal(t) != null ? ('$' + Number(costVal(t)).toFixed(2)) : '' }}</div>
+                    <td v-if="showCostColumn" class="px-3 py-2 align-top">
+                      <div>{{ formatCurrency(costVal(t)) }}</div>
                     </td>
                     <td class="px-3 py-2 text-right">
                       <div class="inline-flex items-center justify-end">
@@ -405,7 +398,7 @@
                   class="h-6"
                 >
                   <td
-                    :colspan="8"
+                    :colspan="headerColspan"
                     class="h-6 bg-emerald-400/10 border-t-2 border-emerald-400/60"
                   />
                 </tr>
@@ -421,13 +414,20 @@
       panel-class="max-w-md"
     >
       <template #header>
-        <div class="text-lg font-semibold text-white">
-          Confirm deletion
-        </div>
+        <div class="text-lg font-semibold text-white">Confirm deletion</div>
       </template>
+
       <div class="text-white/90">
-        Are you sure you want to delete task "<strong>{{ deletingName }}</strong>"?
+        <template v-if="deletingCount > 1">
+          Deleting "<strong>{{ deletingName }}</strong>" will also delete
+          <strong>{{ deletingCount - 1 }}</strong> child task<span v-if="deletingCount - 1 !== 1">s</span>
+          (total <strong>{{ deletingCount }}</strong>). This action cannot be undone. Continue?
+        </template>
+        <template v-else>
+          Are you sure you want to delete task "<strong>{{ deletingName }}</strong>"?
+        </template>
       </div>
+
       <template #footer>
         <div class="flex justify-end gap-2">
           <button
@@ -440,7 +440,8 @@
             class="px-3 py-2 rounded bg-red-600 text-white"
             @click="doDelete"
           >
-            Delete
+            <span v-if="deletingCount > 1">Delete ({{ deletingCount }})</span>
+            <span v-else>Delete</span>
           </button>
         </div>
       </template>
@@ -461,20 +462,60 @@
         @cancel="onEditCancel"
       />
     </Modal>
+    <Modal v-model="showSettingsModal" panel-class="max-w-md">
+      <template #header>
+        <div class="text-lg font-semibold text-white">Settings</div>
+      </template>
+      <div class="text-white/90 space-y-3">
+        <div v-if="isAdmin" class="space-y-4">
+          <div class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" class="w-4 h-4" :checked="ui.showCostColumn" @change="(e) => { ui.setShowCostColumn(e.target.checked); ui.showInfo('Settings updated') }" />
+              <span>Show Cost column</span>
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm text-white/80 mb-1">Bill rate</label>
+            <div class="flex items-center gap-2">
+              <span class="text-white/70">$</span>
+              <input
+                v-model.number="billRateInput"
+                type="number"
+                min="0"
+                step="0.01"
+                class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
+                @change="persistBillRateSetting"
+                @blur="persistBillRateSetting"
+              >
+            </div>
+            <p class="text-xs text-white/60 mt-1">Used when tasks auto-calculate cost as duration × bill rate.</p>
+          </div>
+        </div>
+        <div v-else class="text-sm text-white/70">Cost column visible to admins only.</div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
+          <button class="px-3 py-2 rounded bg-white/6 text-white" @click="showSettingsModal = false">Close</button>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { defineAsyncComponent } from 'vue'
 import { useProjectStore } from '../../stores/project'
+import { useUiStore } from '../../stores/ui'
+import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import { http } from '../../utils/http'
-const TaskGantt = defineAsyncComponent(() => import('../../components/TaskGantt.vue'))
 
 const projectStore = useProjectStore()
+const ui = useUiStore()
+const auth = useAuthStore()
 const projectId = projectStore.currentProjectId
 const tasks = ref([])
 const q = ref('')
@@ -482,9 +523,29 @@ const loading = ref(false)
 const showDeleteModal = ref(false)
 const deletingId = ref(null)
 const deletingName = ref('')
+const deletingCount = ref(0)
 const viewMode = ref('list')
 const showEditModal = ref(false)
 const editingId = ref(null)
+const showSettingsModal = ref(false)
+const billRateInput = ref(ui.tasksBillRate || 0)
+
+const billRate = computed(() => {
+  const v = Number(ui.tasksBillRate)
+  return Number.isFinite(v) ? v : 0
+})
+
+const isAdmin = computed(() => {
+  const u = auth.user
+  if (!u || !u.role) return false
+  return ['admin', 'globaladmin', 'superadmin'].includes(String(u.role))
+})
+
+const showCostColumn = computed(() => {
+  return isAdmin.value && !!ui.showCostColumn
+})
+
+const headerColspan = computed(() => showCostColumn.value ? 8 : 7)
 
 function onEditSaved(_res) {
   // close modal and refresh list
@@ -500,6 +561,32 @@ function isComplete(t) {
   const effective = pct(t)
   return (t && (effective === 100 || (t.status && String(t.status).toLowerCase() === 'completed')))
 }
+
+// Persist list UI state (search text and view mode) per project in sessionStorage
+const listStateKey = computed(() => `tasksListState:${projectStore.currentProjectId || 'global'}`)
+function hasSessionStorage() {
+  try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
+}
+function loadListState() {
+  if (!hasSessionStorage()) return
+  try {
+    const raw = sessionStorage.getItem(listStateKey.value)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data && typeof data === 'object') {
+      if (typeof data.q === 'string') q.value = data.q
+      if (typeof data.viewMode === 'string') viewMode.value = data.viewMode
+    }
+  } catch (e) { /* ignore storage errors */ }
+}
+function persistListState() {
+  if (!hasSessionStorage()) return
+  try {
+    sessionStorage.setItem(listStateKey.value, JSON.stringify({ q: q.value, viewMode: viewMode.value }))
+  } catch (e) { /* ignore storage errors */ }
+}
+watch(listStateKey, () => loadListState(), { immediate: true })
+watch([q, viewMode], () => persistListState())
 
 async function toggleComplete(t, checked) {
   if (!t || !t._id) return
@@ -562,15 +649,31 @@ function fmt(d) { if (!d) return ''; try { return new Date(d).toLocaleDateString
 
 function wbsDepth(w) {
   if (!w) return 0
-  const parts = String(w).split('.').filter(p => p !== '')
-  return Math.max(0, parts.length - 1)
+  const segs = parseWbs(w)
+  if (!segs.length) return 0
+  const last = segs[segs.length - 1]
+  if (last === 0) {
+    // Treat trailing zero as a placeholder parent (e.g. 1.0) at the same level as its index.
+    return Math.max(0, segs.length - 2)
+  }
+  return Math.max(0, segs.length - 1)
 }
 
 const filtered = computed(() => {
-  const s = (q.value || '').toLowerCase()
+  const s = (q.value || '').trim().toLowerCase()
+  const terms = s ? s.split(/\s+/).filter(Boolean) : []
   let list = tasks.value || []
-  if (s) {
-    list = list.filter(t => (t.name || '').toLowerCase().includes(s) || (t.description || '').toLowerCase().includes(s))
+  // Exclude soft-deleted tasks (server may mark records with `deleted: true` or status 'Deleted')
+  list = list.filter(t => !(t && (t.deleted === true || String(t.status || '').toLowerCase() === 'deleted')))
+  if (terms.length) {
+    list = list.filter(t => {
+      const haystack = [
+        t?.name,
+        t?.title, // some payloads use title instead of name
+        t?.description
+      ].map(v => String(v || '').toLowerCase()).join(' ')
+      return terms.every(term => haystack.includes(term))
+    })
   }
   // sort by WBS ascending (string compare). Null/empty WBS go last.
   const sorted = list.slice().sort((a, b) => {
@@ -586,11 +689,14 @@ const filtered = computed(() => {
   const taskById = Object.fromEntries((tasks.value || []).map(x => [String(x._id), x]))
   const visible = sorted.filter(t => {
     if (!t || !t.wbs) return true
+    const taskId = t && t._id ? String(t._id) : null
     for (const pId of collapsed.value) {
       if (!pId) continue
       const parent = taskById[String(pId)]
       if (!parent || !parent.wbs) continue
+      if (taskId && taskId === String(pId)) continue
       const cp = canonicalDescendantPrefix(String(parent.wbs))
+      if (!cp) continue
       if (cp && String(t.wbs).startsWith(cp)) return false
     }
     return true
@@ -632,16 +738,48 @@ function saveCollapsed() {
 }
 
 function collapseAll() {
-  // collect all tasks that have children
-  const parents = new Set()
-  for (const t of tasks.value || []) {
-    if (hasChildren(t) && t._id) parents.add(String(t._id))
+  // Collapse to top-most parents only (prefer WBS entries that end with a trailing 0,
+  // e.g. `1.0`). If none with trailing 0 exist, pick the shallowest parents (minimum WBS depth).
+  const parents = (tasks.value || []).filter(t => hasChildren(t) && t._id)
+  if (!parents || parents.length === 0) {
+    collapsed.value = []
+    return
   }
-  collapsed.value = Array.from(parents)
+
+  // Prefer parents whose last WBS segment is 0 (e.g. 1.0)
+  const zeroParents = parents.filter(p => {
+    try { const segs = parseWbs(String(p.wbs || '')); return segs.length > 0 && (segs[segs.length - 1] === 0) } catch (e) { return false }
+  })
+
+  let candidates = zeroParents.length ? zeroParents : parents
+  // reduce to the shallowest (top-most) parents by WBS depth
+  let minDepth = Infinity
+  const byDepth = {}
+  for (const p of candidates) {
+    const segs = parseWbs(String(p.wbs || ''))
+    const d = segs.length || 0
+    minDepth = Math.min(minDepth, d)
+    if (!byDepth[d]) byDepth[d] = []
+    byDepth[d].push(p)
+  }
+  const topMost = byDepth[minDepth] || []
+
+  // Ensure at least one task remains visible: collapsing parents hides descendants but leaves parents visible.
+  // If for some reason topMost is empty, fallback to not collapsing.
+  if (!topMost || topMost.length === 0) {
+    collapsed.value = []
+    return
+  }
+
+  collapsed.value = topMost.map(p => String(p._id))
 }
 
 function expandAll() {
   collapsed.value = []
+}
+
+function persistBillRateSetting() {
+  ui.setTasksBillRate(billRateInput.value)
 }
 
 // persist collapsed state when it changes
@@ -650,6 +788,12 @@ watch(collapsed, () => saveCollapsed())
 watch(() => projectStore.currentProjectId, () => { loadCollapsed() })
 // when tasks change we may want to reload persisted collapsed ids to keep consistency
 watch(tasks, () => { /* noop placeholder - keep collapsed ids by id, no action needed */ })
+watch(() => ui.tasksBillRate, (v) => {
+  const num = Number(v)
+  billRateInput.value = Number.isFinite(num) ? num : 0
+  clearCaches()
+})
+watch(billRate, () => clearCaches())
 
 function canonicalDescendantPrefix(parentWbs) {
   if (!parentWbs) return ''
@@ -657,7 +801,9 @@ function canonicalDescendantPrefix(parentWbs) {
   const last = segs[segs.length - 1] || 0
   if (last === 0) {
     const base = segs.slice(0, -1).join('.')
-    return base ? (base + '.') : ''
+    if (base) return base + '.'
+    const joined = segs.join('.')
+    return joined ? joined + '.' : ''
   }
   return parentWbs + '.'
 }
@@ -689,42 +835,55 @@ function hasChildren(t) {
 }
 
 function getImmediateChildren(parent) {
+  // Determine immediate children purely by WBS semantics.
+  // Rules:
+  // - If parent WBS ends with a trailing 0 (e.g. "1.0"), its direct children are
+  //   the WBS values that share the prefix up to the trailing 0 (e.g. "1.*")
+  //   and have the same segment length as the parent (so "1.1" is a child of "1.0").
+  // - Otherwise, direct children are those with exactly one more segment and whose
+  //   prefix matches the parent's full WBS (e.g. "1.1" is a child of "1" and
+  //   "1.1.1" is a child of "1.1").
   if (!parent || !parent.wbs) return []
   const parentWbs = String(parent.wbs)
-  const segs = parseWbs(parentWbs)
-  const last = segs[segs.length - 1] || 0
+  const parentSegs = parseWbs(parentWbs)
+  const last = parentSegs[parentSegs.length - 1] || 0
 
-  let childBasePrefix = ''
-  let childBaseLevel = 0
+  let basePrefix = ''
+  let childDepth = 0
   if (last === 0) {
-    childBasePrefix = segs.slice(0, -1).join('.')
-    childBaseLevel = segs.length - 1
+    // children live at the same depth, replacing trailing 0
+    basePrefix = parentSegs.slice(0, -1).join('.')
+    childDepth = parentSegs.length
   } else {
-    childBasePrefix = parentWbs
-    childBaseLevel = segs.length
+    // children are one segment deeper under the full parentWbs
+    basePrefix = parentWbs
+    childDepth = parentSegs.length + 1
   }
 
   return (tasks.value || []).filter(x => {
     if (!x || !x.wbs) return false
     const k = String(x.wbs)
     if (k === parentWbs) return false
-    const s = parseWbs(k)
-    if (s.length !== childBaseLevel + 1) return false
-    if (childBasePrefix) return k.startsWith(childBasePrefix + '.')
-    return true
+    const segs = parseWbs(k)
+    if (segs.length !== childDepth) return false
+    if (!basePrefix) return true
+    return k.startsWith(basePrefix + '.')
   })
 }
 
 function computePercentRecursive(task, seen = new Set()) {
   if (!task) return 0
   const id = task._id || String(task.wbs || '')
+  if (percentCache.has(id)) return percentCache.get(id)
   if (seen.has(id)) return 0
   seen.add(id)
 
   const children = getImmediateChildren(task)
   if (!children || children.length === 0) {
     const p = Number(task.percentComplete)
-    return Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
+    const val = Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
+    percentCache.set(id, val)
+    return val
   }
 
   // simple average of immediate children's percents (each child equal weight)
@@ -734,7 +893,9 @@ function computePercentRecursive(task, seen = new Set()) {
     sum += childPercent
   }
   const avg = children.length > 0 ? (sum / children.length) : 0
-  return Math.max(0, Math.min(100, Math.round(avg)))
+  const out = Math.max(0, Math.min(100, Math.round(avg)))
+  percentCache.set(id, out)
+  return out
 }
 
 function pct(t) {
@@ -745,15 +906,35 @@ function pct(t) {
   return Number.isFinite(p) ? Math.max(0, Math.min(100, Math.round(p))) : 0
 }
 
+// Memoization caches for a single render/fetch pass to speed recursive computations
+const percentCache = new Map()
+const durationCache = new Map()
+const costCache = new Map()
+const startCache = new Map()
+const endCache = new Map()
+
+function clearCaches() {
+  percentCache.clear()
+  durationCache.clear()
+  costCache.clear()
+  startCache.clear()
+  endCache.clear()
+}
+
+// Clear caches when tasks list changes (deep watch to catch mutations)
+watch(tasks, () => clearCaches(), { deep: true })
+
 function computeDurationRecursive(task, seen = new Set()) {
   if (!task) return null
   const id = task._id || String(task.wbs || '')
+  if (durationCache.has(id)) return durationCache.get(id)
   if (seen.has(id)) return null
   seen.add(id)
 
   const children = getImmediateChildren(task)
   if (!children || children.length === 0) {
     const d = task && typeof task.duration === 'number' && Number.isFinite(task.duration) ? task.duration : null
+    durationCache.set(id, d)
     return d
   }
 
@@ -766,7 +947,10 @@ function computeDurationRecursive(task, seen = new Set()) {
       any = true
     }
   }
-  return any ? sum : null
+  // Parent duration is strictly the sum of its children's durations
+  const out = any ? sum : null
+  durationCache.set(id, out)
+  return out
 }
 
 function dur(t) {
@@ -777,31 +961,155 @@ function dur(t) {
   return (t && typeof t.duration === 'number' && Number.isFinite(t.duration)) ? t.duration : null
 }
 
+function usesManualCost(task) {
+  return task && task.autoCost === false
+}
+
+function autoCostValue(task) {
+  if (!task) return null
+  const rate = billRate.value
+  const duration = Number(task.duration)
+  if (!Number.isFinite(rate) || !Number.isFinite(duration)) return null
+  const calc = duration * rate
+  return Number.isFinite(calc) ? Number(calc.toFixed(2)) : null
+}
+
+function taskCostValue(task) {
+  if (!task) return null
+  if (usesManualCost(task)) {
+    const c = Number(task.cost)
+    return Number.isFinite(c) ? c : null
+  }
+  const autoVal = autoCostValue(task)
+  if (autoVal != null) return autoVal
+  const fallback = Number(task.cost)
+  return Number.isFinite(fallback) ? fallback : null
+}
+
+function formatCurrency(val) {
+  if (!Number.isFinite(val)) return ''
+  return `$${val.toFixed(2)}`
+}
+
 function computeCostRecursive(task, seen = new Set()) {
   if (!task) return null
   const id = task._id || String(task.wbs || '')
+  if (costCache.has(id)) return costCache.get(id)
   if (seen.has(id)) return null
   seen.add(id)
 
   const children = getImmediateChildren(task)
   if (!children || children.length === 0) {
-    const c = task && typeof task.cost === 'number' && Number.isFinite(task.cost) ? task.cost : null
-    return c
+    const leafCost = taskCostValue(task)
+    costCache.set(id, leafCost)
+    return leafCost
   }
 
   let sum = 0
   let any = false
+  const childDetails = []
   for (const c of children) {
     const cc = computeCostRecursive(c, seen)
+    childDetails.push({ id: c && c._id, wbs: c && c.wbs, cost: cc })
     if (cc != null) { sum += cc; any = true }
   }
-  return any ? sum : null
+  // Parent cost is strictly the sum of its children's costs
+  const out = any ? sum : null
+  // Temporary debug: log details when a parent computes a non-null cost
+  try {
+    if (typeof console !== 'undefined') {
+      console.debug('[tasks] computeCostRecursive:', { id, wbs: task && task.wbs, childDetails, sum, out })
+    }
+  } catch (e) { /* ignore */ }
+  costCache.set(id, out)
+  return out
 }
 
 function costVal(t) {
   const children = getImmediateChildren(t)
   if (children && children.length > 0) return computeCostRecursive(t)
-  return (t && typeof t.cost === 'number' && Number.isFinite(t.cost)) ? t.cost : null
+  return taskCostValue(t)
+}
+
+function parseDate(val) {
+  if (!val && val !== 0) return null
+  const s = String(val).trim()
+  // try native parse/ISO
+  const d = new Date(s)
+  if (!isNaN(d.getTime())) return d
+  // try mm/dd/yyyy or mm/dd/yyyy HH:MM
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2}))?$/)
+  if (m) {
+    const mm = parseInt(m[1], 10)
+    const dd = parseInt(m[2], 10)
+    const yyyy = parseInt(m[3], 10)
+    const hh = m[4] ? parseInt(m[4], 10) : 0
+    const min = m[5] ? parseInt(m[5], 10) : 0
+    return new Date(yyyy, mm - 1, dd, hh, min, 0, 0)
+  }
+  return null
+}
+
+function computeStartRecursive(task, seen = new Set()) {
+  if (!task) return null
+  const id = task._id || String(task.wbs || '')
+  if (startCache.has(id)) return startCache.get(id)
+  if (seen.has(id)) return null
+  seen.add(id)
+
+  const children = getImmediateChildren(task)
+  if (!children || children.length === 0) {
+    const sd = parseDate(task.start)
+    startCache.set(id, sd)
+    return sd
+  }
+
+  let earliest = null
+  for (const c of children) {
+    const sd = computeStartRecursive(c, seen)
+    if (sd instanceof Date && !isNaN(sd.getTime())) {
+      if (earliest === null || sd < earliest) earliest = sd
+    }
+  }
+  startCache.set(id, earliest)
+  return earliest
+}
+
+function startVal(t) {
+  const children = getImmediateChildren(t)
+  if (children && children.length > 0) return computeStartRecursive(t)
+  return parseDate(t.start)
+}
+
+function computeEndRecursive(task, seen = new Set()) {
+  if (!task) return null
+  const id = task._id || String(task.wbs || '')
+  if (endCache.has(id)) return endCache.get(id)
+  if (seen.has(id)) return null
+  seen.add(id)
+
+  const children = getImmediateChildren(task)
+  if (!children || children.length === 0) {
+    const ed = parseDate(task.end)
+    endCache.set(id, ed)
+    return ed
+  }
+
+  let latest = null
+  for (const c of children) {
+    const ed = computeEndRecursive(c, seen)
+    if (ed instanceof Date && !isNaN(ed.getTime())) {
+      if (latest === null || ed > latest) latest = ed
+    }
+  }
+  endCache.set(id, latest)
+  return latest
+}
+
+function endVal(t) {
+  const children = getImmediateChildren(t)
+  if (children && children.length > 0) return computeEndRecursive(t)
+  return parseDate(t.end)
 }
 
 function descendantCount(t) {
@@ -1035,19 +1343,44 @@ async function fetch() {
 
 onMounted(() => { fetch(); loadCollapsed() })
 
-function confirmDelete(t) { deletingId.value = t._id; deletingName.value = t.name || ''; showDeleteModal.value = true }
-function cancelDelete() { deletingId.value = null; deletingName.value = ''; showDeleteModal.value = false }
+function confirmDelete(t) {
+  deletingId.value = t && t._id ? t._id : null
+  deletingName.value = t && t.name ? t.name : ''
+  // compute how many tasks will be removed (the task itself + descendants by WBS)
+  let count = 1
+  try {
+    if (t && t.wbs) {
+      const prefix = String(t.wbs)
+      count = (tasks.value || []).filter(x => x && x.wbs && (String(x.wbs) === prefix || String(x.wbs).startsWith(prefix + '.'))).length
+      if (!count) count = 1
+    }
+  } catch (e) { count = 1 }
+  deletingCount.value = count
+  showDeleteModal.value = true
+}
+
+function cancelDelete() { deletingId.value = null; deletingName.value = ''; deletingCount.value = 0; showDeleteModal.value = false }
 
 async function doDelete() {
   if (!deletingId.value) return
   try {
-    await http.delete(`/api/tasks/${deletingId.value}`)
-    // remove locally
-    tasks.value = tasks.value.filter(x => x._id !== deletingId.value)
+    // Use server-side subtree delete for consistency and efficiency
+    const resp = await http.delete(`/api/tasks/subtree/${deletingId.value}`)
+    const data = resp && resp.data ? resp.data : {}
+    const ids = Array.isArray(data.ids) ? data.ids.map(String) : []
+
+    if (ids.length > 0) {
+      const idSet = new Set(ids)
+      tasks.value = (tasks.value || []).filter(t => !idSet.has(String(t._id)))
+    } else {
+      // fallback: remove the single id locally
+      tasks.value = (tasks.value || []).filter(x => x._id !== deletingId.value)
+    }
   } catch (e) {
-    // ignore for now
+    console.error('Failed to delete tasks', e)
   } finally {
-    cancelDelete()
+    // close modal and reset deleting state
+    try { cancelDelete() } catch (e) { deletingId.value = null }
   }
 }
 </script>

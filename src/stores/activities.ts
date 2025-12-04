@@ -52,6 +52,14 @@ export const useActivitiesStore = defineStore('activities', () => {
     return { ...a, id: a._id || a.id }
   }
 
+  function isDeletedActivity(a: any): boolean {
+    if (!a) return false
+    if (a.deleted === true || a.isDeleted === true || a.softDeleted === true) return true
+    const status = String(a.status || a.state || '').toLowerCase()
+    if (status.includes('deleted')) return true
+    return false
+  }
+
   async function fetchActivities(projectId?: string) {
     loading.value = true
     error.value = null
@@ -67,7 +75,7 @@ export const useActivitiesStore = defineStore('activities', () => {
       }
 
       const res = await axios.get(API_BASE, { params: { projectId: pid }, headers: getAuthHeaders() })
-      const list = (res.data || []).map(normalize)
+      const list = (res.data || []).map(normalize).filter(a => !isDeletedActivity(a))
       activities.value = list
       return activities.value
     } catch (e: any) {
@@ -206,7 +214,9 @@ export const useActivitiesStore = defineStore('activities', () => {
       const existing = activities.value.find(a => String(a.id || a._id) === String(id)) || current.value
       let pid = existing ? String(existing.projectId || (existing as any).project || '') : ''
       const name = existing ? (existing.name || '') : ''
-      await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const config: any = { headers: getAuthHeaders() }
+      if (pid) config.params = { projectId: pid }
+      await axios.delete(`${API_BASE}/${id}`, config)
       activities.value = activities.value.filter(a => String(a.id || a._id) !== String(id))
       if (current.value && String(current.value.id || current.value?._id) === String(id)) current.value = null
 

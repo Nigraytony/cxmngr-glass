@@ -24,7 +24,7 @@
         <label class="block text-white/80">Title</label>
         <input
           v-model="project.title"
-          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full"
+          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full placeholder:text-gray-400"
         >
       </div>
 
@@ -32,7 +32,7 @@
         <label class="block text-white/80">Name</label>
         <input
           v-model="project.name"
-          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full"
+          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full placeholder:text-gray-400"
         >
       </div>
 

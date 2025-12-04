@@ -7,6 +7,13 @@ import { useProjectStore } from '../../stores/project'
 
 type ImageFormat = 'PNG' | 'JPEG' | 'WEBP'
 
+type LoadedImage = {
+  dataUrl?: string
+  format?: ImageFormat
+  width?: number
+  height?: number
+}
+
 function mimeToFormat(mime?: string | null): ImageFormat | undefined {
   if (!mime) return undefined
   const m = mime.toLowerCase()
@@ -37,7 +44,16 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
   }
 }
 
-async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: ImageFormat }> {
+function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height })
+    img.onerror = () => reject(new Error('image load failed'))
+    img.src = dataUrl
+  })
+}
+
+async function loadImage(src?: string): Promise<LoadedImage> {
   try {
     if (!src) return {}
     if (src.startsWith('data:')) {
@@ -45,9 +61,13 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
       let fmt = mimeToFormat(mime)
       if (fmt === 'WEBP' || (mime && mime.toLowerCase().includes('svg'))) {
         const conv = await convertDataUrlToJpeg(src)
-        if (conv) return { dataUrl: conv, format: 'JPEG' }
+        if (conv) {
+          const dims = await getImageDimensions(conv).catch(() => null)
+          return { dataUrl: conv, format: 'JPEG', width: dims?.width, height: dims?.height }
+        }
       }
-      return { dataUrl: src, format: fmt }
+      const dims = await getImageDimensions(src).catch(() => null)
+      return { dataUrl: src, format: fmt, width: dims?.width, height: dims?.height }
     }
     const res = await fetch(src)
     if (!res.ok) return {}
@@ -60,12 +80,26 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
     let fmt = mimeToFormat(blob.type)
     if ((blob.type && blob.type.toLowerCase().includes('svg')) || fmt === 'WEBP') {
       const conv = await convertDataUrlToJpeg(dataUrl)
-      if (conv) return { dataUrl: conv, format: 'JPEG' }
+      if (conv) {
+        const dims = await getImageDimensions(conv).catch(() => null)
+        return { dataUrl: conv, format: 'JPEG', width: dims?.width, height: dims?.height }
+      }
     }
-    return { dataUrl, format: fmt }
+    const dims = await getImageDimensions(dataUrl).catch(() => null)
+    return { dataUrl, format: fmt, width: dims?.width, height: dims?.height }
   } catch (e) {
     return {}
   }
+}
+
+function scaleToHeight(img: LoadedImage, targetH: number, fallbackW: number) {
+  const w = img?.width || 0
+  const h = img?.height || 0
+  if (w > 0 && h > 0) {
+    const ratio = w / h
+    return { w: targetH * ratio, h: targetH }
+  }
+  return { w: fallbackW, h: targetH }
 }
 
 function htmlToText(html?: string): string {
@@ -80,6 +114,18 @@ function htmlToText(html?: string): string {
   }
 }
 
+// Replace smart quotes/dashes and collapse whitespace to avoid glyph/spacing issues in PDFs
+function normalizePdfText(v?: string): string {
+  if (!v) return ''
+  return String(v)
+    .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function formatDate(dt?: string): string {
   try { return dt ? new Date(dt).toLocaleDateString() : '' } catch (e) { return '' }
 }
@@ -90,14 +136,30 @@ function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
 
 const projectStore = useProjectStore()
 
+function setZeroCharSpace(doc: jsPDF) {
+  try {
+    const fn = (doc as any).setCharSpace
+    if (typeof fn === 'function') fn.call(doc, 0)
+  } catch (e) { /* ignore */ }
+}
+
+function setBodyFont(doc: jsPDF, weight: 'normal' | 'bold' = 'normal') {
+  // Use a built-in font to avoid VFS/base64 issues during embedding
+  doc.setFont('times', weight)
+}
+
 // Renders a single issue onto the provided doc, returns the new y position and whether a new page was added at the end.
 async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { value: number } }) {
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const bottomLimit = pageHeight - 26
+  // Expand usable body height by ~2 inches while keeping a small footer buffer
+  const extraBodySpace = 50.8 // 2 inches in mm
+  const footerBuffer = 10
+  const bottomLimit = Math.min(pageHeight - footerBuffer, pageHeight - 26 + extraBodySpace)
   const pageDate = new Date().toLocaleDateString()
   let y = margin
+  setZeroCharSpace(doc)
 
   // Resolve project for header logos
   let project: any = (projectStore.currentProject && (projectStore.currentProject as any).value) || null
@@ -175,7 +237,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
 
   // Key fields grid
   doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
+  setBodyFont(doc, 'normal')
   const info: Array<[string, string]> = [
     ['Type', String(issue.type || '')],
     ['Priority', String(issue.priority || '')],
@@ -209,15 +271,15 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
 
   // Sections helper with simple height guard (one page bias)
   const section = (heading: string, content?: string) => {
-    const text = htmlToText(content || '').trim()
+    const text = normalizePdfText(htmlToText(content || ''))
     if (!text) return
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(12)
     // If no room for header, new page
-    if (y + 6 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin }
+    if (y + 6 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin; setZeroCharSpace(doc) }
     doc.text(heading, margin, y)
     y += 6
-    doc.setFont('helvetica', 'normal')
+    setBodyFont(doc, 'normal')
     doc.setFontSize(10)
     const maxW = pageWidth - margin * 2
     const lines = splitText(doc, text, maxW)
@@ -366,6 +428,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  setZeroCharSpace(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -385,14 +448,18 @@ async function generateIssuesCompactPdf(issues: any[]) {
   const clientImg = await loadImage(project?.logo)
   const cxaImg = await loadImage(project?.commissioning_agent?.logo)
   const drawHeader = () => {
+    const bodyOffset = 12.7 // 0.5 inch in mm to push content below header
     try {
-      if (clientImg.dataUrl) doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, headerTop, headerLogoH * 2.5, headerLogoH)
+      if (clientImg.dataUrl) {
+        const dim = scaleToHeight(clientImg, headerLogoH, headerLogoH * 2.5)
+        doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, headerTop, dim.w, dim.h)
+      }
       if (cxaImg.dataUrl) {
-        const w = headerLogoH * 2.5
-        doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, headerTop, w, headerLogoH)
+        const dim = scaleToHeight(cxaImg, headerLogoH, headerLogoH * 2.5)
+        doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - dim.w, headerTop, dim.w, dim.h)
       }
   } catch (e) { /* ignore */ }
-    return Math.max(margin, headerTop + headerLogoH + 2)
+    return Math.max(margin, headerTop + headerLogoH + 2 + bodyOffset)
   }
   let y = drawHeader()
 
@@ -418,7 +485,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
     }
     // Middle: page number
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
+  setBodyFont(doc, 'normal'); doc.setFontSize(8)
     doc.text(String(pageNoRef.value), pageWidth / 2, footerY - 2, { align: 'center' })
     // Right: date
     doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
@@ -426,20 +493,20 @@ async function generateIssuesCompactPdf(issues: any[]) {
 
   const ensureSpace = (needed: number) => {
     if (y + needed > bottomLimit) {
-      drawFooter(); doc.addPage(); pageNoRef.value++; y = drawHeader()
+      drawFooter(); doc.addPage(); pageNoRef.value++; setZeroCharSpace(doc); y = drawHeader()
       return true
     }
     return false
   }
 
   const section = (heading: string, content?: string) => {
-    const text = htmlToText(content || '').trim()
+    const text = normalizePdfText(htmlToText(content || ''))
     if (!text) return
     // Header spacing
     ensureSpace(6)
     doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
     doc.text(heading, margin, y); y += 6
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+    setBodyFont(doc, 'normal'); doc.setFontSize(10)
     const maxW = pageWidth - margin * 2
     const lines = splitText(doc, text, maxW)
     const lineHeight = 5
@@ -468,7 +535,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
 
     // H2 title: Issue # — title
     const numberText = issue.number != null ? `Issue # ${issue.number}` : 'Issue'
-    const titleText = issue.title ? ` — ${issue.title}` : ''
+    const titleText = issue.title ? ` — ${normalizePdfText(issue.title)}` : ''
     doc.setFont('helvetica', 'bold'); doc.setFontSize(14)
     const titleLines = splitText(doc, numberText + titleText, pageWidth - margin * 2)
     ensureSpace(Math.max(10, titleLines.length * 7) + 2)
@@ -476,19 +543,19 @@ async function generateIssuesCompactPdf(issues: any[]) {
     y += Math.max(10, titleLines.length * 7) + 2
 
     // Key fields grid (2 columns); simple height guard
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+    setBodyFont(doc, 'normal'); doc.setFontSize(10)
     const info: Array<[string, string]> = [
-      ['Type', String(issue.type || '')],
-      ['Priority', String(issue.priority || '')],
-      ['Status', String(issue.status || '')],
-      ['Found By', String(issue.foundBy || '')],
+      ['Type', normalizePdfText(String(issue.type || ''))],
+      ['Priority', normalizePdfText(String(issue.priority || ''))],
+      ['Status', normalizePdfText(String(issue.status || ''))],
+      ['Found By', normalizePdfText(String(issue.foundBy || ''))],
       ['Date Found', formatDate(issue.dateFound)],
-      ['Assigned To', String(issue.assignedTo || '')],
+      ['Assigned To', normalizePdfText(String(issue.assignedTo || ''))],
       ['Due Date', formatDate(issue.dueDate)],
-      ['Closed By', String(issue.closedBy || '')],
+      ['Closed By', normalizePdfText(String(issue.closedBy || ''))],
       ['Closed Date', formatDate(issue.closedDate)],
-      ['Location', String(issue.location || '')],
-      ['System', String(issue.system || '')],
+      ['Location', normalizePdfText(String(issue.location || ''))],
+      ['System', normalizePdfText(String(issue.system || ''))],
     ]
     const colW = (pageWidth - margin * 2) / 2
     const rows = Math.ceil(info.length / 2)
@@ -538,6 +605,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  setZeroCharSpace(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -595,7 +663,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
     }
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
+  setBodyFont(doc, 'normal'); doc.setFontSize(8)
     doc.text(String(pageNoRef.value), pageWidth / 2, footerY - 2, { align: 'center' })
     doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
   }
@@ -643,14 +711,14 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   y += 4
   doc.setDrawColor(200, 200, 200); doc.line(margin, y, margin + tableWidth, y)
   y += 2
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+  setBodyFont(doc, 'normal'); doc.setFontSize(9)
 
   const maxW = (idx: number) => widths[idx] - 2
   const lineHeight = 4
 
   const cellText = (row: any, key: string): string => {
     let v = (row as any)?.[key]
-    if (key === 'description') return htmlToText(v)
+    if (key === 'description') return normalizePdfText(htmlToText(v))
     if (v === null || v === undefined) return ''
     if (Array.isArray(v)) {
       // Common structured arrays: comments/photos/attachments
@@ -668,7 +736,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
     if (/(date|created|updated)/i.test(key)) {
   try { return v ? new Date(v).toLocaleDateString() : '' } catch (e) { return String(v) }
     }
-    return String(v)
+    return normalizePdfText(String(v))
   }
 
   for (let r = 0; r < issues.length; r++) {
@@ -685,13 +753,13 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
     }
     const rowHeight = rowLines * lineHeight + 2
     if (y + rowHeight + textYOffset > bottomLimit) {
-      drawFooter(); doc.addPage(); pageNoRef.value++; y = drawHeader()
+      drawFooter(); doc.addPage(); pageNoRef.value++; setZeroCharSpace(doc); y = drawHeader()
       // redraw header row
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
       let hx = margin; const hy = y
       for (let i = 0; i < cols.length; i++) { doc.text(headerLabel(String(cols[i])), hx + 1, hy + textYOffset); hx += widths[i] }
       y += 4; doc.setDrawColor(200,200,200); doc.line(margin, y, margin + tableWidth, y); y += 2
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      setBodyFont(doc, 'normal'); doc.setFontSize(9)
     }
     // Zebra stripe background (alternate rows)
     if (r % 2 === 1) {

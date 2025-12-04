@@ -10,6 +10,19 @@ export const useUiStore = defineStore('ui', {
         return v ? JSON.parse(v) : false
       } catch (e) { return false }
     })(),
+    // show/hide cost column (admins only can toggle)
+    showCostColumn: (() => {
+      try {
+        const v = localStorage.getItem('ui.showCostColumn')
+        return v ? JSON.parse(v) : true
+      } catch (e) { return true }
+    })(),
+    tasksBillRate: (() => {
+      try {
+        const v = localStorage.getItem('ui.tasksBillRate')
+        return v ? JSON.parse(v) : 0
+      } catch (e) { return 0 }
+    })(),
     // toast state
     toast: {
       show: false,
@@ -31,6 +44,15 @@ export const useUiStore = defineStore('ui', {
       this.toast.duration = duration
       this.toast.top = top
       this.toast.show = true
+    },
+    setShowCostColumn(val) {
+      this.showCostColumn = !!val
+      try { localStorage.setItem('ui.showCostColumn', JSON.stringify(this.showCostColumn)) } catch (e) { /* ignore */ }
+    },
+    setTasksBillRate(val) {
+      const num = typeof val === 'string' ? Number(val) : val
+      this.tasksBillRate = Number.isFinite(num) ? num : 0
+      try { localStorage.setItem('ui.tasksBillRate', JSON.stringify(this.tasksBillRate)) } catch (e) { /* ignore */ }
     },
     showSuccess(message, opts = {}) {
       this.showToast({ message, variant: 'success', duration: opts.duration || 2500, top: opts.top || '4rem' })

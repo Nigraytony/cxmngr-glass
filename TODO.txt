@@ -1,69 +1,78 @@
 TO DO FOR THE APP
-1.  Issues: Update the Issues to pull them from the DB instead of static issues
-2.  Issues: keep all issue interraction on the Issues page
-3.  APP: Add Project CRUD to the app
-DONE 4.  Side Panel: Update the side panel to highlight the page that is active
-Done 5.  Profile: Add Update Password logic to the app
-Done 6.  Profile: Add project Cards in th projects tab of the user profile
-7.  Profile: Implement a Forgot Password functionality in the app
-To run the Stripe webhook in the cli run the following at the terminal:
-8.  Activities: Don't filter on projects. Only activities for the default project needs to be available
+✅ 1.  Issues: Update the Issues to pull them from the DB instead of static issues
+✅ 2.  Issues: keep all issue interraction on the Issues page
+✅ 3.  APP: Add Project CRUD to the app
+✅ 4.  Side Panel: Update the side panel to highlight the page that is active
+✅ 5.  Profile: Add Update Password logic to the app
+✅ 6.  Profile: Add project Cards in th projects tab of the user profile
+✅ 7.  Profile: Implement a Forgot Password functionality in the app
+✅ 8.  Activities: Don't filter on projects. Only activities for the default project needs to be available
 9.  Activities: Filter on Type and Start Date
-Done 10. Activities: Fix the equipment list - if there are assets with the same tag on a project it can't choose between/among them.
-Done 11. Activities: Add pagination to this page.
+10. Activities: Fix the equipment list - if there are assets with the same tag on a project it can't choose between/among them.
+11. Activities: Add pagination to this page.Need a LIST view for activities.
+12. Lists: All table sorting need to persist for the session
+13. Lists: Pagination per page selections need to persist for the session
+14. Spaces: All locations need to be displayed as breadcrumbed heirarchy
+15. Equipment: Need to investigate why equipment list is being filtered when there is no filter
+16. Equipment: Add charting in the equipment module to track progress. Maybe a colapsible panel that shows charts and percentage counst for equipment, checklists, and functional tests.
+17. Equipment: Photo/File Upload tabs should be able to upload multiple files at once but feature not working. Need to fix.
+18. Equipment: Need to add feature to bulk edit equipment. Maybe select what fields to be affected and checkbox selection of equipment.
+19. Equipment: Reporting - need a Report component where we can select what fields/tabs to include and in what order.
+20. Issues: In the Issues list, need to add equipment column (maybe an add column option)
+21. Issues: In the reports the logos in the header are distorted. They need to keep their aspect ratio.
+22. Tagging: Need to add a tagging feature throughout the app to help finding information/data quickly.
+23. Documentation: We need to add a robust documentation and FAQ module for the app. It should cover that app and Cx very well.
+24. Logging: Finish the logging features of the app and make it one that loggs everything for transparency and research.
+25. Tasks: Fix the gantt feature so that we have a good working gantt chart for each app.
+26. Tasks: The app needs the ability to tie a task to an activity in a 1:1 relationship. A completed Activity will mark the task as complete.
+✅ 27: Tasks: Update the Dashboard with Tasks information.
+28. Tasks: Include an attactive calendar view for tasks.
+29. Tasks: Export tasks to xlsx, csv, xml, mpp, and pdf files.
+30. Email: Build out the email functionality to include emails for industry typical actions.
+31. Email: Create an Email module where the app can create/modify email templates for the different emails.
+32. Stripe: Update the implementation so that it is accurate and complete for what is needed for the project subscriptions.
+32: Stripe: Add a transactions tab for each project to view all the past transactions on that particular project. More description when we start this task.
+33. Stripe: Add live account with features-based subscriptions, coupons, and discounts.
+34. Admin: build out the admin pages more. Give super/global admins window into projects and billing using consent token/key
+✅ 35. Administration: All new users get a "user" role on registration - admin role is granted by global/super admins only. Project-based roles are separate.
+36. Administration: Setup email/smtp service on Azure.
+37. Administration: Purchase a domain name for cx-manager.com and tie it to the app.
+38. Administration: Create a Cx Manager entity for legal compliance.
+39. Bug Fix: When Issues are created from within an equipment it is placing the equipment tag in the location field and vice versa. Need to fix.
+40. Bug Fix: When entering Edit pages we need to show a spinner while the page loads.
+✅ 41. Bug Fix: Cannot upload photos in the IssueEdit.vue Photos tab.
+42. Templates: Add the ability to upload templates from a csv or an xslx file.
+43. App: Fix ghosting when a modal is open
+✅ 44. App: Allow the main area to scroll while leaving the sidebar as is (stationary).
+45. App: Add footer at bottom of page.
+✅ 46. Tasks: Remove Gantt feature for now. We can come back to it in a later version of the app.
+✅ 47. Tasks: Collapse All needs to show at least one task.
+✅ 48. Tasks: Opt-out of auto cost needs to be added to each task.
 
-Stripe: stripe listen --forward-to localhost:4242/api/stripe/webhook
-Database Name: sample_mflix
-Database URL: mongodb://atlas-sql-690d76023ddd8e5fe7c2972a-xf3ud.z.query.mongodb.net/sample_mflix?ssl=true&authSource=admin
+This task includes travel reimbursables:
+Airfare = $700
+Hotel = $300
+Rental Car = $100
+Per Diem = $100
+Parking = $50
+Mileage = $50
+Total Reimbursibles = $1,300
+Travel work time = 16hrs * $200 = $3,200
+Total Task Cost = $1,300 + $3,200 = $4,500.00
 
-cxmngrdb organization
-database user: ngray_db_user
-database user password: h7rd6FJ1opWFyXJx
-URI: mongodb+srv://ngray_db_user:<db_password>@cluster0.ymfn7gc.mongodb.net/?appName=Cluster0
-export MONGODB_URI=mongodb+srv://ngray_db_user:h7rd6FJ1opWFyXJx@cluster0.ymfn7gc.mongodb.net/?appName=Cluster0
+ProjectId (Norfolk Federal Building):6914b180469e95118e850afa
+ParentSpace: 692dbaf054990613c6794d9b
 
+Strip Billing Subscription Update Plan
+Outlined a concrete plan to mature Stripe subscriptions across project pages and admin tools:
 
-UPDATED FOR CURRENT APP
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = "mongodb+srv://ngray_db_user:<db_password>@cluster0.ymfn7gc.mongodb.net/?appName=Cluster0";
-
-// Application Backend Name
-App Name: cxmngr-backend-api
-App Url: http://cxmngr-backend-api-brhhbng9crcxf6gp.westus3-01.azurewebsites.net
-
-// Static Web App Url
-https://lemon-forest-0c47c5d0f.3.azurestaticapps.net
-
-
-CORS_ALLOWED_ORIGINS=https://lemon-forest-0c47c5d0f.3.azurestaticapps.net
-JWT_SECRET=emcx_super_Secret_jwt_key_12345
-MONGODB_URI=mongodb+srv://ngray_db_user:h7rd6FJ1opWFyXJx@cluster0.ymfn7gc.mongodb.net/cxmngr-api
-VITE_API_BASE=https://cxmngr-backend-api-brhhbng9crcxf6gp.westus3-01.azurewebsites.net
-WEBSITE_NODE_DEFAULT_VERSION=~20
-
-Wire the remaining resources (templates, activities already done for create/update; if you want create/update for other stores too).
-Replace per-page inline Logs UI with a reusable LogsPanel component to avoid duplication across edit pages.
-Add CSV export and server-side filtering support to logs.ts and the UI (ProjectEdit already has CSV export; we can reuse that pattern).
-Run the dev server and open a quick manual smoke test (if you want I can show the exact commands).
-Verify backend endpoints (I can attempt a quick request to a running backend if available, or you can point me to server routes).
-
-{
-"id": "hash53ganglasd0",
-"WBS": "1.1.0"
-"projectId": "dkjasd7asdnaa"
-"name": "Design review",
-"description": "Review design documents with CxA and stakeholders",
-"start": "2025-12-01T09:00:00Z",
-"finish": "2025-12-03T17:00:00Z",
-"duration": 3,
-"percentComplete": 25,
-"status": "In Progress",
-"cost": "$5000.00",
-"parentId": "Phase-1",
-"dependencies": ["T-50"],
-"assignee": "user-123",
-"tags": ["design","review"],
-"notes": "Lorem Ipsum Doller",
-"activityId": "adaewidasd79yaiehasdf"
-}
+Baseline & config: Audit current Stripe setup in backend-api/routes/billing.js, backend-api/routes/webhooks.js, backend-api/config/plans.js; finalize live/test products, prices (basic/standard/premium), webhooks, promotion code settings, and environment variables for both frontend and backend.
+Data model & auth: Add per-project billing owner/admin (userId) with audit trail, store default payment method summary, cancellation flags, trial metadata, and Stripe customer id on the billing owner; enforce RBAC so only billing admin or project admins can change plans or payment methods.
+Checkout/plan management: Expand billing routes to support upgrade/downgrade with proration preview, scheduled downgrades, cancel/resume at period end, swap payment method, and change billing admin flows; keep client-side reads thin via a single “project billing summary” endpoint.
+Project billing page: Create a dedicated page/tab (e.g., src/pages/projects/ProjectBilling.vue or extend the Subscription tab) showing plan status, renewal date, trial countdown, proration preview, plan selector with confirmation, cancel/resume actions, default payment method UI, and a “Change billing admin” flow (pick from team/invite new).
+Transactions history: Use Invoice/Charge data to render paginated history per project with filters (status/date), CSV/PDF export, and invoice links; add fallback Stripe fetch for stale/missing items and surface dunning/failed payment notices with retry CTA.
+Coupons & discounts (admin): In backend-api/routes/admin.js and an Admin UI, allow creating/listing promotion codes/coupons, scoping to products/prices or customer/project, setting expiration/max redemptions, and issuing one-time credits; log every issuance in AdminAudit.
+Webhooks & reliability: Harden webhook handling (idempotency, signature errors, alerting), persist subscription lifecycle events, and add admin replay/backfill tools (see backend-api/routes/admin.js and backend-api/scripts/backfill_invoices.js); add health checks for webhook age/drift.
+Testing & migration: Add integration tests with Stripe stubs for checkout, webhook replay, and coupon issuance; seed fixture prices and promotion codes; document migration steps for existing projects (assign billing admins, backfill invoices/charges, verify trial windows).
+Natural next steps: decide on billing admin data model shape and Stripe product/price IDs, then implement the backend billing summary + plan-change endpoints followed by the new Project Billing page.
 

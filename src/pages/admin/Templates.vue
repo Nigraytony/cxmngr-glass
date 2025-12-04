@@ -9,7 +9,7 @@
       <input
         v-model="q"
         placeholder="Search templates"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white w-full"
+        class="p-2 rounded bg-white/5 border border-white/10 text-white w-full placeholder:text-gray-400"
         @keyup.enter="load"
       >
       <button

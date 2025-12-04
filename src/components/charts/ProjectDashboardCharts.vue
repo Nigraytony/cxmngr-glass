@@ -1,5 +1,5 @@
 <template>
-  <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
     <!-- Issues by Status -->
     <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
@@ -99,6 +99,31 @@
         No spaces data
       </div>
     </div>
+
+    <!-- Tasks by Status -->
+    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-white">
+          Tasks by Status
+        </h3>
+        <span
+          v-if="tasksLoadingState"
+          class="text-xs text-white/60"
+        >Loading…</span>
+      </div>
+      <Doughnut
+        v-if="tasksChartData.datasets[0].data.length"
+        :data="tasksChartData"
+        :options="doughnutOptions"
+        class="max-h-72"
+      />
+      <div
+        v-else
+        class="text-white/60 text-sm"
+      >
+        No task data
+      </div>
+    </div>
   </div>
 </template>
 
@@ -122,11 +147,16 @@ import { Doughnut, Bar } from 'vue-chartjs'
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
 
+type TaskRecord = Record<string, any>
+
+const props = defineProps<{ tasks?: TaskRecord[]; tasksLoading?: boolean }>()
+
 const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
 const activitiesStore = useActivitiesStore()
 const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
+const tasksLoadingState = computed(() => props.tasksLoading === true)
 
 onMounted(async () => {
   const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
@@ -147,6 +177,31 @@ const issuesLoading = computed(() => issuesStore.loading)
 const activitiesLoading = computed(() => activitiesStore.loading)
 const equipmentLoading = computed(() => equipmentStore.loading)
 const spacesLoading = computed(() => spacesStore.loading)
+const dashboardTasks = computed(() => {
+  const list = Array.isArray(props.tasks) ? props.tasks : []
+  return list.filter((task) => {
+    if (!task) return false
+    if ((task as any).deleted === true) return false
+    const status = String((task as any).status || '').toLowerCase()
+    return status !== 'deleted'
+  })
+})
+
+function normalizeTaskStatus(task: TaskRecord | null | undefined): 'Not Started' | 'In Progress' | 'Completed' | 'Blocked' {
+  if (!task) return 'Not Started'
+  const raw = String(task.status || '').toLowerCase()
+  if (raw.includes('block') || raw.includes('hold') || raw.includes('pending') || raw.includes('cancel')) return 'Blocked'
+  if (raw.includes('progress')) return 'In Progress'
+  if (raw.includes('complete')) return 'Completed'
+  if (raw.includes('start')) return 'Not Started'
+  const pct = Number(task.percentComplete)
+  if (Number.isFinite(pct)) {
+    if (pct >= 100) return 'Completed'
+    if (pct > 0) return 'In Progress'
+    return 'Not Started'
+  }
+  return 'Not Started'
+}
 
 // Issues by Status (normalize common variants)
 function normStatus(s?: string) {
@@ -225,6 +280,33 @@ const spacesChartData = computed(() => {
   return {
     labels,
     datasets: [{ label: 'Count', data, backgroundColor: '#34d399', borderRadius: 6, borderSkipped: false }]
+  }
+})
+
+const taskPalette: Record<string, string> = {
+  'Not Started': '#f97316',
+  'In Progress': '#38bdf8',
+  'Completed': '#22c55e',
+  'Blocked': '#fb7185',
+}
+
+const tasksChartData = computed(() => {
+  const counts: Record<string, number> = {
+    'Not Started': 0,
+    'In Progress': 0,
+    'Completed': 0,
+    'Blocked': 0,
+  }
+  for (const task of dashboardTasks.value) {
+    const status = normalizeTaskStatus(task)
+    counts[status] = (counts[status] || 0) + 1
+  }
+  const labels = Object.keys(counts).filter(label => counts[label] > 0)
+  const data = labels.map(label => counts[label])
+  const backgroundColor = labels.map(label => taskPalette[label] || '#94a3b8')
+  return {
+    labels,
+    datasets: [{ data, backgroundColor, borderWidth: 0 }],
   }
 })
 

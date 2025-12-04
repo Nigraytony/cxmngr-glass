@@ -31,7 +31,7 @@
       <input
         v-model="q"
         placeholder="Search projects"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1"
+        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1 placeholder:text-gray-400"
         @keyup.enter="load"
       >
       <button

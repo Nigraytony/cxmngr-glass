@@ -24,7 +24,7 @@
         <label class="block text-white/80">Title</label>
         <input
           v-model="template.title"
-          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full"
+          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full placeholder:text-gray-400"
         >
       </div>
 
@@ -33,7 +33,7 @@
         <textarea
           v-model="template.body"
           rows="8"
-          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full"
+          class="p-2 rounded bg-white/5 border border-white/10 text-white w-full placeholder:text-gray-400"
         />
       </div>
 

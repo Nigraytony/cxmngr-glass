@@ -174,6 +174,17 @@
               d="M8 9h8M8 13h8M8 17h8"
               stroke-width="1.5"
             /></svg>
+            <svg
+              v-else-if="t === 'Logs'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5" />
+              <path d="M8 9h8M8 13h8M8 17h5" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <span
               v-if="!compactTabs"
               class="truncate"
@@ -384,10 +395,106 @@
         <!-- Equipment Tab -->
         <div
           v-else-if="currentTab === 'Equipment'"
-          class="space-y-2"
+          class="space-y-4"
         >
-          <div class="text-white/70">
-            Equipment management coming soon.
+          <div class="space-y-2">
+            <label class="block text-sm text-white/80">Add equipment to this space</label>
+            <input
+              v-model="equipSearch"
+              placeholder="Search by tag, title, system, or location…"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-white/50"
+              @keydown.enter.prevent="addEquipmentByQuery"
+            >
+            <div
+              v-if="equipSuggestions.length"
+              class="rounded-lg border border-white/15 bg-black/60 backdrop-blur-md max-h-48 overflow-auto"
+            >
+              <button
+                v-for="(s, idx) in equipSuggestions"
+                :key="idx"
+                type="button"
+                class="w-full text-left px-3 py-2 text-sm hover:bg-white/10 flex items-center justify-between"
+                @click="selectEquipmentSuggestion(s)"
+              >
+                <div class="min-w-0">
+                  <div class="font-medium truncate text-white">{{ s.tag || '-' }}</div>
+                  <div class="text-xs text-white/70 truncate">
+                    {{ s.title || '' }} <span v-if="s.system">• {{ s.system }}</span>
+                  </div>
+                  <div class="text-[11px] text-white/60 truncate">
+                    {{ spaceParentChainLabelById(s.spaceId) || 'Unassigned' }}
+                  </div>
+                </div>
+                <span class="text-[10px] text-white/50">Add</span>
+              </button>
+            </div>
+            <p class="text-xs text-white/60">
+              Press Enter to add. Fuzzy search across tag/title/system/location.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="font-medium">Equipment in this space ({{ equipmentInSpace.length }})</div>
+              <button
+                class="text-sm px-3 py-1 rounded bg-white/10 border border-white/20"
+                :disabled="equipmentLoading"
+                @click="refreshEquipment"
+              >
+                {{ equipmentLoading ? 'Refreshing…' : 'Refresh' }}
+              </button>
+            </div>
+            <div
+              v-if="equipmentLoading"
+              class="rounded-xl p-4 bg-white/5 border border-white/10 text-white/70 flex items-center gap-3"
+              role="status"
+              aria-live="polite"
+            >
+              <Spinner class="w-5 h-5" />
+              <span class="text-sm uppercase tracking-wide">Loading equipment…</span>
+            </div>
+            <div
+              v-else-if="!equipmentInSpace.length"
+              class="text-white/60 text-sm"
+            >
+              No equipment assigned to this space yet.
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="text-white/70">
+                  <tr>
+                    <th class="px-3 py-2 text-left">Tag</th>
+                    <th class="px-3 py-2 text-left">Title</th>
+                    <th class="px-3 py-2 text-left">System</th>
+                    <th class="px-3 py-2 text-left">Location</th>
+                    <th class="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="eq in equipmentInSpace"
+                    :key="eq.id || eq._id"
+                    class="border-t border-white/10"
+                  >
+                    <td class="px-3 py-2 text-white">{{ eq.tag || '-' }}</td>
+                    <td class="px-3 py-2 text-white/80">{{ eq.title || '-' }}</td>
+                    <td class="px-3 py-2 text-white/70">{{ eq.system || '-' }}</td>
+                    <td class="px-3 py-2 text-white/70">
+                      {{ spaceParentChainLabelById(eq.spaceId) || '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      <button
+                        class="px-3 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-100 text-xs"
+                        :disabled="equipmentLoading"
+                        @click="removeEquipmentFromSpace(eq)"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -595,9 +702,12 @@
 
           <div
             v-if="logsLoading"
-            class="text-white/70"
+            class="rounded-xl p-4 bg-white/5 border border-white/10 text-white/70 flex items-center gap-3"
+            role="status"
+            aria-live="polite"
           >
-            Loading logs...
+            <Spinner class="w-5 h-5" />
+            <span class="text-sm uppercase tracking-wide">Loading logs…</span>
           </div>
           <div v-else>
             <div
@@ -644,11 +754,13 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import DocumentUploader from '../../components/DocumentUploader.vue'
+import Spinner from '../../components/Spinner.vue'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import axios from 'axios'
 import { getApiBase } from '../../utils/api'
+import { getAuthHeaders } from '../../utils/auth'
 import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
 import IssuesTable from '../../components/IssuesTable.vue'
@@ -762,8 +874,135 @@ function spaceParentChainLabelById(pid?: string | null) {
   } catch (e) { return '' }
 }
 
+// Equipment tab state/helpers
+const equipSearch = ref('')
+const equipmentInProject = computed<any[]>(() => Array.isArray(equipmentStore.items) ? equipmentStore.items : [])
+const equipmentLoading = computed<boolean>(() => !!equipmentStore.loading)
+const equipmentInSpace = computed<any[]>(() => {
+  const sid = String(id.value || '')
+  if (!sid) return []
+  return equipmentInProject.value.filter((eq: any) => String(eq.spaceId || '') === sid)
+})
+const equipSuggestions = ref<any[]>([])
+
+function matchesEquipQuery(e: any, q: string) {
+  const lc = q.toLowerCase()
+  const fields = [
+    String(e?.tag || '').toLowerCase(),
+    String(e?.title || '').toLowerCase(),
+    String(e?.type || '').toLowerCase(),
+    String(e?.system || '').toLowerCase(),
+    String(spaceParentChainLabelById(e?.spaceId) || '').toLowerCase()
+  ]
+  return fields.some(f => f.includes(lc))
+}
+
+function updateEquipSuggestions() {
+  try {
+    equipSuggestions.value = []
+    const q = String(equipSearch.value || '').trim()
+    if (q.length < 2) return
+    const sid = String(id.value || '')
+    const list = equipmentInProject.value
+      .filter((eq: any) => String(eq.spaceId || '') !== sid) // avoid already in this space for "add"
+    const matches = list.filter((eq: any) => matchesEquipQuery(eq, q))
+    // Simple ranking: exact tag match, then startsWith, then includes
+    const lc = q.toLowerCase()
+    const scored = matches.map((eq: any) => {
+      const tag = String(eq.tag || '').toLowerCase()
+      let score = 0
+      if (tag === lc) score += 3
+      if (tag.startsWith(lc)) score += 2
+      if (tag.includes(lc)) score += 1
+      return { eq, score }
+    }).sort((a, b) => b.score - a.score)
+    equipSuggestions.value = scored.slice(0, 8).map(s => s.eq)
+  } catch (e) {
+    equipSuggestions.value = []
+  }
+}
+
+async function addEquipmentByQuery() {
+  try {
+    const q = String(equipSearch.value || '').trim()
+    if (!q) return
+    const sid = String(id.value || '')
+    if (!sid) return
+    const list = equipmentInProject.value.filter((eq: any) => String(eq.spaceId || '') !== sid)
+    const lc = q.toLowerCase()
+    let pick = list.find((eq: any) => String(eq.tag || '').trim().toLowerCase() === lc)
+    if (!pick) {
+      const cands = list.filter((eq: any) => matchesEquipQuery(eq, q))
+      if (cands.length === 1) pick = cands[0]
+      else if (cands.length === 0) {
+        ui.showError(`No equipment found for "${q}"`)
+        return
+      } else if (equipSuggestions.value.length === 1) {
+        pick = equipSuggestions.value[0]
+      } else {
+        ui.showError(`Multiple matches for "${q}". Please refine or pick a suggestion.`)
+        return
+      }
+    }
+    if (pick) {
+      const eid = String(pick.id || pick._id || '')
+      if (!eid) {
+        ui.showError('Equipment id missing')
+        return
+      }
+      await equipmentStore.updateFields(eid, { spaceId: sid })
+      ui.showSuccess('Equipment added to space')
+      await appendSpaceLog({ type: 'equipment.add', message: `Equipment added to space`, details: { equipmentId: eid, tag: pick.tag || pick.title || '', spaceId: sid } })
+      equipSearch.value = ''
+    }
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to add equipment')
+  }
+}
+
+async function removeEquipmentFromSpace(eq: any) {
+  try {
+    const eid = String(eq?.id || eq?._id || '')
+    if (!eid) return
+    await equipmentStore.updateFields(eid, { spaceId: null })
+    ui.showSuccess('Equipment removed from space')
+    await appendSpaceLog({ type: 'equipment.remove', message: 'Equipment removed from space', details: { equipmentId: eid, tag: eq?.tag || eq?.title || '' } })
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove equipment')
+  }
+}
+
+async function refreshEquipment() {
+  try {
+    const pid = projectStore.currentProjectId || (form.value as any)?.projectId
+    if (pid) await equipmentStore.fetchByProject(String(pid))
+  } catch (e) { /* ignore */ }
+}
+
+function selectEquipmentSuggestion(e: any) {
+  equipSearch.value = String(e?.tag || e?.title || '')
+  equipSuggestions.value = []
+  addEquipmentByQuery()
+}
+
+watch(equipSearch, () => updateEquipSuggestions())
+
+async function appendSpaceLog(payload: any) {
+  try {
+    const sid = String(id.value || '')
+    if (!sid) return
+    const { useLogsStore } = await import('../../stores/logs')
+    const logs = useLogsStore()
+    const entry = { ts: new Date().toISOString(), ...payload }
+    await logs.appendLog('spaces', sid, entry)
+  } catch (e) {
+    // best effort logging
+  }
+}
+
 function countForTab(t: string) {
   if (t === 'SubSpaces') return children.value.length
+  if (t === 'Equipment') return equipmentInSpace.value.length
   if (t === 'Issues') return issuesForSpace.value.length
   if (t === 'Attachments') return attachmentsList.value.length
   if (t === 'Attributes') return attributesDisplayCount.value
@@ -818,11 +1057,13 @@ async function save() {
       // Clean attributes: only non-empty rows
       if (Array.isArray(payload.attributes)) payload.attributes = payload.attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim()))
       await spaces.update(payload as any)
+      await appendSpaceLog({ type: 'update', message: 'Space updated', details: { spaceId: payload.id || payload._id, title: payload.title, type: payload.type } })
     } else {
       const payload: any = { ...form.value }
       if (Array.isArray(payload.attachments)) payload.attachments = payload.attachments.map((a: any) => (typeof a === 'string' ? a : (a?.url || ''))).filter((s: any) => !!s)
       if (Array.isArray(payload.attributes)) payload.attributes = payload.attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim()))
       await spaces.create(payload as any)
+      await appendSpaceLog({ type: 'create', message: 'Space created', details: { title: payload.title, type: payload.type } })
     }
   ui.showSuccess('Space saved')
     ui.showSuccess('Space saved')
@@ -864,10 +1105,11 @@ async function uploadDocument(file: File, onProgress: (pct: number) => void) {
   const fd = new FormData()
   fd.append('attachments', file)
   const res = await axios.post(`${getApiBase()}/api/spaces/${sid}/attachments`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() },
     onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) },
   })
   await refreshAfterUpload()
+  await appendSpaceLog({ type: 'attachment.add', message: 'Attachment added', details: { filename: file.name } })
   return res.data
 }
 
@@ -875,10 +1117,11 @@ async function deleteAttachment(i: number) {
   const sid = id.value
   if (!sid) return
   try {
-    await axios.delete(`${getApiBase()}/api/spaces/${sid}/attachments/${i}`)
+    await axios.delete(`${getApiBase()}/api/spaces/${sid}/attachments/${i}`, { headers: { ...getAuthHeaders() } })
     await refreshAfterUpload()
   ui.showSuccess('Attachment removed')
     ui.showSuccess('Attachment removed')
+    await appendSpaceLog({ type: 'attachment.remove', message: 'Attachment removed', details: { index: i } })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove attachment')
   }
@@ -910,6 +1153,7 @@ function applyAttributes() {
   form.value.attributes = rows
   ui.showSuccess('Attributes applied (remember to Save)')
   ui.showSuccess('Attributes applied (remember to Save)')
+  appendSpaceLog({ type: 'attributes.update', message: 'Attributes updated', details: { count: rows.length } })
 }
 
 // Issues for this space: resolve via equipment in this space or location hints

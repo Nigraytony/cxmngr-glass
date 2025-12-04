@@ -413,10 +413,11 @@
       </div>
     </div>
 
-    <div
-      v-if="!loading"
-      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0"
-    >
+    <div v-if="loading" class="rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 min-w-0 flex flex-col items-center justify-center text-white/70">
+      <Spinner />
+      <p class="mt-3 text-sm uppercase tracking-wide">Loading issues…</p>
+    </div>
+    <div v-else class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80">
           <div class="text-lg font-semibold">
@@ -895,6 +896,7 @@ import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
 import IssueForm from '../../components/IssueForm.vue'
+import Spinner from '../../components/Spinner.vue'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
@@ -907,7 +909,8 @@ import * as XLSX from 'xlsx'
 import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 // Preferred/common export columns in desired order
-const preferredColumns = ['projectId','number','title','description','type','priority','severity','status','foundBy','dateFound','assignedTo','responsible_person','dueDate','closedBy','closedDate','location','system','comments','documents','attachments','photos','createdAt','updatedAt']
+const removedColumns = ['projectId', 'comments', 'attachments', 'photos', 'documents', 'updatedAt', 'closedBy']
+const preferredColumns = ['number','title','description','type','priority','severity','status','foundBy','dateFound','assignedTo','responsible_person','dueDate','createdAt','closedDate','location','system']
 
 const issuesStore = useIssuesStore()
 const router = useRouter()
@@ -1078,6 +1081,7 @@ const availableColumns = computed(() => {
 
 const sortedAvailableColumns = computed(() => {
   const avail = new Set(availableColumns.value)
+  removedColumns.forEach(c => avail.delete(c))
   return [
     ...preferredColumns.filter(c => avail.has(c)),
     ...Array.from(avail).filter(c => !preferredColumns.includes(c)).sort()
@@ -1085,18 +1089,20 @@ const sortedAvailableColumns = computed(() => {
 })
 
 function loadSelectedColumns() {
+  const sanitize = (cols) => (cols || []).filter(c => !removedColumns.includes(c))
   try {
     const raw = localStorage.getItem(columnsStorageKey.value)
     if (raw) {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed)) {
-        selectedColumns.value = parsed
+        selectedColumns.value = orderColumns(sanitize(parsed))
         return
       }
     }
   } catch (e) { /* ignore */ }
   // default to preferred ∩ available
   const avail = new Set(availableColumns.value)
+  removedColumns.forEach(c => avail.delete(c))
   selectedColumns.value = preferredColumns.filter(c => avail.has(c))
 }
 
@@ -1121,21 +1127,29 @@ function selectCommonColumns() {
   const avail = new Set(availableColumns.value)
   selectedColumns.value = preferredColumns.filter(c => avail.has(c))
 }
+function orderColumns(cols) {
+  const pref = preferredColumns
+  const inPref = cols.filter(c => pref.includes(c))
+  const remaining = cols.filter(c => !pref.includes(c)).sort()
+  // Preserve preferred order, then remaining alpha
+  const orderedPref = pref.filter(c => inPref.includes(c))
+  return [...orderedPref, ...remaining]
+}
 function onToggleColumn(col, checked) {
   const set = new Set(selectedColumns.value)
   if (checked) set.add(col); else set.delete(col)
-  selectedColumns.value = Array.from(set)
+  selectedColumns.value = orderColumns(Array.from(set))
 }
 
 function getExportColumns(rows) {
   // Use selected columns if any; otherwise derive from rows using preferred order then others
-  if (selectedColumns.value && selectedColumns.value.length) return selectedColumns.value.slice()
+  if (selectedColumns.value && selectedColumns.value.length) return orderColumns(selectedColumns.value.slice().filter(c => !removedColumns.includes(c)))
   const colSet = new Set()
   for (const it of rows) {
     if (!it || typeof it !== 'object') continue
     for (const k of Object.keys(it)) {
       if (k === 'id' || k === '_id') continue
-      colSet.add(k)
+      if (!removedColumns.includes(k)) colSet.add(k)
     }
   }
   return [
@@ -1320,6 +1334,44 @@ const searchMode = computed(() => {
   } catch (e) { return 'substring' }
 })
 const hideClosed = ref(false)
+// Sorting state (used in persistence below; defined here to avoid temporal use)
+const sortKey = ref('')
+const sortDir = ref(1) // 1 = asc, -1 = desc
+
+// Persist list UI state per project (search, filters, sort)
+const listStateKey = computed(() => `issuesListState:${projectStore.currentProjectId || 'global'}`)
+function hasSessionStorage() {
+  try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
+}
+function loadListState() {
+  if (!hasSessionStorage()) return
+  try {
+    const raw = sessionStorage.getItem(listStateKey.value)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data && typeof data === 'object') {
+      if (typeof data.searchQuery === 'string') searchQuery.value = data.searchQuery
+      if (typeof data.priorityFilter === 'string') priorityFilter.value = data.priorityFilter
+      if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
+      if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
+      if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
+      if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
+    }
+  } catch (e) { /* ignore */ }
+}
+function persistListState() {
+  if (!hasSessionStorage()) return
+  try {
+    sessionStorage.setItem(listStateKey.value, JSON.stringify({
+      searchQuery: searchQuery.value,
+      priorityFilter: priorityFilter.value,
+      statusFilter: statusFilter.value,
+      hideClosed: hideClosed.value,
+      sortKey: sortKey.value,
+      sortDir: sortDir.value
+    }))
+  } catch (e) { /* ignore */ }
+}
 
 // Debounce helper (small local utility)
 function debounce(fn, wait = 200) {
@@ -1334,6 +1386,9 @@ const effectiveSearch = ref('')
 const updateEffective = debounce((val) => { effectiveSearch.value = val }, 200)
 
 watch(() => searchQuery.value, (v) => updateEffective(v))
+// Now that search/effective/search watchers exist, wire up persistence
+watch(listStateKey, () => loadListState(), { immediate: true })
+watch([searchQuery, priorityFilter, statusFilter, hideClosed, sortKey, sortDir], () => persistListState())
 const priorityCounts = computed(() => {
   const map = {}
   for (const i of issuesStore.issues) {
@@ -1532,10 +1587,6 @@ function fetchIssuesPage(projectId) {
     }
   })()
 }
-
-// Sorting state for issues table
-const sortKey = ref('')
-const sortDir = ref(1) // 1 = asc, -1 = desc
 
 const debouncedFetch = debounce(() => { fetchIssuesPage().catch(() => {}) }, 150)
 watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
@@ -1922,6 +1973,8 @@ async function onDownloadListReport() {
     const cols = (selectedColumns.value && selectedColumns.value.length)
       ? selectedColumns.value.slice()
       : getExportColumns(filteredIssues.value)
+    // prune removed columns in case legacy selections persist
+    const prunedCols = cols.filter(c => !removedColumns.includes(c))
     const issues = filteredIssues.value.map(i => ({
       id: i.id || i._id,
       number: typeof i.number === 'number' ? i.number : (i.number ? Number(i.number) : null),
@@ -1940,16 +1993,12 @@ async function onDownloadListReport() {
       system: i.system || '',
       recommendation: i.recommendation || '',
       resolution: i.resolution || '',
-      projectId: i.projectId || (projectStore.currentProjectId || undefined),
-      comments: Array.isArray(i.comments) ? i.comments : [],
-      attachments: Array.isArray(i.attachments) ? i.attachments : (i.documents || []),
-      photos: Array.isArray(i.photos) ? i.photos : [],
       createdAt: i.createdAt || '',
       updatedAt: i.updatedAt || '',
       responsible_person: i.responsible_person || '',
       severity: i.severity || '',
     }))
-    await reportRef.value?.generateIssuesListPdf(issues, cols)
+    await reportRef.value?.generateIssuesListPdf(issues, prunedCols)
   } catch (e) {
     // silent; optionally show a toast
   } finally {

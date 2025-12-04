@@ -15,6 +15,14 @@ const WebhookEvent = require('../models/webhookEvent');
 const Invoice = require('../models/invoice');
 const Charge = require('../models/charge');
 
+async function markEventStatus(eventId, status, extra = {}) {
+  try {
+    await WebhookEvent.findOneAndUpdate({ eventId }, { $set: { status, ...extra } });
+  } catch (e) {
+    console.error(JSON.stringify({ ctx: 'webhook.markStatus', ok: false, eventId, status, message: e && e.message }));
+  }
+}
+
 // Stripe webhook endpoint mounted at /api/stripe/webhook
 router.post('/webhook', async (req, res) => {
   if (!stripe) return res.status(503).send('Stripe not configured');
@@ -44,11 +52,27 @@ router.post('/webhook', async (req, res) => {
   try {
     wevent = await WebhookEvent.findOneAndUpdate(
       { eventId },
-      { $setOnInsert: { eventId, type: event.type, receivedAt: new Date(), status: 'processing', meta: { raw: event } } },
+      {
+        $setOnInsert: { eventId, type: event.type, receivedAt: new Date(), status: 'processing', meta: { raw: event }, attempts: 1 },
+        $set: { type: event.type, meta: { raw: event } },
+        $inc: { attempts: 1 },
+      },
       { upsert: true, new: true }
     );
     if (wevent && wevent.status === 'processed') {
       return res.json({ received: true, skipped: true });
+    }
+    if (wevent && wevent.status === 'processing' && !wevent.processedAt) {
+      // Another worker/request is already processing this event; avoid double-processing.
+      return res.status(202).json({ received: true, processing: true });
+    }
+    if (wevent && !wevent.meta) {
+      // Ensure raw payload is retained for replay/diagnostics
+      try {
+        await WebhookEvent.findOneAndUpdate({ eventId }, { $set: { meta: { raw: event } } });
+      } catch (e) {
+        console.error(JSON.stringify({ ctx: 'webhook.record.meta', ok: false, eventId, message: e && e.message }));
+      }
     }
   } catch (err) {
     console.error(JSON.stringify({ ctx: 'webhook.record', ok: false, message: err && err.message }));
@@ -146,11 +170,37 @@ router.post('/webhook', async (req, res) => {
                 await Project.findByIdAndUpdate(projectId, {
                   stripeSubscriptionStatus: sub.status,
                   stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+                  stripeIsPastDue: false,
+                  stripeLastPaymentStatus: 'succeeded',
+                  stripeLastInvoiceId: invoice.id,
+                  stripeLastInvoiceStatus: invoice.status || null,
                   isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
                 });
               }
             } catch (e) {
               console.warn('failed to update project from invoice payment_succeeded', e && e.message);
+            }
+          }
+        }
+        if (event.type === 'invoice.payment_failed') {
+          const subId = invoice.subscription;
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(String(subId));
+              const projectId = sub.metadata && sub.metadata.projectId;
+              if (projectId) {
+                await Project.findByIdAndUpdate(projectId, {
+                  stripeSubscriptionStatus: sub.status,
+                  stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
+                  stripeIsPastDue: true,
+                  stripeLastPaymentStatus: 'failed',
+                  stripeLastInvoiceId: invoice.id,
+                  stripeLastInvoiceStatus: invoice.status || null,
+                  isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
+                });
+              }
+            } catch (e) {
+              console.warn('failed to update project from invoice payment_failed', e && e.message);
             }
           }
         }
@@ -220,7 +270,7 @@ router.post('/webhook', async (req, res) => {
     }
 
     try {
-      await WebhookEvent.findOneAndUpdate({ eventId }, { status: 'processed', processedAt: new Date() });
+      await WebhookEvent.findOneAndUpdate({ eventId }, { status: 'processed', processedAt: new Date(), errorMessage: null });
     } catch (markErr) {
       console.error(JSON.stringify({ ctx: 'webhook.markProcessed', ok: false, eventId, message: markErr && markErr.message }));
     }
@@ -229,7 +279,15 @@ router.post('/webhook', async (req, res) => {
   } catch (err) {
     console.error(JSON.stringify({ ctx: 'webhook.handler', ok: false, eventId, message: err && err.message }));
     try {
-      await WebhookEvent.findOneAndUpdate({ eventId }, { status: 'failed', errorMessage: err && err.message });
+      await WebhookEvent.findOneAndUpdate(
+        { eventId },
+        {
+          status: 'failed',
+          errorMessage: err && err.message ? String(err.message).slice(0, 500) : 'error',
+          lastError: { message: err && err.message, stack: err && err.stack },
+          processedAt: new Date(),
+        }
+      );
     } catch (markErr) {
       console.error(JSON.stringify({ ctx: 'webhook.markFailed', ok: false, eventId, message: markErr && markErr.message }));
     }

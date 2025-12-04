@@ -1,5 +1,15 @@
 <template>
   <div class="space-y-4 text-white">
+    <div
+      v-if="pageLoading"
+      class="flex flex-col items-center justify-center py-16 text-white/70"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+      <p class="mt-3 text-sm tracking-wide uppercase">Loading activity…</p>
+    </div>
+    <div v-else>
     <div>
       <BreadCrumbs
         :items="crumbs"
@@ -284,7 +294,7 @@
                 @keydown.up.prevent="onSpaceArrow(-1)"
                 @keydown.enter.prevent="chooseHighlightedSpace"
                 @keydown.esc="hideSpaceSuggestions"
-                @focus="showSpaceSuggestions = true"
+                @focus="onSpaceFocus"
                 @blur="hideSpaceSuggestions"
               >
               <button
@@ -898,6 +908,9 @@
                 @keydown.down.prevent="onArrowDown"
                 @keydown.up.prevent="onArrowUp"
                 @keydown.esc.prevent="onEsc"
+                @focus="openSuggestions"
+                @input="openSuggestions"
+                @blur="onInputBlur"
               >
               <!-- Suggestions dropdown -->
               <div
@@ -1142,7 +1155,6 @@
         </li>
       </ul>
     </div>
-  </div>
   <Modal v-model="viewerOpen">
     <template #header>
       <div class="flex items-center justify-between">
@@ -1608,6 +1620,8 @@
       </div>
     </template>
   </Modal>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -1638,7 +1652,7 @@ import { useEquipmentStore } from '../../stores/equipment'
 import { useSpacesStore } from '../../stores/spaces'
 
 // Accept route params passed as attrs to avoid extraneous attribute warnings when rendering fragments
-
+const props = defineProps<{ id?: string }>()
 const route = useRoute()
 const router = useRouter()
 const store = useActivitiesStore()
@@ -1649,8 +1663,9 @@ const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
 
-const id = computed(() => String(route.params.id))
+const id = computed(() => String(props.id || route.params.id || ''))
 const isNew = computed(() => id.value === 'new')
+const pageLoading = ref(true)
 const saving = ref(false)
 const downloading = ref(false)
 // When creating a brand new activity via photo upload, hold the created id
@@ -1744,6 +1759,52 @@ const spaceQuery = ref(form.location || '')
 const showSpaceSuggestions = ref(false)
 const highlightedSpaceIndex = ref(-1)
 
+function spacesById(): Record<string, any> {
+  const raw = (spacesStore as any).byId
+  if (!raw) return {}
+  if (typeof raw === 'object' && 'value' in raw) {
+    const v = (raw as any).value
+    return v && typeof v === 'object' ? v as Record<string, any> : {}
+  }
+  return typeof raw === 'object' ? raw as Record<string, any> : {}
+}
+
+function getSpaceById(id: any): any | null {
+  const key = typeof id === 'string' ? id.trim() : id != null ? String(id) : ''
+  if (!key || key === 'undefined' || key === 'null') return null
+  const map = spacesById()
+  if (map && map[key]) return map[key]
+  return (spacesStore.items || []).find((s: any) => String(s.id || s._id) === key) || null
+}
+
+function normalizeIdValue(value: any): string {
+  if (value && typeof value === 'object' && 'value' in value) {
+    value = (value as any).value
+  }
+  const str = typeof value === 'string' ? value.trim() : value != null ? String(value).trim() : ''
+  if (!str || str === 'undefined' || str === 'null' || str === '[object Object]') return ''
+  return str
+}
+
+function resolvedProjectId(): string {
+  return normalizeIdValue(form.projectId) || normalizeIdValue(projectStore.currentProjectId) || normalizeIdValue(localStorage.getItem('selectedProjectId'))
+}
+
+async function ensureSpaceDataLoaded() {
+  if (Array.isArray(spacesStore.items) && spacesStore.items.length) return
+  const loadingFlag = (typeof spacesStore.loading === 'object' && spacesStore.loading && 'value' in spacesStore.loading)
+    ? (spacesStore.loading as any).value
+    : spacesStore.loading
+  if (loadingFlag) return
+  const pid = resolvedProjectId()
+  if (!pid) return
+  try {
+    await spacesStore.fetchByProject(pid)
+  } catch (e) {
+    // best effort; UI already shows empty state on failure
+  }
+}
+
 // Type dropdown state
 const showTypeDropdown = ref(false)
 const highlightedTypeIndex = ref(-1)
@@ -1788,7 +1849,7 @@ function spaceParentChainLabel(s: any) {
       if (title) parts.unshift(title)
       const pid = cur.parentSpace || cur.parent || null
       if (!pid) break
-      cur = (spacesStore as any).byId?.[String(pid)] || (spacesStore.items || []).find((x: any) => String(x.id || x._id) === String(pid))
+      cur = getSpaceById(pid)
       depth++
     }
     return parts.join(' > ')
@@ -1798,13 +1859,13 @@ function spaceParentChainLabel(s: any) {
 function equipmentBreadcrumbLabel(equipment: any) {
   try {
     if (!equipment?.spaceId) return equipment?.tag || ''
-    
-    const space = (spacesStore as any).byId?.[String(equipment.spaceId)] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === String(equipment.spaceId))
+
+    const space = getSpaceById(equipment.spaceId)
     if (!space) return equipment?.tag || ''
-    
+
     const spaceChain = spaceParentChainLabel(space)
     const equipmentTag = String(equipment?.tag || '')
-    
+
     return spaceChain ? `${spaceChain} > ${equipmentTag}` : equipmentTag
   } catch (e) { 
     return equipment?.tag || ''
@@ -1814,10 +1875,10 @@ function equipmentBreadcrumbLabel(equipment: any) {
 function equipmentLocationBreadcrumb(equipment: any) {
   try {
     if (!equipment?.spaceId) return '—'
-    
-    const space = (spacesStore as any).byId?.[String(equipment.spaceId)] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === String(equipment.spaceId))
+
+    const space = getSpaceById(equipment.spaceId)
     if (!space) return '—'
-    
+
     return spaceParentChainLabel(space) || space.title || space.tag || '—'
   } catch (e) { 
     return '—'
@@ -1827,6 +1888,12 @@ function equipmentLocationBreadcrumb(equipment: any) {
 function onSpaceInput() {
   highlightedSpaceIndex.value = -1
   showSpaceSuggestions.value = true
+  ensureSpaceDataLoaded().catch(() => {})
+}
+
+function onSpaceFocus() {
+  showSpaceSuggestions.value = true
+  ensureSpaceDataLoaded().catch(() => {})
 }
 
 function onSpaceArrow(dir: number) {
@@ -1855,7 +1922,8 @@ function selectSpace(s: any) {
     const id = String(s.id || s._id || '')
     form.spaceId = id
     // Use the Parent > ... > Child breadcrumb chain for the input display
-    const chain = spaceParentChainLabel(s) || (s.title || s.tag || '')
+    const canonical = getSpaceById(id) || s
+    const chain = spaceParentChainLabel(canonical) || (canonical?.title || canonical?.tag || '')
     form.location = chain
     spaceQuery.value = chain
   } catch (e) { /* ignore */ }
@@ -1917,49 +1985,54 @@ const crumbs = computed(() => [
 ])
 
 onMounted(async () => {
-  loadActivityReportSettingsFromSession()
-  await projectStore.fetchProjects?.()?.catch(() => {})
-  const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
-  if (pid) form.projectId = String(pid)
-  // Ensure issues are available for linking/rendering
-  try { await issuesStore.fetchIssues(String(form.projectId || pid)) } catch (e) { /* ignore issues fetch race */ }
-  // Preload equipment and spaces for the current project so the Equipment Reviewed tab can list them
-  try { if (pid) await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch (e) { /* ignore preload failures */ }
-  const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()).padStart(2,'0')
-  form.startDate = `${yyyy}-${mm}-${dd}`; form.endDate = `${yyyy}-${mm}-${dd}`
-  if (!isNew.value) {
-    const a = await store.fetchActivity(id.value)
-    Object.assign(form, {
-      name: a?.name || '',
-      descriptionHtml: a?.descriptionHtml || '',
-      type: a?.type || 'Site Visit Review',
-      startDate: a?.startDate ? a.startDate.substring(0,10) : form.startDate,
-      endDate: a?.endDate ? a.endDate.substring(0,10) : form.endDate,
-      projectId: a?.projectId || form.projectId,
-      location: a?.location || '',
-      spaceId: (a as any)?.spaceId || null,
-      systems: a?.systems || [],
-      comments: a?.comments || [],
-      attachments: a?.attachments || [],
-      issues: a?.issues || [],
-    })
-    // Normalize loaded spaceId to a string and populate the visible search box
-    try {
-      if (form.spaceId) {
-        const sid = String((form.spaceId as any) || '')
-        form.spaceId = sid
-        const sp = (spacesStore as any).byId?.[sid] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === sid)
-        const chain = sp ? (spaceParentChainLabel(sp) || (sp.title || sp.tag || '')) : (form.location || '')
-        form.location = chain || form.location || ''
-        spaceQuery.value = chain || String(form.location || '')
-      } else {
-        spaceQuery.value = String(form.location || '')
-      }
-    } catch (e) { /* ignore */ }
-  // Don't preload into the search box; it's used for adding by search only
-  systemsText.value = ''
-    // Ensure equipment/spaces reflect the activity's project
-  try { if (form.projectId) await Promise.all([ equipmentStore.fetchByProject(String(form.projectId)), spacesStore.fetchByProject(String(form.projectId)) ]) } catch (e) { /* ignore preload failures */ }
+  pageLoading.value = true
+  try {
+    loadActivityReportSettingsFromSession()
+    await projectStore.fetchProjects?.()?.catch(() => {})
+    const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
+    if (pid) form.projectId = String(pid)
+    // Ensure issues are available for linking/rendering
+    try { await issuesStore.fetchIssues(String(form.projectId || pid)) } catch (e) { /* ignore issues fetch race */ }
+    // Preload equipment and spaces for the current project so the Equipment Reviewed tab can list them
+    try { if (pid) await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch (e) { /* ignore preload failures */ }
+    const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()+0).padStart(2,'0')
+    form.startDate = `${yyyy}-${mm}-${dd}`; form.endDate = `${yyyy}-${mm}-${dd}`
+    if (!isNew.value) {
+      const a = await store.fetchActivity(id.value)
+      Object.assign(form, {
+        name: a?.name || '',
+        descriptionHtml: a?.descriptionHtml || '',
+        type: a?.type || 'Site Visit Review',
+        startDate: a?.startDate ? a.startDate.substring(0,10) : form.startDate,
+        endDate: a?.endDate ? a.endDate.substring(0,10) : form.endDate,
+        projectId: a?.projectId || form.projectId,
+        location: a?.location || '',
+        spaceId: (a as any)?.spaceId || null,
+        systems: a?.systems || [],
+        comments: a?.comments || [],
+        attachments: a?.attachments || [],
+        issues: a?.issues || [],
+      })
+      // Normalize loaded spaceId to a string and populate the visible search box
+      try {
+        if (form.spaceId) {
+          const sid = String((form.spaceId as any) || '')
+          form.spaceId = sid
+          const sp = getSpaceById(sid)
+          const chain = sp ? (spaceParentChainLabel(sp) || (sp.title || sp.tag || '')) : (form.location || '')
+          form.location = chain || form.location || ''
+          spaceQuery.value = chain || String(form.location || '')
+        } else {
+          spaceQuery.value = String(form.location || '')
+        }
+      } catch (e) { /* ignore */ }
+    // Don't preload into the search box; it's used for adding by search only
+    systemsText.value = ''
+      // Ensure equipment/spaces reflect the activity's project
+    try { if (form.projectId) await Promise.all([ equipmentStore.fetchByProject(String(form.projectId)), spacesStore.fetchByProject(String(form.projectId)) ]) } catch (e) { /* ignore preload failures */ }
+    }
+  } finally {
+    pageLoading.value = false
   }
 })
 
@@ -2919,7 +2992,7 @@ const equipmentLoading = computed<boolean>(() => !!equipmentStore.loading)
 function spaceName(spaceId?: string | null) {
   const pid = spaceId ? String(spaceId) : ''
   if (!pid) return ''
-  const sp: any = (spacesStore as any).byId?.[pid] || (spacesStore.items || []).find((s: any) => String((s.id || (s as any)._id || '')) === pid)
+  const sp: any = getSpaceById(pid)
   return sp ? (sp.title || sp.tag || '') : ''
 }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2927,39 +3000,72 @@ const _filteredEquip = computed<any[]>(() => selectedEquip.value)
 function addReviewedTag(e: any) {
   const tag = String(e?.tag || '').trim()
   if (!tag) return
-  // If there are multiple equipment with the same tag in the project,
-  // store an id-specific token so each instance can be selected separately.
-  const candidates = equipmentInProject.value.filter((eq: any) => String(eq?.tag || '').trim().toLowerCase() === tag.toLowerCase())
-  const useIdToken = candidates.length > 1 && (e?.id || e?._id)
-  const token = useIdToken ? `${tag}::${String(e.id || e._id)}` : tag
-  const exists = (form.systems || []).some(s => String(s).trim().toLowerCase() === String(token).toLowerCase())
+  const id = String(e?.id || e?._id || '').trim()
+  const token = id || tag
+  const exists = (form.systems || []).some(s => String(s).trim() === token)
   if (!exists) {
-    form.systems.push(token)
+    form.systems = [...(form.systems || []), token]
+    normalizeSelectedEquipmentTokens()
+    queueSaveEquipment()
   }
+}
+
+// Normalize saved selections: convert any tag or tag::id tokens into equipment ids
+function normalizeSelectedEquipmentTokens() {
+  const sels = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
+  if (!sels.length) return
+  const byId: Record<string, any> = {}
+  const byTag: Record<string, any[]> = {}
+  for (const eq of equipmentInProject.value) {
+    const id = String(eq?.id || eq?._id || '').trim()
+    const t = String(eq?.tag || '').trim().toLowerCase()
+    if (id) byId[id] = eq
+    if (t) {
+      if (!byTag[t]) byTag[t] = []
+      byTag[t].push(eq)
+    }
+  }
+  const ids: string[] = []
+  const seenIds = new Set<string>()
+  for (const token of sels) {
+    if (!token) continue
+    // token variants: id, tag::id, tag
+    if (byId[token]) {
+      if (!seenIds.has(token)) { ids.push(token); seenIds.add(token) }
+      continue
+    }
+    if (token.includes('::')) {
+      const id = token.split('::').slice(1).join('::')
+      if (id && byId[id] && !seenIds.has(id)) { ids.push(id); seenIds.add(id) }
+      continue
+    }
+    const tag = token.toLowerCase()
+    const eqs = byTag[tag] || []
+    if (eqs.length) {
+      const id = String(eqs[0]?.id || eqs[0]?._id || '').trim()
+      if (id && !seenIds.has(id)) { ids.push(id); seenIds.add(id) }
+    }
+  }
+  const deduped: string[] = []
+  const seen = new Set<string>()
+  for (const t of ids) {
+    if (seen.has(t)) continue
+    seen.add(t)
+    deduped.push(t)
+  }
+  const current = (form.systems || []).map(s => String(s).trim())
+  const sameLength = current.length === deduped.length
+  const same = sameLength && current.every((v, i) => v === deduped[i])
+  if (!same) {
+    form.systems = deduped
+  }
+  form.systems = ids
 }
 const selectedEquip = computed<any[]>(() => {
   const sels = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
   if (!sels.length) return []
-  const ids = new Set<string>()
-  const tags = new Set<string>()
-  for (const s of sels) {
-    if (s.includes('::')) {
-      const parts = s.split('::')
-      const t = parts[0] || ''
-      const id = parts.slice(1).join('::') || ''
-      if (id) ids.add(id)
-      if (t) tags.add(t.toLowerCase())
-    } else {
-      tags.add(s.toLowerCase())
-    }
-  }
-  return equipmentInProject.value.filter((e: any) => {
-    const id = String(e?.id || e?._id || '')
-    const tag = String(e?.tag || '').trim().toLowerCase()
-    if (ids.has(id)) return true
-    if (tags.has(tag)) return true
-    return false
-  })
+  const ids = new Set<string>(sels)
+  return equipmentInProject.value.filter((e: any) => ids.has(String(e?.id || e?._id || '')))
 })
 
 // Equipment pagination state
@@ -2969,6 +3075,13 @@ const equipTotalPages = computed(() => Math.max(1, Math.ceil(selectedEquip.value
 watch([selectedEquip, equipPerPage], () => {
   if (equipPage.value > equipTotalPages.value) equipPage.value = equipTotalPages.value
 }, { immediate: true })
+// Normalize saved selections once on mount
+onMounted(() => {
+  normalizeSelectedEquipmentTokens()
+})
+watch(() => equipmentInProject.value, () => {
+  normalizeSelectedEquipmentTokens()
+})
 const pagedEquip = computed(() => {
   const start = (equipPage.value - 1) * equipPerPage.value
   return selectedEquip.value.slice(start, start + equipPerPage.value)
@@ -2978,18 +3091,11 @@ function removeReviewedTag(e: any) {
   const tag = String(e?.tag || '').trim()
   if (!tag) return
   const id = String(e?.id || e?._id || '')
-  let idx = -1
-  if (id) {
-    const token = `${tag}::${id}`
-    idx = (form.systems || []).findIndex(s => String(s).trim().toLowerCase() === token.toLowerCase())
-  }
-  if (idx === -1) {
-    idx = (form.systems || []).findIndex(s => String(s).trim().toLowerCase() === tag.toLowerCase())
-  }
-  if (idx >= 0) {
-    form.systems.splice(idx, 1)
-    systemsText.value = ''
-  }
+  const token = id || tag
+  form.systems = (form.systems || []).filter(s => String(s).trim() !== token && String(s).trim().toLowerCase() !== tag.toLowerCase())
+  normalizeSelectedEquipmentTokens()
+  systemsText.value = ''
+  queueSaveEquipment()
 }
 
 // Add by searching from the input (press Enter)
@@ -3018,10 +3124,10 @@ function addByQueryCore() {
   if (pick) {
     const tag = String(pick.tag || '').trim()
     if (tag) {
-      const candidates = equipmentInProject.value.filter((eq: any) => String(eq?.tag || '').trim().toLowerCase() === tag.toLowerCase())
-      const token = (candidates.length > 1 && (pick?.id || pick?._id)) ? `${tag}::${String(pick.id || pick._id)}` : tag
-      if (!(form.systems || []).some(s => String(s).trim().toLowerCase() === token.toLowerCase())) {
-        form.systems.push(token)
+      const token = String(pick.id || pick._id || tag)
+      if (!(form.systems || []).some(s => String(s).trim() === token)) {
+        form.systems = [...(form.systems || []), token]
+        normalizeSelectedEquipmentTokens()
       }
     }
     systemsText.value = ''
@@ -3083,10 +3189,12 @@ const suggestions = computed<any[]>(() => {
     .sort((a: any, b: any) => rankCandidate(b, q) - rankCandidate(a, q))
   return list.slice(0, 8)
 })
-const showSuggestions = computed<boolean>(() => !!systemsText.value && suggestions.value.length > 0)
+const suggestionsOpen = ref(false)
+const showSuggestions = computed<boolean>(() => suggestionsOpen.value && !!systemsText.value && suggestions.value.length > 0)
 function addSuggestion(e: any) {
   addReviewedTag(e)
   systemsText.value = ''
+  closeSuggestions()
 }
 
 // Keyboard navigation for suggestions
@@ -3107,15 +3215,21 @@ function onArrowUp() {
 function onEsc() {
   highlightedIndex.value = -1
   systemsText.value = ''
+  closeSuggestions()
 }
+function openSuggestions() { suggestionsOpen.value = true }
+function closeSuggestions() { suggestionsOpen.value = false }
+function onInputBlur() { setTimeout(() => closeSuggestions(), 100) }
 
 // If Enter pressed and an item is highlighted, choose it
 function addByQuery() {
   if (highlightedIndex.value >= 0 && suggestions.value[highlightedIndex.value]) {
     addSuggestion(suggestions.value[highlightedIndex.value])
+    closeSuggestions()
     return
   }
   addByQueryCore()
+  closeSuggestions()
 }
 
 // Keep equipment/spaces in sync if projectId changes while editing

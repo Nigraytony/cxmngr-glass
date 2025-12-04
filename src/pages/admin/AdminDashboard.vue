@@ -26,10 +26,16 @@
         Templates
       </router-link>
       <router-link
-        to="/admin/webhook-events"
+        to="/admin/webhooks"
         class="p-4 rounded bg-white/5 border border-white/10 text-white"
       >
         Webhook Events
+      </router-link>
+      <router-link
+        to="/admin/billing"
+        class="p-4 rounded bg-white/5 border border-white/10 text-white"
+      >
+        Billing (Coupons & Credits)
       </router-link>
     </div>
   </div>

@@ -104,6 +104,7 @@ const emit = defineEmits(['close', 'saved'])
 
 // Define matrix of resources -> operations. Keep in sync with backend permissions.
 const matrix = {
+  tasks: ['create', 'read', 'update', 'delete'],
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],

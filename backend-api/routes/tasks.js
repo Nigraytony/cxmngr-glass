@@ -238,4 +238,51 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// DELETE /api/tasks/subtree/:id - soft-delete a task and all descendant tasks (by WBS prefix)
+router.delete('/subtree/:id', auth, async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).send({ error: 'Task not found' });
+
+    req.body = req.body || {};
+    req.body.projectId = task.projectId;
+
+    await runMiddleware(req, res, requirePermission('tasks.delete', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
+    // Build filter for subtree using WBS: match exact WBS or starting with WBS + '.'
+    let filter = { projectId: task.projectId };
+    if (task.wbs) {
+      const esc = String(task.wbs).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // regex matches either exact "prefix" or "prefix.<anything>"
+      filter.wbs = { $regex: new RegExp('^' + esc + '(?:\\.|$)') };
+    } else {
+      // If no WBS on the task, fall back to only this id
+      filter._id = task._id;
+    }
+
+    // Find affected IDs first
+    const affected = await Task.find(filter).select('_id').lean();
+    const ids = affected.map(a => a._id).filter(Boolean);
+
+    if (ids.length === 0) return res.status(200).json({ modifiedCount: 0, ids: [] });
+
+    // Soft-delete all matching tasks
+    const update = { deleted: true, status: 'Deleted' };
+    const result = await Task.updateMany({ _id: { $in: ids } }, update);
+
+    // Remove references from project.tasks (best-effort)
+    try {
+      if (task.projectId) {
+        await Project.updateOne({ _id: task.projectId }, { $pull: { tasks: { $in: ids } } }).catch(() => {});
+      }
+    } catch (e) { /* ignore */ }
+
+    const modified = (result && (result.modifiedCount || result.nModified)) || 0;
+    res.status(200).json({ modifiedCount: modified, ids });
+  } catch (error) {
+    res.status(500).send({ error: error && error.message ? error.message : error });
+  }
+});
+
 module.exports = router;

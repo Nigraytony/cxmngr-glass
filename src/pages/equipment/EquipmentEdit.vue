@@ -5,25 +5,36 @@
     </div>
 
     <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
-      <!-- Tabs header -->
-      <div class="mb-4 md:mb-6">
-        <div
-          role="tablist"
-          class="relative flex items-center w-full"
-        >
+      <div
+        v-if="loading"
+        class="flex flex-col items-center justify-center gap-3 py-16 text-white/70"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+        <p class="text-sm tracking-wide uppercase">Loading equipment…</p>
+      </div>
+
+      <div v-else>
+        <!-- Tabs header -->
+        <div class="mb-4 md:mb-6">
           <div
-            class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out"
-            :style="{ left: tabLeft + '%', width: tabWidth + '%' }"
-          />
-          <button
-            v-for="t in tabs"
-            :key="t"
-            :aria-selected="currentTab === t"
-            role="tab"
-            class="flex-1 text-center px-3 py-2 text-sm flex items-center justify-center gap-2"
-            :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'"
-            @click="currentTab = t"
+            role="tablist"
+            class="relative flex items-center w-full"
           >
+            <div
+              class="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out"
+              :style="{ left: tabLeft + '%', width: tabWidth + '%' }"
+            />
+            <button
+              v-for="t in tabs"
+              :key="t"
+              :aria-selected="currentTab === t"
+              role="tab"
+              class="flex-1 text-center px-3 py-2 text-sm flex items-center justify-center gap-2"
+              :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'"
+              @click="currentTab = t"
+            >
             <svg
               v-if="t === 'Info'"
               xmlns="http://www.w3.org/2000/svg"
@@ -143,7 +154,8 @@
               v-if="countForTab(t) > 0"
               class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80"
             >{{ countForTab(t) }}</span>
-          </button>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -337,7 +349,7 @@
                   @blur="hideSpaceDropdown"
                   @wheel.prevent="(e) => onSpaceArrow(e.deltaY > 0 ? 1 : -1)"
                 >
-                  <span>{{ (form as any).spaceId ? parentOptions.find(p => p.id === (form as any).spaceId)?.title + ' (' + parentOptions.find(p => p.id === (form as any).spaceId)?.type + ')' : 'None' }}</span>
+                  <span>{{ (form as any).spaceId ? buildSpacePath(String((form as any).spaceId)) : 'None' }}</span>
                   <svg
                     class="w-4 h-4 text-white/50"
                     fill="none"
@@ -374,7 +386,7 @@
                       :class="i === highlightedSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
                       @click="p.id && selectSpace(p.id)"
                     >
-                      {{ p.title }} ({{ p.type }})
+                      {{ spaceParentChainLabelById(p.id) || (p.title + (p.type ? ' (' + p.type + ')' : '')) }}
                     </button>
                   </div>
                 </div>
@@ -1031,6 +1043,7 @@
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
             :equipment-id="String(form.id || (form as any)._id || id)"
             :equipment-tag="String(form.tag || '')"
+            :equipment-space="equipmentSpaceName"
             :signatures="fptSignatures"
             @update:signatures="persistFptSignatures"
             @change="onFunctionalTestsChange"
@@ -1062,64 +1075,13 @@
           </div>
         </div>
         <!-- Logs Tab -->
-        <div
-          v-else-if="currentTab === 'Logs'"
-          class="space-y-3"
-        >
-          <div class="flex items-center justify-between">
-            <div class="text-white/80">
-              Equipment logs
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-                @click="loadLogs"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-if="logsLoading"
-            class="text-white/70"
-          >
-            Loading logs...
-          </div>
-          <div v-else>
-            <div
-              v-if="!logsList.length"
-              class="text-white/60"
-            >
-              No logs for this equipment.
-            </div>
-            <ul
-              v-else
-              class="space-y-2"
-            >
-              <li
-                v-for="(l, idx) in logsList"
-                :key="(l.ts || '') + String(idx)"
-                class="p-2 rounded bg-white/5 border border-white/10"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <div class="text-sm text-white/80">
-                    <span class="font-medium">{{ l.type }}</span>
-                    <span class="text-white/60"> — {{ l.message }}</span>
-                  </div>
-                  <div class="text-xs text-white/60">
-                    {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
-                  </div>
-                </div>
-                <div
-                  v-if="l.details"
-                  class="mt-2 text-xs text-white/60 truncate"
-                >
-                  {{ JSON.stringify(l.details) }}
-                </div>
-              </li>
-            </ul>
-          </div>
+        <div v-else-if="currentTab === 'Logs'">
+          <LogsPanel
+            title="Equipment logs"
+            :logs="logsList"
+            :loading="logsLoading"
+            @refresh="loadLogs"
+          />
         </div>
       </div>
 
@@ -1607,7 +1569,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
@@ -1617,6 +1579,7 @@ import FunctionalTestsPanel from '../../components/FunctionalTestsPanel.vue'
 import DocumentUploader from '../../components/DocumentUploader.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import IssuesTable from '../../components/IssuesTable.vue'
+import LogsPanel from '../../components/LogsPanel.vue'
 import axios from 'axios'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
@@ -1651,6 +1614,40 @@ const crumbs = computed(() => [
 
 const eqTitle = computed(() => (form.value?.tag || form.value?.title || ''))
 const parentOptions = computed(() => spacesStore.items)
+const spacesById = computed(() => (spacesStore as any).byId?.value || {})
+
+function spaceParentChainLabelById(spaceId?: string | null) {
+  try {
+    const pid = spaceId ? String(spaceId) : ''
+    if (!pid) return ''
+    let cur: any = spacesById.value[pid] || (spacesStore.items || []).find((s: any) => String(s.id || s._id) === pid)
+    if (!cur) return ''
+    const parts: string[] = []
+    let depth = 0
+    while (cur && depth < 20) {
+      const title = String(cur.title || cur.tag || '')
+      if (title) parts.unshift(title)
+      const parentId = cur.parentSpace || cur.parent || null
+      if (!parentId) break
+      cur = spacesById.value[String(parentId)] || (spacesStore.items || []).find((x: any) => String(x.id || x._id) === String(parentId))
+      depth++
+    }
+    return parts.join(' → ')
+  } catch (e) {
+    return ''
+  }
+}
+
+function buildSpacePath(spaceId: string): string {
+  return spaceParentChainLabelById(spaceId)
+}
+
+const equipmentSpaceName = computed(() => {
+  const raw = (form.value as any)?.spaceId
+  const normalized = typeof raw === 'string' ? raw.trim() : raw ? String(raw) : ''
+  if (!normalized || normalized === 'undefined' || normalized === 'null') return ''
+  return buildSpacePath(normalized)
+})
 
 // tabs state
 const tabs = ['Info', 'Components', 'Photos', 'Attachments', 'Checklists', 'FPT', 'Issues', 'Logs']
@@ -1670,19 +1667,35 @@ onMounted(() => setTabFromQuery())
 // Logs tab state
 const logsList = ref<any[]>([])
 const logsLoading = ref(false)
+let logsStore: any = null
+async function ensureLogsStore() {
+  if (logsStore) return logsStore
+  const { useLogsStore } = await import('../../stores/logs')
+  logsStore = useLogsStore()
+  return logsStore
+}
 async function loadLogs() {
   const eid = String(route.params.id || '')
   if (!eid || eid === 'new') return
   logsLoading.value = true
   try {
-    const { useLogsStore } = await import('../../stores/logs')
-    const logs = useLogsStore()
-    const list = await logs.fetchLogs('equipment', eid)
+    const store = await ensureLogsStore()
+    const list = await store.fetchLogs('equipment', eid)
     logsList.value = Array.isArray(list) ? list : []
   } catch (e) {
     logsList.value = []
   } finally {
     logsLoading.value = false
+  }
+}
+async function appendLog(type: string, message: string, extra: Record<string, any> = {}) {
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid || eid === 'new') return
+  try {
+    const store = await ensureLogsStore()
+    await store.appendLog('equipment', eid, { type, message, ...extra })
+  } catch (e) {
+    // logging errors are non-blocking
   }
 }
 
@@ -1873,6 +1886,7 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   })
   const fresh = await equipmentStore.fetchOne(eid)
   if (fresh) form.value = { ...fresh }
+  appendLog('photo.upload', 'Uploaded photo', { filename: file?.name || null })
   return res.data
 }
 async function removePhotoAt(idx: number) {
@@ -1883,6 +1897,7 @@ async function removePhotoAt(idx: number) {
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
     ui.showSuccess('Photo removed')
+    appendLog('photo.remove', 'Removed photo', { index: idx })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove photo')
   }
@@ -1924,6 +1939,7 @@ async function saveCaption() {
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
     ui.showSuccess('Caption saved')
+    appendLog('photo.caption', 'Updated photo caption', { index: viewerIndex.value, caption })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save caption')
   } finally {
@@ -1932,7 +1948,6 @@ async function saveCaption() {
 }
 function onKey(e: KeyboardEvent) { if (!viewerOpen.value) return; if (e.key === 'ArrowRight') { e.preventDefault(); nextPhoto() } else if (e.key === 'ArrowLeft') { e.preventDefault(); prevPhoto() } }
 onMounted(() => window.addEventListener('keydown', onKey))
-import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 // Viewer helpers
@@ -1978,6 +1993,7 @@ async function uploadDocument(file: File, onProgress: (pct: number) => void) {
   })
   const fresh = await equipmentStore.fetchOne(eid)
   if (fresh) form.value = { ...fresh }
+  appendLog('attachment.upload', 'Uploaded attachment', { filename: file?.name || null })
   return res.data
 }
 async function removeAttachment(i: number) {
@@ -1988,6 +2004,7 @@ async function removeAttachment(i: number) {
       const fresh = await equipmentStore.fetchOne(eid)
       if (fresh) form.value = { ...fresh }
       ui.showSuccess('Attachment removed')
+      appendLog('attachment.remove', 'Removed attachment', { index: i })
       return
     } catch (e: any) {
       ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove attachment')
@@ -2300,6 +2317,7 @@ async function createCompIssue() {
       }
     }
     ui.showSuccess('Issue created')
+    appendLog('issue.create', 'Issue created for component', { issueId: created?.id || created?._id || '', title: created?.title || created?.summary || title })
     showCompIssueModal.value = false
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'Failed to create issue'
@@ -2364,9 +2382,13 @@ function editComponent(i: number) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function removeComponent(i: number) {
   const list = componentsList.value.slice()
+  const removed = list[i]
   list.splice(i, 1)
   componentsList.value = list
-  await persistComponents()
+  const ok = await persistComponents()
+  if (ok) {
+    appendLog('component.remove', 'Component removed', { tag: removed?.tag || removed?.title || '', type: removed?.type || '' })
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2429,6 +2451,7 @@ async function saveComponent() {
   const ok = await persistComponents()
   if (ok) {
     ui.showSuccess('Component saved')
+    appendLog('component.save', 'Component saved', { tag: componentToSave.tag || componentToSave.title || '', type: componentToSave.type })
     cancelEditComponent()
     // refresh from server to ensure canonical state
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
@@ -2466,6 +2489,7 @@ async function persistComponents(): Promise<boolean> {
       return out
     })
     await equipmentStore.updateFields(eid, { components: payloadList } as any)
+    appendLog('component.update', 'Components updated', { count: payloadList.length })
     return true
   } catch (err: any) {
     console.error('Failed to persist components', err)
@@ -2626,6 +2650,7 @@ async function persistFunctionalTests(tests: any[]) {
     await equipmentStore.updateFields(eid, { functionalTests: tests } as any)
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
+    appendLog('fpt.save', 'Functional tests saved', { count: Array.isArray(tests) ? tests.length : undefined })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save functional tests')
   }
@@ -2687,6 +2712,7 @@ async function persistChecklists(sections: any[]) {
     await equipmentStore.updateFields(eid, { checklists: sections } as any)
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
+    appendLog('checklist.save', 'Checklist saved', { sections: Array.isArray(sections) ? sections.length : undefined })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save checklist')
   }
@@ -2739,6 +2765,7 @@ async function save() {
   try {
         await equipmentStore.update(form.value as Equipment & { id: string })
     ui.showSuccess('Equipment saved')
+    appendLog('equipment.save', 'Equipment saved', { tag: form.value.tag || '', status: form.value.status, spaceId: (form.value as any).spaceId || null })
   } catch (e) {
     console.error(e)
     ui.showError('Failed to save equipment')
@@ -2756,6 +2783,7 @@ async function onDelete() {
     variant: 'danger'
   })
   if (!confirmed) return
+  appendLog('equipment.delete', 'Equipment deleted', { id: id.value })
   await equipmentStore.remove(id.value)
   ui.showSuccess('Equipment deleted')
   goBack()

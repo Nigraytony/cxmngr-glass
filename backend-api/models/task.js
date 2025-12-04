@@ -14,6 +14,7 @@ const taskSchema = new mongoose.Schema({
     percentComplete: { type: Number, min: 0, max: 100, default: 0 },
     status: { type: String, enum: ['Not Started','Pending','In Progress','Completed','Deleted'], default: 'Not Started' },
     cost: { type: Number, default: 0 },
+    autoCost: { type: Boolean, default: true },
     parentId: { type: String, default: null },
     dependencies: { type: [String], default: [] },
     assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

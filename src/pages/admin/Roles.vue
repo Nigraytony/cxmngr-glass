@@ -14,12 +14,12 @@
           <input
             v-model="form.name"
             placeholder="Role name"
-            class="w-full p-2 rounded bg-white/6"
+            class="w-full p-2 rounded bg-white/6 placeholder:text-gray-400"
           >
           <input
             v-model="form.description"
             placeholder="Description"
-            class="w-full p-2 rounded bg-white/6"
+            class="w-full p-2 rounded bg-white/6 placeholder:text-gray-400"
           >
           <select
             v-model="form.scope"
@@ -40,12 +40,12 @@
             v-if="form.scope === 'project'"
             v-model="form.projectId"
             placeholder="Project ID (for project-scoped)"
-            class="w-full p-2 rounded bg-white/6"
+            class="w-full p-2 rounded bg-white/6 placeholder:text-gray-400"
           >
           <textarea
             v-model="form.permissionsText"
             placeholder="Permissions (one per line)"
-            class="w-full p-2 rounded bg-white/6 h-28"
+            class="w-full p-2 rounded bg-white/6 h-28 placeholder:text-gray-400"
           />
           <div class="text-right">
             <button

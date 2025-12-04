@@ -6,12 +6,12 @@
       <input
         v-model="actionType"
         placeholder="Action type (e.g. user.update)"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white"
+        class="p-2 rounded bg-white/5 border border-white/10 text-white placeholder:text-gray-400"
       >
       <input
         v-model="targetId"
         placeholder="Target ID (user or project id)"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1"
+        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1 placeholder:text-gray-400"
         @keyup.enter="load"
       >
       <button

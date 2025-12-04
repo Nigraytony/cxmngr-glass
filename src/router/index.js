@@ -16,6 +16,7 @@ const AdminDashboard = () => import('../pages/admin/AdminDashboard.vue')
 const AdminUsers = () => import('../pages/admin/Users.vue')
 const AdminProjects = () => import('../pages/admin/Projects.vue')
 const AdminTemplates = () => import('../pages/admin/Templates.vue')
+const AdminBilling = () => import('../pages/admin/Billing.vue')
 const ActivityEdit = () => import('../pages/activities/ActivityEdit.vue')
 const SpaceEdit = () => import('../pages/spaces/EditSpaces.vue')
 const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
@@ -57,6 +58,7 @@ const routes = [
         { path: 'admin/projects/:id', name: 'admin-projects-edit', component: () => import('../pages/admin/ProjectEdit.vue'), meta: { adminOnly: true }, props: true },
         { path: 'admin/templates', name: 'admin-templates', component: AdminTemplates, meta: { adminOnly: true } },
         { path: 'admin/templates/:id', name: 'admin-templates-edit', component: () => import('../pages/admin/TemplateEdit.vue'), meta: { adminOnly: true }, props: true },
+        { path: 'admin/billing', name: 'admin-billing', component: AdminBilling, meta: { adminOnly: true } },
       { path: 'profile', name: 'profile', component: Profile },
     ]
   },

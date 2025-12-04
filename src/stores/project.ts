@@ -39,11 +39,28 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   // Optional Stripe/Billing fields present on the project
+  billingAdminUserId?: string | null;
+  billingAdminSetBy?: string | null;
+  billingAdminSetAt?: string | null;
   stripeSubscriptionId?: string | null;
   stripePriceId?: string | null;
   stripeSubscriptionStatus?: string | null;
   stripeCurrentPeriodEnd?: string | null;
   stripeCancelAtPeriodEnd?: boolean;
+  stripeCanceledAt?: string | null;
+  stripeIsPastDue?: boolean;
+  stripeLastPaymentStatus?: string | null;
+  stripeLastInvoiceId?: string | null;
+  stripeLastInvoiceStatus?: string | null;
+  stripeDefaultPaymentMethod?: {
+    id?: string;
+    brand?: string;
+    last4?: string;
+    exp_month?: number;
+    exp_year?: number;
+    funding?: string;
+    cardholder?: string | null;
+  };
   trialStartedAt?: string | null;
   trialStarted?: boolean;
   trialStart?: string | null;
@@ -60,6 +77,58 @@ import { ref, watch } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from './auth';
 import { getAuthHeaders } from '../utils/auth'
+
+// Billing API helpers
+export async function fetchBillingSummary(projectId: string) {
+  const res = await axios.get(`${getApiBase()}/api/stripe/project/${projectId}/summary`, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function previewPlanChange(projectId: string, priceId: string, prorationBehavior?: string) {
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/plan/preview`, { priceId, proration_behavior: prorationBehavior }, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function changePlan(projectId: string, priceId: string, prorationBehavior?: string) {
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/change-plan`, { priceId, proration_behavior: prorationBehavior }, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function cancelSubscription(projectId: string, atPeriodEnd = true) {
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/cancel`, { atPeriodEnd }, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function resumeSubscription(projectId: string) {
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/resume`, {}, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function changeBillingAdmin(projectId: string, payload: { userId?: string, email?: string } | string) {
+  const body = typeof payload === 'string' ? { userId: payload, email: payload && payload.includes('@') ? payload : undefined } : payload
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/billing-admin`, body, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function createSetupIntent(projectId: string) {
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/setup-intent`, {}, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function updatePaymentMethod(projectId: string, paymentMethodId: string) {
+  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/payment-method`, { paymentMethodId }, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function listPaymentMethods(projectId: string) {
+  const res = await axios.get(`${getApiBase()}/api/stripe/project/${projectId}/payment-methods`, { headers: getAuthHeaders() })
+  return res.data
+}
+
+export async function detachPaymentMethod(projectId: string, pmId: string) {
+  const res = await axios.delete(`${getApiBase()}/api/stripe/project/${projectId}/payment-methods/${pmId}`, { headers: getAuthHeaders() })
+  return res.data
+}
 
 export const useProjectStore = defineStore('project', () => {
   const projects = ref<Project[]>([]);

@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="group fixed md:static z-40 h-full md:h-auto transition-all duration-300
+    class="group fixed md:sticky md:top-0 md:left-0 z-40 h-full md:h-screen transition-all duration-300
            bg-white/10 dark:bg-white/10 backdrop-blur-xl border-r border-white/20
            shadow-[0_10px_40px_rgba(0,0,0,0.25)] ring-1 ring-white/10
            overflow-hidden"
@@ -181,6 +181,18 @@
         <span class="i">⚙️</span>
         <span v-if="open">Project Settings</span>
       </RouterLink>
+      <RouterLink
+        v-if="isGlobalAdmin"
+        to="/admin"
+        :class="[
+          'mt-2 flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/admin') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/admin') ? 'page' : null"
+      >
+        <span class="i">🛠️</span>
+        <span v-if="open">Admin</span>
+      </RouterLink>
     </div>
 
     <!-- Expand affordance -->
@@ -202,9 +214,11 @@ defineEmits(['toggle'])
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { useProjectStore } from '../stores/project'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const projectStore = useProjectStore()
+const authStore = useAuthStore()
 
 function isActive(path) {
   // simple startsWith match; treat root specially
@@ -221,5 +235,9 @@ function isRouteName(name) {
 }
 
 const currentProjectId = computed(() => projectStore.currentProjectId || localStorage.getItem('selectedProjectId'))
+const isGlobalAdmin = computed(() => {
+  const role = (authStore.user && authStore.user.role) ? String(authStore.user.role).toLowerCase() : ''
+  return role === 'globaladmin' || role === 'superadmin'
+})
 
 </script>

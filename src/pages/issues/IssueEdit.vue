@@ -7,9 +7,24 @@
       />
     </div>
 
-    <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
-      <!-- Tabs header -->
-      <div class="mb-4 md:mb-6">
+    <template v-if="!loaded && !notFound">
+      <div
+        class="w-full rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 text-white/80 flex items-center gap-3"
+        role="status"
+        aria-live="polite"
+      >
+        <Spinner />
+        <div>
+          <p class="text-sm uppercase tracking-wide">Loading issue…</p>
+          <p class="text-xs text-white/60">Fetching issue details</p>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
+      <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
+        <!-- Tabs header -->
+        <div class="mb-4 md:mb-6">
         <div
           role="tablist"
           class="relative flex items-center w-full"
@@ -1404,6 +1419,7 @@
         </div>
       </template>
     </Modal>
+    </template>
   </div>
 </template>
 
@@ -1417,7 +1433,9 @@ import PhotoUploader from '../../components/PhotoUploader.vue'
 import DocumentUploader from '../../components/DocumentUploader.vue'
 import Comments from '../../components/Comments.vue'
 import Modal from '../../components/Modal.vue'
+import Spinner from '../../components/Spinner.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
+import { getAuthHeaders } from '../../utils/auth'
 import lists from '../../lists.js'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
@@ -2294,7 +2312,7 @@ async function removeAttachment(i: number) {
   if (iid && iid !== 'new') {
     try {
       const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
-      await axios.delete(`${getApiBase()}/api/issues/${iid}/attachments/${i}?projectId=${encodeURIComponent(pid)}`)
+      await axios.delete(`${getApiBase()}/api/issues/${iid}/attachments/${i}?projectId=${encodeURIComponent(pid)}`, { headers: { ...getAuthHeaders() } })
       const updated = await issues.fetchIssue(String(iid)).catch(() => null)
       if (updated) form.attachments = Array.isArray((updated as any).attachments) ? (updated as any).attachments : (updated as any).documents || []
       ui.showSuccess('Attachment removed')
@@ -2319,7 +2337,7 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   fd.append('projectId', pid)
   fd.append('photos', file, file.name)
   const res = await axios.post(url, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() },
     onUploadProgress: (ev) => {
       if (!ev.total) return
       const pct = Math.round((ev.loaded * 100) / ev.total)
@@ -2338,7 +2356,7 @@ async function uploadDocument(file: File, onProgress: (pct: number) => void) {
   fd.append('projectId', pid)
   fd.append('attachments', file)
   const res = await axios.post(`${getApiBase()}/api/issues/${iid}/attachments`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() },
     onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) },
   })
   const updated = await issues.fetchIssue(String(iid)).catch(() => null)
@@ -2469,7 +2487,7 @@ async function removePhotoAt(idx: number) {
     const iid = isNew.value ? await saveAndGetId() : id.value
     const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
     const delUrl = `${getApiBase()}/api/issues/${String(iid)}/photos/${idx}?projectId=${encodeURIComponent(pid)}`
-    await axios.delete(delUrl)
+    await axios.delete(delUrl, { headers: { ...getAuthHeaders() } })
     const arr = Array.isArray(form.photos) ? [...form.photos] : []
     arr.splice(idx, 1)
     form.photos = arr

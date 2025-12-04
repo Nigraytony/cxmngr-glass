@@ -246,8 +246,8 @@
               <div class="w-full md:w-1/3">
                 <div class="rounded-lg overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)] float-right md:float-none md:ml-4">
                   <img
-                    src="https://via.placeholder.com/800x480.png?text=Commissioning+Preview"
-                    alt="Commissioning preview placeholder"
+                    src="/photos/tasks-1.png"
+                    alt="Commissioning preview"
                     class="w-full h-48 md:h-40 object-cover"
                   >
                 </div>
@@ -262,8 +262,8 @@
               <div class="w-full md:w-1/3">
                 <div class="rounded-lg overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
                   <img
-                    src="https://via.placeholder.com/800x480.png?text=Assets+Preview"
-                    alt="Assets preview placeholder"
+                    src="/photos/equipment-1.png"
+                    alt="Assets preview"
                     class="w-full h-48 md:h-40 object-cover"
                   >
                 </div>
@@ -313,8 +313,8 @@
               <div class="w-full md:w-1/3">
                 <div class="rounded-lg overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
                   <img
-                    src="https://via.placeholder.com/800x480.png?text=Issues+Preview"
-                    alt="Issues preview placeholder"
+                    src="/photos/issues-1.png"
+                    alt="Issues preview"
                     class="w-full h-48 md:h-40 object-cover"
                   >
                 </div>
@@ -329,8 +329,8 @@
               <div class="w-full md:w-1/3">
                 <div class="rounded-lg overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)]">
                   <img
-                    src="https://via.placeholder.com/800x480.png?text=Spaces+Preview"
-                    alt="Spaces preview placeholder"
+                    src="/photos/spaces-1.png"
+                    alt="Spaces preview"
                     class="w-full h-48 md:h-40 object-cover"
                   >
                 </div>

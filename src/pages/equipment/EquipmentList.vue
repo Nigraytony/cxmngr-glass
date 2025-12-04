@@ -1220,6 +1220,39 @@ function setSort(key: string) {
   page.value = 1
 }
 
+// Persist list view state (search/sort/filters) per project to sessionStorage
+const stateStorageKey = computed(() => `equipmentListState:${projectStore.currentProjectId || 'global'}`)
+function loadListState() {
+  try {
+    const raw = sessionStorage.getItem(stateStorageKey.value)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data && typeof data === 'object') {
+      if (typeof data.search === 'string') search.value = data.search
+      if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
+      if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
+      if (typeof data.systemFilter === 'string') systemFilter.value = data.systemFilter
+      if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
+      if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
+    }
+  } catch (e) { /* ignore parse/storage errors */ }
+}
+function persistListState() {
+  try {
+    const payload = {
+      search: search.value,
+      typeFilter: typeFilter.value,
+      statusFilter: statusFilter.value,
+      systemFilter: systemFilter.value,
+      sortKey: sortKey.value,
+      sortDir: sortDir.value
+    }
+    sessionStorage.setItem(stateStorageKey.value, JSON.stringify(payload))
+  } catch (e) { /* ignore storage errors */ }
+}
+watch(stateStorageKey, () => loadListState(), { immediate: true })
+watch([search, typeFilter, statusFilter, systemFilter, sortKey, sortDir], () => persistListState())
+
 const parentOptions = computed(() => spacesStore.items)
 
 // options sourced from lists.js

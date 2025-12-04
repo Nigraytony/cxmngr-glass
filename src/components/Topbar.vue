@@ -1,10 +1,10 @@
 <template>
-  <header
-    class="h-16 px-4 grid grid-cols-3 items-center w-full overflow-x-hidden
-           bg-white/10 dark:bg-white/10 backdrop-blur-xl
-           border-b border-white/20 ring-1 ring-white/10
-           shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
-  >
+<header
+  class="h-12 px-4 grid grid-cols-3 items-center w-full overflow-x-hidden
+         bg-white/10 dark:bg-white/10 backdrop-blur-xl
+         border-b border-white/20 ring-1 ring-white/10
+         shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
+>
     <!-- Left: menu + client logo -->
     <div class="flex items-center gap-3 min-w-0">
       <button
@@ -15,12 +15,12 @@
       </button>
       <div
         v-if="clientLogo"
-        class="h-10 w-auto max-w-[160px] flex items-center"
+        class="h-8 w-auto max-w-[160px] flex items-center"
       >
         <img
           :src="clientLogo"
           alt="Client logo"
-          class="h-10 w-auto object-contain rounded-lg"
+          class="h-8 w-auto object-contain rounded-lg"
         >
       </div>
     </div>
@@ -37,12 +37,12 @@
     >
       <div
         v-if="cxaLogo"
-        class="h-10 w-auto max-w-[160px] flex items-center"
+        class="h-8 w-auto max-w-[160px] flex items-center"
       >
         <img
           :src="cxaLogo"
           alt="CxA logo"
-          class="h-10 w-auto object-contain rounded-lg"
+          class="h-8 w-auto object-contain rounded-lg"
         >
       </div>
       <button
@@ -52,7 +52,7 @@
         <!-- thumbnail: avatar image when present, otherwise initials -->
         <div
           v-if="avatarSrc"
-          class="w-8 h-8 rounded-full overflow-hidden bg-white/10"
+          class="w-6 h-6 rounded-full overflow-hidden bg-white/10"
         >
           <img
             :src="avatarSrc"
@@ -62,7 +62,7 @@
         </div>
         <div
           v-else
-          class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
+          class="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white text-sm"
         >
           <span class="font-medium">{{ initials }}</span>
         </div>
@@ -296,7 +296,7 @@ const defaultProjectName = computed(() => {
 
 const menuOpen = ref(false)
 const userWrap = ref(null)
-const dropdownStyle = ref({ position: 'fixed', top: '4rem', left: 'auto', right: '1rem' })
+const dropdownStyle = ref({ position: 'fixed', top: '3rem', left: 'auto', right: '1rem' })
 
 // Logos from current project
 const clientLogo = computed(() => projectStore.currentProject?.logo || '')

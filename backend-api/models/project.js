@@ -73,11 +73,31 @@ const projectSchema = new mongoose.Schema({
   deleted: { type: Boolean, default: false },
   status: { type: String, enum: ['Active', 'Deleted', 'Inactive', 'Archived', 'Pending'], default: 'Active' },
   // Stripe billing fields (per-project subscription)
+  // Billing admin controls subscription for this project; defaults to project owner/admin.
+  billingAdminUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  billingAdminSetBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  billingAdminSetAt: { type: Date, default: null },
   stripeSubscriptionId: { type: String, default: null },
   stripePriceId: { type: String, default: null },
   stripeSubscriptionStatus: { type: String, default: null },
   stripeCurrentPeriodEnd: { type: Date, default: null },
   stripeCancelAtPeriodEnd: { type: Boolean, default: false },
+  stripeCanceledAt: { type: Date, default: null },
+  // Dunning indicators to surface failed payments and actions needed
+  stripeIsPastDue: { type: Boolean, default: false },
+  stripeLastPaymentStatus: { type: String, default: null },
+  stripeLastInvoiceId: { type: String, default: null },
+  stripeLastInvoiceStatus: { type: String, default: null },
+  // Snapshot of the default payment method on the billing customer for quick display.
+  stripeDefaultPaymentMethod: {
+    id: { type: String },
+    brand: { type: String },
+    last4: { type: String },
+    exp_month: { type: Number },
+    exp_year: { type: Number },
+    funding: { type: String },
+    cardholder: { type: String },
+  },
   // Trial tracking: record when the project's trial started so we don't re-grant
   // the full trial window on subsequent subscription attempts.
   trialStartedAt: { type: Date, default: null, immutable: true },
@@ -186,6 +206,8 @@ projectSchema.pre('update', function (next) {
 // Useful indexes
 projectSchema.index({ name: 1 })
 projectSchema.index({ client: 1 })
+projectSchema.index({ billingAdminUserId: 1 })
+projectSchema.index({ stripeSubscriptionId: 1 })
 
 const Project = mongoose.model('Project', projectSchema);
 

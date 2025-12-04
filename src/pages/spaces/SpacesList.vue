@@ -877,16 +877,15 @@ function spaceParentChainLabelById(spaceId?: string | null) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _searchMode = computed(() => {
+const searchMode = computed(() => {
   try {
     const p: any = projectStore.currentProject || null
     const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
     return m || 'substring'
   } catch (e) { return 'substring' }
 })
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _fuzzyMatch(text: string, pattern: string) {
+
+function fuzzyMatch(text: string, pattern: string) {
   let pi = 0
   for (let i = 0; i < text.length && pi < pattern.length; i++) {
     if (text[i] === pattern[pi]) pi++
@@ -895,7 +894,7 @@ function _fuzzyMatch(text: string, pattern: string) {
 }
 
 // Debounce helper (small local utility)
-function debounce(fn: (...args: any[]) => any, wait = 200) {
+function debounce(fn: Function, wait = 200) {
   let t: any
   return (...args: any[]) => {
     clearTimeout(t)
@@ -1221,6 +1220,7 @@ type NodeRow = { node: any, depth: number }
 const openNodes = ref<Set<string>>(new Set())
 const openInitDone = ref(false)
 const OPEN_NODES_KEY = computed(() => `spacesTreeOpenNodes:${projectStore.currentProjectId || 'global'}`)
+const LIST_STATE_KEY = computed(() => `spacesListState:${projectStore.currentProjectId || 'global'}`)
 
 function hasSessionStorage(): boolean {
   try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
@@ -1271,6 +1271,35 @@ function toggleOpen(n: any) {
   if (next.has(id)) next.delete(id); else next.add(id)
   openNodes.value = next
 }
+
+function loadListState() {
+  if (!hasSessionStorage()) return
+  try {
+    const raw = sessionStorage.getItem(LIST_STATE_KEY.value)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data && typeof data === 'object') {
+      if (typeof data.search === 'string') search.value = data.search
+      if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
+      if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
+      if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
+    }
+  } catch (e) { /* ignore */ }
+}
+function persistListState() {
+  if (!hasSessionStorage()) return
+  try {
+    const payload = {
+      search: search.value,
+      typeFilter: typeFilter.value,
+      sortKey: sortKey.value,
+      sortDir: sortDir.value
+    }
+    sessionStorage.setItem(LIST_STATE_KEY.value, JSON.stringify(payload))
+  } catch (e) { /* ignore */ }
+}
+watch(LIST_STATE_KEY, () => loadListState(), { immediate: true })
+watch([search, typeFilter, sortKey, sortDir], () => persistListState())
 
 const treeRoots = computed(() => spacesStore.buildTree())
 function flatten(nodes: any[], out: NodeRow[] = [], depth = 0): NodeRow[] {

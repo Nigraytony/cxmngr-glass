@@ -4,7 +4,23 @@
       <BreadCrumbs :items="crumbs" />
     </div>
 
-    <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
+    <div
+      v-if="loading"
+      class="w-full rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 text-white/80 flex items-center gap-3"
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner />
+      <div>
+        <p class="text-sm uppercase tracking-wide">Loading template…</p>
+        <p class="text-xs text-white/60">Fetching template details</p>
+      </div>
+    </div>
+
+    <div
+      v-else
+      class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10"
+    >
       <!-- Tabs header: Info, Components, Photos, Attachments, Checklists, FPT, Instances -->
       <div class="mb-4 md:mb-6">
         <div
@@ -1167,6 +1183,7 @@ import lists from '../../lists.js'
 import PhotoUploader from '../../components/PhotoUploader.vue'
 import DocumentUploader from '../../components/DocumentUploader.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
+import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
