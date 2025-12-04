@@ -61,28 +61,57 @@ router.post('/', auth, requirePermission('activities.create', { projectParam: 'p
   }
 });
 
-// Read all activities
+// Read all activities (project-scoped, lightweight)
 router.get('/', auth, async (req, res) => {
   try {
-    const activities = await Activity.find();
-    res.status(200).send(activities);
+    const projectId = req.query.projectId
+    const filter = projectId ? { projectId } : {}
+    const projection = 'name type startDate endDate projectId issues location spaceId systems metadata labels createdAt updatedAt reviewer'
+    const activities = await Activity.find(filter).select(projection).sort({ createdAt: -1 }).lean()
+    res.status(200).send(activities)
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).send(error)
   }
 });
 
 // Read a single activity by ID
+// Supports light=true to omit heavy photo/attachment payloads, includePhotos=true to force photos
 router.get('/:id', auth, async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id);
-    if (!activity) {
-      return res.status(404).send();
+    const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
+    const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
+
+    const lightFields = 'name type startDate endDate projectId location spaceId systems metadata labels reviewer createdAt updatedAt descriptionHtml'
+    let query = Activity.findById(req.params.id)
+    if (isLight) {
+      // lightweight projection; optionally include photos
+      const sel = includePhotos ? `${lightFields} photos` : lightFields
+      query = query.select(sel)
+    } else if (!includePhotos) {
+      // keep metadata about photos but drop base64 data to reduce payload size
+      query = query.select('-photos.data -photos.size -photos.contentType')
     }
-    res.status(200).send(activity);
+
+    const activity = await query.lean()
+    if (!activity) {
+      return res.status(404).send()
+    }
+    res.status(200).send(activity)
   } catch (error) {
-    res.status(500).send(error);
+    res.status(500).send(error)
   }
 });
+
+// Photos-only endpoint to avoid sending other heavy fields
+router.get('/:id/photos', auth, async (req, res) => {
+  try {
+    const activity = await Activity.findById(req.params.id).select('photos').lean()
+    if (!activity) return res.status(404).send()
+    res.status(200).send(activity.photos || [])
+  } catch (error) {
+    res.status(500).send(error)
+  }
+})
 
 // Upload photos for an activity (multipart/form-data)
 router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) => {

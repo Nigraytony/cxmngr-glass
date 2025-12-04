@@ -256,6 +256,7 @@ const deletingActivity = ref<string | null>(null)
 const deletingName = ref<string>('')
 const deleting = ref(false)
 const ui = useUiStore()
+const loading = computed(() => store.loading)
 
 onMounted(async () => {
   await store.fetchActivities().catch(() => {})

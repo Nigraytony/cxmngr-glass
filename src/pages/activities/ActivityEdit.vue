@@ -1988,32 +1988,23 @@ onMounted(async () => {
   pageLoading.value = true
   try {
     loadActivityReportSettingsFromSession()
-    await projectStore.fetchProjects?.()?.catch(() => {})
     const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
     if (pid) form.projectId = String(pid)
-    // Ensure issues are available for linking/rendering
-    try { await issuesStore.fetchIssues(String(form.projectId || pid)) } catch (e) { /* ignore issues fetch race */ }
-    // Preload equipment and spaces for the current project so the Equipment Reviewed tab can list them
-    try { if (pid) await Promise.all([ equipmentStore.fetchByProject(String(pid)), spacesStore.fetchByProject(String(pid)) ]) } catch (e) { /* ignore preload failures */ }
     const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()+0).padStart(2,'0')
     form.startDate = `${yyyy}-${mm}-${dd}`; form.endDate = `${yyyy}-${mm}-${dd}`
     if (!isNew.value) {
-      const a = await store.fetchActivity(id.value)
+      const activityData = await store.fetchActivity(id.value, { light: true, includePhotos: false })
       Object.assign(form, {
-        name: a?.name || '',
-        descriptionHtml: a?.descriptionHtml || '',
-        type: a?.type || 'Site Visit Review',
-        startDate: a?.startDate ? a.startDate.substring(0,10) : form.startDate,
-        endDate: a?.endDate ? a.endDate.substring(0,10) : form.endDate,
-        projectId: a?.projectId || form.projectId,
-        location: a?.location || '',
-        spaceId: (a as any)?.spaceId || null,
-        systems: a?.systems || [],
-        comments: a?.comments || [],
-        attachments: a?.attachments || [],
-        issues: a?.issues || [],
+        name: activityData?.name || '',
+        descriptionHtml: activityData?.descriptionHtml || '',
+        type: activityData?.type || 'Site Visit Review',
+        startDate: activityData?.startDate ? activityData.startDate.substring(0,10) : form.startDate,
+        endDate: activityData?.endDate ? activityData.endDate.substring(0,10) : form.endDate,
+        projectId: activityData?.projectId || form.projectId,
+        location: activityData?.location || '',
+        spaceId: (activityData as any)?.spaceId || null,
+        systems: activityData?.systems || [],
       })
-      // Normalize loaded spaceId to a string and populate the visible search box
       try {
         if (form.spaceId) {
           const sid = String((form.spaceId as any) || '')
@@ -2026,13 +2017,41 @@ onMounted(async () => {
           spaceQuery.value = String(form.location || '')
         }
       } catch (e) { /* ignore */ }
-    // Don't preload into the search box; it's used for adding by search only
-    systemsText.value = ''
-      // Ensure equipment/spaces reflect the activity's project
-    try { if (form.projectId) await Promise.all([ equipmentStore.fetchByProject(String(form.projectId)), spacesStore.fetchByProject(String(form.projectId)) ]) } catch (e) { /* ignore preload failures */ }
+      systemsText.value = ''
     }
   } finally {
     pageLoading.value = false
+  }
+})
+
+const currentTab = ref('Info')
+const photosLoaded = ref(false)
+const issuesLoaded = ref(false)
+const commentsLoaded = ref(false)
+const attachmentsLoaded = ref(false)
+const equipmentLoaded = ref(false)
+const logsLoaded = ref(false)
+
+watch(() => currentTab.value, async (tab) => {
+  if (isNew.value) return
+  const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  if (tab === 'Photos' && !photosLoaded.value) {
+    try { await store.fetchActivity(id.value, { light: true, includePhotos: true }); photosLoaded.value = true } catch (e) { /* ignore */ }
+  }
+  if (tab === 'Issues' && !issuesLoaded.value && pid) {
+    try { await issuesStore.fetchIssues(pid); issuesLoaded.value = true } catch (e) { /* ignore */ }
+  }
+  if (tab === 'Comments' && !commentsLoaded.value) {
+    try { const a = await store.fetchActivity(id.value, { includePhotos: false }); form.comments = a?.comments || []; commentsLoaded.value = true } catch (e) { /* ignore */ }
+  }
+  if (tab === 'Attachments' && !attachmentsLoaded.value) {
+    try { const a = await store.fetchActivity(id.value, { includePhotos: false }); form.attachments = a?.attachments || []; attachmentsLoaded.value = true } catch (e) { /* ignore */ }
+  }
+  if (tab === 'Equipment' && !equipmentLoaded.value && pid) {
+    try { await Promise.all([ equipmentStore.fetchByProject(pid), spacesStore.fetchByProject(pid) ]); equipmentLoaded.value = true } catch (e) { /* ignore */ }
+  }
+  if (tab === 'Logs' && !logsLoaded.value) {
+    try { await store.fetchActivity(id.value, { includePhotos: false }); logsLoaded.value = true } catch (e) { /* ignore */ }
   }
 })
 
@@ -2543,7 +2562,6 @@ async function downloadActivityPdf() {
 
 // Tabs logic
 const tabs = ['Info', 'Photos', 'Issues', 'Comments', 'Attachments', 'Equipment', 'Logs']
-const currentTab = ref('Info')
 const activeIndex = computed(() => {
   const i = tabs.indexOf(currentTab.value)
   return i >= 0 ? i : 0

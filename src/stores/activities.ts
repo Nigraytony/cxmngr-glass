@@ -40,6 +40,7 @@ export interface Activity {
 
 import { getApiBase } from '../utils/api'
 const API_BASE = `${getApiBase()}/api/activities`
+const API_PHOTOS = `${API_BASE}`
 
 export const useActivitiesStore = defineStore('activities', () => {
   const activities = ref<Activity[]>([])
@@ -74,7 +75,7 @@ export const useActivitiesStore = defineStore('activities', () => {
         return activities.value
       }
 
-      const res = await axios.get(API_BASE, { params: { projectId: pid }, headers: getAuthHeaders() })
+      const res = await axios.get(API_BASE, { params: { projectId: pid, light: true }, headers: getAuthHeaders() })
       const list = (res.data || []).map(normalize).filter(a => !isDeletedActivity(a))
       activities.value = list
       return activities.value
@@ -88,11 +89,14 @@ export const useActivitiesStore = defineStore('activities', () => {
     }
   }
 
-  async function fetchActivity(id: string) {
+  async function fetchActivity(id: string, opts?: { light?: boolean; includePhotos?: boolean }) {
     loading.value = true
     error.value = null
     try {
-      const res = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const params: any = {}
+      if (opts?.light) params.light = true
+      if (opts?.includePhotos) params.includePhotos = true
+      const res = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders(), params })
       current.value = normalize(res.data)
       return current.value
     } catch (e: any) {
@@ -100,6 +104,19 @@ export const useActivitiesStore = defineStore('activities', () => {
       throw e
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchActivityPhotos(id: string) {
+    try {
+      const res = await axios.get(`${API_PHOTOS}/${id}/photos`, { headers: getAuthHeaders() })
+      const photos = res.data || []
+      if (current.value && (current.value.id === id || (current.value as any)._id === id)) {
+        current.value = { ...(current.value as any), photos }
+      }
+      return photos
+    } catch (e: any) {
+      throw e
     }
   }
 
