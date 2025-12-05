@@ -140,30 +140,84 @@ router.post('/:id/logs', auth, async (req, res) => {
   return e
 }
 
-// Read all equipment
+// Projection for list/light responses (omit heavy fields)
+const LIGHT_FIELDS = 'number tag title type system status projectId spaceId responsible template orderDate installationDate balanceDate testDate labels metadata createdAt updatedAt'
+
+// Read all equipment (paginated, filtered, light projection)
 router.get('/', auth, async (req, res) => {
   try {
-    const equipment = await Equipment.find();
-    res.status(200).send(equipment.map(toPlainEquipment));
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+    const sortBy = String(req.query.sortBy || 'updatedAt')
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const projectId = req.query.projectId
+
+    if (!projectId) {
+      return res.status(200).send({ items: [], total: 0 })
+    }
+
+    const filter = { projectId }
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+        { system: { $regex: s, $options: 'i' } },
+      ]
+    }
+    if (req.query.type) filter.type = req.query.type
+    if (req.query.system) filter.system = req.query.system
+    if (req.query.status) filter.status = req.query.status
+
+    const total = await Equipment.countDocuments(filter)
+    const items = await Equipment.find(filter)
+      .select(LIGHT_FIELDS)
+      .sort({ [sortBy]: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean()
+
+    res.status(200).send({ items, total })
   } catch (error) {
     res.status(500).send(error);
   }
 });
 
-// Read all equipment by project ID
+// Read all equipment by project ID (light projection)
 router.get('/project/:projectId', auth, async (req, res) => {
   try {
-    const equipment = await Equipment.find({ projectId: req.params.projectId });
-    res.status(200).send(equipment.map(toPlainEquipment));
+    const filter = { projectId: req.params.projectId }
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+        { system: { $regex: s, $options: 'i' } },
+      ]
+    }
+    if (req.query.status) filter.status = req.query.status
+    const equipment = await Equipment.find(filter).select(LIGHT_FIELDS).lean()
+    res.status(200).send(equipment);
   } catch (error) {
     res.status(500).send(error);
   }
 });
 
-// Read a single equipment by ID
+// Read a single equipment by ID (supports light/includePhotos)
 router.get('/:id', auth, async (req, res) => {
   try {
-    const equipment = await Equipment.findById(req.params.id);
+    const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
+    const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
+    let query = Equipment.findById(req.params.id)
+    if (isLight) {
+      const sel = includePhotos ? `${LIGHT_FIELDS} photos` : LIGHT_FIELDS
+      query = query.select(sel)
+    } else if (!includePhotos) {
+      query = query.select('-photos.data -photos.size -photos.contentType -checklists -functionalTests -fptSignatures -components -attachments -logs')
+    }
+    const equipment = await query.lean()
     if (!equipment) {
       return res.status(404).send();
     }

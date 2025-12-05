@@ -58,6 +58,8 @@ const equipmentSchema = new mongoose.Schema({
 
     equipmentSchema.index({ projectId: 1 })
     equipmentSchema.index({ tag: 1 })
+    equipmentSchema.index({ projectId: 1, tag: 1 })
+    equipmentSchema.index({ projectId: 1, updatedAt: -1 })
 
 const Equipment = mongoose.model('Equipment', equipmentSchema);
 
