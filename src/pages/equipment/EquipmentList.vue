@@ -1136,6 +1136,12 @@ const search = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
 const systemFilter = ref('')
+const serverTypes = ref<string[]>([])
+const serverStatuses = ref<string[]>([])
+const serverSystems = ref<string[]>([])
+const serverTypeCounts = ref<Record<string, number>>({})
+const serverStatusCounts = ref<Record<string, number>>({})
+const serverSystemCounts = ref<Record<string, number>>({})
 const modalOpen = ref(false)
 const editing = ref(false)
 const form = ref<Equipment>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '' })
@@ -1303,6 +1309,7 @@ const preSystemFiltered = computed(() => {
 })
 
 const systemCounts = computed<Record<string, number>>(() => {
+  if (Object.keys(serverSystemCounts.value || {}).length) return serverSystemCounts.value
   const m: Record<string, number> = {}
   for (const e of preSystemFiltered.value) {
     const key = String(e.system || '').toLowerCase()
@@ -1315,12 +1322,23 @@ const systemCounts = computed<Record<string, number>>(() => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const systemFilterOptions = computed(() => {
   const base: Array<{ value: string; text: string }> = [{ value: '', text: 'All' }]
+  const seen = new Set<string>()
+  const entries = Object.entries(systemCounts.value || {})
+  for (const [val, cnt] of entries) {
+    if (!val) continue
+    const valLower = String(val).toLowerCase()
+    if (seen.has(valLower)) continue
+    seen.add(valLower)
+    const label = (lists as any)?.systemOptions?.find((o: any) => String(o.value).toLowerCase() === valLower)?.text || valLower
+    base.push({ value: valLower, text: `${label} (${cnt})` })
+  }
+  // Add any configured systems not already present
   const arr: Array<any> = (lists as any)?.systemOptions || []
   for (const opt of arr) {
     if (!opt || opt.value === undefined || opt.value === null) continue
-    const val = String(opt.value).toLowerCase()
-    const cnt = systemCounts.value[val] || 0
-    base.push({ value: val, text: `${String(opt.text ?? val)} (${cnt})` })
+    const valLower = String(opt.value).toLowerCase()
+    if (seen.has(valLower)) continue
+    base.push({ value: valLower, text: `${String(opt.text ?? opt.value)}` })
   }
   return base
 })
@@ -1512,23 +1530,40 @@ const preTypeFiltered = computed(() => {
 })
 const typeCounts = computed<Record<string, number>>(() => {
   const m: Record<string, number> = {}
-  for (const e of preTypeFiltered.value) {
-    const key = String(e.type || '')
-    if (!key) continue
-    m[key] = (m[key] || 0) + 1
+  const serverCounts = serverTypeCounts.value || {}
+  const names = serverTypes.value.length ? serverTypes.value : Object.keys(serverCounts)
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      if (!k) continue
+      m[k] = Number(v) || 0
+    }
   }
+  if (names && names.length) {
+    for (const n of names) { if (n) m[n] = m[n] || 0 }
+  } else {
+    // fallback to derive from current list when no server counts are present
+    for (const e of preTypeFiltered.value) {
+      const key = String(e.type || '')
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(serverTotal.value || 0) || preTypeFiltered.value.length
   return m
 })
 const typeOptions = computed<Array<{ name: string; count: number }>>(() => {
   const opts: Array<{ name: string; count: number }> = []
-  for (const [name, count] of Object.entries(typeCounts.value)) {
-    if (!name || !count) continue
+  const counts = typeCounts.value
+  const names = serverTypes.value.length ? serverTypes.value : Object.keys(counts).filter(k => k !== 'All')
+  for (const name of names) {
+    if (!name) continue
+    const count = counts[name] || 0
     opts.push({ name, count })
   }
   // sort alphabetically
   opts.sort((a, b) => a.name.localeCompare(b.name))
   // Put All first
-  return [{ name: 'All', count: preTypeFiltered.value.length }, ...opts]
+  return [{ name: 'All', count: counts['All'] || preTypeFiltered.value.length }, ...opts]
 })
 function typeCount(name: string) {
   const opt = (typeOptions.value || []).find(o => o.name === name)
@@ -1578,6 +1613,7 @@ const preStatusFiltered = computed(() => {
   })
 })
 const statusCounts = computed<Record<string, number>>(() => {
+  if (Object.keys(serverStatusCounts.value || {}).length) return serverStatusCounts.value
   const m: Record<string, number> = {}
   for (const e of preStatusFiltered.value) {
     const key = String(e.status || '')
@@ -1588,8 +1624,11 @@ const statusCounts = computed<Record<string, number>>(() => {
 })
 const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
   const opts: Array<{ name: string; count: number }> = []
-  for (const [name, count] of Object.entries(statusCounts.value)) {
-    if (!name || !count) continue
+  const counts = statusCounts.value
+  const names = serverStatuses.value.length ? serverStatuses.value : Object.keys(counts)
+  for (const name of names) {
+    if (!name) continue
+    const count = counts[name] || 0
     opts.push({ name, count })
   }
   // Sort by our known statuses order if present, else alpha
@@ -1932,7 +1971,7 @@ async function fetchEquipmentPage(projectId?: string) {
       return
     }
 
-    const params: any = { page: page.value, perPage: pageSize.value }
+    const params: any = { page: page.value, perPage: pageSize.value, includeFacets: true }
     params.projectId = pid
     if (search.value) params.search = search.value
     if (typeFilter.value) params.type = typeFilter.value
@@ -1945,6 +1984,45 @@ async function fetchEquipmentPage(projectId?: string) {
     else if (Array.isArray(data)) serverEquipment.value = data.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
     else serverEquipment.value = []
     serverTotal.value = Number(data.total ?? data.count ?? serverEquipment.value.length)
+    if (Array.isArray(data.types)) {
+      const map: Record<string, number> = {}
+      const list: string[] = []
+      for (const t of data.types) {
+        const name = String((t as any)?.name || (t as any)?._id || t || '').trim()
+        const count = Number((t as any)?.count || 0)
+        if (!name) continue
+        list.push(name)
+        map[name] = count
+      }
+      serverTypes.value = list
+      serverTypeCounts.value = map
+    }
+    if (Array.isArray(data.statuses)) {
+      const map: Record<string, number> = {}
+      const list: string[] = []
+      for (const t of data.statuses) {
+        const name = String((t as any)?.name || (t as any)?._id || t || '').trim()
+        const count = Number((t as any)?.count || 0)
+        if (!name) continue
+        list.push(name)
+        map[name] = count
+      }
+      serverStatuses.value = list
+      serverStatusCounts.value = map
+    }
+    if (Array.isArray(data.systems)) {
+      const map: Record<string, number> = {}
+      const list: string[] = []
+      for (const t of data.systems) {
+        const name = String((t as any)?.name || (t as any)?._id || t || '').trim()
+        const count = Number((t as any)?.count || 0)
+        if (!name) continue
+        list.push(name)
+        map[name] = count
+      }
+      serverSystems.value = list
+      serverSystemCounts.value = map
+    }
     const totalPagesNow = Math.max(1, Math.ceil(Number(serverTotal.value || 0) / pageSize.value))
     if (page.value > totalPagesNow && serverTotal.value > 0) {
       page.value = totalPagesNow

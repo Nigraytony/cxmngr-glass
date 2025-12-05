@@ -151,6 +151,7 @@ router.get('/', auth, async (req, res) => {
     const sortBy = String(req.query.sortBy || 'updatedAt')
     const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
     const projectId = req.query.projectId
+    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
 
     if (!projectId) {
       return res.status(200).send({ items: [], total: 0 })
@@ -177,8 +178,28 @@ router.get('/', auth, async (req, res) => {
       .skip((page - 1) * perPage)
       .limit(perPage)
       .lean()
+    let facets = {}
+    if (includeFacets) {
+      const aggTypes = await Equipment.aggregate([
+        { $match: filter },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+      ])
+      const aggStatuses = await Equipment.aggregate([
+        { $match: filter },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ])
+      const aggSystems = await Equipment.aggregate([
+        { $match: filter },
+        { $group: { _id: '$system', count: { $sum: 1 } } },
+      ])
+      facets = {
+        types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+      }
+    }
 
-    res.status(200).send({ items, total })
+    res.status(200).send({ items, total, ...facets })
   } catch (error) {
     res.status(500).send(error);
   }
