@@ -257,7 +257,7 @@
           </button>
           <div
             v-if="showStatusMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            class="absolute right-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
             role="menu"
           >
             <div class="py-1">
@@ -440,12 +440,12 @@
           <div class="col-span-1 truncate">
             {{ e.system || '-' }}
           </div>
-          <div
-            class="col-span-4 truncate text-sm"
-            :title="spaceParentChainLabelById(e.spaceId)"
-          >
-            {{ spaceParentChainLabelById(e.spaceId) || '-' }}
-          </div>
+        <div
+          class="col-span-4 truncate text-sm"
+          :title="equipmentSpaceChain(e)"
+        >
+          {{ equipmentSpaceChain(e) || '-' }}
+        </div>
           <div class="col-span-1 truncate">
             {{ e.status || '-' }}
           </div>
@@ -592,7 +592,7 @@
               {{ s }}
             </option>
           </select>
-          <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ filtered.length }}</span>
+          <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ displayTotal }}</span>
         </div>
         <div class="flex items-center gap-1">
           <button
@@ -1157,6 +1157,14 @@ function spaceName(spaceId?: string | null) {
   return pid && parentMap.value[pid] ? parentMap.value[pid].title : ''
 }
 
+function equipmentSpaceChain(e?: any) {
+  if (!e) return ''
+  const chain = String((e as any).spaceChain || '').trim()
+  if (chain) return chain
+  const sid = (e as any).spaceId || (e as any).space
+  return spaceParentChainLabelById(sid)
+}
+
 function spaceParentChainLabelById(spaceId?: string | null) {
   try {
     const pid = spaceId ? String(spaceId) : ''
@@ -1185,7 +1193,7 @@ const filtered = computed(() => {
   const t = typeFilter.value
   const s = statusFilter.value
   const sys = systemFilter.value
-  const baseList = (Number(serverTotal.value) > 0 && Array.isArray(serverEquipment.value) && serverEquipment.value.length > 0) ? listEquipment.value : equipment.value
+  const baseList = (Array.isArray(serverEquipment.value) && serverEquipment.value.length > 0) ? listEquipment.value : equipment.value
   return (baseList || []).filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
@@ -1207,8 +1215,8 @@ const sorted = computed(() => {
     let av: string
     let bv: string
     if (sortKey.value === 'space') {
-      av = String(spaceParentChainLabelById(a?.spaceId) || '').toLowerCase()
-      bv = String(spaceParentChainLabelById(b?.spaceId) || '').toLowerCase()
+      av = String(equipmentSpaceChain(a) || '').toLowerCase()
+      bv = String(equipmentSpaceChain(b) || '').toLowerCase()
     } else {
       av = String((a?.[sortKey.value] ?? '')).toLowerCase()
       bv = String((b?.[sortKey.value] ?? '')).toLowerCase()
@@ -1292,6 +1300,7 @@ const modalSystemOptions = computed(() => {
 // server-driven page for equipment list
 const serverEquipment = ref([])
 const serverTotal = ref(0)
+const serverTotalAll = ref(0)
 const listEquipment = computed(() => serverEquipment.value)
 
 const preSystemFiltered = computed(() => {
@@ -1309,13 +1318,30 @@ const preSystemFiltered = computed(() => {
 })
 
 const systemCounts = computed<Record<string, number>>(() => {
-  if (Object.keys(serverSystemCounts.value || {}).length) return serverSystemCounts.value
   const m: Record<string, number> = {}
-  for (const e of preSystemFiltered.value) {
-    const key = String(e.system || '').toLowerCase()
-    if (!key) continue
-    m[key] = (m[key] || 0) + 1
+  const serverCounts = serverSystemCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || '').trim()
+      if (!key) continue
+      m[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(m).length && Array.isArray(serverEquipment.value) && serverEquipment.value.length) {
+    for (const e of serverEquipment.value as any[]) {
+      const key = String((e as any).system || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  if (!Object.keys(m).length) {
+    for (const e of preSystemFiltered.value) {
+      const key = String(e.system || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
   return m
 })
 
@@ -1531,30 +1557,39 @@ const preTypeFiltered = computed(() => {
 const typeCounts = computed<Record<string, number>>(() => {
   const m: Record<string, number> = {}
   const serverCounts = serverTypeCounts.value || {}
-  const names = serverTypes.value.length ? serverTypes.value : Object.keys(serverCounts)
+  // 1) prefer server-provided facet counts when they exist
   if (Object.keys(serverCounts).length) {
     for (const [k, v] of Object.entries(serverCounts)) {
-      if (!k) continue
-      m[k] = Number(v) || 0
+      const key = String(k || '')
+      if (!key) continue
+      m[key] = Number(v) || 0
     }
   }
-  if (names && names.length) {
-    for (const n of names) { if (n) m[n] = m[n] || 0 }
-  } else {
-    // fallback to derive from current list when no server counts are present
-    for (const e of preTypeFiltered.value) {
-      const key = String(e.type || '')
+  // 2) fall back to deriving from the current server page if no server counts were returned
+  if (!Object.keys(m).length && Array.isArray(serverEquipment.value) && serverEquipment.value.length) {
+    for (const e of serverEquipment.value as any[]) {
+      const key = String((e as any).type || '').trim()
       if (!key) continue
       m[key] = (m[key] || 0) + 1
     }
   }
-  m['All'] = Number(serverTotal.value || 0) || preTypeFiltered.value.length
+  // 3) final fallback to the in-store list (covers offline cases)
+  if (!Object.keys(m).length) {
+    for (const e of preTypeFiltered.value) {
+      const key = String(e.type || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(serverTotalAll.value || serverTotal.value || 0) || preTypeFiltered.value.length
   return m
 })
 const typeOptions = computed<Array<{ name: string; count: number }>>(() => {
   const opts: Array<{ name: string; count: number }> = []
   const counts = typeCounts.value
-  const names = serverTypes.value.length ? serverTypes.value : Object.keys(counts).filter(k => k !== 'All')
+  const names = serverTypes.value.length
+    ? serverTypes.value
+    : Object.keys(counts).filter(k => k !== 'All')
   for (const name of names) {
     if (!name) continue
     const count = counts[name] || 0
@@ -1572,20 +1607,20 @@ function typeCount(name: string) {
 
 const systemOptions = computed<Array<{ name: string; value: string; count: number }>>(() => {
   const opts: Array<{ name: string; value: string; count: number }> = []
-  // Build from systems present in equipment data (keys of systemCounts)
   const mappingArr: Array<any> = (lists as any)?.systemOptions || []
-  const labelFor = (valLower: string) => {
+  const labelFor = (val: string) => {
+    const valLower = String(val || '').toLowerCase()
     const found = mappingArr.find((o: any) => o && o.value !== undefined && String(o.value).toLowerCase() === valLower)
-    return found ? String(found.text ?? found.value) : valLower
+    return found ? String(found.text ?? found.value) : val
   }
-  for (const [valLower, count] of Object.entries(systemCounts.value)) {
-    if (!valLower || !count) continue
-    opts.push({ name: labelFor(valLower), value: valLower, count })
+  const names = serverSystems.value.length ? serverSystems.value : Object.keys(systemCounts.value).filter(k => k !== 'All')
+  for (const name of names) {
+    if (!name) continue
+    const count = systemCounts.value[name] || 0
+    opts.push({ name: labelFor(name), value: String(name).toLowerCase(), count })
   }
-  // sort by label
   opts.sort((a, b) => a.name.localeCompare(b.name))
-  // Add All at the top
-  return [{ name: 'All', value: 'All', count: preSystemFiltered.value.length }, ...opts]
+  return [{ name: 'All', value: 'All', count: systemCounts.value['All'] || preSystemFiltered.value.length }, ...opts]
 })
 const systemFilterKey = computed(() => (systemFilter.value ? String(systemFilter.value).toLowerCase() : 'All'))
 const systemFilterLabel = computed(() => {
@@ -1613,19 +1648,36 @@ const preStatusFiltered = computed(() => {
   })
 })
 const statusCounts = computed<Record<string, number>>(() => {
-  if (Object.keys(serverStatusCounts.value || {}).length) return serverStatusCounts.value
   const m: Record<string, number> = {}
-  for (const e of preStatusFiltered.value) {
-    const key = String(e.status || '')
-    if (!key) continue
-    m[key] = (m[key] || 0) + 1
+  const serverCounts = serverStatusCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || '').trim()
+      if (!key) continue
+      m[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(m).length && Array.isArray(serverEquipment.value) && serverEquipment.value.length) {
+    for (const e of serverEquipment.value as any[]) {
+      const key = String((e as any).status || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  if (!Object.keys(m).length) {
+    for (const e of preStatusFiltered.value) {
+      const key = String(e.status || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
   return m
 })
 const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
   const opts: Array<{ name: string; count: number }> = []
   const counts = statusCounts.value
-  const names = serverStatuses.value.length ? serverStatuses.value : Object.keys(counts)
+  const names = serverStatuses.value.length ? serverStatuses.value : Object.keys(counts).filter(k => k !== 'All')
   for (const name of names) {
     if (!name) continue
     const count = counts[name] || 0
@@ -1731,7 +1783,8 @@ function loadPageSizePref() {
 function persistPageSizePref() { try { sessionStorage.setItem(pageSizeStorageKey.value, String(pageSize.value)) } catch (e) { /* ignore sessionStorage write errors */ } }
 watch(pageSizeStorageKey, () => loadPageSizePref(), { immediate: true })
 watch(pageSize, () => persistPageSizePref())
-const totalPages = computed(() => Math.max(1, Math.ceil((Number(serverTotal.value || 0)) / pageSize.value)))
+const totalFiltered = computed(() => Number(serverTotal.value || 0) || filtered.value.length)
+const totalPages = computed(() => Math.max(1, Math.ceil((totalFiltered.value || 0) / pageSize.value)))
 const paged = computed(() => {
   const list = sorted.value || []
   const total = Number(serverTotal.value || 0)
@@ -1742,8 +1795,9 @@ const paged = computed(() => {
   const end = start + pageSize.value
   return list.slice(start, end)
 })
-const startItem = computed(() => Number(serverTotal.value) ? (page.value - 1) * pageSize.value + 1 : 0)
-const endItem = computed(() => Math.min(Number(serverTotal.value || 0), page.value * pageSize.value))
+const displayTotal = computed(() => Number(serverTotalAll.value || serverTotal.value || 0))
+const startItem = computed(() => totalFiltered.value ? (page.value - 1) * pageSize.value + 1 : 0)
+const endItem = computed(() => Math.min(totalFiltered.value, page.value * pageSize.value))
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 
@@ -1980,10 +2034,20 @@ async function fetchEquipmentPage(projectId?: string) {
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}
-    if (Array.isArray(data.items)) serverEquipment.value = data.items.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
-    else if (Array.isArray(data)) serverEquipment.value = data.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
+    const normalizeItem = (it: any) => {
+      const obj: any = { ...(it || {}) }
+      obj.id = it?._id || it?.id
+      // normalize space id/chain fields
+      obj.spaceId = it?.spaceId || it?.space || obj.spaceId
+      obj.space = obj.spaceId
+      obj.spaceChain = it?.spaceChain || it?.space_path || ''
+      return obj
+    }
+    if (Array.isArray(data.items)) serverEquipment.value = data.items.map(normalizeItem)
+    else if (Array.isArray(data)) serverEquipment.value = data.map(normalizeItem)
     else serverEquipment.value = []
     serverTotal.value = Number(data.total ?? data.count ?? serverEquipment.value.length)
+    serverTotalAll.value = Number(data.totalAll || serverTotal.value || serverEquipment.value.length)
     if (Array.isArray(data.types)) {
       const map: Record<string, number> = {}
       const list: string[] = []
@@ -1996,6 +2060,9 @@ async function fetchEquipmentPage(projectId?: string) {
       }
       serverTypes.value = list
       serverTypeCounts.value = map
+    } else {
+      serverTypes.value = []
+      serverTypeCounts.value = {}
     }
     if (Array.isArray(data.statuses)) {
       const map: Record<string, number> = {}
@@ -2009,6 +2076,9 @@ async function fetchEquipmentPage(projectId?: string) {
       }
       serverStatuses.value = list
       serverStatusCounts.value = map
+    } else {
+      serverStatuses.value = []
+      serverStatusCounts.value = {}
     }
     if (Array.isArray(data.systems)) {
       const map: Record<string, number> = {}
@@ -2022,6 +2092,9 @@ async function fetchEquipmentPage(projectId?: string) {
       }
       serverSystems.value = list
       serverSystemCounts.value = map
+    } else {
+      serverSystems.value = []
+      serverSystemCounts.value = {}
     }
     const totalPagesNow = Math.max(1, Math.ceil(Number(serverTotal.value || 0) / pageSize.value))
     if (page.value > totalPagesNow && serverTotal.value > 0) {

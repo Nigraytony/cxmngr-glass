@@ -390,9 +390,9 @@
           </div>
           <div
             class="col-span-3 hidden lg:block truncate text-sm"
-            :title="spaceParentChainLabelById(s.parentSpace)"
+            :title="s.parentChain || spaceParentChainLabelById(s.parentSpace)"
           >
-            {{ spaceParentChainLabelById(s.parentSpace) || '-' }}
+            {{ s.parentChain || spaceParentChainLabelById(s.parentSpace) || '-' }}
           </div>
           <div class="col-span-1 flex items-center justify-end gap-2">
             <!-- Visit icon button -->
@@ -486,13 +486,13 @@
           </div>
         </div>
         <div
-          v-if="!spaces.length && !loading"
+          v-if="!loading && totalFiltered === 0"
           class="p-6 text-white/60 text-center"
         >
           No spaces yet.
         </div>
         <div
-          v-else-if="!filtered.length && !loading"
+          v-else-if="!loading && !filtered.length"
           class="p-6 text-white/60 text-center"
         >
           No matching spaces.
@@ -859,16 +859,17 @@ function spaceParentChainLabelById(spaceId?: string | null) {
   try {
     const pid = spaceId ? String(spaceId) : ''
     if (!pid) return ''
-    let cur: any = parentMap.value[pid] || (spaces.value || []).find((s: any) => String(s.id || s._id) === pid)
-    if (!cur) return ''
+    const cur = parentMap.value[pid] || (spaces.value || []).find((s: any) => String(s.id || s._id) === pid)
+    if (cur && cur.parentChain) return cur.parentChain
+    let node: any = cur
     const parts: string[] = []
     let depth = 0
-    while (cur && depth < 20) {
-      const title = String(cur.title || cur.tag || '')
+    while (node && depth < 20) {
+      const title = String(node.title || node.tag || '')
       if (title) parts.unshift(title)
-      const parentId = cur.parentSpace || cur.parent || null
+      const parentId = node.parentSpace || node.parent || null
       if (!parentId) break
-      cur = parentMap.value[String(parentId)] || (spaces.value || []).find((x: any) => String(x.id || x._id) === String(parentId))
+      node = parentMap.value[String(parentId)] || (spaces.value || []).find((x: any) => String(x.id || x._id) === String(parentId))
       depth++
     }
     return parts.join(' > ')
@@ -950,15 +951,24 @@ const showTypeMenu = ref(false)
 const typeMenuRef = ref<HTMLElement | null>(null)
 const typeFilterLabel = computed(() => typeFilter.value || 'All')
 const typeCounts = computed<Record<string, number>>(() => {
-  const counts: Record<string, number> = { All: spaces.value.length }
-  for (const t of spaceTypes) counts[t] = 0
-  for (const s of spaces.value) {
-    const t = s.type || 'Unknown'
-    counts[t] = (counts[t] || 0) + 1
-  }
+  const counts: Record<string, number> = {}
+  // Prefer server-returned counts when available
+  for (const [k, v] of Object.entries(serverTypeCounts.value)) counts[k] = v
+  const allTypes = serverTypes.value.length ? serverTypes.value : spaceTypes
+  for (const t of allTypes) counts[t] = counts[t] || 0
+  counts['All'] = serverTotal.value || spaces.value.length
   return counts
 })
-const typeOptions = computed(() => [{ name: 'All', count: typeCounts.value['All'] }, ...spaceTypes.map(t => ({ name: t, count: typeCounts.value[t] || 0 }))])
+const serverTypes = ref<string[]>([])
+const serverTypeCounts = ref<Record<string, number>>({})
+const typeOptions = computed(() => {
+  const counts = typeCounts.value
+  const names = serverTypes.value.length
+    ? Array.from(new Set(serverTypes.value)).filter(Boolean)
+    : spaceTypes
+  const opts = names.map(t => ({ name: t, count: counts[t] || 0 }))
+  return [{ name: 'All', count: counts['All'] || 0 }, ...opts]
+})
 function typeCount(name: string) { return typeCounts.value[name] || 0 }
 function toggleTypeMenu() { showTypeMenu.value = !showTypeMenu.value }
 function closeTypeMenu() { showTypeMenu.value = false }
@@ -1013,81 +1023,46 @@ const paged = computed(() => {
   const list = sorted.value || []
   const total = Number(serverTotal.value || 0)
   const pageLen = Array.isArray(serverSpaces.value) ? serverSpaces.value.length : 0
-  // If the server returned a page (serverTotal > page length), assume server-side paging
-  // and return the server-provided page as-is. Otherwise (store fallback / client-side data),
-  // slice according to the current page and pageSize.
-  if (total > pageLen) {
-    return list
-  }
-  const start = pageStart.value
-  const end = start + pageSize.value
-  return list.slice(start, end)
+  // Server always returns a page slice; just return the list
+  return list
 })
 
 // Fetch page from server
 async function fetchSpacesPage(projectId?: string) {
   loading.value = true
-  // If no explicit API base is configured in env, avoid making network requests
-  // and fall back to the store-based data to prevent 404 noise in dev.
-  try {
-    const rawEnvBase = (import.meta as any).env?.VITE_API_BASE
-    const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
-    // If API base resolves to the same hostname as the current page (covers localhost with different ports),
-    // avoid calling /api which may 404 in dev and fall back to store data.
-    if (typeof window !== 'undefined' && apiBase) {
-      try {
-        const apiHostname = (new URL(apiBase)).hostname
-        const pageHostname = window.location.hostname
-        if (apiHostname === pageHostname) {
-          const pid = projectId ?? (projectStore.currentProjectId || '')
-          if (pid) {
-            await spacesStore.fetchByProject(String(pid))
-            const all = Array.isArray(spacesStore.items) ? spacesStore.items : []
-            const filteredByProject = all.filter((s: any) => String(s.projectId || s.project || '') === String(pid))
-            serverSpaces.value = filteredByProject.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
-            serverTotal.value = serverSpaces.value.length
-          } else {
-            serverSpaces.value = []
-            serverTotal.value = 0
-          }
-          loading.value = false
-          return
-        }
-      } catch (err) {
-        // ignore URL parsing errors and continue to attempt HTTP fetch
-      }
-    }
-    if (!rawEnvBase) {
-      // Fall back to store immediately
-      const pid = projectId ?? (projectStore.currentProjectId || '')
-      if (pid) {
-        await spacesStore.fetchByProject(String(pid))
-        const all = Array.isArray(spacesStore.items) ? spacesStore.items : []
-        const filteredByProject = all.filter((s: any) => String(s.projectId || s.project || '') === String(pid))
-        serverSpaces.value = filteredByProject.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
-        serverTotal.value = serverSpaces.value.length
-      } else {
-        serverSpaces.value = []
-        serverTotal.value = 0
-      }
-      loading.value = false
-      return
-    }
-  } catch (e) {
-    // ignore env access errors and continue to attempt HTTP fetch
+  const pid = projectId ?? (projectStore.currentProjectId || '')
+  if (!pid) {
+    serverSpaces.value = []
+    serverTotal.value = 0
+    loading.value = false
+    return
   }
   try {
-    const params: any = { page: page.value, perPage: pageSize.value }
-    if (projectId) params.projectId = projectId
+    const params: any = { page: page.value, perPage: pageSize.value, projectId: pid, includeTypes: true }
     if (search.value) params.search = search.value
     if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/spaces', { params, headers: getAuthHeaders() })
-    const data = res && res.data ? res.data : {}
-    if (Array.isArray(data.items)) serverSpaces.value = data.items.map(s => ({ ...(s || {}), id: s._id || s.id }))
-    else if (Array.isArray(data)) serverSpaces.value = data.map(s => ({ ...(s || {}), id: s._id || s.id }))
-    else serverSpaces.value = []
-    serverTotal.value = Number(data.total ?? data.count ?? serverSpaces.value.length)
+  const data = res && res.data ? res.data : {}
+  if (Array.isArray(data.items)) serverSpaces.value = data.items.map(s => ({ ...(s || {}), id: s._id || s.id }))
+  else if (Array.isArray(data)) serverSpaces.value = data.map(s => ({ ...(s || {}), id: s._id || s.id }))
+  else serverSpaces.value = []
+  serverTotal.value = Number(data.total ?? data.count ?? serverSpaces.value.length)
+  if (Array.isArray(data.types)) serverTypes.value = data.types.map((t: any) => String(t))
+  if (data.typeCounts && typeof data.typeCounts === 'object') {
+    const map: Record<string, number> = {}
+    for (const [k, v] of Object.entries(data.typeCounts)) {
+      map[String(k)] = Number(v) || 0
+    }
+    serverTypeCounts.value = map
+  } else {
+    serverTypeCounts.value = {}
+  }
+  const tp = Math.max(1, Math.ceil(serverTotal.value / pageSize.value))
+  if (page.value > tp) {
+    page.value = tp
+    await fetchSpacesPage(pid)
+  }
   } catch (e: any) {
     // If the API path isn't available (404), fall back to store-based fetch so list view still works
     if (e && e.response && e.response.status === 404) {

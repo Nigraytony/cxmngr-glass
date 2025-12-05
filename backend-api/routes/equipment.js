@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
+const Space = require('../models/space');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
@@ -141,7 +143,39 @@ router.post('/:id/logs', auth, async (req, res) => {
 }
 
 // Projection for list/light responses (omit heavy fields)
-const LIGHT_FIELDS = 'number tag title type system status projectId spaceId responsible template orderDate installationDate balanceDate testDate labels metadata createdAt updatedAt'
+const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels metadata createdAt updatedAt'
+
+async function buildSpaceChainResolver(projectId) {
+  const spaces = await Space.find({ project: projectId }).select('_id id title tag parentSpace parent').lean()
+  const map = new Map()
+  for (const s of spaces) {
+    const id = String(s._id || s.id || '')
+    if (!id) continue
+    map.set(id, { ...s, id })
+  }
+  const cache = new Map()
+  return function chainFor(spaceId) {
+    const sid = String(spaceId || '')
+    if (!sid) return ''
+    if (cache.has(sid)) return cache.get(sid)
+    const parts = []
+    const seen = new Set()
+    let cur = map.get(sid)
+    let depth = 0
+    while (cur && !seen.has(cur.id) && depth < 25) {
+      seen.add(cur.id)
+      const title = String(cur.title || cur.tag || '').trim()
+      if (title) parts.unshift(title)
+      const parentId = cur.parentSpace || cur.parent
+      if (!parentId) break
+      cur = map.get(String(parentId))
+      depth += 1
+    }
+    const chain = parts.join(' > ')
+    cache.set(sid, chain)
+    return chain
+  }
+}
 
 // Read all equipment (paginated, filtered, light projection)
 router.get('/', auth, async (req, res) => {
@@ -171,6 +205,7 @@ router.get('/', auth, async (req, res) => {
     if (req.query.system) filter.system = req.query.system
     if (req.query.status) filter.status = req.query.status
 
+    const totalAll = await Equipment.countDocuments({ projectId })
     const total = await Equipment.countDocuments(filter)
     const items = await Equipment.find(filter)
       .select(LIGHT_FIELDS)
@@ -178,18 +213,38 @@ router.get('/', auth, async (req, res) => {
       .skip((page - 1) * perPage)
       .limit(perPage)
       .lean()
+    // Enrich with space breadcrumb chains (server-side to avoid extra client lookups)
+    let spaceChainFor = null
+    if (items.some(it => it.spaceId)) {
+      try {
+        spaceChainFor = await buildSpaceChainResolver(projectId)
+      } catch (e) {
+        spaceChainFor = null
+      }
+    }
+    if (spaceChainFor) {
+      for (const it of items) {
+        if (!it) continue
+        const sid = it.spaceId || it.space
+        if (sid) it.spaceChain = spaceChainFor(sid)
+      }
+    }
     let facets = {}
     if (includeFacets) {
+      // Facets should reflect the entire project (not just the current page or search filter)
+      let projectObjectId = null
+      try { projectObjectId = new mongoose.Types.ObjectId(projectId) } catch {}
+      const projectMatch = projectObjectId ? { projectId: projectObjectId } : { projectId }
       const aggTypes = await Equipment.aggregate([
-        { $match: filter },
+        { $match: projectMatch },
         { $group: { _id: '$type', count: { $sum: 1 } } },
       ])
       const aggStatuses = await Equipment.aggregate([
-        { $match: filter },
+        { $match: projectMatch },
         { $group: { _id: '$status', count: { $sum: 1 } } },
       ])
       const aggSystems = await Equipment.aggregate([
-        { $match: filter },
+        { $match: projectMatch },
         { $group: { _id: '$system', count: { $sum: 1 } } },
       ])
       facets = {
@@ -199,7 +254,7 @@ router.get('/', auth, async (req, res) => {
       }
     }
 
-    res.status(200).send({ items, total, ...facets })
+    res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
     res.status(500).send(error);
   }

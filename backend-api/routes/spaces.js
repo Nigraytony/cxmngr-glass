@@ -88,28 +88,159 @@ router.post('/', auth, requirePermission('spaces.create', { projectParam: 'proje
   }
 });
 
-// Get all spaces by project ID
+// Light projection fields for list responses (include description for breadcrumbs/labels if needed)
+const LIGHT_FIELDS = 'tag title type project parentSpace description createdAt updatedAt parentChain'
+
+async function buildParentChains(projectId, items) {
+  if (!projectId || !Array.isArray(items) || items.length === 0) return items
+  const parents = await Space.find({ project: projectId }).select('_id title tag parentSpace').lean()
+  const map = new Map()
+  for (const p of parents) map.set(String(p._id), p)
+  const memo = new Map()
+  const chainFor = (id) => {
+    const key = id ? String(id) : ''
+    if (!key) return ''
+    if (memo.has(key)) return memo.get(key)
+    const parts = []
+    let cur = map.get(key)
+    let depth = 0
+    while (cur && depth < 20) {
+      const title = String(cur.title || cur.tag || '').trim()
+      if (title) parts.unshift(title)
+      const pid = cur.parentSpace || cur.parent || null
+      if (!pid) break
+      cur = map.get(String(pid))
+      depth++
+    }
+    const chain = parts.join(' > ')
+    memo.set(key, chain)
+    return chain
+  }
+  for (const it of items) {
+    it.parentChain = chainFor(it.parentSpace)
+  }
+  return items
+}
+
+// Paginated, filtered list (query: projectId required)
+router.get('/', auth, async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(200).send({ items: [], total: 0 })
+    const includeTypes = String(req.query.includeTypes || '').toLowerCase() === 'true' || String(req.query.includeTypes || '') === '1'
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 50))
+    const sortBy = String(req.query.sortBy || 'updatedAt')
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const filter = { project: projectId }
+    if (req.query.type) filter.type = req.query.type
+    if (req.query.parentSpace) filter.parentSpace = req.query.parentSpace
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+      ]
+    }
+    const total = await Space.countDocuments(filter)
+    const items = await Space.find(filter)
+      .select(LIGHT_FIELDS)
+      .sort({ [sortBy]: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean()
+    await buildParentChains(projectId, items)
+    let types = []
+    let typeCounts = {}
+    if (includeTypes) {
+      const agg = await Space.aggregate([
+        { $match: { project: new mongoose.Types.ObjectId(projectId) } },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+      ])
+      types = agg.map(a => a?._id).filter(Boolean)
+      typeCounts = agg.reduce((acc, a) => { acc[a._id] = a.count; return acc }, {})
+    }
+    res.status(200).send({ items, total, types, typeCounts })
+  } catch (error) {
+    res.status(500).send(error)
+  }
+})
+
+// Get all spaces by project ID (light, optional search/filter, pagination)
 router.get('/project/:projectId', auth, requirePermission('spaces.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-    const spaces = await Space.find({ project: req.params.projectId });
-    if (!spaces) {
-      return res.status(404).send();
+    const includeTypes = String(req.query.includeTypes || '').toLowerCase() === 'true' || String(req.query.includeTypes || '') === '1'
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 50))
+    const sortBy = String(req.query.sortBy || 'updatedAt')
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const filter = { project: req.params.projectId }
+    if (req.query.type) filter.type = req.query.type
+    if (req.query.parentSpace) filter.parentSpace = req.query.parentSpace
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+      ]
     }
-    res.status(200).send(spaces);
+    const total = await Space.countDocuments(filter)
+    const items = await Space.find(filter)
+      .select(LIGHT_FIELDS)
+      .sort({ [sortBy]: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean()
+    await buildParentChains(req.params.projectId, items)
+    let types = []
+    let typeCounts = {}
+    if (includeTypes) {
+      const agg = await Space.aggregate([
+        { $match: { project: new mongoose.Types.ObjectId(req.params.projectId) } },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+      ])
+      types = agg.map(a => a?._id).filter(Boolean)
+      typeCounts = agg.reduce((acc, a) => { acc[a._id] = a.count; return acc }, {})
+    }
+    res.status(200).send({ items, total, types, typeCounts })
   } catch (error) {
     res.status(500).send(error);
   }
 });
 
-// Read a single space by ID and find subSpaces
+// Read a single space by ID and find subSpaces (supports light/includeAttachments)
 router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { projectParam: 'project' }), async (req, res) => {
   try {
-    const space = await Space.findById(req.params.id);
+    const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
+    const includeAttachments = String(req.query.includeAttachments || '').toLowerCase() === 'true' || String(req.query.includeAttachments || '') === '1'
+    let query = Space.findById(req.params.id)
+    if (isLight) {
+      const sel = includeAttachments ? `${LIGHT_FIELDS} attachments` : LIGHT_FIELDS
+      query = query.select(sel)
+    } else if (!includeAttachments) {
+      query = query.select('-attachments -logs -attributes -metaData')
+    }
+    const space = await query.lean();
     if (!space) {
       return res.status(404).send();
     }
-    const subSpaces = await Space.find({ parentSpace: space._id }).select('_id tag title type description');
-    res.status(200).send({ ...space.toObject(), subSpaces });
+    const subSpaces = await Space.find({ parentSpace: space._id }).select('_id tag title type description parentSpace').lean();
+    if (!space.parentChain && space.parentSpace) {
+      const chainArr = []
+      let cur = await Space.findById(space.parentSpace).select('title tag parentSpace').lean()
+      let depth = 0
+      while (cur && depth < 20) {
+        const title = String(cur.title || cur.tag || '').trim()
+        if (title) chainArr.unshift(title)
+        if (!cur.parentSpace) break
+        cur = await Space.findById(cur.parentSpace).select('title tag parentSpace').lean()
+        depth++
+      }
+      space.parentChain = chainArr.join(' > ')
+    }
+    res.status(200).send({ ...space, subSpaces });
   } catch (error) {
     res.status(500).send(error);
   }

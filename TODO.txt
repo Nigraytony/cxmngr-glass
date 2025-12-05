@@ -48,6 +48,12 @@ TO DO FOR THE APP
 ✅ 46. Tasks: Remove Gantt feature for now. We can come back to it in a later version of the app.
 ✅ 47. Tasks: Collapse All needs to show at least one task.
 ✅ 48. Tasks: Opt-out of auto cost needs to be added to each task.
+49. Tasks: Add an optional Travel section to each task that helps to calculate travel cost of a task if needed.
+50. Tasks: Make this task list into a component and then Use it for other features such as LEED/Fundamental/Enhanced Cx Tasks, Project Tracking, and Proposals
+51. Admin: Enable Features based on subscription level
+52. Admin: Offload photo and files from the server to an S3 bucket or Azure equivalent.
+53. Mobile App: Start investigating what it would take to spinup a mobile app from this web app.
+54. Desktop App: Start investigating what it would take to spinup a desktop app from this web app.
 
 This task includes travel reimbursables:
 Airfare = $700

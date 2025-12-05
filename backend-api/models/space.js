@@ -55,6 +55,9 @@ spaceSchema.pre('save', function (next) {
 })
 
 spaceSchema.index({ project: 1 })
+spaceSchema.index({ project: 1, updatedAt: -1 })
+spaceSchema.index({ project: 1, tag: 1 })
+spaceSchema.index({ project: 1, parentSpace: 1 })
 
 // Method to find subSpaces by parentSpace ID
 spaceSchema.statics.findSubSpaces = async function (parentSpaceId) {
