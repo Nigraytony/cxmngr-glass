@@ -8,7 +8,20 @@
     </div>
     <!-- Using global UI toasts; local Toast removed for consistency -->
 
-    <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
+    <div
+      v-if="pageLoading"
+      class="flex flex-col items-center justify-center py-16 text-white/70"
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner class="w-10 h-10" />
+      <p class="mt-3 text-sm tracking-wide uppercase">Loading space…</p>
+    </div>
+
+    <div
+      v-else
+      class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10"
+    >
       <!-- Tabs header -->
       <div class="mb-4 md:mb-6">
         <div
@@ -772,6 +785,7 @@ const projectStore = useProjectStore()
 const ui = useUiStore()
 const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
+const pageLoading = ref(true)
 
 const id = computed(() => String(route.params.id || ''))
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1010,22 +1024,27 @@ function countForTab(t: string) {
 }
 
 async function load() {
+  pageLoading.value = true
   // Try to have items loaded; prefer project scope if we know it, otherwise fetch single
-  if (!id.value || id.value === 'new') return
-  const found = spaces.items.find(s => String(s.id || (s as any)._id) === id.value)
-  if (!found) await spaces.fetchOne(id.value)
-  const s = spaces.items.find(sp => String(sp.id || (sp as any)._id) === id.value)
-  if (s) {
-    // Normalize attachments (backend stores as string URLs) and drop empties
-    const normAtt = Array.isArray((s as any).attachments)
-      ? (s as any).attachments
-          .map((u: any) => (typeof u === 'string' ? { url: u, filename: fileNameFromUrl(u) } : { filename: u?.filename || fileNameFromUrl(u?.url), url: u?.url || '' }))
-          .filter((a: any) => !!(a && a.url))
-      : []
-    // Initialize attributes rows from space (ensure array of {key,value})
-    const attrs = Array.isArray((s as any).attributes) ? (s as any).attributes.map((a: any) => ({ key: String(a?.key || ''), value: String(a?.value || '') })) : []
-    attributesRows.value = attrs.length ? attrs : [{ key: '', value: '' }]
-    form.value = { ...s, attachments: normAtt, attributes: attrs, id: String((s as any).id || (s as any)._id) } as any
+  try {
+    if (!id.value || id.value === 'new') return
+    const found = spaces.items.find(s => String(s.id || (s as any)._id) === id.value)
+    if (!found) await spaces.fetchOne(id.value)
+    const s = spaces.items.find(sp => String(sp.id || (sp as any)._id) === id.value)
+    if (s) {
+      // Normalize attachments (backend stores as string URLs) and drop empties
+      const normAtt = Array.isArray((s as any).attachments)
+        ? (s as any).attachments
+            .map((u: any) => (typeof u === 'string' ? { url: u, filename: fileNameFromUrl(u) } : { filename: u?.filename || fileNameFromUrl(u?.url), url: u?.url || '' }))
+            .filter((a: any) => !!(a && a.url))
+        : []
+      // Initialize attributes rows from space (ensure array of {key,value})
+      const attrs = Array.isArray((s as any).attributes) ? (s as any).attributes.map((a: any) => ({ key: String(a?.key || ''), value: String(a?.value || '') })) : []
+      attributesRows.value = attrs.length ? attrs : [{ key: '', value: '' }]
+      form.value = { ...s, attachments: normAtt, attributes: attrs, id: String((s as any).id || (s as any)._id) } as any
+    }
+  } finally {
+    pageLoading.value = false
   }
 }
 
@@ -1042,8 +1061,10 @@ onMounted(async () => {
   // Local toast positioning removed; using global UI toasts instead
 })
 
-watch(() => route.params.id, () => load())
-watch(() => route.params.id, () => load())
+watch(() => route.params.id, async () => {
+  pageLoading.value = true
+  await load()
+})
 
 async function save() {
   try {

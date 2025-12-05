@@ -1918,73 +1918,84 @@ const existingByTagLower = computed<Map<string, any>>(() => {
 })
 
 async function fetchEquipmentPage(projectId?: string) {
-  // Provide a store fallback when no API is configured or when running on same hostname (to avoid dev cross-port 404s)
+  const loadingRef: any = (equipmentStore as any).loading
+  const setLoading = (val: boolean) => {
+    if (loadingRef && typeof loadingRef === 'object' && 'value' in loadingRef) loadingRef.value = val
+    else (equipmentStore as any).loading = val
+  }
+  setLoading(true)
   try {
-    const rawEnvBase = import.meta.env?.VITE_API_BASE
-    const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
-    if (typeof window !== 'undefined' && apiBase) {
-      try {
-        const apiHostname = (new URL(apiBase)).hostname
-        const pageHostname = window.location.hostname
-        if (apiHostname === pageHostname || !rawEnvBase) {
+    // Provide a store fallback when no API is configured or when running on same hostname (to avoid dev cross-port 404s)
+    try {
+      const rawEnvBase = import.meta.env?.VITE_API_BASE
+      const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
+      if (typeof window !== 'undefined' && apiBase) {
+        try {
+          const apiHostname = (new URL(apiBase)).hostname
+          const pageHostname = window.location.hostname
+          if (apiHostname === pageHostname || !rawEnvBase) {
+            const pid = projectId ?? (projectStore.currentProjectId || '')
+            if (pid) {
+              await equipmentStore.fetchByProject(String(pid))
+              const all = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
+              const filteredByProject = all.filter((it) => String(it.projectId || it.project || '') === String(pid))
+              serverEquipment.value = filteredByProject.map((it) => ({ ...(it || {}), id: it._id || it.id }))
+              serverTotal.value = serverEquipment.value.length
+            } else {
+              serverEquipment.value = []
+              serverTotal.value = 0
+            }
+            return
+          }
+        } catch (err) {
+          // ignore URL parsing errors and continue to attempt HTTP fetch
+        }
+      }
+    } catch (e) {
+      // ignore env access errors and continue
+    }
+
+    try {
+      const params: any = { page: page.value, perPage: pageSize.value }
+      if (projectId) params.projectId = projectId
+      if (search.value) params.search = search.value
+      if (typeFilter.value) params.type = typeFilter.value
+      if (systemFilter.value) params.system = systemFilter.value
+      if (statusFilter.value) params.status = statusFilter.value
+      if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+      const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
+      const data = res && res.data ? res.data : {}
+      if (Array.isArray(data.items)) serverEquipment.value = data.items.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
+      else if (Array.isArray(data)) serverEquipment.value = data.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
+      else serverEquipment.value = []
+      serverTotal.value = Number(data.total ?? data.count ?? serverEquipment.value.length)
+      return
+    } catch (e: any) {
+      // fallback to store when 404 or server not present
+      if (e && e.response && e.response.status === 404) {
+        try {
           const pid = projectId ?? (projectStore.currentProjectId || '')
           if (pid) {
             await equipmentStore.fetchByProject(String(pid))
             const all = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
-            const filteredByProject = all.filter((it) => String(it.projectId || it.project || '') === String(pid))
-            serverEquipment.value = filteredByProject.map((it) => ({ ...(it || {}), id: it._id || it.id }))
+            const filteredByProject = all.filter((it: any) => String(it.projectId || it.project || '') === String(pid))
+            serverEquipment.value = filteredByProject.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
             serverTotal.value = serverEquipment.value.length
           } else {
             serverEquipment.value = []
             serverTotal.value = 0
           }
-          return
-        }
-      } catch (err) {
-        // ignore URL parsing errors and continue to attempt HTTP fetch
-      }
-    }
-  } catch (e) {
-    // ignore env access errors and continue
-  }
-
-  try {
-    const params: any = { page: page.value, perPage: pageSize.value }
-    if (projectId) params.projectId = projectId
-    if (search.value) params.search = search.value
-    if (typeFilter.value) params.type = typeFilter.value
-    if (systemFilter.value) params.system = systemFilter.value
-    if (statusFilter.value) params.status = statusFilter.value
-    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
-    const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
-    const data = res && res.data ? res.data : {}
-    if (Array.isArray(data.items)) serverEquipment.value = data.items.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
-    else if (Array.isArray(data)) serverEquipment.value = data.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
-    else serverEquipment.value = []
-    serverTotal.value = Number(data.total ?? data.count ?? serverEquipment.value.length)
-  } catch (e: any) {
-    // fallback to store when 404 or server not present
-    if (e && e.response && e.response.status === 404) {
-      try {
-        const pid = projectId ?? (projectStore.currentProjectId || '')
-        if (pid) {
-          await equipmentStore.fetchByProject(String(pid))
-          const all = Array.isArray(equipmentStore.items) ? equipmentStore.items : []
-          const filteredByProject = all.filter((it: any) => String(it.projectId || it.project || '') === String(pid))
-          serverEquipment.value = filteredByProject.map((it: any) => ({ ...(it || {}), id: it._id || it.id }))
-          serverTotal.value = serverEquipment.value.length
-        } else {
+        } catch (inner) {
           serverEquipment.value = []
           serverTotal.value = 0
         }
-      } catch (inner) {
+      } else {
         serverEquipment.value = []
         serverTotal.value = 0
       }
-    } else {
-      serverEquipment.value = []
-      serverTotal.value = 0
     }
+  } finally {
+    setLoading(false)
   }
 }
 
