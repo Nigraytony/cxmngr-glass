@@ -136,6 +136,31 @@ function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
 
 const projectStore = useProjectStore()
 
+// Lazy-load Source Sans Pro from public assets and register with jsPDF
+let sourceSansLoaded = false
+async function ensureSourceSans(doc: jsPDF) {
+  if (sourceSansLoaded) return
+  try {
+    const loadFont = async (url: string) => {
+      const res = await fetch(url)
+      const buf = await res.arrayBuffer()
+      const bytes = new Uint8Array(buf)
+      let binary = ''
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+      return btoa(binary)
+    }
+    const regularB64 = await loadFont('/fonts/SourceSansPro_5/ttf/source-sans-pro-latin-400-normal.ttf')
+    // Use regular file for both normal and bold weights to avoid missing font errors if bold not present
+    doc.addFileToVFS('SourceSansPro-Regular.ttf', regularB64)
+    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'normal')
+    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'bold')
+    sourceSansLoaded = true
+  } catch (e) {
+    // fall back silently to built-in fonts
+    sourceSansLoaded = false
+  }
+}
+
 function setZeroCharSpace(doc: jsPDF) {
   try {
     const fn = (doc as any).setCharSpace
@@ -144,12 +169,17 @@ function setZeroCharSpace(doc: jsPDF) {
 }
 
 function setBodyFont(doc: jsPDF, weight: 'normal' | 'bold' = 'normal') {
-  // Use a built-in font to avoid VFS/base64 issues during embedding
-  doc.setFont('times', weight)
+  // Prefer Source Sans Pro if loaded; fall back to Times
+  try {
+    doc.setFont('SourceSansPro', weight)
+  } catch (e) {
+    doc.setFont('times', weight)
+  }
 }
 
 // Renders a single issue onto the provided doc, returns the new y position and whether a new page was added at the end.
 async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { value: number } }) {
+  await ensureSourceSans(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -211,17 +241,24 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
     doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
   }
 
-  // Header logos
+  // Header logos (preserve aspect ratio)
   const logoH = 12
-  if (clientImg.dataUrl) doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, y, logoH * 2.5, logoH)
-  if (cxaImg.dataUrl) {
-    const w = logoH * 2.5
-    doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, y, w, logoH)
+  let logoBlockH = 0
+  if (clientImg.dataUrl) {
+    const dim = scaleToHeight(clientImg, logoH, logoH * 3)
+    doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, y, dim.w, dim.h)
+    logoBlockH = Math.max(logoBlockH, dim.h)
   }
+  if (cxaImg.dataUrl) {
+    const dim = scaleToHeight(cxaImg, logoH, logoH * 3)
+    doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - dim.w, y, dim.w, dim.h)
+    logoBlockH = Math.max(logoBlockH, dim.h)
+  }
+  y += (logoBlockH || logoH) + 4
 
   // H1 header
   doc.setFontSize(20)
-  doc.setFont('helvetica', 'bold')
+  setBodyFont(doc, 'bold')
   const headerIssueNum = (issue.number != null && issue.number !== undefined) ? String(issue.number) : ''
   doc.text(`Issue ${headerIssueNum} Report`, pageWidth / 2, y + 8, { align: 'center' })
   y += 22
@@ -230,7 +267,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
   const numberText = issue.number != null ? `Issue # ${issue.number}` : 'Issue'
   const titleText = issue.title ? ` — ${issue.title}` : ''
   doc.setFontSize(14)
-  doc.setFont('helvetica', 'bold')
+  setBodyFont(doc, 'bold')
   const titleLines = splitText(doc, numberText + titleText, pageWidth - margin * 2)
   doc.text(titleLines, margin, y)
   y += Math.max(10, titleLines.length * 7) + 2
@@ -400,6 +437,7 @@ async function generateIssuePdf(issue: any) {
 
 async function generateIssuesDetailedPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
+  await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageNoRef = { value: 1 }
@@ -426,6 +464,7 @@ async function generateIssuesDetailedPdf(issues: any[]) {
 
 async function generateIssuesCompactPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
+  await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   setZeroCharSpace(doc)
@@ -603,6 +642,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
 // Flat table/list report
 async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
+  await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
   setZeroCharSpace(doc)

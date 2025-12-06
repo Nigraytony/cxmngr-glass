@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Template = require('../models/template');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
@@ -61,6 +62,9 @@ function toPlainTemplate(doc) {
   return t
 }
 
+// Light projection for list responses (avoid heavy fields)
+const LIGHT_FIELDS = 'number tag title type system status projectId responsible template orderDate installationDate balanceDate testDate labels metadata createdAt updatedAt'
+
 // Create
 router.post('/', auth, requirePermission('templates.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
   try {
@@ -75,11 +79,68 @@ router.post('/', auth, requirePermission('templates.create', { projectParam: 'pr
   }
 });
 
-// Read all
+// Read all (paginated, filtered, light projection, optional facets)
 router.get('/', auth, async (req, res) => {
   try {
-    const list = await Template.find();
-    res.status(200).send(list.map(toPlainTemplate));
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+    const sortBy = String(req.query.sortBy || 'updatedAt')
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const projectId = req.query.projectId
+    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+
+    if (!projectId) {
+      return res.status(200).send({ items: [], total: 0, totalAll: 0 })
+    }
+
+    const filter = { projectId }
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+        { system: { $regex: s, $options: 'i' } },
+      ]
+    }
+    if (req.query.type) filter.type = req.query.type
+    if (req.query.system) filter.system = req.query.system
+    if (req.query.status) filter.status = req.query.status
+
+    const totalAll = await Template.countDocuments({ projectId })
+    const total = await Template.countDocuments(filter)
+    const items = await Template.find(filter)
+      .select(LIGHT_FIELDS)
+      .sort({ [sortBy]: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean()
+
+    let facets = {}
+    if (includeFacets) {
+      let projectObjectId = null
+      try { projectObjectId = new mongoose.Types.ObjectId(projectId) } catch {}
+      const projectMatch = projectObjectId ? { projectId: projectObjectId } : { projectId }
+      const aggTypes = await Template.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+      ])
+      const aggStatuses = await Template.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ])
+      const aggSystems = await Template.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: '$system', count: { $sum: 1 } } },
+      ])
+      facets = {
+        types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+      }
+    }
+
+    res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
     res.status(500).send(error);
   }
@@ -88,7 +149,7 @@ router.get('/', auth, async (req, res) => {
 // Read by project
 router.get('/project/:projectId', auth, requirePermission('templates.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-    const list = await Template.find({ projectId: req.params.projectId });
+    const list = await Template.find({ projectId: req.params.projectId }).select(LIGHT_FIELDS);
     res.status(200).send(list.map(toPlainTemplate));
   } catch (error) {
     res.status(500).send(error);

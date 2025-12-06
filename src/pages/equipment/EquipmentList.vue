@@ -1630,7 +1630,7 @@ const systemFilterLabel = computed(() => {
   return found ? found.name : systemFilter.value
 })
 function systemCount(nameOrVal: string) {
-  if (nameOrVal === 'All') return preSystemFiltered.value.length
+  if (nameOrVal === 'All') return systemCounts.value['All'] || preSystemFiltered.value.length
   const val = String(nameOrVal).toLowerCase()
   return systemCounts.value[val] || 0
 }

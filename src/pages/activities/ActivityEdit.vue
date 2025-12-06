@@ -381,10 +381,11 @@
                 <span>Download PDF</span>
               </button>
               <button
+                type="button"
                 v-if="!isNew"
                 class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
                 title="Report settings"
-                @click="showActivityReportDialog = true"
+                @click.stop="openReportSettings"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -540,6 +541,65 @@
             </div>
           </div>
           <IssuesTable :issues="issuesForActivity" />
+        </div>
+
+        <!-- Logs Tab -->
+        <div
+          v-else-if="currentTab === 'Logs'"
+          class="space-y-3"
+        >
+          <div class="flex items-center justify-between">
+            <div class="text-white/80">
+              Activity logs
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+                @click="loadLogs"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div v-if="logsLoading" class="text-white/70 flex items-center gap-2">
+            <Spinner class="w-5 h-5" />
+            <span>Loading logs...</span>
+          </div>
+          <div v-else>
+            <div
+              v-if="logsList.length === 0"
+              class="text-white/60"
+            >
+              No logs yet.
+            </div>
+            <ul
+              v-else
+              class="space-y-2"
+            >
+              <li
+                v-for="(l, idx) in logsList"
+                :key="idx"
+                class="rounded-lg border border-white/10 bg-white/5 p-3"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm text-white/80">
+                    <span class="font-semibold">{{ l.type }}</span>
+                    <span class="text-white/60"> — {{ l.message }}</span>
+                  </div>
+                  <div class="text-xs text-white/60">
+                    {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
+                  </div>
+                </div>
+                <div
+                  v-if="l.details"
+                  class="mt-2 text-xs text-white/60 truncate"
+                >
+                  {{ JSON.stringify(l.details) }}
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <!-- Comments Tab -->
@@ -1095,66 +1155,6 @@
     </div>
   </div>
 
-  <!-- Photo Viewer Modal -->
-  <!-- Logs Tab -->
-  <div
-    v-if="currentTab === 'Logs'"
-    class="space-y-3"
-  >
-    <div class="flex items-center justify-between">
-      <div class="text-white/80">
-        Activity logs
-      </div>
-      <div class="flex items-center gap-2">
-        <button
-          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-          @click="loadLogs"
-        >
-          Refresh
-        </button>
-      </div>
-    </div>
-
-    <div
-      v-if="logsLoading"
-      class="text-white/70"
-    >
-      Loading logs...
-    </div>
-    <div v-else>
-      <div
-        v-if="!logsList.length"
-        class="text-white/60"
-      >
-        No logs for this activity.
-      </div>
-      <ul
-        v-else
-        class="space-y-2"
-      >
-        <li
-          v-for="(l, idx) in logsList"
-          :key="(l.ts || '') + String(idx)"
-          class="p-2 rounded bg-white/5 border border-white/10"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <div class="text-sm text-white/80">
-              <span class="font-medium">{{ l.type }}</span>
-              <span class="text-white/60"> — {{ l.message }}</span>
-            </div>
-            <div class="text-xs text-white/60">
-              {{ formatDateTime(l.ts) }} • {{ l.by || 'System' }}
-            </div>
-          </div>
-          <div
-            v-if="l.details"
-            class="mt-2 text-xs text-white/60 truncate"
-          >
-            {{ JSON.stringify(l.details) }}
-          </div>
-        </li>
-      </ul>
-    </div>
   <Modal v-model="viewerOpen">
     <template #header>
       <div class="flex items-center justify-between">
@@ -1526,7 +1526,10 @@
   </Modal>
 
   <!-- Activity Report Settings Modal -->
-  <Modal v-model="showActivityReportDialog">
+  <Modal
+    :model-value="showActivityReportDialog"
+    @update:modelValue="showActivityReportDialog = $event"
+  >
     <template #header>
       <div class="flex items-center justify-between w-full">
         <div class="text-lg">
@@ -1620,7 +1623,6 @@
       </div>
     </template>
   </Modal>
-    </div>
   </div>
 </template>
 
@@ -1650,6 +1652,7 @@ import IssuesTable from '../../components/IssuesTable.vue'
 import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
 import { useSpacesStore } from '../../stores/spaces'
+import Spinner from '../../components/Spinner.vue'
 
 // Accept route params passed as attrs to avoid extraneous attribute warnings when rendering fragments
 const props = defineProps<{ id?: string }>()
@@ -1691,6 +1694,9 @@ const activityReport = ref<ActivityReportSettings>({
   photoLimit: 6,
 })
 const showActivityReportDialog = ref(false)
+function openReportSettings() {
+  showActivityReportDialog.value = true
+}
 function loadActivityReportSettingsFromSession() {
   try {
     const raw = sessionStorage.getItem(ACTIVITY_REPORT_SESSION_KEY)
@@ -2051,7 +2057,7 @@ watch(() => currentTab.value, async (tab) => {
     try { await Promise.all([ equipmentStore.fetchByProject(pid), spacesStore.fetchByProject(pid) ]); equipmentLoaded.value = true } catch (e) { /* ignore */ }
   }
   if (tab === 'Logs' && !logsLoaded.value) {
-    try { await store.fetchActivity(id.value, { includePhotos: false }); logsLoaded.value = true } catch (e) { /* ignore */ }
+    try { await loadLogs(); logsLoaded.value = true } catch (e) { /* ignore */ }
   }
 })
 
@@ -2152,6 +2158,40 @@ async function download() {
 // PDF generation helpers (adapted from Equipment report)
 // -----------------------------
 type ImageFormat = 'PNG' | 'JPEG' | 'WEBP'
+type LoadedImage = { dataUrl?: string, format?: ImageFormat, width?: number, height?: number }
+
+// Lazy-load Source Sans Pro for PDFs
+let sourceSansLoaded = false
+async function ensureSourceSans(doc: any) {
+  if (sourceSansLoaded) return
+  try {
+    const loadFont = async (url: string) => {
+      const res = await fetch(url)
+      const buf = await res.arrayBuffer()
+      const bytes = new Uint8Array(buf)
+      let binary = ''
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+      return btoa(binary)
+    }
+    const regularB64 = await loadFont('/fonts/SourceSansPro_5/ttf/source-sans-pro-latin-400-normal.ttf')
+    doc.addFileToVFS('SourceSansPro-Regular.ttf', regularB64)
+    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'normal')
+    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'bold')
+    sourceSansLoaded = true
+  } catch (e) {
+    sourceSansLoaded = false
+  }
+}
+function setBodyFont(doc: any, weight: 'normal' | 'bold' = 'normal') {
+  try { doc.setFont('SourceSansPro', weight) } catch (e) { doc.setFont('helvetica', weight) }
+}
+function setZeroCharSpace(doc: any) {
+  try {
+    const fn = (doc as any).setCharSpace
+    if (typeof fn === 'function') fn.call(doc, 0)
+  } catch (e) { /* ignore */ }
+}
+
 function mimeToFormat(mime?: string | null): ImageFormat | undefined {
   if (!mime) return undefined
   const m = mime.toLowerCase()
@@ -2159,6 +2199,14 @@ function mimeToFormat(mime?: string | null): ImageFormat | undefined {
   if (m.includes('jpeg') || m.includes('jpg')) return 'JPEG'
   if (m.includes('webp')) return 'WEBP'
   return undefined
+}
+function getDims(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = () => resolve({ w: img.naturalWidth || img.width || 0, h: img.naturalHeight || img.height || 0 })
+    img.onerror = () => resolve({ w: 0, h: 0 })
+    img.src = dataUrl
+  })
 }
 async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<string | null> {
   try {
@@ -2169,17 +2217,25 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
     return canvas.toDataURL('image/jpeg', quality)
   } catch (e) { return null }
 }
-async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: ImageFormat }> {
+async function loadImage(src?: string): Promise<LoadedImage> {
   try {
     if (!src) return {}
+    let width: number | undefined
+    let height: number | undefined
     if (src.startsWith('data:')) {
       const mime = src.slice(5, src.indexOf(';'))
       let fmt = mimeToFormat(mime)
       if (fmt === 'WEBP' || (mime && mime.toLowerCase().includes('svg'))) {
         const conv = await convertDataUrlToJpeg(src)
-        if (conv) return { dataUrl: conv, format: 'JPEG' }
+        if (conv) {
+          const dims = await getDims(conv)
+          width = dims.w || undefined; height = dims.h || undefined
+          return { dataUrl: conv, format: 'JPEG', width, height }
+        }
       }
-      return { dataUrl: src, format: fmt }
+      const dims = await getDims(src)
+      width = dims.w || undefined; height = dims.h || undefined
+      return { dataUrl: src, format: fmt, width, height }
     }
     const res = await fetch(src)
     if (!res.ok) return {}
@@ -2188,10 +2244,24 @@ async function loadImage(src?: string): Promise<{ dataUrl?: string, format?: Ima
     let fmt: ImageFormat | undefined
     if (blob.type) fmt = mimeToFormat(blob.type)
     if (!fmt || fmt === 'WEBP' || blob.type.toLowerCase().includes('svg')) {
-      const conv = await convertDataUrlToJpeg(dataUrl); if (conv) return { dataUrl: conv, format: 'JPEG' }
+      const conv = await convertDataUrlToJpeg(dataUrl)
+      if (conv) {
+        const dims = await getDims(conv)
+        width = dims.w || undefined; height = dims.h || undefined
+        return { dataUrl: conv, format: 'JPEG', width, height }
+      }
     }
-    return { dataUrl: dataUrl, format: fmt || 'PNG' }
+    const dims = await getDims(dataUrl)
+    width = dims.w || undefined; height = dims.h || undefined
+    return { dataUrl: dataUrl, format: fmt || 'PNG', width, height }
   } catch (e) { return {} }
+}
+function scaleToHeight(img: LoadedImage, targetH: number, fallbackW: number) {
+  const h = img?.height || targetH
+  const w = img?.width || fallbackW || targetH
+  if (!h || !w) return { w: fallbackW || targetH, h: targetH }
+  const sc = targetH / h
+  return { w: w * sc, h: targetH }
 }
 function htmlToLines(html: string): string[] {
   // Basic HTML -> lines preserving paragraphs and list items
@@ -2211,6 +2281,9 @@ async function downloadActivityPdf() {
   loadActivityReportSettingsFromSession()
   try {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    await ensureSourceSans(doc)
+    setZeroCharSpace(doc)
+    setBodyFont(doc, 'normal')
     const margin = 12
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
@@ -2229,20 +2302,29 @@ async function downloadActivityPdf() {
       const footerY = pageHeight - 10
       doc.setDrawColor(180,180,180); doc.line(margin, footerY - 6, pageWidth - margin, footerY - 6)
       try {
-        if (footerLogo.dataUrl) { const lh = 5.5; const lw = 12; doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + lw + 2, footerY - 2) }
-        else { doc.setFillColor(220,220,220); doc.rect(margin, footerY - 5.5, 8,5,'F'); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + 10, footerY - 2) }
+        if (footerLogo.dataUrl) { const lh = 5.5; const lw = 12; doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh); setBodyFont(doc, 'bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + lw + 2, footerY - 2) }
+        else { doc.setFillColor(220,220,220); doc.rect(margin, footerY - 5.5, 8,5,'F'); setBodyFont(doc, 'bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + 10, footerY - 2) }
       } catch (e) { /* ignore */ }
-      doc.setFont('helvetica','normal'); doc.text(String(pageNo), pageWidth/2, footerY - 2, { align: 'center' }); doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
+      setBodyFont(doc, 'normal'); doc.text(String(pageNo), pageWidth/2, footerY - 2, { align: 'center' }); doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
       doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
     }
     const drawHeader = () => {
       const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
       const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
       const logoH = 12
-      if (clientImg.dataUrl) doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, logoH*2.5, logoH)
-      if (cxaImg.dataUrl) { const w = logoH*2.5; doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, margin, w, logoH) }
-      doc.setFontSize(20); doc.setFont('helvetica','bold'); doc.text(`${form.name || 'Activity'} Report`, pageWidth/2, margin + 8, { align: 'center' })
-      y = margin + 22
+      let logoBlockH = 0
+      if (clientImg.dataUrl) {
+        const dim = scaleToHeight(clientImg, logoH, logoH * 3)
+        doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, dim.w, dim.h)
+        logoBlockH = Math.max(logoBlockH, dim.h)
+      }
+      if (cxaImg.dataUrl) {
+        const dim = scaleToHeight(cxaImg, logoH, logoH * 3)
+        doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - dim.w, margin, dim.w, dim.h)
+        logoBlockH = Math.max(logoBlockH, dim.h)
+      }
+      doc.setFontSize(20); setBodyFont(doc, 'bold'); doc.text(`${form.name || 'Activity'} Report`, pageWidth/2, margin + (logoBlockH || logoH) + 6, { align: 'center' })
+      y = margin + (logoBlockH || logoH) + 20
       doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
     }
     const ensureSpace = (amount: number): boolean => { if (y + amount > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader(); return true } return false }
@@ -2250,7 +2332,7 @@ async function downloadActivityPdf() {
     drawHeader()
     // Info
     if (activityReport.value.include.info) {
-      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(10)
+      setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(10)
       const info: Array<[string,string]> = [ ['Type', form.type], ['Start', form.startDate], ['End', form.endDate], ['Location', form.location], ['Project', String(form.projectId || '')] ]
       const colW = (pageWidth - margin*2)/2; let i = 0
       for (const [label,value] of info) { const col = i % 2; const row = Math.floor(i/2); const x = margin + col*colW; const yy = y + row*7; ensureSpace(10); doc.setTextColor(100); doc.text(label + ':', x, yy); doc.setTextColor(0); const lines = doc.splitTextToSize(String(value||'—'), colW - 24) as string[]; doc.text(lines, x + 24, yy); i++ }
@@ -2258,7 +2340,7 @@ async function downloadActivityPdf() {
     }
     // Description (rich HTML rendering)
     if (activityReport.value.include.description && form.descriptionHtml) {
-      ensureSpace(14); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Description', margin, y); y += 6
+      ensureSpace(14); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Description', margin, y); y += 6
       const container = document.createElement('div')
       container.style.position = 'fixed'
       container.style.left = '-10000px'
@@ -2321,7 +2403,7 @@ async function downloadActivityPdf() {
         const imgRaw = await loadImage(src)
         if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
       }
-      if (imgs.length) { sectionGap(); ensureSpace(10); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4; const thumbW = (pageWidth - margin*2 - 8)/3; const thumbH = thumbW*0.75; for (let idx=0; idx<imgs.length; idx++) { const col = idx%3; const row = Math.floor(idx/3); const x = margin + col*(thumbW+4); const yy = y + row*(thumbH+4); if (yy + thumbH > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; idx -= (idx%3); continue } doc.addImage(imgs[idx].dataUrl, imgs[idx].format || 'JPEG', x, yy, thumbW, thumbH) } y += Math.ceil(imgs.length/3)*(thumbH+4) + 2 }
+      if (imgs.length) { sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4; const thumbW = (pageWidth - margin*2 - 8)/3; const thumbH = thumbW*0.75; for (let idx=0; idx<imgs.length; idx++) { const col = idx%3; const row = Math.floor(idx/3); const x = margin + col*(thumbW+4); const yy = y + row*(thumbH+4); if (yy + thumbH > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; idx -= (idx%3); continue } doc.addImage(imgs[idx].dataUrl, imgs[idx].format || 'JPEG', x, yy, thumbW, thumbH) } y += Math.ceil(imgs.length/3)*(thumbH+4) + 2 }
     }
     // We intentionally delay issues & attachments so equipment reports can appear before them.
     // Close out the main activity doc (without attachments yet).
@@ -2380,6 +2462,9 @@ async function downloadActivityPdf() {
       const issues = aggregated
       if (issues.length) {
         const iDoc = new jsPDF({ unit: 'mm', format: 'a4' })
+        await ensureSourceSans(iDoc)
+        setZeroCharSpace(iDoc)
+        setBodyFont(iDoc, 'normal')
         const iPW = iDoc.internal.pageSize.getWidth(); const iPH = iDoc.internal.pageSize.getHeight(); const iBottom = iPH - 26; let iy = margin; let iPageNo = 1
         // Reuse logos from outer scope if available for consistent branding
         const drawIFooter = () => {
@@ -2388,27 +2473,27 @@ async function downloadActivityPdf() {
           const fY = iPH - 10
           iDoc.setDrawColor(180,180,180); iDoc.line(margin, fY - 6, iPW - margin, fY - 6)
           try {
-            if (footerLogo?.dataUrl) { const lh = 5.5; const lw = 12; iDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh); iDoc.setFont('helvetica','bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + lw + 2, fY - 2) }
-            else { iDoc.setFillColor(220,220,220); iDoc.rect(margin, fY - 5.5, 8,5,'F'); iDoc.setFont('helvetica','bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + 10, fY - 2) }
+            if (footerLogo?.dataUrl) { const lh = 5.5; const lw = 12; iDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh); setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + lw + 2, fY - 2) }
+            else { iDoc.setFillColor(220,220,220); iDoc.rect(margin, fY - 5.5, 8,5,'F'); setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + 10, fY - 2) }
           } catch (e) { /* ignore */ }
-          iDoc.setFont('helvetica','normal'); iDoc.text(String(iPageNo), iPW/2, fY - 2, { align: 'center' });
+          setBodyFont(iDoc, 'normal'); iDoc.text(String(iPageNo), iPW/2, fY - 2, { align: 'center' });
           try { if (typeof pageDate === 'string') iDoc.text(pageDate, iPW - margin, fY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
           iDoc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); iDoc.setFontSize(prevSize)
         }
         const drawIHeader = () => {
           const logoH = 12
-          try { if (clientImg?.dataUrl) iDoc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, logoH*2.5, logoH) } catch (e) { /* ignore */ }
-          try { if (cxaImg?.dataUrl) { const w = logoH*2.5; iDoc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', iPW - margin - w, margin, w, logoH) } } catch (e) { /* ignore */ }
-          iDoc.setFontSize(20); iDoc.setFont('helvetica','bold'); iDoc.text('Issues', iPW/2, margin + 8, { align: 'center' })
+          try { if (clientImg?.dataUrl) { const dim = scaleToHeight(clientImg, logoH, logoH*2.5); iDoc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, dim.w, dim.h) } } catch (e) { /* ignore */ }
+          try { if (cxaImg?.dataUrl) { const dim = scaleToHeight(cxaImg, logoH, logoH*2.5); iDoc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', iPW - margin - dim.w, margin, dim.w, dim.h) } } catch (e) { /* ignore */ }
+          iDoc.setFontSize(20); setBodyFont(iDoc, 'bold'); iDoc.text('Issues', iPW/2, margin + 8, { align: 'center' })
           // Reset to body font after header
           iy = margin + 22
-          iDoc.setFont('helvetica','normal'); iDoc.setFontSize(9)
+          setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9)
         }
         const ensureISpace = (h:number) => { if (iy + h > iBottom) { drawIFooter(); iDoc.addPage(); iPageNo++; drawIHeader(); return true } return false }
         drawIHeader()
     const totalW = iPW - margin*2 - 2; const numW = 14; const typeW = 22; const sourceW = 26; const statusW = 22; const titleW = Math.max(32, Math.min(60, totalW*0.20)); const descW = totalW - numW - typeW - sourceW - statusW - titleW
     const tableX = margin + 1
-  const drawIssuesHeader = () => { ensureISpace(8); iDoc.setFont('helvetica','bold'); const headerH = 6; iDoc.setFillColor(250,236,236); iDoc.rect(tableX, iy, totalW, headerH, 'F'); iDoc.rect(tableX, iy, totalW, headerH); iDoc.line(tableX+numW, iy, tableX+numW, iy+headerH); iDoc.line(tableX+numW+typeW, iy, tableX+numW+typeW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW, iy, tableX+numW+typeW+sourceW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW+titleW, iy, tableX+numW+typeW+sourceW+titleW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW+titleW+descW, iy, tableX+numW+typeW+sourceW+titleW+descW, iy+headerH); iDoc.text('#', tableX+1.5, iy+4); iDoc.text('Type', tableX+numW+1.5, iy+4); iDoc.text('Source', tableX+numW+typeW+1.5, iy+4); iDoc.text('Title', tableX+numW+typeW+sourceW+1.5, iy+4); iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+4); iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+descW+1.5, iy+4); iy += headerH; iDoc.setFont('helvetica','normal'); iDoc.setFontSize(9) }
+  const drawIssuesHeader = () => { ensureISpace(8); setBodyFont(iDoc, 'bold'); const headerH = 6; iDoc.setFillColor(250,236,236); iDoc.rect(tableX, iy, totalW, headerH, 'F'); iDoc.rect(tableX, iy, totalW, headerH); iDoc.line(tableX+numW, iy, tableX+numW, iy+headerH); iDoc.line(tableX+numW+typeW, iy, tableX+numW+typeW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW, iy, tableX+numW+typeW+sourceW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW+titleW, iy, tableX+numW+typeW+sourceW+titleW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW+titleW+descW, iy, tableX+numW+typeW+sourceW+titleW+descW, iy+headerH); iDoc.text('#', tableX+1.5, iy+4); iDoc.text('Type', tableX+numW+1.5, iy+4); iDoc.text('Source', tableX+numW+typeW+1.5, iy+4); iDoc.text('Title', tableX+numW+typeW+sourceW+1.5, iy+4); iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+4); iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+descW+1.5, iy+4); iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9) }
         drawIssuesHeader()
     for (const it of issues) {
       const numTxt = '#' + (it.number ?? '—')
@@ -2446,9 +2531,12 @@ async function downloadActivityPdf() {
       const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
       if (atts.length) {
         const attDoc = new jsPDF({ unit: 'mm', format: 'a4' })
+        await ensureSourceSans(attDoc)
+        setZeroCharSpace(attDoc)
+        setBodyFont(attDoc, 'normal')
         const aPW = attDoc.internal.pageSize.getWidth(); const aPH = attDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
-        const drawAttFooter = () => { const footerY = aPH - 10; attDoc.setDrawColor(180,180,180); attDoc.line(margin, footerY - 6, aPW - margin, footerY - 6); attDoc.setFont('helvetica','normal'); attDoc.setFontSize(8); attDoc.text(String(aPageNo), aPW/2, footerY - 2, { align: 'center' }) }
-        const drawAttHeader = () => { attDoc.setFont('helvetica','bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; attDoc.setFont('helvetica','normal'); attDoc.setFontSize(9) }
+        const drawAttFooter = () => { const footerY = aPH - 10; attDoc.setDrawColor(180,180,180); attDoc.line(margin, footerY - 6, aPW - margin, footerY - 6); setBodyFont(attDoc, 'normal'); attDoc.setFontSize(8); attDoc.text(String(aPageNo), aPW/2, footerY - 2, { align: 'center' }) }
+        const drawAttHeader = () => { setBodyFont(attDoc, 'bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; setBodyFont(attDoc, 'normal'); attDoc.setFontSize(9) }
         const ensureAttSpace = (h:number) => { if (ay + h > aBottom) { drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); return true } return false }
         drawAttHeader()
         // Listing first
@@ -2456,7 +2544,7 @@ async function downloadActivityPdf() {
         // Image full pages
         const isImage = (a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }
   const getDims = async (dataUrl:string): Promise<{w:number;h:number}> => { return new Promise(res => { const img = new Image(); img.onload=()=>res({ w: img.naturalWidth||img.width, h: img.naturalHeight||img.height }); img.onerror=()=>res({w:0,h:0}); img.src = dataUrl }) }
-        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); attDoc.setFont('helvetica','bold'); attDoc.setFontSize(10); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; attDoc.setFont('helvetica','normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
+        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); setBodyFont(attDoc, 'bold'); attDoc.setFontSize(10); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; setBodyFont(attDoc, 'normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
         drawAttFooter()
         attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
       }
@@ -2591,9 +2679,15 @@ async function onAddComment(text: string) {
 // Logs tab
 const logsList = ref<any[]>([])
 const logsLoading = ref(false)
-async function loadLogs() {
+async function loadLogs(force = false) {
+  if (logsLoading.value && !force) return
   const aid = isNew.value ? (pendingCreatedId.value || '') : id.value
-  if (!aid) return
+  if (!aid) {
+    logsLoaded.value = true
+    logsLoading.value = false
+    logsList.value = []
+    return
+  }
   logsLoading.value = true
   try {
     const { useLogsStore } = await import('../../stores/logs')
@@ -2603,15 +2697,10 @@ async function loadLogs() {
   } catch (e) {
     logsList.value = []
   } finally {
+    logsLoaded.value = true
     logsLoading.value = false
   }
 }
-
-watch(currentTab, (v) => {
-  if (v === 'Logs') {
-    loadLogs()
-  }
-})
 
 async function onDeleteComment(comment: any, index?: number) {
   // Ensure activity exists

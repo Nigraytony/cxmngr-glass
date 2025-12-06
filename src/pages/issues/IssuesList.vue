@@ -69,6 +69,54 @@
         <div class="flex flex-wrap items-center gap-3 gap-y-2">
           <label class="text-white/70 text-sm">Filter</label>
           <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Type</label>
+            <div
+              ref="typeMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showTypeMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="toggleTypeMenu"
+              >
+                <span class="flex items-center gap-2">
+                  <span>{{ typeFilter }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter) }}</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+              <div
+                v-if="showTypeMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+                role="menu"
+              >
+                <div class="py-1">
+                  <button
+                    v-for="opt in typeOptions"
+                    :key="opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', typeFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="typeFilter = opt.name; closeTypeMenu()"
+                  >
+                    <span>{{ opt.name }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
             <label class="text-white/70 text-sm">Priority</label>
             <div
               ref="priorityMenuRef"
@@ -551,7 +599,7 @@
                   <button
                     class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
                     aria-label="Visit issue"
-                    :title="`Visit issue #${issue.number ?? ''}`"
+                    :title="`Visit issue #${issue.number || ''}`"
                     @click="openView(issue)"
                   >
                     <svg
@@ -577,7 +625,7 @@
                   <button
                     class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
                     aria-label="Edit issue"
-                    :title="`Edit issue #${issue.number ?? ''}`"
+                    :title="`Edit issue #${issue.number || ''}`"
                     @click="openEdit(issue)"
                   >
                     <svg
@@ -601,7 +649,7 @@
                   <button
                     class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/40"
                     aria-label="Delete issue"
-                    :title="`Delete issue #${issue.number ?? ''}`"
+                    :title="`Delete issue #${issue.number || ''}`"
                     @click="onDelete(issue)"
                   >
                     <svg
@@ -687,7 +735,7 @@
             {{ s }}
           </option>
         </select>
-        <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ totalItems }}</span>
+        <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ displayTotal }}</span>
       </div>
       <div class="flex items-center gap-1">
         <button
@@ -916,6 +964,15 @@ const issuesStore = useIssuesStore()
 const router = useRouter()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+const serverIssues = ref([])
+const serverTotal = ref(0)
+const serverTotalAll = ref(0)
+const serverTypes = ref([])
+const serverPriorities = ref([])
+const serverStatuses = ref([])
+const serverTypeCounts = ref({})
+const serverPriorityCounts = ref({})
+const serverStatusCounts = ref({})
 
 // Spinner component import removed (not used)
 
@@ -977,6 +1034,17 @@ function priorityClass(p) {
   if (key.includes('medium')) return 'bg-yellow-500 text-black'
   if (key.includes('low')) return 'bg-green-500 text-white'
   return 'bg-white/6 text-white'
+}
+
+function normalizePriorityLabel(p) {
+  const key = String(p || '').trim().toLowerCase()
+  if (key.includes('critical')) return 'Critical'
+  if (key.includes('high')) return 'High'
+  if (key.includes('medium')) return 'Medium'
+  if (key.includes('low')) return 'Low'
+  if (!key) return 'Unspecified'
+  // default to capitalized original
+  return key.charAt(0).toUpperCase() + key.slice(1)
 }
 
 function priorityBgClass(p) {
@@ -1062,6 +1130,8 @@ const columnsStorageKey = computed(() => `issuesExportColumns:${projectStore.cur
 const showDownloadsMenu = ref(false)
 const downloadsRef = ref(null)
 const reportRef = ref(null)
+const showTypeMenu = ref(false)
+const typeMenuRef = ref(null)
 const showPriorityMenu = ref(false)
 const priorityMenuRef = ref(null)
 const showStatusMenu = ref(false)
@@ -1164,6 +1234,12 @@ function toggleDownloadsMenu() {
 function closeDownloadsMenu() {
   showDownloadsMenu.value = false
 }
+function toggleTypeMenu() {
+  showTypeMenu.value = !showTypeMenu.value
+}
+function closeTypeMenu() {
+  showTypeMenu.value = false
+}
 function togglePriorityMenu() {
   showPriorityMenu.value = !showPriorityMenu.value
 }
@@ -1191,9 +1267,11 @@ function onDownloadXlsxClick() {
 
 function handleClickOutside(e) {
   const dEl = downloadsRef.value
+  const tEl = typeMenuRef.value
   const pEl = priorityMenuRef.value
   const sEl = statusMenuRef.value
   if (dEl && !dEl.contains(e.target)) closeDownloadsMenu()
+  if (tEl && !tEl.contains(e.target)) closeTypeMenu()
   if (pEl && !pEl.contains(e.target)) closePriorityMenu()
   if (sEl && !sEl.contains(e.target)) closeStatusMenu()
 }
@@ -1318,12 +1396,12 @@ watch(pageSize, () => persistPageSizePref())
 
 // Loading state and server-driven page
 const loading = ref(true)
-const serverIssues = ref([])
-const serverTotal = ref(0)
+// server-driven list data
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _issuesSource = computed(() => serverIssues.value)
 
 const priorityFilter = ref('All')
+const typeFilter = ref('All')
 const statusFilter = ref('All')
 const searchQuery = ref('')
 const searchMode = computed(() => {
@@ -1351,6 +1429,7 @@ function loadListState() {
     const data = JSON.parse(raw)
     if (data && typeof data === 'object') {
       if (typeof data.searchQuery === 'string') searchQuery.value = data.searchQuery
+      if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
       if (typeof data.priorityFilter === 'string') priorityFilter.value = data.priorityFilter
       if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
       if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
@@ -1364,6 +1443,7 @@ function persistListState() {
   try {
     sessionStorage.setItem(listStateKey.value, JSON.stringify({
       searchQuery: searchQuery.value,
+      typeFilter: typeFilter.value,
       priorityFilter: priorityFilter.value,
       statusFilter: statusFilter.value,
       hideClosed: hideClosed.value,
@@ -1388,36 +1468,107 @@ const updateEffective = debounce((val) => { effectiveSearch.value = val }, 200)
 watch(() => searchQuery.value, (v) => updateEffective(v))
 // Now that search/effective/search watchers exist, wire up persistence
 watch(listStateKey, () => loadListState(), { immediate: true })
-watch([searchQuery, priorityFilter, statusFilter, hideClosed, sortKey, sortDir], () => persistListState())
+watch([searchQuery, typeFilter, priorityFilter, statusFilter, hideClosed, sortKey, sortDir], () => persistListState())
 const priorityCounts = computed(() => {
   const map = {}
-  for (const i of issuesStore.issues) {
-    const p = (i.priority || 'Unspecified')
-    map[p] = (map[p] || 0) + 1
+  const serverCounts = serverPriorityCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = normalizePriorityLabel(k || 'Unspecified')
+      map[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(map).length && Array.isArray(serverIssues.value) && serverIssues.value.length) {
+    for (const i of serverIssues.value) {
+      const p = normalizePriorityLabel(i.priority || 'Unspecified')
+      map[p] = (map[p] || 0) + 1
+    }
+  }
+  if (!Object.keys(map).length && Array.isArray(issuesStore.issues)) {
+    for (const i of issuesStore.issues) {
+      const p = normalizePriorityLabel(i.priority || 'Unspecified')
+      map[p] = (map[p] || 0) + 1
+    }
+  }
+  map['All'] = Number(serverTotalAll.value || serverTotal.value || issuesStore.issues.length || 0)
   return map
 })
 
 const priorityOptions = computed(() => {
-  const entries = Object.entries(priorityCounts.value).map(([name, count]) => ({ name, count }))
+  const entries = Object.entries(priorityCounts.value)
+    .filter(([name]) => name !== 'All')
+    .map(([name, count]) => ({ name: normalizePriorityLabel(name), count }))
   // Sort commonly used priorities first
-  const order = ['Critical', 'High', 'Medium', 'Low']
+  const order = ['Critical', 'High', 'Medium', 'Low', 'Unspecified']
   entries.sort((a, b) => {
     const ia = order.indexOf(a.name) === -1 ? order.length : order.indexOf(a.name)
     const ib = order.indexOf(b.name) === -1 ? order.length : order.indexOf(b.name)
     if (ia !== ib) return ia - ib
-    return b.count - a.count
+    return a.name.localeCompare(b.name)
   })
   // Add 'All' at the start
-  return [{ name: 'All', count: issuesStore.issues.length }, ...entries]
+  return [{ name: 'All', count: priorityCounts.value['All'] || issuesStore.issues.length }, ...entries]
 })
+
+const typeCounts = computed(() => {
+  const map = {}
+  const serverCounts = serverTypeCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || 'Unspecified')
+      map[key] = Number(v) || 0
+    }
+  }
+  if (!Object.keys(map).length && Array.isArray(serverIssues.value) && serverIssues.value.length) {
+    for (const i of serverIssues.value) {
+      const t = (i.type || 'Unspecified')
+      map[t] = (map[t] || 0) + 1
+    }
+  }
+  if (!Object.keys(map).length && Array.isArray(issuesStore.issues)) {
+    for (const i of issuesStore.issues) {
+      const t = (i.type || 'Unspecified')
+      map[t] = (map[t] || 0) + 1
+    }
+  }
+  map['All'] = Number(serverTotalAll.value || serverTotal.value || issuesStore.issues.length || 0)
+  return map
+})
+
+const typeOptions = computed(() => {
+  const entries = Object.entries(typeCounts.value)
+    .filter(([name]) => name !== 'All')
+    .map(([name, count]) => ({ name, count }))
+  entries.sort((a, b) => a.name.localeCompare(b.name))
+  return [{ name: 'All', count: typeCounts.value['All'] || issuesStore.issues.length }, ...entries]
+})
+function typeCount(name) {
+  const opt = (typeOptions.value || []).find(o => o && o.name === name)
+  return opt ? opt.count : 0
+}
 
 const statusCounts = computed(() => {
   const map = {}
-  for (const i of issuesStore.issues) {
-    const s = (i.status || 'Unspecified')
-    map[s] = (map[s] || 0) + 1
+  const serverCounts = serverStatusCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || 'Unspecified')
+      map[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(map).length && Array.isArray(serverIssues.value) && serverIssues.value.length) {
+    for (const i of serverIssues.value) {
+      const s = (i.status || 'Unspecified')
+      map[s] = (map[s] || 0) + 1
+    }
+  }
+  if (!Object.keys(map).length && Array.isArray(issuesStore.issues)) {
+    for (const i of issuesStore.issues) {
+      const s = (i.status || 'Unspecified')
+      map[s] = (map[s] || 0) + 1
+    }
+  }
+  map['All'] = Number(serverTotalAll.value || serverTotal.value || issuesStore.issues.length || 0)
   return map
 })
 
@@ -1431,7 +1582,7 @@ const statusOptions = computed(() => {
     if (ia !== ib) return ia - ib
     return b.count - a.count
   })
-  return [{ name: 'All', count: issuesStore.issues.length }, ...entries]
+  return [{ name: 'All', count: statusCounts.value['All'] || issuesStore.issues.length }, ...entries]
 })
 
 // Apply client-side filter over the server-returned page so exports and UI behave
@@ -1443,9 +1594,12 @@ const filteredIssues = computed(() => {
   const list = (!priorityFilter.value || priorityFilter.value === 'All')
     ? baseAll
     : baseAll.filter(i => (i.priority || '').toLowerCase() === priorityFilter.value.toLowerCase())
-  const withStatus = (!statusFilter.value || statusFilter.value === 'All')
+  const withType = (!typeFilter.value || typeFilter.value === 'All')
     ? list
-    : list.filter(i => String(i.status || '').toLowerCase() === statusFilter.value.toLowerCase())
+    : list.filter(i => String(i.type || '').toLowerCase() === typeFilter.value.toLowerCase())
+  const withStatus = (!statusFilter.value || statusFilter.value === 'All')
+    ? withType
+    : withType.filter(i => String(i.status || '').toLowerCase() === statusFilter.value.toLowerCase())
   const base = hideClosed.value ? withStatus.filter(i => !isClosedRow(i)) : withStatus
 
   if (!q) return base
@@ -1503,30 +1657,38 @@ function fetchIssuesPage(projectId) {
     try {
       const pid = projectId ?? preferredProjectId.value
       // Provide a store fallback when API is missing or on same hostname to avoid dev cross-port 404s
-      try {
-      const rawEnvBase = import.meta.env?.VITE_API_BASE
-      const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
-        if (typeof window !== 'undefined' && apiBase) {
-          try {
-            const apiHostname = (new URL(apiBase)).hostname
-            const pageHostname = window.location.hostname
-            if (apiHostname === pageHostname || !rawEnvBase) {
-              if (pid) {
-                // ask store to populate (per-project)
-                if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
-                else await issuesStore.fetchIssues()
-                const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
-                const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
-                serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
-                serverTotal.value = serverIssues.value.length
-              } else {
-                serverIssues.value = []
-                serverTotal.value = 0
-              }
-              loading.value = false
-              return
+  try {
+    const rawEnvBase = import.meta.env?.VITE_API_BASE
+    const apiBase = (rawEnvBase && typeof rawEnvBase === 'string') ? rawEnvBase : getApiBase()
+      if (typeof window !== 'undefined' && apiBase) {
+        try {
+          const apiHostname = (new URL(apiBase)).hostname
+          const pageHostname = window.location.hostname
+          if (apiHostname === pageHostname || !rawEnvBase) {
+            if (pid) {
+              // ask store to populate (per-project)
+              if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
+              else await issuesStore.fetchIssues()
+              const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+              const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
+              serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
+              serverTotal.value = serverIssues.value.length
+              serverTotalAll.value = serverTotal.value
+              serverTypes.value = []
+              serverTypeCounts.value = {}
+              serverPriorities.value = []
+              serverPriorityCounts.value = {}
+              serverStatuses.value = []
+              serverStatusCounts.value = {}
+            } else {
+              serverIssues.value = []
+              serverTotal.value = 0
+              serverTotalAll.value = 0
             }
-          } catch (err) {
+            loading.value = false
+            return
+          }
+        } catch (err) {
             // ignore URL parsing errors and continue
           }
         }
@@ -1546,18 +1708,76 @@ function fetchIssuesPage(projectId) {
       }
       if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
       if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
-      if (hideClosed.value) params.hideClosed = true
+      if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
+      params.includeFacets = true
 
       const res = await http.get('/api/issues', { params, headers: getAuthHeaders() })
       const data = res && res.data ? res.data : {}
+      const normalize = (i) => {
+        const obj = { ...(i || {}) }
+        obj.id = i?._id || i?.id
+        obj.priority = obj.priority || obj.severity || 'Unspecified'
+        obj.responsible_person = obj.responsible_person || obj.assignedTo || obj.responsible || ''
+        return obj
+      }
       if (Array.isArray(data.items)) {
-        serverIssues.value = data.items.map(i => ({ ...(i || {}), id: i._id || i.id }))
+        serverIssues.value = data.items.map(normalize)
       } else if (Array.isArray(data)) {
-        serverIssues.value = data.map(i => ({ ...(i || {}), id: i._id || i.id }))
+        serverIssues.value = data.map(normalize)
       } else {
         serverIssues.value = []
       }
       serverTotal.value = Number(data.total ?? data.count ?? serverIssues.value.length)
+      serverTotalAll.value = Number(data.totalAll || serverTotal.value || serverIssues.value.length)
+      // facets
+      if (Array.isArray(data.types)) {
+        const map = {}
+        const list = []
+        for (const t of data.types) {
+          const name = String((t && t.name) || (t && t._id) || t || '').trim()
+          const count = Number((t && t.count) || 0)
+          if (!name) continue
+          list.push(name)
+          map[name] = count
+        }
+        serverTypes.value = list
+        serverTypeCounts.value = map
+      } else {
+        serverTypes.value = []
+        serverTypeCounts.value = {}
+      }
+      if (Array.isArray(data.priorities)) {
+        const map = {}
+        const list = []
+        for (const t of data.priorities) {
+          const name = String((t && t.name) || (t && t._id) || t || '').trim()
+          const count = Number((t && t.count) || 0)
+          if (!name) continue
+          list.push(name)
+          map[name] = count
+        }
+        serverPriorities.value = list
+        serverPriorityCounts.value = map
+      } else {
+        serverPriorities.value = []
+        serverPriorityCounts.value = {}
+      }
+      if (Array.isArray(data.statuses)) {
+        const map = {}
+        const list = []
+        for (const t of data.statuses) {
+          const name = String((t && t.name) || (t && t._id) || t || '').trim()
+          const count = Number((t && t.count) || 0)
+          if (!name) continue
+          list.push(name)
+          map[name] = count
+        }
+        serverStatuses.value = list
+        serverStatusCounts.value = map
+      } else {
+        serverStatuses.value = []
+        serverStatusCounts.value = {}
+      }
     } catch (e) {
       // If endpoint missing (404), fall back to store-based data so UI still works
       if (e && e.response && e.response.status === 404) {
@@ -1570,17 +1790,27 @@ function fetchIssuesPage(projectId) {
             const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
             serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
             serverTotal.value = serverIssues.value.length
+            serverTotalAll.value = serverTotal.value
+            serverTypes.value = []
+            serverTypeCounts.value = {}
+            serverPriorities.value = []
+            serverPriorityCounts.value = {}
+            serverStatuses.value = []
+            serverStatusCounts.value = {}
           } else {
             serverIssues.value = []
             serverTotal.value = 0
+            serverTotalAll.value = 0
           }
         } catch (inner) {
           serverIssues.value = []
           serverTotal.value = 0
+          serverTotalAll.value = 0
         }
       } else {
         serverIssues.value = []
         serverTotal.value = 0
+        serverTotalAll.value = 0
       }
     } finally {
       loading.value = false
@@ -1589,10 +1819,11 @@ function fetchIssuesPage(projectId) {
 }
 
 const debouncedFetch = debounce(() => { fetchIssuesPage().catch(() => {}) }, 150)
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => typeFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
 
 // Server-driven totals (serverTotal is set by fetchIssuesPage)
-const totalItems = computed(() => Number(serverTotal.value || 0))
+const totalItems = computed(() => Number(serverTotal.value || filteredIssues.value.length || 0))
+const displayTotal = computed(() => Number(serverTotalAll.value || serverTotal.value || filteredIssues.value.length || 0))
 
 // Client-side sorting fallback over current page
 const sortedIssues = computed(() => {
@@ -1803,8 +2034,8 @@ watch([() => priorityFilter.value, () => pageSize.value, () => issuesStore.issue
   if (page.value > totalPages.value) page.value = 1
 })
 
-// Reset page when sorting or page size changes
-watch([sortedIssues, pageSize], () => {
+// Reset page when page size changes
+watch(pageSize, () => {
   page.value = 1
 })
 

@@ -512,7 +512,7 @@
               {{ s }}
             </option>
           </select>
-          <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ filtered.length }}</span>
+          <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ displayTotal }}</span>
         </div>
         <div class="flex items-center gap-1">
           <button
@@ -725,6 +725,16 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 const templates = computed(() => templatesStore.items)
 const loading = computed(() => templatesStore.loading)
+const serverTemplates = ref([])
+const serverTotal = ref(0)
+const serverTotalAll = ref(0)
+const totalFiltered = computed(() => Number(serverTotal.value || 0) || filtered.value.length)
+const serverTypes = ref<string[]>([])
+const serverStatuses = ref<string[]>([])
+const serverSystems = ref<string[]>([])
+const serverTypeCounts = ref<Record<string, number>>({})
+const serverStatusCounts = ref<Record<string, number>>({})
+const serverSystemCounts = ref<Record<string, number>>({})
 
 const parentMap = computed(() => spacesStore.byId)
 function spaceName(spaceId?: string | null) {
@@ -738,7 +748,7 @@ const filtered = computed(() => {
   const t = typeFilter.value
   const s = statusFilter.value
   const sys = systemFilter.value
-  const baseList = (Number(serverTotal.value) > 0 && Array.isArray(serverTemplates.value) && serverTemplates.value.length > 0) ? listTemplates.value : templates.value
+  const baseList = (Array.isArray(serverTemplates.value) && serverTemplates.value.length > 0) ? serverTemplates.value : templates.value
   return (baseList || []).filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
@@ -769,7 +779,8 @@ const preSystemFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
   const s = statusFilter.value
-  return templates.value.filter(e => {
+  const base = Array.isArray(serverTemplates.value) && serverTemplates.value.length ? serverTemplates.value : templates.value
+  return base.filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
     if (!q) return true
@@ -780,11 +791,29 @@ const preSystemFiltered = computed(() => {
 
 const systemCounts = computed<Record<string, number>>(() => {
   const m: Record<string, number> = {}
-  for (const e of preSystemFiltered.value) {
-    const key = String(e.system || '').toLowerCase()
-    if (!key) continue
-    m[key] = (m[key] || 0) + 1
+  const serverCounts = serverSystemCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || '').trim()
+      if (!key) continue
+      m[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(m).length && Array.isArray(serverTemplates.value) && serverTemplates.value.length) {
+    for (const e of serverTemplates.value as any[]) {
+      const key = String((e as any).system || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  if (!Object.keys(m).length) {
+    for (const e of preSystemFiltered.value) {
+      const key = String(e.system || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
   return m
 })
 
@@ -795,12 +824,14 @@ const systemOptions = computed<Array<{ name: string; value: string; count: numbe
     const found = mappingArr.find((o: any) => o && o.value !== undefined && String(o.value).toLowerCase() === valLower)
     return found ? String(found.text ?? found.value) : valLower
   }
-  for (const [valLower, count] of Object.entries(systemCounts.value)) {
-    if (!valLower || !count) continue
-    opts.push({ name: labelFor(valLower), value: valLower, count })
+  const names = serverSystems.value.length ? serverSystems.value : Object.keys(systemCounts.value).filter(k => k !== 'All')
+  for (const name of names) {
+    if (!name) continue
+    const count = systemCounts.value[name] || 0
+    opts.push({ name: labelFor(name), value: String(name).toLowerCase(), count })
   }
   opts.sort((a, b) => a.name.localeCompare(b.name))
-  return [{ name: 'All', value: 'All', count: preSystemFiltered.value.length }, ...opts]
+  return [{ name: 'All', value: 'All', count: systemCounts.value['All'] || preSystemFiltered.value.length }, ...opts]
 })
 const systemFilterKey = computed(() => (systemFilter.value ? String(systemFilter.value).toLowerCase() : 'All'))
 const systemFilterLabel = computed(() => {
@@ -810,7 +841,7 @@ const systemFilterLabel = computed(() => {
   return found ? found.name : systemFilter.value
 })
 function systemCount(nameOrVal: string) {
-  if (nameOrVal === 'All') return preSystemFiltered.value.length
+  if (nameOrVal === 'All') return systemCounts.value['All'] || preSystemFiltered.value.length
   const val = String(nameOrVal).toLowerCase()
   return systemCounts.value[val] || 0
 }
@@ -819,7 +850,8 @@ const preTypeFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const sys = systemFilter.value
   const s = statusFilter.value
-  return templates.value.filter(e => {
+  const base = Array.isArray(serverTemplates.value) && serverTemplates.value.length ? serverTemplates.value : templates.value
+  return base.filter(e => {
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
     if (s && e.status !== s) return false
     if (!q) return true
@@ -829,21 +861,41 @@ const preTypeFiltered = computed(() => {
 })
 const typeCounts = computed<Record<string, number>>(() => {
   const m: Record<string, number> = {}
-  for (const e of preTypeFiltered.value) {
-    const key = String(e.type || '')
-    if (!key) continue
-    m[key] = (m[key] || 0) + 1
+  const serverCounts = serverTypeCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || '').trim()
+      if (!key) continue
+      m[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(m).length && Array.isArray(serverTemplates.value) && serverTemplates.value.length) {
+    for (const e of serverTemplates.value as any[]) {
+      const key = String((e as any).type || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  if (!Object.keys(m).length) {
+    for (const e of preTypeFiltered.value) {
+      const key = String(e.type || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
   return m
 })
 const typeOptions = computed<Array<{ name: string; count: number }>>(() => {
   const opts: Array<{ name: string; count: number }> = []
-  for (const [name, count] of Object.entries(typeCounts.value)) {
-    if (!name || !count) continue
+  const names = serverTypes.value.length ? serverTypes.value : Object.keys(typeCounts.value).filter(k => k !== 'All')
+  for (const name of names) {
+    if (!name) continue
+    const count = typeCounts.value[name] || 0
     opts.push({ name, count })
   }
   opts.sort((a, b) => a.name.localeCompare(b.name))
-  return [{ name: 'All', count: preTypeFiltered.value.length }, ...opts]
+  return [{ name: 'All', count: typeCounts.value['All'] || preTypeFiltered.value.length }, ...opts]
 })
 function typeCount(name: string) {
   const opt = (typeOptions.value || []).find(o => o.name === name)
@@ -854,7 +906,8 @@ const preStatusFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
   const sys = systemFilter.value
-  return templates.value.filter(e => {
+  const base = Array.isArray(serverTemplates.value) && serverTemplates.value.length ? serverTemplates.value : templates.value
+  return base.filter(e => {
     if (t && e.type !== t) return false
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
     if (!q) return true
@@ -864,17 +917,37 @@ const preStatusFiltered = computed(() => {
 })
 const statusCounts = computed<Record<string, number>>(() => {
   const m: Record<string, number> = {}
-  for (const e of preStatusFiltered.value) {
-    const key = String(e.status || '')
-    if (!key) continue
-    m[key] = (m[key] || 0) + 1
+  const serverCounts = serverStatusCounts.value || {}
+  if (Object.keys(serverCounts).length) {
+    for (const [k, v] of Object.entries(serverCounts)) {
+      const key = String(k || '').trim()
+      if (!key) continue
+      m[key] = Number(v) || 0
+    }
   }
+  if (!Object.keys(m).length && Array.isArray(serverTemplates.value) && serverTemplates.value.length) {
+    for (const e of serverTemplates.value as any[]) {
+      const key = String((e as any).status || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  if (!Object.keys(m).length) {
+    for (const e of preStatusFiltered.value) {
+      const key = String(e.status || '').trim()
+      if (!key) continue
+      m[key] = (m[key] || 0) + 1
+    }
+  }
+  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
   return m
 })
 const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
   const opts: Array<{ name: string; count: number }> = []
-  for (const [name, count] of Object.entries(statusCounts.value)) {
-    if (!name || !count) continue
+  const names = serverStatuses.value.length ? serverStatuses.value : Object.keys(statusCounts.value).filter(k => k !== 'All')
+  for (const name of names) {
+    if (!name) continue
+    const count = statusCounts.value[name] || 0
     opts.push({ name, count })
   }
   const order = statuses.slice()
@@ -886,7 +959,7 @@ const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
     if (ib !== -1) return 1
     return a.name.localeCompare(b.name)
   })
-  return [{ name: 'All', count: preStatusFiltered.value.length }, ...opts]
+  return [{ name: 'All', count: statusCounts.value['All'] || preStatusFiltered.value.length }, ...opts]
 })
 function statusCount(name: string) {
   const opt = (statusOptions.value || []).find(o => o.name === name)
@@ -948,11 +1021,6 @@ watch(pageSize, () => persistPageSizePref())
 const sortKey = ref('')
 const sortDir = ref(1) // 1 = asc, -1 = desc
 
-// server-driven list for templates page
-const serverTemplates = ref([])
-const serverTotal = ref(0)
-const listTemplates = computed(() => serverTemplates.value)
-
 const sorted = computed(() => {
   if (!sortKey.value) return filtered.value
   const arr = [...filtered.value]
@@ -980,7 +1048,7 @@ function setSort(key: string) {
 }
 
 // server-side totals and paging
-const totalPages = computed(() => Math.max(1, Math.ceil((Number(serverTotal.value || 0)) / pageSize.value)))
+const totalPages = computed(() => Math.max(1, Math.ceil((totalFiltered.value || 0) / pageSize.value)))
 const paged = computed(() => {
   const list = sorted.value || []
   const total = Number(serverTotal.value || 0)
@@ -990,8 +1058,9 @@ const paged = computed(() => {
   const end = start + pageSize.value
   return list.slice(start, end)
 })
-const startItem = computed(() => Number(serverTotal.value) ? (page.value - 1) * pageSize.value + 1 : 0)
-const endItem = computed(() => Math.min(Number(serverTotal.value || 0), page.value * pageSize.value))
+const displayTotal = computed(() => Number(serverTotalAll.value || serverTotal.value || 0))
+const startItem = computed(() => totalFiltered.value ? (page.value - 1) * pageSize.value + 1 : 0)
+const endItem = computed(() => Math.min(Number(totalFiltered.value || 0), page.value * pageSize.value))
 function prevPage() { if (page.value > 1) page.value-- }
 function nextPage() { if (page.value < totalPages.value) page.value++ }
 
@@ -1068,9 +1137,17 @@ async function fetchTemplatesPage(projectId?: string) {
             const filteredByProject = all.filter((t: any) => String(t.projectId || t.project || '') === String(pid))
             serverTemplates.value = filteredByProject.map((t: any) => ({ ...(t || {}), id: t._id || t.id }))
             serverTotal.value = serverTemplates.value.length
+            serverTotalAll.value = serverTotal.value
+            serverTypes.value = []
+            serverTypeCounts.value = {}
+            serverStatuses.value = []
+            serverStatusCounts.value = {}
+            serverSystems.value = []
+            serverSystemCounts.value = {}
           } else {
             serverTemplates.value = []
             serverTotal.value = 0
+            serverTotalAll.value = 0
           }
           return
         }
@@ -1083,18 +1160,70 @@ async function fetchTemplatesPage(projectId?: string) {
   }
 
   try {
-    const params: any = { page: page.value, perPage: pageSize.value }
+    const params: any = { page: page.value, perPage: pageSize.value, includeFacets: true }
     if (projectId) params.projectId = projectId
     if (search.value) params.search = search.value
-    if (typeFilter.value) params.type = typeFilter
-    if (statusFilter.value) params.status = statusFilter
+    if (typeFilter.value) params.type = typeFilter.value
+    if (systemFilter.value) params.system = systemFilter.value
+    if (statusFilter.value) params.status = statusFilter.value
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/templates', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}
-    if (Array.isArray(data.items)) serverTemplates.value = data.items.map(t => ({ ...(t || {}), id: t._id || t.id }))
-    else if (Array.isArray(data)) serverTemplates.value = data.map(t => ({ ...(t || {}), id: t._id || t.id }))
+    const normalize = (t: any) => ({ ...(t || {}), id: t?._id || t?.id })
+    if (Array.isArray(data.items)) serverTemplates.value = data.items.map(normalize)
+    else if (Array.isArray(data)) serverTemplates.value = data.map(normalize)
     else serverTemplates.value = []
     serverTotal.value = Number(data.total ?? data.count ?? serverTemplates.value.length)
+    serverTotalAll.value = Number(data.totalAll || serverTotal.value || serverTemplates.value.length)
+    // facets
+    if (Array.isArray(data.types)) {
+      const map: Record<string, number> = {}
+      const list: string[] = []
+      for (const t of data.types) {
+        const name = String((t as any)?.name || (t as any)?._id || t || '').trim()
+        const count = Number((t as any)?.count || 0)
+        if (!name) continue
+        list.push(name)
+        map[name] = count
+      }
+      serverTypes.value = list
+      serverTypeCounts.value = map
+    } else {
+      serverTypes.value = []
+      serverTypeCounts.value = {}
+    }
+    if (Array.isArray(data.statuses)) {
+      const map: Record<string, number> = {}
+      const list: string[] = []
+      for (const t of data.statuses) {
+        const name = String((t as any)?.name || (t as any)?._id || t || '').trim()
+        const count = Number((t as any)?.count || 0)
+        if (!name) continue
+        list.push(name)
+        map[name] = count
+      }
+      serverStatuses.value = list
+      serverStatusCounts.value = map
+    } else {
+      serverStatuses.value = []
+      serverStatusCounts.value = {}
+    }
+    if (Array.isArray(data.systems)) {
+      const map: Record<string, number> = {}
+      const list: string[] = []
+      for (const t of data.systems) {
+        const name = String((t as any)?.name || (t as any)?._id || t || '').trim()
+        const count = Number((t as any)?.count || 0)
+        if (!name) continue
+        list.push(name)
+        map[name] = count
+      }
+      serverSystems.value = list
+      serverSystemCounts.value = map
+    } else {
+      serverSystems.value = []
+      serverSystemCounts.value = {}
+    }
   } catch (e: any) {
     if (e && e.response && e.response.status === 404) {
       try {
@@ -1105,17 +1234,27 @@ async function fetchTemplatesPage(projectId?: string) {
           const filteredByProject = all.filter((t: any) => String(t.projectId || t.project || '') === String(pid))
           serverTemplates.value = filteredByProject.map((t: any) => ({ ...(t || {}), id: t._id || t.id }))
           serverTotal.value = serverTemplates.value.length
+          serverTotalAll.value = serverTotal.value
+          serverTypes.value = []
+          serverTypeCounts.value = {}
+          serverStatuses.value = []
+          serverStatusCounts.value = {}
+          serverSystems.value = []
+          serverSystemCounts.value = {}
         } else {
           serverTemplates.value = []
           serverTotal.value = 0
+          serverTotalAll.value = 0
         }
       } catch (inner) {
         serverTemplates.value = []
         serverTotal.value = 0
+        serverTotalAll.value = 0
       }
     } else {
       serverTemplates.value = []
       serverTotal.value = 0
+      serverTotalAll.value = 0
     }
   }
 }
@@ -1130,7 +1269,7 @@ function debounce(fn: (...args: any[]) => any, wait = 200) {
 }
 
 const debouncedFetch = debounce(() => { fetchTemplatesPage().catch(() => {}) }, 150)
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter, () => statusFilter], () => debouncedFetch(), { immediate: false })
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter.value, () => systemFilter.value, () => statusFilter.value], () => debouncedFetch(), { immediate: false })
 
 watch([sorted, pageSize], () => {
   page.value = 1

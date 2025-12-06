@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Issue = require('../models/issue');
 const Project = require('../models/project');
 const { requireActiveProject } = require('../middleware/subscription');
@@ -46,6 +47,9 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+// Light projection for list responses to avoid pulling large blobs
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person description system createdAt updatedAt dueDate closedBy closedDate labels';
+
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
 // Create a new issue (assign project-scoped atomic number)
@@ -82,21 +86,70 @@ router.post('/', auth, requirePermission('issues.create', { projectParam: 'proje
   }
 });
 
-// Read issues (optionally filtered by ?projectId=...)
+// Read issues (paginated, filtered, light projection, optional facets)
 router.get('/', auth, async (req, res) => {
   try {
-    const { projectId } = req.query || {};
-    const filter = {};
-    if (projectId) {
-      try {
-        const mongoose = require('mongoose');
-        filter.projectId = mongoose.Types.ObjectId(projectId);
-      } catch (e) {
-        filter.projectId = projectId;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+    const sortBy = String(req.query.sortBy || 'updatedAt')
+    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const projectId = req.query.projectId
+    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+
+    if (!projectId) {
+      return res.status(200).send({ items: [], total: 0, totalAll: 0 })
+    }
+
+    const filter = { projectId }
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+        { priority: { $regex: s, $options: 'i' } },
+        { status: { $regex: s, $options: 'i' } },
+      ]
+    }
+    if (req.query.type) filter.type = req.query.type
+    if (req.query.priority) filter.priority = req.query.priority
+    if (req.query.status) filter.status = req.query.status
+
+    const totalAll = await Issue.countDocuments({ projectId })
+    const total = await Issue.countDocuments(filter)
+    const items = await Issue.find(filter)
+      .select(LIGHT_FIELDS)
+      .sort({ [sortBy]: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .lean()
+
+    let facets = {}
+    if (includeFacets) {
+      let projectObjectId = null
+      try { projectObjectId = new mongoose.Types.ObjectId(projectId) } catch {}
+      const projectMatch = projectObjectId ? { projectId: projectObjectId } : { projectId }
+      const aggTypes = await Issue.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+      ])
+      const aggPriorities = await Issue.aggregate([
+        { $match: projectMatch },
+        { $project: { priority: { $ifNull: ['$priority', '$severity'] } } },
+        { $group: { _id: '$priority', count: { $sum: 1 } } },
+      ])
+      const aggStatuses = await Issue.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ])
+      facets = {
+        types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        priorities: aggPriorities.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
       }
     }
-    const issues = await Issue.find(filter);
-    res.status(200).send(issues);
+
+    res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
     res.status(500).send(error);
   }
