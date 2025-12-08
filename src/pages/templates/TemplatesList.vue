@@ -201,6 +201,39 @@
           </div>
         </div>
       </div>
+      <div class="flex items-center gap-2 ml-auto">
+        <button
+          :disabled="exporting || !projectStore.currentProjectId"
+          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
+          @click="downloadTemplates('xlsx')"
+        >
+          <span v-if="exporting">Exporting…</span>
+          <span v-else>Download XLSX</span>
+        </button>
+        <button
+          :disabled="exportingCsv || !projectStore.currentProjectId"
+          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
+          @click="downloadTemplates('csv')"
+        >
+          <span v-if="exportingCsv">Exporting…</span>
+          <span v-else>Download CSV</span>
+        </button>
+        <button
+          :disabled="importing || !projectStore.currentProjectId"
+          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
+          @click="triggerImport()"
+        >
+          <span v-if="importing">Importing…</span>
+          <span v-else>Upload CSV/XLSX</span>
+        </button>
+        <input
+          ref="fileInputRef"
+          type="file"
+          class="hidden"
+          accept=".csv,.xlsx,.xls"
+          @change="handleImportFile"
+        >
+      </div>
     </div>
 
     <!-- list -->
@@ -679,6 +712,7 @@ import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { useAuthStore } from '../../stores/auth'
+import * as XLSX from 'xlsx'
 
 const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
@@ -695,6 +729,10 @@ const systemFilter = ref('')
 const modalOpen = ref(false)
 const editing = ref(false)
 const form = ref<Template>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '' })
+const exporting = ref(false)
+const exportingCsv = ref(false)
+const importing = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 // Custom dropdown menus state and refs
 const showTypeMenu = ref(false)
@@ -1130,7 +1168,7 @@ async function fetchTemplatesPage(projectId?: string) {
         const apiHostname = (new URL(apiBase)).hostname
         const pageHostname = window.location.hostname
         if (apiHostname === pageHostname || !rawEnvBase) {
-          const pid = projectId ?? (projectStore.currentProjectId || '')
+          const pid = projectId ?? projectStore.currentProjectId ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') ?? ''
           if (pid) {
             await templatesStore.fetchByProject(String(pid))
             const all = Array.isArray(templatesStore.items) ? templatesStore.items : []
@@ -1329,6 +1367,153 @@ async function duplicateTemplate(e: Template) {
     if (created) ui.showSuccess(`Duplicated as ${created.tag}`)
   } catch (err: any) {
     ui.showError(err?.response?.data?.error || err?.message || 'Failed to duplicate')
+  }
+}
+
+// -----------------------
+// Import / Export helpers
+// -----------------------
+async function fetchAllTemplatesForExport(projectId: string) {
+  const perPage = 200
+  let page = 1
+  let total = 0
+  const all: any[] = []
+  while (true) {
+    const { data } = await http.get('/api/templates', { params: { projectId, page, perPage }, headers: getAuthHeaders() })
+    const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+    total = Number(data?.total ?? items.length)
+    all.push(...items)
+    if (all.length >= total || items.length === 0) break
+    page += 1
+  }
+  // Enrich with full records so components/checklists/functionalTests are included
+  const enriched: any[] = []
+  for (const t of all) {
+    const tid = String((t as any)._id || (t as any).id || '')
+    if (!tid) continue
+    try {
+      const { data } = await http.get(`/api/templates/${tid}`, { headers: getAuthHeaders() })
+      enriched.push(data || t)
+    } catch (e) {
+      enriched.push(t)
+    }
+  }
+  return enriched
+}
+
+function normalizeTemplateRow(t: any) {
+  return {
+    tag: t?.tag || '',
+    title: t?.title || '',
+    type: t?.type || '',
+    system: t?.system || '',
+    status: t?.status || '',
+    responsible: t?.responsible || '',
+    description: t?.description || '',
+    components: JSON.stringify(t?.components || []),
+    checklists: JSON.stringify(t?.checklists || []),
+    functionalTests: JSON.stringify(t?.functionalTests || [])
+  }
+}
+
+async function downloadTemplates(format: 'csv' | 'xlsx') {
+  const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  if (!pid) { ui.showError('Select a project first'); return }
+  const loadingFlag = format === 'csv' ? exportingCsv : exporting
+  if (loadingFlag.value) return
+  loadingFlag.value = true
+  try {
+    const all = await fetchAllTemplatesForExport(String(pid))
+    if (!all.length) { ui.showError('No templates to export'); return }
+    const rows = all.map(normalizeTemplateRow)
+    const sheet = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, sheet, 'Templates')
+    const fname = `templates-${pid}.${format}`
+    XLSX.writeFile(wb, fname, { bookType: format === 'csv' ? 'csv' : 'xlsx' })
+    ui.showSuccess(`Exported ${rows.length} templates`)
+  } catch (e: any) {
+    ui.showError(e?.message || 'Failed to export templates')
+  } finally {
+    loadingFlag.value = false
+  }
+}
+
+function triggerImport() {
+  const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  if (!pid) { ui.showError('Select a project first'); return }
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+    fileInputRef.value.click()
+  }
+}
+
+async function handleImportFile(e: Event) {
+  const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  if (!pid) { ui.showError('Select a project first'); return }
+  const input = e.target as HTMLInputElement
+  const file = input?.files && input.files[0]
+  if (!file) return
+  importing.value = true
+  try {
+    const buf = await file.arrayBuffer()
+    const wb = XLSX.read(buf, { type: 'array' })
+    const sheet = wb.Sheets[wb.SheetNames[0]]
+    const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+    if (!rows.length) { ui.showError('No rows found in file'); return }
+    let created = 0
+    const parseArrayField = (raw: any) => {
+      if (Array.isArray(raw)) return raw
+      if (raw === undefined || raw === null) return []
+      const str = String(raw).trim()
+      if (!str) return []
+      try {
+        const parsed = JSON.parse(str)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (err) {
+        return []
+      }
+    }
+    for (const r of rows) {
+      const get = (keys: string[]) => {
+        for (const k of keys) {
+          if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return String(r[k]).trim()
+          if (r[k.toLowerCase()] !== undefined && r[k.toLowerCase()] !== null && String(r[k.toLowerCase()]).trim() !== '') return String(r[k.toLowerCase()]).trim()
+        }
+        return ''
+      }
+      const tag = get(['tag', 'Tag'])
+      const title = get(['title', 'Title'])
+      if (!tag || !title) continue
+      const payload: any = {
+        tag,
+        title,
+        type: get(['type', 'Type']),
+        system: get(['system', 'System']),
+        status: get(['status', 'Status']) || 'Not Started',
+        responsible: get(['responsible', 'Responsible']),
+        description: get(['description', 'Description']),
+        components: parseArrayField(r.components ?? r.Components),
+        checklists: parseArrayField(r.checklists ?? r.Checklists),
+        functionalTests: parseArrayField(r.functionalTests ?? r.FunctionalTests),
+        projectId: pid,
+        project: pid
+      }
+      try {
+        await templatesStore.create(payload as Template)
+        created += 1
+      } catch (err: any) {
+        console.error('Import row failed', err)
+      }
+    }
+    ui.showSuccess(`Imported ${created} templates`)
+    // Refresh list
+    fetchTemplatesPage(String(pid)).catch(() => {})
+  } catch (err: any) {
+    ui.showError(err?.message || 'Failed to import templates')
+  } finally {
+    importing.value = false
+    if (fileInputRef.value) fileInputRef.value.value = ''
   }
 }
 </script>

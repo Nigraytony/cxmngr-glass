@@ -656,7 +656,8 @@ const showCompIssueModal = ref(false)
 const compIssueDraft = ref<any>({ status: 'open', priority: 'medium', title: '', type: '', description: '', location: '', system: '' })
 
 function startNewComponent() {
-  editingIndex.value = local.length
+  // use null index to signal "append" without overwriting existing items
+  editingIndex.value = null
   compDraft.value = { type: '', title: '', tag: '', attributes: {}, status: '', notes: '' }
   compAttrList.value = []
   compAttrEditingIndex.value = null
@@ -745,7 +746,6 @@ function cancelCompAttr() { compAttrEditingIndex.value = null; compAttrKey.value
 
 function saveComponent() {
   const idx = editingIndex.value
-  if (idx === null) return
   const type = String(compDraft.value.type || '').trim()
   if (!type) { ui.showError('Component type is required'); return }
   const componentToSave: ComponentItem = {
@@ -758,7 +758,7 @@ function saveComponent() {
     notes: compDraft.value.notes || '',
     issues: Array.isArray(compDraft.value.issues) ? compDraft.value.issues.slice() : []
   }
-  if (idx >= 0 && idx < local.length) local.splice(idx, 1, componentToSave)
+  if (idx !== null && idx >= 0 && idx < local.length) local.splice(idx, 1, componentToSave)
   else local.push(componentToSave)
   ui.showSuccess('Component saved')
   notifyChange()

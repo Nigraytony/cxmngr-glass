@@ -1703,6 +1703,7 @@ watch(currentTab, (v) => {
   if (v === 'Logs') loadLogs()
   if (v === 'Photos') loadPhotos()
   if (v === 'Issues') loadIssues()
+  if (v === 'Components') loadComponents()
 })
 watch(() => route.query, () => setTabFromQuery())
 
@@ -1895,6 +1896,24 @@ async function loadPhotos() {
     photosLoaded.value = true
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to load photos')
+  }
+}
+
+// Load components (fetch full record so components are included)
+async function loadComponents() {
+  if (componentsLoaded.value) return
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid) return
+  try {
+    const { data } = await http.get(`/api/equipment/${eid}?includePhotos=true`, { headers: { ...getAuthHeaders() } })
+    if (data) {
+      form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
+      componentsList.value = Array.isArray((data as any).components) ? (data as any).components : componentsList.value
+    }
+    componentsLoaded.value = true
+  } catch (e: any) {
+    // Keep existing state; show a non-blocking error
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to load components')
   }
 }
 
@@ -2114,6 +2133,7 @@ const attachmentFullscreen = ref(false)
 const selectedAttachmentIndex = ref<number>(-1)
 const photosLoaded = ref(false)
 const issuesLoaded = ref(false)
+const componentsLoaded = ref(false)
 const selectedAttachment = computed<any>(() => {
   const i = selectedAttachmentIndex.value
   if (i < 0) return null
@@ -2494,12 +2514,8 @@ async function saveComponent() {
     ui.showSuccess('Component saved')
     appendLog('component.save', 'Component saved', { tag: componentToSave.tag || componentToSave.title || '', type: componentToSave.type })
     cancelEditComponent()
-    // refresh from server to ensure canonical state
-    const eid = String(form.value.id || (form.value as any)._id || id.value || '')
-    if (eid) {
-      const fresh = await equipmentStore.fetchOne(eid)
-      if (fresh) form.value = { ...fresh }
-    }
+    // Optionally refresh from server including components without wiping current list
+    await refreshComponentsFromServer()
   }
 }
 function cancelEditComponent() {
@@ -2548,12 +2564,7 @@ function onComponentsChange(list: any[]) {
     const ok = await persistComponents()
     if (ok) {
       ui.showSuccess('Components saved')
-      // refresh canonical state
-      const eid = String(form.value.id || (form.value as any)._id || id.value || '')
-      if (eid) {
-        const fresh = await equipmentStore.fetchOne(eid)
-        if (fresh) form.value = { ...fresh }
-      }
+      await refreshComponentsFromServer()
     }
     componentsSaveTimer = null
   }, 700)
@@ -2765,6 +2776,24 @@ const fptSignatures = computed<any[]>({
   }
 })
 
+// Helper: refresh equipment from server including components (avoid losing list after saves)
+async function refreshComponentsFromServer() {
+  try {
+    const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+    const pid = String(form.value.projectId || projectStore.currentProjectId || '')
+    if (!eid || !pid) return
+    const res = await http.get(`/api/equipment/${eid}?includePhotos=true`, { headers: getAuthHeaders() })
+    const fresh = res?.data
+    if (fresh) {
+      form.value = { ...(fresh as any), id: fresh._id || fresh.id }
+      componentsList.value = Array.isArray((fresh as any).components) ? (fresh as any).components : []
+      componentsLoaded.value = true
+    }
+  } catch (e) {
+    // best effort; keep current state
+  }
+}
+
 async function persistFptSignatures(sigs: any[]) {
   try {
     // Debug: log incoming signatures payload to help diagnose persistence issues
@@ -2815,6 +2844,7 @@ async function load() {
       // photos are not fetched by default; reset flag so Photos tab can fetch when opened
       photosLoaded.value = Array.isArray(eq.photos) && eq.photos.some((p: any) => p && p.data)
       issuesLoaded.value = false
+      componentsLoaded.value = false
       // ensure project id present for later saves
       if (!form.value.projectId) form.value.projectId = (eq as any).projectId || projectStore.currentProjectId || ''
       const pid = form.value.projectId || projectStore.currentProjectId || ''
