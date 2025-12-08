@@ -5,6 +5,7 @@ const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
+const { requireFeature } = require('../middleware/planGuard');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const fs = require('fs');
@@ -57,9 +58,13 @@ const lookupSpaceProject = async (req, res, next) => {
 };
 
 // Create a new space
-router.post('/', auth, requirePermission('spaces.create', { projectParam: 'project' }), requireActiveProject, async (req, res) => {
+router.post('/', auth, requirePermission('spaces.create', { projectParam: 'project' }), requireActiveProject, requireFeature('spaces'), async (req, res) => {
   // console.log(req.body);
   try {
+    // Normalize projectId -> project for callers that use projectId in payload
+    if (!req.body.project && req.body.projectId) {
+      req.body.project = req.body.projectId;
+    }
     // Validate project field
     if (!req.body.project || !mongoose.Types.ObjectId.isValid(req.body.project)) {
       return res.status(400).send({ error: 'Invalid project ID' });
@@ -123,7 +128,7 @@ async function buildParentChains(projectId, items) {
 }
 
 // Paginated, filtered list (query: projectId required)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireFeature('spaces'), async (req, res) => {
   try {
     const projectId = req.query.projectId
     if (!projectId) return res.status(200).send({ items: [], total: 0 })
@@ -168,7 +173,7 @@ router.get('/', auth, async (req, res) => {
 })
 
 // Get all spaces by project ID (light, optional search/filter, pagination)
-router.get('/project/:projectId', auth, requirePermission('spaces.read', { projectParam: 'projectId' }), async (req, res) => {
+router.get('/project/:projectId', auth, requirePermission('spaces.read', { projectParam: 'projectId' }), requireFeature('spaces'), async (req, res) => {
   try {
     const includeTypes = String(req.query.includeTypes || '').toLowerCase() === 'true' || String(req.query.includeTypes || '') === '1'
     const page = Math.max(1, parseInt(req.query.page, 10) || 1)
@@ -211,7 +216,7 @@ router.get('/project/:projectId', auth, requirePermission('spaces.read', { proje
 });
 
 // Read a single space by ID and find subSpaces (supports light/includeAttachments)
-router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { projectParam: 'project' }), async (req, res) => {
+router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
   try {
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includeAttachments = String(req.query.includeAttachments || '').toLowerCase() === 'true' || String(req.query.includeAttachments || '') === '1'
@@ -247,7 +252,7 @@ router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { 
 });
 
 // Update a space by ID
-router.patch('/:id', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), async (req, res) => {
+router.patch('/:id', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
   // console.log('Updating space:', req.params.id, req.body);
   try {
     const space = await Space.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
@@ -261,7 +266,7 @@ router.patch('/:id', auth, lookupSpaceProject, requirePermission('spaces.update'
 });
 
 // Delete a space by ID
-router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete', { projectParam: 'project' }), async (req, res) => {
+router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
   try {
     const space = await Space.findByIdAndDelete(req.params.id);
     if (!space) {
@@ -275,7 +280,7 @@ router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete
 
   // Space logs: append and read
   // GET /api/spaces/:id/logs?limit=200&type=section_created
-  router.get('/:id/logs', auth, async (req, res) => {
+  router.get('/:id/logs', auth, requireFeature('spaces'), async (req, res) => {
     try {
       const id = req.params.id
       const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
@@ -298,7 +303,7 @@ router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete
   })
 
   // POST /api/spaces/:id/logs -> append one log event
-  router.post('/:id/logs', auth, async (req, res) => {
+  router.post('/:id/logs', auth, requireFeature('spaces'), async (req, res) => {
     try {
       const id = req.params.id
       const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
@@ -324,7 +329,7 @@ router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete
   })
 
 // Upload attachments (documents) for a space
-router.post('/:id/attachments', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireFeature('spaces'), uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const space = await Space.findById(req.params.id);
     if (!space) return res.status(404).send({ error: 'Space not found' });
@@ -385,7 +390,7 @@ router.post('/:id/attachments', auth, lookupSpaceProject, requirePermission('spa
 });
 
 // Remove an attachment by index for a space; best-effort delete local file if under uploads
-router.delete('/:id/attachments/:index', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), async (req, res) => {
+router.delete('/:id/attachments/:index', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
     if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });

@@ -3043,14 +3043,25 @@ async function save() {
 
 // Your three monthly plan price IDs:
 const prices = ref([]);
-const selectedPrice = ref(null);
+const selectedPrice = ref<any>(null);
 const loading = ref(false);
 
 const status = computed(() => billingSummary.value?.status || project.value?.stripeSubscriptionStatus || project.value?.status || 'trialing');
 const planLabel = computed(() => {
-  const id = billingSummary.value?.priceId || project.value?.stripePriceId || selectedPrice.value;
-  const p = (prices.value || []).find(x => x.id === id);
-  return p ? p.label : (id || 'No plan');
+  const summaryPlan = billingSummary.value?.plan
+  if (summaryPlan && (summaryPlan.label || summaryPlan.name)) return summaryPlan.label || summaryPlan.name
+  const id = billingSummary.value?.priceId || project.value?.stripePriceId || selectedPrice.value || project.value?.subscriptionTier
+  const details = id ? (planDetailsById.value && planDetailsById.value[id]) : null
+  if (details && (details.name || details.label)) return details.name || details.label
+  const p = (prices.value || []).find(x => x.id === id || x.priceId === id || x.key === id)
+  if (p) return p.label || p.name || (p.key ? p.key.charAt(0).toUpperCase() + p.key.slice(1) : 'Plan')
+  if (project.value?.subscriptionTier) {
+    const tier = String(project.value.subscriptionTier)
+    const match = (prices.value || []).find(x => x.key === tier)
+    if (match) return match.label || match.name || tier
+    return tier.charAt(0).toUpperCase() + tier.slice(1)
+  }
+  return id || 'No plan'
 });
 const hasSubscription = computed(() => Boolean(billingSummary.value?.subscriptionId || project.value?.stripeSubscriptionId))
 const billingAdminOptions = computed(() => {
@@ -3078,37 +3089,93 @@ const selectedPlanDetails = computed(() => {
   };
 });
 
-// Load plans from server and populate prices + details map
-onMounted(async () => {
+function resolveCurrentPlanId() {
+  if (billingSummary.value?.priceId) return String(billingSummary.value.priceId)
+  if (project.value?.stripePriceId) return String(project.value.stripePriceId)
+  if (project.value?.subscriptionTier) return String(project.value.subscriptionTier)
+  return prices.value.length ? String(prices.value[0].id) : null
+}
+
+async function loadPlansAndSelect() {
   try {
-  const { data } = await http.get('/api/plans');
-    const list = Array.isArray(data) ? data : [];
-    prices.value = list.map(p => ({ id: p.priceId, label: p.label, key: p.key }));
+    const { data } = await http.get('/api/plans');
+    const rawList = Array.isArray(data) ? data : [];
+    const list = rawList.length ? rawList : [
+      { key: 'basic', name: 'Basic', label: 'Basic — $29/mo', priceId: 'price_basic' },
+      { key: 'standard', name: 'Standard', label: 'Standard — $49/mo', priceId: 'price_standard' },
+      { key: 'premium', name: 'Premium', label: 'Premium — $99/mo', priceId: 'price_premium' },
+    ];
+    prices.value = list.map(p => {
+      const id = String(p.priceId || p.key || '').trim() || String(p.key || 'basic');
+      return { id, priceId: id, label: p.label || p.name || p.key || id, key: p.key, name: p.name || p.label || id };
+    });
     const details = {};
     for (const p of list) {
-      // Derive name/price from label if not provided separately
-      const parts = String(p.label || '').split('–');
-      details[p.priceId] = {
+      const id = String(p.priceId || p.key || '');
+      const parts = String(p.label || p.name || '').split('–');
+      const entry = {
         key: p.key,
         name: (p.name || parts[0] || 'Plan').toString().trim(),
         price: (p.price || (parts[1] || '')).toString().trim(),
         summary: p.summary || '',
         features: Array.isArray(p.features) ? p.features : [],
       };
+      details[id] = entry;
+      if (p.key) details[p.key] = entry;
     }
     planDetailsById.value = details;
 
-    // Set default selection based on project or first plan
-    if (project.value && (project.value.stripePriceId)) {
-      selectedPrice.value = project.value.stripePriceId;
-    } else if (prices.value.length) {
-      selectedPrice.value = prices.value[0].id;
+    const resolved = resolveCurrentPlanId();
+    if (resolved) {
+      selectedPrice.value = resolved;
+      if (!prices.value.find(p => p.id === resolved)) {
+        prices.value.push({ id: resolved, priceId: resolved, label: planLabel.value || resolved, key: resolved, name: planLabel.value || resolved });
+        planDetailsById.value[resolved] = { key: resolved, name: planLabel.value || resolved, price: '', summary: '', features: [] };
+      }
     }
   } catch (err) {
-    // If fails, leave prices empty; UI will handle gracefully
     console.error('Failed to load plans', err);
+    const fallbackId = resolveCurrentPlanId();
+    if (fallbackId) {
+      prices.value = [{ id: fallbackId, priceId: fallbackId, label: planLabel.value || fallbackId, key: fallbackId, name: planLabel.value || fallbackId }];
+      planDetailsById.value[fallbackId] = { key: fallbackId, name: planLabel.value || fallbackId, price: '', summary: '', features: [] };
+      selectedPrice.value = fallbackId;
+    }
   }
+}
+
+// Load plans from server and populate prices + details map
+onMounted(async () => {
+  await loadPlansAndSelect()
 });
+
+// Keep dropdown selection in sync when billing summary arrives/changes
+watch(
+  () => billingSummary.value?.priceId,
+  (pid) => {
+    if (!pid) return
+    selectedPrice.value = String(pid)
+  }
+)
+
+// Also sync when project plan/tier changes
+watch(
+  () => project.value && (project.value.stripePriceId || project.value.subscriptionTier),
+  () => {
+    const resolved = resolveCurrentPlanId()
+    if (resolved) selectedPrice.value = resolved
+  }
+)
+
+// If dropdown is empty but plan info exists, try reloading plans when billing summary arrives
+watch(
+  () => billingSummary.value,
+  async (val) => {
+    if ((!prices.value || prices.value.length === 0) && val) {
+      await loadPlansAndSelect()
+    }
+  }
+)
 
 // Determine trial end date: prefer Stripe's current period end if trialing; else compute from trialStartedAt + 15 days
 const trialEndDate = computed(() => {
@@ -3161,10 +3228,11 @@ async function refreshProject() {
   }
 }
 
-// when project loads, default the select to the project's saved stripePriceId
+// when project loads, default the select to the project's saved stripePriceId or tier
 watch(project, (pv) => {
   if (!pv) return;
-  selectedPrice.value = pv.stripePriceId || ((prices.value && prices.value[0] && prices.value[0].id) || null);
+  const resolved = resolveCurrentPlanId()
+  if (resolved) selectedPrice.value = resolved
 }, { immediate: true });
 
 async function startCheckout() {

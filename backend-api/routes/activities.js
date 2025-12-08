@@ -5,6 +5,7 @@ const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
+const { requireFeature } = require('../middleware/planGuard');
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -26,7 +27,7 @@ function validatePhotosArray(photos) {
 }
 
 // Create a new activity
-router.post('/', auth, requirePermission('activities.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
+router.post('/', auth, requirePermission('activities.create', { projectParam: 'projectId' }), requireActiveProject, requireFeature('activities'), async (req, res) => {
   console.log('[activity-create] Request body:', JSON.stringify(req.body, null, 2));
   try {
     // if photos provided, validate count and sizes
@@ -62,7 +63,7 @@ router.post('/', auth, requirePermission('activities.create', { projectParam: 'p
 });
 
 // Read all activities (project-scoped, lightweight)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireFeature('activities'), async (req, res) => {
   try {
     const projectId = req.query.projectId
     const filter = projectId ? { projectId } : {}
@@ -76,7 +77,7 @@ router.get('/', auth, async (req, res) => {
 
 // Read a single activity by ID
 // Supports light=true to omit heavy photo/attachment payloads, includePhotos=true to force photos
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, requireFeature('activities'), async (req, res) => {
   try {
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
@@ -103,7 +104,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Photos-only endpoint to avoid sending other heavy fields
-router.get('/:id/photos', auth, async (req, res) => {
+router.get('/:id/photos', auth, requireFeature('activities'), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id).select('photos').lean()
     if (!activity) return res.status(404).send()
@@ -114,7 +115,7 @@ router.get('/:id/photos', auth, async (req, res) => {
 })
 
 // Upload photos for an activity (multipart/form-data)
-router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, requireFeature('activities'), upload.array('photos', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
@@ -201,7 +202,7 @@ function getBackendBaseUrl(req) {
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
 // Upload attachments (documents) for an activity
-router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, requireFeature('activities'), uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });

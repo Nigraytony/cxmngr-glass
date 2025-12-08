@@ -80,7 +80,12 @@ export const useActivitiesStore = defineStore('activities', () => {
       activities.value = list
       return activities.value
     } catch (e: any) {
-      console.error('fetchActivities error', e)
+      // If plan disables activities, backend returns 403 FEATURE_NOT_IN_PLAN; treat as empty without throwing
+      if (e?.response?.status === 403 && (e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN')) {
+        activities.value = []
+        error.value = null
+        return activities.value
+      }
       error.value = e.message || 'Failed to fetch activities'
       activities.value = []
       throw e

@@ -7,6 +7,7 @@ const Space = require('../models/space');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
+const { requireFeature, enforceLimit } = require('../middleware/planGuard');
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -52,7 +53,14 @@ function getBackendBaseUrl(req) {
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
 // Create a new equipment
-router.post('/', auth, requirePermission('equipment.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
+router.post(
+  '/',
+  auth,
+  requirePermission('equipment.create', { projectParam: 'projectId' }),
+  requireActiveProject,
+  requireFeature('equipment'),
+  enforceLimit('equipment', async (projectId) => Equipment.countDocuments({ projectId })),
+  async (req, res) => {
   console.log(req.body);
   try {
     if (req.body.photos && !validatePhotosArray(req.body.photos)) {
@@ -291,7 +299,8 @@ router.get('/:id', auth, async (req, res) => {
       const sel = includePhotos ? `${LIGHT_FIELDS} photos` : LIGHT_FIELDS
       query = query.select(sel)
     } else if (!includePhotos) {
-      query = query.select('-photos.data -photos.size -photos.contentType -checklists -functionalTests -fptSignatures -components -attachments -logs')
+      // Exclude heavy photo blobs, but keep functional tests/signatures for edit screens
+      query = query.select('-photos.data -photos.size -photos.contentType -checklists -components -attachments -logs')
     }
     const equipment = await query.lean()
     if (!equipment) {

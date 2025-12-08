@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Issue = require('../models/issue');
 const Project = require('../models/project');
 const { requireActiveProject } = require('../middleware/subscription');
+const { requireFeature, enforceLimit } = require('../middleware/planGuard');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const runMiddleware = require('../middleware/runMiddleware');
@@ -54,7 +55,14 @@ const LIGHT_FIELDS = 'number tag title type priority severity status projectId s
 
 // Create a new issue (assign project-scoped atomic number)
 // Creating an issue is a premium action and requires an active subscription for the project
-router.post('/', auth, requirePermission('issues.create', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
+router.post(
+  '/',
+  auth,
+  requirePermission('issues.create', { projectParam: 'projectId' }),
+  requireActiveProject,
+  requireFeature('issues'),
+  enforceLimit('issues', async (projectId) => Issue.countDocuments({ projectId })),
+  async (req, res) => {
   try {
     const { projectId } = req.body || {};
     if (!projectId) return res.status(400).send({ error: 'projectId is required' });

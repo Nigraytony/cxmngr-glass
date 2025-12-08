@@ -12,6 +12,7 @@ export interface Space {
   type: string // e.g., Building, Floor, Room, Area, Level, Corridor, Roof
   description?: string
   project: string // projectId
+  projectId?: string
   parentSpace?: string | null // parent Space id
   attributes?: Array<{ key: string; value: string }>
   attachments?: any
@@ -44,8 +45,18 @@ export const useSpacesStore = defineStore('spaces', () => {
     error.value = null
     try {
       const { data } = await axios.get(`${API_BASE}/project/${projectId}`, { headers: getAuthHeaders() })
-      items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
+      // Support both legacy array response and new paginated shape { items, total, types, typeCounts }
+      const payload = data || []
+      const list = Array.isArray(payload)
+        ? payload
+        : (Array.isArray((payload as any).items) ? (payload as any).items : [])
+      items.value = list.map((d: any) => ({ ...d, id: d._id }))
     } catch (e: any) {
+      if (e?.response?.status === 403 && (e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN')) {
+        items.value = []
+        error.value = null
+        return
+      }
       error.value = e?.response?.data?.error || e?.message || 'Failed to load spaces'
       items.value = []
     } finally {
@@ -76,6 +87,10 @@ export const useSpacesStore = defineStore('spaces', () => {
     const payload: any = { ...space }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
+    // Normalize projectId -> project for backend
+    if (!payload.project && payload.projectId) {
+      payload.project = payload.projectId
+    }
     const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
     const saved = { ...data, id: data._id }
     items.value.push(saved)

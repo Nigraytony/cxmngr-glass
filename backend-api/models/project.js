@@ -105,6 +105,9 @@ const projectSchema = new mongoose.Schema({
   trialStarted: { type: Boolean, default: false },
   trialStart: { type: Date, default: null },
   trialEnd: { type: Date, default: null },
+  // Plan/tier metadata to drive feature gating
+  subscriptionTier: { type: String, default: 'basic', enum: ['basic', 'standard', 'premium'] },
+  subscriptionFeatures: { type: mongoose.Schema.Types.Mixed, default: null },
 });
 
 // Keep updatedAt current and normalize embedded emails on save

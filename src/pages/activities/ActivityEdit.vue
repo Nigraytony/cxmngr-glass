@@ -491,7 +491,7 @@
                   @click="openViewer(idx)"
                 >
                   <img
-                    :src="p.data"
+                    :src="p.data || p.url"
                     class="w-full h-full object-cover"
                   >
                   <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
@@ -2037,12 +2037,43 @@ const commentsLoaded = ref(false)
 const attachmentsLoaded = ref(false)
 const equipmentLoaded = ref(false)
 const logsLoaded = ref(false)
+const fullEquipmentCache = new Map<string, any>()
+
+// Ensure all heavy data is loaded before generating reports (photos, attachments, issues, equipment)
+async function ensureReportData() {
+  const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  try {
+    const full = await store.fetchActivity(id.value, { includePhotos: true })
+    if (full) {
+      Object.assign(form, full)
+      photosLoaded.value = true
+      attachmentsLoaded.value = true
+      commentsLoaded.value = true
+    }
+  } catch (e) { /* best effort */ }
+  try {
+    if (pid) {
+      await issuesStore.fetchIssues(pid)
+      issuesLoaded.value = true
+    }
+  } catch (e) { /* ignore */ }
+  try {
+    if (pid) {
+      await Promise.all([ equipmentStore.fetchByProject(pid), spacesStore.fetchByProject(pid) ])
+      equipmentLoaded.value = true
+    }
+  } catch (e) { /* ignore */ }
+}
 
 watch(() => currentTab.value, async (tab) => {
   if (isNew.value) return
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
   if (tab === 'Photos' && !photosLoaded.value) {
-    try { await store.fetchActivity(id.value, { light: true, includePhotos: true }); photosLoaded.value = true } catch (e) { /* ignore */ }
+    try {
+      // Fetch full activity with photos to ensure data URLs are available for thumbnails/viewer
+      await store.fetchActivity(id.value, { includePhotos: true })
+      photosLoaded.value = true
+    } catch (e) { /* ignore */ }
   }
   if (tab === 'Issues' && !issuesLoaded.value && pid) {
     try { await issuesStore.fetchIssues(pid); issuesLoaded.value = true } catch (e) { /* ignore */ }
@@ -2060,6 +2091,20 @@ watch(() => currentTab.value, async (tab) => {
     try { await loadLogs(); logsLoaded.value = true } catch (e) { /* ignore */ }
   }
 })
+
+// Fetch a fully-hydrated equipment record (including photos/attachments/checklists/issues) for reports
+async function fetchFullEquipmentForReport(equipId: string) {
+  if (!equipId) return null
+  if (fullEquipmentCache.has(equipId)) return fullEquipmentCache.get(equipId)
+  try {
+    const { data } = await http.get(`/api/equipment/${equipId}?includePhotos=true`, { headers: { ...getAuthHeaders() } })
+    const normalized = { ...data, id: data?._id || equipId }
+    fullEquipmentCache.set(equipId, normalized)
+    return normalized
+  } catch (e) {
+    return null
+  }
+}
 
 async function save() {
   if (saving.value) return
@@ -2276,6 +2321,7 @@ function htmlToLines(html: string): string[] {
 }
 
 async function downloadActivityPdf() {
+  await ensureReportData()
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
   loadActivityReportSettingsFromSession()
@@ -2525,6 +2571,19 @@ async function downloadActivityPdf() {
         issuesBytes = iDoc.output('arraybuffer') as ArrayBuffer
       }
     }
+    // Merge issues immediately after main doc so they appear right after Photos section
+    if (issuesBytes) {
+      try {
+        const { PDFDocument } = await import('pdf-lib')
+        const merged = await PDFDocument.load(baseBytes)
+        const issuesPdf = await PDFDocument.load(issuesBytes)
+        const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
+        issuesPages.forEach((p:any) => merged.addPage(p))
+        baseBytes = await merged.save()
+        // Prevent double-merge later
+        issuesBytes = null
+      } catch (e) { /* keep baseBytes as-is */ }
+    }
     // Build attachments doc separately (list + image pages) if needed.
     let attachmentsBytes: ArrayBuffer | null = null
     if (activityReport.value.include.attachments) {
@@ -2572,26 +2631,20 @@ async function downloadActivityPdf() {
         const { generateEquipmentPdf } = await import('../../utils/equipmentReport')
         for (const eq of selectedEquip.value) {
           try {
+            const eqId = String((eq as any)?.id || (eq as any)?._id || '')
+            const fullEq = eqId ? (await fetchFullEquipmentForReport(eqId)) || eq : eq
             // Attempt to reuse each equipment's own saved report settings if present on object
-            const eqSettings = (eq && (eq as any).reportSettings) ? (eq as any).reportSettings : null
+            const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
             const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
             // Ensure issues are included in each equipment report (user requirement)
             const includeSettings = { ...baseInclude, issues: true }
             // Use equipment's own photoLimit if available, else fall back to activity photoLimit or 6
             const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
-            const eqBytes = await generateEquipmentPdf(eq, projectObj, issuesMap, spacesMap, { include: includeSettings, photoLimit })
+            const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, { include: includeSettings, photoLimit })
             const eqPdf = await PDFDocument.load(eqBytes)
             const pages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
             pages.forEach((p: any) => merged.addPage(p))
            } catch (e) { /* ignore */ }
-        }
-        // Insert issues pages after equipment reports (before attachments)
-        if (issuesBytes) {
-          try {
-            const issuesPdf = await PDFDocument.load(issuesBytes)
-            const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
-            issuesPages.forEach((p:any) => merged.addPage(p))
-          } catch (e) { /* ignore */ }
         }
         // Insert attachments pages (non-PDF) after equipment reports & issues
         if (attachmentsBytes) {
@@ -2610,18 +2663,11 @@ async function downloadActivityPdf() {
         baseBytes = await merged.save()
   } catch (e) { /* fallback keep baseBytes */ }
     }
-    // If no equipment reports requested, still append issues then attachments
-    if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && (issuesBytes || attachmentsBytes)) {
+    // If no equipment reports requested, still append attachments
+    if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && (attachmentsBytes)) {
       try {
         const { PDFDocument } = await import('pdf-lib')
         const merged = await PDFDocument.load(baseBytes)
-        if (issuesBytes) {
-          try {
-            const issuesPdf = await PDFDocument.load(issuesBytes)
-            const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
-            issuesPages.forEach((p:any) => merged.addPage(p))
-          } catch (e) { /* ignore */ }
-        }
         if (attachmentsBytes) {
           const attPdf = await PDFDocument.load(attachmentsBytes)
           const attPages = await merged.copyPages(attPdf, attPdf.getPageIndices())

@@ -5,6 +5,7 @@ const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
+const { requireFeature } = require('../middleware/planGuard');
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const { XMLParser } = require('fast-xml-parser');
@@ -12,7 +13,7 @@ const { XMLParser } = require('fast-xml-parser');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // Create a new task (project-scoped)
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, requireFeature('tasks'), async (req, res) => {
   try {
     // require permission to create tasks in the project
     await runMiddleware(req, res, requirePermission('tasks.create', { projectParam: 'projectId' }));
@@ -40,7 +41,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // POST /api/tasks/import - upload MS Project XML and import tasks into a project
-router.post('/import', auth, upload.single('file'), async (req, res) => {
+router.post('/import', auth, requireFeature('tasks'), upload.single('file'), async (req, res) => {
   try {
     // require projectId as either form field or query param
     const projectId = req.body.projectId || req.query.projectId;
@@ -143,7 +144,7 @@ router.post('/import', auth, upload.single('file'), async (req, res) => {
 });
 
 // Read tasks (supports projectId filter, search q, status, deleted, pagination)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireFeature('tasks'), async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || '50', 10), 1000);
     const skip = Math.max(parseInt(req.query.skip || '0', 10), 0);
@@ -184,7 +185,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Update a task by ID (requires permission on the task's project)
-router.patch('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, requireFeature('tasks'), async (req, res) => {
   try {
     // Load task to determine project for RBAC/subscription checks
     const task = await Task.findById(req.params.id);
@@ -205,7 +206,7 @@ router.patch('/:id', auth, async (req, res) => {
 });
 
 // Delete (soft-delete) a task by ID
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireFeature('tasks'), async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).send({ error: 'Task not found' });

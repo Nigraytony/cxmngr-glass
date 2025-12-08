@@ -6,6 +6,21 @@ const { requireActiveProject } = require('../middleware/subscription');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { getPlan } = require('../middleware/planGuard');
+
+function ensureTeamCapacity(project) {
+  const plan = getPlan(project);
+  const limit = plan?.limits?.team || Infinity;
+  const current = Array.isArray(project.team) ? project.team.length : 0;
+  if (current >= limit) {
+    const err = new Error('Team limit reached for current plan');
+    err.status = 402;
+    err.code = 'PLAN_LIMIT_REACHED';
+    err.limit = limit;
+    err.current = current;
+    throw err;
+  }
+}
 
 // Create a new project
 router.post('/', async (req, res) => {
@@ -33,6 +48,7 @@ router.post('/', async (req, res) => {
     await user.save();
 
     // Add the user to the project's users array with admin role
+    ensureTeamCapacity(project);
     project.team.push({
       _id: user._id,
       firstName: user.firstName,
@@ -300,7 +316,10 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
             // best-effort; continue without template if lookup fails
           }
 
+          // Enforce plan team limit
+          ensureTeamCapacity(project);
           // Add an invited entry for existing users; they must accept to become active.
+          ensureTeamCapacity(project);
           project.team.push({
             _id: user._id,
             firstName: user.firstName,
@@ -399,6 +418,7 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
                 permissions: (invitePayload.roleTemplateSnapshot && Array.isArray(invitePayload.roleTemplateSnapshot.permissions)) ? invitePayload.roleTemplateSnapshot.permissions.slice() : [],
                 status: 'invited',
               };
+              ensureTeamCapacity(project);
               project.team.push(invitedMember);
               await project.save({ session });
             } catch (pushErr) {
@@ -540,6 +560,7 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
               permissions: (invitePayload.roleTemplateSnapshot && Array.isArray(invitePayload.roleTemplateSnapshot.permissions)) ? invitePayload.roleTemplateSnapshot.permissions.slice() : [],
               status: 'invited',
             };
+            ensureTeamCapacity(project);
             project.team.push(invitedMember);
             await project.save();
           } catch (pushErr) {
@@ -608,6 +629,7 @@ router.post('/accept-invite', auth, async (req, res) => {
             if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
             if (snap && snap.name) memberObj.role = snap.name;
           }
+          ensureTeamCapacity(project);
           project.team.push(memberObj);
           await project.save({ session });
         } else {
@@ -667,6 +689,7 @@ router.post('/accept-invite', auth, async (req, res) => {
         if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
         if (snap && snap.name) memberObj.role = snap.name;
       }
+      ensureTeamCapacity(project);
       project.team.push(memberObj);
       await project.save();
     } else {
@@ -745,6 +768,7 @@ router.post('/invitations/:id/accept', auth, async (req, res) => {
             if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
             if (snap && snap.name) memberObj.role = snap.name;
           }
+          ensureTeamCapacity(project);
           project.team.push(memberObj);
           await project.save({ session });
         } else {
@@ -800,6 +824,7 @@ router.post('/invitations/:id/accept', auth, async (req, res) => {
         if (snap && Array.isArray(snap.permissions)) memberObj.permissions = snap.permissions.slice();
         if (snap && snap.name) memberObj.role = snap.name;
       }
+      ensureTeamCapacity(project);
       project.team.push(memberObj);
       await project.save();
     } else {

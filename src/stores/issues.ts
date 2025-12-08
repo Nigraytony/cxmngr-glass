@@ -72,7 +72,12 @@ export const useIssuesStore = defineStore('issues', () => {
       }
 
       const res = await axios.get(API_BASE, { params: { projectId: pid }, headers: authHeaders() })
-      issues.value = (res.data || []).map(normalize)
+      const payload = res.data || []
+      // Support both legacy array response and new paginated shape { items, total, ... }
+      const items = Array.isArray(payload)
+        ? payload
+        : (Array.isArray((payload as any).items) ? (payload as any).items : [])
+      issues.value = items.map(normalize)
       return issues.value
     } catch (err: any) {
       console.error('fetchIssues error', err)

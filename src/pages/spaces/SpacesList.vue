@@ -1030,7 +1030,7 @@ const paged = computed(() => {
 // Fetch page from server
 async function fetchSpacesPage(projectId?: string) {
   loading.value = true
-  const pid = projectId ?? (projectStore.currentProjectId || '')
+  const pid = projectId ?? projectStore.currentProjectId ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') ?? ''
   if (!pid) {
     serverSpaces.value = []
     serverTotal.value = 0
@@ -1103,35 +1103,54 @@ watch(sorted, () => { if (page.value > totalPages.value) page.value = totalPages
 
 // moved project watcher and tree init watchers below after declarations
 
+// Use the full project list (store) for parent selection, not just the current page slice
 const parentOptions = computed(() => {
-  // Filter out self; restrict valid parents by type where sensible
   const selfId = form.value.id ? String(form.value.id) : ''
   const type = form.value.type
-  let base = spaces.value.filter(s => !selfId || String(s.id) !== selfId)
+  const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  // Merge server slice with store items, unique by id
+  const merged: Record<string, any> = {}
+  const add = (arr: any[]) => {
+    for (const s of arr || []) {
+      const id = String((s as any).id || (s as any)._id || '')
+      if (!id) continue
+      if (pid && String((s as any).project || (s as any).projectId || '') !== String(pid)) continue
+      merged[id] = { ...(s as any), id }
+    }
+  }
+  add(serverSpaces.value as any[])
+  add(spacesStore.items as any[])
+  let base = Object.values(merged).filter(s => !selfId || String((s as any).id) !== selfId)
   if (type === 'Building') {
-    // Buildings have no parent
     return []
   }
   if (type === 'Floor') {
-    // Floors should be under a Building
-    base = base.filter(s => s.type === 'Building')
+    base = base.filter((s: any) => s.type === 'Building')
   } else if (type === 'Room') {
-    // Rooms should be under a Floor
-    base = base.filter(s => s.type === 'Floor')
+    base = base.filter((s: any) => s.type === 'Floor')
   }
-  return base
+  return base as any[]
 })
 
 function openCreate() {
   editing.value = false
-  form.value = { title: '', type: 'Room', project: projectStore.currentProjectId || '', tag: '', description: '', parentSpace: '' }
+  const currentPid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  form.value = { title: '', type: 'Room', project: currentPid, projectId: currentPid, tag: '', description: '', parentSpace: '' }
   modalOpen.value = true
+  if (currentPid) {
+    // Ensure full project spaces are loaded for parent dropdown options
+    spacesStore.fetchByProject(String(currentPid)).catch(() => {})
+  }
 }
 
 function openEdit(s: Space) {
   editing.value = true
-  form.value = { ...s, id: s.id || (s as any)._id, project: s.project }
+  const pid = s.project || (s as any).projectId || projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  form.value = { ...s, id: s.id || (s as any)._id, project: pid, projectId: pid }
   modalOpen.value = true
+  if (pid) {
+    spacesStore.fetchByProject(String(pid)).catch(() => {})
+  }
 }
 
 function visit(s: Space) {
@@ -1145,7 +1164,9 @@ function closeModal() {
 
 async function save() {
   try {
-    if (!form.value.project) form.value.project = projectStore.currentProjectId || ''
+    const currentPid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+    if (!form.value.project) form.value.project = currentPid
+    if (!form.value.projectId) form.value.projectId = form.value.project || currentPid
     if (!form.value.title) throw new Error('Title is required')
     if (editing.value && form.value.id) {
       await spacesStore.update(form.value as Space & { id: string })

@@ -1699,7 +1699,11 @@ async function appendLog(type: string, message: string, extra: Record<string, an
   }
 }
 
-watch(currentTab, (v) => { if (v === 'Logs') loadLogs() })
+watch(currentTab, (v) => {
+  if (v === 'Logs') loadLogs()
+  if (v === 'Photos') loadPhotos()
+  if (v === 'Issues') loadIssues()
+})
 watch(() => route.query, () => setTabFromQuery())
 
 const systemSelectOptions = computed(() => {
@@ -1875,6 +1879,41 @@ const photos = computed<any[]>(() => {
   const arr: any = (form.value as any).photos
   return Array.isArray(arr) ? arr : []
 })
+
+async function loadPhotos() {
+  if (photosLoaded.value) return
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid) return
+  try {
+    const { data } = await http.get(`/api/equipment/${eid}`, {
+      params: { includePhotos: true },
+      headers: { ...getAuthHeaders() }
+    })
+    if (data) {
+      form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
+    }
+    photosLoaded.value = true
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to load photos')
+  }
+}
+
+// Ensure all heavy fields are loaded before generating reports (photos, attachments, checklists, components, issues)
+async function ensureReportData() {
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid) return
+  try {
+    const { data } = await http.get(`/api/equipment/${eid}`, {
+      params: { includePhotos: true },
+      headers: { ...getAuthHeaders() }
+    })
+    if (data) {
+      form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
+    }
+    photosLoaded.value = true
+  } catch (e) { /* best-effort */ }
+  try { await loadIssues() } catch (e) { /* ignore */ }
+}
 async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   const eid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!eid) throw new Error('Missing equipment id')
@@ -2073,6 +2112,8 @@ function attachmentMeta(a: any): string {
 const attachmentViewerOpen = ref(false)
 const attachmentFullscreen = ref(false)
 const selectedAttachmentIndex = ref<number>(-1)
+const photosLoaded = ref(false)
+const issuesLoaded = ref(false)
 const selectedAttachment = computed<any>(() => {
   const i = selectedAttachmentIndex.value
   if (i < 0) return null
@@ -2593,10 +2634,48 @@ async function addComponentIssue() {
 
 // Issues tab
 const issuesStore = useIssuesStore()
+async function loadIssues() {
+  try {
+    const pid = String(form.value.projectId || projectStore.currentProjectId || '')
+    if (!pid) return
+    await issuesStore.fetchIssues(pid)
+    issuesLoaded.value = true
+  } catch (e) { /* ignore, UI will show empty */ }
+}
 const issuesForEquipment = computed(() => {
   const eid = String(id.value || '')
   const tag = String((form.value as any)?.tag || '')
-  return (issuesStore.issues || []).filter((it: any) => String(it.assetId || '') === eid || (tag && String(it.location || '') === tag))
+  // Collect linked issue ids from functional tests and checklists
+  const linked = new Set<string>()
+  try {
+    const fpts: any[] = Array.isArray((form.value as any).functionalTests) ? (form.value as any).functionalTests : []
+    for (const f of fpts) {
+      const iss = Array.isArray(f?.issues) ? f.issues : []
+      for (const i of iss) {
+        const iid = String((i && (i.id || i._id)) || i || '')
+        if (iid) linked.add(iid)
+      }
+    }
+    const chks: any[] = Array.isArray((form.value as any).checklists) ? (form.value as any).checklists : []
+    for (const c of chks) {
+      const items: any[] = Array.isArray(c?.questions) ? c.questions : (Array.isArray(c?.items) ? c.items : [])
+      for (const q of items) {
+        const iss = Array.isArray(q?.issues) ? q.issues : []
+        for (const i of iss) {
+          const iid = String((i && (i.id || i._id)) || i || '')
+          if (iid) linked.add(iid)
+        }
+      }
+    }
+  } catch (e) { /* best-effort */ }
+
+  return (issuesStore.issues || []).filter((it: any) => {
+    const iid = String((it && (it.id || it._id)) || '')
+    if (iid && linked.has(iid)) return true
+    if (String(it.assetId || '') === eid) return true
+    if (tag && String(it.location || '') === tag) return true
+    return false
+  })
 })
 
 // Issues map by id (used for component modal linked issues)
@@ -2733,6 +2812,9 @@ async function load() {
     const eq = await equipmentStore.fetchOne(id.value)
     if (eq) {
       form.value = { ...eq }
+      // photos are not fetched by default; reset flag so Photos tab can fetch when opened
+      photosLoaded.value = Array.isArray(eq.photos) && eq.photos.some((p: any) => p && p.data)
+      issuesLoaded.value = false
       // ensure project id present for later saves
       if (!form.value.projectId) form.value.projectId = (eq as any).projectId || projectStore.currentProjectId || ''
       const pid = form.value.projectId || projectStore.currentProjectId || ''
@@ -2931,6 +3013,7 @@ function passCellState(v: any): PassState {
 function passLabel(state: PassState) { return state === 'pass' ? 'PASS' : state === 'fail' ? 'FAIL' : '—' }
 
 async function downloadEquipmentPdf() {
+  await ensureReportData()
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const margin = 12
@@ -3116,6 +3199,9 @@ async function downloadEquipmentPdf() {
 
   // Photos (first N)
   if (report.value.include.photos) {
+    if (!photos.value.length) {
+      try { await loadPhotos() } catch (_) { /* ignore */ }
+    }
     const phs: any[] = Array.isArray((form.value as any).photos) ? (form.value as any).photos : []
     const imgs: Array<{ dataUrl: string, format?: ImageFormat }> = []
     for (let p = 0; p < Math.min(report.value.photoLimit, phs.length); p++) {
@@ -3383,6 +3469,9 @@ async function downloadEquipmentPdf() {
 
   // Issues (table similar to Issues tab)
   if (report.value.include.issues) {
+    if (!issuesLoaded.value) {
+      try { await loadIssues() } catch (_) { /* ignore */ }
+    }
     const iss: any[] = Array.isArray(issuesForEquipment.value) ? issuesForEquipment.value : []
     if (iss.length) {
       sectionGap();
