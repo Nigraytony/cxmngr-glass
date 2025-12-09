@@ -447,10 +447,11 @@ function normalizeFeatureFlags(raw) {
 }
 
 // Plan feature map mirroring backend plans.js (update this if plans change)
+// Align with backend plans.js (all true today)
 const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
-  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
-  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  basic:    { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
+  standard: { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
+  premium:  { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
 }
 
 const activeFeatures = computed(() => {
@@ -459,14 +460,16 @@ const activeFeatures = computed(() => {
   if (Object.keys(flags).length) return flags
   const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
   if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
-  // default: disable unless explicitly allowed
-  return {}
+  // default: enable all if nothing explicit
+  return { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true }
 })
 
 function featureEnabled(key, flagsOverride) {
   const flags = flagsOverride || activeFeatures.value
   const v = flags ? flags[key.toLowerCase()] : undefined
-  return v === true
+  // Hide only when explicitly false
+  if (v === false) return false
+  return true
 }
 
 const teamMembers = computed(() => {

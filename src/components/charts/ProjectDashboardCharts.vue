@@ -171,9 +171,9 @@ function normalizeFeatureFlags(raw: any): Record<string, boolean> {
   return out
 }
 const PLAN_FEATURES: Record<string, Record<string, boolean>> = {
-  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
-  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
-  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  basic:    { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
+  standard: { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
+  premium:  { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
 }
 const activeFeatures = computed(() => {
   const proj: any = projectStore.currentProject || {}
@@ -181,12 +181,14 @@ const activeFeatures = computed(() => {
   if (Object.keys(flags).length) return flags
   const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
   if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
-  return {}
+  // default: enable all if nothing specified
+  return { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true }
 })
 function featureEnabled(key: string): boolean {
   const flags = activeFeatures.value
   const v = flags ? flags[key.toLowerCase()] : undefined
-  return v === true
+  if (v === false) return false
+  return true
 }
 
 onMounted(async () => {

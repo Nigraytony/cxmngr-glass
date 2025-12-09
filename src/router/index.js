@@ -73,7 +73,7 @@ const router = createRouter({
 
 // Plan feature map (aligned with backend plans.js)
 const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+  basic:    { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
   standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
   premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
 }
