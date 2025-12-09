@@ -41,10 +41,15 @@ export const useSpacesStore = defineStore('spaces', () => {
 
   async function fetchByProject(projectId: string) {
     if (!projectId) { items.value = []; return }
+    const pid = String(projectId)
+    // Clear stale items when switching projects
+    if (items.value.length && items.value.some(s => String((s as any).project || (s as any).projectId || '') !== pid)) {
+      items.value = []
+    }
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/project/${projectId}`, { headers: getAuthHeaders() })
+      const { data } = await axios.get(`${API_BASE}/project/${pid}`, { headers: getAuthHeaders() })
       // Support both legacy array response and new paginated shape { items, total, types, typeCounts }
       const payload = data || []
       const list = Array.isArray(payload)

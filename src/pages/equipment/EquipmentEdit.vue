@@ -2658,6 +2658,7 @@ const issuesForEquipment = computed(() => {
   const tag = String((form.value as any)?.tag || '')
   // Collect linked issue ids from functional tests and checklists
   const linked = new Set<string>()
+  const inlineIssues: any[] = []
   try {
     const fpts: any[] = Array.isArray((form.value as any).functionalTests) ? (form.value as any).functionalTests : []
     for (const f of fpts) {
@@ -2665,6 +2666,8 @@ const issuesForEquipment = computed(() => {
       for (const i of iss) {
         const iid = String((i && (i.id || i._id)) || i || '')
         if (iid) linked.add(iid)
+        // If we have an embedded issue object, keep it for display even if not in store
+        if (i && typeof i === 'object') inlineIssues.push(i)
       }
     }
     const chks: any[] = Array.isArray((form.value as any).checklists) ? (form.value as any).checklists : []
@@ -2675,18 +2678,43 @@ const issuesForEquipment = computed(() => {
         for (const i of iss) {
           const iid = String((i && (i.id || i._id)) || i || '')
           if (iid) linked.add(iid)
+          if (i && typeof i === 'object') inlineIssues.push(i)
         }
       }
     }
   } catch (e) { /* best-effort */ }
 
-  return (issuesStore.issues || []).filter((it: any) => {
+  const seen = new Set<string>()
+  const result: any[] = []
+  const pushIssue = (it: any) => {
+    if (!it) return
     const iid = String((it && (it.id || it._id)) || '')
-    if (iid && linked.has(iid)) return true
-    if (String(it.assetId || '') === eid) return true
-    if (tag && String(it.location || '') === tag) return true
-    return false
-  })
+    const key = iid || `${it.title || it.summary || ''}|${it.description || ''}`
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    result.push(it)
+  }
+
+  // From store (canonical)
+  for (const it of (issuesStore.issues || [])) {
+    const iid = String((it && (it.id || it._id)) || '')
+    if (iid && linked.has(iid)) { pushIssue(it); continue }
+    if (String(it.assetId || '') === eid) { pushIssue(it); continue }
+    if (tag && String(it.location || '') === tag) { pushIssue(it); continue }
+  }
+
+  // Inline issues attached directly to FPTs (not necessarily in store)
+  for (const it of inlineIssues) {
+    // try to map to store version if possible
+    const iid = String((it && (it.id || it._id)) || '')
+    if (iid && issuesById.value && issuesById.value[iid]) {
+      pushIssue(issuesById.value[iid])
+    } else {
+      pushIssue(it)
+    }
+  }
+
+  return result
 })
 
 // Issues map by id (used for component modal linked issues)

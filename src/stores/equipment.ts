@@ -68,10 +68,15 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
   async function fetchByProject(projectId: string) {
     if (!projectId) { items.value = []; return }
+    const pid = String(projectId)
+    // Clear stale items when switching projects
+    if (items.value.length && items.value.some(e => String((e as any).projectId || '') !== pid)) {
+      items.value = []
+    }
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/project/${projectId}`, { headers: getAuthHeaders() })
+      const { data } = await axios.get(`${API_BASE}/project/${pid}`, { headers: getAuthHeaders() })
       items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
     } catch (e: any) {
       error.value = e?.response?.data?.error || e?.message || 'Failed to load equipment'

@@ -1,7 +1,7 @@
 <template>
   <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
     <!-- Issues by Status -->
-    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div v-if="featureEnabled('issues')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Issues by Status
@@ -26,7 +26,7 @@
     </div>
 
     <!-- Activities by Type -->
-    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div v-if="featureEnabled('activities')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Activities by Type
@@ -51,7 +51,7 @@
     </div>
 
     <!-- Equipment by Status -->
-    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div v-if="featureEnabled('equipment')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Equipment by Status
@@ -76,7 +76,7 @@
     </div>
 
     <!-- Spaces by Type -->
-    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div v-if="featureEnabled('spaces')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Spaces by Type
@@ -101,7 +101,7 @@
     </div>
 
     <!-- Tasks by Status -->
-    <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div v-if="featureEnabled('tasks')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Tasks by Status
@@ -158,16 +158,46 @@ const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
 const tasksLoadingState = computed(() => props.tasksLoading === true)
 
+// Feature gating
+function normalizeFeatureFlags(raw: any): Record<string, boolean> {
+  const out: Record<string, boolean> = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k) continue
+    const key = k.toLowerCase()
+    if (v === false || v === 'false' || v === 0) { out[key] = false; continue }
+    if (v === true || v === 'true' || v === 1) { out[key] = true; continue }
+  }
+  return out
+}
+const PLAN_FEATURES: Record<string, Record<string, boolean>> = {
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+}
+const activeFeatures = computed(() => {
+  const proj: any = projectStore.currentProject || {}
+  const flags = normalizeFeatureFlags(proj.subscriptionFeatures)
+  if (Object.keys(flags).length) return flags
+  const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
+  if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
+  return {}
+})
+function featureEnabled(key: string): boolean {
+  const flags = activeFeatures.value
+  const v = flags ? flags[key.toLowerCase()] : undefined
+  return v === true
+}
+
 onMounted(async () => {
   const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
   try {
-    // These will internally filter by project if the store supports it
-    await Promise.all([
-      issuesStore.fetchIssues(pid).catch(() => {}),
-      activitiesStore.fetchActivities(pid).catch(() => {}),
-      pid ? equipmentStore.fetchByProject(String(pid)).catch(() => {}) : Promise.resolve(),
-      pid ? spacesStore.fetchByProject(String(pid)).catch(() => {}) : Promise.resolve(),
-    ])
+    const tasks: Promise<any>[] = []
+    if (pid && featureEnabled('issues')) tasks.push(issuesStore.fetchIssues(pid).catch(() => {}))
+    if (pid && featureEnabled('activities')) tasks.push(activitiesStore.fetchActivities(pid).catch(() => {}))
+    if (pid && featureEnabled('equipment')) tasks.push(equipmentStore.fetchByProject(String(pid)).catch(() => {}))
+    if (pid && featureEnabled('spaces')) tasks.push(spacesStore.fetchByProject(String(pid)).catch(() => {}))
+    if (tasks.length) await Promise.all(tasks)
   } catch (e) {
     // soft-fail on dashboard
   }

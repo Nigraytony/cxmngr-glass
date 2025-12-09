@@ -12,6 +12,7 @@
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <!-- Issues -->
       <RouterLink
+        v-if="featureEnabled('issues')"
         :to="{ name: 'issues' }"
         class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
       >
@@ -50,6 +51,7 @@
 
       <!-- Tasks -->
       <RouterLink
+        v-if="featureEnabled('tasks')"
         :to="{ name: 'tasks' }"
         class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
       >
@@ -93,6 +95,7 @@
 
       <!-- Activities -->
       <RouterLink
+        v-if="featureEnabled('activities')"
         :to="{ name: 'activities' }"
         class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
       >
@@ -129,6 +132,7 @@
 
       <!-- Equipment -->
       <RouterLink
+        v-if="featureEnabled('equipment')"
         :to="{ name: 'equipment' }"
         class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
       >
@@ -166,6 +170,7 @@
 
       <!-- Spaces -->
       <RouterLink
+        v-if="featureEnabled('spaces')"
         :to="{ name: 'spaces' }"
         class="group rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 transition hover:ring-white/20 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/40"
       >
@@ -203,8 +208,9 @@
 
     <!-- Main dashboard grid -->
     <ProjectDashboardCharts
-      :tasks="filteredTasks"
-      :tasks-loading="tasksLoading"
+      v-if="featureEnabled('tasks') || featureEnabled('issues') || featureEnabled('spaces') || featureEnabled('equipment')"
+      :tasks="featureEnabled('tasks') ? filteredTasks : []"
+      :tasks-loading="featureEnabled('tasks') ? tasksLoading : false"
     />
 
     <!-- Team section -->
@@ -345,14 +351,15 @@ async function hydrateProject(pid) {
   }
 
   try {
-    await Promise.all([
-      issuesStore.fetchIssues(projectId).catch(() => {}),
-      activitiesStore.fetchActivities(projectId).catch(() => {}),
-      equipmentStore.fetchByProject(projectId).catch(() => {}),
-      spacesStore.fetchByProject(projectId).catch(() => {}),
-      fetchTasksByProject(projectId),
-      projectStore.fetchProject(projectId).catch(() => {}),
-    ])
+    const flags = projectStore.currentProject?.subscriptionFeatures || {}
+    const tasksToRun = []
+    if (featureEnabled('issues', flags)) tasksToRun.push(issuesStore.fetchIssues(projectId).catch(() => {}))
+    if (featureEnabled('activities', flags)) tasksToRun.push(activitiesStore.fetchActivities(projectId).catch(() => {}))
+    if (featureEnabled('equipment', flags)) tasksToRun.push(equipmentStore.fetchByProject(projectId).catch(() => {}))
+    if (featureEnabled('spaces', flags)) tasksToRun.push(spacesStore.fetchByProject(projectId).catch(() => {}))
+    if (featureEnabled('tasks', flags)) tasksToRun.push(fetchTasksByProject(projectId))
+    tasksToRun.push(projectStore.fetchProject(projectId).catch(() => {}))
+    await Promise.all(tasksToRun)
   } catch (e) {
     // soft-fail; cards will surface available data
   }
@@ -425,6 +432,42 @@ const tasksTotal = computed(() => filteredTasks.value.length)
 const tasksCompleted = computed(() => taskStatusCounts.value['Completed'] || 0)
 const tasksInProgress = computed(() => taskStatusCounts.value['In Progress'] || 0)
 const tasksNotStarted = computed(() => taskStatusCounts.value['Not Started'] || 0)
+
+// Normalize subscription feature flags and guard UI/rendering
+function normalizeFeatureFlags(raw) {
+  const out = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k) continue
+    const key = k.toLowerCase()
+    if (v === false || v === 'false' || v === 0) { out[key] = false; continue }
+    if (v === true || v === 'true' || v === 1) { out[key] = true; continue }
+  }
+  return out
+}
+
+// Plan feature map mirroring backend plans.js (update this if plans change)
+const PLAN_FEATURES = {
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+}
+
+const activeFeatures = computed(() => {
+  const proj = projectStore.currentProject || {}
+  const flags = normalizeFeatureFlags(proj.subscriptionFeatures)
+  if (Object.keys(flags).length) return flags
+  const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
+  if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
+  // default: disable unless explicitly allowed
+  return {}
+})
+
+function featureEnabled(key, flagsOverride) {
+  const flags = flagsOverride || activeFeatures.value
+  const v = flags ? flags[key.toLowerCase()] : undefined
+  return v === true
+}
 
 const teamMembers = computed(() => {
   const team = projectStore.currentProject && Array.isArray(projectStore.currentProject.team)

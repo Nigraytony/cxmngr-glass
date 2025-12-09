@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useProjectStore } from '../stores/project'
 
 const Login = () => import('../pages/auth/Login.vue')
 const Register = () => import('../pages/auth/Register.vue')
@@ -70,8 +71,28 @@ const router = createRouter({
   routes,
 })
 
+// Plan feature map (aligned with backend plans.js)
+const PLAN_FEATURES = {
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+}
+
+function normalizeFeatureFlags(raw) {
+  const out = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k) continue
+    const key = k.toLowerCase()
+    if (v === false || v === 'false' || v === 0) { out[key] = false; continue }
+    if (v === true || v === 'true' || v === 1) { out[key] = true; continue }
+  }
+  return out
+}
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  const projectStore = useProjectStore()
   // wait briefly for auth bootstrap to complete so guards don't flash unauthenticated
   try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) { /* ignore auth bootstrap timeout */ }
 
@@ -85,6 +106,29 @@ router.beforeEach(async (to) => {
     const r = auth.user?.role
     const allowed = r === 'admin' || r === 'globaladmin' || r === 'superadmin'
     if (!allowed) return { name: 'dashboard' }
+  }
+
+  // Feature gating based on project subscription features
+  const featureRouteMap = {
+    spaces: ['spaces', 'space-edit'],
+    equipment: ['equipment', 'equipment-edit'],
+    templates: ['templates', 'template-edit'],
+    activities: ['activities', 'activity-edit'],
+    issues: ['issues', 'issue-edit'],
+    tasks: ['tasks', 'task-edit'],
+  }
+  const routeName = to.name ? String(to.name) : ''
+  let featureKey = null
+  for (const [k, names] of Object.entries(featureRouteMap)) {
+    if (names.includes(routeName)) { featureKey = k; break }
+  }
+  if (featureKey) {
+    const flags = normalizeFeatureFlags(projectStore.currentProject?.subscriptionFeatures)
+    if (Object.keys(flags).length === 0) {
+      const tier = (projectStore.currentProject?.subscriptionTier || projectStore.currentProject?.subscription || '').toLowerCase()
+      if (tier && PLAN_FEATURES[tier]) Object.assign(flags, PLAN_FEATURES[tier])
+    }
+    if (flags && flags[featureKey] === false) return { name: 'dashboard' }
   }
 })
 

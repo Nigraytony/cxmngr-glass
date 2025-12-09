@@ -1862,6 +1862,10 @@ async function confirmRemove(e: Equipment) {
 
 watch(() => projectStore.currentProjectId, async (id) => {
   if (!id) return
+  // Clear stale lists when switching projects
+  serverEquipment.value = []
+  serverTotal.value = 0
+  equipmentStore.items = []
   // load spaces for dropdown and names
   await spacesStore.fetchByProject(String(id))
   // fetch paged equipment from server for list view

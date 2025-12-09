@@ -56,6 +56,7 @@
         <span v-if="open">Dashboard</span>
       </RouterLink>
       <RouterLink
+        v-if="featureEnabled('spaces')"
         to="/spaces"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -67,6 +68,7 @@
         <span v-if="open">Spaces</span>
       </RouterLink>
       <RouterLink
+        v-if="featureEnabled('equipment')"
         to="/equipment"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -78,6 +80,7 @@
         <span v-if="open">Equipment</span>
       </RouterLink>
       <RouterLink
+        v-if="featureEnabled('templates')"
         to="/templates"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -89,6 +92,7 @@
         <span v-if="open">Templates</span>
       </RouterLink>
       <RouterLink
+        v-if="featureEnabled('issues')"
         to="/issues"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -100,6 +104,7 @@
         <span v-if="open">Issues</span>
       </RouterLink>
       <RouterLink
+        v-if="featureEnabled('activities')"
         to="/activities"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -111,6 +116,7 @@
         <span v-if="open">Activities</span>
       </RouterLink>
       <RouterLink
+        v-if="featureEnabled('tasks')"
         to="/tasks"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -219,6 +225,44 @@ import { useAuthStore } from '../stores/auth'
 const route = useRoute()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+const currentProject = computed(() =>
+  projectStore.currentProject ||
+  (projectStore.projects || []).find(p => String(p.id || p._id) === currentProjectId.value) ||
+  null
+)
+
+function normalizeFeatureFlags(raw) {
+  const out = {}
+  if (!raw || typeof raw !== 'object') return out
+  for (const [k, v] of Object.entries(raw)) {
+    if (!k) continue
+    const key = k.toLowerCase()
+    if (v === false || v === 'false' || v === 0) { out[key] = false; continue }
+    if (v === true || v === 'true' || v === 1) { out[key] = true; continue }
+  }
+  return out
+}
+// Plan feature map aligned with backend plans.js
+const PLAN_FEATURES = {
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+}
+
+const activeFeatures = computed(() => {
+  const proj = currentProject.value || {}
+  const flags = normalizeFeatureFlags(proj.subscriptionFeatures)
+  if (Object.keys(flags).length) return flags
+  const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
+  if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
+  return {}
+})
+
+const featureEnabled = (key) => {
+  const flags = activeFeatures.value
+  const v = flags ? flags[key.toLowerCase()] : undefined
+  return v === true
+}
 
 function isActive(path) {
   // simple startsWith match; treat root specially

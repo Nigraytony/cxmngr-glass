@@ -1313,6 +1313,10 @@ const visibleNodes = computed<NodeRow[]>(() => flatten(treeRoots.value))
 // Now that viewMode/openNodes are declared, add watchers that depend on them
 watch(() => projectStore.currentProjectId, async (id) => {
   if (!id) return
+  // clear stale data when switching projects
+  serverSpaces.value = []
+  serverTotal.value = 0
+  spacesStore.items = []
   // If tree view is active, keep using the store's full-fetch for tree population
   if (viewMode.value === 'tree') {
     await spacesStore.fetchByProject(String(id))
