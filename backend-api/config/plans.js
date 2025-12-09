@@ -13,10 +13,10 @@ module.exports = [
     features: {
       issues: true,
       equipment: true,
-      spaces: false,
-      templates: false,
-      activities: false,
-      tasks: false,
+      spaces: true,
+      templates: true,
+      activities: true,
+      tasks: true,
     },
     limits: {
       team: 10,
