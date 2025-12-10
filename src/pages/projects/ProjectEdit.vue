@@ -1863,10 +1863,6 @@
   />
 </template>
 
-<script>
-// existing script continues below; this wrapper ensures only one script block
-</script>
-
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
