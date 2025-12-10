@@ -468,10 +468,10 @@ const activeFeatures = computed(() => {
 function featureEnabled(key, flagsOverride) {
   const flags = flagsOverride || activeFeatures.value
   const v = flags ? flags[key.toLowerCase()] : undefined
-  // Hide only when explicitly false
-  if (v === false) return false
-  return true
+  // Enable only when explicitly true
+  return v === true
 }
+
 
 const teamMembers = computed(() => {
   const team = projectStore.currentProject && Array.isArray(projectStore.currentProject.team)

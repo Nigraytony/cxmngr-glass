@@ -373,14 +373,25 @@
                       >
                         <template v-if="roleTemplates && roleTemplates.length">
                           <option
-                            v-for="rt in roleTemplates"
-                            :key="rt._id || rt.id"
+                            :disabled="planPreviewLoading || !selectedPrice || billingSummary?.hasStripe === false"
+                            :title="!selectedPrice
+                              ? 'Select a plan to preview proration'
+                              : (billingSummary?.hasStripe === false
+                                ? 'Stripe not configured on server'
+                                : (planPreviewLoading ? 'Loading preview…' : ''))"
                             :value="rt.name"
                           >
                             {{ rt.name }}
                           </option>
                         </template>
                         <template v-else>
+
+                        <div
+                          v-if="billingSummary && billingSummary.hasStripe === false"
+                          class="mt-2 text-xs text-red-300"
+                        >
+                          Proration preview disabled: Stripe not configured on server.
+                        </div>
                           <option value="admin">
                             admin
                           </option>
@@ -556,9 +567,6 @@
             </div>
 
             <div v-show="activeTab === 'subscription'">
-              <h3 class="text-md font-medium mb-2">
-                Subscription
-              </h3>
               <div class="space-y-6">
                 <div
                   v-if="billingLoading"
@@ -2085,7 +2093,11 @@ async function handlePreviewPlan() {
     } catch (_) { /* ignore toast errors */ }
   } catch (e) {
     console.error('preview plan err', e)
-    ui.showError('Failed to preview plan change')
+    // Surface backend error when available (e.g., Stripe not configured, unauthorized, no subscription)
+    // This helps diagnose production vs local environment discrepancies.
+    // @ts-ignore
+    const msg = (e && e.response && e.response.data && (e.response.data.error || e.response.data.message)) || (e && e.message) || 'Failed to preview plan change'
+    ui.showError(String(msg))
   } finally {
     planPreviewLoading.value = false
   }
