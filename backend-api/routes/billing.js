@@ -271,6 +271,60 @@ router.post('/project/:id/plan/preview', auth, async (req, res) => {
   }
 });
 
+// Reconcile a project's missing stripeSubscriptionId by looking up subscriptions for its billing customer
+router.post('/project/:id/reconcile-subscription', auth, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+    const projectId = req.params.id;
+    if (!projectId) return res.status(400).json({ error: 'project id required' });
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized to manage billing for this project' });
+
+    // If already linked, return current state
+    if (project.stripeSubscriptionId) {
+      return res.json({ ok: true, subscriptionId: project.stripeSubscriptionId, status: project.stripeSubscriptionStatus || null });
+    }
+
+    const customerId = await resolveBillingCustomerId(project, req.user);
+    if (!customerId) return res.status(400).json({ error: 'Unable to resolve billing customer for project' });
+
+    // Fetch recent subscriptions for this customer
+    const subResp = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 20,
+      expand: ['data.items.data.price']
+    });
+    const subs = Array.isArray(subResp.data) ? subResp.data : [];
+    if (!subs.length) return res.status(404).json({ error: 'No subscriptions found for billing customer' });
+
+    // Prefer active/trialing/past_due
+    const preferred = subs.find(s => ['active', 'trialing', 'past_due'].includes(String(s.status))) || subs[0];
+    if (!preferred) return res.status(404).json({ error: 'No suitable subscription found' });
+
+    const firstItem = preferred.items && preferred.items.data && preferred.items.data[0];
+    const priceId = firstItem && firstItem.price && firstItem.price.id ? firstItem.price.id : (project.stripePriceId || null);
+
+    await Project.findByIdAndUpdate(projectId, {
+      stripeSubscriptionId: preferred.id,
+      stripeSubscriptionStatus: preferred.status,
+      stripeCurrentPeriodEnd: preferred.current_period_end ? new Date(preferred.current_period_end * 1000) : null,
+      stripeCancelAtPeriodEnd: Boolean(preferred.cancel_at_period_end),
+      stripeCanceledAt: preferred.canceled_at ? new Date(preferred.canceled_at * 1000) : null,
+      stripePriceId: priceId || project.stripePriceId || null,
+      isActive: ['active', 'trialing', 'past_due'].includes(preferred.status),
+    });
+
+    return res.json({ ok: true, subscriptionId: preferred.id, status: preferred.status, priceId: priceId || null });
+  } catch (err) {
+    console.error('reconcile-subscription error', err && err.message ? err.message : err);
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message });
+    return res.status(500).json({ error: 'Failed to reconcile subscription' });
+  }
+});
+
 // Change plan (update the price on the existing Stripe subscription item)
 // Preserves trial_end when subscription is in trialing state, so trial does not reset.
 router.post('/project/:id/change-plan', auth, async (req, res) => {
