@@ -24,7 +24,10 @@ function getPlan(project) {
 
 async function loadProject(projectId) {
   if (!projectId) return null
-  try { return await Project.findById(projectId).select('subscriptionTier subscriptionFeatures team').lean() } catch (e) { return null }
+  try {
+    // Include stripePriceId so getPlan can prefer price-based resolution.
+    return await Project.findById(projectId).select('subscriptionTier subscriptionFeatures team stripePriceId').lean()
+  } catch (e) { return null }
 }
 
 // Ensure a feature is enabled for the project's plan.
