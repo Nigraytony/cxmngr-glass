@@ -1,4 +1,5 @@
-const { MongoMemoryReplSet } = require('mongodb-memory-server');
+let MongoMemoryReplSet = null;
+try { ({ MongoMemoryReplSet } = require('mongodb-memory-server')); } catch (e) {}
 const request = require('supertest');
 const mongoose = require('mongoose');
 const assert = require('assert');
@@ -15,9 +16,10 @@ describe('Invite flow integration', function () {
   before(async () => {
     // reset mail spy before test run
     mailSpy.reset();
-  // Use a replica set-backed in-memory server so transactions are supported
-  mongod = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-  process.env.MONGODB_URI = mongod.getUri();
+  // Prefer external MongoDB if provided (Atlas or CI service). If absent, default to localhost service.
+  if (!process.env.MONGODB_URI || !String(process.env.MONGODB_URI).startsWith('mongodb')) {
+    process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/test';
+  }
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
     // Ensure mailer doesn't fail the transaction in tests; it's caught by the route.
     process.env.SMTP_HOST = process.env.SMTP_HOST || 'localhost';
@@ -39,7 +41,7 @@ describe('Invite flow integration', function () {
 
   after(async () => {
     try { await mongoose.disconnect(); } catch (e) {}
-    try { await mongod.stop(); } catch (e) {}
+    try { if (mongod) await mongod.stop(); } catch (e) {}
   });
 
   beforeEach(() => {

@@ -1,6 +1,7 @@
 const { expect } = require('chai');
 const request = require('supertest');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+let MongoMemoryServer = null;
+try { ({ MongoMemoryServer } = require('mongodb-memory-server')); } catch (e) {}
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
@@ -14,9 +15,9 @@ describe('Admin webhook replay - charge event', function () {
   let User;
 
   before(async () => {
-    mongoServer = await MongoMemoryServer.create();
-    const uri = mongoServer.getUri();
-    process.env.MONGODB_URI = uri;
+    if (!process.env.MONGODB_URI || !String(process.env.MONGODB_URI).startsWith('mongodb')) {
+      process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/test';
+    }
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret';
 
     // Require app after setting MONGODB_URI so it connects to in-memory server
