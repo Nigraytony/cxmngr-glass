@@ -12,8 +12,12 @@
     >
       <Spinner />
       <div>
-        <p class="text-sm uppercase tracking-wide">Loading template…</p>
-        <p class="text-xs text-white/60">Fetching template details</p>
+        <p class="text-sm uppercase tracking-wide">
+          Loading template…
+        </p>
+        <p class="text-xs text-white/60">
+          Fetching template details
+        </p>
       </div>
     </div>
 

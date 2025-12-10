@@ -1,7 +1,10 @@
 <template>
   <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
     <!-- Issues by Status -->
-    <div v-if="featureEnabled('issues')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div
+      v-if="featureEnabled('issues')"
+      class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Issues by Status
@@ -26,7 +29,10 @@
     </div>
 
     <!-- Activities by Type -->
-    <div v-if="featureEnabled('activities')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div
+      v-if="featureEnabled('activities')"
+      class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Activities by Type
@@ -51,7 +57,10 @@
     </div>
 
     <!-- Equipment by Status -->
-    <div v-if="featureEnabled('equipment')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div
+      v-if="featureEnabled('equipment')"
+      class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Equipment by Status
@@ -76,7 +85,10 @@
     </div>
 
     <!-- Spaces by Type -->
-    <div v-if="featureEnabled('spaces')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div
+      v-if="featureEnabled('spaces')"
+      class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Spaces by Type
@@ -101,7 +113,10 @@
     </div>
 
     <!-- Tasks by Status -->
-    <div v-if="featureEnabled('tasks')" class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
+    <div
+      v-if="featureEnabled('tasks')"
+      class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10"
+    >
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">
           Tasks by Status

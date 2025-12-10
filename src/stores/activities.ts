@@ -123,16 +123,12 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function fetchActivityPhotos(id: string) {
-    try {
-      const res = await axios.get(`${API_PHOTOS}/${id}/photos`, { headers: getAuthHeaders() })
-      const photos = res.data || []
-      if (current.value && (current.value.id === id || (current.value as any)._id === id)) {
-        current.value = { ...(current.value as any), photos }
-      }
-      return photos
-    } catch (e: any) {
-      throw e
+    const res = await axios.get(`${API_PHOTOS}/${id}/photos`, { headers: getAuthHeaders() })
+    const photos = res.data || []
+    if (current.value && (current.value.id === id || (current.value as any)._id === id)) {
+      current.value = { ...(current.value as any), photos }
     }
+    return photos
   }
 
   async function createActivity(payload: Partial<Activity>) {
@@ -283,5 +279,5 @@ export const useActivitiesStore = defineStore('activities', () => {
     }
   }
 
-  return { activities, current, loading, error, errorCode, fetchActivities, fetchActivity, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
+  return { activities, current, loading, error, errorCode, fetchActivities, fetchActivity, fetchActivityPhotos, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
 })

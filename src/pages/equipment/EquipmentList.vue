@@ -440,12 +440,12 @@
           <div class="col-span-1 truncate">
             {{ e.system || '-' }}
           </div>
-        <div
-          class="col-span-4 truncate text-sm"
-          :title="equipmentSpaceChain(e)"
-        >
-          {{ equipmentSpaceChain(e) || '-' }}
-        </div>
+          <div
+            class="col-span-4 truncate text-sm"
+            :title="equipmentSpaceChain(e)"
+          >
+            {{ equipmentSpaceChain(e) || '-' }}
+          </div>
           <div class="col-span-1 truncate">
             {{ e.status || '-' }}
           </div>
@@ -1113,7 +1113,6 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
-import { getApiBase } from '../../utils/api'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
@@ -1152,10 +1151,6 @@ const equipment = computed(() => equipmentStore.items)
 const loading = computed(() => equipmentStore.loading)
 
 const parentMap = computed(() => spacesStore.byId)
-function spaceName(spaceId?: string | null) {
-  const pid = spaceId ? String(spaceId) : ''
-  return pid && parentMap.value[pid] ? parentMap.value[pid].title : ''
-}
 
 function equipmentSpaceChain(e?: any) {
   if (!e) return ''

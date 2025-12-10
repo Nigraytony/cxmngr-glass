@@ -12,9 +12,21 @@
 
     <div class="flex flex-wrap gap-3 items-end">
       <!-- Error banner for plan guard or missing project -->
-      <div v-if="store && (store as any).errorCode" class="w-full">
+      <div
+        v-if="store && (store as any).errorCode"
+        class="w-full"
+      >
         <div class="rounded-md border border-white/20 bg-red-500/20 text-red-100 px-3 py-2 text-sm inline-flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11.5a.75.75 0 011.5 0v5a.75.75 0 01-1.5 0v-5zm.75 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          ><path
+            fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11.5a.75.75 0 011.5 0v5a.75.75 0 01-1.5 0v-5zm.75 8a1 1 0 100-2 1 1 0 000 2z"
+            clip-rule="evenodd"
+          /></svg>
           <span v-if="(store as any).errorCode === 'PROJECT_NOT_FOUND'">Selected project not found. Please reselect a project.</span>
           <span v-else-if="(store as any).errorCode === 'FEATURE_NOT_IN_PLAN'">Activities are not available on your current subscription plan.</span>
           <span v-else>{{ (store as any).error || 'Unable to load activities.' }}</span>
@@ -106,11 +118,19 @@
       </button>
     </div>
 
-    <div v-if="loading" class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/70 flex flex-col items-center justify-center">
+    <div
+      v-if="loading"
+      class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/70 flex flex-col items-center justify-center"
+    >
       <Spinner />
-      <p class="mt-3 text-sm uppercase tracking-wide">Loading activities…</p>
+      <p class="mt-3 text-sm uppercase tracking-wide">
+        Loading activities…
+      </p>
     </div>
-    <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div
+      v-else
+      class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80 w-full">
           <div class="text-lg font-semibold">

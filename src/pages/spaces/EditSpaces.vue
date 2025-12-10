@@ -15,7 +15,9 @@
       aria-live="polite"
     >
       <Spinner class="w-10 h-10" />
-      <p class="mt-3 text-sm tracking-wide uppercase">Loading space…</p>
+      <p class="mt-3 text-sm tracking-wide uppercase">
+        Loading space…
+      </p>
     </div>
 
     <div
@@ -195,8 +197,19 @@
               fill="none"
               stroke="currentColor"
             >
-              <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="1.5" />
-              <path d="M8 9h8M8 13h8M8 17h5" stroke-width="1.5" stroke-linecap="round" />
+              <rect
+                x="4"
+                y="4"
+                width="16"
+                height="16"
+                rx="2"
+                stroke-width="1.5"
+              />
+              <path
+                d="M8 9h8M8 13h8M8 17h5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
             </svg>
             <span
               v-if="!compactTabs"
@@ -430,7 +443,9 @@
                 @click="selectEquipmentSuggestion(s)"
               >
                 <div class="min-w-0">
-                  <div class="font-medium truncate text-white">{{ s.tag || '-' }}</div>
+                  <div class="font-medium truncate text-white">
+                    {{ s.tag || '-' }}
+                  </div>
                   <div class="text-xs text-white/70 truncate">
                     {{ s.title || '' }} <span v-if="s.system">• {{ s.system }}</span>
                   </div>
@@ -448,7 +463,9 @@
 
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <div class="font-medium">Equipment in this space ({{ equipmentInSpace.length }})</div>
+              <div class="font-medium">
+                Equipment in this space ({{ equipmentInSpace.length }})
+              </div>
               <button
                 class="text-sm px-3 py-1 rounded bg-white/10 border border-white/20"
                 :disabled="equipmentLoading"
@@ -472,15 +489,28 @@
             >
               No equipment assigned to this space yet.
             </div>
-            <div v-else class="overflow-x-auto">
+            <div
+              v-else
+              class="overflow-x-auto"
+            >
               <table class="min-w-full text-sm">
                 <thead class="text-white/70">
                   <tr>
-                    <th class="px-3 py-2 text-left">Tag</th>
-                    <th class="px-3 py-2 text-left">Title</th>
-                    <th class="px-3 py-2 text-left">System</th>
-                    <th class="px-3 py-2 text-left">Location</th>
-                    <th class="px-3 py-2 text-right">Actions</th>
+                    <th class="px-3 py-2 text-left">
+                      Tag
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Title
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      System
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Location
+                    </th>
+                    <th class="px-3 py-2 text-right">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -489,9 +519,15 @@
                     :key="eq.id || eq._id"
                     class="border-t border-white/10"
                   >
-                    <td class="px-3 py-2 text-white">{{ eq.tag || '-' }}</td>
-                    <td class="px-3 py-2 text-white/80">{{ eq.title || '-' }}</td>
-                    <td class="px-3 py-2 text-white/70">{{ eq.system || '-' }}</td>
+                    <td class="px-3 py-2 text-white">
+                      {{ eq.tag || '-' }}
+                    </td>
+                    <td class="px-3 py-2 text-white/80">
+                      {{ eq.title || '-' }}
+                    </td>
+                    <td class="px-3 py-2 text-white/70">
+                      {{ eq.system || '-' }}
+                    </td>
                     <td class="px-3 py-2 text-white/70">
                       {{ spaceParentChainLabelById(eq.spaceId) || '—' }}
                     </td>

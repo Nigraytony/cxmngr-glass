@@ -20,16 +20,28 @@
         <div class="relative">
           <input
             v-model="assigneeQuery"
+            placeholder="Search users by name or email"
+            class="w-full px-3 py-2 rounded bg-white/10"
             @input="onAssigneeInput"
             @focus="showAssigneeDropdown = true"
             @blur="() => setTimeout(() => showAssigneeDropdown = false, 120)"
-            placeholder="Search users by name or email"
-            class="w-full px-3 py-2 rounded bg-white/10"
-          />
-          <ul v-if="showAssigneeDropdown && assigneeResults.length" class="absolute z-50 left-0 right-0 bg-black/70 backdrop-blur-3xl rounded mt-1 max-h-48 overflow-auto border border-white/10 shadow-lg">
-            <li v-for="u in assigneeResults" :key="u._id" @mousedown.prevent="selectAssignee(u)" class="px-3 py-2 hover:bg-white/10 cursor-pointer">
-              <div class="text-sm text-white">{{ u.name || u.email || u._id }}</div>
-              <div class="text-xs text-white/70">{{ u.email || '' }}</div>
+          >
+          <ul
+            v-if="showAssigneeDropdown && assigneeResults.length"
+            class="absolute z-50 left-0 right-0 bg-black/70 backdrop-blur-3xl rounded mt-1 max-h-48 overflow-auto border border-white/10 shadow-lg"
+          >
+            <li
+              v-for="u in assigneeResults"
+              :key="u._id"
+              class="px-3 py-2 hover:bg-white/10 cursor-pointer"
+              @mousedown.prevent="selectAssignee(u)"
+            >
+              <div class="text-sm text-white">
+                {{ u.name || u.email || u._id }}
+              </div>
+              <div class="text-xs text-white/70">
+                {{ u.email || '' }}
+              </div>
             </li>
           </ul>
         </div>
@@ -55,7 +67,10 @@
           :class="['w-full px-3 py-2 rounded bg-white/10', !manualCost ? 'opacity-60 cursor-not-allowed' : '']"
           @input="onCostInput"
         >
-        <p v-if="!manualCost" class="text-xs text-white/60 mt-1">
+        <p
+          v-if="!manualCost"
+          class="text-xs text-white/60 mt-1"
+        >
           Auto-calculated from duration × bill rate
           <span v-if="autoCostPreview != null"> — ${{ autoCostPreview }}</span>.
         </p>
@@ -102,7 +117,7 @@
           v-model="task.notes"
           class="w-full px-3 py-2 rounded bg-white/10"
           rows="4"
-        ></textarea>
+        />
       </div>
     </div>
 
@@ -125,7 +140,12 @@
         </button>
       </div>
     </div>
-    <p v-if="error" class="mt-2 text-sm text-rose-400">{{ error }}</p>
+    <p
+      v-if="error"
+      class="mt-2 text-sm text-rose-400"
+    >
+      {{ error }}
+    </p>
   </div>
 </template>
 

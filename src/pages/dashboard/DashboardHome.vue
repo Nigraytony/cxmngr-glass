@@ -233,7 +233,10 @@
             Manage
           </RouterLink>
         </div>
-        <div v-if="teamPreview.length" class="space-y-3">
+        <div
+          v-if="teamPreview.length"
+          class="space-y-3"
+        >
           <div
             v-for="member in teamPreview"
             :key="member.email || member.id || member._id || member.phone || member.firstName"

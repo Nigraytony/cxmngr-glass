@@ -11,8 +11,10 @@
         role="status"
         aria-live="polite"
       >
-        <span class="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-        <p class="text-sm tracking-wide uppercase">Loading equipment…</p>
+        <span class="h-10 w-10 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <p class="text-sm tracking-wide uppercase">
+          Loading equipment…
+        </p>
       </div>
 
       <div v-else>
@@ -35,125 +37,125 @@
               :class="currentTab === t ? 'text-white border-b-2 border-white rounded-t-md bg-white/6' : 'text-white/70 hover:text-white/90'"
               @click="currentTab = t"
             >
-            <svg
-              v-if="t === 'Info'"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><circle
-              cx="12"
-              cy="12"
-              r="9"
-              stroke-width="1.5"
-            /><path
-              d="M12 11v6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            /><path
-              d="M12 7h.01"
-              stroke-width="2"
-              stroke-linecap="round"
-            /></svg>
-            <svg
-              v-else-if="t === 'Photos'"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><rect
-              x="3"
-              y="5"
-              width="18"
-              height="14"
-              rx="2"
-              ry="2"
-              stroke-width="1.5"
-            /><path
-              d="M8 11l3 3 2-2 4 4"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /><circle
-              cx="8.5"
-              cy="9.5"
-              r="1.5"
-              stroke-width="1.5"
-            /></svg>
-            <svg
-              v-else-if="t === 'Attachments'"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><path
-              d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-            <svg
-              v-else-if="t === 'Checklists'"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><path
-              d="M9 11l3 3L22 4"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /><path
-              d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
-              stroke-width="1.5"
-            /></svg>
-            <svg
-              v-else-if="t === 'FPT'"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><path
-              d="M12 6v6l4 2"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /><circle
-              cx="12"
-              cy="12"
-              r="9"
-              stroke-width="1.5"
-            /></svg>
-            <svg
-              v-else-if="t === 'Issues'"
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><path
-              d="M12 3l9 16H3l9-16z"
-              stroke-width="1.5"
-              stroke-linejoin="round"
-            /><path
-              d="M12 9v4"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            /><path
-              d="M12 17h.01"
-              stroke-width="2"
-              stroke-linecap="round"
-            /></svg>
-            <span>{{ t }}</span>
-            <span
-              v-if="countForTab(t) > 0"
-              class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80"
-            >{{ countForTab(t) }}</span>
+              <svg
+                v-if="t === 'Info'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke-width="1.5"
+              /><path
+                d="M12 11v6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M12 7h.01"
+                stroke-width="2"
+                stroke-linecap="round"
+              /></svg>
+              <svg
+                v-else-if="t === 'Photos'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><rect
+                x="3"
+                y="5"
+                width="18"
+                height="14"
+                rx="2"
+                ry="2"
+                stroke-width="1.5"
+              /><path
+                d="M8 11l3 3 2-2 4 4"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><circle
+                cx="8.5"
+                cy="9.5"
+                r="1.5"
+                stroke-width="1.5"
+              /></svg>
+              <svg
+                v-else-if="t === 'Attachments'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><path
+                d="M21.44 11.05l-8.49 8.49a5 5 0 0 1-7.07-7.07l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.49 8.49a2 2 0 0 1-2.83-2.83l7.07-7.07"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg>
+              <svg
+                v-else-if="t === 'Checklists'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><path
+                d="M9 11l3 3L22 4"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><path
+                d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                stroke-width="1.5"
+              /></svg>
+              <svg
+                v-else-if="t === 'FPT'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><path
+                d="M12 6v6l4 2"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke-width="1.5"
+              /></svg>
+              <svg
+                v-else-if="t === 'Issues'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><path
+                d="M12 3l9 16H3l9-16z"
+                stroke-width="1.5"
+                stroke-linejoin="round"
+              /><path
+                d="M12 9v4"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M12 17h.01"
+                stroke-width="2"
+                stroke-linecap="round"
+              /></svg>
+              <span>{{ t }}</span>
+              <span
+                v-if="countForTab(t) > 0"
+                class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-[10px] leading-none text-white/80"
+              >{{ countForTab(t) }}</span>
             </button>
           </div>
         </div>

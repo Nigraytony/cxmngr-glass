@@ -8,65 +8,119 @@
         </h2>
         <div class="text-sm text-white/70 mb-3">
           Create a coupon and promotion code for discounts. <span class="text-red-300">*</span> required. At least one of percent or amount is required.
-  </div>
+        </div>
 
-  <!-- Confirm modal -->
-  <div
-    v-if="confirmOpen"
-    class="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm"
-  >
-    <div class="w-full max-w-md rounded-xl bg-white/10 border border-white/20 p-4 space-y-3 text-white shadow-xl">
-      <div class="text-lg font-semibold">
-        {{ confirmTitle }}
-      </div>
-      <div class="text-sm text-white/80">
-        {{ confirmMessage }}
-      </div>
-      <div class="flex justify-end gap-3">
-        <button
-          class="px-3 py-2 rounded bg-white/10 border border-white/20"
-          @click="confirmNo"
+        <!-- Confirm modal -->
+        <div
+          v-if="confirmOpen"
+          class="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm"
         >
-          Cancel
-        </button>
-        <button
-          class="px-3 py-2 rounded bg-blue-600 text-white"
-          @click="confirmYes"
-        >
-          Yes
-        </button>
-      </div>
-    </div>
-  </div>
+          <div class="w-full max-w-md rounded-xl bg-white/10 border border-white/20 p-4 space-y-3 text-white shadow-xl">
+            <div class="text-lg font-semibold">
+              {{ confirmTitle }}
+            </div>
+            <div class="text-sm text-white/80">
+              {{ confirmMessage }}
+            </div>
+            <div class="flex justify-end gap-3">
+              <button
+                class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                @click="confirmNo"
+              >
+                Cancel
+              </button>
+              <button
+                class="px-3 py-2 rounded bg-blue-600 text-white"
+                @click="confirmYes"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-2">
-            <input v-model="form.code" placeholder="Code* (e.g., SAVE20)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
-            <input v-model="form.name" placeholder="Name (optional)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+            <input
+              v-model="form.code"
+              placeholder="Code* (e.g., SAVE20)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
+            <input
+              v-model="form.name"
+              placeholder="Name (optional)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input v-model.number="form.percent_off" type="number" placeholder="Percent off (e.g., 20)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
-            <input v-model.number="form.amount_off" type="number" placeholder="Amount off cents (e.g., 500 = $5)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+            <input
+              v-model.number="form.percent_off"
+              type="number"
+              placeholder="Percent off (e.g., 20)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
+            <input
+              v-model.number="form.amount_off"
+              type="number"
+              placeholder="Amount off cents (e.g., 500 = $5)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <select v-model="form.currency" class="rounded p-2 bg-white/5 border border-white/10">
-              <option value="usd">USD</option>
+            <select
+              v-model="form.currency"
+              class="rounded p-2 bg-white/5 border border-white/10"
+            >
+              <option value="usd">
+                USD
+              </option>
             </select>
-            <select v-model="form.duration" class="rounded p-2 bg-white/5 border border-white/10">
-              <option value="once">Once</option>
-              <option value="repeating">Repeating</option>
-              <option value="forever">Forever</option>
+            <select
+              v-model="form.duration"
+              class="rounded p-2 bg-white/5 border border-white/10"
+            >
+              <option value="once">
+                Once
+              </option>
+              <option value="repeating">
+                Repeating
+              </option>
+              <option value="forever">
+                Forever
+              </option>
             </select>
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input v-model.number="form.duration_in_months" type="number" placeholder="Duration months (if repeating)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
-            <input v-model.number="form.max_redemptions" type="number" placeholder="Max redemptions" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+            <input
+              v-model.number="form.duration_in_months"
+              type="number"
+              placeholder="Duration months (if repeating)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
+            <input
+              v-model.number="form.max_redemptions"
+              type="number"
+              placeholder="Max redemptions"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input v-model="form.expires_at" type="date" class="rounded p-2 bg-white/5 border border-white/10">
-            <input v-model="form.priceId" placeholder="Restrict to priceId (optional)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+            <input
+              v-model="form.expires_at"
+              type="date"
+              class="rounded p-2 bg-white/5 border border-white/10"
+            >
+            <input
+              v-model="form.priceId"
+              placeholder="Restrict to priceId (optional)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
           </div>
           <div>
-            <input v-model="form.productsCsv" placeholder="Restrict to product IDs (comma-separated)" class="w-full rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+            <input
+              v-model="form.productsCsv"
+              placeholder="Restrict to product IDs (comma-separated)"
+              class="w-full rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
           </div>
           <div class="text-right">
             <button
@@ -77,7 +131,10 @@
               {{ creating ? 'Creating…' : 'Create code' }}
             </button>
           </div>
-          <div v-if="error" class="text-sm text-red-300">
+          <div
+            v-if="error"
+            class="text-sm text-red-300"
+          >
             {{ error }}
           </div>
         </div>
@@ -108,18 +165,38 @@
                 class="px-3 py-2 text-sm text-white/80 hover:bg-white/10 cursor-pointer"
                 @click="selectEmail(u)"
               >
-                {{ u.email }} <span v-if="u.name" class="text-white/60">({{ u.name }})</span>
+                {{ u.email }} <span
+                  v-if="u.name"
+                  class="text-white/60"
+                >({{ u.name }})</span>
               </div>
             </div>
           </div>
           <div class="pt-1">
-            <input v-model="credit.customerId" placeholder="Stripe customer ID (optional)" class="rounded p-2 bg-white/5 border border-white/10 w-full placeholder:text-gray-400">
+            <input
+              v-model="credit.customerId"
+              placeholder="Stripe customer ID (optional)"
+              class="rounded p-2 bg-white/5 border border-white/10 w-full placeholder:text-gray-400"
+            >
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input v-model.number="credit.amount" type="number" placeholder="Amount (dollars)" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
-            <input v-model="credit.currency" placeholder="Currency" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+            <input
+              v-model.number="credit.amount"
+              type="number"
+              placeholder="Amount (dollars)"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
+            <input
+              v-model="credit.currency"
+              placeholder="Currency"
+              class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+            >
           </div>
-          <input v-model="credit.description" placeholder="Description" class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400">
+          <input
+            v-model="credit.description"
+            placeholder="Description"
+            class="rounded p-2 bg-white/5 border border-white/10 placeholder:text-gray-400"
+          >
           <div class="text-right">
             <button
               class="px-4 py-2 rounded bg-emerald-600 text-white"
@@ -129,7 +206,10 @@
               {{ issuingCredit ? 'Issuing…' : 'Issue credit' }}
             </button>
           </div>
-          <div v-if="creditError" class="text-sm text-red-300">
+          <div
+            v-if="creditError"
+            class="text-sm text-red-300"
+          >
             {{ creditError }}
           </div>
         </div>
@@ -139,8 +219,12 @@
     <div class="p-4 rounded-2xl bg-white/6 border border-white/10">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div class="space-y-0.5">
-          <h2 class="text-lg font-medium">Promotion codes</h2>
-          <p class="text-sm text-white/70">Filter by status, search, and manage state.</p>
+          <h2 class="text-lg font-medium">
+            Promotion codes
+          </h2>
+          <p class="text-sm text-white/70">
+            Filter by status, search, and manage state.
+          </p>
         </div>
         <div class="flex items-center gap-2 text-sm text-white/70">
           <select
@@ -148,9 +232,15 @@
             class="rounded bg-white/10 border border-white/20 px-2 py-1 text-sm"
             @change="loadCodes"
           >
-            <option value="all">All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">
+              All
+            </option>
+            <option value="active">
+              Active
+            </option>
+            <option value="inactive">
+              Inactive
+            </option>
           </select>
           <input
             v-model="filterQuery"
@@ -172,8 +262,18 @@
               fill="none"
               stroke="currentColor"
             >
-              <path d="M21 12a9 9 0 1 1-9-9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M21 3v6h-6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path
+                d="M21 12a9 9 0 1 1-9-9"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M21 3v6h-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
             <svg
               v-else
@@ -182,8 +282,20 @@
               viewBox="0 0 24 24"
               fill="none"
             >
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-opacity="0.25" />
-              <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-opacity="0.25"
+              />
+              <path
+                d="M22 12a10 10 0 0 1-10 10"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
             </svg>
           </button>
           <div>
@@ -191,22 +303,43 @@
           </div>
         </div>
       </div>
-      <div v-if="loadingCodes" class="text-white/70">
+      <div
+        v-if="loadingCodes"
+        class="text-white/70"
+      >
         Loading…
       </div>
-      <div v-else-if="!filteredCodes.length" class="text-white/60">
+      <div
+        v-else-if="!filteredCodes.length"
+        class="text-white/60"
+      >
         No promotion codes found.
       </div>
-      <div v-else class="overflow-x-auto">
+      <div
+        v-else
+        class="overflow-x-auto"
+      >
         <table class="min-w-full text-sm">
           <thead class="text-left text-white/70">
             <tr>
-              <th class="px-3 py-2">Code</th>
-              <th class="px-3 py-2">Coupon</th>
-              <th class="px-3 py-2">Status</th>
-              <th class="px-3 py-2">Redemptions</th>
-              <th class="px-3 py-2">Expires</th>
-              <th class="px-3 py-2 text-right">Actions</th>
+              <th class="px-3 py-2">
+                Code
+              </th>
+              <th class="px-3 py-2">
+                Coupon
+              </th>
+              <th class="px-3 py-2">
+                Status
+              </th>
+              <th class="px-3 py-2">
+                Redemptions
+              </th>
+              <th class="px-3 py-2">
+                Expires
+              </th>
+              <th class="px-3 py-2 text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -263,8 +396,12 @@
     <div class="p-4 rounded-2xl bg-white/6 border border-white/10 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="space-y-0.5">
-          <h2 class="text-lg font-medium">Webhook events</h2>
-          <p class="text-sm text-white/70">Inspect, filter, and replay Stripe webhook deliveries.</p>
+          <h2 class="text-lg font-medium">
+            Webhook events
+          </h2>
+          <p class="text-sm text-white/70">
+            Inspect, filter, and replay Stripe webhook deliveries.
+          </p>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-sm text-white/80">
           <label class="flex items-center gap-1">
@@ -336,25 +473,60 @@
           class="px-2 py-1 rounded bg-white/10 border border-white/20 text-sm"
           @change="eventsPage=1; loadEvents()"
         >
-          <option :value="10">10</option>
-          <option :value="25">25</option>
-          <option :value="50">50</option>
-          <option :value="100">100</option>
+          <option :value="10">
+            10
+          </option>
+          <option :value="25">
+            25
+          </option>
+          <option :value="50">
+            50
+          </option>
+          <option :value="100">
+            100
+          </option>
         </select>
       </div>
-      <div v-if="eventsLoading" class="text-white/70">Loading events…</div>
-      <div v-else-if="!webhookEvents.length" class="text-white/60">No events found.</div>
-      <div v-else class="overflow-x-auto">
+      <div
+        v-if="eventsLoading"
+        class="text-white/70"
+      >
+        Loading events…
+      </div>
+      <div
+        v-else-if="!webhookEvents.length"
+        class="text-white/60"
+      >
+        No events found.
+      </div>
+      <div
+        v-else
+        class="overflow-x-auto"
+      >
         <table class="min-w-full text-sm">
           <thead class="text-left text-white/70">
             <tr>
-              <th class="px-3 py-2">Type</th>
-              <th class="px-3 py-2">Status</th>
-              <th class="px-3 py-2">Project</th>
-              <th class="px-3 py-2">Received</th>
-              <th class="px-3 py-2">Attempts</th>
-              <th class="px-3 py-2">Event ID</th>
-              <th class="px-3 py-2 text-right">Actions</th>
+              <th class="px-3 py-2">
+                Type
+              </th>
+              <th class="px-3 py-2">
+                Status
+              </th>
+              <th class="px-3 py-2">
+                Project
+              </th>
+              <th class="px-3 py-2">
+                Received
+              </th>
+              <th class="px-3 py-2">
+                Attempts
+              </th>
+              <th class="px-3 py-2">
+                Event ID
+              </th>
+              <th class="px-3 py-2 text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -363,7 +535,9 @@
               :key="ev.eventId"
               class="border-t border-white/10"
             >
-              <td class="px-3 py-2 text-white">{{ ev.type }}</td>
+              <td class="px-3 py-2 text-white">
+                {{ ev.type }}
+              </td>
               <td class="px-3 py-2">
                 <span :class="ev.status === 'failed' ? 'text-red-300' : ev.status === 'processed' ? 'text-emerald-300' : 'text-white/80'">
                   {{ ev.status }}
@@ -394,12 +568,17 @@
           </tbody>
         </table>
       </div>
-      <div v-if="eventsError" class="text-sm text-red-300">
+      <div
+        v-if="eventsError"
+        class="text-sm text-red-300"
+      >
         {{ eventsError }}
       </div>
 
       <div class="pt-2 border-t border-white/10">
-        <h3 class="text-base font-semibold mb-2">Backfill invoices/charges</h3>
+        <h3 class="text-base font-semibold mb-2">
+          Backfill invoices/charges
+        </h3>
         <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
           <input
             v-model="backfillProjectId"
@@ -413,7 +592,10 @@
           >
             {{ backfilling ? 'Backfilling…' : 'Backfill now' }}
           </button>
-          <div v-if="backfillResult" class="text-sm text-white/80">
+          <div
+            v-if="backfillResult"
+            class="text-sm text-white/80"
+          >
             {{ backfillResult }}
           </div>
         </div>

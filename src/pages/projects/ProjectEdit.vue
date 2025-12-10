@@ -66,15 +66,24 @@
         </div>
 
         <!-- Subscription diagnostics: show Stripe publishable key detection -->
-        <div v-if="activeTab === 'subscription'" class="mb-3">
+        <div
+          v-if="activeTab === 'subscription'"
+          class="mb-3"
+        >
           <div class="rounded p-3 bg-white/5 border border-white/10 text-sm">
             <div class="flex items-center gap-2">
               <span class="i">💳</span>
               <div>
-                <div v-if="stripeKeyPresent" class="text-white/80">
+                <div
+                  v-if="stripeKeyPresent"
+                  class="text-white/80"
+                >
                   Stripe publishable key detected.
                 </div>
-                <div v-else class="text-amber-300">
+                <div
+                  v-else
+                  class="text-amber-300"
+                >
                   Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY).
                 </div>
               </div>
@@ -91,8 +100,12 @@
           >
             <Spinner />
             <div>
-              <p class="text-sm uppercase tracking-wide">Loading project…</p>
-              <p class="text-xs text-white/60">Fetching project details</p>
+              <p class="text-sm uppercase tracking-wide">
+                Loading project…
+              </p>
+              <p class="text-xs text-white/60">
+                Fetching project details
+              </p>
             </div>
           </div>
           <div v-else>
@@ -547,10 +560,16 @@
                 Subscription
               </h3>
               <div class="space-y-6">
-                <div v-if="billingLoading" class="text-white/70">
+                <div
+                  v-if="billingLoading"
+                  class="text-white/70"
+                >
                   Loading billing…
                 </div>
-                <div v-if="billingError" class="text-red-300 text-sm">
+                <div
+                  v-if="billingError"
+                  class="text-red-300 text-sm"
+                >
                   {{ billingError }}
                 </div>
                 <h2 class="text-xl font-semibold">
@@ -584,12 +603,18 @@
                 <div class="p-4 rounded-lg border">
                   <p>
                     <strong>Status:</strong> {{ status }}
-                    <span v-if="billingSummary?.updatedAt" class="ml-2 text-xs text-white/60">• Last updated: {{ new Date(billingSummary.updatedAt).toLocaleString() }}</span>
+                    <span
+                      v-if="billingSummary?.updatedAt"
+                      class="ml-2 text-xs text-white/60"
+                    >• Last updated: {{ new Date(billingSummary.updatedAt).toLocaleString() }}</span>
                   </p>
                   <p class="mt-2">
                     <strong>Plan:</strong> {{ planLabel }}
                   </p>
-                  <p v-if="billingSummary?.promotion" class="mt-2 text-sm text-white/80">
+                  <p
+                    v-if="billingSummary?.promotion"
+                    class="mt-2 text-sm text-white/80"
+                  >
                     <strong>Discount:</strong>
                     <span>
                       <template v-if="billingSummary.promotion.percentOff">
@@ -767,14 +792,14 @@
                     >
                       Remove promotion
                     </button>
-                      <button
-                        class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
-                        :disabled="loading"
-                        @click="resetFeaturesToPlanDefaults"
-                        :title="'Reset this project\'s features to the current plan defaults'"
-                      >
-                        Reset features to plan defaults
-                      </button>
+                    <button
+                      class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                      :disabled="loading"
+                      :title="'Reset this project\'s features to the current plan defaults'"
+                      @click="resetFeaturesToPlanDefaults"
+                    >
+                      Reset features to plan defaults
+                    </button>
                   </div>
 
                   <div
@@ -813,7 +838,9 @@
                   </div>
 
                   <div class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10">
-                    <div class="font-semibold mb-1">Upcoming invoice</div>
+                    <div class="font-semibold mb-1">
+                      Upcoming invoice
+                    </div>
                     <div>
                       <template v-if="billingSummary?.upcomingInvoice && billingSummary.upcomingInvoice.amount_due != null">
                         Estimated total: ${{ (billingSummary.upcomingInvoice.amount_due / 100).toFixed(2) }} {{ (billingSummary.upcomingInvoice.currency || 'usd').toUpperCase() }}

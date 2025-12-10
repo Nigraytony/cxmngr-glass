@@ -461,11 +461,19 @@
       </div>
     </div>
 
-    <div v-if="loading" class="rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 min-w-0 flex flex-col items-center justify-center text-white/70">
+    <div
+      v-if="loading"
+      class="rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 min-w-0 flex flex-col items-center justify-center text-white/70"
+    >
       <Spinner />
-      <p class="mt-3 text-sm uppercase tracking-wide">Loading issues…</p>
+      <p class="mt-3 text-sm uppercase tracking-wide">
+        Loading issues…
+      </p>
     </div>
-    <div v-else class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0">
+    <div
+      v-else
+      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0"
+    >
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80">
           <div class="text-lg font-semibold">

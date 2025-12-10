@@ -1,10 +1,10 @@
 <template>
-<header
-  class="h-12 px-4 grid grid-cols-3 items-center w-full overflow-x-hidden
+  <header
+    class="h-12 px-4 grid grid-cols-3 items-center w-full overflow-x-hidden
          bg-white/10 dark:bg-white/10 backdrop-blur-xl
          border-b border-white/20 ring-1 ring-white/10
          shadow-[0_10px_40px_rgba(0,0,0,0.25)]"
->
+  >
     <!-- Left: menu + client logo -->
     <div class="flex items-center gap-3 min-w-0">
       <button

@@ -46,10 +46,9 @@ export interface User {
   };
 }
 
-import { getApiBase } from '../utils/api'
 import http from '../utils/http'
 import { getAuthHeaders } from '../utils/auth'
-const API_BASE = `${getApiBase()}/api/users`;
+// API_BASE not used; rely on relative endpoints
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
@@ -279,7 +278,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return { success: false, error: 'Not authenticated' };
     try {
       // Server expects { email, currentPassword, newPassword }
-      const res = await http.post('/api/users/change-password', { email: user.value.email, currentPassword, newPassword }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+      await http.post('/api/users/change-password', { email: user.value.email, currentPassword, newPassword }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
       return { success: true }
     } catch (e: any) {
       error.value = e?.response?.data?.error || e?.response?.data?.message || 'Failed to change password'

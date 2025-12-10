@@ -17,9 +17,21 @@
     <!-- toolbar below breadcrumbs (search first) -->
     <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
       <!-- Error banner for plan guard or missing project -->
-      <div v-if="spacesStore.errorCode" class="w-full">
+      <div
+        v-if="spacesStore.errorCode"
+        class="w-full"
+      >
         <div class="rounded-md border border-white/20 bg-red-500/20 text-red-100 px-3 py-2 text-sm inline-flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11.5a.75.75 0 011.5 0v5a.75.75 0 01-1.5 0v-5zm.75 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          ><path
+            fill-rule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11.5a.75.75 0 011.5 0v5a.75.75 0 01-1.5 0v-5zm.75 8a1 1 0 100-2 1 1 0 000 2z"
+            clip-rule="evenodd"
+          /></svg>
           <span v-if="spacesStore.errorCode === 'PROJECT_NOT_FOUND'">Selected project not found. Please reselect a project.</span>
           <span v-else-if="spacesStore.errorCode === 'FEATURE_NOT_IN_PLAN'">Spaces are not available on your current subscription plan.</span>
           <span v-else>{{ spacesStore.error || 'Unable to load spaces.' }}</span>
@@ -830,7 +842,6 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
-import { getApiBase } from '../../utils/api'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
@@ -887,24 +898,10 @@ function spaceParentChainLabelById(spaceId?: string | null) {
   }
 }
 
-const searchMode = computed(() => {
-  try {
-    const p: any = projectStore.currentProject || null
-    const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
-    return m || 'substring'
-  } catch (e) { return 'substring' }
-})
-
-function fuzzyMatch(text: string, pattern: string) {
-  let pi = 0
-  for (let i = 0; i < text.length && pi < pattern.length; i++) {
-    if (text[i] === pattern[pi]) pi++
-  }
-  return pi === pattern.length
-}
+// Removed unused search mode and fuzzyMatch utilities
 
 // Debounce helper (small local utility)
-function debounce(fn: Function, wait = 200) {
+function debounce(fn: (...args: any[]) => void, wait = 200) {
   let t: any
   return (...args: any[]) => {
     clearTimeout(t)
@@ -1030,8 +1027,6 @@ const pageStart = computed(() => {
 const pageEnd = computed(() => Math.min(pageStart.value + pageSize.value, totalFiltered.value))
 const paged = computed(() => {
   const list = sorted.value || []
-  const total = Number(serverTotal.value || 0)
-  const pageLen = Array.isArray(serverSpaces.value) ? serverSpaces.value.length : 0
   // Server always returns a page slice; just return the list
   return list
 })

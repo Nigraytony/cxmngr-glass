@@ -65,9 +65,26 @@
             aria-label="Settings"
             @click="showSettingsModal = true"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z" stroke-width="1.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.35 17.3l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.67 0 1.26-.39 1.51-1a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.2.69 1.82.33.4-.2.8-.3 1.24-.3H12a1.65 1.65 0 0 0 1.24.3c.62.36 1.32.17 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.2.4-.3.8-.3 1.24V9c.3.7.96 1.2 1.66 1.2h.09a2 2 0 1 1 0 4h-.09c-.7 0-1.36.5-1.66 1.2v.3c.02.41.14.81.34 1.2z" stroke-width="1"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            ><path
+              d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"
+              stroke-width="1.5"
+            /><path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.35 17.3l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.67 0 1.26-.39 1.51-1a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.2.69 1.82.33.4-.2.8-.3 1.24-.3H12a1.65 1.65 0 0 0 1.24.3c.62.36 1.32.17 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.2.4-.3.8-.3 1.24V9c.3.7.96 1.2 1.66 1.2h.09a2 2 0 1 1 0 4h-.09c-.7 0-1.36.5-1.66 1.2v.3c.02.41.14.81.34 1.2z"
+              stroke-width="1"
+            /></svg>
           </button>
-          <div role="tooltip" class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100">Settings</div>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Settings
+          </div>
         </div>
       </div>
       <div class="ml-2">
@@ -165,7 +182,9 @@
         class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/70 flex flex-col items-center justify-center"
       >
         <Spinner />
-        <p class="mt-3 text-sm uppercase tracking-wide">Loading tasks…</p>
+        <p class="mt-3 text-sm uppercase tracking-wide">
+          Loading tasks…
+        </p>
       </div>
       <div v-else>
         <div
@@ -195,7 +214,10 @@
                   <th class="text-left px-3 py-2">
                     Finish
                   </th>
-                  <th v-if="showCostColumn" class="text-left px-3 py-2">
+                  <th
+                    v-if="showCostColumn"
+                    class="text-left px-3 py-2"
+                  >
                     Cost
                   </th>
                   <th class="text-right px-3 py-2">
@@ -308,7 +330,10 @@
                     <td class="px-3 py-2 align-top">
                       {{ fmt(endVal(t)) }}
                     </td>
-                    <td v-if="showCostColumn" class="px-3 py-2 align-top">
+                    <td
+                      v-if="showCostColumn"
+                      class="px-3 py-2 align-top"
+                    >
                       <div>{{ formatCurrency(costVal(t)) }}</div>
                     </td>
                     <td class="px-3 py-2 text-right">
@@ -414,7 +439,9 @@
       panel-class="max-w-md"
     >
       <template #header>
-        <div class="text-lg font-semibold text-white">Confirm deletion</div>
+        <div class="text-lg font-semibold text-white">
+          Confirm deletion
+        </div>
       </template>
 
       <div class="text-white/90">
@@ -462,15 +489,28 @@
         @cancel="onEditCancel"
       />
     </Modal>
-    <Modal v-model="showSettingsModal" panel-class="max-w-md">
+    <Modal
+      v-model="showSettingsModal"
+      panel-class="max-w-md"
+    >
       <template #header>
-        <div class="text-lg font-semibold text-white">Settings</div>
+        <div class="text-lg font-semibold text-white">
+          Settings
+        </div>
       </template>
       <div class="text-white/90 space-y-3">
-        <div v-if="isAdmin" class="space-y-4">
+        <div
+          v-if="isAdmin"
+          class="space-y-4"
+        >
           <div class="flex items-center gap-3">
             <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" class="w-4 h-4" :checked="ui.showCostColumn" @change="(e) => { ui.setShowCostColumn(e.target.checked); ui.showInfo('Settings updated') }" />
+              <input
+                type="checkbox"
+                class="w-4 h-4"
+                :checked="ui.showCostColumn"
+                @change="(e) => { ui.setShowCostColumn(e.target.checked); ui.showInfo('Settings updated') }"
+              >
               <span>Show Cost column</span>
             </label>
           </div>
@@ -488,14 +528,26 @@
                 @blur="persistBillRateSetting"
               >
             </div>
-            <p class="text-xs text-white/60 mt-1">Used when tasks auto-calculate cost as duration × bill rate.</p>
+            <p class="text-xs text-white/60 mt-1">
+              Used when tasks auto-calculate cost as duration × bill rate.
+            </p>
           </div>
         </div>
-        <div v-else class="text-sm text-white/70">Cost column visible to admins only.</div>
+        <div
+          v-else
+          class="text-sm text-white/70"
+        >
+          Cost column visible to admins only.
+        </div>
       </div>
       <template #footer>
         <div class="flex justify-end">
-          <button class="px-3 py-2 rounded bg-white/6 text-white" @click="showSettingsModal = false">Close</button>
+          <button
+            class="px-3 py-2 rounded bg-white/6 text-white"
+            @click="showSettingsModal = false"
+          >
+            Close
+          </button>
         </div>
       </template>
     </Modal>
