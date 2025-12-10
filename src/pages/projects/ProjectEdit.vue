@@ -1,48 +1,7 @@
 <template>
   <section class="space-y-6 relative">
     <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
-
-                    <button
-                      :disabled="planPreviewLoading || !selectedPrice || !hasSubscription || billingSummary?.hasStripe === false"
-                      :title="!selectedPrice
-                        ? 'Select a plan to preview proration'
-                        : (!hasSubscription
-                          ? 'Requires an active subscription'
-                          : (billingSummary?.hasStripe === false
-                            ? 'Stripe not configured on server'
-                            : (planPreviewLoading ? 'Loading preview…' : '')))"
-                    Proration preview requires an active subscription. Click <span class="font-medium">Subscribe</span> to create one.
-                    <button
-                      class="ml-2 px-2 py-1 rounded bg-white/10 border border-white/20 text-xs"
-                      :disabled="reconcileLoading || !canManageBilling"
-                      :title="!canManageBilling ? 'You do not have permission to manage billing' : ''"
-                      @click="handleReconcileSubscription"
-                    >
-                      {{ reconcileLoading ? 'Reconciling…' : 'Fix subscription link' }}
-                    </button>
-                      @click="handlePreviewPlan"
-                    >
-            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
-            @click="activeTab = 'info'"
-          >
-            <span class="i">ℹ️</span>
-            <span>Info</span>
-          </button>
-
-          <button
-            :class="tabClass('team')"
-            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
-                  <div
-                    v-else-if="!hasSubscription"
-                    class="mt-2 text-xs text-white/70"
-                  >
-                    Proration preview requires an active subscription. Click <span class="font-medium">Subscribe</span> to create one.
-                  </div>
-            @click="activeTab = 'team'"
-          >
-            <span class="i">👥</span>
-            <span>Team</span>
-          </button>
+ 
 
           <button
             :class="tabClass('logo')"
