@@ -53,7 +53,7 @@ jobs:
       MONGOMS_VERSION: 7.0.11
       # Override OS detection to a widely available build to avoid 403s
       MONGOMS_OS: ubuntu
-      MONGOMS_OS_VERSION: '22.04'
+      MONGOMS_OS_VERSION: '20.04'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -120,7 +120,7 @@ jobs:
           NODE_ENV: test
           MONGOMS_VERSION: 7.0.11
           MONGOMS_OS: ubuntu
-          MONGOMS_OS_VERSION: '22.04'
+          MONGOMS_OS_VERSION: '20.04'
         run: npm run test:integration
 
   frontend-tests:
