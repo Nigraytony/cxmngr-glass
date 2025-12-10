@@ -47,6 +47,10 @@ jobs:
     defaults:
       run:
         working-directory: backend-api
+    env:
+      # Force mongodb-memory-server to use a MongoDB binary compatible with OpenSSL 3
+      # GitHub runners (Debian bullseye/bookworm) no longer ship libcrypto.so.1.1
+      MONGOMS_VERSION: 7.0.12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -111,6 +115,7 @@ jobs:
       - name: Run backend integration tests
         env:
           NODE_ENV: test
+          MONGOMS_VERSION: 7.0.12
         run: npm run test:integration
 
   frontend-tests:
