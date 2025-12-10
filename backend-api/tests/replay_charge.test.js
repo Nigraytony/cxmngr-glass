@@ -20,7 +20,8 @@ describe('Admin webhook replay - charge event', function () {
     }
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret';
 
-    // Require app after setting MONGODB_URI so it connects to in-memory server
+    // Ensure a fresh app instance so connectMongo() runs after previous tests disconnected
+    try { delete require.cache[require.resolve('../index')]; } catch (e) {}
     app = require('../index');
 
     // Wait for mongoose to connect
@@ -30,7 +31,7 @@ describe('Admin webhook replay - charge event', function () {
         setTimeout(check, 50);
       };
       check();
-      setTimeout(() => reject(new Error('Timed out waiting for mongoose connect')), 5000);
+      setTimeout(() => reject(new Error('Timed out waiting for mongoose connect')), 10000);
     });
 
     WebhookEvent = require('../models/webhookEvent');
