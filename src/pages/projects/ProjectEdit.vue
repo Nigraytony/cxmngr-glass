@@ -1718,7 +1718,6 @@
         </div>
       </div>
     </div>
-  </section>
   <!-- Role Template editor modal -->
   <Modal
     v-model="showRoleModal"
@@ -1887,6 +1886,7 @@
     @close="closePermsModal"
     @saved="onMemberPermissionsSaved"
   />
+  </section>
 </template>
 
 <script setup lang="ts">
