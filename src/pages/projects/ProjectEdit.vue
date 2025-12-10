@@ -65,6 +65,23 @@
           </button>
         </div>
 
+        <!-- Subscription diagnostics: show Stripe publishable key detection -->
+        <div v-if="activeTab === 'subscription'" class="mb-3">
+          <div class="rounded p-3 bg-white/5 border border-white/10 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="i">💳</span>
+              <div>
+                <div v-if="stripeKeyPresent" class="text-white/80">
+                  Stripe publishable key detected.
+                </div>
+                <div v-else class="text-amber-300">
+                  Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY).
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div>
           <div
             v-if="!project"
@@ -1845,6 +1862,19 @@
     @saved="onMemberPermissionsSaved"
   />
 </template>
+
+<script setup>
+import { computed } from 'vue'
+
+const stripeKeyPresent = computed(() => {
+  try {
+    const v = import.meta && import.meta.env && import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+    return !!(v && String(v).length > 0)
+  } catch (e) {
+    return false
+  }
+})
+</script>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
