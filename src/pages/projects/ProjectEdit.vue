@@ -2,16 +2,18 @@
   <section class="space-y-6 relative">
     <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
 
-    <div>
-      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }, { text: 'Edit Project', to: '#' }]" />
-    </div>
-
-    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10">
-      <div class="mt-4">
-        <!-- Top tabs (evenly spaced) -->
-        <div class="flex w-full mb-4 border-b border-white/10 pb-3">
-          <button
-            :class="tabClass('info')"
+                    <button
+                      :disabled="planPreviewLoading || !selectedPrice || !hasSubscription || billingSummary?.hasStripe === false"
+                      :title="!selectedPrice
+                        ? 'Select a plan to preview proration'
+                        : (!hasSubscription
+                          ? 'Requires an active subscription'
+                          : (billingSummary?.hasStripe === false
+                            ? 'Stripe not configured on server'
+                            : (planPreviewLoading ? 'Loading preview…' : '')))"
+                      class="px-4 py-2 rounded border"
+                      @click="handlePreviewPlan"
+                    >
             class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
             @click="activeTab = 'info'"
           >
@@ -22,6 +24,12 @@
           <button
             :class="tabClass('team')"
             class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+                  <div
+                    v-else-if="!hasSubscription"
+                    class="mt-2 text-xs text-white/70"
+                  >
+                    Proration preview requires an active subscription. Click <span class="font-medium">Subscribe</span> to create one.
+                  </div>
             @click="activeTab = 'team'"
           >
             <span class="i">👥</span>
