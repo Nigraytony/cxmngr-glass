@@ -539,6 +539,17 @@
                 <h2 class="text-xl font-semibold">
                   Project Billing
                 </h2>
+                <div
+                  v-if="upgradeFeature"
+                  class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-100"
+                >
+                  <div class="font-semibold">
+                    Upgrade required
+                  </div>
+                  <div class="text-sm mt-1">
+                    To use {{ upgradeFeature }}, please upgrade your plan below.
+                  </div>
+                </div>
 
                 <div
                   v-if="billingSummary?.dunning?.isPastDue || status === 'past_due'"
@@ -554,7 +565,10 @@
                 </div>
 
                 <div class="p-4 rounded-lg border">
-                  <p><strong>Status:</strong> {{ status }}</p>
+                  <p>
+                    <strong>Status:</strong> {{ status }}
+                    <span v-if="billingSummary?.updatedAt" class="ml-2 text-xs text-white/60">• Last updated: {{ new Date(billingSummary.updatedAt).toLocaleString() }}</span>
+                  </p>
                   <p class="mt-2">
                     <strong>Plan:</strong> {{ planLabel }}
                   </p>
@@ -689,15 +703,17 @@
 
                   <div class="mt-4 flex gap-3">
                     <button
-                      :disabled="loading"
+                      :disabled="loading || (hasSubscription && isSamePlanSelected)"
+                      :title="hasSubscription && isSamePlanSelected ? 'Select a different plan to apply changes' : ''"
                       class="px-4 py-2 rounded bg-blue-600 text-white"
                       @click="hasSubscription ? handleChangePlan() : startCheckout"
                     >
-                      {{ loading || planChangeLoading ? '...' : (hasSubscription ? 'Apply plan' : 'Subscribe') }}
+                      {{ loading || planChangeLoading ? '...' : (hasSubscription ? (isSamePlanSelected ? 'Plan is active' : 'Apply plan') : 'Subscribe') }}
                     </button>
 
                     <button
                       :disabled="planPreviewLoading || !selectedPrice"
+                      :title="!selectedPrice ? 'Select a plan to preview proration' : (planPreviewLoading ? 'Loading preview…' : '')"
                       class="px-4 py-2 rounded border"
                       @click="handlePreviewPlan"
                     >
@@ -726,6 +742,22 @@
                     >
                       {{ applyingPromotion ? 'Applying…' : (hasSubscription ? 'Apply to subscription' : 'Use at checkout') }}
                     </button>
+                    <button
+                      v-if="promotionCode"
+                      class="px-3 py-2 rounded border border-white/20 text-sm"
+                      :title="'Clear the pending promotion code'"
+                      @click="promotionCode = ''"
+                    >
+                      Remove promotion
+                    </button>
+                      <button
+                        class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                        :disabled="loading"
+                        @click="resetFeaturesToPlanDefaults"
+                        :title="'Reset this project\'s features to the current plan defaults'"
+                      >
+                        Reset features to plan defaults
+                      </button>
                   </div>
 
                   <div
@@ -760,6 +792,18 @@
                       >
                         -{{ d.amount != null ? (d.amount / 100).toFixed(2) : '' }} {{ (planPreview.currency || 'usd').toUpperCase() }}
                       </span>
+                    </div>
+                  </div>
+
+                  <div class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10">
+                    <div class="font-semibold mb-1">Upcoming invoice</div>
+                    <div>
+                      <template v-if="billingSummary?.upcomingInvoice && billingSummary.upcomingInvoice.amount_due != null">
+                        Estimated total: ${{ (billingSummary.upcomingInvoice.amount_due / 100).toFixed(2) }} {{ (billingSummary.upcomingInvoice.currency || 'usd').toUpperCase() }}
+                      </template>
+                      <template v-else>
+                        Estimated total will appear after changes or near period end.
+                      </template>
                     </div>
                   </div>
                 </div>
@@ -1848,6 +1892,33 @@ const roleTemplatesView = ref([])
 
 // Transactions (invoices/charges) UI state
 const transactions = ref<any[]>([])
+// Feature upgrade prompt from router redirect
+const upgradeFeature = computed(() => {
+  const q = String(route.query.upgrade || '').toLowerCase()
+  return q && ['spaces','equipment','templates','activities','issues','tasks'].includes(q) ? q : ''
+})
+
+// Recommend a plan for a given feature (simple mapping; adjust as needed)
+function recommendPlanForFeature(f) {
+  const key = String(f || '').toLowerCase()
+  // For heavier features like templates and activities, recommend standard; for all others, basic
+  const recommendedTier = (key === 'templates' || key === 'activities') ? 'standard' : 'basic'
+  // Try to resolve to a concrete price id from loaded prices
+  const byKey = (prices.value || []).find(p => String(p.key || '') === recommendedTier)
+  if (byKey) return String(byKey.id)
+  // Fallback: look for a price with matching label/name
+  const byName = (prices.value || []).find(p => String(p.name || p.label || '').toLowerCase().includes(recommendedTier))
+  if (byName) return String(byName.id)
+  // As last resort, pick first available
+  return prices.value && prices.value.length ? String(prices.value[0].id) : ''
+}
+
+// When upgrade feature is present, preselect a recommended plan
+watch(upgradeFeature, (feat) => {
+  if (!feat) return
+  const rec = recommendPlanForFeature(feat)
+  if (rec) selectedPrice.value = rec
+})
 const transactionsPage = ref(1)
 const transactionsPerPage = ref(10)
 const transactionsTotal = ref(0)
@@ -1931,7 +2002,23 @@ async function loadBillingSummary() {
     const data = await fetchBillingSummary(String(pid))
     billingSummary.value = data
     if (data && data.priceId) selectedPrice.value = data.priceId
-    if (data && data.billingAdmin && data.billingAdmin.userId) billingAdminUserId.value = data.billingAdmin.userId
+    // Pre-fill billing admin select with current admin, matching team member id or email
+    if (data && data.billingAdmin) {
+      const currentUid = String(data.billingAdmin.userId || '')
+      const currentEmail = String(data.billingAdmin.email || '')
+      const team = billingAdminOptions.value || []
+      const byId = currentUid ? team.find((m: any) => String(m._id) === currentUid) : null
+      const byEmail = currentEmail ? team.find((m: any) => String(m.email) === currentEmail) : null
+      if (byId && byId._id) {
+        billingAdminUserId.value = String(byId._id)
+      } else if (byEmail && byEmail.email) {
+        billingAdminUserId.value = String(byEmail.email)
+      } else if (currentUid) {
+        billingAdminUserId.value = currentUid
+      } else if (currentEmail) {
+        billingAdminUserId.value = currentEmail
+      }
+    }
     await loadPaymentMethods()
   } catch (e) {
     console.error('loadBillingSummary err', e)
@@ -1945,7 +2032,13 @@ async function handlePreviewPlan() {
   try {
     if (!selectedPrice.value) return
     planPreviewLoading.value = true
-    planPreview.value = await previewPlanChange(String(projectId || project.value?.id || project.value?._id), String(selectedPrice.value))
+    const priceId = resolvePriceId(String(selectedPrice.value))
+    planPreview.value = await previewPlanChange(String(projectId || project.value?.id || project.value?._id), String(priceId))
+    try {
+      if (planPreview.value) {
+        ui.showSuccess('Preview loaded. Plan change may prorate the current invoice.')
+      }
+    } catch (_) { /* ignore toast errors */ }
   } catch (e) {
     console.error('preview plan err', e)
     ui.showError('Failed to preview plan change')
@@ -1958,13 +2051,43 @@ async function handleChangePlan() {
   try {
     if (!selectedPrice.value) return
     planChangeLoading.value = true
-    await changePlan(String(projectId || project.value?.id || project.value?._id), String(selectedPrice.value))
+    const priceId = resolvePriceId(String(selectedPrice.value))
+    // Guardrail: if selection matches current priceId, avoid redundant change
+    const currentId = String(billingSummary.value?.priceId || project.value?.stripePriceId || '')
+    if (currentId && currentId === priceId) {
+      ui.showError('Selected plan is already active')
+      return
+    }
+    await changePlan(String(projectId || project.value?.id || project.value?._id), String(priceId))
     ui.showSuccess('Plan updated')
     await refreshProject()
     await loadBillingSummary()
   } catch (e) {
     console.error('change plan err', e)
     ui.showError(e?.response?.data?.error || 'Failed to change plan')
+  } finally {
+    planChangeLoading.value = false
+  }
+}
+
+// Reset project subscription features to current plan defaults by re-applying the same plan price
+async function resetFeaturesToPlanDefaults() {
+  try {
+    const pid = String(projectId || project.value?.id || project.value?._id)
+    if (!pid) return
+    const priceId = String(billingSummary.value?.priceId || project.value?.stripePriceId || selectedPrice.value || '')
+    if (!priceId) {
+      ui.showError('No active plan to reset features from')
+      return
+    }
+    planChangeLoading.value = true
+    await changePlan(pid, priceId)
+    ui.showSuccess('Features reset to plan defaults')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e) {
+    console.error('reset features err', e)
+    ui.showError(e?.response?.data?.error || 'Failed to reset features')
   } finally {
     planChangeLoading.value = false
   }
@@ -3045,6 +3168,11 @@ async function save() {
 const prices = ref([]);
 const selectedPrice = ref<any>(null);
 const loading = ref(false);
+const isSamePlanSelected = computed(() => {
+  const currentId = String(billingSummary.value?.priceId || project.value?.stripePriceId || '')
+  const sel = selectedPrice.value ? resolvePriceId(String(selectedPrice.value)) : ''
+  return Boolean(currentId && sel && currentId === sel)
+})
 
 const status = computed(() => billingSummary.value?.status || project.value?.stripeSubscriptionStatus || project.value?.status || 'trialing');
 const planLabel = computed(() => {
@@ -3088,6 +3216,23 @@ const selectedPlanDetails = computed(() => {
     features: []
   };
 });
+
+// Ensure any selection resolves to a proper Stripe Price ID
+function resolvePriceId(sel) {
+  const s = String(sel || '').trim();
+  if (!s) return s;
+  if (s.startsWith('price_')) return s;
+  const byId = (prices.value || []).find(x => String(x.id) === s);
+  if (byId && String(byId.priceId || '').startsWith('price_')) return String(byId.priceId);
+  const byKey = (prices.value || []).find(x => String(x.key || '') === s);
+  if (byKey && String(byKey.priceId || '').startsWith('price_')) return String(byKey.priceId);
+  const byMap = planDetailsById.value && planDetailsById.value[s] ? s : null;
+  if (byMap && s.startsWith('price_')) return s;
+  // Fallback: prefer current billingSummary priceId when available
+  if (billingSummary.value && billingSummary.value.priceId) return String(billingSummary.value.priceId);
+  // Otherwise return the original; backend will validate
+  return s;
+}
 
 function resolveCurrentPlanId() {
   if (billingSummary.value?.priceId) return String(billingSummary.value.priceId)
@@ -3155,6 +3300,28 @@ watch(
   (pid) => {
     if (!pid) return
     selectedPrice.value = String(pid)
+  }
+)
+
+// Keep billing admin dropdown pre-filled with current admin from summary
+watch(
+  () => billingSummary.value && billingSummary.value.billingAdmin && (billingSummary.value.billingAdmin.userId || billingSummary.value.billingAdmin.email),
+  (val) => {
+    if (!val) return
+    const currentUid = String(billingSummary.value.billingAdmin.userId || '')
+    const currentEmail = String(billingSummary.value.billingAdmin.email || '')
+    const team = billingAdminOptions.value || []
+    const byId = currentUid ? team.find((m: any) => String(m._id) === currentUid) : null
+    const byEmail = currentEmail ? team.find((m: any) => String(m.email) === currentEmail) : null
+    if (byId && byId._id) {
+      billingAdminUserId.value = String(byId._id)
+    } else if (byEmail && byEmail.email) {
+      billingAdminUserId.value = String(byEmail.email)
+    } else if (currentUid) {
+      billingAdminUserId.value = currentUid
+    } else if (currentEmail) {
+      billingAdminUserId.value = currentEmail
+    }
   }
 )
 
@@ -3248,7 +3415,7 @@ async function startCheckout() {
     
     const { data } = await http.post('/api/stripe/create-checkout-session', {
       projectId: pid,
-      priceId: selectedPrice.value,
+      priceId: resolvePriceId(String(selectedPrice.value)),
       promotionCode: promotionCode.value || undefined,
     }, { headers: getAuthHeaders() });
     if (data && data.url) {

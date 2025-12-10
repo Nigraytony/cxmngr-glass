@@ -268,6 +268,82 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Export equipment as CSV (all records matching filters for a project)
+router.get('/export', auth, requireFeature('equipment'), async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    const filter = { projectId }
+    if (req.query.type) filter.type = req.query.type
+    if (req.query.system) filter.system = req.query.system
+    if (req.query.status) filter.status = req.query.status
+    if (req.query.search) {
+      const s = String(req.query.search).trim()
+      if (s) filter.$or = [
+        { tag: { $regex: s, $options: 'i' } },
+        { title: { $regex: s, $options: 'i' } },
+        { type: { $regex: s, $options: 'i' } },
+        { system: { $regex: s, $options: 'i' } },
+      ]
+    }
+    const items = await Equipment.find(filter).lean()
+    const records = items.map(toPlainEquipment)
+    const headers = ['id','tag','type','title','system','status','spaceId','description','attributes','components','checklists','functionalTests','template','images','attachments','projectId']
+    const sanitizeMedia = (arr) => {
+      if (!Array.isArray(arr)) return []
+      return arr.map(m => {
+        const out = {}
+        if (m && m.filename) out.filename = m.filename
+        if (m && m.url) out.url = m.url
+        if (m && m.caption) out.caption = m.caption
+        return out
+      })
+    }
+    const esc = (val) => {
+      const s = String(val ?? '')
+      const needsQuotes = /[",\n\r]/.test(s) || s.includes(',')
+      const doubled = s.replace(/"/g, '""')
+      return needsQuotes ? `"${doubled}"` : doubled
+    }
+    const rows = []
+    rows.push(headers.join(','))
+    for (const r of records) {
+      const attrsJson = JSON.stringify(r.attributes || r.metadata?.attributes || {})
+      const compsJson = JSON.stringify(r.components || [])
+      const checksJson = JSON.stringify(r.checklists || [])
+      const fptJson = JSON.stringify(r.functionalTests || [])
+      const imgsJson = JSON.stringify(sanitizeMedia(r.images || r.photos || []))
+      const attsJson = JSON.stringify(sanitizeMedia(r.attachments || []))
+      const row = [
+        String(r._id || r.id || ''),
+        String(r.tag || ''),
+        String(r.type || ''),
+        String(r.title || ''),
+        String(r.system || ''),
+        String(r.status || ''),
+        String(r.spaceId || r.space || ''),
+        String(r.description || ''),
+        attrsJson || '',
+        compsJson || '',
+        checksJson || '',
+        fptJson || '',
+        String(r.template || ''),
+        imgsJson || '',
+        attsJson || '',
+        String(r.projectId || ''),
+      ]
+      rows.push(row.map(esc).join(','))
+    }
+    const csv = '\ufeff' + rows.join('\r\n')
+    res.setHeader('Content-Type', 'text/csv;charset=utf-8')
+    res.setHeader('Content-Disposition', 'attachment; filename="equipment-export.csv"')
+    return res.status(200).send(csv)
+  } catch (error) {
+    console.error('[equipment/export] error', error)
+    return res.status(500).send({ error: 'Failed to export equipment' })
+  }
+})
+
 // Read all equipment by project ID (light projection)
 router.get('/project/:projectId', auth, async (req, res) => {
   try {

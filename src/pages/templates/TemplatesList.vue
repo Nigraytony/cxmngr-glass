@@ -16,6 +16,15 @@
 
     <!-- toolbar -->
     <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
+      <!-- Error banner for plan guard or missing project -->
+      <div v-if="templatesStore.errorCode" class="w-full">
+        <div class="rounded-md border border-white/20 bg-red-500/20 text-red-100 px-3 py-2 text-sm inline-flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11.5a.75.75 0 011.5 0v5a.75.75 0 01-1.5 0v-5zm.75 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+          <span v-if="templatesStore.errorCode === 'PROJECT_NOT_FOUND'">Selected project not found. Please reselect a project.</span>
+          <span v-else-if="templatesStore.errorCode === 'FEATURE_NOT_IN_PLAN'">Templates are not available on your current subscription plan.</span>
+          <span v-else>{{ templatesStore.error || 'Unable to load templates.' }}</span>
+        </div>
+      </div>
       <div class="relative inline-block group">
         <button
           :disabled="!projectStore.currentProjectId"

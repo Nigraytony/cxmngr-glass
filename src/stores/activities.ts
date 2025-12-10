@@ -47,6 +47,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   const current = ref<Activity | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const errorCode = ref<string | null>(null)
 
   function normalize(a: any): Activity & any {
     if (!a) return a
@@ -64,6 +65,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   async function fetchActivities(projectId?: string) {
     loading.value = true
     error.value = null
+    errorCode.value = null
     try {
       // determine projectId: explicit param wins, otherwise use project store, otherwise localStorage
       const projectStore = useProjectStore()
@@ -84,9 +86,17 @@ export const useActivitiesStore = defineStore('activities', () => {
       if (e?.response?.status === 403 && (e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN')) {
         activities.value = []
         error.value = null
+        errorCode.value = 'FEATURE_NOT_IN_PLAN'
+        return activities.value
+      }
+      if (e?.response?.status === 404 && (e?.response?.data?.code === 'PROJECT_NOT_FOUND')) {
+        activities.value = []
+        error.value = 'Project not found'
+        errorCode.value = 'PROJECT_NOT_FOUND'
         return activities.value
       }
       error.value = e.message || 'Failed to fetch activities'
+      errorCode.value = e?.response?.data?.code || null
       activities.value = []
       throw e
     } finally {
@@ -273,5 +283,5 @@ export const useActivitiesStore = defineStore('activities', () => {
     }
   }
 
-  return { activities, current, loading, error, fetchActivities, fetchActivity, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
+  return { activities, current, loading, error, errorCode, fetchActivities, fetchActivity, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
 })

@@ -2866,11 +2866,16 @@ async function load() {
   loading.value = true
   try {
     if (!id.value) return
-    const eq = await equipmentStore.fetchOne(id.value)
+    // Fetch full equipment including checklists/functionalTests (use includePhotos to avoid field exclusion)
+    const { data } = await http.get(`/api/equipment/${id.value}`, {
+      params: { includePhotos: true },
+      headers: { ...getAuthHeaders() }
+    })
+    const eq = data || (await equipmentStore.fetchOne(id.value))
     if (eq) {
-      form.value = { ...eq }
+      form.value = { ...eq, id: (eq as any)._id || (eq as any).id || id.value }
       // photos are not fetched by default; reset flag so Photos tab can fetch when opened
-      photosLoaded.value = Array.isArray(eq.photos) && eq.photos.some((p: any) => p && p.data)
+      photosLoaded.value = Array.isArray((eq as any).photos) && (eq as any).photos.some((p: any) => p && p.data)
       issuesLoaded.value = false
       componentsLoaded.value = false
       // ensure project id present for later saves

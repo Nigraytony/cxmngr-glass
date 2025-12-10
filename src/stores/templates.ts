@@ -56,6 +56,7 @@ export const useTemplatesStore = defineStore('templates', () => {
   const items = ref<Template[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const errorCode = ref<string | null>(null)
 
   const byId = computed<Record<string, Template>>(() => {
     const m: Record<string, Template> = {}
@@ -70,11 +71,25 @@ export const useTemplatesStore = defineStore('templates', () => {
     if (!projectId) { items.value = []; return }
     loading.value = true
     error.value = null
+    errorCode.value = null
     try {
       const { data } = await axios.get(`${API_BASE}/project/${projectId}`, { headers: getAuthHeaders() })
       items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
     } catch (e: any) {
+      if (e?.response?.status === 403 && (e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN')) {
+        items.value = []
+        error.value = null
+        errorCode.value = 'FEATURE_NOT_IN_PLAN'
+        return
+      }
+      if (e?.response?.status === 404 && (e?.response?.data?.code === 'PROJECT_NOT_FOUND')) {
+        items.value = []
+        error.value = 'Project not found'
+        errorCode.value = 'PROJECT_NOT_FOUND'
+        return
+      }
       error.value = e?.response?.data?.error || e?.message || 'Failed to load templates'
+      errorCode.value = e?.response?.data?.code || null
       items.value = []
     } finally {
       loading.value = false
@@ -293,4 +308,5 @@ export const useTemplatesStore = defineStore('templates', () => {
   }
 
   return { items, loading, error, byId, fetchByProject, fetchOne, create, update, updateFields, updateComponents, remove, duplicate }
+  return { items, loading, error, errorCode, byId, fetchByProject, fetchOne, create, update, updateFields, updateComponents, remove }
 })

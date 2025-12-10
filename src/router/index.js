@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useProjectStore } from '../stores/project'
+import { useUiStore } from '../stores/ui'
+import http from '../utils/http'
 
 const Login = () => import('../pages/auth/Login.vue')
 const Register = () => import('../pages/auth/Register.vue')
@@ -71,11 +73,43 @@ const router = createRouter({
   routes,
 })
 
-// Plan feature map (aligned with backend plans.js)
-const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
-  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
-  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+// Dynamic plan feature map fetched from backend /api/plans
+let PLAN_FEATURES = null
+let plansFetchInFlight = null
+async function ensurePlansLoaded() {
+  if (PLAN_FEATURES && Object.keys(PLAN_FEATURES).length > 0) return PLAN_FEATURES
+  if (plansFetchInFlight) return plansFetchInFlight
+  plansFetchInFlight = (async () => {
+    try {
+      const { data } = await http.get('/api/plans')
+      const arr = Array.isArray(data) ? data : []
+      const map = {}
+      for (const p of arr) {
+        const key = String(p.key || '').toLowerCase()
+        const feats = p && p.features && typeof p.features === 'object' ? p.features : {}
+        if (!key) continue
+        map[key] = {}
+        for (const [fk, fv] of Object.entries(feats)) {
+          const normK = String(fk || '').toLowerCase()
+          const on = fv === true || fv === 'true' || fv === 1
+          map[key][normK] = on
+        }
+      }
+      PLAN_FEATURES = map
+      return PLAN_FEATURES
+    } catch (e) {
+      // Fallback to sensible defaults if fetch fails
+      PLAN_FEATURES = {
+        basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+        standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: false },
+        premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+      }
+      return PLAN_FEATURES
+    } finally {
+      plansFetchInFlight = null
+    }
+  })()
+  return plansFetchInFlight
 }
 
 function normalizeFeatureFlags(raw) {
@@ -93,6 +127,9 @@ function normalizeFeatureFlags(raw) {
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const projectStore = useProjectStore()
+  const ui = useUiStore()
+    // Ensure plans are loaded for gating decisions
+    try { await ensurePlansLoaded() } catch (e) { /* ignore gating init errors */ }
   // wait briefly for auth bootstrap to complete so guards don't flash unauthenticated
   try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) { /* ignore auth bootstrap timeout */ }
 
@@ -123,12 +160,16 @@ router.beforeEach(async (to) => {
     if (names.includes(routeName)) { featureKey = k; break }
   }
   if (featureKey) {
-    const flags = normalizeFeatureFlags(projectStore.currentProject?.subscriptionFeatures)
-    if (Object.keys(flags).length === 0) {
-      const tier = (projectStore.currentProject?.subscriptionTier || projectStore.currentProject?.subscription || '').toLowerCase()
-      if (tier && PLAN_FEATURES[tier]) Object.assign(flags, PLAN_FEATURES[tier])
+    const userFlags = normalizeFeatureFlags(projectStore.currentProject?.subscriptionFeatures)
+    const tier = (projectStore.currentProject?.subscriptionTier || projectStore.currentProject?.subscription || '').toLowerCase()
+    const tierFlags = (tier && PLAN_FEATURES && PLAN_FEATURES[tier]) ? PLAN_FEATURES[tier] : {}
+    // Merge: tier defaults first, then project-specific overrides
+    const flags = { ...tierFlags, ...userFlags }
+    if (flags && flags[featureKey] === false) {
+      const featureName = featureKey.charAt(0).toUpperCase() + featureKey.slice(1)
+      ui.showWarning(`${featureName} is not available on your current plan. Upgrade to access it.`, { duration: 4000 })
+      return { name: 'project-settings', query: { tab: 'subscription', upgrade: featureKey } }
     }
-    if (flags && flags[featureKey] === false) return { name: 'dashboard' }
   }
 })
 

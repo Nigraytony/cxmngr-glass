@@ -10,14 +10,15 @@ function getPlansArray() {
 function getPlan(project) {
   const list = getPlansArray()
   if (!project) return list[0]
-  const tier = String(project.subscriptionTier || '').toLowerCase()
-  const byTier = list.find(p => String(p.key || '').toLowerCase() === tier)
-  if (byTier) return byTier
+  // Prefer Stripe price mapping first (source of truth), then fall back to tier
   const priceId = project.stripePriceId || project.priceId
   if (priceId) {
     const byPrice = list.find(p => p.priceId === priceId)
     if (byPrice) return byPrice
   }
+  const tier = String(project.subscriptionTier || '').toLowerCase()
+  const byTier = list.find(p => String(p.key || '').toLowerCase() === tier)
+  if (byTier) return byTier
   return list[0]
 }
 
@@ -37,10 +38,23 @@ function requireFeature(featureKey) {
       req.body?.id;
     if (!projectId) return res.status(400).json({ error: 'projectId is required', code: 'PROJECT_ID_REQUIRED' })
     const project = await loadProject(projectId)
+    // If the provided projectId does not resolve to a project, return a clear error
+    // instead of silently falling back to the basic plan which can cause confusing 403s.
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND', projectId })
+    }
     const plan = getPlan(project)
     const enabled = plan && plan.features ? plan.features[featureKey] === true : false
     if (!enabled) {
-      return res.status(403).json({ error: `Feature not available on current plan: ${featureKey}`, code: 'FEATURE_NOT_IN_PLAN', feature: featureKey, tier: project?.subscriptionTier || 'basic' })
+      return res.status(403).json({
+        error: `Feature not available on current plan: ${featureKey}`,
+        code: 'FEATURE_NOT_IN_PLAN',
+        feature: featureKey,
+        tier: project?.subscriptionTier || 'unknown',
+        resolvedPlanKey: plan?.key || 'unknown',
+        resolvedPriceId: plan?.priceId || null,
+        projectStripePriceId: project?.stripePriceId || null,
+      })
     }
     return next()
   }

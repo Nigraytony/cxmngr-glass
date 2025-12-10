@@ -29,6 +29,7 @@ export const useSpacesStore = defineStore('spaces', () => {
   const items = ref<Space[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const errorCode = ref<string | null>(null)
 
   const byId = computed<Record<string, Space>>(() => {
     const m: Record<string, Space> = {}
@@ -48,6 +49,7 @@ export const useSpacesStore = defineStore('spaces', () => {
     }
     loading.value = true
     error.value = null
+    errorCode.value = null
     try {
       const { data } = await axios.get(`${API_BASE}/project/${pid}`, { headers: getAuthHeaders() })
       // Support both legacy array response and new paginated shape { items, total, types, typeCounts }
@@ -60,9 +62,17 @@ export const useSpacesStore = defineStore('spaces', () => {
       if (e?.response?.status === 403 && (e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN')) {
         items.value = []
         error.value = null
+        errorCode.value = 'FEATURE_NOT_IN_PLAN'
+        return
+      }
+      if (e?.response?.status === 404 && (e?.response?.data?.code === 'PROJECT_NOT_FOUND')) {
+        items.value = []
+        error.value = 'Project not found'
+        errorCode.value = 'PROJECT_NOT_FOUND'
         return
       }
       error.value = e?.response?.data?.error || e?.message || 'Failed to load spaces'
+      errorCode.value = e?.response?.data?.code || null
       items.value = []
     } finally {
       loading.value = false
@@ -156,5 +166,5 @@ export const useSpacesStore = defineStore('spaces', () => {
     return roots
   }
 
-  return { items, loading, error, byId, fetchByProject, fetchOne, create, update, remove, buildTree }
+  return { items, loading, error, errorCode, byId, fetchByProject, fetchOne, create, update, remove, buildTree }
 })

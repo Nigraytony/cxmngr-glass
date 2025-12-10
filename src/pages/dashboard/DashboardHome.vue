@@ -446,22 +446,20 @@ function normalizeFeatureFlags(raw) {
   return out
 }
 
-// Plan feature map mirroring backend plans.js (update this if plans change)
-// Align with backend plans.js (all true today)
+// Plan feature map mirroring backend config/plans.js
 const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
-  standard: { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
-  premium:  { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
+  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: false },
+  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
 }
 
 const activeFeatures = computed(() => {
   const proj = projectStore.currentProject || {}
-  const flags = normalizeFeatureFlags(proj.subscriptionFeatures)
-  if (Object.keys(flags).length) return flags
+  const userFlags = normalizeFeatureFlags(proj.subscriptionFeatures)
   const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
-  if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
-  // default: enable all if nothing explicit
-  return { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true }
+  const tierFlags = tier && PLAN_FEATURES[tier] ? PLAN_FEATURES[tier] : {}
+  // Merge: tier defaults first, then project-specific overrides
+  return { ...tierFlags, ...userFlags }
 })
 
 function featureEnabled(key, flagsOverride) {

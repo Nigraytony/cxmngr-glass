@@ -2369,113 +2369,40 @@ function downloadUploadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-function downloadEquipmentList() {
-  const rows = filtered.value
-  // Define headers with rich fields; nested arrays/objects are JSON strings
-  const headers = [
-    'id',
-    'tag',
-    'type',
-    'title',
-    'system',
-    'status',
-    'space',
-    'spaceId',
-    'description',
-    'attributes',
-    'components',
-    'checklists',
-    'functional tests',
-    'template',
-    'images',
-    'attachments',
-    'projectId',
-  ]
-
-  const esc = (val: any) => {
-    const s = String(val ?? '')
-    const needsQuotes = /[",\n\r]/.test(s) || s.includes(',')
-    const doubled = s.replace(/"/g, '""')
-    return needsQuotes ? '"' + doubled + '"' : doubled
+async function downloadEquipmentList() {
+  const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
+  if (!pid) {
+    ui.showError('Select a project first')
+    return
   }
-
-  const sanitizeMediaArray = (arr: any[]) => {
-    if (!Array.isArray(arr)) return []
-    return arr.map((m: any) => {
-      const out: any = {}
-      if (m?.filename) out.filename = m.filename
-      if (m?.url) out.url = m.url
-      if (m?.caption) out.caption = m.caption
-      // Avoid embedding raw data/base64 to keep CSV light
-      return out
+  const params: any = {
+    projectId: pid,
+    search: search.value || '',
+    type: typeFilter.value || '',
+    status: statusFilter.value || '',
+    system: systemFilter.value || '',
+  }
+  try {
+    const res = await http.get('/api/equipment/export', {
+      params,
+      headers: getAuthHeaders(),
+      responseType: 'blob'
     })
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const proj: any = projectStore.currentProject as any
+    const name = String(proj?.title || proj?.name || 'project')
+    const safeName = name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]+/g, '')
+    const today = new Date().toISOString().slice(0, 10)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${safeName}-equipment-${today}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to download equipment')
   }
-
-  const toComponentsJson = (compArr: any[]) => {
-    if (!Array.isArray(compArr)) return undefined
-    return compArr.map((c: any) => ({
-      tag: c?.tag || '',
-      type: c?.type,
-      title: c?.title,
-      attributes: (typeof c?.attributes === 'object' && c?.attributes) ? c.attributes : {},
-      status: c?.status || '',
-      notes: c?.notes || '',
-      issues: Array.isArray(c?.issues) ? c.issues : undefined,
-    }))
-  }
-
-  const toAttributesJson = (attrs: any) => {
-    if (Array.isArray(attrs)) return attrs
-    if (attrs && typeof attrs === 'object') return attrs
-    return undefined
-  }
-
-  const csvRows: string[] = []
-  csvRows.push(headers.join(','))
-
-  for (const e of rows as any[]) {
-    const space = spaceName((e as any).spaceId)
-    const imagesJson = JSON.stringify(sanitizeMediaArray((e as any).images || (e as any).photos || []))
-    const attsJson = JSON.stringify(((e as any).attachments ? sanitizeMediaArray((e as any).attachments) : []))
-    const compsJson = JSON.stringify(toComponentsJson((e as any).components || []))
-    const attrsJson = JSON.stringify(toAttributesJson((e as any).attributes))
-    const checksJson = JSON.stringify((e as any).checklists || [])
-    const ftestsJson = JSON.stringify((e as any).functionalTests || [])
-    const rowVals = [
-      String((e as any).id || (e as any)._id || ''),
-      String((e as any).tag || ''),
-      String((e as any).type || ''),
-      String((e as any).title || ''),
-      String((e as any).system || ''),
-      String((e as any).status || ''),
-      String(space || ''),
-      String((e as any).spaceId || ''),
-      String((e as any).description || ''),
-      attrsJson || '',
-      compsJson || '',
-      checksJson || '',
-      ftestsJson || '',
-      String((e as any).template || ''),
-      imagesJson || '',
-      attsJson || '',
-      String((e as any).projectId || ''),
-    ]
-    csvRows.push(rowVals.map(esc).join(','))
-  }
-
-  const csv = '\ufeff' + csvRows.join('\r\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const proj: any = projectStore.currentProject as any
-  const name = String(proj?.title || proj?.name || 'project')
-  const safeName = name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]+/g, '')
-  const today = new Date().toISOString().slice(0, 10)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${safeName}-equipment-${today}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }
 </script>

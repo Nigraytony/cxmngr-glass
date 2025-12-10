@@ -309,6 +309,16 @@ router.post('/project/:id/change-plan', auth, async (req, res) => {
       nextTrialEnd = nextTrialEnd ? new Date(Math.min(nextTrialEnd.getTime(), incomingTrialEnd.getTime())) : incomingTrialEnd;
     }
 
+    // Determine plan defaults for subscriptionFeatures by matching priceId
+    let planDefaults = null;
+    try {
+      if (Array.isArray(plans)) {
+        const byPrice = plans.find(p => p && p.priceId === priceId);
+        const byKey = !byPrice && updated && updated.items && updated.items.data && updated.items.data[0] && updated.items.data[0].plan && updated.items.data[0].plan.product ? plans.find(p => p && p.key === String(p.key)) : null;
+        planDefaults = (byPrice && byPrice.features) || null;
+      }
+    } catch (e) { /* ignore plan mapping errors */ }
+
     await Project.findByIdAndUpdate(projectId, {
       stripeSubscriptionId: updated.id,
       stripePriceId: priceId,
@@ -319,6 +329,8 @@ router.post('/project/:id/change-plan', auth, async (req, res) => {
       isActive: ['active', 'trialing', 'past_due'].includes(updated.status),
       trialEnd: nextTrialEnd || project.trialEnd || null,
       trialStarted: project.trialStarted || Boolean(updated.trial_end),
+      // Reset subscriptionFeatures to plan defaults unless explicitly preserved by client
+      ...(planDefaults ? { subscriptionFeatures: planDefaults } : {}),
     });
 
     return res.json({ ok: true, status: updated.status, priceId });
