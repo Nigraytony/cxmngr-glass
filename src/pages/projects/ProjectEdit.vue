@@ -703,9 +703,9 @@
 
                   <div class="mt-4 flex gap-3">
                     <button
-                      :disabled="loading || (hasSubscription && isSamePlanSelected)"
-                      :title="hasSubscription && isSamePlanSelected ? 'Select a different plan to apply changes' : ''"
-                      class="px-4 py-2 rounded bg-blue-600 text-white"
+                      :disabled="loading || (hasSubscription && isSamePlanSelected) || !canManageBilling"
+                      :title="!canManageBilling ? 'You do not have permission to manage this project\'s subscription' : (hasSubscription && isSamePlanSelected ? 'Select a different plan to apply changes' : '')"
+                      class="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
                       @click="hasSubscription ? handleChangePlan() : startCheckout"
                     >
                       {{ loading || planChangeLoading ? '...' : (hasSubscription ? (isSamePlanSelected ? 'Plan is active' : 'Apply plan') : 'Subscribe') }}
@@ -3192,6 +3192,28 @@ const planLabel = computed(() => {
   return id || 'No plan'
 });
 const hasSubscription = computed(() => Boolean(billingSummary.value?.subscriptionId || project.value?.stripeSubscriptionId))
+// Frontend permission guard mirroring backend canManageBilling: allow global admins, project billing admin, or team admins
+const canManageBilling = computed(() => {
+  try {
+    const authUser: any = (authStore && (authStore as any).user) ? (authStore as any).user : null
+    const role = authUser?.role || 'user'
+    if (role === 'globaladmin' || role === 'superadmin') return true
+    const p: any = project.value || null
+    if (!p) return false
+    const uid = String(authUser?._id || authUser?.id || '')
+    const email = authUser?.email ? String(authUser.email).toLowerCase() : null
+    if (p.billingAdminUserId && String(p.billingAdminUserId) === uid) return true
+    const team = Array.isArray(p.team) ? p.team : []
+    const member = team.find((t: any) => {
+      if (!t) return false
+      if (t._id && String(t._id) === uid) return true
+      if (t.email && email && String(t.email).toLowerCase() === email) return true
+      return false
+    })
+    if (member && (member.role === 'admin' || member.role === 'globaladmin')) return true
+    return false
+  } catch (e) { return false }
+})
 const billingAdminOptions = computed(() => {
   const team = project.value && Array.isArray(project.value.team) ? project.value.team : []
   return team.filter((m: any) => m && (m._id || m.email))
