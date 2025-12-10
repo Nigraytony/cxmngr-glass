@@ -1,7 +1,23 @@
 <template>
   <section class="space-y-6 relative">
     <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
- 
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      <button
+        :class="tabClass('info')"
+        class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+        @click="activeTab = 'info'"
+      >
+        <span class="i">ℹ️</span>
+        <span>Info</span>
+      </button>
+      <button
+        :class="tabClass('team')"
+        class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+        @click="activeTab = 'team'"
+      >
+        <span class="i">👥</span>
+        <span>Team</span>
+      </button>
 
           <button
             :class="tabClass('logo')"
