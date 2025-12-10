@@ -11,7 +11,15 @@
                           : (billingSummary?.hasStripe === false
                             ? 'Stripe not configured on server'
                             : (planPreviewLoading ? 'Loading preview…' : '')))"
-                      class="px-4 py-2 rounded border"
+                    Proration preview requires an active subscription. Click <span class="font-medium">Subscribe</span> to create one.
+                    <button
+                      class="ml-2 px-2 py-1 rounded bg-white/10 border border-white/20 text-xs"
+                      :disabled="reconcileLoading || !canManageBilling"
+                      :title="!canManageBilling ? 'You do not have permission to manage billing' : ''"
+                      @click="handleReconcileSubscription"
+                    >
+                      {{ reconcileLoading ? 'Reconciling…' : 'Fix subscription link' }}
+                    </button>
                       @click="handlePreviewPlan"
                     >
             class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
@@ -2008,6 +2016,7 @@ const paymentMethodsLoading = ref(false)
 const paymentMethodsError = ref<string | null>(null)
 const promotionCode = ref('')
 const applyingPromotion = ref(false)
+const reconcileLoading = ref(false)
 
 async function loadTransactions() {
   try {
@@ -2272,6 +2281,25 @@ async function handleUpdatePaymentMethod() {
     ui.showError(e?.response?.data?.error || 'Failed to update payment method')
   } finally {
     paymentMethodLoading.value = false
+  }
+}
+
+// Reconcile missing subscriptionId by asking backend to link the latest/active Stripe subscription
+async function handleReconcileSubscription() {
+  try {
+    const pid = String(projectId || project.value?.id || (project.value as any)?._id || '')
+    if (!pid) return
+    reconcileLoading.value = true
+    await http.post(`/api/stripe/project/${pid}/reconcile-subscription`, {}, { headers: getAuthHeaders() })
+    ui.showSuccess('Subscription link reconciled')
+    await refreshProject()
+    await loadBillingSummary()
+  } catch (e: any) {
+    console.error('reconcile-subscription err', e)
+    const msg = (e && e.response && e.response.data && (e.response.data.error || e.response.data.message)) || e?.message || 'Failed to reconcile subscription'
+    ui.showError(String(msg))
+  } finally {
+    reconcileLoading.value = false
   }
 }
 
