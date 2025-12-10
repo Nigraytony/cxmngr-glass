@@ -44,16 +44,20 @@ jobs:
   backend-integration:
     name: Backend integration tests
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval=10s --health-timeout=5s --health-retries=5
     defaults:
       run:
         working-directory: backend-api
     env:
-      # Force mongodb-memory-server to use a MongoDB binary compatible with OpenSSL 3
-      # GitHub runners (Debian bullseye/bookworm) no longer ship libcrypto.so.1.1
-      MONGOMS_VERSION: 7.0.11
-      # Override OS detection to a widely available build to avoid 403s
-      MONGOMS_OS: ubuntu
-      MONGOMS_OS_VERSION: '20.04'
+      # Prefer real MongoDB service in CI to avoid memory-server downloads
+      MONGODB_URI: mongodb://localhost:27017/test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,55 +76,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-backend-node-
 
-      - name: Ensure OpenSSL 1.1 runtime (libcrypto.so.1.1)
-        run: |
-          set -euo pipefail
-          echo "Checking for libcrypto.so.1.1"
-          if ldconfig -p | grep -q "libcrypto.so.1.1"; then
-            echo "libcrypto.so.1.1 already present"
-            exit 0
-          fi
-
-          echo "Attempting to install libssl1.1 via apt"
-          sudo apt-get update
-          if sudo apt-get install -y libssl1.1; then
-            echo "Installed libssl1.1 via apt"
-            exit 0
-          fi
-
-          echo "apt install failed, attempting fallback downloads of libssl1.1 deb"
-          set +e
-          urls=(
-            "https://security.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb"
-            "https://security.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb"
-            "https://archive.ubuntu.com/ubuntu/pool/main/o/openssl1.1/libssl1.1_1.1.1f-1ubuntu2.16_amd64.deb"
-          )
-          for u in "${urls[@]}"; do
-            echo "Trying $u"
-            wget -4 -qO /tmp/libssl1.1.deb "$u"
-            if [ -s /tmp/libssl1.1.deb ]; then
-              sudo dpkg -i /tmp/libssl1.1.deb && sudo apt-get -f install -y && break
-            else
-              echo "download produced empty file, trying next mirror"
-            fi
-          done
-          set -e
-          if ldconfig -p | grep -q "libcrypto.so.1.1"; then
-            echo "libcrypto.so.1.1 is now available"
-          else
-            echo "Warning: libcrypto.so.1.1 not available after attempted installs"
-            echo "MongoDB-memory-server tests may fail on this runner"
-          fi
-
       - name: Install backend dependencies
         run: npm ci
 
       - name: Run backend integration tests
         env:
           NODE_ENV: test
-          MONGOMS_VERSION: 7.0.11
-          MONGOMS_OS: ubuntu
-          MONGOMS_OS_VERSION: '20.04'
+          MONGODB_URI: mongodb://localhost:27017/test
         run: npm run test:integration
 
   frontend-tests:
