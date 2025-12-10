@@ -1863,17 +1863,8 @@
   />
 </template>
 
-<script setup>
-import { computed } from 'vue'
-
-const stripeKeyPresent = computed(() => {
-  try {
-    const v = import.meta && import.meta.env && import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-    return !!(v && String(v).length > 0)
-  } catch (e) {
-    return false
-  }
-})
+<script>
+// existing script continues below; this wrapper ensures only one script block
 </script>
 
 <script setup lang="ts">
@@ -3198,6 +3189,14 @@ async function save() {
 const prices = ref([]);
 const selectedPrice = ref<any>(null);
 const loading = ref(false);
+const stripeKeyPresent = computed(() => {
+  try {
+    const v = import.meta && import.meta.env && import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+    return !!(v && String(v).length > 0)
+  } catch (e) {
+    return false
+  }
+})
 const isSamePlanSelected = computed(() => {
   const currentId = String(billingSummary.value?.priceId || project.value?.stripePriceId || '')
   const sel = selectedPrice.value ? resolvePriceId(String(selectedPrice.value)) : ''
