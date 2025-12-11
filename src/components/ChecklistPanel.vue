@@ -968,7 +968,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, ref } from 'vue'
+import { computed, reactive, watch, ref, onMounted } from 'vue'
 import Modal from './Modal.vue'
 import { confirm as inlineConfirm } from '../utils/confirm'
 import { useAuthStore } from '../stores/auth'
@@ -1053,10 +1053,31 @@ function normalize(v: any): ChecklistSection[] {
   }))
 }
 
-// Filters and search
+// Filters and search (persist per equipment in sessionStorage)
 const search = ref('')
 const filterType = ref('')
 const filterSystem = ref('')
+const FILTER_STATE_KEY = computed(() => `checklistsFilters:${String(props.equipmentId || props.equipmentTag || 'unknown')}`)
+function loadFilterState() {
+  try {
+    const raw = sessionStorage.getItem(FILTER_STATE_KEY.value)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') {
+      search.value = String(parsed.search || '')
+      filterType.value = String(parsed.filterType || '')
+      filterSystem.value = String(parsed.filterSystem || '')
+    }
+  } catch (_) { /* ignore */ }
+}
+function saveFilterState() {
+  try {
+    const payload = { search: search.value, filterType: filterType.value, filterSystem: filterSystem.value }
+    sessionStorage.setItem(FILTER_STATE_KEY.value, JSON.stringify(payload))
+  } catch (_) { /* ignore */ }
+}
+onMounted(loadFilterState)
+watch([search, filterType, filterSystem], saveFilterState, { deep: false })
 const typeOptions = computed(() => Array.from(new Set(local.map(s => (s.type || '').trim()).filter(Boolean))))
 const systemOptions = computed(() => Array.from(new Set(local.map(s => (s.system || '').trim()).filter(Boolean))))
 
@@ -1190,8 +1211,22 @@ function logEvent(si: number, type: string, data: LogPayload = {}) {
   } catch (e) { /* ignore normalization errors */ }
 }
 
-// Expand/collapse state
+// Expand/collapse state (persisted per equipment in sessionStorage)
 const open = ref<Record<string, boolean>>({})
+const OPEN_STATE_KEY = computed(() => `checklistsOpen:${String(props.equipmentId || props.equipmentTag || 'unknown')}`)
+function loadOpenState() {
+  try {
+    const raw = sessionStorage.getItem(OPEN_STATE_KEY.value)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') open.value = parsed
+  } catch (_) { /* ignore */ }
+}
+function saveOpenState() {
+  try { sessionStorage.setItem(OPEN_STATE_KEY.value, JSON.stringify(open.value)) } catch (_) { /* ignore */ }
+}
+onMounted(loadOpenState)
+watch(open, saveOpenState, { deep: true })
 function secKey(sec: ChecklistSection, idx: number) { return `${sec.number ?? idx}` }
 function isOpen(k: string) { return !!open.value[k] }
 function toggleSection(k: string) { open.value[k] = !open.value[k] }

@@ -754,6 +754,7 @@
                 </button>
 
                 <button
+                  v-if="billingSummary?.hasStripe !== false"
                   :disabled="planPreviewLoading || !selectedPrice"
                   :title="!selectedPrice ? 'Select a plan to preview proration' : (planPreviewLoading ? 'Loading preview…' : '')"
                   class="px-4 py-2 rounded border"
@@ -771,6 +772,7 @@
                 </button>
 
                 <button
+                  v-if="!project?.stripeSubscriptionId || billingSummary?.hasStripe === false"
                   class="px-4 py-2 rounded border"
                   :disabled="reconcileLoading"
                   :title="'Attempt to link this project to the latest active Stripe subscription'"

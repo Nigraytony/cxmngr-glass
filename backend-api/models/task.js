@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 // Task schema aligned with the requested JSON shape.
 const taskSchema = new mongoose.Schema({
-    taskId: { type: String, index: true }, // human-friendly id like T-100
+    taskId: { type: String }, // human-friendly id like T-100
     wbs: { type: String, default: null },
-    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', index: true },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
     name: { type: String, required: true },
     description: { type: String, default: '' },
     notes: { type: String, default: '' },

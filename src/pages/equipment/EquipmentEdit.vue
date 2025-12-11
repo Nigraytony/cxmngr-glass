@@ -1026,6 +1026,15 @@
           v-else-if="currentTab === 'Checklists'"
           class="space-y-3"
         >
+          <div class="flex items-center justify-between">
+            <div class="text-white/70 text-sm">Checklists</div>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+              @click="persistChecklists(checklists)"
+            >
+              Save Checklists
+            </button>
+          </div>
           <ChecklistPanel
             v-model="checklists"
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
@@ -1233,6 +1242,11 @@
             type="checkbox"
             class="accent-emerald-400"
           > <span>Functional Tests</span></label>
+          <label class="inline-flex items-center gap-2"><input
+            v-model="report.include.signatures"
+            type="checkbox"
+            class="accent-emerald-400"
+          > <span>Signatures</span></label>
           <label class="inline-flex items-center gap-2"><input
             v-model="report.include.issues"
             type="checkbox"
@@ -2847,30 +2861,29 @@ async function persistChecklists(sections: any[]) {
   try {
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     if (!eid) return
+    // Persist to server without refetching the entire equipment to avoid UI reset.
     await equipmentStore.updateFields(eid, { checklists: sections } as any)
-    const fresh = await equipmentStore.fetchOne(eid)
-    if (fresh) form.value = { ...fresh }
+    // Keep local form state and checklist panel in place.
+    ;(form.value as any).checklists = Array.isArray(sections) ? sections : []
     appendLog('checklist.save', 'Checklist saved', { sections: Array.isArray(sections) ? sections.length : undefined })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save checklist')
   }
 }
 function onChecklistsChange(sections: any[]) {
-  if (checklistSaveTimer) clearTimeout(checklistSaveTimer)
-  checklistSaveTimer = setTimeout(async () => {
-    await persistChecklists(sections)
-    ui.showSuccess('Checklist saved')
-    checklistSaveTimer = null
-  }, 700)
+  // Disable auto-save while filling checklists to avoid disruptive reloads.
+  if (checklistSaveTimer) { clearTimeout(checklistSaveTimer); checklistSaveTimer = null }
+  ;(form.value as any).checklists = Array.isArray(sections) ? sections : []
+  // Note: persistence now happens only via explicit actions elsewhere (if any).
 }
 
 async function load() {
   loading.value = true
   try {
     if (!id.value) return
-    // Fetch full equipment including checklists/functionalTests (use includePhotos to avoid field exclusion)
+    // Fetch full equipment including checklists/functionalTests/photos
     const { data } = await http.get(`/api/equipment/${id.value}`, {
-      params: { includePhotos: true },
+      params: { includePhotos: true, includeChecklists: true, includeFunctionalTests: true },
       headers: { ...getAuthHeaders() }
     })
     const eq = data || (await equipmentStore.fetchOne(id.value))
@@ -2953,6 +2966,7 @@ const report = ref<{ include: Record<string, boolean>; photoLimit: number }>({
     attachments: true,
     checklists: true,
     fpt: true,
+    signatures: false,
     issues: true,
   },
   photoLimit: 6,
@@ -2976,7 +2990,7 @@ function saveReportSettings() {
 }
 function resetReportSettings() {
   report.value = {
-    include: { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true },
+    include: { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, signatures: false, issues: true },
     photoLimit: 6,
   }
 }
@@ -3532,6 +3546,68 @@ async function downloadEquipmentPdf() {
     }
   }
 
+  // Signatures (rendered after Functional Tests)
+  if (report.value.include.signatures) {
+    const sigs: any[] = Array.isArray(fptSignatures.value) ? fptSignatures.value : []
+    if (sigs.length) {
+      sectionGap()
+      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Signatures', margin, y); y += 6
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      // Layout: up to 2 signatures per row
+      const colW = Math.floor((pageWidth - margin * 2 - 4) / 2)
+      const drawSignatureBlock = async (sx: number, sy: number, sig: any) => {
+        const name = String(sig?.person || sig?.name || '').trim() || 'Name'
+        const role = String(sig?.role || '').trim()
+        const title = String(sig?.title || '').trim()
+        const date = String(sig?.date || sig?.signedAt || '').trim()
+        const boxH = 44
+        ensureSpace(boxH + 2)
+        doc.rect(sx, y, colW, boxH)
+        // Signature image from saved block (data URL)
+        const imgSrc = sig?.block
+        if (imgSrc) {
+          try {
+            const img = await loadImage(imgSrc)
+            if (img.dataUrl) {
+              const sigW = Math.min(colW - 8, 140)
+              const sigH = 28
+              const imgX = sx + 4
+              // Place signature drawing towards the top to avoid overlap with text at bottom
+              const imgY = y + 6
+              try { doc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, sigW, sigH) } catch (e) { /* ignore */ }
+            }
+          } catch (e) { /* ignore load errors */ }
+        }
+        // Bottom-aligned text labels (avoid covering the signature)
+        const baseY = y + boxH - 6
+        if (date) doc.text(date, sx + 4, baseY)
+        // Bold the role label, normal for the name
+        if (role) {
+          const roleLabel = role + ':'
+          doc.setFont('helvetica', 'bold');
+          doc.text(roleLabel, sx + 4, baseY - 5)
+          const roleW = doc.getTextWidth(roleLabel)
+          doc.setFont('helvetica', 'normal');
+          doc.text(' ' + name, sx + 4 + roleW, baseY - 5)
+        } else {
+          doc.text(name, sx + 4, baseY - 5)
+        }
+        if (title) doc.text(title, sx + 4, baseY - 10)
+      }
+      // Iterate signatures two per row
+      for (let i = 0; i < sigs.length; i += 2) {
+        const left = sigs[i]
+        const right = sigs[i + 1]
+        await drawSignatureBlock(margin, y, left)
+        if (right) {
+          await drawSignatureBlock(margin + colW + 4, y, right)
+        }
+        y += 46
+      }
+      sectionGap(6)
+    }
+  }
+
   // Issues (table similar to Issues tab)
   if (report.value.include.issues) {
     if (!issuesLoaded.value) {
@@ -3694,7 +3770,8 @@ async function downloadEquipmentPdf() {
       const type = String(a?.type || '').toLowerCase()
       const name = String(a?.filename || a?.url || '').toLowerCase()
       const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''
-      return type.includes('pdf') || ext === 'pdf'
+      const dataIsPdf = typeof a?.data === 'string' && a.data.startsWith('data:application/pdf')
+      return type.includes('pdf') || ext === 'pdf' || dataIsPdf
     })
     if (pdfAtts.length) {
       try {
@@ -3702,12 +3779,25 @@ async function downloadEquipmentPdf() {
         const reportBytes = doc.output('arraybuffer') as ArrayBuffer
         const merged = await PDFDocument.load(reportBytes)
         for (const a of pdfAtts) {
-          const url = String(a?.url || '')
-          if (!url) continue
           try {
-            const res = await fetch(url)
-            if (!res.ok) continue
-            const buf = await res.arrayBuffer()
+            let buf: ArrayBuffer | null = null
+            const dataStr = typeof a?.data === 'string' ? a.data : ''
+            if (dataStr && dataStr.startsWith('data:application/pdf')) {
+              // Convert data URL to ArrayBuffer
+              const base64 = dataStr.split(',')[1] || ''
+              const bin = atob(base64)
+              const len = bin.length
+              const bytes = new Uint8Array(len)
+              for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i)
+              buf = bytes.buffer
+            } else {
+              const url = String(a?.url || '')
+              if (!url) continue
+              const res = await fetch(url, { credentials: 'include' })
+              if (!res.ok) continue
+              buf = await res.arrayBuffer()
+            }
+            if (!buf) continue
             const attPdf = await PDFDocument.load(buf)
             const pages = await merged.copyPages(attPdf, attPdf.getPageIndices())
             pages.forEach((p: any) => merged.addPage(p))

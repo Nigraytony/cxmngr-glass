@@ -2004,7 +2004,34 @@ onMounted(async () => {
     const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()+0).padStart(2,'0')
     form.startDate = `${yyyy}-${mm}-${dd}`; form.endDate = `${yyyy}-${mm}-${dd}`
     if (!isNew.value) {
-      const activityData = await store.fetchActivity(id.value, { light: true, includePhotos: false })
+      let activityData: any = null
+      // Prefer project-scoped list lookup to avoid 404 noise
+      try {
+        const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+        if (pid) {
+          const list = await store.fetchActivities(pid)
+          activityData = (list || []).find((a: any) => String(a?.id || a?._id) === String(id.value)) || null
+        }
+      } catch (_) { /* ignore */ }
+      // Fallback to direct GET by id only if not found via list
+      if (!activityData) {
+        try {
+          activityData = await store.fetchActivity(id.value)
+        } catch (e: any) {
+          try { ui.showError(e?.response?.data?.error || e?.message || 'Failed to load activity') } catch (_) { /* ignore */ }
+        }
+      }
+      if (activityData) {
+      // Ensure selected project matches the activity's project for downstream loads
+      try {
+        const actPid = String(activityData.projectId || '')
+        if (actPid) {
+          if (typeof (projectStore as any).setCurrentProjectId === 'function') {
+            ;(projectStore as any).setCurrentProjectId(actPid)
+          }
+          try { localStorage.setItem('selectedProjectId', actPid) } catch (_) { /* ignore */ }
+        }
+      } catch (_) { /* non-blocking */ }
       Object.assign(form, {
         name: activityData?.name || '',
         descriptionHtml: activityData?.descriptionHtml || '',
@@ -2029,6 +2056,7 @@ onMounted(async () => {
         }
       } catch (e) { /* ignore */ }
       systemsText.value = ''
+      }
     }
   } finally {
     pageLoading.value = false
@@ -2070,25 +2098,45 @@ async function ensureReportData() {
   } catch (e) { /* ignore */ }
 }
 
+async function resolveActivity(options?: { includePhotos?: boolean }) {
+  const aid = String(id.value)
+  // Prefer store.current if it matches id
+  const cur = store.current
+  if (cur && String((cur as any).id || (cur as any)._id) === aid) return cur
+  // Prefer project list lookup to avoid 404s
+  try {
+    const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+    if (pid) {
+      const list = await store.fetchActivities(pid)
+      const found = (list || []).find((a: any) => String(a?.id || a?._id) === aid)
+      if (found) return found
+    }
+  } catch (_) { /* ignore */ }
+  // Fallback to direct fetch (no error surfacing here)
+  try { return await store.fetchActivity(aid, options || {}) } catch (_) { return null }
+}
+
 watch(() => currentTab.value, async (tab) => {
   if (isNew.value) return
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
   if (tab === 'Photos' && !photosLoaded.value) {
     try {
       // Fetch full activity with photos to ensure data URLs are available for thumbnails/viewer
-      await store.fetchActivity(id.value, { includePhotos: true })
-      await store.fetchActivityPhotos(id.value)
-      photosLoaded.value = true
+      const a = await resolveActivity({ includePhotos: true })
+      // If resolver returned activity, consider photos loaded; avoid separate photos endpoint to prevent 404 spam
+      if (a) {
+        photosLoaded.value = true
+      }
     } catch (e) { /* ignore */ }
   }
   if (tab === 'Issues' && !issuesLoaded.value && pid) {
     try { await issuesStore.fetchIssues(pid); issuesLoaded.value = true } catch (e) { /* ignore */ }
   }
   if (tab === 'Comments' && !commentsLoaded.value) {
-    try { const a = await store.fetchActivity(id.value, { includePhotos: false }); form.comments = a?.comments || []; commentsLoaded.value = true } catch (e) { /* ignore */ }
+    try { const a = await resolveActivity({ includePhotos: false }); form.comments = (a as any)?.comments || []; commentsLoaded.value = true } catch (e) { /* ignore */ }
   }
   if (tab === 'Attachments' && !attachmentsLoaded.value) {
-    try { const a = await store.fetchActivity(id.value, { includePhotos: false }); form.attachments = a?.attachments || []; attachmentsLoaded.value = true } catch (e) { /* ignore */ }
+    try { const a = await resolveActivity({ includePhotos: false }); form.attachments = (a as any)?.attachments || []; attachmentsLoaded.value = true } catch (e) { /* ignore */ }
   }
   if (tab === 'Equipment' && !equipmentLoaded.value && pid) {
     try { await Promise.all([ equipmentStore.fetchByProject(pid), spacesStore.fetchByProject(pid) ]); equipmentLoaded.value = true } catch (e) { /* ignore */ }
