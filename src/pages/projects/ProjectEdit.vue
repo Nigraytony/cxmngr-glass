@@ -19,1568 +19,1077 @@
         <span>Team</span>
       </button>
 
-          <button
-            :class="tabClass('logo')"
-            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
-            @click="activeTab = 'logo'"
-          >
-            <span class="i">🖼️</span>
-            <span>Logo</span>
-          </button>
+      <button
+        :class="tabClass('logo')"
+        class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+        @click="activeTab = 'logo'"
+      >
+        <span class="i">🖼️</span>
+        <span>Logo</span>
+      </button>
 
-          <button
-            :class="tabClass('subscription')"
-            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
-            @click="activeTab = 'subscription'"
-          >
-            <span class="i">💳</span>
-            <span>Subscription</span>
-          </button>
+      <button
+        :class="tabClass('subscription')"
+        class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+        @click="activeTab = 'subscription'"
+      >
+        <span class="i">💳</span>
+        <span>Subscription</span>
+      </button>
 
-          <button
-            :class="tabClass('settings')"
-            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
-            @click="activeTab = 'settings'"
-          >
-            <span class="i">⚙️</span>
-            <span>Settings</span>
-          </button>
+      <button
+        :class="tabClass('settings')"
+        class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+        @click="activeTab = 'settings'"
+      >
+        <span class="i">⚙️</span>
+        <span>Settings</span>
+      </button>
 
-          <button
-            :class="tabClass('logs')"
-            class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
-            @click="activeTab = 'logs'"
-          >
-            <span class="i">📝</span>
-            <span>Logs</span>
-          </button>
-        </div>
+      <button
+        :class="tabClass('logs')"
+        class="flex-1 px-3 py-2 rounded inline-flex items-center justify-center gap-2 text-center"
+        @click="activeTab = 'logs'"
+      >
+        <span class="i">📝</span>
+        <span>Logs</span>
+      </button>
+    </div>
 
-        <!-- Subscription diagnostics: show Stripe publishable key detection -->
-        <div
-          v-if="activeTab === 'subscription'"
-          class="mb-3"
-        >
-          <div class="rounded p-3 bg-white/5 border border-white/10 text-sm">
-            <div class="flex items-center gap-2">
-              <span class="i">💳</span>
-              <div>
-                <div
-                  v-if="stripeKeyPresent"
-                  class="text-white/80"
-                >
-                  Stripe publishable key detected.
-                </div>
-                <div
-                  v-else
-                  class="text-amber-300"
-                >
-                  Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY).
-                </div>
-              </div>
+    <!-- Subscription diagnostics: show Stripe publishable key detection -->
+    <div
+      v-if="activeTab === 'subscription'"
+      class="mb-3"
+    >
+      <div class="rounded p-3 bg-white/5 border border-white/10 text-sm">
+        <div class="flex items-center gap-2">
+          <span class="i">💳</span>
+          <div>
+            <div
+              v-if="stripeKeyPresent"
+              class="text-white/80"
+            >
+              Stripe publishable key detected.
+            </div>
+            <div
+              v-else
+              class="text-amber-300"
+            >
+              Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY).
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
+    <div>
+      <div
+        v-if="!project"
+        class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/80 flex items-center gap-3"
+        role="status"
+        aria-live="polite"
+      >
+        <Spinner />
         <div>
-          <div
-            v-if="!project"
-            class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/80 flex items-center gap-3"
-            role="status"
-            aria-live="polite"
-          >
-            <Spinner />
-            <div>
-              <p class="text-sm uppercase tracking-wide">
-                Loading project…
-              </p>
-              <p class="text-xs text-white/60">
-                Fetching project details
-              </p>
-            </div>
-          </div>
-          <div v-else>
-            <div v-show="activeTab === 'info'">
-              <ProjectForm
-                v-model="project"
-                :errors="formErrors"
-              />
-            </div>
+          <p class="text-sm uppercase tracking-wide">
+            Loading project…
+          </p>
+          <p class="text-xs text-white/60">
+            Fetching project details
+          </p>
+        </div>
+      </div>
+      <div v-else>
+        <div v-show="activeTab === 'info'">
+          <ProjectForm
+            v-model="project"
+            :errors="formErrors"
+          />
+        </div>
 
-            <div v-show="activeTab === 'team'">
-              <h3 class="text-md font-medium mb-2">
-                Team
-              </h3>
-              <p class="text-sm text-white/70 mb-4">
-                Manage team membership and roles for this project.
-              </p>
-              <div class="space-y-2">
-                <div
-                  v-for="member in (project.team || [])"
-                  :key="member._id || member.email"
-                  class="p-3 rounded bg-white/5"
-                >
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <div class="font-medium">
-                        {{ member.firstName }} {{ member.lastName }}
-                      </div>
-                      <div class="text-xs text-white/70">
-                        {{ member.email }} • {{ member.role }}
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                      <!-- Resend invite icon (left of badge) -->
-                      <div
-                        v-if="isProjectAdmin && (member.status || member.inviteStatus || (member._id ? 'active' : 'invited')) === 'invited'"
-                        class="mr-2"
-                      >
-                        <div class="relative inline-block group">
-                          <button
-                            aria-label="Resend invitation"
-                            :disabled="isResending(findInviteIdForMember(member))"
-                            class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-                            @click.prevent="resendInviteForMember(member)"
-                          >
-                            <svg
-                              v-if="!isResending(findInviteIdForMember(member))"
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              class="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                            >
-                              <path
-                                d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7z"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                              <path
-                                d="M3 8l9 6 9-6"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                              <path
-                                d="M16 11h6"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                              <path
-                                d="M19 8l3 3-3 3"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                            </svg>
-                            <svg
-                              v-else
-                              class="w-4 h-4 animate-spin"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke-width="2"
-                                stroke-opacity="0.25"
-                              />
-                              <path
-                                d="M22 12a10 10 0 0 1-10 10"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                              />
-                            </svg>
-                          </button>
-                          <div
-                            role="tooltip"
-                            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                          >
-                            Resend invite
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Status badge (invited, rejected, active, etc.) -->
-                      <div :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus || (member._id ? 'active' : 'invited'))]">
-                        {{ statusLabel(member) }}
-                      </div>
-                      <!-- Action icons: Permissions, Remove -->
-                      <div class="flex gap-2">
-                        <div
-                          v-if="isProjectAdmin"
-                          class="relative inline-block group"
-                        >
-                          <button
-                            aria-label="Edit permissions"
-                            class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-                            @click.prevent="openPermsModal(member)"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              class="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                            >
-                              <rect
-                                x="6"
-                                y="10"
-                                width="12"
-                                height="8"
-                                rx="2"
-                                stroke-width="1.5"
-                              />
-                              <path
-                                d="M8 10V8a4 4 0 018 0v2"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <div
-                            role="tooltip"
-                            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                          >
-                            Permissions
-                          </div>
-                        </div>
-                        <div
-                          v-if="isProjectAdmin"
-                          class="relative inline-block group"
-                        >
-                          <button
-                            aria-label="Edit member"
-                            class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-                            @click.prevent="openEditMember(member)"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              class="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                            >
-                              <path
-                                d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                            </svg>
-                          </button>
-                          <div
-                            role="tooltip"
-                            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                          >
-                            Edit member
-                          </div>
-                        </div>
-                        <div class="relative inline-block group">
-                          <button
-                            aria-label="Remove member"
-                            class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
-                            @click="removeMember(member)"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              class="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                            >
-                              <path
-                                d="M6 7h12"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                              />
-                              <path
-                                d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
-                                stroke-width="1.5"
-                              />
-                              <rect
-                                x="6"
-                                y="7"
-                                width="12"
-                                height="14"
-                                rx="2"
-                                stroke-width="1.5"
-                              />
-                            </svg>
-                          </button>
-                          <div
-                            role="tooltip"
-                            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                          >
-                            Remove
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+        <div v-show="activeTab === 'team'">
+          <h3 class="text-md font-medium mb-2">
+            Team
+          </h3>
+          <p class="text-sm text-white/70 mb-4">
+            Manage team membership and roles for this project.
+          </p>
+          <div class="space-y-2">
+            <div
+              v-for="member in (project.team || [])"
+              :key="member._id || member.email"
+              class="p-3 rounded bg-white/5"
+            >
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium">
+                    {{ member.firstName }} {{ member.lastName }}
+                  </div>
+                  <div class="text-xs text-white/70">
+                    {{ member.email }} • {{ member.role }}
                   </div>
                 </div>
-
-                <!-- (Invites shown inline with team members; no separate invites list) -->
-
-                <div class="pt-2">
-                  <h4 class="font-medium mb-2">
-                    Add member
-                  </h4>
-                  <div class="grid grid-cols-1 gap-2">
-                    <!-- Row 1: First / Last -->
-                    <div class="grid grid-cols-2 gap-2">
-                      <input
-                        v-model="newMember.firstName"
-                        placeholder="First"
-                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
-                      >
-                      <input
-                        v-model="newMember.lastName"
-                        placeholder="Last"
-                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
-                      >
-                    </div>
-
-                    <!-- Row 2: Email / Company / Role -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        v-model="newMember.email"
-                        placeholder="Email"
-                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
-                      >
-                      <input
-                        v-model="newMember.company"
-                        placeholder="Company"
-                        class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
-                      >
-                      <select
-                        v-model="newMember.role"
-                        class="rounded p-2 bg-white/5 w-full"
-                      >
-                        <template v-if="roleTemplates && roleTemplates.length">
-                          <option
-                            v-for="rt in roleTemplates"
-                            :key="rt._id || rt.id || rt.name"
-                            :disabled="planPreviewLoading || !selectedPrice || billingSummary?.hasStripe === false"
-                            :title="!selectedPrice
-                              ? 'Select a plan to preview proration'
-                              : (billingSummary?.hasStripe === false
-                                ? 'Stripe not configured on server'
-                                : (planPreviewLoading ? 'Loading preview…' : ''))"
-                            :value="rt.name"
-                          >
-                            {{ rt.name }}
-                          </option>
-                        </template>
-                        <template v-else>
-                          <option value="admin">admin</option>
-                          <option value="CxA">CxA</option>
-                          <option value="GC">GC</option>
-                          <option value="CM">CM</option>
-                          <option value="Architect">Architect</option>
-                          <option value="Designer">Designer</option>
-                          <option value="Mechanical Contractor">Mechanical Contractor</option>
-                          <option value="Electrical Contractor">Electrical Contractor</option>
-                          <option value="Plumbing Contractor">Plumbing Contractor</option>
-                          <option value="Controls Contractor">Controls Contractor</option>
-                          <option value="Life Safety Contractor">Life Safety Contractor</option>
-                          <option value="Other Contractor">Other Contractor</option>
-                          <option value="Client">Client</option>
-                          <option value="User">User</option>
-                        </template>
-                      </select>
-                      <div
-                        v-if="billingSummary && billingSummary.hasStripe === false"
-                        class="mt-2 text-xs text-red-300"
-                      >
-                        Proration preview disabled: Stripe not configured on server.
-                      </div>
-                    </div>
-
-                    <div
-                      v-if="selectedRoleTemplate"
-                      class="px-2 py-1 text-sm text-white/70 bg-white/3 rounded"
-                    >
-                      <div class="font-medium">
-                        Permissions for "{{ selectedRoleTemplate.name }}"
-                      </div>
-                      <div class="mt-1 text-xs">
-                        <template v-if="Array.isArray(selectedRoleTemplate.permissions) && selectedRoleTemplate.permissions.length">
-                          <ul class="list-disc pl-4">
-                            <li
-                              v-for="perm in selectedRoleTemplate.permissions"
-                              :key="perm"
-                            >
-                              {{ perm }}
-                            </li>
-                          </ul>
-                        </template>
-                        <template v-else>
-                          <div class="text-xs text-white/60">
-                            No explicit permissions on template
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-
-                    <div class="text-right">
+                <div class="flex items-center gap-3">
+                  <!-- Resend invite icon (left of badge) -->
+                  <div
+                    v-if="isProjectAdmin && (member.status || member.inviteStatus || (member._id ? 'active' : 'invited')) === 'invited'"
+                    class="mr-2"
+                  >
+                    <div class="relative inline-block group">
                       <button
-                        class="px-3 py-1 rounded bg-white/6"
-                        @click="addMember"
+                        aria-label="Resend invitation"
+                        :disabled="isResending(findInviteIdForMember(member))"
+                        class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+                        @click.prevent="resendInviteForMember(member)"
                       >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-show="activeTab === 'logo'">
-              <h3 class="text-md font-medium mb-2">
-                Logos
-              </h3>
-              <p class="text-sm text-white/70 mb-4">
-                Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).
-              </p>
-
-              <!-- Client Logo -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="rounded-lg p-4 bg-white/5 border border-white/10">
-                  <div class="font-medium mb-2">
-                    Client logo
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
-                      <img
-                        v-if="project.logo"
-                        :src="project.logo"
-                        alt="client logo"
-                        class="object-contain w-full h-full"
-                      >
-                      <div
-                        v-else
-                        class="text-white/60 text-xs"
-                      >
-                        No logo
-                      </div>
-                    </div>
-                    <div>
-                      <input
-                        ref="clientFileInput"
-                        type="file"
-                        accept="image/*"
-                        @change="onClientLogoSelected"
-                      >
-                      <div class="mt-2 flex gap-2">
-                        <button
-                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
-                          @click="removeClientLogo"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Commissioning Agent Logo -->
-                <div class="rounded-lg p-4 bg-white/5 border border-white/10">
-                  <div class="font-medium mb-2">
-                    Commissioning Agent logo
-                  </div>
-                  <div class="flex items-center gap-4">
-                    <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
-                      <img
-                        v-if="(project.commissioning_agent && project.commissioning_agent.logo)"
-                        :src="project.commissioning_agent.logo"
-                        alt="cxa logo"
-                        class="object-contain w-full h-full"
-                      >
-                      <div
-                        v-else
-                        class="text-white/60 text-xs"
-                      >
-                        No logo
-                      </div>
-                    </div>
-                    <div>
-                      <input
-                        ref="cxaFileInput"
-                        type="file"
-                        accept="image/*"
-                        @change="onCxaLogoSelected"
-                      >
-                      <div class="mt-2 flex gap-2">
-                        <button
-                          class="px-3 py-1 rounded bg-red-500/20 text-red-400"
-                          @click="removeCxaLogo"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-show="activeTab === 'subscription'">
-              <div class="space-y-6">
-                <div
-                  v-if="billingLoading"
-                  class="text-white/70"
-                >
-                  Loading billing…
-                </div>
-                <div
-                  v-if="billingError"
-                  class="text-red-300 text-sm"
-                >
-                  {{ billingError }}
-                </div>
-                <h2 class="text-xl font-semibold">
-                  Project Billing
-                </h2>
-                <div
-                  v-if="upgradeFeature"
-                  class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-100"
-                >
-                  <div class="font-semibold">
-                    Upgrade required
-                  </div>
-                  <div class="text-sm mt-1">
-                    To use {{ upgradeFeature }}, please upgrade your plan below.
-                  </div>
-                </div>
-
-                <div
-                  v-if="billingSummary?.dunning?.isPastDue || status === 'past_due'"
-                  class="p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-red-100"
-                >
-                  <div class="font-semibold">
-                    Payment issue
-                  </div>
-                  <div class="text-sm mt-1">
-                    We couldn’t process the last payment. Please update the payment method or retry. Last invoice:
-                    {{ billingSummary?.dunning?.lastInvoiceStatus || 'unknown' }} ({{ billingSummary?.dunning?.lastInvoiceId || 'n/a' }})
-                  </div>
-                </div>
-
-                <div class="p-4 rounded-lg border">
-                  <p>
-                    <strong>Status:</strong> {{ status }}
-                    <span
-                      v-if="billingSummary?.updatedAt"
-                      class="ml-2 text-xs text-white/60"
-                    >• Last updated: {{ new Date(billingSummary.updatedAt).toLocaleString() }}</span>
-                  </p>
-                  <p class="mt-2">
-                    <strong>Plan:</strong> {{ planLabel }}
-                  </p>
-                  <p
-                    v-if="billingSummary?.promotion"
-                    class="mt-2 text-sm text-white/80"
-                  >
-                    <strong>Discount:</strong>
-                    <span>
-                      <template v-if="billingSummary.promotion.percentOff">
-                        -{{ billingSummary.promotion.percentOff }}%
-                      </template>
-                      <template v-else-if="billingSummary.promotion.amountOff">
-                        -{{ billingSummary.promotion.amountOff.toFixed(2) }} {{ (billingSummary.promotion.currency || 'usd').toUpperCase() }}
-                      </template>
-                      <template v-else>
-                        Applied
-                      </template>
-                      <span v-if="billingSummary.promotion.couponName">
-                        ({{ billingSummary.promotion.couponName }})
-                      </span>
-                    </span>
-                  </p>
-                  <p v-if="billingSummary?.currentPeriodEnd || project.stripeCurrentPeriodEnd">
-                    <strong>Current period end:</strong>
-                    {{ new Date(billingSummary?.currentPeriodEnd || project.stripeCurrentPeriodEnd).toLocaleString() }}
-                  </p>
-                  <p v-if="status === 'trialing' && trialEndDate">
-                    <strong>Trial ends:</strong> {{ new Date(trialEndDate).toLocaleString() }}
-                  </p>
-                  <p v-if="status === 'trialing'">
-                    <strong>Trial days left:</strong> {{ trialDaysLeft }}
-                  </p>
-                  <p
-                    v-if="status === 'trialing'"
-                    class="text-xs text-white/70 mt-1"
-                  >
-                    Trial end is fixed from when the project was created and does not change when switching plans.
-                  </p>
-
-                  <div
-                    v-if="billingSummary?.defaultPaymentMethod"
-                    class="mt-3 text-sm text-white/80"
-                  >
-                    <strong>Payment method:</strong>
-                    <span class="ml-2">
-                      {{ billingSummary.defaultPaymentMethod.brand || '' }} •••• {{ billingSummary.defaultPaymentMethod.last4 || '' }} exp {{ billingSummary.defaultPaymentMethod.exp_month }}/{{ billingSummary.defaultPaymentMethod.exp_year }}
-                    </span>
-                  </div>
-                  <div
-                    v-if="billingSummary?.billingAdmin"
-                    class="mt-2 text-sm text-white/80"
-                  >
-                    <strong>Billing admin:</strong>
-                    <span class="ml-2">
-                      {{ billingSummary.billingAdmin.name || billingSummary.billingAdmin.email || billingSummary.billingAdmin.userId }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="p-4 rounded-lg border">
-                  <label class="block text-sm font-medium mb-2">Choose a plan</label>
-                  <div class="relative inline-block w-full">
-                    <select
-                      v-model="selectedPrice"
-                      class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                    >
-                      <option
-                        v-for="p in prices"
-                        :key="p.id"
-                        :value="p.id"
-                      >
-                        {{ p.label }}
-                      </option>
-                    </select>
-                    <!-- custom arrow -->
-                    <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden
-                      >
-                        <path
-                          d="M6 8l4 4 4-4"
+                        <svg
+                          v-if="!isResending(findInviteIdForMember(member))"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          class="w-4 h-4"
+                          fill="none"
                           stroke="currentColor"
-                          stroke-width="1.75"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-
-                  <div class="mt-2">
-                    <span
-                      v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice"
-                      class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full"
-                    >Current plan</span>
-                  </div>
-
-                  <!-- Selected plan details -->
-                  <div
-                    v-if="selectedPlanDetails"
-                    class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div class="font-medium text-white">
-                        {{ selectedPlanDetails.name }}
-                      </div>
-                      <div class="text-white/80">
-                        {{ selectedPlanDetails.price }}
-                      </div>
-                    </div>
-                    <p
-                      v-if="selectedPlanDetails.summary"
-                      class="text-sm text-white/70 mt-1"
-                    >
-                      {{ selectedPlanDetails.summary }}
-                    </p>
-                    <ul
-                      v-if="selectedPlanDetails.features && selectedPlanDetails.features.length"
-                      class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1"
-                    >
-                      <li
-                        v-for="(f, i) in selectedPlanDetails.features"
-                        :key="i"
-                      >
-                        {{ f }}
-                      </li>
-                    </ul>
-                  </div>
-
-                  <div class="mt-4 flex gap-3">
-                    <button
-                      :disabled="loading || (hasSubscription && isSamePlanSelected) || !canManageBilling"
-                      :title="!canManageBilling ? 'You do not have permission to manage this project\'s subscription' : (hasSubscription && isSamePlanSelected ? 'Select a different plan to apply changes' : '')"
-                      class="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
-                      @click="hasSubscription ? handleChangePlan() : startCheckout"
-                    >
-                      {{ loading || planChangeLoading ? '...' : (hasSubscription ? (isSamePlanSelected ? 'Plan is active' : 'Apply plan') : 'Subscribe') }}
-                    </button>
-
-                    <button
-                      :disabled="planPreviewLoading || !selectedPrice"
-                      :title="!selectedPrice ? 'Select a plan to preview proration' : (planPreviewLoading ? 'Loading preview…' : '')"
-                      class="px-4 py-2 rounded border"
-                      @click="handlePreviewPlan"
-                    >
-                      {{ planPreviewLoading ? '...' : 'Preview proration' }}
-                    </button>
-
-                    <button
-                      :disabled="loading || cancelLoading || resumeLoading"
-                      class="px-4 py-2 rounded border"
-                      @click="hasSubscription ? (billingSummary?.cancelAtPeriodEnd ? handleResume() : handleCancel(true)) : openBillingPortal"
-                    >
-                      {{ billingSummary?.cancelAtPeriodEnd ? (resumeLoading ? '...' : 'Resume') : (cancelLoading ? '...' : 'Cancel at period end') }}
-                    </button>
-                  </div>
-
-                  <div class="mt-3 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                    <input
-                      v-model="promotionCode"
-                      placeholder="Promotion code"
-                      class="w-full sm:w-64 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
-                    >
-                    <button
-                      class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
-                      :disabled="applyingPromotion || loading"
-                      @click="hasSubscription ? applyPromotionToSubscription() : startCheckout()"
-                    >
-                      {{ applyingPromotion ? 'Applying…' : (hasSubscription ? 'Apply to subscription' : 'Use at checkout') }}
-                    </button>
-                    <button
-                      v-if="promotionCode"
-                      class="px-3 py-2 rounded border border-white/20 text-sm"
-                      :title="'Clear the pending promotion code'"
-                      @click="promotionCode = ''"
-                    >
-                      Remove promotion
-                    </button>
-                    <button
-                      class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
-                      :disabled="loading"
-                      :title="'Reset this project\'s features to the current plan defaults'"
-                      @click="resetFeaturesToPlanDefaults"
-                    >
-                      Reset features to plan defaults
-                    </button>
-                  </div>
-
-                  <div
-                    v-if="planPreview && planPreview.lines && planPreview.lines.length"
-                    class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10"
-                  >
-                    <div class="font-semibold mb-2">
-                      Proration preview
-                    </div>
-                    <ul class="space-y-1">
-                      <li
-                        v-for="line in planPreview.lines"
-                        :key="line.id"
-                        class="flex justify-between"
-                      >
-                        <span>{{ line.description }}</span>
-                        <span>{{ line.amount != null ? line.amount.toFixed(2) : '' }}</span>
-                      </li>
-                    </ul>
-                    <div class="mt-2">
-                      Amount due next invoice: {{ planPreview.amount_due != null ? planPreview.amount_due.toFixed(2) : 'n/a' }}
-                    </div>
-                    <div
-                      v-if="planPreview.total_discount_amounts && planPreview.total_discount_amounts.length"
-                      class="mt-2 text-xs text-white/70"
-                    >
-                      Discounts applied:
-                      <span
-                        v-for="(d, idx) in planPreview.total_discount_amounts"
-                        :key="idx"
-                        class="inline-block ml-1"
-                      >
-                        -{{ d.amount != null ? (d.amount / 100).toFixed(2) : '' }} {{ (planPreview.currency || 'usd').toUpperCase() }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10">
-                    <div class="font-semibold mb-1">
-                      Upcoming invoice
-                    </div>
-                    <div>
-                      <template v-if="billingSummary?.upcomingInvoice && billingSummary.upcomingInvoice.amount_due != null">
-                        Estimated total: ${{ (billingSummary.upcomingInvoice.amount_due / 100).toFixed(2) }} {{ (billingSummary.upcomingInvoice.currency || 'usd').toUpperCase() }}
-                      </template>
-                      <template v-else>
-                        Estimated total will appear after changes or near period end.
-                      </template>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="p-4 rounded-lg border space-y-3">
-                  <div class="font-medium">
-                    Billing admin
-                  </div>
-                  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    <select
-                      v-model="billingAdminUserId"
-                      class="w-full sm:w-80 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
-                    >
-                      <option :value="null">
-                        Select billing admin
-                      </option>
-                      <option
-                        v-for="member in billingAdminOptions"
-                        :key="member._id || member.email"
-                        :value="member._id || member.email"
-                      >
-                        {{ member.firstName }} {{ member.lastName }} ({{ member.email }})
-                      </option>
-                    </select>
-                    <button
-                      class="px-4 py-2 rounded bg-white/10 border border-white/20"
-                      :disabled="billingAdminLoading || !billingAdminUserId"
-                      @click="handleChangeBillingAdmin"
-                    >
-                      {{ billingAdminLoading ? '...' : 'Update billing admin' }}
-                    </button>
-                  </div>
-                </div>
-
-                <div class="p-4 rounded-lg border space-y-3">
-                  <div class="font-medium">
-                    Payment method
-                  </div>
-                  <div class="text-sm text-white/70">
-                    Use Stripe Elements to add a card, or paste a payment method ID to set default.
-                  </div>
-                  <div
-                    v-if="!stripePublishableKey"
-                    class="text-sm text-red-300"
-                  >
-                    Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY). Add to enable card capture.
-                  </div>
-                  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    <button
-                      class="px-4 py-2 rounded bg-white/10 border border-white/20"
-                      :disabled="paymentMethodLoading || !stripePublishableKey"
-                      @click="handleSetupIntent"
-                    >
-                      {{ paymentMethodLoading ? '...' : 'Start card setup' }}
-                    </button>
-                  </div>
-                  <BillingCardForm
-                    v-if="showCardForm && cardSetupClientSecret && stripePublishableKey"
-                    :client-secret="cardSetupClientSecret"
-                    :publishable-key="String(stripePublishableKey)"
-                    @success="handleCardSaved"
-                    @error="handleCardError"
-                    @cancel="handleCardCancel"
-                  />
-
-                  <div class="space-y-2">
-                    <div class="flex items-center gap-2 text-sm text-white/80">
-                      <span class="font-medium">Saved cards</span>
-                      <span
-                        v-if="paymentMethodsLoading"
-                        class="text-white/60"
-                      >Loading…</span>
-                      <button
-                        class="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs"
-                        :disabled="paymentMethodsLoading"
-                        @click="loadPaymentMethods"
-                      >
-                        Refresh
-                      </button>
-                    </div>
-                    <div
-                      v-if="paymentMethodsError"
-                      class="text-sm text-red-300"
-                    >
-                      {{ paymentMethodsError }}
-                    </div>
-                    <div
-                      v-if="!paymentMethodsLoading && (!paymentMethods || paymentMethods.length === 0)"
-                      class="text-white/60 text-sm"
-                    >
-                      No saved cards.
-                    </div>
-                    <div
-                      v-for="pm in paymentMethods"
-                      :key="pm.id"
-                      class="flex items-center justify-between px-3 py-2 rounded bg-white/5 border border-white/10"
-                    >
-                      <div class="text-sm text-white/80">
-                        {{ pm.brand }} •••• {{ pm.last4 }} exp {{ pm.exp_month }}/{{ pm.exp_year }}
-                        <span
-                          v-if="pm.isDefault"
-                          class="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-100"
-                        >
-                          Default
-                        </span>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <button
-                          class="px-3 py-1 rounded bg-white/10 border border-white/20 text-xs"
-                          :disabled="paymentMethodLoading || pm.isDefault"
-                          @click="() => makeDefaultFromList(pm.id)"
-                        >
-                          Make default
-                        </button>
-                        <button
-                          class="px-3 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-200 text-xs"
-                          :disabled="paymentMethodsLoading"
-                          @click="handleDetach(pm.id)"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                    <button
-                      class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
-                      @click="showManualPm = !showManualPm"
-                    >
-                      {{ showManualPm ? 'Hide manual PM entry' : 'Manual payment method ID' }}
-                    </button>
-                  </div>
-                  <div
-                    v-if="showManualPm"
-                    class="flex flex-col sm:flex-row gap-3 items-start sm:items-center"
-                  >
-                    <input
-                      v-model="paymentMethodId"
-                      placeholder="pm_xxx"
-                      class="w-full sm:w-64 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
-                    >
-                    <button
-                      class="px-4 py-2 rounded bg-blue-600 text-white"
-                      :disabled="paymentMethodLoading"
-                      @click="handleUpdatePaymentMethod"
-                    >
-                      {{ paymentMethodLoading ? '...' : 'Set default' }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Transactions: invoices/charges -->
-                <div class="p-4 rounded-lg border mt-4">
-                  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
-                    <div class="font-medium text-base">
-                      Transactions
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
-                      <label class="flex items-center gap-1">
-                        <span>Status</span>
-                        <select
-                          v-model="transactionsStatus"
-                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
-                          @change="transactionsPage=1; loadTransactions()"
-                        >
-                          <option value="all">All</option>
-                          <option value="paid">Paid</option>
-                          <option value="open">Open</option>
-                          <option value="void">Void</option>
-                          <option value="uncollectible">Uncollectible</option>
-                          <option value="failed">Failed</option>
-                          <option value="succeeded">Succeeded</option>
-                        </select>
-                      </label>
-                      <label class="flex items-center gap-1">
-                        <span>Type</span>
-                        <select
-                          v-model="transactionsType"
-                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
-                          @change="transactionsPage=1; loadTransactions()"
-                        >
-                          <option value="all">All</option>
-                          <option value="invoice">Invoices</option>
-                          <option value="charge">Charges</option>
-                        </select>
-                      </label>
-                      <label class="flex items-center gap-1">
-                        <span>Start</span>
-                        <input
-                          v-model="transactionsStart"
-                          type="date"
-                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
-                          @change="transactionsPage=1; loadTransactions()"
-                        >
-                      </label>
-                      <label class="flex items-center gap-1">
-                        <span>End</span>
-                        <input
-                          v-model="transactionsEnd"
-                          type="date"
-                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
-                          @change="transactionsPage=1; loadTransactions()"
-                        >
-                      </label>
-                      <button
-                        class="px-3 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15"
-                        :disabled="transactionsLoading"
-                        @click="loadTransactions"
-                      >
-                        Refresh
-                      </button>
-                      <button
-                        class="px-3 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15"
-                        :disabled="transactionsLoading"
-                        @click="exportTransactionsCsv"
-                      >
-                        Export CSV
-                      </button>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <button
-                        class="px-2 py-1 rounded bg-white/6"
-                        :disabled="transactionsPage<=1"
-                        @click="txnPrevPage"
-                      >
-                        Prev
-                      </button>
-                      <div class="text-white/70">
-                        Page {{ transactionsPage }} / {{ Math.max(1, Math.ceil((transactionsTotal || 0) / transactionsPerPage)) }}
-                      </div>
-                      <button
-                        class="px-2 py-1 rounded bg-white/6"
-                        :disabled="transactionsPage >= Math.max(1, Math.ceil((transactionsTotal || 0) / transactionsPerPage))"
-                        @click="txnNextPage"
-                      >
-                        Next
-                      </button>
-                      <select
-                        v-model.number="transactionsPerPage"
-                        class="ml-3 px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
-                        @change="transactionsPage=1; loadTransactions()"
-                      >
-                        <option :value="5">
-                          5
-                        </option>
-                        <option :value="10">
-                          10
-                        </option>
-                        <option :value="25">
-                          25
-                        </option>
-                        <option :value="50">
-                          50
-                        </option>
-                        <option :value="100">
-                          100
-                        </option>
-                      </select>
-                    </div>
-                  </div>
-                  <div
-                    v-if="transactionsLoading"
-                    class="text-white/70"
-                  >
-                    Loading…
-                  </div>
-                  <div
-                    v-else-if="!transactions.length"
-                    class="text-white/60"
-                  >
-                    No transactions found.
-                  </div>
-                  <table
-                    v-else
-                    class="min-w-full text-sm"
-                  >
-                    <thead class="bg-white/5 text-white/70 text-xs">
-                      <tr>
-                        <th class="px-3 py-2 text-left">
-                          Type
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Date
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Amount (gross)
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Discount
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Net
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Status
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Coupon/Promo
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Description
-                        </th>
-                        <th class="px-3 py-2 text-left">
-                          Link
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="txn in transactions"
-                        :key="txn.id"
-                        class="border-t border-white/10 hover:bg-white/3"
-                      >
-                        <td class="px-3 py-2 capitalize">
-                          {{ txn.type }}
-                        </td>
-                        <td class="px-3 py-2">
-                          {{ txn.ts ? new Date(txn.ts).toLocaleString() : '' }}
-                        </td>
-                        <td class="px-3 py-2">
-                          {{ txn.amount != null ? (txn.amount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '' }}
-                        </td>
-                        <td class="px-3 py-2">
-                          {{ txn.discountAmount ? ('-' + txn.discountAmount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '—' }}
-                        </td>
-                        <td class="px-3 py-2 truncate">
-                          {{ txn.netAmount != null ? (txn.netAmount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '' }}
-                        </td>
-                        <td class="px-3 py-2">
-                          {{ txn.status }}
-                        </td>
-                        <td class="px-3 py-2">
-                          <div class="flex flex-col text-xs">
-                            <span v-if="txn.coupon && (txn.coupon.name || txn.coupon.id)">
-                              {{ txn.coupon.name || txn.coupon.id }}
-                            </span>
-                            <span v-if="txn.promotionCodeId">
-                              Code: {{ txn.promotionCodeId }}
-                            </span>
-                            <span v-if="!txn.coupon && !txn.promotionCodeId">
-                              —
-                            </span>
-                          </div>
-                        </td>
-                        <td class="px-3 py-2 truncate">
-                          {{ txn.description || '' }}
-                        </td>
-                        <td class="px-3 py-2">
-                          <a
-                            v-if="txn.invoiceUrl"
-                            :href="txn.invoiceUrl"
-                            target="_blank"
-                            class="text-white/80 hover:underline"
-                          >Invoice</a>
-                          <a
-                            v-if="txn.receiptUrl"
-                            :href="txn.receiptUrl"
-                            target="_blank"
-                            class="ml-2 text-white/80 hover:underline"
-                          >Receipt</a>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div v-show="activeTab === 'settings'">
-              <h3 class="text-md font-medium mb-2">
-                Settings
-              </h3>
-              <p class="text-sm text-white/70 mb-4">
-                Project-specific settings and flags.
-              </p>
-              <div class="rounded p-3 bg-white/5">
-                <!-- special behavior and tags removed -->
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-white/80 mb-1">Search mode</label>
-                    <div class="relative inline-block w-full max-w-sm">
-                      <select
-                        v-model="project.searchMode"
-                        class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                      >
-                        <option value="substring">
-                          Substring
-                        </option>
-                        <option value="exact">
-                          Exact
-                        </option>
-                        <option value="fuzzy">
-                          Fuzzy
-                        </option>
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden
                         >
                           <path
-                            d="M6 8l4 4 4-4"
-                            stroke="currentColor"
-                            stroke-width="1.75"
+                            d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7z"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                          <path
+                            d="M3 8l9 6 9-6"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                          <path
+                            d="M16 11h6"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                          <path
+                            d="M19 8l3 3-3 3"
+                            stroke-width="1.5"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                           />
                         </svg>
-                      </div>
-                    </div>
-                    <p class="text-xs text-white/60 mt-1">
-                      This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
-                    </p>
-                  </div>
-
-                  <div>
-                    <label class="block text-white/80 mb-1">Issues per page</label>
-                    <div class="relative inline-block w-full max-w-sm">
-                      <select
-                        v-model.number="issuesPageSizeLocal"
-                        class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                        @change="persistIssuesPageSize()"
-                      >
-                        <option :value="5">
-                          5
-                        </option>
-                        <option :value="10">
-                          10
-                        </option>
-                        <option :value="25">
-                          25
-                        </option>
-                        <option :value="50">
-                          50
-                        </option>
-                        <option :value="100">
-                          100
-                        </option>
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
                         <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden
-                        >
-                          <path
-                            d="M6 8l4 4 4-4"
-                            stroke="currentColor"
-                            stroke-width="1.75"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    <p class="text-xs text-white/60 mt-1">
-                      Applies to the Issues list for this project. Saved locally.
-                    </p>
-                  </div>
-                </div>
-              
-                <!-- Roles card: project-scoped role templates -->
-                <div
-                  class="mt-6 rounded p-3 bg-white/5"
-                >
-                  <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-3">
-                      <button
-                        aria-label="Toggle roles"
-                        class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 transform transition-transform"
-                        @click="toggleRolesOpen"
-                      >
-                        <svg
-                          :class="['w-4 h-4 transform transition-transform', rolesOpen ? '' : 'rotate-180']"
+                          v-else
+                          class="w-4 h-4 animate-spin"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
                           xmlns="http://www.w3.org/2000/svg"
                         >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke-width="2"
+                            stroke-opacity="0.25"
+                          />
                           <path
-                            d="M6 9l6 6 6-6"
+                            d="M22 12a10 10 0 0 1-10 10"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                          />
+                        </svg>
+                      </button>
+                      <div
+                        role="tooltip"
+                        class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                      >
+                        Resend invite
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Status badge (invited, rejected, active, etc.) -->
+                  <div :class="['text-xs px-2 py-1 rounded', statusBadgeClass(member.status || member.inviteStatus || (member._id ? 'active' : 'invited'))]">
+                    {{ statusLabel(member) }}
+                  </div>
+                  <!-- Action icons: Permissions, Remove -->
+                  <div class="flex gap-2">
+                    <div
+                      v-if="isProjectAdmin"
+                      class="relative inline-block group"
+                    >
+                      <button
+                        aria-label="Edit permissions"
+                        class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                        @click.prevent="openPermsModal(member)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <rect
+                            x="6"
+                            y="10"
+                            width="12"
+                            height="8"
+                            rx="2"
+                            stroke-width="1.5"
+                          />
+                          <path
+                            d="M8 10V8a4 4 0 018 0v2"
                             stroke-width="1.5"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                           />
                         </svg>
                       </button>
-                      <div class="font-medium">
-                        Roles
-                      </div>
-                    </div>
-                    <div>
                       <div
-                        v-if="isProjectAdmin"
-                        class="relative inline-block group"
+                        role="tooltip"
+                        class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
                       >
-                        <button
-                          aria-label="Create role template"
-                          class="w-8 h-8 grid place-items-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
-                          @click="openRoleModal(null)"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            class="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                          >
-                            <path
-                              d="M12 5v14M5 12h14"
-                              stroke-width="1.5"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            />
-                          </svg>
-                        </button>
-                        <div
-                          role="tooltip"
-                          class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                        >
-                          Create project role
-                        </div>
+                        Permissions
                       </div>
                     </div>
-                  </div>
-                  <div v-show="rolesOpen">
                     <div
-                      v-if="!displayedRoleTemplates.length"
-                      class="text-sm text-white/70"
+                      v-if="isProjectAdmin"
+                      class="relative inline-block group"
                     >
-                      No project role templates.
-                    </div>
-                    <div class="space-y-1">
-                      <div
-                        v-for="(rt, idx) in displayedRoleTemplates"
-                        :key="rt._id || rt.id"
-                        class="p-0 rounded"
+                      <button
+                        aria-label="Edit member"
+                        class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                        @click.prevent="openEditMember(member)"
                       >
-                        <div
-                          v-if="idx > 0"
-                          class="border-t border-white/10 mb-1"
-                        />
-                        <div
-                          class="p-2 rounded bg-white/6 cursor-pointer"
-                          @click.prevent="toggleRoleOpen(rt._id || rt.id)"
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
                         >
-                          <div class="flex items-start justify-between">
-                            <div>
-                              <div class="font-medium text-white">
-                                {{ rt.name }}
-                              </div>
-                              <div class="text-xs text-white/70">
-                                {{ rt.description }}
-                              </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                              <div class="text-xs text-white/60 mr-2">
-                                {{ (rt.permissions || []).length }} perms
-                              </div>
-                              <div class="flex gap-2">
-                                <div
-                                  v-if="isProjectAdmin"
-                                  class="relative inline-block group"
-                                >
-                                  <button
-                                    aria-label="Edit role"
-                                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
-                                    @click.stop.prevent="openRoleModal(rt)"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      viewBox="0 0 24 24"
-                                      class="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                      />
-                                    </svg>
-                                  </button>
-                                  <div
-                                    role="tooltip"
-                                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                                  >
-                                    Edit
-                                  </div>
-                                </div>
-
-                                <div
-                                  v-if="isProjectAdmin"
-                                  class="relative inline-block group"
-                                >
-                                  <button
-                                    aria-label="Delete role"
-                                    class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white border border-white/8"
-                                    @click.stop.prevent="deleteRoleTemplate(rt)"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      viewBox="0 0 24 24"
-                                      class="w-4 h-4"
-                                      fill="none"
-                                      stroke="currentColor"
-                                    >
-                                      <path
-                                        d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                      />
-                                    </svg>
-                                  </button>
-                                  <div
-                                    role="tooltip"
-                                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                                  >
-                                    Delete
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          v-show="isRoleOpen(rt._id || rt.id)"
-                          class="mt-1 p-2 rounded bg-white/5"
+                          <path
+                            d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <div
+                        role="tooltip"
+                        class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                      >
+                        Edit member
+                      </div>
+                    </div>
+                    <div class="relative inline-block group">
+                      <button
+                        aria-label="Remove member"
+                        class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                        @click="removeMember(member)"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
                         >
-                          <div class="grid grid-cols-2 gap-3 max-h-[260px] overflow-auto text-sm text-white/80">
-                            <div
-                              v-for="(ops, resource) in permMatrix"
-                              :key="resource"
-                              class="p-1 rounded"
-                            >
-                              <div class="font-medium text-white mb-2">
-                                {{ resource }}
-                              </div>
-                              <div class="grid grid-cols-4 gap-2 text-sm">
-                                <label
-                                  v-for="op in ops"
-                                  :key="op"
-                                  class="inline-flex items-center gap-2"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    :checked="isPermChecked(rt._id || rt.id, `${resource}.${op}`)"
-                                    @change="togglePerm(rt._id || rt.id, `${resource}.${op}`)"
-                                  >
-                                  <span class="capitalize text-white/80">{{ op }}</span>
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div class="mt-3 text-right">
-                            <button
-                              v-if="isProjectAdmin"
-                              class="px-3 py-1 rounded bg-white/6 mr-2"
-                              @click="cancelRoleEdits(rt._id || rt.id, rt)"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              v-if="isProjectAdmin"
-                              class="px-3 py-1 rounded bg-emerald-500 text-white"
-                              :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
-                              @click="saveRoleInline(rt)"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
+                          <path
+                            d="M6 7h12"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                          />
+                          <path
+                            d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                            stroke-width="1.5"
+                          />
+                          <rect
+                            x="6"
+                            y="7"
+                            width="12"
+                            height="14"
+                            rx="2"
+                            stroke-width="1.5"
+                          />
+                        </svg>
+                      </button>
+                      <div
+                        role="tooltip"
+                        class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                      >
+                        Remove
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- end Roles accordion wrapper -->
-            <div v-show="activeTab === 'logs'">
-              <h3 class="text-md font-medium mb-2">
-                Project Logs
-              </h3>
-              <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3 items-stretch">
-                <input
-                  v-model="logsSearch"
-                  placeholder="Search logs…"
-                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2"
-                >
-                <div class="relative">
-                  <select
-                    v-model="selectedType"
-                    class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90"
+
+            <!-- (Invites shown inline with team members; no separate invites list) -->
+
+            <div class="pt-2">
+              <h4 class="font-medium mb-2">
+                Add member
+              </h4>
+              <div class="grid grid-cols-1 gap-2">
+                <!-- Row 1: First / Last -->
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    v-model="newMember.firstName"
+                    placeholder="First"
+                    class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
                   >
-                    <option value="">
-                      All types
-                    </option>
-                    <option
-                      v-for="t in allTypes"
-                      :key="t"
-                      :value="t"
-                    >
-                      {{ t }}
-                    </option>
-                  </select>
+                  <input
+                    v-model="newMember.lastName"
+                    placeholder="Last"
+                    class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
+                  >
                 </div>
-                <input
-                  v-model="startDateText"
-                  type="datetime-local"
-                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+
+                <!-- Row 2: Email / Company / Role -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    v-model="newMember.email"
+                    placeholder="Email"
+                    class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
+                  >
+                  <input
+                    v-model="newMember.company"
+                    placeholder="Company"
+                    class="rounded p-2 bg-white/5 w-full placeholder-gray-400"
+                  >
+                  <select
+                    v-model="newMember.role"
+                    class="rounded p-2 bg-white/5 w-full"
+                  >
+                    <template v-if="roleTemplates && roleTemplates.length">
+                      <option
+                        v-for="rt in roleTemplates"
+                        :key="rt._id || rt.id || rt.name"
+                        :disabled="planPreviewLoading || !selectedPrice || billingSummary?.hasStripe === false"
+                        :title="!selectedPrice
+                          ? 'Select a plan to preview proration'
+                          : (billingSummary?.hasStripe === false
+                            ? 'Stripe not configured on server'
+                            : (planPreviewLoading ? 'Loading preview…' : ''))"
+                        :value="rt.name"
+                      >
+                        {{ rt.name }}
+                      </option>
+                    </template>
+                    <template v-else>
+                      <option value="admin">
+                        admin
+                      </option>
+                      <option value="CxA">
+                        CxA
+                      </option>
+                      <option value="GC">
+                        GC
+                      </option>
+                      <option value="CM">
+                        CM
+                      </option>
+                      <option value="Architect">
+                        Architect
+                      </option>
+                      <option value="Designer">
+                        Designer
+                      </option>
+                      <option value="Mechanical Contractor">
+                        Mechanical Contractor
+                      </option>
+                      <option value="Electrical Contractor">
+                        Electrical Contractor
+                      </option>
+                      <option value="Plumbing Contractor">
+                        Plumbing Contractor
+                      </option>
+                      <option value="Controls Contractor">
+                        Controls Contractor
+                      </option>
+                      <option value="Life Safety Contractor">
+                        Life Safety Contractor
+                      </option>
+                      <option value="Other Contractor">
+                        Other Contractor
+                      </option>
+                      <option value="Client">
+                        Client
+                      </option>
+                      <option value="User">
+                        User
+                      </option>
+                    </template>
+                  </select>
+                  <div
+                    v-if="billingSummary && billingSummary.hasStripe === false"
+                    class="mt-2 text-xs text-red-300"
+                  >
+                    Proration preview disabled: Stripe not configured on server.
+                  </div>
+                </div>
+
+                <div
+                  v-if="selectedRoleTemplate"
+                  class="px-2 py-1 text-sm text-white/70 bg-white/3 rounded"
                 >
-                <input
-                  v-model="endDateText"
-                  type="datetime-local"
-                  class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
-                >
+                  <div class="font-medium">
+                    Permissions for "{{ selectedRoleTemplate.name }}"
+                  </div>
+                  <div class="mt-1 text-xs">
+                    <template v-if="Array.isArray(selectedRoleTemplate.permissions) && selectedRoleTemplate.permissions.length">
+                      <ul class="list-disc pl-4">
+                        <li
+                          v-for="perm in selectedRoleTemplate.permissions"
+                          :key="perm"
+                        >
+                          {{ perm }}
+                        </li>
+                      </ul>
+                    </template>
+                    <template v-else>
+                      <div class="text-xs text-white/60">
+                        No explicit permissions on template
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <div class="text-right">
+                  <button
+                    class="px-3 py-1 rounded bg-white/6"
+                    @click="addMember"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
-              <div class="flex items-center gap-2 mb-3">
-                <button
-                  class="px-3 py-2 rounded bg-white/10 border border-white/20"
-                  @click="loadLogs"
+            </div>
+          </div>
+        </div>
+
+        <div v-show="activeTab === 'logo'">
+          <h3 class="text-md font-medium mb-2">
+            Logos
+          </h3>
+          <p class="text-sm text-white/70 mb-4">
+            Manage both Client and Commissioning Agent logos. These are stored like user avatars (as URLs or data URIs).
+          </p>
+
+          <!-- Client Logo -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="rounded-lg p-4 bg-white/5 border border-white/10">
+              <div class="font-medium mb-2">
+                Client logo
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
+                  <img
+                    v-if="project.logo"
+                    :src="project.logo"
+                    alt="client logo"
+                    class="object-contain w-full h-full"
+                  >
+                  <div
+                    v-else
+                    class="text-white/60 text-xs"
+                  >
+                    No logo
+                  </div>
+                </div>
+                <div>
+                  <input
+                    ref="clientFileInput"
+                    type="file"
+                    accept="image/*"
+                    @change="onClientLogoSelected"
+                  >
+                  <div class="mt-2 flex gap-2">
+                    <button
+                      class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                      @click="removeClientLogo"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Commissioning Agent Logo -->
+            <div class="rounded-lg p-4 bg-white/5 border border-white/10">
+              <div class="font-medium mb-2">
+                Commissioning Agent logo
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="w-28 h-28 rounded bg-white/6 flex items-center justify-center overflow-hidden border border-white/10">
+                  <img
+                    v-if="(project.commissioning_agent && project.commissioning_agent.logo)"
+                    :src="project.commissioning_agent.logo"
+                    alt="cxa logo"
+                    class="object-contain w-full h-full"
+                  >
+                  <div
+                    v-else
+                    class="text-white/60 text-xs"
+                  >
+                    No logo
+                  </div>
+                </div>
+                <div>
+                  <input
+                    ref="cxaFileInput"
+                    type="file"
+                    accept="image/*"
+                    @change="onCxaLogoSelected"
+                  >
+                  <div class="mt-2 flex gap-2">
+                    <button
+                      class="px-3 py-1 rounded bg-red-500/20 text-red-400"
+                      @click="removeCxaLogo"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-show="activeTab === 'subscription'">
+          <div class="space-y-6">
+            <div
+              v-if="billingLoading"
+              class="text-white/70"
+            >
+              Loading billing…
+            </div>
+            <div
+              v-if="billingError"
+              class="text-red-300 text-sm"
+            >
+              {{ billingError }}
+            </div>
+            <h2 class="text-xl font-semibold">
+              Project Billing
+            </h2>
+            <div
+              v-if="upgradeFeature"
+              class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-100"
+            >
+              <div class="font-semibold">
+                Upgrade required
+              </div>
+              <div class="text-sm mt-1">
+                To use {{ upgradeFeature }}, please upgrade your plan below.
+              </div>
+            </div>
+
+            <div
+              v-if="billingSummary?.dunning?.isPastDue || status === 'past_due'"
+              class="p-3 rounded-lg bg-red-500/10 border border-red-500/40 text-red-100"
+            >
+              <div class="font-semibold">
+                Payment issue
+              </div>
+              <div class="text-sm mt-1">
+                We couldn’t process the last payment. Please update the payment method or retry. Last invoice:
+                {{ billingSummary?.dunning?.lastInvoiceStatus || 'unknown' }} ({{ billingSummary?.dunning?.lastInvoiceId || 'n/a' }})
+              </div>
+            </div>
+
+            <div class="p-4 rounded-lg border">
+              <p>
+                <strong>Status:</strong> {{ status }}
+                <span
+                  v-if="billingSummary?.updatedAt"
+                  class="ml-2 text-xs text-white/60"
+                >• Last updated: {{ new Date(billingSummary.updatedAt).toLocaleString() }}</span>
+              </p>
+              <p class="mt-2">
+                <strong>Plan:</strong> {{ planLabel }}
+              </p>
+              <p
+                v-if="billingSummary?.promotion"
+                class="mt-2 text-sm text-white/80"
+              >
+                <strong>Discount:</strong>
+                <span>
+                  <template v-if="billingSummary.promotion.percentOff">
+                    -{{ billingSummary.promotion.percentOff }}%
+                  </template>
+                  <template v-else-if="billingSummary.promotion.amountOff">
+                    -{{ billingSummary.promotion.amountOff.toFixed(2) }} {{ (billingSummary.promotion.currency || 'usd').toUpperCase() }}
+                  </template>
+                  <template v-else>
+                    Applied
+                  </template>
+                  <span v-if="billingSummary.promotion.couponName">
+                    ({{ billingSummary.promotion.couponName }})
+                  </span>
+                </span>
+              </p>
+              <p v-if="billingSummary?.currentPeriodEnd || project.stripeCurrentPeriodEnd">
+                <strong>Current period end:</strong>
+                {{ new Date(billingSummary?.currentPeriodEnd || project.stripeCurrentPeriodEnd).toLocaleString() }}
+              </p>
+              <p v-if="status === 'trialing' && trialEndDate">
+                <strong>Trial ends:</strong> {{ new Date(trialEndDate).toLocaleString() }}
+              </p>
+              <p v-if="status === 'trialing'">
+                <strong>Trial days left:</strong> {{ trialDaysLeft }}
+              </p>
+              <p
+                v-if="status === 'trialing'"
+                class="text-xs text-white/70 mt-1"
+              >
+                Trial end is fixed from when the project was created and does not change when switching plans.
+              </p>
+
+              <div
+                v-if="billingSummary?.defaultPaymentMethod"
+                class="mt-3 text-sm text-white/80"
+              >
+                <strong>Payment method:</strong>
+                <span class="ml-2">
+                  {{ billingSummary.defaultPaymentMethod.brand || '' }} •••• {{ billingSummary.defaultPaymentMethod.last4 || '' }} exp {{ billingSummary.defaultPaymentMethod.exp_month }}/{{ billingSummary.defaultPaymentMethod.exp_year }}
+                </span>
+              </div>
+              <div
+                v-if="billingSummary?.billingAdmin"
+                class="mt-2 text-sm text-white/80"
+              >
+                <strong>Billing admin:</strong>
+                <span class="ml-2">
+                  {{ billingSummary.billingAdmin.name || billingSummary.billingAdmin.email || billingSummary.billingAdmin.userId }}
+                </span>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-lg border">
+              <label class="block text-sm font-medium mb-2">Choose a plan</label>
+              <div class="relative inline-block w-full">
+                <select
+                  v-model="selectedPrice"
+                  class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
                 >
-                  Refresh
+                  <option
+                    v-for="p in prices"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.label }}
+                  </option>
+                </select>
+                <!-- custom arrow -->
+                <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden
+                  >
+                    <path
+                      d="M6 8l4 4 4-4"
+                      stroke="currentColor"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="mt-2">
+                <span
+                  v-if="project && project.stripePriceId && project.stripePriceId === selectedPrice"
+                  class="inline-block px-2 py-1 text-xs bg-white/10 rounded-full"
+                >Current plan</span>
+              </div>
+
+              <!-- Selected plan details -->
+              <div
+                v-if="selectedPlanDetails"
+                class="mt-4 p-3 rounded-lg bg-white/5 border border-white/10"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="font-medium text-white">
+                    {{ selectedPlanDetails.name }}
+                  </div>
+                  <div class="text-white/80">
+                    {{ selectedPlanDetails.price }}
+                  </div>
+                </div>
+                <p
+                  v-if="selectedPlanDetails.summary"
+                  class="text-sm text-white/70 mt-1"
+                >
+                  {{ selectedPlanDetails.summary }}
+                </p>
+                <ul
+                  v-if="selectedPlanDetails.features && selectedPlanDetails.features.length"
+                  class="mt-2 list-disc list-inside text-white/80 text-sm space-y-1"
+                >
+                  <li
+                    v-for="(f, i) in selectedPlanDetails.features"
+                    :key="i"
+                  >
+                    {{ f }}
+                  </li>
+                </ul>
+              </div>
+
+              <div class="mt-4 flex gap-3">
+                <button
+                  :disabled="loading || (hasSubscription && isSamePlanSelected) || !canManageBilling"
+                  :title="!canManageBilling ? 'You do not have permission to manage this project\'s subscription' : (hasSubscription && isSamePlanSelected ? 'Select a different plan to apply changes' : '')"
+                  class="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+                  @click="hasSubscription ? handleChangePlan() : startCheckout"
+                >
+                  {{ loading || planChangeLoading ? '...' : (hasSubscription ? (isSamePlanSelected ? 'Plan is active' : 'Apply plan') : 'Subscribe') }}
                 </button>
-                <div class="ml-2 flex items-center gap-2 text-white/80">
+
+                <button
+                  :disabled="planPreviewLoading || !selectedPrice"
+                  :title="!selectedPrice ? 'Select a plan to preview proration' : (planPreviewLoading ? 'Loading preview…' : '')"
+                  class="px-4 py-2 rounded border"
+                  @click="handlePreviewPlan"
+                >
+                  {{ planPreviewLoading ? '...' : 'Preview proration' }}
+                </button>
+
+                <button
+                  :disabled="loading || cancelLoading || resumeLoading"
+                  class="px-4 py-2 rounded border"
+                  @click="hasSubscription ? (billingSummary?.cancelAtPeriodEnd ? handleResume() : handleCancel(true)) : openBillingPortal"
+                >
+                  {{ billingSummary?.cancelAtPeriodEnd ? (resumeLoading ? '...' : 'Resume') : (cancelLoading ? '...' : 'Cancel at period end') }}
+                </button>
+              </div>
+
+              <div class="mt-3 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <input
+                  v-model="promotionCode"
+                  placeholder="Promotion code"
+                  class="w-full sm:w-64 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
+                >
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                  :disabled="applyingPromotion || loading"
+                  @click="hasSubscription ? applyPromotionToSubscription() : startCheckout()"
+                >
+                  {{ applyingPromotion ? 'Applying…' : (hasSubscription ? 'Apply to subscription' : 'Use at checkout') }}
+                </button>
+                <button
+                  v-if="promotionCode"
+                  class="px-3 py-2 rounded border border-white/20 text-sm"
+                  :title="'Clear the pending promotion code'"
+                  @click="promotionCode = ''"
+                >
+                  Remove promotion
+                </button>
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                  :disabled="loading"
+                  :title="'Reset this project\'s features to the current plan defaults'"
+                  @click="resetFeaturesToPlanDefaults"
+                >
+                  Reset features to plan defaults
+                </button>
+              </div>
+
+              <div
+                v-if="planPreview && planPreview.lines && planPreview.lines.length"
+                class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10"
+              >
+                <div class="font-semibold mb-2">
+                  Proration preview
+                </div>
+                <ul class="space-y-1">
+                  <li
+                    v-for="line in planPreview.lines"
+                    :key="line.id"
+                    class="flex justify-between"
+                  >
+                    <span>{{ line.description }}</span>
+                    <span>{{ line.amount != null ? line.amount.toFixed(2) : '' }}</span>
+                  </li>
+                </ul>
+                <div class="mt-2">
+                  Amount due next invoice: {{ planPreview.amount_due != null ? planPreview.amount_due.toFixed(2) : 'n/a' }}
+                </div>
+                <div
+                  v-if="planPreview.total_discount_amounts && planPreview.total_discount_amounts.length"
+                  class="mt-2 text-xs text-white/70"
+                >
+                  Discounts applied:
+                  <span
+                    v-for="(d, idx) in planPreview.total_discount_amounts"
+                    :key="idx"
+                    class="inline-block ml-1"
+                  >
+                    -{{ d.amount != null ? (d.amount / 100).toFixed(2) : '' }} {{ (planPreview.currency || 'usd').toUpperCase() }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="mt-3 text-sm text-white/80 bg-white/5 rounded-lg p-3 border border-white/10">
+                <div class="font-semibold mb-1">
+                  Upcoming invoice
+                </div>
+                <div>
+                  <template v-if="billingSummary?.upcomingInvoice && billingSummary.upcomingInvoice.amount_due != null">
+                    Estimated total: ${{ (billingSummary.upcomingInvoice.amount_due / 100).toFixed(2) }} {{ (billingSummary.upcomingInvoice.currency || 'usd').toUpperCase() }}
+                  </template>
+                  <template v-else>
+                    Estimated total will appear after changes or near period end.
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-lg border space-y-3">
+              <div class="font-medium">
+                Billing admin
+              </div>
+              <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <select
+                  v-model="billingAdminUserId"
+                  class="w-full sm:w-80 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
+                >
+                  <option :value="null">
+                    Select billing admin
+                  </option>
+                  <option
+                    v-for="member in billingAdminOptions"
+                    :key="member._id || member.email"
+                    :value="member._id || member.email"
+                  >
+                    {{ member.firstName }} {{ member.lastName }} ({{ member.email }})
+                  </option>
+                </select>
+                <button
+                  class="px-4 py-2 rounded bg-white/10 border border-white/20"
+                  :disabled="billingAdminLoading || !billingAdminUserId"
+                  @click="handleChangeBillingAdmin"
+                >
+                  {{ billingAdminLoading ? '...' : 'Update billing admin' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-lg border space-y-3">
+              <div class="font-medium">
+                Payment method
+              </div>
+              <div class="text-sm text-white/70">
+                Use Stripe Elements to add a card, or paste a payment method ID to set default.
+              </div>
+              <div
+                v-if="!stripePublishableKey"
+                class="text-sm text-red-300"
+              >
+                Stripe publishable key not configured (VITE_STRIPE_PUBLISHABLE_KEY). Add to enable card capture.
+              </div>
+              <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <button
+                  class="px-4 py-2 rounded bg-white/10 border border-white/20"
+                  :disabled="paymentMethodLoading || !stripePublishableKey"
+                  @click="handleSetupIntent"
+                >
+                  {{ paymentMethodLoading ? '...' : 'Start card setup' }}
+                </button>
+              </div>
+              <BillingCardForm
+                v-if="showCardForm && cardSetupClientSecret && stripePublishableKey"
+                :client-secret="cardSetupClientSecret"
+                :publishable-key="String(stripePublishableKey)"
+                @success="handleCardSaved"
+                @error="handleCardError"
+                @cancel="handleCardCancel"
+              />
+
+              <div class="space-y-2">
+                <div class="flex items-center gap-2 text-sm text-white/80">
+                  <span class="font-medium">Saved cards</span>
+                  <span
+                    v-if="paymentMethodsLoading"
+                    class="text-white/60"
+                  >Loading…</span>
+                  <button
+                    class="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs"
+                    :disabled="paymentMethodsLoading"
+                    @click="loadPaymentMethods"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <div
+                  v-if="paymentMethodsError"
+                  class="text-sm text-red-300"
+                >
+                  {{ paymentMethodsError }}
+                </div>
+                <div
+                  v-if="!paymentMethodsLoading && (!paymentMethods || paymentMethods.length === 0)"
+                  class="text-white/60 text-sm"
+                >
+                  No saved cards.
+                </div>
+                <div
+                  v-for="pm in paymentMethods"
+                  :key="pm.id"
+                  class="flex items-center justify-between px-3 py-2 rounded bg-white/5 border border-white/10"
+                >
+                  <div class="text-sm text-white/80">
+                    {{ pm.brand }} •••• {{ pm.last4 }} exp {{ pm.exp_month }}/{{ pm.exp_year }}
+                    <span
+                      v-if="pm.isDefault"
+                      class="ml-2 text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-100"
+                    >
+                      Default
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="px-3 py-1 rounded bg-white/10 border border-white/20 text-xs"
+                      :disabled="paymentMethodLoading || pm.isDefault"
+                      @click="() => makeDefaultFromList(pm.id)"
+                    >
+                      Make default
+                    </button>
+                    <button
+                      class="px-3 py-1 rounded bg-red-500/15 border border-red-500/30 text-red-200 text-xs"
+                      :disabled="paymentMethodsLoading"
+                      @click="handleDetach(pm.id)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <button
+                  class="px-3 py-2 rounded bg-white/10 border border-white/20 text-sm"
+                  @click="showManualPm = !showManualPm"
+                >
+                  {{ showManualPm ? 'Hide manual PM entry' : 'Manual payment method ID' }}
+                </button>
+              </div>
+              <div
+                v-if="showManualPm"
+                class="flex flex-col sm:flex-row gap-3 items-start sm:items-center"
+              >
+                <input
+                  v-model="paymentMethodId"
+                  placeholder="pm_xxx"
+                  class="w-full sm:w-64 rounded bg-white/5 border border-white/10 px-3 py-2 text-white"
+                >
+                <button
+                  class="px-4 py-2 rounded bg-blue-600 text-white"
+                  :disabled="paymentMethodLoading"
+                  @click="handleUpdatePaymentMethod"
+                >
+                  {{ paymentMethodLoading ? '...' : 'Set default' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Transactions: invoices/charges -->
+            <div class="p-4 rounded-lg border mt-4">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
+                <div class="font-medium text-base">
+                  Transactions
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                  <label class="flex items-center gap-1">
+                    <span>Status</span>
+                    <select
+                      v-model="transactionsStatus"
+                      class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                      @change="transactionsPage=1; loadTransactions()"
+                    >
+                      <option value="all">All</option>
+                      <option value="paid">Paid</option>
+                      <option value="open">Open</option>
+                      <option value="void">Void</option>
+                      <option value="uncollectible">Uncollectible</option>
+                      <option value="failed">Failed</option>
+                      <option value="succeeded">Succeeded</option>
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-1">
+                    <span>Type</span>
+                    <select
+                      v-model="transactionsType"
+                      class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                      @change="transactionsPage=1; loadTransactions()"
+                    >
+                      <option value="all">All</option>
+                      <option value="invoice">Invoices</option>
+                      <option value="charge">Charges</option>
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-1">
+                    <span>Start</span>
+                    <input
+                      v-model="transactionsStart"
+                      type="date"
+                      class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                      @change="transactionsPage=1; loadTransactions()"
+                    >
+                  </label>
+                  <label class="flex items-center gap-1">
+                    <span>End</span>
+                    <input
+                      v-model="transactionsEnd"
+                      type="date"
+                      class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                      @change="transactionsPage=1; loadTransactions()"
+                    >
+                  </label>
+                  <button
+                    class="px-3 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15"
+                    :disabled="transactionsLoading"
+                    @click="loadTransactions"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    class="px-3 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15"
+                    :disabled="transactionsLoading"
+                    @click="exportTransactionsCsv"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+                <div class="flex items-center gap-2">
                   <button
                     class="px-2 py-1 rounded bg-white/6"
-                    :disabled="logsPage<=1"
-                    @click="loadPrevPage"
+                    :disabled="transactionsPage<=1"
+                    @click="txnPrevPage"
                   >
                     Prev
                   </button>
-                  <div>Page {{ logsPage }} / {{ Math.max(1, Math.ceil((logsTotal || 0) / logsPerPage)) }}</div>
+                  <div class="text-white/70">
+                    Page {{ transactionsPage }} / {{ Math.max(1, Math.ceil((transactionsTotal || 0) / transactionsPerPage)) }}
+                  </div>
                   <button
                     class="px-2 py-1 rounded bg-white/6"
-                    :disabled="logsPage >= Math.max(1, Math.ceil((logsTotal || 0) / logsPerPage))"
-                    @click="loadNextPage"
+                    :disabled="transactionsPage >= Math.max(1, Math.ceil((transactionsTotal || 0) / transactionsPerPage))"
+                    @click="txnNextPage"
                   >
                     Next
                   </button>
-                </div>
-                <div class="ml-auto flex items-center gap-2">
-                  <div class="text-sm text-white/70">
-                    Per page
-                  </div>
                   <select
-                    v-model.number="logsPerPage"
-                    class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
-                    @change="logsPage=1; loadLogs()"
+                    v-model.number="transactionsPerPage"
+                    class="ml-3 px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+                    @change="transactionsPage=1; loadTransactions()"
                   >
                     <option :value="5">
                       5
@@ -1598,265 +1107,784 @@
                       100
                     </option>
                   </select>
-                  <button
-                    class="px-3 py-2 rounded bg-white/10 border border-white/20"
-                    @click="exportCsv"
-                  >
-                    Export CSV
-                  </button>
                 </div>
               </div>
               <div
-                v-if="!logs.length"
+                v-if="transactionsLoading"
+                class="text-white/70"
+              >
+                Loading…
+              </div>
+              <div
+                v-else-if="!transactions.length"
                 class="text-white/60"
               >
-                No logs yet.
+                No transactions found.
               </div>
-              <ul
+              <table
                 v-else
-                class="space-y-1"
+                class="min-w-full text-sm"
               >
-                <li
-                  v-for="(e, i) in filteredLogs"
-                  :key="i"
-                  class="p-2 rounded bg-white/5 border border-white/10"
-                >
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="text-xs text-white/70">
-                      {{ fmt(e.ts) }}
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">
-                        {{ e.type }}
+                <thead class="bg-white/5 text-white/70 text-xs">
+                  <tr>
+                    <th class="px-3 py-2 text-left">
+                      Type
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Date
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Amount (gross)
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Discount
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Net
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Status
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Coupon/Promo
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Description
+                    </th>
+                    <th class="px-3 py-2 text-left">
+                      Link
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="txn in transactions"
+                    :key="txn.id"
+                    class="border-t border-white/10 hover:bg-white/3"
+                  >
+                    <td class="px-3 py-2 capitalize">
+                      {{ txn.type }}
+                    </td>
+                    <td class="px-3 py-2">
+                      {{ txn.ts ? new Date(txn.ts).toLocaleString() : '' }}
+                    </td>
+                    <td class="px-3 py-2">
+                      {{ txn.amount != null ? (txn.amount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '' }}
+                    </td>
+                    <td class="px-3 py-2">
+                      {{ txn.discountAmount ? ('-' + txn.discountAmount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '—' }}
+                    </td>
+                    <td class="px-3 py-2 truncate">
+                      {{ txn.netAmount != null ? (txn.netAmount.toFixed(2) + ' ' + (txn.currency || '').toUpperCase()) : '' }}
+                    </td>
+                    <td class="px-3 py-2">
+                      {{ txn.status }}
+                    </td>
+                    <td class="px-3 py-2">
+                      <div class="flex flex-col text-xs">
+                        <span v-if="txn.coupon && (txn.coupon.name || txn.coupon.id)">
+                          {{ txn.coupon.name || txn.coupon.id }}
+                        </span>
+                        <span v-if="txn.promotionCodeId">
+                          Code: {{ txn.promotionCodeId }}
+                        </span>
+                        <span v-if="!txn.coupon && !txn.promotionCodeId">
+                          —
+                        </span>
                       </div>
-                      <div
-                        v-if="e.by"
-                        class="text-xs text-white/70"
-                      >
-                        by {{ e.by }}
-                      </div>
-                    </div>
-                  </div>
-                  <div class="mt-1 text-sm truncate">
-                    <span
-                      v-if="e.scope && e.scope.equipmentTag"
-                      class="text-white/80"
-                    >{{ e.scope.equipmentTag }}</span>
-                    <span
-                      v-else-if="e.scope && e.scope.equipmentId"
-                      class="text-white/70"
-                    >Eq#{{ e.scope.equipmentId }}</span>
-                    <span
-                      v-if="e.section && (e.section.number || e.section.title)"
-                      class="text-white/60"
-                    > • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
-                    <span
-                      v-if="e.question && (e.question.number || e.question.text)"
-                      class="text-white/60"
-                    > • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
-                    <span
-                      v-if="!e.by"
-                      class="text-white/60"
-                    >&nbsp;</span>
-                  </div>
-                </li>
-              </ul>
+                    </td>
+                    <td class="px-3 py-2 truncate">
+                      {{ txn.description || '' }}
+                    </td>
+                    <td class="px-3 py-2">
+                      <a
+                        v-if="txn.invoiceUrl"
+                        :href="txn.invoiceUrl"
+                        target="_blank"
+                        class="text-white/80 hover:underline"
+                      >Invoice</a>
+                      <a
+                        v-if="txn.receiptUrl"
+                        :href="txn.receiptUrl"
+                        target="_blank"
+                        class="ml-2 text-white/80 hover:underline"
+                      >Receipt</a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
+        </div>
 
-          <div class="mt-6 text-right">
+        <div v-show="activeTab === 'settings'">
+          <h3 class="text-md font-medium mb-2">
+            Settings
+          </h3>
+          <p class="text-sm text-white/70 mb-4">
+            Project-specific settings and flags.
+          </p>
+          <div class="rounded p-3 bg-white/5">
+            <!-- special behavior and tags removed -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-white/80 mb-1">Search mode</label>
+                <div class="relative inline-block w-full max-w-sm">
+                  <select
+                    v-model="project.searchMode"
+                    class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                  >
+                    <option value="substring">
+                      Substring
+                    </option>
+                    <option value="exact">
+                      Exact
+                    </option>
+                    <option value="fuzzy">
+                      Fuzzy
+                    </option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden
+                    >
+                      <path
+                        d="M6 8l4 4 4-4"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <p class="text-xs text-white/60 mt-1">
+                  This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
+                </p>
+              </div>
+
+              <div>
+                <label class="block text-white/80 mb-1">Issues per page</label>
+                <div class="relative inline-block w-full max-w-sm">
+                  <select
+                    v-model.number="issuesPageSizeLocal"
+                    class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                    @change="persistIssuesPageSize()"
+                  >
+                    <option :value="5">
+                      5
+                    </option>
+                    <option :value="10">
+                      10
+                    </option>
+                    <option :value="25">
+                      25
+                    </option>
+                    <option :value="50">
+                      50
+                    </option>
+                    <option :value="100">
+                      100
+                    </option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden
+                    >
+                      <path
+                        d="M6 8l4 4 4-4"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <p class="text-xs text-white/60 mt-1">
+                  Applies to the Issues list for this project. Saved locally.
+                </p>
+              </div>
+            </div>
+              
+            <!-- Roles card: project-scoped role templates -->
+            <div
+              class="mt-6 rounded p-3 bg-white/5"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-3">
+                  <button
+                    aria-label="Toggle roles"
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 transform transition-transform"
+                    @click="toggleRolesOpen"
+                  >
+                    <svg
+                      :class="['w-4 h-4 transform transition-transform', rolesOpen ? '' : 'rotate-180']"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <div class="font-medium">
+                    Roles
+                  </div>
+                </div>
+                <div>
+                  <div
+                    v-if="isProjectAdmin"
+                    class="relative inline-block group"
+                  >
+                    <button
+                      aria-label="Create role template"
+                      class="w-8 h-8 grid place-items-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                      @click="openRoleModal(null)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          d="M12 5v14M5 12h14"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <div
+                      role="tooltip"
+                      class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                    >
+                      Create project role
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-show="rolesOpen">
+                <div
+                  v-if="!displayedRoleTemplates.length"
+                  class="text-sm text-white/70"
+                >
+                  No project role templates.
+                </div>
+                <div class="space-y-1">
+                  <div
+                    v-for="(rt, idx) in displayedRoleTemplates"
+                    :key="rt._id || rt.id"
+                    class="p-0 rounded"
+                  >
+                    <div
+                      v-if="idx > 0"
+                      class="border-t border-white/10 mb-1"
+                    />
+                    <div
+                      class="p-2 rounded bg-white/6 cursor-pointer"
+                      @click.prevent="toggleRoleOpen(rt._id || rt.id)"
+                    >
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <div class="font-medium text-white">
+                            {{ rt.name }}
+                          </div>
+                          <div class="text-xs text-white/70">
+                            {{ rt.description }}
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <div class="text-xs text-white/60 mr-2">
+                            {{ (rt.permissions || []).length }} perms
+                          </div>
+                          <div class="flex gap-2">
+                            <div
+                              v-if="isProjectAdmin"
+                              class="relative inline-block group"
+                            >
+                              <button
+                                aria-label="Edit role"
+                                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
+                                @click.stop.prevent="openRoleModal(rt)"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    d="M3 21v-4.2a2 2 0 0 1 .6-1.4L17.7 2.3a1 1 0 0 1 1.4 0l2.6 2.6a1 1 0 0 1 0 1.4L7.6 20.4A2 2 0 0 1 6.2 21H3z"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </button>
+                              <div
+                                role="tooltip"
+                                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                              >
+                                Edit
+                              </div>
+                            </div>
+
+                            <div
+                              v-if="isProjectAdmin"
+                              class="relative inline-block group"
+                            >
+                              <button
+                                aria-label="Delete role"
+                                class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-white border border-white/8"
+                                @click.stop.prevent="deleteRoleTemplate(rt)"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2"
+                                    stroke-width="1.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </button>
+                              <div
+                                role="tooltip"
+                                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                              >
+                                Delete
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      v-show="isRoleOpen(rt._id || rt.id)"
+                      class="mt-1 p-2 rounded bg-white/5"
+                    >
+                      <div class="grid grid-cols-2 gap-3 max-h-[260px] overflow-auto text-sm text-white/80">
+                        <div
+                          v-for="(ops, resource) in permMatrix"
+                          :key="resource"
+                          class="p-1 rounded"
+                        >
+                          <div class="font-medium text-white mb-2">
+                            {{ resource }}
+                          </div>
+                          <div class="grid grid-cols-4 gap-2 text-sm">
+                            <label
+                              v-for="op in ops"
+                              :key="op"
+                              class="inline-flex items-center gap-2"
+                            >
+                              <input
+                                type="checkbox"
+                                :checked="isPermChecked(rt._id || rt.id, `${resource}.${op}`)"
+                                @change="togglePerm(rt._id || rt.id, `${resource}.${op}`)"
+                              >
+                              <span class="capitalize text-white/80">{{ op }}</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="mt-3 text-right">
+                        <button
+                          v-if="isProjectAdmin"
+                          class="px-3 py-1 rounded bg-white/6 mr-2"
+                          @click="cancelRoleEdits(rt._id || rt.id, rt)"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          v-if="isProjectAdmin"
+                          class="px-3 py-1 rounded bg-emerald-500 text-white"
+                          :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
+                          @click="saveRoleInline(rt)"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- end Roles accordion wrapper -->
+        <div v-show="activeTab === 'logs'">
+          <h3 class="text-md font-medium mb-2">
+            Project Logs
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3 items-stretch">
+            <input
+              v-model="logsSearch"
+              placeholder="Search logs…"
+              class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full md:col-span-2"
+            >
+            <div class="relative">
+              <select
+                v-model="selectedType"
+                class="w-full px-3 py-2 rounded bg-white/5 border border-white/10 text-white/90"
+              >
+                <option value="">
+                  All types
+                </option>
+                <option
+                  v-for="t in allTypes"
+                  :key="t"
+                  :value="t"
+                >
+                  {{ t }}
+                </option>
+              </select>
+            </div>
+            <input
+              v-model="startDateText"
+              type="datetime-local"
+              class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+            >
+            <input
+              v-model="endDateText"
+              type="datetime-local"
+              class="px-3 py-2 rounded bg-white/5 border border-white/10 w-full"
+            >
+          </div>
+          <div class="flex items-center gap-2 mb-3">
             <button
-              :disabled="saving"
-              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
-              :class="saving ? 'opacity-60 cursor-not-allowed' : ''"
-              @click="save"
+              class="px-3 py-2 rounded bg-white/10 border border-white/20"
+              @click="loadLogs"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              >
-                <path
-                  d="M5 13l4 4L19 7"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span>Save</span>
+              Refresh
             </button>
-          </div>
-        </div>
-  <!-- Role Template editor modal -->
-  <Modal
-    v-model="showRoleModal"
-    panel-class="max-w-[720px]"
-  >
-    <template #header>
-      <div class="font-medium text-white">
-        {{ editingRoleTemplate && editingRoleTemplate._id ? 'Edit Role Template' : 'Create Role Template' }}
-      </div>
-    </template>
-
-    <div class="mb-3 text-sm text-white/80">
-      <label class="block mb-1">Name</label>
-      <input
-        v-model="editingRoleTemplate.name"
-        class="w-full p-2 rounded bg-white/5 border border-white/10"
-      >
-    </div>
-    <div class="mb-3 text-sm text-white/80">
-      <label class="block mb-1">Description</label>
-      <input
-        v-model="editingRoleTemplate.description"
-        class="w-full p-2 rounded bg-white/5 border border-white/10"
-      >
-    </div>
-    <div class="mb-3 text-sm text-white/80">
-      <label class="block mb-1">Permissions</label>
-      <div class="grid grid-cols-2 gap-3 max-h-[340px] overflow-auto mb-3">
-        <div
-          v-for="(ops, resource) in permMatrix"
-          :key="resource"
-          class="p-3 rounded bg-white/5"
-        >
-          <div class="font-medium mb-2">
-            {{ resource }}
-          </div>
-          <div class="grid grid-cols-4 gap-2 text-sm">
-            <label
-              v-for="op in ops"
-              :key="op"
-              class="inline-flex items-center gap-2"
-            >
-              <input
-                v-model="selectedRolePermsArray"
-                type="checkbox"
-                :value="`${resource}.${op}`"
+            <div class="ml-2 flex items-center gap-2 text-white/80">
+              <button
+                class="px-2 py-1 rounded bg-white/6"
+                :disabled="logsPage<=1"
+                @click="loadPrevPage"
               >
-              <span class="capitalize">{{ op }}</span>
-            </label>
+                Prev
+              </button>
+              <div>Page {{ logsPage }} / {{ Math.max(1, Math.ceil((logsTotal || 0) / logsPerPage)) }}</div>
+              <button
+                class="px-2 py-1 rounded bg-white/6"
+                :disabled="logsPage >= Math.max(1, Math.ceil((logsTotal || 0) / logsPerPage))"
+                @click="loadNextPage"
+              >
+                Next
+              </button>
+            </div>
+            <div class="ml-auto flex items-center gap-2">
+              <div class="text-sm text-white/70">
+                Per page
+              </div>
+              <select
+                v-model.number="logsPerPage"
+                class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+                @change="logsPage=1; loadLogs()"
+              >
+                <option :value="5">
+                  5
+                </option>
+                <option :value="10">
+                  10
+                </option>
+                <option :value="25">
+                  25
+                </option>
+                <option :value="50">
+                  50
+                </option>
+                <option :value="100">
+                  100
+                </option>
+              </select>
+              <button
+                class="px-3 py-2 rounded bg-white/10 border border-white/20"
+                @click="exportCsv"
+              >
+                Export CSV
+              </button>
+            </div>
+          </div>
+          <div
+            v-if="!logs.length"
+            class="text-white/60"
+          >
+            No logs yet.
+          </div>
+          <ul
+            v-else
+            class="space-y-1"
+          >
+            <li
+              v-for="(e, i) in filteredLogs"
+              :key="i"
+              class="p-2 rounded bg-white/5 border border-white/10"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-xs text-white/70">
+                  {{ fmt(e.ts) }}
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="text-[11px] px-1.5 py-0.5 rounded bg-white/10 border border-white/20">
+                    {{ e.type }}
+                  </div>
+                  <div
+                    v-if="e.by"
+                    class="text-xs text-white/70"
+                  >
+                    by {{ e.by }}
+                  </div>
+                </div>
+              </div>
+              <div class="mt-1 text-sm truncate">
+                <span
+                  v-if="e.scope && e.scope.equipmentTag"
+                  class="text-white/80"
+                >{{ e.scope.equipmentTag }}</span>
+                <span
+                  v-else-if="e.scope && e.scope.equipmentId"
+                  class="text-white/70"
+                >Eq#{{ e.scope.equipmentId }}</span>
+                <span
+                  v-if="e.section && (e.section.number || e.section.title)"
+                  class="text-white/60"
+                > • Sec {{ e.section.number }} {{ e.section.title ? '– ' + e.section.title : '' }}</span>
+                <span
+                  v-if="e.question && (e.question.number || e.question.text)"
+                  class="text-white/60"
+                > • Q{{ e.question.number }} {{ e.question.text ? '– ' + e.question.text : '' }}</span>
+                <span
+                  v-if="!e.by"
+                  class="text-white/60"
+                >&nbsp;</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-6 text-right">
+        <button
+          :disabled="saving"
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
+          :class="saving ? 'opacity-60 cursor-not-allowed' : ''"
+          @click="save"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              d="M5 13l4 4L19 7"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span>Save</span>
+        </button>
+      </div>
+    </div>
+    <!-- Role Template editor modal -->
+    <Modal
+      v-model="showRoleModal"
+      panel-class="max-w-[720px]"
+    >
+      <template #header>
+        <div class="font-medium text-white">
+          {{ editingRoleTemplate && editingRoleTemplate._id ? 'Edit Role Template' : 'Create Role Template' }}
+        </div>
+      </template>
+
+      <div class="mb-3 text-sm text-white/80">
+        <label class="block mb-1">Name</label>
+        <input
+          v-model="editingRoleTemplate.name"
+          class="w-full p-2 rounded bg-white/5 border border-white/10"
+        >
+      </div>
+      <div class="mb-3 text-sm text-white/80">
+        <label class="block mb-1">Description</label>
+        <input
+          v-model="editingRoleTemplate.description"
+          class="w-full p-2 rounded bg-white/5 border border-white/10"
+        >
+      </div>
+      <div class="mb-3 text-sm text-white/80">
+        <label class="block mb-1">Permissions</label>
+        <div class="grid grid-cols-2 gap-3 max-h-[340px] overflow-auto mb-3">
+          <div
+            v-for="(ops, resource) in permMatrix"
+            :key="resource"
+            class="p-3 rounded bg-white/5"
+          >
+            <div class="font-medium mb-2">
+              {{ resource }}
+            </div>
+            <div class="grid grid-cols-4 gap-2 text-sm">
+              <label
+                v-for="op in ops"
+                :key="op"
+                class="inline-flex items-center gap-2"
+              >
+                <input
+                  v-model="selectedRolePermsArray"
+                  type="checkbox"
+                  :value="`${resource}.${op}`"
+                >
+                <span class="capitalize">{{ op }}</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <template #footer>
-      <div class="mt-3 text-right w-full">
-        <button
-          v-if="editingRoleTemplate && editingRoleTemplate._id"
-          class="px-3 py-1 rounded bg-red-500/20 text-red-400 mr-2"
-          @click="deleteRoleTemplate(editingRoleTemplate)"
-        >
-          Delete
-        </button>
-        <button
-          class="px-3 py-1 rounded bg-white/6 mr-2"
-          @click="closeRoleModal"
-        >
-          Cancel
-        </button>
-        <button
-          class="px-3 py-1 rounded bg-emerald-500 text-white"
-          @click="saveRoleTemplate"
-        >
-          Save
-        </button>
-      </div>
-    </template>
-  </Modal>
-  <Modal
-    v-model="showEditMemberModal"
-    panel-class="max-w-md"
-  >
-    <template #header>
-      <div class="text-lg font-medium">
-        Edit member
-      </div>
-    </template>
+      <template #footer>
+        <div class="mt-3 text-right w-full">
+          <button
+            v-if="editingRoleTemplate && editingRoleTemplate._id"
+            class="px-3 py-1 rounded bg-red-500/20 text-red-400 mr-2"
+            @click="deleteRoleTemplate(editingRoleTemplate)"
+          >
+            Delete
+          </button>
+          <button
+            class="px-3 py-1 rounded bg-white/6 mr-2"
+            @click="closeRoleModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-1 rounded bg-emerald-500 text-white"
+            @click="saveRoleTemplate"
+          >
+            Save
+          </button>
+        </div>
+      </template>
+    </Modal>
+    <Modal
+      v-model="showEditMemberModal"
+      panel-class="max-w-md"
+    >
+      <template #header>
+        <div class="text-lg font-medium">
+          Edit member
+        </div>
+      </template>
 
-    <div class="grid grid-cols-1 gap-3">
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-1 gap-3">
+        <div class="grid grid-cols-2 gap-2">
+          <input
+            v-model="editMemberForm.firstName"
+            placeholder="First name"
+            class="rounded p-2 bg-white/5 w-full"
+          >
+          <input
+            v-model="editMemberForm.lastName"
+            placeholder="Last name"
+            class="rounded p-2 bg-white/5 w-full"
+          >
+        </div>
         <input
-          v-model="editMemberForm.firstName"
-          placeholder="First name"
+          v-model="editMemberForm.email"
+          placeholder="Email"
           class="rounded p-2 bg-white/5 w-full"
         >
         <input
-          v-model="editMemberForm.lastName"
-          placeholder="Last name"
+          v-model="editMemberForm.company"
+          placeholder="Company"
           class="rounded p-2 bg-white/5 w-full"
         >
+        <select
+          v-model="editMemberForm.role"
+          class="rounded p-2 bg-white/5 w-full"
+        >
+          <option value="admin">
+            admin
+          </option>
+          <option value="CxA">
+            CxA
+          </option>
+          <option value="GC">
+            GC
+          </option>
+          <option value="CM">
+            CM
+          </option>
+          <option value="Architect">
+            Architect
+          </option>
+          <option value="Designer">
+            Designer
+          </option>
+          <option value="Client">
+            Client
+          </option>
+          <option value="User">
+            User
+          </option>
+        </select>
       </div>
-      <input
-        v-model="editMemberForm.email"
-        placeholder="Email"
-        class="rounded p-2 bg-white/5 w-full"
-      >
-      <input
-        v-model="editMemberForm.company"
-        placeholder="Company"
-        class="rounded p-2 bg-white/5 w-full"
-      >
-      <select
-        v-model="editMemberForm.role"
-        class="rounded p-2 bg-white/5 w-full"
-      >
-        <option value="admin">
-          admin
-        </option>
-        <option value="CxA">
-          CxA
-        </option>
-        <option value="GC">
-          GC
-        </option>
-        <option value="CM">
-          CM
-        </option>
-        <option value="Architect">
-          Architect
-        </option>
-        <option value="Designer">
-          Designer
-        </option>
-        <option value="Client">
-          Client
-        </option>
-        <option value="User">
-          User
-        </option>
-      </select>
-    </div>
 
-    <template #footer>
-      <div class="mt-3 text-right w-full">
-        <button
-          class="px-3 py-1 rounded bg-white/6 mr-2"
-          @click="closeEditMember"
-        >
-          Cancel
-        </button>
-        <button
-          class="px-3 py-1 rounded bg-emerald-500 text-white"
-          @click="saveEditedMember"
-        >
-          Save
-        </button>
-      </div>
-    </template>
-  </Modal>
-  <PermissionsModal
-    v-if="showPermsModal && modalMember"
-    :visible="showPermsModal"
-    :member="modalMember"
-    :project-id="projectId"
-    :role-templates="displayedRoleTemplates"
-    @close="closePermsModal"
-    @saved="onMemberPermissionsSaved"
-  />
+      <template #footer>
+        <div class="mt-3 text-right w-full">
+          <button
+            class="px-3 py-1 rounded bg-white/6 mr-2"
+            @click="closeEditMember"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-1 rounded bg-emerald-500 text-white"
+            @click="saveEditedMember"
+          >
+            Save
+          </button>
+        </div>
+      </template>
+    </Modal>
+    <PermissionsModal
+      v-if="showPermsModal && modalMember"
+      :visible="showPermsModal"
+      :member="modalMember"
+      :project-id="projectId"
+      :role-templates="displayedRoleTemplates"
+      @close="closePermsModal"
+      @saved="onMemberPermissionsSaved"
+    />
   </section>
 </template>
 
