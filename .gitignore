@@ -111,3 +111,18 @@ tmp/
 
 # Personal settings
 TODO.txt
+
+# Tauri/Rust build artifacts and binaries
+src-tauri/target/
+src-tauri/target/**
+src-tauri/**/target/
+src-tauri/**/target/**
+src-tauri/target/**/*.rlib
+src-tauri/target/**/*.d
+src-tauri/target/**/*.o
+src-tauri/target/**/*.a
+src-tauri/target/**/*.so
+src-tauri/target/**/*.dll
+src-tauri/target/**/*.exe
+src-tauri/**/cxmngr-glass-desktop
+src-tauri/**/cxmngr-glass-desktop.exe
