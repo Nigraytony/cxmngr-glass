@@ -1689,8 +1689,6 @@
             </button>
           </div>
         </div>
-      </div>
-    </div>
   <!-- Role Template editor modal -->
   <Modal
     v-model="showRoleModal"
@@ -1865,7 +1863,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import BreadCrumbs from '../../components/BreadCrumbs.vue'
+// Removed unused import
+// import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import Modal from '../../components/Modal.vue'
 import { useUiStore } from '../../stores/ui'
@@ -2060,8 +2059,8 @@ async function handlePreviewPlan() {
     console.error('preview plan err', e)
     // Surface backend error when available (e.g., Stripe not configured, unauthorized, no subscription)
     // This helps diagnose production vs local environment discrepancies.
-    // @ts-ignore
-    const msg = (e && e.response && e.response.data && (e.response.data.error || e.response.data.message)) || (e && e.message) || 'Failed to preview plan change'
+    const anyErr = e as any
+    const msg = (anyErr && anyErr.response && anyErr.response.data && (anyErr.response.data.error || anyErr.response.data.message)) || (anyErr && anyErr.message) || 'Failed to preview plan change'
     ui.showError(String(msg))
   } finally {
     planPreviewLoading.value = false
