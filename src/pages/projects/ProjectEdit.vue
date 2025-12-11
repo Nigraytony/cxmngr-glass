@@ -1991,7 +1991,8 @@ const paymentMethodsLoading = ref(false)
 const paymentMethodsError = ref<string | null>(null)
 const promotionCode = ref('')
 const applyingPromotion = ref(false)
-const reconcileLoading = ref(false)
+// TODO(cxmngr): Reintroduce reconcile UI state if the reconcile action returns.
+// const reconcileLoading = ref(false)
 
 async function loadTransactions() {
   try {
@@ -2259,7 +2260,12 @@ async function handleUpdatePaymentMethod() {
   }
 }
 
-// Reconcile missing subscriptionId by asking backend to link the latest/active Stripe subscription
+// TODO(cxmngr): Reintroduce a "reconcile subscription" action if needed.
+// Context: Previously provided a way to link a project's latest/active Stripe
+// subscription by calling the backend reconcile endpoint, then refreshing
+// project and billing summary state. Keeping the original implementation
+// commented here for future reference.
+/*
 async function handleReconcileSubscription() {
   try {
     const pid = String(projectId || project.value?.id || (project.value as any)?._id || '')
@@ -2277,6 +2283,7 @@ async function handleReconcileSubscription() {
     reconcileLoading.value = false
   }
 }
+*/
 
 async function makeDefaultFromList(pmId: string) {
   try {
