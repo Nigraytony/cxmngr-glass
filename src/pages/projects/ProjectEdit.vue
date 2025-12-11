@@ -364,6 +364,8 @@
                       >
                         <template v-if="roleTemplates && roleTemplates.length">
                           <option
+                            v-for="rt in roleTemplates"
+                            :key="rt._id || rt.id || rt.name"
                             :disabled="planPreviewLoading || !selectedPrice || billingSummary?.hasStripe === false"
                             :title="!selectedPrice
                               ? 'Select a plan to preview proration'
@@ -376,57 +378,28 @@
                           </option>
                         </template>
                         <template v-else>
-
-                        <div
-                          v-if="billingSummary && billingSummary.hasStripe === false"
-                          class="mt-2 text-xs text-red-300"
-                        >
-                          Proration preview disabled: Stripe not configured on server.
-                        </div>
-                          <option value="admin">
-                            admin
-                          </option>
-                          <option value="CxA">
-                            CxA
-                          </option>
-                          <option value="GC">
-                            GC
-                          </option>
-                          <option value="CM">
-                            CM
-                          </option>
-                          <option value="Architect">
-                            Architect
-                          </option>
-                          <option value="Designer">
-                            Designer
-                          </option>
-                          <option value="Mechanical Contractor">
-                            Mechanical Contractor
-                          </option>
-                          <option value="Electrical Contractor">
-                            Electrical Contractor
-                          </option>
-                          <option value="Plumbing Contractor">
-                            Plumbing Contractor
-                          </option>
-                          <option value="Controls Contractor">
-                            Controls Contractor
-                          </option>
-                          <option value="Life Safety Contractor">
-                            Life Safety Contractor
-                          </option>
-                          <option value="Other Contractor">
-                            Other Contractor
-                          </option>
-                          <option value="Client">
-                            Client
-                          </option>
-                          <option value="User">
-                            User
-                          </option>
+                          <option value="admin">admin</option>
+                          <option value="CxA">CxA</option>
+                          <option value="GC">GC</option>
+                          <option value="CM">CM</option>
+                          <option value="Architect">Architect</option>
+                          <option value="Designer">Designer</option>
+                          <option value="Mechanical Contractor">Mechanical Contractor</option>
+                          <option value="Electrical Contractor">Electrical Contractor</option>
+                          <option value="Plumbing Contractor">Plumbing Contractor</option>
+                          <option value="Controls Contractor">Controls Contractor</option>
+                          <option value="Life Safety Contractor">Life Safety Contractor</option>
+                          <option value="Other Contractor">Other Contractor</option>
+                          <option value="Client">Client</option>
+                          <option value="User">User</option>
                         </template>
                       </select>
+                      <div
+                        v-if="billingSummary && billingSummary.hasStripe === false"
+                        class="mt-2 text-xs text-red-300"
+                      >
+                        Proration preview disabled: Stripe not configured on server.
+                      </div>
                     </div>
 
                     <div
