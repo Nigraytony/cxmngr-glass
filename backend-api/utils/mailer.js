@@ -1,4 +1,15 @@
 const nodemailer = require('nodemailer');
+let sgMail = null
+const hasSendGrid = !!process.env.SENDGRID_API_KEY
+if (hasSendGrid) {
+  try {
+    sgMail = require('@sendgrid/mail')
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+  } catch (e) {
+    // If @sendgrid/mail is not installed, fall back to nodemailer
+    sgMail = null
+  }
+}
 
 // create transporter from environment variables
 const transporter = nodemailer.createTransport({
@@ -56,6 +67,18 @@ async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
   }
 
   try {
+    if (sgMail) {
+      const from = process.env.MAIL_FROM || 'no-reply@example.com'
+      const fromName = process.env.MAIL_FROM_NAME || ''
+      const msg = {
+        to,
+        from: fromName ? { email: from, name: fromName } : from,
+        subject: `Invitation to join project: ${projectName}`,
+        html,
+      }
+      const [resp] = await sgMail.send(msg)
+      return { accepted: [to], messageId: resp?.headers?.['x-message-id'] || 'sendgrid' }
+    }
     const info = await transporter.sendMail({
       from: process.env.MAIL_FROM || 'no-reply@example.com',
       to,
@@ -120,6 +143,18 @@ async function sendResetEmail({ to, name, resetUrl }) {
   }
 
   try {
+    if (sgMail) {
+      const from = process.env.MAIL_FROM || 'no-reply@example.com'
+      const fromName = process.env.MAIL_FROM_NAME || ''
+      const msg = {
+        to,
+        from: fromName ? { email: from, name: fromName } : from,
+        subject: 'Reset your password',
+        html,
+      }
+      const [resp] = await sgMail.send(msg)
+      return { accepted: [to], messageId: resp?.headers?.['x-message-id'] || 'sendgrid' }
+    }
     const info = await transporter.sendMail({
       from: process.env.MAIL_FROM || 'no-reply@example.com',
       to,
