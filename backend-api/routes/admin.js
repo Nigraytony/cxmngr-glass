@@ -13,6 +13,7 @@ const User = require('../models/user');
 const AdminAudit = require('../models/adminAudit');
 const Template = require('../models/template');
 const Task = require('../models/task');
+const { sendInviteEmail, sendResetEmail } = require('../utils/mailer');
 // Project model already required above (used by webhook replay logic)
 
 function auditAdminAction(actor, actionType, meta = {}) {
@@ -368,6 +369,26 @@ router.get('/audit', async (req, res) => {
     res.status(500).json({ error: err.message || 'Failed to fetch audit logs' });
   }
 });
+
+// POST /api/admin/send-test-email
+// Sends a test email via configured mailer to verify production deliverability.
+router.post('/send-test-email', async (req, res) => {
+  try {
+    const to = String(req.body.to || req.query.to || '').trim()
+    if (!to) return res.status(400).json({ error: 'Missing recipient email' })
+    const kind = String(req.body.kind || req.query.kind || 'invite')
+    let info
+    if (kind === 'reset') {
+      info = await sendResetEmail({ to, name: 'Test User', resetUrl: 'https://app.cxma.io/reset' })
+    } else {
+      info = await sendInviteEmail({ to, inviterName: 'Admin', projectName: 'CXMngr', acceptUrl: 'https://app.cxma.io/accept' })
+    }
+    await auditAdminAction(req.user, 'email.test.send', { to, kind })
+    return res.json({ ok: true, info })
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || 'Failed to send test email' })
+  }
+})
 
 // PATCH /api/admin/users/:id - update allowed fields (supports soft-delete/status)
 router.patch('/users/:id', async (req, res) => {
