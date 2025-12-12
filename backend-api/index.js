@@ -29,22 +29,43 @@ if (!process.env.MONGODB_URI) {
 // CORS config: allow specific origins in production via env
 // CORS_ALLOWED_ORIGINS can be a comma-separated list or "*" for any
 const allowedOriginsEnv = process.env.CORS_ALLOWED_ORIGINS;
+const appUrlEnv = process.env.APP_URL; // used for building links; include as allowed origin if present
 let corsOptions = {
   origin: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true,
   optionsSuccessStatus: 204
 };
+
+// Build allowed origins list from env, also include APP_URL origin if provided
 if (allowedOriginsEnv && allowedOriginsEnv.trim() && allowedOriginsEnv !== '*') {
   const list = allowedOriginsEnv.split(',').map(s => s.trim()).filter(Boolean);
+  try {
+    if (appUrlEnv) {
+      const origin = new URL(appUrlEnv).origin;
+      if (!list.includes(origin)) list.push(origin);
+    }
+  } catch (_) { /* ignore invalid APP_URL */ }
+
   corsOptions = {
     ...corsOptions,
     origin: function(origin, callback) {
       // allow REST tools or same-origin (no origin header)
       if (!origin) return callback(null, true);
       if (list.includes(origin)) return callback(null, true);
+      // Helpful diagnostics in logs for origin mismatches
+      console.warn(`[cors] blocked origin: ${origin}; allowed: ${list.join(', ')}`);
       return callback(new Error('Not allowed by CORS'));
     }
+  };
+}
+
+// If explicit wildcard configured and we don't need cookies, allow all
+if (allowedOriginsEnv === '*') {
+  corsOptions = {
+    ...corsOptions,
+    credentials: false, // wildcard cannot be used with credentials
+    origin: '*'
   };
 }
 
