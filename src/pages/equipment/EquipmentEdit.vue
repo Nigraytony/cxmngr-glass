@@ -3661,7 +3661,7 @@ async function downloadEquipmentPdf() {
         const numTxt = (it.number != null && it.number !== undefined) ? `#${it.number}` : '—'
         const typeTxt = String(it.type || '—')
         const titleTxt = String(it.title || '—')
-        const descTxt = String(it.description || '—')
+        const descTxt = htmlToText(it?.descriptionHtml || it?.description || '—')
         const statusTxt = String(it.status || 'Open')
         const numLines = splitText(doc, numTxt, numW - 3)
         const typeLines = splitText(doc, typeTxt, typeW - 3)
