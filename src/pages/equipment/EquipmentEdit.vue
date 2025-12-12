@@ -3179,8 +3179,10 @@ async function downloadEquipmentPdf() {
       const d = await getImageDims(cxaImg.dataUrl)
       if (d.w > 0 && d.h > 0) {
         const scale = logoH / d.h
-        const w = Math.max(1, Math.floor(d.w * scale))
-        cxaLogoSize = { w, h: logoH }
+        // Apply additional 50% reduction to top-right logo while preserving aspect
+        const w = Math.max(1, Math.floor(d.w * scale * 0.5))
+        const h = Math.max(1, Math.floor(logoH * 0.5))
+        cxaLogoSize = { w, h }
       }
     }
   } catch (e) { /* ignore */ }
