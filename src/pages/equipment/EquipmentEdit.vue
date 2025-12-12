@@ -2862,9 +2862,10 @@ async function persistChecklists(sections: any[]) {
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     if (!eid) return
     // Persist to server without refetching the entire equipment to avoid UI reset.
-    await equipmentStore.updateFields(eid, { checklists: sections } as any)
+    await equipmentStore.updateFields(eid, { checklists: sections })
     // Keep local form state and checklist panel in place.
-    (form.value as any).checklists = Array.isArray(sections) ? sections : []
+    const f: any = form.value
+    f.checklists = Array.isArray(sections) ? sections : []
     appendLog('checklist.save', 'Checklist saved', { sections: Array.isArray(sections) ? sections.length : undefined })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save checklist')
