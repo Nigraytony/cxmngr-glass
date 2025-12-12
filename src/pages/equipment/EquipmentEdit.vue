@@ -3155,13 +3155,42 @@ async function downloadEquipmentPdf() {
 
   // Header + page break handling
   const logoH = 12
+  // Determine header logo sizes preserving aspect ratio
+  const getImageDims = async (dataUrl: string): Promise<{ w: number; h: number }> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height })
+      img.onerror = () => resolve({ w: 0, h: 0 })
+      img.src = dataUrl
+    })
+  }
+  let clientLogoSize: { w: number; h: number } = { w: logoH * 2.5, h: logoH }
+  let cxaLogoSize: { w: number; h: number } = { w: logoH * 2.5, h: logoH }
+  try {
+    if (clientImg.dataUrl) {
+      const d = await getImageDims(clientImg.dataUrl)
+      if (d.w > 0 && d.h > 0) {
+        const scale = logoH / d.h
+        const w = Math.max(1, Math.floor(d.w * scale))
+        clientLogoSize = { w, h: logoH }
+      }
+    }
+    if (cxaImg.dataUrl) {
+      const d = await getImageDims(cxaImg.dataUrl)
+      if (d.w > 0 && d.h > 0) {
+        const scale = logoH / d.h
+        const w = Math.max(1, Math.floor(d.w * scale))
+        cxaLogoSize = { w, h: logoH }
+      }
+    }
+  } catch (e) { /* ignore */ }
   const drawHeader = () => {
     // Preserve current font and size
     const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
     const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
     // Draw header band
-    if (clientImg.dataUrl) doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, logoH * 2.5, logoH)
-    if (cxaImg.dataUrl) { const w = logoH * 2.5; doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, margin, w, logoH) }
+    if (clientImg.dataUrl) doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, clientLogoSize.w, clientLogoSize.h)
+    if (cxaImg.dataUrl) { const w = cxaLogoSize.w; const h = cxaLogoSize.h; doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, margin, w, h) }
     doc.setFontSize(20); doc.setFont('helvetica', 'bold')
     const headerTitle = String((form.value as any).tag || (form.value as any).title || 'Equipment')
     doc.text(`${headerTitle} Report`, pageWidth / 2, margin + 8, { align: 'center' })
