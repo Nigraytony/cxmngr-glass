@@ -2034,7 +2034,8 @@ onMounted(async () => {
       } catch (_) { /* non-blocking */ }
       Object.assign(form, {
         name: activityData?.name || '',
-        descriptionHtml: activityData?.descriptionHtml || '',
+        // Prefer stored HTML; fallback to plain description if present
+        descriptionHtml: activityData?.descriptionHtml || activityData?.description || '',
         type: activityData?.type || 'Site Visit Review',
         startDate: activityData?.startDate ? activityData.startDate.substring(0,10) : form.startDate,
         endDate: activityData?.endDate ? activityData.endDate.substring(0,10) : form.endDate,
