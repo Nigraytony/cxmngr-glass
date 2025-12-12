@@ -2027,7 +2027,7 @@ onMounted(async () => {
         const actPid = String(activityData.projectId || '')
         if (actPid) {
           if (typeof (projectStore as any).setCurrentProjectId === 'function') {
-            ;(projectStore as any).setCurrentProjectId(actPid)
+            (projectStore as any).setCurrentProjectId(actPid)
           }
           try { localStorage.setItem('selectedProjectId', actPid) } catch (_) { /* ignore */ }
         }

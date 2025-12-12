@@ -2864,7 +2864,7 @@ async function persistChecklists(sections: any[]) {
     // Persist to server without refetching the entire equipment to avoid UI reset.
     await equipmentStore.updateFields(eid, { checklists: sections } as any)
     // Keep local form state and checklist panel in place.
-    ;(form.value as any).checklists = Array.isArray(sections) ? sections : []
+    (form.value as any).checklists = Array.isArray(sections) ? sections : []
     appendLog('checklist.save', 'Checklist saved', { sections: Array.isArray(sections) ? sections.length : undefined })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save checklist')
@@ -2873,7 +2873,7 @@ async function persistChecklists(sections: any[]) {
 function onChecklistsChange(sections: any[]) {
   // Disable auto-save while filling checklists to avoid disruptive reloads.
   if (checklistSaveTimer) { clearTimeout(checklistSaveTimer); checklistSaveTimer = null }
-  ;(form.value as any).checklists = Array.isArray(sections) ? sections : []
+  (form.value as any).checklists = Array.isArray(sections) ? sections : []
   // Note: persistence now happens only via explicit actions elsewhere (if any).
 }
 
