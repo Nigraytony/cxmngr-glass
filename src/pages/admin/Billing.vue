@@ -1,6 +1,6 @@
 <template>
   <section class="space-y-6">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Billing' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Billing' }]" />
     <div class="grid gap-4 md:grid-cols-2">
       <div class="p-4 rounded-2xl bg-white/6 border border-white/10">
         <h2 class="text-lg font-medium mb-2">

@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Projects', to: '/admin/projects' }, { text: id === 'new' ? 'Create Project' : 'Edit Project' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Projects', to: '/app/admin/projects' }, { text: id === 'new' ? 'Create Project' : 'Edit Project' }]" />
 
     <div
       v-if="error"

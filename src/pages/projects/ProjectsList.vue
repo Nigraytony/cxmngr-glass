@@ -4,7 +4,7 @@
     class="space-y-6 relative"
   >
     <div>
-      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Projects', to: '/projects' }]" />
+      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Projects', to: '/app/projects' }]" />
     </div>
 
     <div class="flex items-center justify-between gap-3">

@@ -535,7 +535,7 @@
                   <span>Add Issue</span>
                 </button>
                 <RouterLink
-                  to="/issues"
+                  to="/app/issues"
                   class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
                 >
                   Manage Issues

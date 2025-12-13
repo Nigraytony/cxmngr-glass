@@ -57,7 +57,7 @@
       </RouterLink>
       <RouterLink
         v-if="featureEnabled('spaces')"
-        to="/spaces"
+        to="/app/spaces"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -69,7 +69,7 @@
       </RouterLink>
       <RouterLink
         v-if="featureEnabled('equipment')"
-        to="/equipment"
+        to="/app/equipment"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -81,7 +81,7 @@
       </RouterLink>
       <RouterLink
         v-if="featureEnabled('templates')"
-        to="/templates"
+        to="/app/templates"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -93,7 +93,7 @@
       </RouterLink>
       <RouterLink
         v-if="featureEnabled('issues')"
-        to="/issues"
+        to="/app/issues"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -105,7 +105,7 @@
       </RouterLink>
       <RouterLink
         v-if="featureEnabled('activities')"
-        to="/activities"
+        to="/app/activities"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -117,7 +117,7 @@
       </RouterLink>
       <RouterLink
         v-if="featureEnabled('tasks')"
-        to="/tasks"
+        to="/app/tasks"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -162,7 +162,7 @@
         <span v-if="open">Tasks</span>
       </RouterLink>
       <RouterLink
-        to="/projects"
+        to="/app/projects"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/projects') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
@@ -189,7 +189,7 @@
       </RouterLink>
       <RouterLink
         v-if="isGlobalAdmin"
-        to="/admin"
+        to="/app/admin"
         :class="[
           'mt-2 flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/admin') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'

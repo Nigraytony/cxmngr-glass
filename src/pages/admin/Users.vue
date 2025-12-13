@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Users' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Users' }]" />
 
     <div class="mt-4 mb-4 flex gap-2 items-center">
       <router-link

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Tasks', to: '/tasks' }, { text: modeLabel } ]" />
+    <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }, { text: modeLabel } ]" />
 
     <div class="p-4 rounded bg-white/6 border border-white/10 text-white">
       <div class="grid grid-cols-2 gap-3">
@@ -63,7 +63,7 @@
 
       <div class="flex justify-end gap-2 mt-3">
         <RouterLink
-          to="/tasks"
+          to="/app/tasks"
           class="px-3 py-2 rounded bg-white/6 text-white"
         >
           Cancel

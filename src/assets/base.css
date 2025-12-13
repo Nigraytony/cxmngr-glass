@@ -2,11 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* App background for demo */
+/* Global background preview (safe, easy to revert) */
+:root {
+  --app-bg: #0f172a; /* slate-900 */
+}
+
 html, body, #app {
   height: 100%;
 }
 
-.app-bg {
-  @apply min-h-screen bg-gradient-to-br from-indigo-600 via-fuchsia-600 to-cyan-500;
+body {
+  background: var(--app-bg);
+  /* Optional gradient: uncomment to preview depth */
+  /* background: linear-gradient(180deg, #0f172a, #1e293b); */
+  transition: background-color 200ms ease, background 200ms ease;
+  overflow-y: auto;
 }

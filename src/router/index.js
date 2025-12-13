@@ -71,7 +71,8 @@ const routes = [
       { path: 'profile', name: 'profile', component: Profile },
     ]
   },
-  { path: '/:pathMatch(.*)*', redirect: '/home' }
+  // Fallback to homepage; avoid redirecting to non-existent /home
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
 const router = createRouter({

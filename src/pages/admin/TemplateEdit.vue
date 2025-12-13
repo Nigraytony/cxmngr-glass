@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Templates', to: '/admin/templates' }, { text: 'Edit Template' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Templates', to: '/app/admin/templates' }, { text: 'Edit Template' }]" />
     <h2 class="text-2xl mb-4">
       Edit Template
     </h2>

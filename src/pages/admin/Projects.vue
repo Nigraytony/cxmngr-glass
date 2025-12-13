@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Projects' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Projects' }]" />
     <!-- Title removed: breadcrumbs provide the page title -->
 
     <div class="mt-6 mb-4 flex gap-2 items-center">

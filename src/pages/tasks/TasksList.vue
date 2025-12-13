@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <BreadCrumbs :items="[{ text: 'Dashboard', to: '/' }, { text: 'Tasks', to: '/tasks' }]" />
+    <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }]" />
 
     <div class="flex items-center gap-3">
       <div class="relative inline-block group">

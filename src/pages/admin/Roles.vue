@@ -1,6 +1,6 @@
 <template>
   <section class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/admin' }, { text: 'Roles & Permissions' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Roles & Permissions' }]" />
     <h2 class="text-lg font-semibold text-white mb-4">
       Roles & Permissions
     </h2>
