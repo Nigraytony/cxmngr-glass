@@ -225,7 +225,10 @@
 
       <!-- FEATURE STRIP: Issues / Checklists / FPTs -->
       <!-- Anchor for header nav: #workflows -->
-      <span id="workflows" class="block"></span>
+      <span
+        id="workflows"
+        class="block"
+      />
       <section
         id="features"
         class="pb-20"
@@ -357,7 +360,10 @@
       </section>
 
       <!-- PRICING: Simple, project-based pricing -->
-      <section id="pricing" class="pb-20">
+      <section
+        id="pricing"
+        class="pb-20"
+      >
         <div class="mx-auto max-w-6xl px-4 md:px-6">
           <div class="mx-auto max-w-3xl text-center">
             <h2 class="text-2xl font-semibold sm:text-3xl">
@@ -385,7 +391,10 @@
       </section>
 
       <!-- FINAL CTA: Ready to give your commissioning a home? -->
-      <section id="cta" class="pb-24">
+      <section
+        id="cta"
+        class="pb-24"
+      >
         <div class="mx-auto max-w-6xl px-4 md:px-6">
           <div
             class="rounded-3xl border border-white/80 bg-white/70 p-8 text-center shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)]"
