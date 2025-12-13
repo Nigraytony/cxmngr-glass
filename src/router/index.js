@@ -25,12 +25,16 @@ const SpaceEdit = () => import('../pages/spaces/EditSpaces.vue')
 const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
 // Use the cleaned up editor component to avoid malformed legacy file
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
+// Marketing/public homepage
+const HomePage = () => import('../pages/home/HomePage.vue')
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { guestOnly: true } },
   { path: '/register', name: 'register', component: Register, meta: { guestOnly: true } },
   { path: '/forgot-password', name: 'forgot-password', component: ForgotPassword, meta: { guestOnly: true } },
   { path: '/reset-password', name: 'reset-password', component: ResetPassword, meta: { guestOnly: true } },
+  // Public marketing homepage
+  { path: '/home', name: 'home', component: HomePage, meta: { guestOnly: true } },
   {
     path: '/',
     component: DashboardLayout,
@@ -65,7 +69,7 @@ const routes = [
       { path: 'profile', name: 'profile', component: Profile },
     ]
   },
-  { path: '/:pathMatch(.*)*', redirect: '/' }
+  { path: '/:pathMatch(.*)*', redirect: '/home' }
 ]
 
 const router = createRouter({
@@ -134,6 +138,8 @@ router.beforeEach(async (to) => {
   try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) { /* ignore auth bootstrap timeout */ }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    // Unauthenticated users visiting app routes: send to marketing homepage; login retains redirect
+    if (to.path === '/') return { name: 'home' }
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.guestOnly && auth.isAuthenticated) {
