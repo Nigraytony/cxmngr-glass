@@ -23,57 +23,32 @@
           <div
             class="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/80 shadow-md shadow-slate-300/60 ring-1 ring-slate-200/70 backdrop-blur-xl dark:bg-slate-900/80 dark:ring-slate-700/70 dark:shadow-black/40"
           >
-            <span class="text-xs font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-              Cx
-            </span>
+            <span class="text-xs font-semibold tracking-tight text-slate-900 dark:text-slate-100">Cxma</span>
           </div>
-          <span
-            class="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50"
-          >
-            Cxma
-          </span>
         </div>
 
         <!-- Nav -->
         <nav class="hidden items-center gap-7 text-sm text-slate-600 dark:text-slate-300 md:flex">
-          <a
-            href="#product"
-            class="hover:text-slate-900 dark:hover:text-white"
-          >
-            Product
-          </a>
-          <a
-            href="#features"
-            class="hover:text-slate-900 dark:hover:text-white"
-          >
-            Workflows
-          </a>
-          <a
-            href="#roles"
-            class="hover:text-slate-900 dark:hover:text-white"
-          >
-            Roles
-          </a>
-          <a
-            href="#pricing"
-            class="hover:text-slate-900 dark:hover:text-white"
-          >
-            Pricing
-          </a>
+          <a href="#features" class="hover:text-slate-900 dark:hover:text-white">Features</a>
+          <a href="#workflows" class="hover:text-slate-900 dark:hover:text-white">Workflows</a>
+          <a href="#roles" class="hover:text-slate-900 dark:hover:text-white">Roles</a>
+          <a href="#pricing" class="hover:text-slate-900 dark:hover:text-white">Pricing</a>
         </nav>
 
         <!-- Actions -->
         <div class="hidden items-center gap-4 md:flex">
-          <button
+          <RouterLink
+            :to="{ name: 'login', query: { redirect: '/app' } }"
             class="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
           >
             Log in
-          </button>
-          <button
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'register' }"
             class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(56,189,248,0.45)] transition hover:from-sky-600 hover:to-sky-700"
           >
             Get started
-          </button>
+          </RouterLink>
         </div>
 
         <!-- Mobile menu button (non-functional placeholder; hook into your UI store later) -->
@@ -110,6 +85,21 @@
             />
           </svg>
         </button>
+        <!-- Mobile actions: mirror login/register for consistency -->
+        <div class="flex items-center gap-3 md:hidden">
+          <RouterLink
+            :to="{ name: 'login', query: { redirect: '/app' } }"
+            class="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
+          >
+            Log in
+          </RouterLink>
+          <RouterLink
+            :to="{ name: 'register' }"
+            class="rounded-lg bg-gradient-to-tr from-sky-500 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(56,189,248,0.45)]"
+          >
+            Get started
+          </RouterLink>
+        </div>
       </div>
     </header>
 
@@ -145,16 +135,18 @@
             <div
               class="flex flex-col items-center gap-3 pt-2 sm:flex-row sm:justify-start"
             >
-              <button
+              <RouterLink
+                :to="{ name: 'register' }"
                 class="w-full rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700 sm:w-auto"
               >
                 Get started in minutes
-              </button>
-              <button
+              </RouterLink>
+              <RouterLink
+                :to="{ name: 'login', query: { redirect: '/app' } }"
                 class="w-full rounded-xl border border-slate-200/80 bg-white/70 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white sm:w-auto dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
               >
-                View live demo
-              </button>
+                Log in to demo
+              </RouterLink>
             </div>
 
             <p class="text-xs text-slate-500 dark:text-slate-400">
@@ -542,11 +534,12 @@
               project starts.
             </p>
             <div class="mt-5 flex justify-center">
-              <button
+              <RouterLink
+                :to="{ name: 'pricing' }"
                 class="rounded-xl border border-slate-200/80 bg-white/80 px-6 py-2.5 text-sm font-medium text-slate-900 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
               >
                 View full pricing
-              </button>
+              </RouterLink>
             </div>
           </div>
         </div>
@@ -566,11 +559,12 @@
               checklists, and FPTs in a matter of minutes.
             </p>
             <div class="mt-5 flex justify-center gap-3">
-              <button
+              <RouterLink
+                :to="{ name: 'register' }"
                 class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
               >
                 Get started free
-              </button>
+              </RouterLink>
               <button
                 class="rounded-xl border border-slate-200/80 bg-white/80 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
               >

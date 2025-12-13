@@ -27,6 +27,7 @@ const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
 // Marketing/public homepage
 const HomePage = () => import('../pages/home/HomePage.vue')
+const Pricing = () => import('../pages/Pricing.vue')
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { guestOnly: true } },
@@ -35,6 +36,7 @@ const routes = [
   { path: '/reset-password', name: 'reset-password', component: ResetPassword, meta: { guestOnly: true } },
   // Public marketing homepage
   { path: '/', name: 'home', component: HomePage, meta: { guestOnly: true } },
+  { path: '/pricing', name: 'pricing', component: Pricing, meta: { guestOnly: true } },
   {
     path: '/app',
     component: DashboardLayout,
