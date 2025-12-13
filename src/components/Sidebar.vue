@@ -48,7 +48,7 @@
         to="/app"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
         :aria-current="isActive('/app') ? 'page' : null"
       >
@@ -60,7 +60,7 @@
         to="/app/spaces"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
         :aria-current="isActive('/spaces') ? 'page' : null"
       >
@@ -72,7 +72,7 @@
         to="/app/equipment"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
         :aria-current="isActive('/equipment') ? 'page' : null"
       >
@@ -84,9 +84,9 @@
         to="/app/templates"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/templates') ? 'page' : null"
+        :aria-current="isActive('/app/templates') ? 'page' : null"
       >
         <span class="i">📦</span>
         <span v-if="open">Templates</span>
@@ -96,9 +96,9 @@
         to="/app/issues"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/issues') ? 'page' : null"
+        :aria-current="isActive('/app/issues') ? 'page' : null"
       >
         <span class="i">🐞</span>
         <span v-if="open">Issues</span>
@@ -108,9 +108,9 @@
         to="/app/activities"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/activities') ? 'page' : null"
+        :aria-current="isActive('/app/activities') ? 'page' : null"
       >
         <span class="i">📝</span>
         <span v-if="open">Activities</span>
@@ -120,9 +120,9 @@
         to="/app/tasks"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/tasks') ? 'page' : null"
+        :aria-current="isActive('/app/tasks') ? 'page' : null"
       >
         <span class="i">
           <svg
@@ -165,9 +165,9 @@
         to="/app/projects"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/projects') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/projects') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/projects') ? 'page' : null"
+        :aria-current="isActive('/app/projects') ? 'page' : null"
       >
         <span class="i">📁</span>
         <span v-if="open">Projects</span>
@@ -192,9 +192,9 @@
         to="/app/admin"
         :class="[
           'mt-2 flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/admin') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/admin') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/admin') ? 'page' : null"
+        :aria-current="isActive('/app/admin') ? 'page' : null"
       >
         <span class="i">🛠️</span>
         <span v-if="open">Admin</span>

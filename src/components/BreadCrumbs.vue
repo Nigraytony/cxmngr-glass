@@ -21,7 +21,7 @@
           >
             <template v-if="item.to && idx < items.length - 1">
               <RouterLink
-                :to="item.to"
+                :to="'/app' +item.to"
                 class="text-white/80 hover:underline"
               >
                 {{ item.text }}
