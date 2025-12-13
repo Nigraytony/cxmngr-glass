@@ -43,9 +43,9 @@ module.exports = [
       tasks: false,
     },
     limits: {
-      team: 20,
+      team: 25,
       issues: 1000,
-      equipment: 1000,
+      equipment: 500,
       spaces: 1000,
       templates: 200,
       activities: 500,

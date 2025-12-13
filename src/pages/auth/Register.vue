@@ -90,6 +90,13 @@
         >
           Sign in
         </RouterLink>
+        ·
+        <RouterLink
+          class="underline"
+          :to="{ name: 'home' }"
+        >
+          Home
+        </RouterLink>
       </p>
     </div>
   </div>

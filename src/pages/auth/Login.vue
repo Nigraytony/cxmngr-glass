@@ -33,6 +33,8 @@
         <RouterLink class="underline" :to="{ name: 'register' }">Create account</RouterLink>
         ·
         <RouterLink class="underline" :to="{ name: 'forgot-password' }">Forgot password?</RouterLink>
+        ·
+        <RouterLink class="underline" :to="{ name: 'home' }">Home</RouterLink>
       </p>
     </div>
   </div>

@@ -11,97 +11,7 @@
       <div class="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-300/20 blur-3xl" />
     </div>
 
-    <!-- HEADER (marketing-style, but app-flavored) -->
-    <header
-      class="sticky top-0 z-30 border-b border-slate-200/60 bg-white/70 shadow-sm backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/70"
-    >
-      <div
-        class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-6"
-      >
-        <!-- Logo -->
-        <div class="flex items-center gap-2">
-          <div
-            class="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/80 shadow-md shadow-slate-300/60 ring-1 ring-slate-200/70 backdrop-blur-xl dark:bg-slate-900/80 dark:ring-slate-700/70 dark:shadow-black/40"
-          >
-            <span class="text-xs font-semibold tracking-tight text-slate-900 dark:text-slate-100">Cxma</span>
-          </div>
-        </div>
-
-        <!-- Nav -->
-        <nav class="hidden items-center gap-7 text-sm text-slate-600 dark:text-slate-300 md:flex">
-          <a href="#features" class="hover:text-slate-900 dark:hover:text-white">Features</a>
-          <a href="#workflows" class="hover:text-slate-900 dark:hover:text-white">Workflows</a>
-          <a href="#roles" class="hover:text-slate-900 dark:hover:text-white">Roles</a>
-          <a href="#pricing" class="hover:text-slate-900 dark:hover:text-white">Pricing</a>
-        </nav>
-
-        <!-- Actions -->
-        <div class="hidden items-center gap-4 md:flex">
-          <RouterLink
-            :to="{ name: 'login', query: { redirect: '/app' } }"
-            class="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
-          >
-            Log in
-          </RouterLink>
-          <RouterLink
-            :to="{ name: 'register' }"
-            class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(56,189,248,0.45)] transition hover:from-sky-600 hover:to-sky-700"
-          >
-            Get started
-          </RouterLink>
-        </div>
-
-        <!-- Mobile menu button (non-functional placeholder; hook into your UI store later) -->
-        <button
-          class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white/70 p-2 text-slate-700 shadow-sm backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 md:hidden"
-        >
-          <span class="sr-only">Open menu</span>
-          <svg
-            class="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line
-              x1="3"
-              y1="6"
-              x2="21"
-              y2="6"
-            />
-            <line
-              x1="3"
-              y1="12"
-              x2="21"
-              y2="12"
-            />
-            <line
-              x1="3"
-              y1="18"
-              x2="21"
-              y2="18"
-            />
-          </svg>
-        </button>
-        <!-- Mobile actions: mirror login/register for consistency -->
-        <div class="flex items-center gap-3 md:hidden">
-          <RouterLink
-            :to="{ name: 'login', query: { redirect: '/app' } }"
-            class="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white"
-          >
-            Log in
-          </RouterLink>
-          <RouterLink
-            :to="{ name: 'register' }"
-            class="rounded-lg bg-gradient-to-tr from-sky-500 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(56,189,248,0.45)]"
-          >
-            Get started
-          </RouterLink>
-        </div>
-      </div>
-    </header>
+    <PublicHeader />
 
     <main>
       <!-- HERO: hybrid marketing + product, with glass dashboard preview -->
@@ -121,15 +31,11 @@
             <h1
               class="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-slate-50"
             >
-              A glass-smooth home for
-              <br class="hidden sm:inline">
-              your commissioning data.
+              A Cx-process management app
             </h1>
 
             <p class="text-base text-slate-600 sm:text-lg dark:text-slate-300">
-              Cxma brings issue logs, equipment checklists, and functional
-              performance tests into a single glassmorphic workspace — with
-              role-based views, offline support, and project-aware dashboards.
+              Cxma is very friendly to the Cx engineer — simple, intuitive, and full-featured for commissioning management. It is not just checklists and issues, but the complete Cx scope of work.
             </p>
 
             <div
@@ -150,7 +56,7 @@
             </div>
 
             <p class="text-xs text-slate-500 dark:text-slate-400">
-              SPA · PWA-ready · Offline-capable · Powered by Vue 3 + Node/Express.
+              OPR · Basis of Design · Design Reviews · Equipment · Checklists · FPTs · Tasks.
             </p>
           </div>
 
@@ -318,6 +224,8 @@
       </section>
 
       <!-- FEATURE STRIP: Issues / Checklists / FPTs -->
+      <!-- Anchor for header nav: #workflows -->
+      <span id="workflows" class="block"></span>
       <section
         id="features"
         class="pb-20"
@@ -325,7 +233,7 @@
         <div class="mx-auto max-w-6xl px-4 md:px-6">
           <div class="mx-auto max-w-3xl text-center">
             <h2 class="text-2xl font-semibold sm:text-3xl">
-              Everything a commissioning team needs, in one pane of glass.
+              Everything a commissioning team needs.
             </h2>
             <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
               Cxma is built for the real workflows you use every day — issue
@@ -448,6 +356,64 @@
         </div>
       </section>
 
+      <!-- PRICING: Simple, project-based pricing -->
+      <section id="pricing" class="pb-20">
+        <div class="mx-auto max-w-6xl px-4 md:px-6">
+          <div class="mx-auto max-w-3xl text-center">
+            <h2 class="text-2xl font-semibold sm:text-3xl">
+              Simple, project-based, monthly/annual pricing
+            </h2>
+            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
+              Basic: $29 / project · Standard: $49 / project · Premium: $79 / project. Stripe-powered subscriptions with a 15-day free period when a project starts.
+            </p>
+            <div class="mt-6 flex items-center justify-center gap-3">
+              <RouterLink
+                :to="{ name: 'pricing' }"
+                class="rounded-xl border border-slate-200/80 bg-white/70 px-6 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
+              >
+                View full pricing
+              </RouterLink>
+              <RouterLink
+                :to="{ name: 'register' }"
+                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
+              >
+                Get started free
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FINAL CTA: Ready to give your commissioning a home? -->
+      <section id="cta" class="pb-24">
+        <div class="mx-auto max-w-6xl px-4 md:px-6">
+          <div
+            class="rounded-3xl border border-white/80 bg-white/70 p-8 text-center shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)]"
+          >
+            <h2 class="text-2xl font-semibold sm:text-3xl">
+              Ready to give your commissioning a proper home?
+            </h2>
+            <p class="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base dark:text-slate-300">
+              Spin up a project in minutes and invite your team. Keep issues, checklists, and FPTs organized from day one.
+            </p>
+            <div class="mt-6 flex items-center justify-center gap-3">
+              <RouterLink
+                :to="{ name: 'register' }"
+                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
+              >
+                Get started free
+              </RouterLink>
+              <RouterLink
+                :to="{ name: 'login', query: { redirect: '/app' } }"
+                class="rounded-xl border border-slate-200/80 bg-white/70 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
+              >
+                Log in to demo
+              </RouterLink>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ROLES / RBAC -->
       <section
         id="roles"
@@ -514,117 +480,13 @@
           </div>
         </div>
       </section>
-
-      <!-- PRICING TEASER -->
-      <section
-        id="pricing"
-        class="pb-20"
-      >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div
-            class="rounded-3xl border border-white/80 bg-gradient-to-r from-sky-50/90 via-white/95 to-emerald-50/90 px-6 py-10 text-center shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-gradient-to-r dark:from-slate-900/90 dark:via-slate-900/95 dark:to-slate-900/90 dark:shadow-[0_24px_70px_rgba(0,0,0,0.9)] md:px-10"
-          >
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Simple, project-based pricing.
-            </h2>
-            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Standard: <span class="font-semibold">$49</span> / project · Pro:
-              <span class="font-semibold">$79</span> / project.
-              Stripe-powered subscriptions with a 15-day free period when a
-              project starts.
-            </p>
-            <div class="mt-5 flex justify-center">
-              <RouterLink
-                :to="{ name: 'pricing' }"
-                class="rounded-xl border border-slate-200/80 bg-white/80 px-6 py-2.5 text-sm font-medium text-slate-900 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
-              >
-                View full pricing
-              </RouterLink>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- FINAL CTA -->
-      <section class="pb-24">
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div
-            class="rounded-3xl border border-white/80 bg-white/80 px-6 py-10 text-center shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/85 dark:shadow-[0_24px_70px_rgba(0,0,0,0.9)] md:px-10"
-          >
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Ready to give your commissioning workflow a new surface?
-            </h2>
-            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Spin up a project, invite your team, and start logging issues,
-              checklists, and FPTs in a matter of minutes.
-            </p>
-            <div class="mt-5 flex justify-center gap-3">
-              <RouterLink
-                :to="{ name: 'register' }"
-                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
-              >
-                Get started free
-              </RouterLink>
-              <button
-                class="rounded-xl border border-slate-200/80 bg-white/80 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
-              >
-                Talk to our team
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
 
-    <!-- FOOTER -->
-    <footer
-      class="border-t border-slate-200/70 bg-white/80 text-xs text-slate-500 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-400"
-    >
-      <div
-        class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 md:flex-row md:items-center md:justify-between md:px-6"
-      >
-        <div class="flex items-center gap-2">
-          <div
-            class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-200 dark:text-slate-900"
-          >
-            <span class="text-[0.7rem] font-semibold">Cx</span>
-          </div>
-          <span>Cxma</span>
-        </div>
-        <div class="flex flex-wrap gap-4 md:gap-6">
-          <a
-            href="#product"
-            class="hover:text-slate-700 dark:hover:text-slate-200"
-          >
-            Product
-          </a>
-          <a
-            href="#features"
-            class="hover:text-slate-700 dark:hover:text-slate-200"
-          >
-            Workflows
-          </a>
-          <a
-            href="#roles"
-            class="hover:text-slate-700 dark:hover:text-slate-200"
-          >
-            Roles
-          </a>
-          <a
-            href="#pricing"
-            class="hover:text-slate-700 dark:hover:text-slate-200"
-          >
-            Pricing
-          </a>
-        </div>
-        <p class="text-[0.7rem]">
-          © {{ year }} Cxma. All rights reserved.
-        </p>
-      </div>
-    </footer>
+    <PublicFooter />
   </div>
 </template>
 
 <script setup lang="ts">
-const year = new Date().getFullYear()
+import PublicHeader from '../../components/public/PublicHeader.vue'
+import PublicFooter from '../../components/public/PublicFooter.vue'
 </script>
