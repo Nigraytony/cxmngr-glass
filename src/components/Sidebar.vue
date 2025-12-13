@@ -7,27 +7,10 @@
     :class="[ open ? 'w-64' : 'w-16' ]"
   >
     <div class="relative h-16 flex items-center gap-2 px-3">
-      <!-- Show full brand logo when sidebar is open (1.5x size) -->
+      <!-- Show brand mark + word when sidebar is open -->
       <div
         v-if="open"
-        class="h-12 max-w-[240px] flex items-center"
-      >
-        <picture>
-          <source
-            srcset="/brand/logo.svg"
-            type="image/svg+xml"
-          >
-          <img
-            src="/brand/logo.png"
-            alt="App logo"
-            class="h-12 w-auto object-contain invert"
-          >
-        </picture>
-      </div>
-      <!-- Compact square logo when collapsed (use cropped PNG) -->
-      <div
-        v-else
-        class="h-12 w-12 rounded-xl overflow-hidden grid place-items-center"
+        class="h-12 max-w-[240px] flex items-center gap-3"
       >
         <picture>
           <source
@@ -36,7 +19,25 @@
           >
           <img
             src="/brand/logo-2.png"
-            alt="App logo"
+            alt="Cxma logo"
+            class="h-10 w-10 object-contain invert"
+          >
+        </picture>
+        <span class="text-white text-xl font-semibold tracking-wide">Cxma</span>
+      </div>
+      <!-- Compact square logo when collapsed (mark only) -->
+      <div
+        v-else
+        class="h-12 w-12 rounded-xl overflow-hidden grid place-items-center"
+      >
+        <picture>
+          <source
+            srcset="/brand/logo.svg"
+            type="image/svg+xml"
+          >
+          <img
+            src="/brand/logo-2.png"
+            alt="Cxma logo"
             class="h-9 w-9 object-contain invert"
           >
         </picture>

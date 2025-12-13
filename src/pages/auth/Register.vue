@@ -9,15 +9,16 @@
       <div class="relative z-10 mb-4 flex items-center justify-center">
         <picture>
           <source
-            srcset="/brand/logo.svg"
+            srcset="/brand/logo-2.svg"
             type="image/svg+xml"
           >
           <img
-            src="/brand/logo.png"
+            src="/brand/logo-2.png"
             alt="App logo"
-            class="h-[4.5rem] w-auto object-contain invert"
+            class="h-[2.5rem] w-auto object-contain invert"
           >
         </picture>
+        <span class="text-white text-3xl font-semibold tracking-wide">Cxma</span>
       </div>
       <h1 class="text-2xl font-semibold text-white drop-shadow">
         Create account
