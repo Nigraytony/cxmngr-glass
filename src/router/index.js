@@ -34,9 +34,9 @@ const routes = [
   { path: '/forgot-password', name: 'forgot-password', component: ForgotPassword, meta: { guestOnly: true } },
   { path: '/reset-password', name: 'reset-password', component: ResetPassword, meta: { guestOnly: true } },
   // Public marketing homepage
-  { path: '/home', name: 'home', component: HomePage, meta: { guestOnly: true } },
+  { path: '/', name: 'home', component: HomePage, meta: { guestOnly: true } },
   {
-    path: '/',
+    path: '/app',
     component: DashboardLayout,
     meta: { requiresAuth: true },
     children: [
@@ -138,8 +138,7 @@ router.beforeEach(async (to) => {
   try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) { /* ignore auth bootstrap timeout */ }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    // Unauthenticated users visiting app routes: send to marketing homepage; login retains redirect
-    if (to.path === '/') return { name: 'home' }
+    // Unauthenticated users visiting app routes: send to homepage; login retains redirect
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.guestOnly && auth.isAuthenticated) {
