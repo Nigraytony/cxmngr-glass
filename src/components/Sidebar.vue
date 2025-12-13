@@ -45,12 +45,12 @@
 
     <nav class="px-2 space-y-1">
       <RouterLink
-        to="/"
+        to="/app"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/') ? 'page' : null"
+        :aria-current="isActive('/app') ? 'page' : null"
       >
         <span class="i">🏠</span>
         <span v-if="open">Dashboard</span>
@@ -269,6 +269,7 @@ const featureEnabled = (key) => {
 function isActive(path) {
   // simple startsWith match; treat root specially
   if (path === '/') return route.path === '/'
+  if (path === '/app') return route.path === '/app' || route.path.startsWith('/app')
   // special-case: when checking /projects, don't mark it active for project-settings route
   if (path === '/projects' && route.name === 'project-settings') return false
   return route.path.startsWith(path)

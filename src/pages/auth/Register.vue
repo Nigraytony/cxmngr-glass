@@ -130,7 +130,7 @@ const submit = async () => {
     // Optionally auto-login after registration
     await authStore.login(email.value, password.value)
     // Do NOT auto-accept invite tokens here. Invited users must accept explicitly from the UI after logging in.
-    router.push('/')
+    router.push('/app')
   } else {
     error.value = result.error || 'Signup failed.'
   }

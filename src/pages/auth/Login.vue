@@ -473,7 +473,7 @@ const submit = async () => {
       if (remember.value) {
         try { localStorage.setItem('rememberMe', '1') } catch (e) { /* ignore */ }
       }
-      router.push('/')
+      router.push('/app')
     } else {
       error.value = authStore.error || 'Invalid email or password.'
     }
