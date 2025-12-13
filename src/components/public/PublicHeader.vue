@@ -4,8 +4,15 @@
       <!-- Logo: mark + word (black mark, word beside) -->
       <div class="flex items-center gap-3">
         <picture>
-          <source srcset="/brand/logo-2.svg" type="image/svg+xml" />
-          <img src="/brand/logo-2.png" alt="Cxma logo" class="h-8 w-8 object-contain" />
+          <source
+            srcset="/brand/logo-2.svg"
+            type="image/svg+xml"
+          >
+          <img
+            src="/brand/logo-2.png"
+            alt="Cxma logo"
+            class="h-8 w-8 object-contain"
+          >
         </picture>
         <span class="text-lg font-semibold tracking-wide text-slate-900 dark:text-slate-100">Cxma</span>
       </div>
