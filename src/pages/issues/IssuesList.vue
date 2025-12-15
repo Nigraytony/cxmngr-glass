@@ -493,78 +493,85 @@
             :class="['rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm transition-opacity', isClosedRow(issue) ? 'opacity-60' : '']"
           >
             <!-- Left: Main info -->
-            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
-              <div class="flex flex-col min-w-[60px] items-start">
-                <div class="text-xs text-white/60">
-                  Issue #
+            <router-link
+              :to="`/app/issues/${issue.id}`"
+              class="flex-1 ..."
+              tabindex="0"
+              style="text-decoration: none;"
+            >
+              <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                <div class="flex flex-col min-w-[60px] items-start">
+                  <div class="text-xs text-white/60">
+                    Issue #
+                  </div>
+                  <div class="text-lg font-bold text-white">
+                    {{ issue.number }}
+                  </div>
                 </div>
-                <div class="text-lg font-bold text-white">
-                  {{ issue.number }}
+                <div class="flex-1 min-w-0 space-y-1">
+                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="text-xs text-white/60">Title:</span>
+                    <span class="text-base font-semibold text-white">{{ issue.title || issue.type }}</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="text-xs text-white/60">Type:</span>
+                    <span
+                      v-if="issue.type"
+                      class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                    >{{ issue.type }}</span>
+                    <span
+                      v-else
+                      class="text-xs text-white/40"
+                    >N/A</span>
+                    <span class="text-xs text-white/60 ml-4">Status:</span>
+                    <span
+                      v-if="issue.status"
+                      :class="statusBadgeClass(issue.status) + ' text-xs px-2 py-0.5 rounded-full'"
+                    >{{ issue.status }}</span>
+                    <span
+                      v-else
+                      class="text-xs text-white/40"
+                    >N/A</span>
+                    <span class="text-xs text-white/60 ml-4">Priority:</span>
+                    <span
+                      v-if="issue.priority"
+                      :class="priorityClass(issue.priority) + ' text-xs px-2 py-0.5 rounded-full'"
+                    >{{ issue.priority }}</span>
+                    <span
+                      v-else
+                      class="text-xs text-white/40"
+                    >N/A</span>
+                    <span
+                      v-if="issue.foundBy || issue.dateFound"
+                      class="text-xs text-white/60 ml-4"
+                    >
+                      <template v-if="issue.foundBy && issue.dateFound">
+                        Found by <span class="text-white/80">{{ issue.foundBy }}</span> on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
+                      </template>
+                      <template v-else-if="issue.foundBy">
+                        Found by <span class="text-white/80">{{ issue.foundBy }}</span>
+                      </template>
+                      <template v-else-if="issue.dateFound">
+                        Found on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
+                      </template>
+                    </span>
+                  </div>
+                  <div class="w-full border-t border-dashed border-white/30 my-1" />
+                  <div class="mb-1">
+                    <span class="text-white/70 text-sm">{{ truncate(htmlToText(issue.description), 500) }}<span v-if="htmlToText(issue.description)?.length > 500">...</span></span>
+                  </div>
+                  <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
+                    <span v-if="issue.system"><span class="text-white/80">System:</span> {{ issue.system }}</span>
+                    <span v-if="issue.location"><span class="text-white/80">Location:</span> {{ issue.location }}</span>
+                    <span v-if="issue.responsible_person"><span class="text-white/80">Responsible:</span> {{ issue.responsible_person }}</span>
+                    <span v-if="issue.equipment"><span class="text-white/80">Equipment:</span> {{ issue.equipment }}</span>
+                    <span v-if="issue.recommendation"><span class="text-white/80">Recommendation:</span> {{ issue.recommendation }}</span>
+                    <span v-if="issue.dueDate"><span class="text-white/80">Respond By:</span> {{ formatDate(issue.dueDate) }}</span>
+                    <span v-if="issue.closedDate"><span class="text-white/80">Closed:</span> {{ formatDate(issue.closedDate) }}</span>
+                  </div>
                 </div>
               </div>
-              <div class="flex-1 min-w-0 space-y-1">
-                <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <span class="text-xs text-white/60">Title:</span>
-                  <span class="text-base font-semibold text-white">{{ issue.title || issue.type }}</span>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <span class="text-xs text-white/60">Type:</span>
-                  <span
-                    v-if="issue.type"
-                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
-                  >{{ issue.type }}</span>
-                  <span
-                    v-else
-                    class="text-xs text-white/40"
-                  >N/A</span>
-                  <span class="text-xs text-white/60 ml-4">Status:</span>
-                  <span
-                    v-if="issue.status"
-                    :class="statusBadgeClass(issue.status) + ' text-xs px-2 py-0.5 rounded-full'"
-                  >{{ issue.status }}</span>
-                  <span
-                    v-else
-                    class="text-xs text-white/40"
-                  >N/A</span>
-                  <span class="text-xs text-white/60 ml-4">Priority:</span>
-                  <span
-                    v-if="issue.priority"
-                    :class="priorityClass(issue.priority) + ' text-xs px-2 py-0.5 rounded-full'"
-                  >{{ issue.priority }}</span>
-                  <span
-                    v-else
-                    class="text-xs text-white/40"
-                  >N/A</span>
-                  <span
-                    v-if="issue.foundBy || issue.dateFound"
-                    class="text-xs text-white/60 ml-4"
-                  >
-                    <template v-if="issue.foundBy && issue.dateFound">
-                      Found by <span class="text-white/80">{{ issue.foundBy }}</span> on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
-                    </template>
-                    <template v-else-if="issue.foundBy">
-                      Found by <span class="text-white/80">{{ issue.foundBy }}</span>
-                    </template>
-                    <template v-else-if="issue.dateFound">
-                      Found on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
-                    </template>
-                  </span>
-                </div>
-                <div class="w-full border-t border-dashed border-white/30 my-1" />
-                <div class="mb-1">
-                  <span class="text-white/70 text-sm">{{ truncate(htmlToText(issue.description), 500) }}<span v-if="htmlToText(issue.description)?.length > 500">...</span></span>
-                </div>
-                <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
-                  <span v-if="issue.system"><span class="text-white/80">System:</span> {{ issue.system }}</span>
-                  <span v-if="issue.location"><span class="text-white/80">Location:</span> {{ issue.location }}</span>
-                  <span v-if="issue.responsible_person"><span class="text-white/80">Responsible:</span> {{ issue.responsible_person }}</span>
-                  <span v-if="issue.equipment"><span class="text-white/80">Equipment:</span> {{ issue.equipment }}</span>
-                  <span v-if="issue.recommendation"><span class="text-white/80">Recommendation:</span> {{ issue.recommendation }}</span>
-                  <span v-if="issue.dueDate"><span class="text-white/80">Respond By:</span> {{ formatDate(issue.dueDate) }}</span>
-                  <span v-if="issue.closedDate"><span class="text-white/80">Closed:</span> {{ formatDate(issue.closedDate) }}</span>
-                </div>
-              </div>
-            </div>
+            </router-link>
             <!-- Right: Actions -->
             <div class="flex flex-col items-end min-w-[120px] justify-end">
               <div class="flex flex-row items-center gap-1">
