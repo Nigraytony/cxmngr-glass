@@ -485,242 +485,202 @@
         </div>
       </template>
       <template v-else>
-        <table class="min-w-full text-left">
-          <thead>
-            <tr class="text-sm text-white/70">
-              <th class="px-4 py-3">
-                <button
-                  type="button"
-                  class="flex items-center gap-2"
-                  @click="setSort('number')"
-                >
-                  <span>#</span>
-                  <span
-                    v-if="sortKey === 'number' && sortDir === 1"
-                    class="text-xs"
-                  >▲</span>
-                  <span
-                    v-else-if="sortKey === 'number' && sortDir === -1"
-                    class="text-xs"
-                  >▼</span>
-                  <span
-                    v-else
-                    class="text-xs opacity-40"
-                  >⇅</span>
-                </button>
-              </th>
-              <th class="px-4 py-3">
-                <button
-                  type="button"
-                  class="flex items-center gap-2"
-                  @click="setSort('type')"
-                >
-                  <span>Type</span>
-                  <span
-                    v-if="sortKey === 'type' && sortDir === 1"
-                    class="text-xs"
-                  >▲</span>
-                  <span
-                    v-else-if="sortKey === 'type' && sortDir === -1"
-                    class="text-xs"
-                  >▼</span>
-                  <span
-                    v-else
-                    class="text-xs opacity-40"
-                  >⇅</span>
-                </button>
-              </th>
-              <th class="px-4 py-3">
-                Description
-              </th>
-              <th class="px-4 py-3">
-                <button
-                  type="button"
-                  class="flex items-center gap-2"
-                  @click="setSort('priority')"
-                >
-                  <span>Priority</span>
-                  <span
-                    v-if="sortKey === 'priority' && sortDir === 1"
-                    class="text-xs"
-                  >▲</span>
-                  <span
-                    v-else-if="sortKey === 'priority' && sortDir === -1"
-                    class="text-xs"
-                  >▼</span>
-                  <span
-                    v-else
-                    class="text-xs opacity-40"
-                  >⇅</span>
-                </button>
-              </th>
-              <th class="px-4 py-3">
-                <button
-                  type="button"
-                  class="flex items-center gap-2"
-                  @click="setSort('responsible_person')"
-                >
-                  <span>Responsible</span>
-                  <span
-                    v-if="sortKey === 'responsible_person' && sortDir === 1"
-                    class="text-xs"
-                  >▲</span>
-                  <span
-                    v-else-if="sortKey === 'responsible_person' && sortDir === -1"
-                    class="text-xs"
-                  >▼</span>
-                  <span
-                    v-else
-                    class="text-xs opacity-40"
-                  >⇅</span>
-                </button>
-              </th>
-              <th class="px-4 py-3">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="mt-2">
-            <tr
-              v-for="issue in pagedIssues"
-              :key="issue.id"
-              :class="['align-top', isClosedRow(issue) ? 'opacity-60' : '']"
-            >
-              <td class="px-4 py-3 text-white">
-                {{ issue.number }}
-              </td>
-              <td class="px-4 py-3 text-white/90">
-                {{ issue.type }}
-              </td>
-              <td class="px-4 py-3 text-white/70 max-w-xl">
-                {{ truncate(htmlToText(issue.description), 250) }}
-              </td>
-              <td class="px-4 py-3">
-                <span :class="priorityClass(issue.priority) + ' px-3 py-1 rounded-full text-xs font-medium'">{{ issue.priority }}</span>
-              </td>
-              <td class="px-4 py-3 text-white/90">
-                {{ issue.responsible_person }}
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex gap-2">
-                  <!-- Visit icon button -->
-                  <button
-                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
-                    aria-label="Visit issue"
-                    :title="`Visit issue #${issue.number || ''}`"
-                    @click="openView(issue)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
-                        stroke-width="1.5"
-                      />
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="3"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                  </button>
-                  <!-- Edit icon button -->
-                  <button
-                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/8"
-                    aria-label="Edit issue"
-                    :title="`Edit issue #${issue.number || ''}`"
-                    @click="openEdit(issue)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                  </button>
-                  <!-- Delete icon button -->
-                  <button
-                    class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/40"
-                    aria-label="Delete issue"
-                    :title="`Delete issue #${issue.number || ''}`"
-                    @click="onDelete(issue)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M3 6h18"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                      <path
-                        d="M8 6l1-2h6l1 2"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                      <rect
-                        x="6"
-                        y="6"
-                        width="12"
-                        height="14"
-                        rx="1.5"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M10 10v6M14 10v6"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                  </button>
-                  <!-- Closed ON/OFF switch (exact match with IssueEdit.vue) -->
-                  <div class="inline-flex items-center gap-2 ml-2 mr-1">
-                    <span class="text-sm select-none">Closed</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      :aria-checked="isClosedRow(issue)"
-                      :aria-label="`Toggle Closed`"
-                      class="relative inline-flex h-7 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
-                      :class="isClosedRow(issue) ? 'bg-emerald-500/70 border-emerald-400/80' : 'bg-white/10 border-white/30'"
-                      @click="toggleIssueClosed(issue)"
-                      @keydown.space.prevent="toggleIssueClosed(issue)"
-                      @keydown.enter.prevent="toggleIssueClosed(issue)"
-                    >
-                      <span
-                        class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
-                        :class="isClosedRow(issue) ? 'translate-x-6' : 'translate-x-1'"
-                      />
-                    </button>
-                    <span
-                      class="text-xs select-none"
-                      :class="isClosedRow(issue) ? 'text-emerald-200' : 'text-white/60'"
-                    >{{ isClosedRow(issue) ? 'YES' : 'NO' }}</span>
-                  </div>
+        <!-- Card-based issue list -->
+        <div class="flex flex-col gap-4">
+          <div
+            v-for="issue in pagedIssues"
+            :key="issue.id"
+            :class="['rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm transition-opacity', isClosedRow(issue) ? 'opacity-60' : '']"
+          >
+            <!-- Left: Main info -->
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+              <div class="flex flex-col min-w-[60px] items-start">
+                <div class="text-xs text-white/60">
+                  Issue #
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <div class="text-lg font-bold text-white">
+                  {{ issue.number }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Title:</span>
+                  <span class="text-base font-semibold text-white">{{ issue.title || issue.type }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Type:</span>
+                  <span
+                    v-if="issue.type"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ issue.type }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">Status:</span>
+                  <span
+                    v-if="issue.status"
+                    :class="statusBadgeClass(issue.status) + ' text-xs px-2 py-0.5 rounded-full'"
+                  >{{ issue.status }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">Priority:</span>
+                  <span
+                    v-if="issue.priority"
+                    :class="priorityClass(issue.priority) + ' text-xs px-2 py-0.5 rounded-full'"
+                  >{{ issue.priority }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span
+                    v-if="issue.foundBy || issue.dateFound"
+                    class="text-xs text-white/60 ml-4"
+                  >
+                    <template v-if="issue.foundBy && issue.dateFound">
+                      Found by <span class="text-white/80">{{ issue.foundBy }}</span> on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
+                    </template>
+                    <template v-else-if="issue.foundBy">
+                      Found by <span class="text-white/80">{{ issue.foundBy }}</span>
+                    </template>
+                    <template v-else-if="issue.dateFound">
+                      Found on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
+                    </template>
+                  </span>
+                </div>
+                <div class="w-full border-t border-dashed border-white/30 my-1" />
+                <div class="mb-1">
+                  <span class="text-white/70 text-sm">{{ truncate(htmlToText(issue.description), 500) }}<span v-if="htmlToText(issue.description)?.length > 500">...</span></span>
+                </div>
+                <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
+                  <span v-if="issue.system"><span class="text-white/80">System:</span> {{ issue.system }}</span>
+                  <span v-if="issue.location"><span class="text-white/80">Location:</span> {{ issue.location }}</span>
+                  <span v-if="issue.responsible_person"><span class="text-white/80">Responsible:</span> {{ issue.responsible_person }}</span>
+                  <span v-if="issue.equipment"><span class="text-white/80">Equipment:</span> {{ issue.equipment }}</span>
+                  <span v-if="issue.recommendation"><span class="text-white/80">Recommendation:</span> {{ issue.recommendation }}</span>
+                  <span v-if="issue.dueDate"><span class="text-white/80">Respond By:</span> {{ formatDate(issue.dueDate) }}</span>
+                  <span v-if="issue.closedDate"><span class="text-white/80">Closed:</span> {{ formatDate(issue.closedDate) }}</span>
+                </div>
+              </div>
+            </div>
+            <!-- Right: Actions -->
+            <div class="flex flex-col items-end min-w-[120px] justify-end">
+              <div class="flex flex-row items-center gap-1">
+                <button
+                  class="w-6 h-6 grid place-items-center rounded bg-white/10 hover:bg-white/20 text-white border border-white/10 p-0"
+                  aria-label="Visit issue"
+                  :title="`Visit issue #${issue.number || ''}`"
+                  @click="openView(issue)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-3 h-3"
+                  >
+                    <path
+                      d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                      stroke-width="1.5"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                      stroke-width="1.5"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="w-6 h-6 grid place-items-center rounded bg-white/10 hover:bg-white/20 text-white border border-white/10 p-0"
+                  aria-label="Edit issue"
+                  :title="`Edit issue #${issue.number || ''}`"
+                  @click="openEdit(issue)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-3 h-3"
+                  >
+                    <path
+                      d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                      stroke-width="1.5"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="w-6 h-6 grid place-items-center rounded bg-red-500/30 hover:bg-red-500/50 text-red-100 border border-red-400/40 p-0"
+                  aria-label="Delete issue"
+                  :title="`Delete issue #${issue.number || ''}`"
+                  @click="onDelete(issue)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-3 h-3"
+                  >
+                    <path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <div class="inline-flex items-center gap-1 mt-2">
+                <span class="text-xs select-none">Closed</span>
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="isClosedRow(issue)"
+                  :aria-label="`Toggle Closed`"
+                  class="relative inline-flex h-5 w-8 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                  :class="isClosedRow(issue) ? 'bg-emerald-500/70 border-emerald-400/80' : 'bg-white/10 border-white/30'"
+                  @click="toggleIssueClosed(issue)"
+                  @keydown.space.prevent="toggleIssueClosed(issue)"
+                  @keydown.enter.prevent="toggleIssueClosed(issue)"
+                >
+                  <span
+                    class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform"
+                    :class="isClosedRow(issue) ? 'translate-x-3' : 'translate-x-0.5'"
+                  />
+                </button>
+                <span
+                  class="text-xs select-none"
+                  :class="isClosedRow(issue) ? 'text-emerald-200' : 'text-white/60'"
+                >{{ isClosedRow(issue) ? 'YES' : 'NO' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
     </div>
 
@@ -947,6 +907,13 @@
 </template>
 
 <script setup>
+// Utility: format a date string to a readable format
+function formatDate(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  if (isNaN(d)) return ''
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
@@ -1829,9 +1796,27 @@ function fetchIssuesPage(projectId) {
 const debouncedFetch = debounce(() => { fetchIssuesPage().catch(() => {}) }, 150)
 watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => typeFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
 
-// Server-driven totals (serverTotal is set by fetchIssuesPage)
-const totalItems = computed(() => Number(serverTotal.value || filteredIssues.value.length || 0))
-const displayTotal = computed(() => Number(serverTotalAll.value || serverTotal.value || filteredIssues.value.length || 0))
+
+// Pagination totals should reflect filtered count when filters/search are applied
+const isFiltered = computed(() => {
+  // If any filter is not 'All', or search is non-empty, or hideClosed is on, treat as filtered
+  return (
+    (priorityFilter.value && priorityFilter.value !== 'All') ||
+    (typeFilter.value && typeFilter.value !== 'All') ||
+    (statusFilter.value && statusFilter.value !== 'All') ||
+    (effectiveSearch.value && effectiveSearch.value.trim() !== '') ||
+    hideClosed.value
+  )
+})
+
+const totalItems = computed(() => isFiltered.value
+  ? filteredIssues.value.length
+  : Number(serverTotal.value || filteredIssues.value.length || 0)
+)
+const displayTotal = computed(() => isFiltered.value
+  ? filteredIssues.value.length
+  : Number(serverTotalAll.value || serverTotal.value || filteredIssues.value.length || 0)
+)
 
 // Client-side sorting fallback over current page
 const sortedIssues = computed(() => {
@@ -1854,21 +1839,24 @@ const sortedIssues = computed(() => {
   return arr
 })
 
-function setSort(key) {
-  if (sortKey.value === key) sortDir.value = -sortDir.value
-  else { sortKey.value = key; sortDir.value = 1 }
-  page.value = 1
-}
+
+
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
 const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
-// Use client-side sortedIssues (operating over server-returned page) as the current page
+
+// Use filtered and sorted issues for pagination when filtered, otherwise use server-driven page
 const pagedIssues = computed(() => {
   const list = sortedIssues.value || []
+  if (isFiltered.value) {
+    const start = (page.value - 1) * pageSize.value
+    const end = start + pageSize.value
+    return list.slice(start, end)
+  }
+  // Unfiltered: use server-driven page if available
   const total = Number(serverTotal.value || 0)
   const pageLen = Array.isArray(serverIssues.value) ? serverIssues.value.length : 0
-  // If server indicates there's more items than the returned page, assume server-side paging
   if (total > pageLen) return list
   const start = (page.value - 1) * pageSize.value
   const end = start + pageSize.value

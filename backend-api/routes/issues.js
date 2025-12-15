@@ -49,7 +49,7 @@ function getBackendBaseUrl(req) {
 }
 
 // Light projection for list responses to avoid pulling large blobs
-const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person description system createdAt updatedAt dueDate closedBy closedDate labels';
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location createdAt updatedAt dueDate closedBy closedDate labels';
 
 // runMiddleware extracted to ../middleware/runMiddleware.js
 

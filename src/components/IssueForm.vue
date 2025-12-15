@@ -169,19 +169,11 @@
       </div>
       <div>
         <label class="block text-white/80">System</label>
-        <select
+        <input
           v-model="local.issue.system"
           :disabled="isReadOnly"
           class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white disabled:opacity-60"
         >
-          <option
-            v-for="opt in systemOptions"
-            :key="String(opt.value)"
-            :value="opt.value"
-          >
-            {{ opt.text }}
-          </option>
-        </select>
       </div>
     </div>
 
@@ -245,7 +237,15 @@ const foundByListId = 'foundByList'
 const assignedToListId = 'assignedToList'
 
 watch(() => props.modelValue, (v) => {
-  local.issue = { ...v }
+  // Only update if changed (shallow compare)
+  const keys = Object.keys(v || {})
+  let changed = false
+  for (const k of keys) {
+    if (local.issue[k] !== v[k]) { changed = true; break }
+  }
+  if (changed) {
+    local.issue = { ...v }
+  }
 })
 
 watch(() => local.issue, (v) => {

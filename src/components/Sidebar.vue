@@ -49,9 +49,9 @@
         to="/app"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          route.path === '/app' ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/app') ? 'page' : null"
+        :aria-current="route.path === '/app' ? 'page' : null"
       >
         <span class="i">🏠</span>
         <span v-if="open">Dashboard</span>
@@ -75,7 +75,7 @@
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
           isActive('/app/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/equipment') ? 'page' : null"
+        :aria-current="isActive('/app/equipment') ? 'page' : null"
       >
         <span class="i">🧰</span>
         <span v-if="open">Equipment</span>
