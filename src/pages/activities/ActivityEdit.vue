@@ -564,6 +564,12 @@
                     v-if="showIssueSuggestions"
                     class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
                   >
+                    <div
+                      v-if="issueSuggestionsLoading"
+                      class="px-3 py-2 text-xs text-white/60"
+                    >
+                      Searching…
+                    </div>
                     <button
                       v-for="(iss, idx) in issueSuggestions"
                       :key="iss.id"
@@ -3108,37 +3114,51 @@ async function downloadActivityPdf() {
           const key = String((it?.id || it?._id) || '')
           if (key) issuesMap[key] = it
         }
-        // For each selected equipment, add any issues referenced in eq.issues (by id or object)
-        for (const eq of selectedEquipSnapshot) {
-          // Add issues by id/object in eq.issues
-          if (Array.isArray(eq.issues)) {
-            for (const ref of eq.issues) {
-              let id = ''
-              if (ref && typeof ref === 'object') {
-                id = String(ref.id || ref._id || '')
-                if (id && !issuesMap[id]) issuesMap[id] = ref
-              } else if (typeof ref === 'string') {
-                id = ref
-                // If not already present, try to find in issuesStore.issues
-                if (id && !issuesMap[id]) {
-                  const found = (issuesStore.issues || []).find((it:any) => String(it.id || it._id) === id)
-                  if (found) issuesMap[id] = found
-                }
-              }
-            }
+
+        const ensureIssueInMap = async (issueId: string) => {
+          const id = String(issueId || '').trim()
+          if (!id || issuesMap[id]) return
+          const found = (issuesStore.issues || []).find((it: any) => String(it?.id || it?._id || '') === id)
+          if (found) {
+            issuesMap[id] = found
+            return
           }
-          // Add issues linked by assetId to this equipment
-          const eqId = String(eq.id || eq._id || '')
-          if (eqId) {
-            for (const it of (issuesStore.issues || [])) {
-              const linked = String((it as any)?.assetId || '')
-              if (linked === eqId) {
-                const key = String((it?.id || it?._id) || '')
-                if (key && !issuesMap[key]) issuesMap[key] = it
-              }
-            }
-          }
+          try {
+            const fetched = await issuesStore.fetchIssue(id)
+            const key = String((fetched as any)?.id || (fetched as any)?._id || id)
+            if (key) issuesMap[key] = fetched
+          } catch (e) { /* ignore missing issues */ }
         }
+
+        const collectIssueIdsFromEquipment = (eqObj: any): string[] => {
+          const ids = new Set<string>()
+          try {
+            const addRef = (ref: any) => {
+              const iid = issueRefToId(ref)
+              if (iid) ids.add(iid)
+            }
+            const addRefList = (list: any) => {
+              const arr = Array.isArray(list) ? list : []
+              for (const it of arr) addRef(it)
+            }
+
+            addRefList(eqObj?.issues)
+
+            const fpts: any[] = Array.isArray(eqObj?.functionalTests) ? eqObj.functionalTests : []
+            for (const f of fpts) addRefList(f?.issues)
+
+            const chks: any[] = Array.isArray(eqObj?.checklists) ? eqObj.checklists : []
+            for (const c of chks) {
+              const items: any[] = Array.isArray(c?.questions) ? c.questions : (Array.isArray(c?.items) ? c.items : [])
+              for (const q of items) addRefList(q?.issues)
+            }
+
+            const comps: any[] = Array.isArray(eqObj?.components) ? eqObj.components : []
+            for (const c of comps) addRefList(c?.issues)
+          } catch (e) { /* ignore */ }
+          return Array.from(ids)
+        }
+
         const spacesMap: Record<string, any> = {}
         for (const sp of (spacesStore.items || [])) {
           const key = String((sp as any).id || (sp as any)._id || '')
@@ -3293,6 +3313,9 @@ async function downloadActivityPdf() {
           try {
             const eqId = String((eq as any)?.id || (eq as any)?._id || '')
             const fullEq = eqId ? (await fetchFullEquipmentForReport(eqId)) || eq : eq
+            // Ensure any issue ids referenced in this equipment are resolved to canonical issues via the store.
+            const issueIds = collectIssueIdsFromEquipment(fullEq)
+            for (const iid of issueIds) await ensureIssueInMap(iid)
             // Attempt to reuse each equipment's own saved report settings if present on object
             const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
             const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
@@ -3745,27 +3768,59 @@ const activityIssueDraft = ref<any>({
 const issueSearch = ref('')
 const issueSuggestionsOpen = ref(false)
 const issueHighlightedIndex = ref(-1)
-const issueSuggestions = computed<any[]>(() => {
-  const q = String(issueSearch.value || '').trim().toLowerCase()
-  const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
-  if (!all.length) return []
-  const linkedIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map(issueRefToId).filter(Boolean))
-  const filtered = all.filter((it: any) => {
-    const id = String(it.id || it._id || '')
-    if (!id || linkedIds.has(id)) return false
-    if (!q) return true
-    const num = (it.number != null) ? String(it.number) : ''
-    const title = String(it.title || '').toLowerCase()
-    const type = String(it.type || '').toLowerCase()
-    const status = String(it.status || '').toLowerCase()
-    const loc = String(it.location || '').toLowerCase()
-    const sys = String(it.system || '').toLowerCase()
-    const needle = q
-    return num.includes(needle) || title.includes(needle) || type.includes(needle) || status.includes(needle) || loc.includes(needle) || sys.includes(needle)
-  })
-  return filtered.slice(0, 12)
+const issueSuggestions = ref<any[]>([])
+const issueSuggestionsLoading = ref(false)
+let issueSuggestTimer: any = null
+
+async function fetchIssueSuggestions(qRaw: string) {
+  const q = String(qRaw || '').trim()
+  if (!q) { issueSuggestions.value = []; return }
+  const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  if (!pid) { issueSuggestions.value = []; return }
+
+  issueSuggestionsLoading.value = true
+  try {
+    const { data } = await http.get('/api/issues', {
+      params: { projectId: pid, search: q, page: 1, perPage: 12 },
+      headers: { ...getAuthHeaders() }
+    })
+    const payload = (data && (data.items || data)) || []
+    const items: any[] = Array.isArray(payload) ? payload : []
+    const linkedIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map(issueRefToId).filter(Boolean))
+    issueSuggestions.value = items
+      .map((it: any) => ({ ...(it || {}), id: it?._id || it?.id }))
+      .filter((it: any) => {
+        const id = String(it?.id || '')
+        return id && !linkedIds.has(id)
+      })
+      .slice(0, 12)
+  } catch (e) {
+    // Fallback to store-based filtering (may be incomplete if server paginates)
+    const ql = q.toLowerCase()
+    const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+    const linkedIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map(issueRefToId).filter(Boolean))
+    issueSuggestions.value = all.filter((it: any) => {
+      const id = String(it.id || it._id || '')
+      if (!id || linkedIds.has(id)) return false
+      const num = (it.number != null) ? String(it.number) : ''
+      const title = String(it.title || '').toLowerCase()
+      const type = String(it.type || '').toLowerCase()
+      const status = String(it.status || '').toLowerCase()
+      const loc = String(it.location || '').toLowerCase()
+      const sys = String(it.system || '').toLowerCase()
+      return num.includes(ql) || title.includes(ql) || type.includes(ql) || status.includes(ql) || loc.includes(ql) || sys.includes(ql)
+    }).slice(0, 12)
+  } finally {
+    issueSuggestionsLoading.value = false
+  }
+}
+
+watch(issueSearch, (q) => {
+  if (issueSuggestTimer) { clearTimeout(issueSuggestTimer); issueSuggestTimer = null }
+  issueSuggestTimer = setTimeout(() => { fetchIssueSuggestions(String(q || '')).catch(() => {}) }, 150)
 })
-const showIssueSuggestions = computed<boolean>(() => issueSuggestionsOpen.value && !!issueSearch.value && issueSuggestions.value.length > 0)
+
+const showIssueSuggestions = computed<boolean>(() => issueSuggestionsOpen.value && !!issueSearch.value)
 function openIssueSuggestions() { issueSuggestionsOpen.value = true }
 function closeIssueSuggestions() { issueSuggestionsOpen.value = false }
 function onIssueInputBlur() {
@@ -4149,6 +4204,15 @@ function normalizeSelectedEquipmentTokens() {
 }
 
 const equipmentOrderTouched = ref(false)
+const equipmentTagCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+function compareEquipmentTags(a?: string, b?: string) {
+  const at = String(a || '').trim()
+  const bt = String(b || '').trim()
+  if (!at && !bt) return 0
+  if (!at) return 1
+  if (!bt) return -1
+  return equipmentTagCollator.compare(at, bt)
+}
 function sortSelectedEquipmentByTag() {
   const ids = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
   if (ids.length < 2) return
@@ -4158,9 +4222,7 @@ function sortSelectedEquipmentByTag() {
     if (id) byId[id] = eq
   }
   const sorted = [...ids].sort((a, b) => {
-    const at = String(byId[a]?.tag || '').toLowerCase()
-    const bt = String(byId[b]?.tag || '').toLowerCase()
-    return at.localeCompare(bt)
+    return compareEquipmentTags(byId[a]?.tag, byId[b]?.tag)
   })
   const same = ids.length === sorted.length && ids.every((v, i) => v === sorted[i])
   if (!same) form.systems = sorted

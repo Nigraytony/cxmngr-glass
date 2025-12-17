@@ -428,17 +428,15 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
       iss.push(it)
     }
 
-    // From equipment.issues refs (ids or embedded objects)
+    // From equipment.issues refs (ids only; always use canonical store issues)
     const refs: any[] = Array.isArray(eq.issues) ? eq.issues : []
     for (const r of refs) {
       const iid = String(((r as any)?.id || (r as any)?._id) || r || '')
       if (iid && issuesById[iid]) pushIssue(issuesById[iid])
-      else if (r && typeof r === 'object') pushIssue(r)
     }
 
-    // Collect linked issue ids + inline issue objects from functional tests/checklists
+    // Collect linked issue ids from functional tests/checklists (no inline objects)
     const linked = new Set<string>()
-    const inlineIssues: any[] = []
     try {
       const fpts: any[] = Array.isArray((eq as any).functionalTests) ? (eq as any).functionalTests : []
       for (const f of fpts) {
@@ -446,7 +444,6 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         for (const r of list) {
           const iid = String((r && ((r as any).id || (r as any)._id)) || r || '')
           if (iid) linked.add(iid)
-          if (r && typeof r === 'object') inlineIssues.push(r)
         }
       }
       const chks: any[] = Array.isArray((eq as any).checklists) ? (eq as any).checklists : []
@@ -457,7 +454,6 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
           for (const r of list) {
             const iid = String((r && ((r as any).id || (r as any)._id)) || r || '')
             if (iid) linked.add(iid)
-            if (r && typeof r === 'object') inlineIssues.push(r)
           }
         }
       }
@@ -465,11 +461,6 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
 
     for (const iid of linked) {
       if (issuesById[iid]) pushIssue(issuesById[iid])
-    }
-    for (const it of inlineIssues) {
-      const iid = String((it && ((it as any).id || (it as any)._id)) || '')
-      if (iid && issuesById[iid]) pushIssue(issuesById[iid])
-      else pushIssue(it)
     }
 
     // From project issues linked to this equipment (assetId) or matching its tag as location
@@ -491,8 +482,9 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
       const typeW = Math.round(26 * 0.75)
       const sourceW = 20
       const titleW = Math.round(42 * 0.75)
-      const descW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.45)
-      const recW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.35)
+      // Allocate more width to Recommendation (+10%) and reduce Description accordingly.
+      const descW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.35)
+      const recW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.45)
       const statusW = Math.round(24 * 0.75)
       const restW = totalW - numW - typeW - sourceW - titleW - descW - recW - statusW
       const finalDescW = descW + restW
