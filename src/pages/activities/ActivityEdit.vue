@@ -542,7 +542,63 @@
                 </RouterLink>
               </div>
             </div>
-            <IssuesTable :issues="issuesForActivity" />
+            <!-- Link existing Issue -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+              <div>
+                <label class="block text-sm text-white/70">Link existing issue</label>
+                <div class="relative">
+                  <input
+                    v-model="issueSearch"
+                    type="text"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    placeholder="Search issues by number, title, type..."
+                    @focus="openIssueSuggestions"
+                    @input="openIssueSuggestions"
+                    @keydown.down.prevent="onIssueArrowDown"
+                    @keydown.up.prevent="onIssueArrowUp"
+                    @keydown.enter.prevent="addHighlightedIssue"
+                    @keydown.esc.prevent="closeIssueSuggestions"
+                    @blur="onIssueInputBlur"
+                  >
+                  <div
+                    v-if="showIssueSuggestions"
+                    class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                  >
+                    <button
+                      v-for="(iss, idx) in issueSuggestions"
+                      :key="iss.id"
+                      type="button"
+                      class="w-full px-3 py-2 text-left inline-flex flex-col gap-0.5 text-sm"
+                      :class="idx === issueHighlightedIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @mousedown.prevent="linkExistingIssue(iss)"
+                    >
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-medium text-white truncate">
+                          {{ iss.title || iss.type || ('Issue #' + (iss.number ?? '')) }}
+                        </span>
+                        <span class="text-xs text-white/60 whitespace-nowrap">
+                          #{{ iss.number ?? '—' }}
+                        </span>
+                      </div>
+                      <div class="text-xs text-white/60 truncate">
+                        {{ iss.type || '—' }} • {{ iss.status || 'Open' }}
+                      </div>
+                    </button>
+                    <div
+                      v-if="!issueSuggestions.length"
+                      class="px-3 py-2 text-xs text-white/60"
+                    >
+                      No matching issues
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+            <IssuesTable
+              :issues="issuesForActivity"
+              :show-unlink="true"
+              @unlink="onUnlinkIssue"
+            />
           </div>
 
           <!-- Logs Tab -->
@@ -1464,54 +1520,9 @@
           Add Issue for Activity
         </div>
       </template>
-      <div class="space-y-3">
-        <input
-          v-model="activityIssueDraft.title"
-          type="text"
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-          placeholder="Issue title"
-        >
-        <div>
-          <label class="block text-sm text-white/70">Description</label>
-          <textarea
-            v-model="activityIssueDraft.description"
-            rows="4"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-            placeholder="Describe the issue"
-          />
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label class="block text-sm text-white/70">Type</label>
-            <input
-              v-model="activityIssueDraft.type"
-              type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              placeholder="Activity"
-            >
-          </div>
-          <div>
-            <label class="block text-sm text-white/70">Priority</label>
-            <select
-              v-model="activityIssueDraft.priority"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-            >
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm text-white/70">Assign To</label>
-            <input
-              v-model="activityIssueDraft.assignedTo"
-              type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              placeholder="email or name"
-            >
-          </div>
-        </div>
-      </div>
+
+      <IssueForm v-model="activityIssueDraft" />
+
       <template #footer>
         <div class="flex items-center justify-end gap-2">
           <button
@@ -1634,6 +1645,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, computed, ref, watch } from 'vue'
 import { jsPDF } from 'jspdf'
+import { drawBrandedFooter, drawBrandedHeader } from '../../utils/pdfBranding'
 // Ensure html2canvas is available for jsPDF html() rendering
 import html2canvas from 'html2canvas'
 ;(window as any).html2canvas = (window as any).html2canvas || html2canvas
@@ -1654,6 +1666,7 @@ import { useAuthStore } from '../../stores/auth'
 import { getAuthHeaders } from '../../utils/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import IssuesTable from '../../components/IssuesTable.vue'
+import IssueForm from '../../components/IssueForm.vue'
 import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
 import { useSpacesStore } from '../../stores/spaces'
@@ -2013,10 +2026,10 @@ onMounted(async () => {
           activityData = (list || []).find((a: any) => String(a?.id || a?._id) === String(id.value)) || null
         }
       } catch (_) { /* ignore */ }
-      // Fallback to direct GET by id only if not found via list
+      // Fallback to direct fetch by id only if not found via list
       if (!activityData) {
         try {
-          activityData = await store.fetchActivity(id.value)
+          activityData = await store.fetchActivity(id.value, { light: true })
         } catch (e: any) {
           try { ui.showError(e?.response?.data?.error || e?.message || 'Failed to load activity') } catch (_) { /* ignore */ }
         }
@@ -2043,6 +2056,7 @@ onMounted(async () => {
         location: activityData?.location || '',
         spaceId: (activityData as any)?.spaceId || null,
         systems: activityData?.systems || [],
+        issues: Array.isArray((activityData as any)?.issues) ? (activityData as any).issues : [],
       })
       try {
         if (form.spaceId) {
@@ -2076,14 +2090,44 @@ const fullEquipmentCache = new Map<string, any>()
 // Ensure all heavy data is loaded before generating reports (photos, attachments, issues, equipment)
 async function ensureReportData() {
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
-  try {
-    const full = await store.fetchActivity(id.value, { includePhotos: true })
-    if (full) {
-      Object.assign(form, full)
-      photosLoaded.value = true
-      attachmentsLoaded.value = true
-      commentsLoaded.value = true
+  const toYmd = (v: any): string => {
+    if (!v) return ''
+    if (typeof v === 'string') {
+      // Accept yyyy-MM-dd already or normalize ISO timestamps
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v
+      if (v.includes('T') && v.length >= 10) return v.slice(0, 10)
+      // Best-effort parse
+      const d = new Date(v)
+      if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+      return v
     }
+    try {
+      const d = new Date(v)
+      if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+    } catch (e) { /* ignore */ }
+    return ''
+  }
+  // Avoid direct `/api/activities/:id?includePhotos=true` fetches here because if the
+  // activity id is stale/missing it spams the browser console with 404s, and the
+  // report can be generated from already-loaded state.
+  try {
+    const cur = store.current
+    if (cur && String((cur as any).id || (cur as any)._id || '') === String(id.value || '')) {
+      Object.assign(form, cur as any)
+    } else if (pid && id.value) {
+      // Best-effort hydrate from the project list without hitting the single-activity endpoint.
+      const list = await store.fetchActivities(pid)
+      const found = (list || []).find((a: any) => String(a?.id || a?._id) === String(id.value))
+      if (found) Object.assign(form, found as any)
+    }
+    // Normalize date inputs (the UI uses <input type="date"> which requires yyyy-MM-dd).
+    form.startDate = toYmd((form as any).startDate)
+    form.endDate = toYmd((form as any).endDate)
+
+    // Mark what we can as loaded based on current form data.
+    photosLoaded.value = Array.isArray((form as any).photos)
+    attachmentsLoaded.value = Array.isArray((form as any).attachments)
+    commentsLoaded.value = Array.isArray((form as any).comments)
   } catch (e) { /* best effort */ }
   try {
     if (pid) {
@@ -2146,6 +2190,19 @@ watch(() => currentTab.value, async (tab) => {
     try { await loadLogs(); logsLoaded.value = true } catch (e) { /* ignore */ }
   }
 })
+
+// Ensure issues load once project context becomes available, even if the user
+// navigated to the Issues tab before projectId was set.
+watch(
+  () => [form.projectId, projectStore.currentProjectId],
+  async () => {
+    if (isNew.value) return
+    const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+    if (currentTab.value === 'Issues' && !issuesLoaded.value && pid) {
+      try { await issuesStore.fetchIssues(pid); issuesLoaded.value = true } catch (e) { /* ignore */ }
+    }
+  }
+)
 
 // Fetch a fully-hydrated equipment record (including photos/attachments/checklists/issues) for reports
 async function fetchFullEquipmentForReport(equipId: string) {
@@ -2266,29 +2323,8 @@ type ImageFormat = 'PNG' | 'JPEG' | 'WEBP'
 type LoadedImage = { dataUrl?: string, format?: ImageFormat, width?: number, height?: number }
 
 // Lazy-load Source Sans Pro for PDFs
-let sourceSansLoaded = false
-async function ensureSourceSans(doc: any) {
-  if (sourceSansLoaded) return
-  try {
-    const loadFont = async (url: string) => {
-      const res = await fetch(url)
-      const buf = await res.arrayBuffer()
-      const bytes = new Uint8Array(buf)
-      let binary = ''
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-      return btoa(binary)
-    }
-    const regularB64 = await loadFont('/fonts/SourceSansPro_5/ttf/source-sans-pro-latin-400-normal.ttf')
-    doc.addFileToVFS('SourceSansPro-Regular.ttf', regularB64)
-    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'normal')
-    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'bold')
-    sourceSansLoaded = true
-  } catch (e) {
-    sourceSansLoaded = false
-  }
-}
 function setBodyFont(doc: any, weight: 'normal' | 'bold' = 'normal') {
-  try { doc.setFont('SourceSansPro', weight) } catch (e) { doc.setFont('helvetica', weight) }
+  doc.setFont('helvetica', weight)
 }
 function setZeroCharSpace(doc: any) {
   try {
@@ -2379,6 +2415,18 @@ function htmlToLines(html: string): string[] {
     .replace(/<[^>]+>/g, '')
   return cleaned.split(/\n+/).map(l => l.trim()).filter(l => l)
 }
+function htmlToText(html?: string): string {
+  if (!html) return ''
+  try {
+    const tmp = document.createElement('div')
+    tmp.innerHTML = String(html)
+    const t = tmp.textContent || tmp.innerText || ''
+    return t.replace(/\s+/g, ' ').trim()
+  } catch (e) {
+    // Fallback: naive tag strip
+    return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+}
 
 async function downloadActivityPdf() {
   await ensureReportData()
@@ -2387,7 +2435,7 @@ async function downloadActivityPdf() {
   loadActivityReportSettingsFromSession()
   try {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    await ensureSourceSans(doc)
+    // Helvetica is default; SourceSansPro removed
     setZeroCharSpace(doc)
     setBodyFont(doc, 'normal')
     const margin = 12
@@ -2401,36 +2449,41 @@ async function downloadActivityPdf() {
     let project: any = projectStore.currentProject || {}
     const clientImg = await loadImage((project as any)?.logo)
     const cxaImg = await loadImage((project as any)?.commissioning_agent?.logo)
-    let footerLogo = await loadImage('/brand/logo.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
+    // Footer branding: icon + "cxma"
+    let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
+    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
+    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
     const drawFooter = () => {
       const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
       const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-      const footerY = pageHeight - 10
-      doc.setDrawColor(180,180,180); doc.line(margin, footerY - 6, pageWidth - margin, footerY - 6)
-      try {
-        if (footerLogo.dataUrl) { const lh = 5.5; const lw = 12; doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh); setBodyFont(doc, 'bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + lw + 2, footerY - 2) }
-        else { doc.setFillColor(220,220,220); doc.rect(margin, footerY - 5.5, 8,5,'F'); setBodyFont(doc, 'bold'); doc.setFontSize(8); doc.text(`${form.name || 'Activity'} Report`, margin + 10, footerY - 2) }
-      } catch (e) { /* ignore */ }
-      setBodyFont(doc, 'normal'); doc.text(String(pageNo), pageWidth/2, footerY - 2, { align: 'center' }); doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
+      drawBrandedFooter(doc, {
+        margin,
+        pageWidth,
+        pageHeight,
+        pageNo,
+        pageDate,
+        footerLogo,
+        leftLabel: `${form.name || 'Activity'} Report`,
+        setBold: () => setBodyFont(doc, 'bold'),
+        setNormal: () => setBodyFont(doc, 'normal'),
+      })
       doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
     }
     const drawHeader = () => {
       const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
       const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-      const logoH = 12
-      let logoBlockH = 0
-      if (clientImg.dataUrl) {
-        const dim = scaleToHeight(clientImg, logoH, logoH * 3)
-        doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, dim.w, dim.h)
-        logoBlockH = Math.max(logoBlockH, dim.h)
-      }
-      if (cxaImg.dataUrl) {
-        const dim = scaleToHeight(cxaImg, logoH, logoH * 3)
-        doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - dim.w, margin, dim.w, dim.h)
-        logoBlockH = Math.max(logoBlockH, dim.h)
-      }
-      doc.setFontSize(20); setBodyFont(doc, 'bold'); doc.text(`${form.name || 'Activity'} Report`, pageWidth/2, margin + (logoBlockH || logoH) + 6, { align: 'center' })
-      y = margin + (logoBlockH || logoH) + 20
+      const res = drawBrandedHeader(doc, {
+        margin,
+        pageWidth,
+        title: `${form.name || 'Activity'} Report`,
+        leftLogo: clientImg,
+        rightLogo: cxaImg,
+        logoH: 12,
+        maxLogoW: 36,
+        titleFontSize: 20,
+        setTitleFont: () => setBodyFont(doc, 'bold'),
+      })
+      y = res.nextY
       doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
     }
     const ensureSpace = (amount: number): boolean => { if (y + amount > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader(); return true } return false }
@@ -2438,11 +2491,19 @@ async function downloadActivityPdf() {
     drawHeader()
     // Info
     if (activityReport.value.include.info) {
-      setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(10)
-      const info: Array<[string,string]> = [ ['Type', form.type], ['Start', form.startDate], ['End', form.endDate], ['Location', form.location], ['Project', String(form.projectId || '')] ]
+      setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(12)
+      const projectName = String((projectStore.currentProject as any)?.name || '')
+      const projectLabel = projectName || String(form.projectId || '')
+      const info: Array<[string,string]> = [
+        ['Type', form.type],
+        ['Start', form.startDate],
+        ['End', form.endDate],
+        ['Location', form.location],
+        ['Project', projectLabel]
+      ]
       const colW = (pageWidth - margin*2)/2; let i = 0
-      for (const [label,value] of info) { const col = i % 2; const row = Math.floor(i/2); const x = margin + col*colW; const yy = y + row*7; ensureSpace(10); doc.setTextColor(100); doc.text(label + ':', x, yy); doc.setTextColor(0); const lines = doc.splitTextToSize(String(value||'—'), colW - 24) as string[]; doc.text(lines, x + 24, yy); i++ }
-      const rows = Math.ceil(info.length/2); y += rows*7 + 2
+      for (const [label,value] of info) { const col = i % 2; const row = Math.floor(i/2); const x = margin + col*colW; const yy = y + row*8; ensureSpace(11); doc.setTextColor(100); doc.text(label + ':', x, yy); doc.setTextColor(0); const lines = doc.splitTextToSize(String(value||'—'), colW - 24) as string[]; doc.text(lines, x + 24, yy); i++ }
+      const rows = Math.ceil(info.length/2); y += rows*8 + 2
     }
     // Description (rich HTML rendering)
     if (activityReport.value.include.description && form.descriptionHtml) {
@@ -2460,10 +2521,11 @@ async function downloadActivityPdf() {
         .replace(/<h1/gi,'<h1 style="font-size:20px; margin:4px 0; font-weight:700;"')
         .replace(/<h2/gi,'<h2 style="font-size:16px; margin:4px 0; font-weight:700;"')
         .replace(/<h3/gi,'<h3 style="font-size:14px; margin:3px 0; font-weight:700;"')
-        .replace(/<p/gi,'<p style="font-size:10px; margin:2px 0; line-height:1.35;"')
+        // 12pt ≈ 16px (Word 12)
+        .replace(/<p/gi,'<p style="font-size:16px; margin:2px 0; line-height:1.35;"')
         .replace(/<ul/gi,'<ul style="margin:4px 0; padding-left:18px; list-style-type:disc; list-style-position:outside;"')
         .replace(/<ol/gi,'<ol style="margin:4px 0; padding-left:18px; list-style-type:decimal; list-style-position:outside;"')
-        .replace(/<li/gi,'<li style="font-size:10px; margin:1px 0;"')
+        .replace(/<li/gi,'<li style="font-size:16px; margin:1px 0;"')
       document.body.appendChild(container)
       const pxPerMm = 3.7795275591
       const mmPerPx = 1 / pxPerMm
@@ -2494,8 +2556,9 @@ async function downloadActivityPdf() {
         y += 2
   } catch (e) {
         // Fallback to text if html render fails
+        setBodyFont(doc, 'normal'); doc.setFontSize(12)
         const lines = htmlToLines(form.descriptionHtml)
-        for (const l of lines) { const wrapped = doc.splitTextToSize(l, pageWidth - margin*2) as string[]; for (const w of wrapped) { ensureSpace(6); doc.text(w, margin, y); y += 5 } }
+        for (const l of lines) { const wrapped = doc.splitTextToSize(l, pageWidth - margin*2) as string[]; for (const w of wrapped) { ensureSpace(7); doc.text(w, margin, y); y += 6 } }
       } finally {
         document.body.removeChild(container)
       }
@@ -2568,7 +2631,7 @@ async function downloadActivityPdf() {
       const issues = aggregated
       if (issues.length) {
         const iDoc = new jsPDF({ unit: 'mm', format: 'a4' })
-        await ensureSourceSans(iDoc)
+        // Helvetica is default; SourceSansPro removed
         setZeroCharSpace(iDoc)
         setBodyFont(iDoc, 'normal')
         const iPW = iDoc.internal.pageSize.getWidth(); const iPH = iDoc.internal.pageSize.getHeight(); const iBottom = iPH - 26; let iy = margin; let iPageNo = 1
@@ -2579,56 +2642,146 @@ async function downloadActivityPdf() {
           const fY = iPH - 10
           iDoc.setDrawColor(180,180,180); iDoc.line(margin, fY - 6, iPW - margin, fY - 6)
           try {
-            if (footerLogo?.dataUrl) { const lh = 5.5; const lw = 12; iDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh); setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + lw + 2, fY - 2) }
-            else { iDoc.setFillColor(220,220,220); iDoc.rect(margin, fY - 5.5, 8,5,'F'); setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8); iDoc.text(`${form.name || 'Activity'} Issues`, margin + 10, fY - 2) }
+            if (footerLogo?.dataUrl) {
+              const lh = 5.5
+              let lw = 12
+              if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) {
+                lw = lh * ((footerLogo as any).width / (footerLogo as any).height)
+              }
+              const maxW = 14
+              if (lw > maxW) lw = maxW
+              iDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh)
+              const brandX = margin + lw + 2
+              setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8)
+              iDoc.text('cxma', brandX, fY - 2)
+              const tw = typeof (iDoc as any).getTextWidth === 'function' ? (iDoc as any).getTextWidth('cxma') : 10
+              iDoc.text(`${form.name || 'Activity'} Issues`, brandX + tw + 3, fY - 2)
+            } else {
+              iDoc.setFillColor(220,220,220); iDoc.rect(margin, fY - 5.5, 8,5,'F'); setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8)
+              iDoc.text('cxma', margin + 10, fY - 2)
+              iDoc.text(`${form.name || 'Activity'} Issues`, margin + 24, fY - 2)
+            }
           } catch (e) { /* ignore */ }
           setBodyFont(iDoc, 'normal'); iDoc.text(String(iPageNo), iPW/2, fY - 2, { align: 'center' });
           try { if (typeof pageDate === 'string') iDoc.text(pageDate, iPW - margin, fY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
           iDoc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); iDoc.setFontSize(prevSize)
         }
         const drawIHeader = () => {
-          const logoH = 12
-          try { if (clientImg?.dataUrl) { const dim = scaleToHeight(clientImg, logoH, logoH*2.5); iDoc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, dim.w, dim.h) } } catch (e) { /* ignore */ }
-          try { if (cxaImg?.dataUrl) { const dim = scaleToHeight(cxaImg, logoH, logoH*2.5); iDoc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', iPW - margin - dim.w, margin, dim.w, dim.h) } } catch (e) { /* ignore */ }
-          iDoc.setFontSize(20); setBodyFont(iDoc, 'bold'); iDoc.text('Issues', iPW/2, margin + 8, { align: 'center' })
+          const res = drawBrandedHeader(iDoc, {
+            margin,
+            pageWidth: iPW,
+            title: 'Issues',
+            leftLogo: clientImg,
+            rightLogo: cxaImg,
+            logoH: 12,
+            maxLogoW: 36,
+            titleFontSize: 20,
+            setTitleFont: () => setBodyFont(iDoc, 'bold'),
+          })
           // Reset to body font after header
-          iy = margin + 22
-          setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9)
+          iy = res.nextY
+          setBodyFont(iDoc, 'normal'); iDoc.setFontSize(12)
         }
         const ensureISpace = (h:number) => { if (iy + h > iBottom) { drawIFooter(); iDoc.addPage(); iPageNo++; drawIHeader(); return true } return false }
         drawIHeader()
-    const totalW = iPW - margin*2 - 2; const numW = 14; const typeW = 22; const sourceW = 26; const statusW = 22; const titleW = Math.max(32, Math.min(60, totalW*0.20)); const descW = totalW - numW - typeW - sourceW - statusW - titleW
-    const tableX = margin + 1
-  const drawIssuesHeader = () => { ensureISpace(8); setBodyFont(iDoc, 'bold'); const headerH = 6; iDoc.setFillColor(250,236,236); iDoc.rect(tableX, iy, totalW, headerH, 'F'); iDoc.rect(tableX, iy, totalW, headerH); iDoc.line(tableX+numW, iy, tableX+numW, iy+headerH); iDoc.line(tableX+numW+typeW, iy, tableX+numW+typeW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW, iy, tableX+numW+typeW+sourceW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW+titleW, iy, tableX+numW+typeW+sourceW+titleW, iy+headerH); iDoc.line(tableX+numW+typeW+sourceW+titleW+descW, iy, tableX+numW+typeW+sourceW+titleW+descW, iy+headerH); iDoc.text('#', tableX+1.5, iy+4); iDoc.text('Type', tableX+numW+1.5, iy+4); iDoc.text('Source', tableX+numW+typeW+1.5, iy+4); iDoc.text('Title', tableX+numW+typeW+sourceW+1.5, iy+4); iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+4); iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+descW+1.5, iy+4); iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9) }
-        drawIssuesHeader()
-    for (const it of issues) {
-      const numTxt = '#' + (it.number ?? '—')
-      const typeTxt = String(it.type||'—')
-      const sourceTxt = String((it as any).__source || (it as any).assetTag || (it as any).asset || '—')
-      const titleLines = iDoc.splitTextToSize(String(it.title||'—'), titleW - 3) as string[]
-      const descLines = iDoc.splitTextToSize(String(it.description||'—'), descW - 3) as string[]
-      const statusTxt = String(it.status || 'Open')
-      const hLines = Math.max(1, titleLines.length, descLines.length)
-      const rowH = Math.max(6, hLines*4 + 2)
-      if (ensureISpace(rowH + 2)) drawIssuesHeader()
-      iDoc.rect(tableX, iy, totalW, rowH)
-      iDoc.line(tableX+numW, iy, tableX+numW, iy+rowH)
-      iDoc.line(tableX+numW+typeW, iy, tableX+numW+typeW, iy+rowH)
-      iDoc.line(tableX+numW+typeW+sourceW, iy, tableX+numW+typeW+sourceW, iy+rowH)
-      iDoc.line(tableX+numW+typeW+sourceW+titleW, iy, tableX+numW+typeW+sourceW+titleW, iy+rowH)
-      iDoc.line(tableX+numW+typeW+sourceW+titleW+descW, iy, tableX+numW+typeW+sourceW+titleW+descW, iy+rowH)
-      iDoc.text(numTxt, tableX+1.5, iy+4)
-      iDoc.text(typeTxt.slice(0,16), tableX+numW+1.5, iy+4)
-      iDoc.text(sourceTxt.slice(0,18), tableX+numW+typeW+1.5, iy+4)
-      let tlY = iy+4
-      for (const l of titleLines) { iDoc.text(l, tableX+numW+typeW+sourceW+1.5, tlY); tlY += 4 }
-      let dlY = iy+4
-      for (const l of descLines) { iDoc.text(l, tableX+numW+typeW+sourceW+titleW+1.5, dlY); dlY += 4 }
-      iDoc.text(statusTxt.slice(0,18), tableX+numW+typeW+sourceW+titleW+descW+1.5, iy+4)
-      iy += rowH
-    }
-        drawIFooter()
-        issuesBytes = iDoc.output('arraybuffer') as ArrayBuffer
+        // --- Updated Issues Table: with Recommendation column ---
+        const totalW = iPW - margin*2 - 2;
+        const numW = 14;
+        const typeW = Math.round(22 * 0.75); // 25% reduction
+        const sourceW = 20; // compact
+        const titleW = Math.round(40 * 0.75); // 25% reduction
+        const descW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.45);
+        const recW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.35);
+        const statusW = Math.round(22 * 0.75);
+        const restW = totalW - numW - typeW - sourceW - titleW - descW - recW - statusW;
+        const finalDescW = descW + restW;
+        const tableX = margin + 1;
+        const drawIssuesHeader = () => {
+          ensureISpace(8);
+          setBodyFont(iDoc, 'bold');
+          const headerH = 7;
+          iDoc.setFillColor(250,236,236);
+          iDoc.rect(tableX, iy, totalW, headerH, 'F');
+          iDoc.rect(tableX, iy, totalW, headerH);
+          const colXs = [
+            tableX,
+            tableX+numW,
+            tableX+numW+typeW,
+            tableX+numW+typeW+sourceW,
+            tableX+numW+typeW+sourceW+titleW,
+            tableX+numW+typeW+sourceW+titleW+finalDescW,
+            tableX+numW+typeW+sourceW+titleW+finalDescW+recW,
+            tableX+numW+typeW+sourceW+titleW+finalDescW+recW+statusW
+          ];
+          for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; iDoc.line(vx, iy, vx, iy+headerH) }
+          iDoc.text('#', tableX+1.5, iy+5);
+          iDoc.text('Type', tableX+numW+1.5, iy+5);
+          iDoc.text('Source', tableX+numW+typeW+1.5, iy+5);
+          iDoc.text('Title', tableX+numW+typeW+sourceW+1.5, iy+5);
+          iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+5);
+          iDoc.text('Recommendation', tableX+numW+typeW+sourceW+titleW+finalDescW+1.5, iy+5);
+          iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+finalDescW+recW+1.5, iy+5);
+          iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(12)
+        };
+        drawIssuesHeader();
+        for (const it of issues) {
+          const numTxt = '#' + (it.number ?? '—');
+          const typeTxt = String(it.type||'—');
+          const sourceTxt = String((it as any).__source || (it as any).assetTag || (it as any).asset || '—');
+          const titleLines = iDoc.splitTextToSize(String(it.title||'—'), titleW - 3) as string[];
+          const descText = htmlToText((it as any).description || (it as any).descriptionHtml || '') || '—';
+          const descLines = iDoc.splitTextToSize(descText, finalDescW - 3) as string[];
+          const recTxt = String(it.recommendation || it.recommendationText || it.recommendation_text || '—');
+          const recLines = iDoc.splitTextToSize(recTxt, recW - 3) as string[];
+          const statusTxt = String(it.status || 'Open');
+          const statusLines = iDoc.splitTextToSize(statusTxt, statusW - 3) as string[];
+          const hLines = Math.max(1, titleLines.length, descLines.length, recLines.length, statusLines.length);
+          const rowH = Math.max(8, hLines*5 + 2);
+          if (ensureISpace(rowH + 2)) drawIssuesHeader();
+          // Fill closed rows with a light gray background
+          const isClosedRow = String(it.status || '').toLowerCase().startsWith('closed');
+          if (isClosedRow) {
+            iDoc.setFillColor(230, 230, 230);
+            iDoc.rect(tableX, iy, totalW, rowH, 'F');
+          }
+          // Draw row borders
+          iDoc.setDrawColor(0, 0, 0);
+          iDoc.rect(tableX, iy, totalW, rowH);
+          const colXs = [
+            tableX,
+            tableX+numW,
+            tableX+numW+typeW,
+            tableX+numW+typeW+sourceW,
+            tableX+numW+typeW+sourceW+titleW,
+            tableX+numW+typeW+sourceW+titleW+finalDescW,
+            tableX+numW+typeW+sourceW+titleW+finalDescW+recW,
+            tableX+numW+typeW+sourceW+titleW+finalDescW+recW+statusW
+          ];
+          for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; iDoc.line(vx, iy, vx, iy+rowH) }
+          // Ensure text is black on all rows (especially closed ones)
+          iDoc.setTextColor(0, 0, 0);
+          let cx = tableX + 1.5;
+          iDoc.text(numTxt, cx, iy+5);
+          cx += numW;
+          iDoc.text(typeTxt.slice(0,16), cx+1.5, iy+5);
+          cx += typeW;
+          iDoc.text(sourceTxt.slice(0,18), cx+1.5, iy+5);
+          cx += sourceW;
+          let tlY = iy+5;
+          for (const l of titleLines) { iDoc.text(l, cx+1.5, tlY); tlY += 5 }
+          cx += titleW;
+          let dlY = iy+5;
+          for (const l of descLines) { iDoc.text(l, cx+1.5, dlY); dlY += 5 }
+          cx += finalDescW;
+          let rlY = iy+5;
+          for (const l of recLines) { iDoc.text(l, cx+1.5, rlY); rlY += 5 }
+          cx += recW;
+          let slY = iy+5;
+          for (const l of statusLines) { iDoc.text(l, cx+1.5, slY); slY += 5 }
+          iy += rowH;
+        }
+        drawIFooter();
+        issuesBytes = iDoc.output('arraybuffer') as ArrayBuffer;
       }
     }
     // Merge issues immediately after main doc so they appear right after Photos section
@@ -2650,12 +2803,12 @@ async function downloadActivityPdf() {
       const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
       if (atts.length) {
         const attDoc = new jsPDF({ unit: 'mm', format: 'a4' })
-        await ensureSourceSans(attDoc)
+        // Helvetica is default; SourceSansPro removed
         setZeroCharSpace(attDoc)
         setBodyFont(attDoc, 'normal')
         const aPW = attDoc.internal.pageSize.getWidth(); const aPH = attDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
         const drawAttFooter = () => { const footerY = aPH - 10; attDoc.setDrawColor(180,180,180); attDoc.line(margin, footerY - 6, aPW - margin, footerY - 6); setBodyFont(attDoc, 'normal'); attDoc.setFontSize(8); attDoc.text(String(aPageNo), aPW/2, footerY - 2, { align: 'center' }) }
-        const drawAttHeader = () => { setBodyFont(attDoc, 'bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; setBodyFont(attDoc, 'normal'); attDoc.setFontSize(9) }
+        const drawAttHeader = () => { setBodyFont(attDoc, 'bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; setBodyFont(attDoc, 'normal'); attDoc.setFontSize(12) }
         const ensureAttSpace = (h:number) => { if (ay + h > aBottom) { drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); return true } return false }
         drawAttHeader()
         // Listing first
@@ -2663,7 +2816,7 @@ async function downloadActivityPdf() {
         // Image full pages
         const isImage = (a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }
   const getDims = async (dataUrl:string): Promise<{w:number;h:number}> => { return new Promise(res => { const img = new Image(); img.onload=()=>res({ w: img.naturalWidth||img.width, h: img.naturalHeight||img.height }); img.onerror=()=>res({w:0,h:0}); img.src = dataUrl }) }
-        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); setBodyFont(attDoc, 'bold'); attDoc.setFontSize(10); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; setBodyFont(attDoc, 'normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
+        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); setBodyFont(attDoc, 'bold'); attDoc.setFontSize(12); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; setBodyFont(attDoc, 'normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
         drawAttFooter()
         attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
       }
@@ -2673,10 +2826,43 @@ async function downloadActivityPdf() {
       try {
         const { PDFDocument } = await import('pdf-lib')
         // Build a PDF map of issues and spaces for richer equipment reports
+        // Build a comprehensive issuesMap including all issues referenced by equipment
         const issuesMap: Record<string, any> = {}
+        // Add all project issues by id
         for (const it of (issuesStore.issues || [])) {
-          const key = String((it as any).id || (it as any)._id || '')
+          const key = String((it?.id || it?._id) || '')
           if (key) issuesMap[key] = it
+        }
+        // For each selected equipment, add any issues referenced in eq.issues (by id or object)
+        for (const eq of selectedEquip.value) {
+          // Add issues by id/object in eq.issues
+          if (Array.isArray(eq.issues)) {
+            for (const ref of eq.issues) {
+              let id = ''
+              if (ref && typeof ref === 'object') {
+                id = String(ref.id || ref._id || '')
+                if (id && !issuesMap[id]) issuesMap[id] = ref
+              } else if (typeof ref === 'string') {
+                id = ref
+                // If not already present, try to find in issuesStore.issues
+                if (id && !issuesMap[id]) {
+                  const found = (issuesStore.issues || []).find((it:any) => String(it.id || it._id) === id)
+                  if (found) issuesMap[id] = found
+                }
+              }
+            }
+          }
+          // Add issues linked by assetId to this equipment
+          const eqId = String(eq.id || eq._id || '')
+          if (eqId) {
+            for (const it of (issuesStore.issues || [])) {
+              const linked = String((it as any)?.assetId || '')
+              if (linked === eqId) {
+                const key = String((it?.id || it?._id) || '')
+                if (key && !issuesMap[key]) issuesMap[key] = it
+              }
+            }
+          }
         }
         const spacesMap: Record<string, any> = {}
         for (const sp of (spacesStore.items || [])) {
@@ -2706,7 +2892,138 @@ async function downloadActivityPdf() {
             pages.forEach((p: any) => merged.addPage(p))
            } catch (e) { /* ignore */ }
         }
-        // Insert attachments pages (non-PDF) after equipment reports & issues
+
+        // --- Add Equipment Table at the end ---
+        // Only add if there is at least one equipment
+        if (selectedEquip.value.length) {
+          const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF;
+          const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' });
+          setZeroCharSpace(eqDoc);
+          setBodyFont(eqDoc, 'normal');
+          const eqPW = eqDoc.internal.pageSize.getWidth();
+          const eqPH = eqDoc.internal.pageSize.getHeight();
+          const eqMargin = 12;
+          const eqBottom = eqPH - 26;
+          let eqY = eqMargin;
+          let eqPageNo = 1;
+          const eqPageDate = pageDate;
+
+          const drawEqFooter = () => {
+            const footerY = eqPH - 10;
+            eqDoc.setDrawColor(180,180,180); eqDoc.line(eqMargin, footerY - 6, eqPW - eqMargin, footerY - 6);
+            try {
+              if ((footerLogo as any)?.dataUrl) {
+                const lh = 5.5;
+                let lw = 12;
+                if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) {
+                  lw = lh * ((footerLogo as any).width / (footerLogo as any).height);
+                }
+                const maxW = 14;
+                if (lw > maxW) lw = maxW;
+                eqDoc.addImage((footerLogo as any).dataUrl, (footerLogo as any).format || 'PNG', eqMargin, footerY - lh, lw, lh);
+                const brandX = eqMargin + lw + 2;
+                setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8);
+                eqDoc.text('cxma', brandX, footerY - 2);
+                const tw = typeof (eqDoc as any).getTextWidth === 'function' ? (eqDoc as any).getTextWidth('cxma') : 10;
+                eqDoc.text(`${form.name || 'Activity'} Equipment`, brandX + tw + 3, footerY - 2);
+              } else {
+                eqDoc.setFillColor(220,220,220); eqDoc.rect(eqMargin, footerY - 5.5, 8,5,'F'); setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8);
+                eqDoc.text('cxma', eqMargin + 10, footerY - 2);
+                eqDoc.text(`${form.name || 'Activity'} Equipment`, eqMargin + 24, footerY - 2);
+              }
+            } catch (e) { /* ignore */ }
+            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(8); eqDoc.text(String(eqPageNo), eqPW/2, footerY - 2, { align: 'center' });
+            try { if (typeof eqPageDate === 'string') eqDoc.text(eqPageDate, eqPW - eqMargin, footerY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
+          }
+
+          const drawEqHeader = () => {
+            const logoH = 12;
+            let logoBlockH = 0;
+            try { if ((clientImg as any)?.dataUrl) { const dim = scaleToHeight((clientImg as any), logoH, logoH * 2.5); eqDoc.addImage((clientImg as any).dataUrl, (clientImg as any).format || 'PNG', eqMargin, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
+            try { if ((cxaImg as any)?.dataUrl) { const dim = scaleToHeight((cxaImg as any), logoH, logoH * 2.5); eqDoc.addImage((cxaImg as any).dataUrl, (cxaImg as any).format || 'PNG', eqPW - eqMargin - dim.w, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
+            setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(18); eqDoc.text('Equipment List', eqPW/2, eqMargin + (logoBlockH || logoH) + 6, { align: 'center' });
+            eqY = eqMargin + (logoBlockH || logoH) + 16;
+            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12);
+          }
+
+          // Table columns
+          const columns = [
+            { label: 'Tag', width: 24 },
+            { label: 'Title', width: 38 },
+            { label: 'Location', width: 38 },
+            { label: 'Status', width: 22 },
+            { label: 'Manufacturer', width: 32 },
+            { label: 'Condition', width: 22 },
+          ];
+          const totalW = columns.reduce((sum, c) => sum + c.width, 0);
+          const tableX = eqMargin;
+
+          const drawTableHeader = () => {
+            eqDoc.setFillColor(240,240,240);
+            eqDoc.rect(tableX, eqY, totalW, 7, 'F');
+            setBodyFont(eqDoc, 'bold');
+            let colX = tableX;
+            for (const col of columns) {
+              eqDoc.text(col.label, colX + 2, eqY + 5);
+              colX += col.width;
+            }
+            eqY += 9;
+            setBodyFont(eqDoc, 'normal');
+          }
+
+          drawEqHeader();
+          drawTableHeader();
+
+          // Draw rows
+          let colX = tableX;
+          for (const eq of selectedEquip.value) {
+            if (eqY + 8 > eqBottom) {
+              drawEqFooter();
+              eqDoc.addPage();
+              eqPageNo++;
+              drawEqHeader();
+              drawTableHeader();
+            }
+            colX = tableX;
+            // attributes may be an array of {key, value} objects
+            let manufacturer = '—';
+            let condition = '—';
+            if (Array.isArray(eq.attributes)) {
+              for (const attr of eq.attributes) {
+                if (attr && typeof attr === 'object') {
+                  if (attr.key === 'Manufacturer' && attr.value) manufacturer = String(attr.value);
+                  if (attr.key === 'Condition' && attr.value) condition = String(attr.value);
+                }
+              }
+            } else if (eq.attributes && typeof eq.attributes === 'object') {
+              // fallback for object form
+              manufacturer = String(eq.attributes['Manufacturer'] || '—');
+              condition = String(eq.attributes['Condition'] || '—');
+            }
+            const rowVals = [
+              String(eq.tag || '—'),
+              String(eq.title || '—'),
+              String((typeof equipmentLocationBreadcrumb === 'function' ? equipmentLocationBreadcrumb(eq) : eq.location) || '—'),
+              String(eq.status || '—'),
+              manufacturer,
+              condition,
+            ];
+            for (let i = 0; i < columns.length; i++) {
+              eqDoc.text(rowVals[i], colX + 2, eqY + 5, { maxWidth: columns[i].width - 4 });
+              colX += columns[i].width;
+            }
+            eqY += 8;
+          }
+          // Footer on last page
+          drawEqFooter();
+          // Merge equipment table pages into main PDF
+          const eqBytes = eqDoc.output('arraybuffer');
+          const eqPdf = await PDFDocument.load(eqBytes);
+          const eqPages = await merged.copyPages(eqPdf, eqPdf.getPageIndices());
+          eqPages.forEach((p: any) => merged.addPage(p));
+        }
+
+        // Insert attachments pages (non-PDF) after equipment reports & issues & equipment table
         if (attachmentsBytes) {
           try {
             const attPdf = await PDFDocument.load(attachmentsBytes)
@@ -2962,54 +3279,195 @@ const issuesById = computed<Record<string, any>>(() => {
   }
   return m
 })
+function issueRefToId(ref: any): string {
+  return String((ref && (ref.id || ref._id)) || ref || '').trim()
+}
 const issuesForActivity = computed(() => {
-  const arr = (current.value && (current.value as any).issues) ? ((current.value as any).issues as any[]) : []
+  // Prefer the local form.issues array, which is kept in sync on load and
+  // when creating/linking issues, and fall back to store.current if needed.
+  const source = Array.isArray((form as any).issues) && (form as any).issues.length
+    ? (form as any).issues as any[]
+    : ((current.value && (current.value as any).issues) ? ((current.value as any).issues as any[]) : [])
+
   const out: any[] = []
-  for (const ref of (Array.isArray(arr) ? arr : [])) {
-    const id = String((ref && (ref.id || ref._id)) || ref || '')
+  for (const ref of (Array.isArray(source) ? source : [])) {
+    const id = issueRefToId(ref)
     if (!id) continue
     const obj = issuesById.value[id]
-    if (obj) out.push(obj)
+    if (obj) {
+      // Normalize recommendation for IssuesTable
+      out.push({
+        ...obj,
+        recommendation: obj.recommendation || obj.recommendationText || obj.recommendation_text || '',
+      })
+    }
   }
   return out
 })
 
 // Activity Issue creation modal state
 const showIssueModal = ref(false)
-const activityIssueDraft = reactive<{ title: string; description: string; type: string; priority: 'Low'|'Medium'|'High'; assignedTo: string }>(
-  { title: '', description: '', type: 'Activity', priority: 'Medium', assignedTo: '' }
-)
+const activityIssueDraft = ref<any>({
+  number: null,
+  status: 'open',
+  priority: 'medium',
+  type: 'Activity',
+  title: '',
+  description: '',
+  foundBy: '',
+  dateFound: '',
+  assignedTo: '',
+  dueDate: '',
+  location: '',
+  system: '',
+})
+
+// Existing issues search/linking
+const issueSearch = ref('')
+const issueSuggestionsOpen = ref(false)
+const issueHighlightedIndex = ref(-1)
+const issueSuggestions = computed<any[]>(() => {
+  const q = String(issueSearch.value || '').trim().toLowerCase()
+  const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+  if (!all.length) return []
+  const linkedIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map(issueRefToId).filter(Boolean))
+  const filtered = all.filter((it: any) => {
+    const id = String(it.id || it._id || '')
+    if (!id || linkedIds.has(id)) return false
+    if (!q) return true
+    const num = (it.number != null) ? String(it.number) : ''
+    const title = String(it.title || '').toLowerCase()
+    const type = String(it.type || '').toLowerCase()
+    const status = String(it.status || '').toLowerCase()
+    const loc = String(it.location || '').toLowerCase()
+    const sys = String(it.system || '').toLowerCase()
+    const needle = q
+    return num.includes(needle) || title.includes(needle) || type.includes(needle) || status.includes(needle) || loc.includes(needle) || sys.includes(needle)
+  })
+  return filtered.slice(0, 12)
+})
+const showIssueSuggestions = computed<boolean>(() => issueSuggestionsOpen.value && !!issueSearch.value && issueSuggestions.value.length > 0)
+function openIssueSuggestions() { issueSuggestionsOpen.value = true }
+function closeIssueSuggestions() { issueSuggestionsOpen.value = false }
+function onIssueInputBlur() {
+  // Delay closing so click events on suggestions still register
+  setTimeout(() => { closeIssueSuggestions() }, 120)
+}
+watch(issueSuggestions, (list) => {
+  issueHighlightedIndex.value = list.length ? 0 : -1
+})
+function onIssueArrowDown() {
+  const n = issueSuggestions.value.length
+  if (!n) return
+  issueHighlightedIndex.value = (issueHighlightedIndex.value + 1 + n) % n
+}
+function onIssueArrowUp() {
+  const n = issueSuggestions.value.length
+  if (!n) return
+  issueHighlightedIndex.value = (issueHighlightedIndex.value - 1 + n) % n
+}
+async function addHighlightedIssue() {
+  const idx = issueHighlightedIndex.value
+  if (idx >= 0 && issueSuggestions.value[idx]) {
+    await linkExistingIssue(issueSuggestions.value[idx])
+    closeIssueSuggestions()
+  }
+}
+async function linkExistingIssue(issue: any) {
+  try {
+    const issueId = String(issue?.id || issue?._id || '').trim()
+    if (!issueId) return
+    const aid = isNew.value ? await saveAndGetId() : id.value
+    // Normalize current issues list to id strings
+    const existing = Array.isArray((form as any).issues) ? (form as any).issues : []
+    const ids = existing.map(issueRefToId).filter(Boolean)
+    if (!ids.includes(issueId)) {
+      ids.push(issueId)
+    }
+    form.issues = ids
+    await store.updateActivity(String(aid), { issues: ids })
+    // Also stamp activityId on the issue for bidirectional linking (best-effort)
+    try {
+      await issuesStore.updateIssue(issueId, { activityId: aid })
+    } catch (e) { /* non-blocking */ }
+    issueSearch.value = ''
+    ui.showSuccess('Issue linked to activity')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to link issue')
+  }
+}
+
+async function onUnlinkIssue(issue: any) {
+  try {
+    if (isNew.value) return
+    const issueId = String(issue?.id || issue?._id || '').trim()
+    if (!issueId) return
+    const aid = id.value
+    const existing = Array.isArray((form as any).issues) ? (form as any).issues : []
+    const next = existing.filter((ref: any) => issueRefToId(ref) !== issueId)
+    form.issues = next
+    await store.updateActivity(String(aid), { issues: next })
+    // Best-effort: clear activityId on the issue if it points to this activity
+    try {
+      const currentIssue = issuesById.value[issueId]
+      if (currentIssue && String((currentIssue as any).activityId || '') === String(aid)) {
+        await issuesStore.updateIssue(issueId, { activityId: undefined })
+      }
+    } catch (e) { /* non-blocking */ }
+    ui.showSuccess('Issue unlinked from activity')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to unlink issue')
+  }
+}
+
 function openIssueModal() {
   const name = (form.name || '').trim()
-  activityIssueDraft.title = name ? `${name} issue` : 'Activity issue'
+  activityIssueDraft.value.title = name ? `${name} issue` : 'Activity issue'
   const descParts: string[] = []
   if (name) descParts.push(`Activity: ${name}`)
   if (form.location) descParts.push(`Location: ${form.location}`)
   if (form.startDate || form.endDate) descParts.push(`Dates: ${form.startDate || '—'} to ${form.endDate || '—'}`)
-  activityIssueDraft.description = descParts.join('\n') || 'Issue for this activity'
-  activityIssueDraft.type = 'Activity'
+  activityIssueDraft.value.description = descParts.join('\n') || 'Issue for this activity'
+  activityIssueDraft.value.type = 'Activity'
+  activityIssueDraft.value.location = form.location || ''
+  activityIssueDraft.value.system = (Array.isArray(form.systems) && form.systems[0]) ? form.systems[0] : ''
   showIssueModal.value = true
 }
 function closeIssueModal() { showIssueModal.value = false }
+
+// Map IssueForm values to API values (mirrors IssuesList.vue)
+function toApiPriority(v: any) {
+  const m: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', comment: 'Comment' }
+  const k = String(v || '').toLowerCase()
+  return m[k] || undefined
+}
+function toApiStatus(v: any) {
+  const m: Record<string, string> = { open: 'Open', pending: 'In Progress', closed: 'Closed', resolved: 'Resolved', canceled: 'Canceled', cancelled: 'Canceled' }
+  const k = String(v || '').toLowerCase()
+  return m[k] || undefined
+}
+
 async function createActivityIssue() {
   try {
     const pid = String(form.projectId || projectStore.currentProjectId || '')
     if (!pid) { ui.showError('Missing project id'); return }
     // Ensure activity exists first if new
     const aid = isNew.value ? await saveAndGetId() : id.value
-    const title = (activityIssueDraft.title || '').trim() || 'Activity Issue'
-    const description = (activityIssueDraft.description || '').trim() || 'Created from activity'
+    const draft = activityIssueDraft.value || {}
+    const title = (draft.title || '').trim() || 'Activity Issue'
+    const description = (draft.description || '').trim() || 'Created from activity'
+
     const payload: any = {
       projectId: pid,
       title,
       description,
-      type: activityIssueDraft.type || 'Activity',
-      severity: activityIssueDraft.priority || 'Medium',
-      status: 'Open',
+      type: draft.type || 'Activity',
+      severity: toApiPriority(draft.priority),
+      status: toApiStatus(draft.status),
       activityId: aid,
-      location: form.location || undefined,
-      system: (Array.isArray(form.systems) && form.systems[0]) ? form.systems[0] : undefined,
-      assignedTo: activityIssueDraft.assignedTo || undefined,
+      location: draft.location || form.location || undefined,
+      system: draft.system || ((Array.isArray(form.systems) && form.systems[0]) ? form.systems[0] : undefined),
+      assignedTo: draft.assignedTo || undefined,
     }
     const created = await issuesStore.createIssue(payload)
     const newId = String((created as any).id || (created as any)._id || '')

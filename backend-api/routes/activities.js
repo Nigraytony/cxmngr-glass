@@ -67,7 +67,9 @@ router.get('/', auth, requireFeature('activities'), async (req, res) => {
   try {
     const projectId = req.query.projectId
     const filter = projectId ? { projectId } : {}
-    const projection = 'name type startDate endDate projectId issues location spaceId systems metadata labels createdAt updatedAt reviewer'
+    // Include descriptionHtml so editors like ActivityEdit can show the description
+    // without needing an extra per-activity fetch.
+    const projection = 'name descriptionHtml type startDate endDate projectId issues location spaceId systems metadata labels createdAt updatedAt reviewer'
     const activities = await Activity.find(filter).select(projection).sort({ createdAt: -1 }).lean()
     res.status(200).send(activities)
   } catch (error) {
