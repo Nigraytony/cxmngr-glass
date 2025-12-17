@@ -345,7 +345,7 @@ const initials = computed(() => {
 
 function goProfile() {
   menuOpen.value = false
-  router.push({ path: '/profile' })
+  router.push({ path: '/app/profile' })
 }
 
 function toggleMenu() { menuOpen.value = !menuOpen.value; if (menuOpen.value) updateDropdownPosition() }

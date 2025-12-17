@@ -715,62 +715,12 @@
         </div>
       </div>
     </template>
-    <div class="space-y-3">
-      <div>
-        <label class="block text-sm text-white/70">Type</label>
-        <input
-          v-model="issueDraft.type"
-          type="text"
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-        >
-      </div>
-      <div>
-        <label class="block text-sm text-white/70">Title</label>
-        <input
-          v-model="issueDraft.title"
-          type="text"
-          placeholder="Short summary"
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-        >
-      </div>
-      <div>
-        <label class="block text-sm text-white/70">Description</label>
-        <textarea
-          v-model="issueDraft.description"
-          rows="5"
-          placeholder="Describe the issue..."
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-        />
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm text-white/70">Priority</label>
-          <select
-            v-model="issueDraft.priority"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-          >
-            <option value="Low">
-              Low
-            </option>
-            <option value="Medium">
-              Medium
-            </option>
-            <option value="High">
-              High
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm text-white/70">Assign to</label>
-          <input
-            v-model="issueDraft.assignedTo"
-            type="text"
-            placeholder="Name or email"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-          >
-        </div>
-      </div>
-    </div>
+    <template #default>
+      <IssueForm
+        v-model="issueDraft"
+        :errors="issueErrors"
+      />
+    </template>
     <template #footer>
       <div class="flex items-center justify-end gap-2">
         <button
@@ -970,6 +920,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch, ref, onMounted } from 'vue'
 import Modal from './Modal.vue'
+import IssueForm from './IssueForm.vue'
 import { confirm as inlineConfirm } from '../utils/confirm'
 import { useAuthStore } from '../stores/auth'
 import { useProjectStore } from '../stores/project'
@@ -1119,27 +1070,91 @@ const issuesStore = useIssuesStore()
 const _router = useRouter()
 const issueOpen = ref(false)
 const issueCtx = ref<{ si: number; qi: number | null } | null>(null)
-const issueDraft = reactive<{ title: string; description: string; type: string; priority: 'Low'|'Medium'|'High'; assignedTo: string }>(
-  { title: '', description: '', type: 'Checklist', priority: 'Medium', assignedTo: '' }
-)
+const issueErrors = reactive<Record<string, string>>({})
+const issueDraft = ref<{
+  number: number | null
+  status: string
+  priority: string
+  title: string
+  type: string | null
+  foundBy: string
+  dateFound: string
+  assignedTo: string
+  dueDate: string
+  location: string
+  system: string
+  description: string
+}>({
+  number: null,
+  status: 'open',
+  priority: 'medium',
+  title: '',
+  type: 'checklist',
+  foundBy: '',
+  dateFound: '',
+  assignedTo: '',
+  dueDate: '',
+  location: '',
+  system: '',
+  description: ''
+})
+
+function toApiPriority(v: any) {
+  const m: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', comment: 'Comment' }
+  const k = String(v || '').toLowerCase()
+  return m[k] || undefined
+}
+function toApiStatus(v: any) {
+  const m: Record<string, string> = { open: 'Open', pending: 'In Progress', closed: 'Closed', resolved: 'Resolved', canceled: 'Canceled', cancelled: 'Canceled' }
+  const k = String(v || '').toLowerCase()
+  return m[k] || undefined
+}
+
+function normalizeId(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return undefined
+    return trimmed
+  }
+  if (value == null) return undefined
+  const str = String(value).trim()
+  return (!str || str === 'undefined' || str === 'null') ? undefined : str
+}
+function normalizeText(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || undefined
+  }
+  if (value == null) return undefined
+  const str = String(value).trim()
+  return str || undefined
+}
+
 function openAttachIssue(si: number, qi: number | null = null) {
   issueCtx.value = { si, qi }
+  Object.keys(issueErrors).forEach(k => delete issueErrors[k])
   const sec = local[si]
   const q = qi != null ? sec?.questions?.[qi] : null
   const eq = (props.equipmentTag || props.equipmentId || 'Equipment') as any
   const secLabel = `Sec ${sec?.number ?? (si+1)}${sec?.title ? ' – ' + sec.title : ''}`
   const qLabel = q ? ` • Q${q.number ?? (qi!+1)}${q.question_text ? ' – ' + q.question_text : ''}` : ''
-  issueDraft.title = `Checklist: ${eq} • ${secLabel}${qLabel}`.slice(0, 120)
+  issueDraft.value.title = `Checklist: ${eq} • ${secLabel}${qLabel}`.slice(0, 120)
   const lines: string[] = []
   lines.push(`Equipment: ${eq}`)
   lines.push(`Section: ${secLabel}`)
   if (q) lines.push(`Question: ${q.question_text || ''}`)
   if (q && q.answer) lines.push(`Answer: ${String(q.answer).toUpperCase()}`)
   if (q && q.notes) lines.push(`Notes: ${q.notes}`)
-  issueDraft.description = lines.join('\n')
-  issueDraft.type = 'Checklist'
-  issueDraft.priority = 'Medium'
-  issueDraft.assignedTo = ''
+  issueDraft.value.description = lines.join('\n')
+  issueDraft.value.type = 'checklist'
+  issueDraft.value.status = 'open'
+  issueDraft.value.priority = 'medium'
+  issueDraft.value.location = normalizeText(props.equipmentTag) || normalizeId(props.equipmentId) || ''
+  issueDraft.value.system = (sec?.system as any) ? String(sec.system) : ''
+  issueDraft.value.foundBy = ''
+  issueDraft.value.dateFound = ''
+  issueDraft.value.dueDate = ''
+  issueDraft.value.assignedTo = ''
   issueOpen.value = true
 }
 function cancelAttachIssue() { issueOpen.value = false; issueCtx.value = null }
@@ -1151,19 +1166,23 @@ async function saveAttachIssue() {
     const qi = ctx.qi
     const sec = local[si]
     const ps = useProjectStore()
-    const pid = String((props.projectId || ps.currentProjectId || '') as any)
+    const pid = normalizeId(props.projectId) || normalizeId(ps.currentProjectId) || ''
     if (!pid) return
+    const draft = issueDraft.value || ({} as any)
     const payload: any = {
       projectId: pid,
-      title: (issueDraft.title || '').trim() || 'Checklist Issue',
-      description: (issueDraft.description || '').trim() || 'Created from checklist',
-      type: issueDraft.type || 'Checklist',
-      severity: issueDraft.priority || 'Medium',
-      status: 'Open',
-      system: sec?.system || undefined,
-      location: (props.equipmentTag as any) || undefined,
-      assetId: (props.equipmentId as any) || undefined,
-      assignedTo: issueDraft.assignedTo || undefined,
+      title: (draft.title || '').trim() || 'Checklist Issue',
+      description: (draft.description || '').trim() || 'Created from checklist',
+      type: draft.type || 'checklist',
+      severity: toApiPriority(draft.priority),
+      status: toApiStatus(draft.status),
+      system: normalizeText(draft.system) || (sec?.system as any) || undefined,
+      location: normalizeText(draft.location) || normalizeText(props.equipmentTag) || undefined,
+      assetId: normalizeId(props.equipmentId),
+      assignedTo: normalizeText(draft.assignedTo),
+      foundBy: normalizeText(draft.foundBy),
+      dateFound: normalizeText(draft.dateFound),
+      dueDate: normalizeText(draft.dueDate),
     }
     const created = await issuesStore.createIssue(payload)
     if (!Array.isArray(sec.issues)) (sec as any).issues = []

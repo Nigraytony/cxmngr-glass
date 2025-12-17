@@ -528,6 +528,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         const descTxt = htmlToText((it as any).description || (it as any).descriptionHtml || '—')
         const recTxt = htmlToText((it as any).recommendation || (it as any).recommendationText || (it as any).recommendation_text || '—')
         const statusTxt = String(it.status || 'Open')
+        const isClosed = String(statusTxt || '').trim().toLowerCase() === 'closed'
 
         const numLines = splitText(doc, numTxt, numW - 3)
         const typeLines = splitText(doc, typeTxt, typeW - 3)
@@ -540,6 +541,12 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         const rowH = Math.max(8, hLines * 5 + 2)
         if (ensureSpace(rowH + 2)) { drawIssuesHeader() }
 
+        if (isClosed) {
+          // Closed issues: black text on gray background (entire row)
+          doc.setFillColor(230, 230, 230)
+          doc.rect(tableX, y, totalW, rowH, 'F')
+          doc.setTextColor(0)
+        }
         doc.rect(tableX, y, totalW, rowH)
         const colXs = [
           tableX,
@@ -561,6 +568,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
           for (let k = 0; k < lines.length; k++) { doc.text(lines[k], cx, y + 5 + k * 5) }
           cx += colWidths[col]
         }
+        doc.setTextColor(0)
         y += rowH
       }
       sectionGap(6)

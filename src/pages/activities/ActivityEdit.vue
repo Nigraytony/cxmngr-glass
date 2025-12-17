@@ -596,6 +596,83 @@
                     >
                       No matching issues
                     </div>
+                    <div
+                      class="sticky bottom-0 border-t border-white/10 bg-black/70 backdrop-blur px-3 py-2 flex items-center justify-between gap-2"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
+                        <div class="text-xs text-white/60 whitespace-nowrap">
+                          <span v-if="issueSuggestTotal">
+                            Total {{ issueSuggestTotal }}
+                          </span>
+                          <span v-else>—</span>
+                        </div>
+                        <div class="text-xs text-white/60 whitespace-nowrap">
+                          <span v-if="issueSuggestTotal">
+                            Showing {{ issueSuggestStart }}–{{ issueSuggestEnd }}
+                          </span>
+                        </div>
+                        <div class="text-xs text-white/60 whitespace-nowrap">
+                          <span v-if="issueSuggestTotal">
+                            Page {{ issueSuggestPage }} / {{ issueSuggestTotalPages }}
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-2 whitespace-nowrap">
+                          <label class="text-xs text-white/60">Per page</label>
+                          <select
+                            v-model.number="issueSuggestPerPage"
+                            class="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs text-white/80"
+                            @change="onIssueSuggestPerPageChange"
+                          >
+                            <option :value="10">
+                              10
+                            </option>
+                            <option :value="12">
+                              12
+                            </option>
+                            <option :value="25">
+                              25
+                            </option>
+                            <option :value="50">
+                              50
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                          :disabled="!issueSuggestHasPrev"
+                          @mousedown.prevent="issueSuggestFirst"
+                        >
+                          First
+                        </button>
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                          :disabled="!issueSuggestHasPrev"
+                          @mousedown.prevent="issueSuggestPrev"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                          :disabled="!issueSuggestHasNext"
+                          @mousedown.prevent="issueSuggestNext"
+                        >
+                          Next
+                        </button>
+                        <button
+                          type="button"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                          :disabled="!issueSuggestHasNext"
+                          @mousedown.prevent="issueSuggestLast"
+                        >
+                          Last
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
             </div>
@@ -2270,6 +2347,28 @@ const equipmentLoaded = ref(false)
 const logsLoaded = ref(false)
 const fullEquipmentCache = new Map<string, any>()
 
+function hasPhotoData(list: any): boolean {
+  const arr = Array.isArray(list) ? list : []
+  return arr.some((p: any) => p && p.data)
+}
+
+async function loadPhotos() {
+  const aid = String(isNew.value ? (pendingCreatedId.value || id.value || '') : (id.value || '')).trim()
+  if (!aid) return
+  try {
+    // Ensure store.current points at this activity so fetchActivityPhotos can hydrate it.
+    const cur = store.current
+    if (!cur || String((cur as any).id || (cur as any)._id || '') !== aid) {
+      try { await store.fetchActivity(aid, { light: true }) } catch (_) { /* ignore */ }
+    }
+    const photos = await store.fetchActivityPhotos(aid)
+    ;(form as any).photos = Array.isArray(photos) ? photos : []
+    photosLoaded.value = hasPhotoData(photos)
+  } catch (e) {
+    // non-blocking: leave current state as-is
+  }
+}
+
 // Ensure all heavy data is loaded before generating reports (photos, attachments, issues, equipment)
 async function ensureReportData() {
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
@@ -2347,14 +2446,9 @@ async function resolveActivity(options?: { includePhotos?: boolean }) {
 watch(() => currentTab.value, async (tab) => {
   if (isNew.value) return
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
-  if (tab === 'Photos' && !photosLoaded.value) {
+  if (tab === 'Photos' && (!photosLoaded.value || !hasPhotoData((current.value as any)?.photos))) {
     try {
-      // Fetch full activity with photos to ensure data URLs are available for thumbnails/viewer
-      const a = await resolveActivity({ includePhotos: true })
-      // If resolver returned activity, consider photos loaded; avoid separate photos endpoint to prevent 404 spam
-      if (a) {
-        photosLoaded.value = true
-      }
+      await loadPhotos()
     } catch (e) { /* ignore */ }
   }
   if (tab === 'Issues' && !issuesLoaded.value && pid) {
@@ -2467,7 +2561,11 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
       if (e.total) onProgress(Math.round((e.loaded / e.total) * 100))
     },
   })
-  await store.fetchActivity(targetId)
+  try {
+    const photos = await store.fetchActivityPhotos(String(targetId))
+    ;(form as any).photos = Array.isArray(photos) ? photos : []
+    photosLoaded.value = hasPhotoData(photos)
+  } catch (e) { /* ignore */ }
   return res.data
 }
 
@@ -3770,22 +3868,46 @@ const issueSuggestionsOpen = ref(false)
 const issueHighlightedIndex = ref(-1)
 const issueSuggestions = ref<any[]>([])
 const issueSuggestionsLoading = ref(false)
+const issueSuggestPage = ref(1)
+const issueSuggestPerPage = ref(12)
+const issueSuggestTotal = ref(0)
 let issueSuggestTimer: any = null
 
-async function fetchIssueSuggestions(qRaw: string) {
+const issueSuggestHasPrev = computed(() => issueSuggestPage.value > 1)
+const issueSuggestHasNext = computed(() => issueSuggestPage.value * issueSuggestPerPage.value < issueSuggestTotal.value)
+const issueSuggestTotalPages = computed(() => {
+  const total = Number(issueSuggestTotal.value) || 0
+  const pp = Math.max(1, Number(issueSuggestPerPage.value) || 12)
+  return total ? Math.max(1, Math.ceil(total / pp)) : 1
+})
+const issueSuggestStart = computed(() => {
+  if (!issueSuggestTotal.value) return 0
+  return (issueSuggestPage.value - 1) * issueSuggestPerPage.value + 1
+})
+const issueSuggestEnd = computed(() => {
+  if (!issueSuggestTotal.value) return 0
+  return (issueSuggestPage.value - 1) * issueSuggestPerPage.value + issueSuggestions.value.length
+})
+
+async function fetchIssueSuggestions(qRaw: string, opts?: { page?: number; perPage?: number }) {
   const q = String(qRaw || '').trim()
-  if (!q) { issueSuggestions.value = []; return }
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
-  if (!pid) { issueSuggestions.value = []; return }
+  if (!pid) { issueSuggestions.value = []; issueSuggestTotal.value = 0; return }
+
+  const page = Math.max(1, Number(opts?.page ?? issueSuggestPage.value) || 1)
+  const perPage = Math.max(1, Number(opts?.perPage ?? issueSuggestPerPage.value) || 12)
+  issueSuggestPage.value = page
+  issueSuggestPerPage.value = perPage
 
   issueSuggestionsLoading.value = true
   try {
     const { data } = await http.get('/api/issues', {
-      params: { projectId: pid, search: q, page: 1, perPage: 12 },
+      params: { projectId: pid, ...(q ? { search: q } : {}), page, perPage },
       headers: { ...getAuthHeaders() }
     })
     const payload = (data && (data.items || data)) || []
     const items: any[] = Array.isArray(payload) ? payload : []
+    issueSuggestTotal.value = Number((data && (data.total ?? data.count)) ?? items.length)
     const linkedIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map(issueRefToId).filter(Boolean))
     issueSuggestions.value = items
       .map((it: any) => ({ ...(it || {}), id: it?._id || it?.id }))
@@ -3793,15 +3915,15 @@ async function fetchIssueSuggestions(qRaw: string) {
         const id = String(it?.id || '')
         return id && !linkedIds.has(id)
       })
-      .slice(0, 12)
   } catch (e) {
     // Fallback to store-based filtering (may be incomplete if server paginates)
     const ql = q.toLowerCase()
     const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
     const linkedIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map(issueRefToId).filter(Boolean))
-    issueSuggestions.value = all.filter((it: any) => {
+    const filtered = all.filter((it: any) => {
       const id = String(it.id || it._id || '')
       if (!id || linkedIds.has(id)) return false
+      if (!ql) return true
       const num = (it.number != null) ? String(it.number) : ''
       const title = String(it.title || '').toLowerCase()
       const type = String(it.type || '').toLowerCase()
@@ -3809,7 +3931,11 @@ async function fetchIssueSuggestions(qRaw: string) {
       const loc = String(it.location || '').toLowerCase()
       const sys = String(it.system || '').toLowerCase()
       return num.includes(ql) || title.includes(ql) || type.includes(ql) || status.includes(ql) || loc.includes(ql) || sys.includes(ql)
-    }).slice(0, 12)
+    })
+    issueSuggestTotal.value = filtered.length
+    issueSuggestions.value = filtered
+      .slice((page - 1) * perPage, (page - 1) * perPage + perPage)
+      .map((it: any) => ({ ...(it || {}), id: it?._id || it?.id }))
   } finally {
     issueSuggestionsLoading.value = false
   }
@@ -3817,11 +3943,19 @@ async function fetchIssueSuggestions(qRaw: string) {
 
 watch(issueSearch, (q) => {
   if (issueSuggestTimer) { clearTimeout(issueSuggestTimer); issueSuggestTimer = null }
-  issueSuggestTimer = setTimeout(() => { fetchIssueSuggestions(String(q || '')).catch(() => {}) }, 150)
+  issueSuggestPage.value = 1
+  issueSuggestTimer = setTimeout(() => { fetchIssueSuggestions(String(q || ''), { page: 1 }).catch(() => {}) }, 150)
 })
 
-const showIssueSuggestions = computed<boolean>(() => issueSuggestionsOpen.value && !!issueSearch.value)
-function openIssueSuggestions() { issueSuggestionsOpen.value = true }
+const showIssueSuggestions = computed<boolean>(() => issueSuggestionsOpen.value)
+function openIssueSuggestions() {
+  issueSuggestionsOpen.value = true
+  // If opening with an empty query, allow browsing the first page of project issues.
+  if (!issueSearch.value && !issueSuggestions.value.length && !issueSuggestionsLoading.value) {
+    issueSuggestPage.value = 1
+    fetchIssueSuggestions('', { page: 1 }).catch(() => {})
+  }
+}
 function closeIssueSuggestions() { issueSuggestionsOpen.value = false }
 function onIssueInputBlur() {
   // Delay closing so click events on suggestions still register
@@ -3839,6 +3973,31 @@ function onIssueArrowUp() {
   const n = issueSuggestions.value.length
   if (!n) return
   issueHighlightedIndex.value = (issueHighlightedIndex.value - 1 + n) % n
+}
+function onIssueSuggestPerPageChange() {
+  issueSuggestPage.value = 1
+  fetchIssueSuggestions(String(issueSearch.value || ''), { page: 1, perPage: issueSuggestPerPage.value }).catch(() => {})
+}
+async function issueSuggestFirst() {
+  if (!issueSuggestHasPrev.value) return
+  issueSuggestPage.value = 1
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: 1 }).catch(() => {})
+}
+async function issueSuggestPrev() {
+  if (!issueSuggestHasPrev.value) return
+  issueSuggestPage.value = Math.max(1, issueSuggestPage.value - 1)
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: issueSuggestPage.value }).catch(() => {})
+}
+async function issueSuggestNext() {
+  if (!issueSuggestHasNext.value) return
+  issueSuggestPage.value = issueSuggestPage.value + 1
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: issueSuggestPage.value }).catch(() => {})
+}
+async function issueSuggestLast() {
+  if (!issueSuggestHasNext.value) return
+  const last = issueSuggestTotalPages.value
+  issueSuggestPage.value = last
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: last }).catch(() => {})
 }
 async function addHighlightedIssue() {
   const idx = issueHighlightedIndex.value
@@ -4011,7 +4170,11 @@ async function removePhotoAt(idx: number) {
     const aid = isNew.value ? (pendingCreatedId.value || id.value) : id.value
     if (!aid) return
     await store.removePhoto(String(aid), idx)
-    await store.fetchActivity(String(aid))
+    try {
+      const photos = await store.fetchActivityPhotos(String(aid))
+      ;(form as any).photos = Array.isArray(photos) ? photos : []
+      photosLoaded.value = hasPhotoData(photos)
+    } catch (e) { /* ignore */ }
     ui.showSuccess('Photo removed')
     // If deleting the current viewed photo, adjust index
     if (viewerOpen.value) {
@@ -4061,7 +4224,11 @@ async function saveCaption() {
       // Fallback: call API directly if store method isn't present yet (HMR race)
   await http.patch(`/api/activities/${String(aid)}/photos/${viewerIndex.value}`, { caption }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
     }
-    await store.fetchActivity(String(aid))
+    try {
+      const photos = await store.fetchActivityPhotos(String(aid))
+      ;(form as any).photos = Array.isArray(photos) ? photos : []
+      photosLoaded.value = hasPhotoData(photos)
+    } catch (e) { /* ignore */ }
     ui.showSuccess('Caption saved')
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save caption')

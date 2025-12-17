@@ -16,6 +16,24 @@ const sanitizeHtml = require('sanitize-html');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+// For routes where :id is an Activity id (not a project id), populate projectId
+// so plan/subscription guards can evaluate the correct project.
+async function loadActivityProjectId(req, res, next) {
+  try {
+    const activityId = String(req.params.id || '').trim()
+    if (!activityId) return res.status(400).send({ error: 'Activity id is required' })
+    const activity = await Activity.findById(activityId).select('projectId').lean()
+    if (!activity) return res.status(404).send({ error: 'Activity not found' })
+    // Prefer query/body, but set both for compatibility with various guards.
+    req.query = { ...(req.query || {}), projectId: String(activity.projectId) }
+    req.body = req.body || {}
+    if (!req.body.projectId) req.body.projectId = activity.projectId
+    return next()
+  } catch (e) {
+    return res.status(500).send({ error: e?.message || String(e) })
+  }
+}
+
 function validatePhotosArray(photos) {
   if (!Array.isArray(photos)) return true;
   if (photos.length > 16) return false;
@@ -79,7 +97,7 @@ router.get('/', auth, requireFeature('activities'), async (req, res) => {
 
 // Read a single activity by ID
 // Supports light=true to omit heavy photo/attachment payloads, includePhotos=true to force photos
-router.get('/:id', auth, requireFeature('activities'), async (req, res) => {
+router.get('/:id', auth, loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
@@ -106,7 +124,7 @@ router.get('/:id', auth, requireFeature('activities'), async (req, res) => {
 });
 
 // Photos-only endpoint to avoid sending other heavy fields
-router.get('/:id/photos', auth, requireFeature('activities'), async (req, res) => {
+router.get('/:id/photos', auth, loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id).select('photos').lean()
     if (!activity) return res.status(404).send()
@@ -117,7 +135,7 @@ router.get('/:id/photos', auth, requireFeature('activities'), async (req, res) =
 })
 
 // Upload photos for an activity (multipart/form-data)
-router.post('/:id/photos', auth, requireFeature('activities'), upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, loadActivityProjectId, requireFeature('activities'), upload.array('photos', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
@@ -204,7 +222,7 @@ function getBackendBaseUrl(req) {
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
 // Upload attachments (documents) for an activity
-router.post('/:id/attachments', auth, requireFeature('activities'), uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, loadActivityProjectId, requireFeature('activities'), uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });

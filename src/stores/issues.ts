@@ -58,6 +58,8 @@ export const useIssuesStore = defineStore('issues', () => {
   }
 
   // fetchIssues optionally accepts a projectId; if omitted it will use the currentProjectId from project store
+  // Note: backend defaults to 25 items/page; we request a larger page size so project-scoped UIs
+  // (ActivityEdit/EquipmentEdit) can see the full set of issues without pagination.
   async function fetchIssues(projectId?: string) {
     loading.value = true
     error.value = null
@@ -71,7 +73,7 @@ export const useIssuesStore = defineStore('issues', () => {
         return issues.value
       }
 
-      const res = await axios.get(API_BASE, { params: { projectId: pid }, headers: authHeaders() })
+      const res = await axios.get(API_BASE, { params: { projectId: pid, page: 1, perPage: 200 }, headers: authHeaders() })
       const payload = res.data || []
       // Support both legacy array response and new paginated shape { items, total, ... }
       const items = Array.isArray(payload)

@@ -1137,53 +1137,10 @@
         </div>
       </template>
       <template #default>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-sm text-white/70">Type</label>
-            <input
-              v-model="issueDraft.type"
-              type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              placeholder="FPT"
-            >
-          </div>
-          <div>
-            <label class="block text-sm text-white/70">Title</label>
-            <input
-              v-model="issueDraft.title"
-              type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-            >
-          </div>
-          <div>
-            <label class="block text-sm text-white/70">Description</label>
-            <textarea
-              v-model="issueDraft.description"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              rows="3"
-            />
-          </div>
-          <div>
-            <label class="block text-sm text-white/70">Priority</label>
-            <select
-              v-model="issueDraft.priority"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-            >
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm text-white/70">Assign to</label>
-            <input
-              v-model="issueDraft.assignedTo"
-              type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              placeholder="Name or email"
-            >
-          </div>
-        </div>
+        <IssueForm
+          v-model="issueDraft"
+          :errors="issueErrors"
+        />
       </template>
       <template #footer>
         <div class="flex items-center justify-end gap-2">
@@ -1284,6 +1241,7 @@
 import { reactive, ref, computed, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import Modal from './Modal.vue'
+import IssueForm from './IssueForm.vue'
 import { useUiStore } from '../stores/ui'
 import { useProjectStore } from '../stores/project'
 import { useIssuesStore } from '../stores/issues'
@@ -2035,19 +1993,51 @@ function naClass(active: boolean) { return ['px-2', 'py-1', 'rounded-md', 'borde
 // Quick issue attach
 const issueOpen = ref(false)
 const issueCtx = ref<{ index: number } | null>(null)
-const issueDraft = reactive<{ title: string; description: string; type: string; priority: 'Low'|'Medium'|'High'; assignedTo: string }>({
+const issueErrors = reactive<Record<string, string>>({})
+const issueDraft = ref<{
+  number: number | null
+  status: string
+  priority: string
+  title: string
+  type: string | null
+  foundBy: string
+  dateFound: string
+  assignedTo: string
+  dueDate: string
+  location: string
+  system: string
+  description: string
+}>({
+  number: null,
+  status: 'open',
+  priority: 'medium',
   title: '',
-  description: '',
   type: 'FPT',
-  priority: 'Medium',
-  assignedTo: ''
+  foundBy: '',
+  dateFound: '',
+  assignedTo: '',
+  dueDate: '',
+  location: '',
+  system: '',
+  description: ''
 })
+
+function toApiPriority(v: any) {
+  const m: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', comment: 'Comment' }
+  const k = String(v || '').toLowerCase()
+  return m[k] || undefined
+}
+function toApiStatus(v: any) {
+  const m: Record<string, string> = { open: 'Open', pending: 'In Progress', closed: 'Closed', resolved: 'Resolved', canceled: 'Canceled', cancelled: 'Canceled' }
+  const k = String(v || '').toLowerCase()
+  return m[k] || undefined
+}
 
 function openIssue(i: number) {
   issueCtx.value = { index: i }
   const t = local[i]
   const eq = normalizeText(props.equipmentTag) || normalizeId(props.equipmentId) || 'Equipment'
-  issueDraft.title = `FPT: ${eq} • #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`.slice(0, 120)
+  issueDraft.value.title = `FPT: ${eq} • #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`.slice(0, 120)
   const lines: string[] = []
   lines.push(`Equipment: ${eq}`)
   if (props.equipmentSpace) lines.push(`Space: ${props.equipmentSpace}`)
@@ -2055,8 +2045,16 @@ function openIssue(i: number) {
   if (t.expected_result) lines.push(`Expected: ${t.expected_result}`)
   if (t.actual_result) lines.push(`Actual: ${t.actual_result}`)
   if (t.notes) lines.push(`Notes: ${t.notes}`)
-  issueDraft.description = lines.join('\n')
-  issueDraft.type = 'FPT'
+  issueDraft.value.description = lines.join('\n')
+  issueDraft.value.type = 'FPT'
+  issueDraft.value.status = 'open'
+  issueDraft.value.priority = 'medium'
+  issueDraft.value.location = normalizeText(props.equipmentSpace) ?? normalizeText(props.equipmentTag) ?? ''
+  issueDraft.value.system = t && (t as any).system ? String((t as any).system) : ''
+  issueDraft.value.foundBy = ''
+  issueDraft.value.dateFound = ''
+  issueDraft.value.dueDate = ''
+  issueDraft.value.assignedTo = ''
   issueOpen.value = true
 }
 function closeIssue() { issueOpen.value = false; issueCtx.value = null }
@@ -2069,17 +2067,21 @@ async function createIssueFromTest() {
     const t = local[i]
     const pid = normalizeId(props.projectId) || normalizeId((projectStore.currentProjectId as any)?.value ?? projectStore.currentProjectId) || ''
     if (!pid) return
+    const draft = issueDraft.value || ({} as any)
     const assetId = normalizeId(props.equipmentId)
-    const location = normalizeText(props.equipmentSpace) ?? normalizeText(props.equipmentTag)
+    const location = normalizeText(draft.location) || (normalizeText(props.equipmentSpace) ?? normalizeText(props.equipmentTag))
     const payload: any = {
       projectId: pid,
-      title: (issueDraft.title || '').trim() || 'FPT Issue',
-      description: (issueDraft.description || '').trim() || 'Created from FPT',
-      type: issueDraft.type || 'FPT',
-      severity: issueDraft.priority || 'Medium',
-      status: 'Open',
-      system: t && (t as any).system ? (t as any).system : undefined,
-      assignedTo: issueDraft.assignedTo || undefined,
+      title: (draft.title || '').trim() || 'FPT Issue',
+      description: (draft.description || '').trim() || 'Created from FPT',
+      type: draft.type || 'FPT',
+      severity: toApiPriority(draft.priority),
+      status: toApiStatus(draft.status),
+      system: normalizeText(draft.system) || (t && (t as any).system ? (t as any).system : undefined),
+      assignedTo: draft.assignedTo || undefined,
+      foundBy: draft.foundBy || undefined,
+      dateFound: draft.dateFound || undefined,
+      dueDate: draft.dueDate || undefined,
     }
     if (location) payload.location = location
     if (assetId) payload.assetId = assetId
