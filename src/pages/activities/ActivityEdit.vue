@@ -2029,7 +2029,9 @@ onMounted(async () => {
       // Fallback to direct fetch by id only if not found via list
       if (!activityData) {
         try {
-          activityData = await store.fetchActivity(id.value, { light: true })
+          // Use the full activity payload here so production backends that omit `descriptionHtml`
+          // in `light=true` responses still populate the editor/Info tab correctly.
+          activityData = await store.fetchActivity(id.value)
         } catch (e: any) {
           try { ui.showError(e?.response?.data?.error || e?.message || 'Failed to load activity') } catch (_) { /* ignore */ }
         }
