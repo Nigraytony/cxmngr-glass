@@ -2429,11 +2429,13 @@ function htmlToText(html?: string): string {
 }
 
 async function downloadActivityPdf() {
-  await ensureReportData()
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
   loadActivityReportSettingsFromSession()
+  const generatingToast = 'Generating PDF… this can take up to 5 minutes for large reports.'
+  ui.showInfo(generatingToast, { duration: 10000 })
   try {
+    await ensureReportData()
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     // Helvetica is default; SourceSansPro removed
     setZeroCharSpace(doc)
