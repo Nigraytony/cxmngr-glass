@@ -1718,7 +1718,11 @@ async function appendLog(type: string, message: string, extra: Record<string, an
 watch(currentTab, (v) => {
   if (v === 'Logs') loadLogs()
   if (v === 'Photos') loadPhotos()
-  if (v === 'Issues') loadIssues()
+  if (v === 'Issues') {
+    loadIssues()
+      .then(() => hydrateLinkedIssues())
+      .catch(() => { /* ignore */ })
+  }
   if (v === 'Components') loadComponents()
 })
 watch(() => route.query, () => setTabFromQuery())
@@ -2669,65 +2673,89 @@ async function loadIssues() {
     issuesLoaded.value = true
   } catch (e) { /* ignore, UI will show empty */ }
 }
-const issuesForEquipment = computed(() => {
-  const eid = String(id.value || '')
-  const tag = String((form.value as any)?.tag || '')
-  // Collect linked issue ids from functional tests and checklists
-  const linked = new Set<string>()
-  const inlineIssues: any[] = []
+function extractIssueId(raw: any): string {
   try {
+    if (!raw) return ''
+    if (typeof raw === 'string') return raw
+    if (typeof raw === 'number') return String(raw)
+    if (typeof raw !== 'object') return ''
+    const direct = raw.issueId || raw.issue_id || raw.id || raw._id
+    if (direct) return String(direct)
+    const nested = raw.issue?.id || raw.issue?._id || raw.issue?.issueId || raw.issue?.issue_id
+    if (nested) return String(nested)
+    return ''
+  } catch (e) {
+    return ''
+  }
+}
+
+const linkedIssueIds = computed<string[]>(() => {
+  const ids = new Set<string>()
+  try {
+    // equipment-level issues (if present)
+    const eqIssues: any[] = Array.isArray((form.value as any).issues) ? (form.value as any).issues : []
+    for (const it of eqIssues) {
+      const iid = extractIssueId(it)
+      if (iid) ids.add(iid)
+    }
+
+    // component-linked issues
+    const comps: any[] = Array.isArray((form.value as any).components) ? (form.value as any).components : (Array.isArray(componentsList.value) ? componentsList.value : [])
+    for (const c of comps) {
+      const iss: any[] = Array.isArray(c?.issues) ? c.issues : []
+      for (const it of iss) {
+        const iid = extractIssueId(it)
+        if (iid) ids.add(iid)
+      }
+    }
+
+    // functional tests
     const fpts: any[] = Array.isArray((form.value as any).functionalTests) ? (form.value as any).functionalTests : []
     for (const f of fpts) {
       const iss = Array.isArray(f?.issues) ? f.issues : []
-      for (const i of iss) {
-        const iid = String((i && (i.id || i._id)) || i || '')
-        if (iid) linked.add(iid)
-        // If we have an embedded issue object, keep it for display even if not in store
-        if (i && typeof i === 'object') inlineIssues.push(i)
+      for (const it of iss) {
+        const iid = extractIssueId(it)
+        if (iid) ids.add(iid)
       }
     }
+
+    // checklists (questions/items)
     const chks: any[] = Array.isArray((form.value as any).checklists) ? (form.value as any).checklists : []
     for (const c of chks) {
       const items: any[] = Array.isArray(c?.questions) ? c.questions : (Array.isArray(c?.items) ? c.items : [])
       for (const q of items) {
         const iss = Array.isArray(q?.issues) ? q.issues : []
-        for (const i of iss) {
-          const iid = String((i && (i.id || i._id)) || i || '')
-          if (iid) linked.add(iid)
-          if (i && typeof i === 'object') inlineIssues.push(i)
+        for (const it of iss) {
+          const iid = extractIssueId(it)
+          if (iid) ids.add(iid)
         }
       }
     }
   } catch (e) { /* best-effort */ }
+  return Array.from(ids)
+})
 
-  const seen = new Set<string>()
+const linkedIssueIdsKey = computed(() => linkedIssueIds.value.slice().sort().join('|'))
+
+const issuesForEquipment = computed(() => {
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  const linked = new Set<string>(linkedIssueIds.value)
+
+  const seenIds = new Set<string>()
   const result: any[] = []
   const pushIssue = (it: any) => {
     if (!it) return
     const iid = String((it && (it.id || it._id)) || '')
-    const key = iid || `${it.title || it.summary || ''}|${it.description || ''}`
-    if (!key || seen.has(key)) return
-    seen.add(key)
+    if (!iid || seenIds.has(iid)) return
+    seenIds.add(iid)
     result.push(it)
   }
 
-  // From store (canonical)
+  // Canonical store issues (source of truth)
   for (const it of (issuesStore.issues || [])) {
     const iid = String((it && (it.id || it._id)) || '')
-    if (iid && linked.has(iid)) { pushIssue(it); continue }
-    if (String(it.assetId || '') === eid) { pushIssue(it); continue }
-    if (tag && String(it.location || '') === tag) { pushIssue(it); continue }
-  }
-
-  // Inline issues attached directly to FPTs (not necessarily in store)
-  for (const it of inlineIssues) {
-    // try to map to store version if possible
-    const iid = String((it && (it.id || it._id)) || '')
-    if (iid && issuesById.value && issuesById.value[iid]) {
-      pushIssue(issuesById.value[iid])
-    } else {
-      pushIssue(it)
-    }
+    if (!iid) continue
+    if (linked.has(iid) || String(it.assetId || '') === eid) pushIssue(it)
   }
 
   return result
@@ -2741,6 +2769,35 @@ const issuesById = computed(() => {
     if (key) map[key] = it
   }
   return map
+})
+
+const issuesHydrating = ref(false)
+async function hydrateLinkedIssues() {
+  if (issuesHydrating.value) return
+  if (currentTab.value !== 'Issues') return
+  const pid = String(form.value.projectId || projectStore.currentProjectId || '')
+  if (!pid) return
+  const ids = linkedIssueIds.value
+  if (!ids.length) return
+
+  // Ensure the project issues list is loaded first (so the map is populated).
+  if (!issuesLoaded.value) await loadIssues()
+
+  const missing = ids.filter(iid => iid && !issuesById.value[iid])
+  if (!missing.length) return
+
+  issuesHydrating.value = true
+  try {
+    await Promise.allSettled(missing.map(iid => issuesStore.fetchIssue(iid)))
+  } finally {
+    issuesHydrating.value = false
+  }
+}
+
+watch([() => currentTab.value, linkedIssueIdsKey], ([tab]) => {
+  if (tab === 'Issues') {
+    hydrateLinkedIssues().catch(() => { /* ignore */ })
+  }
 })
 function countForTab(t: string) {
   if (t === 'Photos') return (Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0)
@@ -3086,8 +3143,13 @@ function isPassColumnName(name?: string) {
 type PassState = 'none' | 'pass' | 'fail'
 function passCellState(v: any): PassState {
   const x = v
-  if (x === true || x === 'true' || String(x).toLowerCase() === 'pass' || String(x) === '1' || String(x).toLowerCase() === 'yes') return 'pass'
-  if (x === false || x === 'false' || String(x).toLowerCase() === 'fail' || String(x) === '0' || String(x).toLowerCase() === 'no') return 'fail'
+  if (x === true || x === 'true' || String(x) === '1') return 'pass'
+  if (x === false || x === 'false' || String(x) === '0') return 'fail'
+  const s = String(x ?? '').trim().toLowerCase()
+  if (!s) return 'none'
+  // Be tolerant of values like "PASS ✅", "Passed", "Fail (retest)", etc.
+  if (s === 'yes' || s === 'ok' || s === 'success' || s.startsWith('pass') || s.includes(' pass')) return 'pass'
+  if (s === 'no' || s === 'failed' || s.startsWith('fail') || s.includes(' fail')) return 'fail'
   return 'none'
 }
 function passLabel(state: PassState) { return state === 'pass' ? 'PASS' : state === 'fail' ? 'FAIL' : '—' }
@@ -3113,7 +3175,9 @@ async function downloadEquipmentPdf() {
   project = project || {}
   const clientImg = await loadImage(project?.logo)
   const cxaImg = await loadImage(project?.commissioning_agent?.logo)
-  let footerLogo = await loadImage('/brand/logo.png')
+  let footerLogo = await loadImage('/brand/logo-2.png')
+  if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
+  if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
   if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
 
   const drawFooter = () => {
@@ -3126,11 +3190,13 @@ async function downloadEquipmentPdf() {
     try {
       if (footerLogo.dataUrl) {
         const lh = 5.5
-        const lw = 12
+        const lw = 6.5
         doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh)
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9)
+        doc.text('cxma', margin + lw + 2, footerY - 2)
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
         const tail = String((form.value as any).tag || (form.value as any).title || 'Equipment')
-        doc.text(`${tail} Report`, margin + lw + 2, footerY - 2)
+        doc.text(`${tail} Report`, margin + lw + 2 + doc.getTextWidth('cxma') + 4, footerY - 2)
       } else {
         doc.setFillColor(220, 220, 220)
         doc.rect(margin, footerY - 5.5, 8, 5, 'F')
@@ -3558,19 +3624,45 @@ async function downloadEquipmentPdf() {
               if (ensureSpace(rowH + 2)) {
                 drawTableHeader()
               }
-              // Row box and vertical lines
+
+              // Pre-fill PASS / FAIL cells with a light background tint
+              cols.forEach((c, idx) => {
+                if (!isPassColumnName(c.name)) return
+                const state = passCellState((r as any)[c.key])
+                if (state === 'none') return
+                const cellX = tableX + idx * baseW
+                if (state === 'pass') doc.setFillColor(222, 247, 233) // soft green
+                else if (state === 'fail') doc.setFillColor(254, 226, 226) // soft red
+                doc.rect(cellX, y, baseW, rowH, 'F')
+              })
+
+              // Row box and vertical lines (draw on top of fills)
               doc.rect(tableX, y, totalW, rowH)
               for (let i = 1; i < cols.length; i++) {
                 const vx = tableX + i * baseW
                 doc.line(vx, y, vx, y + rowH)
               }
-              // Text per cell
+
+              // Text per cell (PASS/FAIL colored + centered)
               cols.forEach((c, idx) => {
                 const x = tableX + idx * baseW + 1.5
+                const centerX = tableX + idx * baseW + baseW / 2
                 const lines = prepared[idx]
+                const isPassCol = isPassColumnName(c.name)
                 for (let k = 0; k < lines.length; k++) {
-                  doc.text(lines[k], x, y + 4 + k * 4)
+                  const txt = lines[k]
+                  if (isPassCol) {
+                    const norm = String(txt || '').trim().toLowerCase()
+                    if (norm.startsWith('pass')) doc.setTextColor(0, 128, 0)
+                    else if (norm.startsWith('fail')) doc.setTextColor(200, 0, 0)
+                    else doc.setTextColor(0)
+                    doc.text(txt, centerX, y + 4 + k * 4, { align: 'center' })
+                  } else {
+                    doc.setTextColor(0)
+                    doc.text(txt, x, y + 4 + k * 4)
+                  }
                 }
+                doc.setTextColor(0)
               })
               y += rowH
             }
@@ -3657,13 +3749,15 @@ async function downloadEquipmentPdf() {
       sectionGap();
       ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Issues', margin, y); y += 6
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
-      // Table layout based on Issues tab: Number | Type | Title | Description | Status
+      // Table layout based on Issues tab: Number | Type | Title | Description | Recommendation | Status
       const totalW = pageWidth - margin * 2 - 2
       const numW = 16
       const typeW = 26
       const titleW = 42
       const statusW = 24
-      const descW = totalW - numW - typeW - titleW - statusW
+      const remainderW = totalW - numW - typeW - titleW - statusW
+      const descW = Math.round(remainderW * 0.55)
+      const recW = remainderW - descW
       const tableX = margin + 1
       const drawIssuesHeader = () => {
         ensureSpace(8)
@@ -3680,8 +3774,10 @@ async function downloadEquipmentPdf() {
           tableX + numW + typeW,
           tableX + numW + typeW + titleW,
           tableX + numW + typeW + titleW + descW,
+          tableX + numW + typeW + titleW + descW + recW,
+          tableX + totalW,
         ]
-        for (let i = 1; i < colXs.length; i++) {
+        for (let i = 1; i < colXs.length - 1; i++) {
           const vx = colXs[i]
           doc.line(vx, y, vx, y + headerH)
         }
@@ -3690,7 +3786,8 @@ async function downloadEquipmentPdf() {
         doc.text('Type', tableX + numW + 1.5, y + 4)
         doc.text('Title', tableX + numW + typeW + 1.5, y + 4)
         doc.text('Description', tableX + numW + typeW + titleW + 1.5, y + 4)
-        doc.text('Status', tableX + numW + typeW + titleW + descW + 1.5, y + 4)
+        doc.text('Recommendation', tableX + numW + typeW + titleW + descW + 1.5, y + 4)
+        doc.text('Status', tableX + numW + typeW + titleW + descW + recW + 1.5, y + 4)
         y += headerH
         doc.setFont('helvetica', 'normal')
       }
@@ -3700,13 +3797,15 @@ async function downloadEquipmentPdf() {
         const typeTxt = String(it.type || '—')
         const titleTxt = String(it.title || '—')
         const descTxt = htmlToText(it?.descriptionHtml || it?.description || '—')
+        const recTxt = String(it?.recommendation || it?.recommendationText || it?.recommendation_text || '—')
         const statusTxt = String(it.status || 'Open')
         const numLines = splitText(doc, numTxt, numW - 3)
         const typeLines = splitText(doc, typeTxt, typeW - 3)
         const titleLines = splitText(doc, titleTxt, titleW - 3)
         const descLines = splitText(doc, descTxt, descW - 3)
+        const recLines = splitText(doc, recTxt, recW - 3)
         const statusLines = splitText(doc, statusTxt, statusW - 3)
-        const hLines = Math.max(1, numLines.length, typeLines.length, titleLines.length, descLines.length, statusLines.length)
+        const hLines = Math.max(1, numLines.length, typeLines.length, titleLines.length, descLines.length, recLines.length, statusLines.length)
         const rowH = Math.max(6, hLines * 4 + 2)
         if (ensureSpace(rowH + 2)) {
           drawIssuesHeader()
@@ -3719,15 +3818,17 @@ async function downloadEquipmentPdf() {
           tableX + numW + typeW,
           tableX + numW + typeW + titleW,
           tableX + numW + typeW + titleW + descW,
+          tableX + numW + typeW + titleW + descW + recW,
+          tableX + totalW,
         ]
-        for (let i = 1; i < colXs.length; i++) {
+        for (let i = 1; i < colXs.length - 1; i++) {
           const vx = colXs[i]
           doc.line(vx, y, vx, y + rowH)
         }
         // Text per cell
         let cx = tableX + 1.5
-        const colLines = [numLines, typeLines, titleLines, descLines, statusLines]
-        const colWidths = [numW, typeW, titleW, descW, statusW]
+        const colLines = [numLines, typeLines, titleLines, descLines, recLines, statusLines]
+        const colWidths = [numW, typeW, titleW, descW, recW, statusW]
         for (let col = 0; col < colLines.length; col++) {
           const lines = colLines[col]
           for (let k = 0; k < lines.length; k++) {

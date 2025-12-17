@@ -94,7 +94,14 @@ export const useIssuesStore = defineStore('issues', () => {
     error.value = null
     try {
       const res = await axios.get(`${API_BASE}/${id}`, { headers: authHeaders() })
-      return normalize(res.data)
+      const it = normalize(res.data)
+      const key = String((it as any).id || (it as any)._id || id)
+      if (key) {
+        const idx = issues.value.findIndex(x => String((x as any).id || (x as any)._id || '') === key)
+        if (idx === -1) issues.value.push(it as any)
+        else issues.value.splice(idx, 1, it as any)
+      }
+      return it
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch issue'
       throw err

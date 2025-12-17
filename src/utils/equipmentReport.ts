@@ -110,8 +110,13 @@ function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
 }
 function passCellState(v: any): 'none' | 'pass' | 'fail' {
   const x = v
-  if (x === true || x === 'true' || String(x).toLowerCase() === 'pass' || String(x) === '1' || String(x).toLowerCase() === 'yes') return 'pass'
-  if (x === false || x === 'false' || String(x).toLowerCase() === 'fail' || String(x) === '0' || String(x).toLowerCase() === 'no') return 'fail'
+  if (x === true || x === 'true' || String(x) === '1') return 'pass'
+  if (x === false || x === 'false' || String(x) === '0') return 'fail'
+  const s = String(x ?? '').trim().toLowerCase()
+  if (!s) return 'none'
+  // Be tolerant of values like "PASS ✅", "Passed", "Fail (needs retest)", etc.
+  if (s === 'yes' || s === 'ok' || s === 'success' || s.startsWith('pass') || s.includes(' pass')) return 'pass'
+  if (s === 'no' || s === 'failed' || s.startsWith('fail') || s.includes(' fail')) return 'fail'
   return 'none'
 }
 function passLabel(state: 'none' | 'pass' | 'fail') { return state === 'pass' ? 'PASS' : state === 'fail' ? 'FAIL' : '—' }
@@ -383,8 +388,8 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
 	                  const txt = lines[k]
 	                  if (isPassCol) {
 	                    const norm = String(txt || '').trim().toLowerCase()
-	                    if (norm === 'pass') doc.setTextColor(0, 128, 0)
-	                    else if (norm === 'fail') doc.setTextColor(200, 0, 0)
+	                    if (norm.startsWith('pass')) doc.setTextColor(0, 128, 0)
+	                    else if (norm.startsWith('fail')) doc.setTextColor(200, 0, 0)
 	                    else doc.setTextColor(0)
 	                  } else {
 	                    doc.setTextColor(0)

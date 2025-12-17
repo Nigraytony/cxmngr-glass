@@ -1149,6 +1149,8 @@
                     v-for="e in pagedEquip"
                     :key="e.id || e._id"
                     class="border-t border-white/10 hover:bg-white/5"
+                    @dragover.prevent
+                    @drop.prevent="(ev) => onEquipDrop(ev, e)"
                   >
                     <td class="px-3 py-2 align-middle whitespace-nowrap">
                       {{ e.tag || '—' }}
@@ -1164,6 +1166,28 @@
                     </td>
                     <td class="px-3 py-2 align-middle text-right">
                       <div class="inline-flex items-center gap-2">
+                        <button
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 cursor-grab active:cursor-grabbing"
+                          title="Reorder"
+                          aria-label="Reorder"
+                          draggable="true"
+                          @dragstart="(ev) => onEquipDragStart(ev, e)"
+                        >
+                          <!-- Drag handle -->
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"
+                              stroke-width="3"
+                              stroke-linecap="round"
+                            />
+                          </svg>
+                        </button>
                         <button
                           class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25"
                           title="Remove from Reviewed"
@@ -1554,64 +1578,169 @@
         </div>
       </template>
       <div class="space-y-4 text-sm">
-        <div class="grid grid-cols-2 gap-3">
-          <label class="inline-flex items-center gap-2">
-            <input
-              v-model="activityReport.include.info"
-              type="checkbox"
-              class="rounded"
-            >
-            <span>Info</span>
-          </label>
-          <label class="inline-flex items-center gap-2">
-            <input
-              v-model="activityReport.include.description"
-              type="checkbox"
-              class="rounded"
-            >
-            <span>Description</span>
-          </label>
-          <label class="inline-flex items-center gap-2">
-            <input
-              v-model="activityReport.include.photos"
-              type="checkbox"
-              class="rounded"
-            >
-            <span>Photos</span>
-          </label>
-          <label class="inline-flex items-center gap-2">
-            <input
-              v-model="activityReport.include.issues"
-              type="checkbox"
-              class="rounded"
-            >
-            <span>Issues</span>
-          </label>
-          <label class="inline-flex items-center gap-2">
-            <input
-              v-model="activityReport.include.attachments"
-              type="checkbox"
-              class="rounded"
-            >
-            <span>Attachments</span>
-          </label>
-          <label class="inline-flex items-center gap-2">
-            <input
-              v-model="activityReport.include.equipmentReports"
-              type="checkbox"
-              class="rounded"
-            >
-            <span>Append Equipment Reports</span>
-          </label>
-        </div>
-        <div class="grid grid-cols-2 gap-3 items-center">
-          <label class="text-white/80">Photo limit</label>
-          <input
-            v-model.number="activityReport.photoLimit"
-            type="number"
-            min="0"
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28"
+        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="reportSettingsTab === 'general' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="reportSettingsTab = 'general'"
           >
+            General Settings
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="reportSettingsTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="reportSettingsTab = 'cover'"
+          >
+            Cover Page
+          </button>
+        </div>
+
+        <div v-if="reportSettingsTab === 'general'" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.coverPage"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Cover Page</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.toc"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Table of Contents</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.info"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Info</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.description"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Description</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.photos"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Photos</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.issues"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Issues</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.attachments"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Attachments</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.equipmentList"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Equipment List</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="activityReport.include.equipmentReports"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Append Equipment Reports</span>
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-3 items-center">
+            <label class="text-white/80">Photo limit</label>
+            <input
+              v-model.number="activityReport.photoLimit"
+              type="number"
+              min="0"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28"
+            >
+          </div>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="block text-white/80 mb-1">Cover title</label>
+              <input
+                v-model="activityReport.coverTitle"
+                type="text"
+                placeholder="Activity Report"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
+              >
+            </div>
+            <div>
+              <label class="block text-white/80 mb-1">Cover subtitle</label>
+              <input
+                v-model="activityReport.coverSubtitle"
+                type="text"
+                placeholder="Activity Name"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
+              >
+            </div>
+            <div>
+              <label class="block text-white/80 mb-1">By line (optional)</label>
+              <input
+                v-model="activityReport.coverByLine"
+                type="text"
+                placeholder="By: John Doe, PE (JDE Inc.)"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
+              >
+              <div class="text-xs text-white/60 mt-1">
+                Printed below the Location field on the cover page.
+              </div>
+            </div>
+            <div>
+              <label class="block text-white/80 mb-1">Jumbotron photo (optional)</label>
+              <div class="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="block w-full text-white/80 text-sm"
+                  @change="onCoverJumbotronSelected"
+                >
+                <button
+                  v-if="activityReport.coverJumbotronDataUrl"
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-red-500/20 border border-red-500/30 text-red-100 hover:bg-red-500/30 text-sm"
+                  @click="clearCoverJumbotron"
+                >
+                  Remove
+                </button>
+              </div>
+              <div v-if="activityReport.coverJumbotronDataUrl" class="mt-3">
+                <img
+                  :src="activityReport.coverJumbotronDataUrl"
+                  class="max-h-40 w-full object-contain rounded-md border border-white/10 bg-black/10"
+                >
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -1698,21 +1827,34 @@ const pendingCreatedId = ref<string | null>(null)
 const ACTIVITY_REPORT_SESSION_KEY = 'activityReportSettings'
 interface ActivityReportSettings {
   include: {
+    coverPage: boolean
+    toc: boolean
     info: boolean
     description: boolean
     photos: boolean
     issues: boolean
     attachments: boolean
+    equipmentList: boolean
     equipmentReports: boolean
   }
   photoLimit: number
+  coverTitle: string
+  coverSubtitle: string
+  coverByLine: string
+  coverJumbotronDataUrl: string
 }
 const activityReport = ref<ActivityReportSettings>({
-  include: { info: true, description: true, photos: true, issues: true, attachments: true, equipmentReports: true },
+  include: { coverPage: false, toc: false, info: true, description: true, photos: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
   photoLimit: 6,
+  coverTitle: 'Activity Report',
+  coverSubtitle: '',
+  coverByLine: '',
+  coverJumbotronDataUrl: '',
 })
 const showActivityReportDialog = ref(false)
+const reportSettingsTab = ref<'general' | 'cover'>('general')
 function openReportSettings() {
+  reportSettingsTab.value = 'general'
   showActivityReportDialog.value = true
 }
 function loadActivityReportSettingsFromSession() {
@@ -1724,6 +1866,10 @@ function loadActivityReportSettingsFromSession() {
       activityReport.value = {
         include: { ...activityReport.value.include, ...(parsed.include || {}) },
         photoLimit: Math.max(0, Number(parsed.photoLimit ?? activityReport.value.photoLimit)),
+        coverTitle: typeof parsed.coverTitle === 'string' ? parsed.coverTitle : activityReport.value.coverTitle,
+        coverSubtitle: typeof parsed.coverSubtitle === 'string' ? parsed.coverSubtitle : activityReport.value.coverSubtitle,
+        coverByLine: typeof parsed.coverByLine === 'string' ? parsed.coverByLine : activityReport.value.coverByLine,
+        coverJumbotronDataUrl: typeof parsed.coverJumbotronDataUrl === 'string' ? parsed.coverJumbotronDataUrl : activityReport.value.coverJumbotronDataUrl,
       }
     }
   } catch (e) { /* ignore sessionStorage read errors */ }
@@ -1733,9 +1879,38 @@ function saveActivityReportSettings() {
   showActivityReportDialog.value = false
 }
 function resetActivityReportSettings() {
-  activityReport.value = { include: { info: true, description: true, photos: true, issues: true, attachments: true, equipmentReports: true }, photoLimit: 6 }
+  activityReport.value = {
+    include: { coverPage: false, toc: false, info: true, description: true, photos: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
+    photoLimit: 6,
+    coverTitle: 'Activity Report',
+    coverSubtitle: '',
+    coverByLine: '',
+    coverJumbotronDataUrl: '',
+  }
 }
 watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
+
+async function onCoverJumbotronSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) return
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+    activityReport.value.coverJumbotronDataUrl = dataUrl
+  } catch (err: any) {
+    ui.showError(err?.message || 'Failed to load image')
+  } finally {
+    try { input.value = '' } catch (_) { /* ignore */ }
+  }
+}
+function clearCoverJumbotron() {
+  activityReport.value.coverJumbotronDataUrl = ''
+}
 
 const types = [ 
   'Assessment',
@@ -2492,7 +2667,112 @@ async function downloadActivityPdf() {
     }
     const ensureSpace = (amount: number): boolean => { if (y + amount > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader(); return true } return false }
     const sectionGap = (gap = 6) => { ensureSpace(gap); y += gap }
-    drawHeader()
+    // Do not include the standard report header on the cover page.
+    if (!activityReport.value.include.coverPage) drawHeader()
+
+    // Optional cover + TOC pages (inserted before main content)
+    if (activityReport.value.include.coverPage) {
+      // No header on the cover page.
+      y = margin
+      const projectName = String((projectStore.currentProject as any)?.name || '')
+      const projectLabel = projectName || String(form.projectId || '')
+      const dateRange = [form.startDate, form.endDate].filter(Boolean).join(' – ')
+
+      // Titles are fully user-controlled; if left blank, we omit them.
+      const coverTitle = String(activityReport.value.coverTitle || '').trim()
+      const coverSubtitle = String(activityReport.value.coverSubtitle || '').trim()
+      const coverByLine = String(activityReport.value.coverByLine || '').trim()
+      const coverJumboSrc = String(activityReport.value.coverJumbotronDataUrl || '').trim()
+
+      // Start cover content just below logos.
+      let coverY = y
+      if (coverTitle) { setBodyFont(doc, 'bold'); doc.setFontSize(22); doc.text(coverTitle, pageWidth / 2, coverY + 10, { align: 'center' }); coverY += 14 }
+      if (coverSubtitle) { setBodyFont(doc, 'bold'); doc.setFontSize(18); doc.text(coverSubtitle, pageWidth / 2, coverY + 10, { align: 'center' }); coverY += 12 }
+      setBodyFont(doc, 'normal'); doc.setFontSize(12)
+
+      const meta: Array<[string, string]> = [
+        ['Project', projectLabel],
+        ['Type', String(form.type || '')],
+        ['Dates', dateRange || '—'],
+        ['Location', String(form.location || '—')],
+      ]
+      if (coverByLine) meta.push(['By', coverByLine])
+
+      const lineH = 7
+      const metaBlockH = meta.length * lineH
+      const metaStartY = Math.max(coverY + 18, bottomLimit - metaBlockH - 10)
+
+      // Jumbotron photo in the middle of the page (optional)
+      if (coverJumboSrc) {
+        const boxX = margin
+        const boxW = pageWidth - margin * 2
+        const boxTop = coverY + 6
+        const boxBottom = metaStartY - 8
+        const boxH = boxBottom - boxTop
+        if (boxH > 20) {
+          const img = await loadImage(coverJumboSrc)
+          if (img?.dataUrl) {
+            const iw = Number((img as any).width || 0)
+            const ih = Number((img as any).height || 0)
+            const aspect = (iw > 0 && ih > 0) ? (iw / ih) : 1.6
+            let drawW = boxW
+            let drawH = drawW / aspect
+            if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect }
+            const dx = boxX + (boxW - drawW) / 2
+            const dy = boxTop + (boxH - drawH) / 2
+            try { doc.addImage(img.dataUrl, img.format || 'JPEG', dx, dy, drawW, drawH) } catch (e) { /* ignore */ }
+          }
+        }
+      }
+
+      let cy = metaStartY
+      for (const [k, v] of meta) {
+        doc.setTextColor(100); doc.text(`${k}:`, margin, cy)
+        doc.setTextColor(0); doc.text(String(v || '—'), margin + 26, cy)
+        cy += lineH
+      }
+      y = cy + 2
+      drawFooter()
+      doc.addPage(); pageNo++; y = margin; drawHeader()
+    }
+
+    if (activityReport.value.include.toc) {
+      const items: string[] = []
+      if (activityReport.value.include.info) items.push('Info')
+      if (activityReport.value.include.description) items.push('Description')
+      if (activityReport.value.include.photos) items.push('Photos')
+      if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
+      if (activityReport.value.include.issues) items.push('Issues')
+      if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
+      if (activityReport.value.include.attachments) items.push('Attachments')
+
+      ensureSpace(14)
+      setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
+      setBodyFont(doc, 'normal'); doc.setFontSize(12)
+      for (const it of items) {
+        ensureSpace(7)
+        doc.text(`• ${it}`, margin + 2, y)
+        y += 7
+
+        // For "Equipment Reports", include sub-bullets for each equipment in current order.
+        if (it === 'Equipment Reports' && selectedEquip.value.length) {
+          const eqItems = [...(selectedEquip.value || [])]
+          for (const eq of eqItems) {
+            const tag = String(eq?.tag || '').trim()
+            const title = String(eq?.title || '').trim()
+            const label = [tag, title].filter(Boolean).join(' — ') || 'Equipment'
+            ensureSpace(6)
+            doc.text(`- ${label}`, margin + 8, y)
+            y += 6
+          }
+          y += 2
+        }
+      }
+      y += 2
+      drawFooter()
+      doc.addPage(); pageNo++; y = margin; drawHeader()
+    }
+
     // Info
     if (activityReport.value.include.info) {
       setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(12)
@@ -2511,7 +2791,7 @@ async function downloadActivityPdf() {
     }
     // Description (rich HTML rendering)
     if (activityReport.value.include.description && form.descriptionHtml) {
-      ensureSpace(14); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Description', margin, y); y += 6
+      // Render description content without the "Description" label
       const container = document.createElement('div')
       container.style.position = 'fixed'
       container.style.left = '-10000px'
@@ -2788,19 +3068,8 @@ async function downloadActivityPdf() {
         issuesBytes = iDoc.output('arraybuffer') as ArrayBuffer;
       }
     }
-    // Merge issues immediately after main doc so they appear right after Photos section
-    if (issuesBytes) {
-      try {
-        const { PDFDocument } = await import('pdf-lib')
-        const merged = await PDFDocument.load(baseBytes)
-        const issuesPdf = await PDFDocument.load(issuesBytes)
-        const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
-        issuesPages.forEach((p:any) => merged.addPage(p))
-        baseBytes = await merged.save()
-        // Prevent double-merge later
-        issuesBytes = null
-      } catch (e) { /* keep baseBytes as-is */ }
-    }
+    // Defer issues merge until after the Equipment List section so ordering is:
+    // main report -> Equipment List -> Issues -> Equipment Reports -> Attachments
     // Build attachments doc separately (list + image pages) if needed.
     let attachmentsBytes: ArrayBuffer | null = null
     if (activityReport.value.include.attachments) {
@@ -2825,10 +3094,12 @@ async function downloadActivityPdf() {
         attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
       }
     }
-    // Merge equipment detailed reports and then issues, attachments & PDF attachments
+    // Merge equipment list + issues + equipment detailed reports + attachments
     if (activityReport.value.include.equipmentReports && selectedEquip.value.length) {
       try {
         const { PDFDocument } = await import('pdf-lib')
+        // Freeze the current equipment order (matches Equipment tab order).
+        const selectedEquipSnapshot = [...(selectedEquip.value || [])]
         // Build a PDF map of issues and spaces for richer equipment reports
         // Build a comprehensive issuesMap including all issues referenced by equipment
         const issuesMap: Record<string, any> = {}
@@ -2838,7 +3109,7 @@ async function downloadActivityPdf() {
           if (key) issuesMap[key] = it
         }
         // For each selected equipment, add any issues referenced in eq.issues (by id or object)
-        for (const eq of selectedEquip.value) {
+        for (const eq of selectedEquipSnapshot) {
           // Add issues by id/object in eq.issues
           if (Array.isArray(eq.issues)) {
             for (const ref of eq.issues) {
@@ -2875,31 +3146,11 @@ async function downloadActivityPdf() {
         }
         // Try to resolve project (already loaded earlier for logos)
         const projectObj: any = projectStore.currentProject || {}
-        // Generate full equipment PDFs and merge
         const merged = await PDFDocument.load(baseBytes)
-        // Lazy-load generator only if needed (performance improvement)
-        const { generateEquipmentPdf } = await import('../../utils/equipmentReport')
-        for (const eq of selectedEquip.value) {
-          try {
-            const eqId = String((eq as any)?.id || (eq as any)?._id || '')
-            const fullEq = eqId ? (await fetchFullEquipmentForReport(eqId)) || eq : eq
-            // Attempt to reuse each equipment's own saved report settings if present on object
-            const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
-            const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
-            // Ensure issues are included in each equipment report (user requirement)
-            const includeSettings = { ...baseInclude, issues: true }
-            // Use equipment's own photoLimit if available, else fall back to activity photoLimit or 6
-            const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
-            const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, { include: includeSettings, photoLimit })
-            const eqPdf = await PDFDocument.load(eqBytes)
-            const pages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
-            pages.forEach((p: any) => merged.addPage(p))
-           } catch (e) { /* ignore */ }
-        }
 
-        // --- Add Equipment Table at the end ---
-        // Only add if there is at least one equipment
-        if (selectedEquip.value.length) {
+        // --- Add Equipment List section (before equipment reports) ---
+        // Only add if there is at least one equipment selected
+        if (activityReport.value.include.equipmentList && selectedEquipSnapshot.length) {
           const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF;
           const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' });
           setZeroCharSpace(eqDoc);
@@ -2953,9 +3204,8 @@ async function downloadActivityPdf() {
           // Table columns
           const columns = [
             { label: 'Tag', width: 24 },
-            { label: 'Title', width: 38 },
-            { label: 'Location', width: 38 },
-            { label: 'Status', width: 22 },
+            { label: 'Title', width: 60 },
+            { label: 'Status', width: 44 },
             { label: 'Manufacturer', width: 32 },
             { label: 'Condition', width: 22 },
           ];
@@ -2980,7 +3230,7 @@ async function downloadActivityPdf() {
 
           // Draw rows
           let colX = tableX;
-          for (const eq of selectedEquip.value) {
+          for (const eq of selectedEquipSnapshot) {
             if (eqY + 8 > eqBottom) {
               drawEqFooter();
               eqDoc.addPage();
@@ -3007,7 +3257,6 @@ async function downloadActivityPdf() {
             const rowVals = [
               String(eq.tag || '—'),
               String(eq.title || '—'),
-              String((typeof equipmentLocationBreadcrumb === 'function' ? equipmentLocationBreadcrumb(eq) : eq.location) || '—'),
               String(eq.status || '—'),
               manufacturer,
               condition,
@@ -3027,6 +3276,37 @@ async function downloadActivityPdf() {
           eqPages.forEach((p: any) => merged.addPage(p));
         }
 
+        // Merge issues after Equipment List
+        if (issuesBytes) {
+          try {
+            const issuesPdf = await PDFDocument.load(issuesBytes)
+            const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
+            issuesPages.forEach((p:any) => merged.addPage(p))
+            issuesBytes = null
+          } catch (e) { /* ignore */ }
+        }
+
+        // Generate full equipment PDFs and merge (equipment reports)
+        // Lazy-load generator only if needed (performance improvement)
+        const { generateEquipmentPdf } = await import('../../utils/equipmentReport')
+        for (const eq of selectedEquipSnapshot) {
+          try {
+            const eqId = String((eq as any)?.id || (eq as any)?._id || '')
+            const fullEq = eqId ? (await fetchFullEquipmentForReport(eqId)) || eq : eq
+            // Attempt to reuse each equipment's own saved report settings if present on object
+            const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
+            const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
+            // Ensure issues are included in each equipment report (user requirement)
+            const includeSettings = { ...baseInclude, issues: true }
+            // Use equipment's own photoLimit if available, else fall back to activity photoLimit or 6
+            const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
+            const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, { include: includeSettings, photoLimit })
+            const eqPdf = await PDFDocument.load(eqBytes)
+            const pages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
+            pages.forEach((p: any) => merged.addPage(p))
+           } catch (e) { /* ignore */ }
+        }
+
         // Insert attachments pages (non-PDF) after equipment reports & issues & equipment table
         if (attachmentsBytes) {
           try {
@@ -3043,6 +3323,141 @@ async function downloadActivityPdf() {
         }
         baseBytes = await merged.save()
   } catch (e) { /* fallback keep baseBytes */ }
+    }
+
+    // If equipment reports are not requested, optionally insert Equipment List before Issues.
+    if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && activityReport.value.include.equipmentList && selectedEquip.value.length) {
+      try {
+        const { PDFDocument } = await import('pdf-lib')
+        const merged = await PDFDocument.load(baseBytes)
+
+        const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF
+        const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' })
+        setZeroCharSpace(eqDoc)
+        setBodyFont(eqDoc, 'normal')
+        const eqPW = eqDoc.internal.pageSize.getWidth()
+        const eqPH = eqDoc.internal.pageSize.getHeight()
+        const eqMargin = 12
+        const eqBottom = eqPH - 26
+        let eqY = eqMargin
+        let eqPageNo = 1
+        const eqPageDate = pageDate
+
+        const drawEqFooter = () => {
+          const footerY = eqPH - 10
+          eqDoc.setDrawColor(180, 180, 180); eqDoc.line(eqMargin, footerY - 6, eqPW - eqMargin, footerY - 6)
+          try {
+            if ((footerLogo as any)?.dataUrl) {
+              const lh = 5.5
+              let lw = 12
+              if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) {
+                lw = lh * ((footerLogo as any).width / (footerLogo as any).height)
+              }
+              const maxW = 14
+              if (lw > maxW) lw = maxW
+              eqDoc.addImage((footerLogo as any).dataUrl, (footerLogo as any).format || 'PNG', eqMargin, footerY - lh, lw, lh)
+              const brandX = eqMargin + lw + 2
+              setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8)
+              eqDoc.text('cxma', brandX, footerY - 2)
+              const tw = typeof (eqDoc as any).getTextWidth === 'function' ? (eqDoc as any).getTextWidth('cxma') : 10
+              eqDoc.text(`${form.name || 'Activity'} Equipment`, brandX + tw + 3, footerY - 2)
+            } else {
+              eqDoc.setFillColor(220, 220, 220); eqDoc.rect(eqMargin, footerY - 5.5, 8, 5, 'F'); setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8)
+              eqDoc.text('cxma', eqMargin + 10, footerY - 2)
+              eqDoc.text(`${form.name || 'Activity'} Equipment`, eqMargin + 24, footerY - 2)
+            }
+          } catch (e) { /* ignore */ }
+          setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(8); eqDoc.text(String(eqPageNo), eqPW / 2, footerY - 2, { align: 'center' })
+          try { if (typeof eqPageDate === 'string') eqDoc.text(eqPageDate, eqPW - eqMargin, footerY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
+        }
+
+        const drawEqHeader = () => {
+          const logoH = 12
+          let logoBlockH = 0
+          try { if ((clientImg as any)?.dataUrl) { const dim = scaleToHeight((clientImg as any), logoH, logoH * 2.5); eqDoc.addImage((clientImg as any).dataUrl, (clientImg as any).format || 'PNG', eqMargin, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
+          try { if ((cxaImg as any)?.dataUrl) { const dim = scaleToHeight((cxaImg as any), logoH, logoH * 2.5); eqDoc.addImage((cxaImg as any).dataUrl, (cxaImg as any).format || 'PNG', eqPW - eqMargin - dim.w, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
+          setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(18); eqDoc.text('Equipment List', eqPW / 2, eqMargin + (logoBlockH || logoH) + 6, { align: 'center' })
+          eqY = eqMargin + (logoBlockH || logoH) + 16
+          setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12)
+        }
+
+        const columns = [
+          { label: 'Tag', width: 24 },
+          { label: 'Title', width: 60 },
+          { label: 'Status', width: 44 },
+          { label: 'Manufacturer', width: 32 },
+          { label: 'Condition', width: 22 },
+        ]
+        const totalW = columns.reduce((sum, c) => sum + c.width, 0)
+        const tableX = eqMargin
+        const drawTableHeader = () => {
+          eqDoc.setFillColor(240, 240, 240)
+          eqDoc.rect(tableX, eqY, totalW, 7, 'F')
+          setBodyFont(eqDoc, 'bold')
+          let colX = tableX
+          for (const col of columns) { eqDoc.text(col.label, colX + 2, eqY + 5); colX += col.width }
+          eqY += 9
+          setBodyFont(eqDoc, 'normal')
+        }
+
+        drawEqHeader()
+        drawTableHeader()
+        for (const eq of selectedEquip.value) {
+          if (eqY + 8 > eqBottom) {
+            drawEqFooter()
+            eqDoc.addPage()
+            eqPageNo++
+            drawEqHeader()
+            drawTableHeader()
+          }
+          let manufacturer = '—'
+          let condition = '—'
+          if (Array.isArray(eq.attributes)) {
+            for (const attr of eq.attributes) {
+              if (attr && typeof attr === 'object') {
+                if (attr.key === 'Manufacturer' && attr.value) manufacturer = String(attr.value)
+                if (attr.key === 'Condition' && attr.value) condition = String(attr.value)
+              }
+            }
+          } else if (eq.attributes && typeof eq.attributes === 'object') {
+            manufacturer = String(eq.attributes['Manufacturer'] || '—')
+            condition = String(eq.attributes['Condition'] || '—')
+          }
+          const rowVals = [
+            String(eq.tag || '—'),
+            String(eq.title || '—'),
+            String(eq.status || '—'),
+            manufacturer,
+            condition,
+          ]
+          let colX = tableX
+          for (let i = 0; i < columns.length; i++) {
+            eqDoc.text(rowVals[i], colX + 2, eqY + 5, { maxWidth: columns[i].width - 4 })
+            colX += columns[i].width
+          }
+          eqY += 8
+        }
+        drawEqFooter()
+
+        const eqBytes = eqDoc.output('arraybuffer') as ArrayBuffer
+        const eqPdf = await PDFDocument.load(eqBytes)
+        const eqPages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
+        eqPages.forEach((p: any) => merged.addPage(p))
+        baseBytes = await merged.save()
+      } catch (e) { /* ignore */ }
+    }
+
+    // If equipment reports are not requested, merge issues after the main report.
+    if (issuesBytes) {
+      try {
+        const { PDFDocument } = await import('pdf-lib')
+        const merged = await PDFDocument.load(baseBytes)
+        const issuesPdf = await PDFDocument.load(issuesBytes)
+        const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
+        issuesPages.forEach((p:any) => merged.addPage(p))
+        baseBytes = await merged.save()
+        issuesBytes = null
+      } catch (e) { /* keep baseBytes as-is */ }
     }
     // If no equipment reports requested, still append attachments
     if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && (attachmentsBytes)) {
@@ -3681,6 +4096,8 @@ function addReviewedTag(e: any) {
   if (!exists) {
     form.systems = [...(form.systems || []), token]
     normalizeSelectedEquipmentTokens()
+    // Default ordering: keep Tag ascending until the user manually reorders.
+    if (!equipmentOrderTouched.value) sortSelectedEquipmentByTag()
     queueSaveEquipmentChange()
   }
 }
@@ -3728,19 +4145,44 @@ function normalizeSelectedEquipmentTokens() {
     seen.add(t)
     deduped.push(t)
   }
-  const current = (form.systems || []).map(s => String(s).trim())
-  const sameLength = current.length === deduped.length
-  const same = sameLength && current.every((v, i) => v === deduped[i])
-  if (!same) {
-    form.systems = deduped
-  }
-  form.systems = ids
+  form.systems = deduped
 }
+
+const equipmentOrderTouched = ref(false)
+function sortSelectedEquipmentByTag() {
+  const ids = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
+  if (ids.length < 2) return
+  const byId: Record<string, any> = {}
+  for (const eq of equipmentInProject.value) {
+    const id = String(eq?.id || eq?._id || '').trim()
+    if (id) byId[id] = eq
+  }
+  const sorted = [...ids].sort((a, b) => {
+    const at = String(byId[a]?.tag || '').toLowerCase()
+    const bt = String(byId[b]?.tag || '').toLowerCase()
+    return at.localeCompare(bt)
+  })
+  const same = ids.length === sorted.length && ids.every((v, i) => v === sorted[i])
+  if (!same) form.systems = sorted
+}
+
 const selectedEquip = computed<any[]>(() => {
   const sels = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
   if (!sels.length) return []
-  const ids = new Set<string>(sels)
-  return equipmentInProject.value.filter((e: any) => ids.has(String(e?.id || e?._id || '')))
+  const byId: Record<string, any> = {}
+  for (const e of equipmentInProject.value) {
+    const id = String(e?.id || e?._id || '')
+    if (id) byId[id] = e
+  }
+  const out: any[] = []
+  const seen = new Set<string>()
+  for (const id of sels) {
+    if (!id || seen.has(id)) continue
+    seen.add(id)
+    const eq = byId[id]
+    if (eq) out.push(eq)
+  }
+  return out
 })
 
 // Equipment pagination state
@@ -3753,14 +4195,51 @@ watch([selectedEquip, equipPerPage], () => {
 // Normalize saved selections once on mount
 onMounted(() => {
   normalizeSelectedEquipmentTokens()
+  // Default ordering by Tag (ascending) unless the user later reorders.
+  sortSelectedEquipmentByTag()
 })
 watch(() => equipmentInProject.value, () => {
   normalizeSelectedEquipmentTokens()
+  if (!equipmentOrderTouched.value) sortSelectedEquipmentByTag()
 })
 const pagedEquip = computed(() => {
   const start = (equipPage.value - 1) * equipPerPage.value
   return selectedEquip.value.slice(start, start + equipPerPage.value)
 })
+
+function equipmentId(e: any): string {
+  return String(e?.id || e?._id || '').trim()
+}
+function reorderSelectedEquipment(fromId: string, toId: string) {
+  const ids = (form.systems || []).map(s => String(s || '').trim()).filter(Boolean)
+  const fromIdx = ids.indexOf(fromId)
+  const toIdx = ids.indexOf(toId)
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+  const next = [...ids]
+  next.splice(fromIdx, 1)
+  const insertAt = fromIdx < toIdx ? toIdx - 1 : toIdx
+  next.splice(insertAt, 0, fromId)
+  form.systems = next
+  equipmentOrderTouched.value = true
+  queueSaveEquipmentChange()
+}
+function onEquipDragStart(e: DragEvent, eq: any) {
+  const id = equipmentId(eq)
+  if (!id) return
+  equipmentOrderTouched.value = true
+  try {
+    e.dataTransfer?.setData('text/plain', id)
+    e.dataTransfer?.setData('application/x-equip-id', id)
+    e.dataTransfer?.setDragImage?.((e.target as HTMLElement) || new Image(), 0, 0)
+  } catch (_) { /* ignore */ }
+}
+function onEquipDrop(e: DragEvent, targetEq: any) {
+  const toId = equipmentId(targetEq)
+  if (!toId) return
+  const fromId = (e.dataTransfer?.getData('application/x-equip-id') || e.dataTransfer?.getData('text/plain') || '').trim()
+  if (!fromId || fromId === toId) return
+  reorderSelectedEquipment(fromId, toId)
+}
 
   // Debounce equipment changes save
   let queueSaveEquipment: any = null
