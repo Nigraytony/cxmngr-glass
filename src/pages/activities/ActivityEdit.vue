@@ -2971,6 +2971,45 @@ async function downloadActivityPdf() {
         // Render with html2canvas and paginate manually for reliable output
         const canvas = await (window as any).html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
         const scale = targetWidthPx / canvas.width
+        // html2canvas can include a large amount of trailing whitespace; trim it to avoid
+        // generating an extra "blank" page at the end of the Description section.
+        const trimTrailingWhitespace = (srcCanvas: HTMLCanvasElement): number => {
+          try {
+            const ctx2d = srcCanvas.getContext('2d', { willReadFrequently: true } as any)
+            if (!ctx2d) return srcCanvas.height
+            const w = srcCanvas.width
+            const maxInk = 0.01
+            const stepX = 8
+            const blockH = 220
+            for (let blockStart = Math.max(0, srcCanvas.height - blockH); blockStart >= 0; blockStart -= blockH) {
+              const regionH = Math.min(blockH, srcCanvas.height - blockStart)
+              const img = ctx2d.getImageData(0, blockStart, w, regionH)
+              const data = img.data
+              // Search within this block from bottom-up for any "ink" row
+              for (let ry = regionH - 2; ry >= 1; ry--) {
+                let ink = 0
+                let samples = 0
+                const rowBase = ry * w * 4
+                for (let x = 0; x < w; x += stepX) {
+                  const idx = rowBase + x * 4
+                  const a = data[idx + 3]
+                  if (a < 16) { samples++; continue }
+                  const r = data[idx]
+                  const g = data[idx + 1]
+                  const b = data[idx + 2]
+                  if (r < 245 || g < 245 || b < 245) ink++
+                  samples++
+                }
+                if (samples && (ink / samples) > maxInk) {
+                  // Keep a small buffer below the last ink row.
+                  return Math.min(srcCanvas.height, blockStart + ry + 24)
+                }
+              }
+            }
+          } catch (_) { /* ignore */ }
+          return canvas.height
+        }
+        const contentHeightPx = trimTrailingWhitespace(canvas)
         let offsetPx = 0
         // Leave a small bottom padding to avoid clipping the last line on page breaks.
         // 6pt ≈ 2.12mm (half a typical 12pt line height).
@@ -3018,7 +3057,7 @@ async function downloadActivityPdf() {
           } catch (_) { /* ignore */ }
           return desiredLenPx
         }
-        while (offsetPx < canvas.height - 1) {
+        while (offsetPx < contentHeightPx - 1) {
           const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
           // If we don't have enough vertical space for a reasonable slice, advance to next page
           // to avoid rounding/scale artifacts that can clip the last line.
@@ -3030,7 +3069,7 @@ async function downloadActivityPdf() {
           // Pick the segment height in source pixels such that after scaling it stays
           // strictly within the available target height (avoid rounding up causing clipping).
           const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
-          const desiredSrcPx = Math.min(maxSrcPx, canvas.height - offsetPx)
+          const desiredSrcPx = Math.min(maxSrcPx, contentHeightPx - offsetPx)
           const segmentSrcPx = findWhitespaceCut(canvas, offsetPx, desiredSrcPx)
           // Create a segment canvas to crop
           const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
@@ -3043,7 +3082,7 @@ async function downloadActivityPdf() {
       try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm) } catch (e) { /* ignore */ }
           y += segmentTargetHeightMm
           offsetPx += segmentSrcPx
-          if (offsetPx < canvas.height - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader() }
+          if (offsetPx < contentHeightPx - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader() }
         }
         y += 2
   } catch (e) {
@@ -3414,13 +3453,21 @@ async function downloadActivityPdf() {
           }
 
           const drawEqHeader = () => {
-            const logoH = 12;
-            let logoBlockH = 0;
-            try { if ((clientImg as any)?.dataUrl) { const dim = scaleToHeight((clientImg as any), logoH, logoH * 2.5); eqDoc.addImage((clientImg as any).dataUrl, (clientImg as any).format || 'PNG', eqMargin, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
-            try { if ((cxaImg as any)?.dataUrl) { const dim = scaleToHeight((cxaImg as any), logoH, logoH * 2.5); eqDoc.addImage((cxaImg as any).dataUrl, (cxaImg as any).format || 'PNG', eqPW - eqMargin - dim.w, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
-            setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(18); eqDoc.text('Equipment List', eqPW/2, eqMargin + (logoBlockH || logoH) + 6, { align: 'center' });
-            eqY = eqMargin + (logoBlockH || logoH) + 16;
-            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12);
+            const res = drawBrandedHeader(eqDoc, {
+              margin: eqMargin,
+              pageWidth: eqPW,
+              title: `${form.name || 'Activity'} Report`,
+              leftLogo: clientImg,
+              rightLogo: cxaImg,
+              logoH: 12,
+              maxLogoW: 36,
+              titleFontSize: 20,
+              setTitleFont: () => setBodyFont(eqDoc, 'bold'),
+            })
+            eqY = res.nextY
+            // Section title
+            setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(12); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
+            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12)
           }
 
           // Table columns
@@ -3597,12 +3644,19 @@ async function downloadActivityPdf() {
         }
 
         const drawEqHeader = () => {
-          const logoH = 12
-          let logoBlockH = 0
-          try { if ((clientImg as any)?.dataUrl) { const dim = scaleToHeight((clientImg as any), logoH, logoH * 2.5); eqDoc.addImage((clientImg as any).dataUrl, (clientImg as any).format || 'PNG', eqMargin, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
-          try { if ((cxaImg as any)?.dataUrl) { const dim = scaleToHeight((cxaImg as any), logoH, logoH * 2.5); eqDoc.addImage((cxaImg as any).dataUrl, (cxaImg as any).format || 'PNG', eqPW - eqMargin - dim.w, eqMargin, dim.w, dim.h); logoBlockH = Math.max(logoBlockH, dim.h) } } catch (e) { /* ignore */ }
-          setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(18); eqDoc.text('Equipment List', eqPW / 2, eqMargin + (logoBlockH || logoH) + 6, { align: 'center' })
-          eqY = eqMargin + (logoBlockH || logoH) + 16
+          const res = drawBrandedHeader(eqDoc, {
+            margin: eqMargin,
+            pageWidth: eqPW,
+            title: `${form.name || 'Activity'} Report`,
+            leftLogo: clientImg,
+            rightLogo: cxaImg,
+            logoH: 12,
+            maxLogoW: 36,
+            titleFontSize: 20,
+            setTitleFont: () => setBodyFont(eqDoc, 'bold'),
+          })
+          eqY = res.nextY
+          setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(12); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
           setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12)
         }
 
