@@ -1943,7 +1943,7 @@ function openReportSettings() {
 function loadActivityReportSettingsFromSession() {
   try {
     const raw = sessionStorage.getItem(ACTIVITY_REPORT_SESSION_KEY)
-    if (!raw) return
+    if (!raw) return false
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed === 'object') {
       activityReport.value = {
@@ -1954,11 +1954,44 @@ function loadActivityReportSettingsFromSession() {
         coverByLine: typeof parsed.coverByLine === 'string' ? parsed.coverByLine : activityReport.value.coverByLine,
         coverJumbotronDataUrl: typeof parsed.coverJumbotronDataUrl === 'string' ? parsed.coverJumbotronDataUrl : activityReport.value.coverJumbotronDataUrl,
       }
+      return true
     }
   } catch (e) { /* ignore sessionStorage read errors */ }
+  return false
 }
-function saveActivityReportSettings() {
+function loadActivityReportSettingsFromActivitySettings() {
+  try {
+    const settings = (form as any).settings
+    const persisted = settings && typeof settings === 'object' ? (settings as any).report : null
+    if (!persisted || typeof persisted !== 'object') return false
+    activityReport.value = {
+      include: { ...activityReport.value.include, ...(persisted.include || {}) },
+      photoLimit: Math.max(0, Number(persisted.photoLimit ?? activityReport.value.photoLimit)),
+      coverTitle: typeof persisted.coverTitle === 'string' ? persisted.coverTitle : activityReport.value.coverTitle,
+      coverSubtitle: typeof persisted.coverSubtitle === 'string' ? persisted.coverSubtitle : activityReport.value.coverSubtitle,
+      coverByLine: typeof persisted.coverByLine === 'string' ? persisted.coverByLine : activityReport.value.coverByLine,
+      coverJumbotronDataUrl: typeof persisted.coverJumbotronDataUrl === 'string' ? persisted.coverJumbotronDataUrl : activityReport.value.coverJumbotronDataUrl,
+    }
+    return true
+  } catch (_) {
+    return false
+  }
+}
+async function saveActivityReportSettings() {
   try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ }
+  // Persist to the activity record (best-effort)
+  try {
+    const aid = isNew.value ? await saveAndGetId() : id.value
+    if (aid && aid !== 'new') {
+      const existing = ((form as any).settings && typeof (form as any).settings === 'object') ? (form as any).settings : {}
+      const nextSettings = { ...existing, report: activityReport.value }
+      ;(form as any).settings = nextSettings
+      await store.updateActivity(String(aid), { settings: nextSettings } as any)
+    }
+  } catch (e: any) {
+    // Don't block the UI; show a soft error so users know persistence failed.
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to save report settings')
+  }
   showActivityReportDialog.value = false
 }
 function resetActivityReportSettings() {
@@ -2031,6 +2064,7 @@ const form = reactive({
   comments: [] as any[],
   attachments: [] as any[],
   issues: [] as string[],
+  settings: {} as any,
 })
 
 
@@ -2318,6 +2352,14 @@ onMounted(async () => {
         systems: activityData?.systems || [],
         issues: Array.isArray((activityData as any)?.issues) ? (activityData as any).issues : [],
       })
+      // Persisted settings bucket (e.g., report settings)
+      ;(form as any).settings = ((activityData as any)?.settings && typeof (activityData as any).settings === 'object')
+        ? (activityData as any).settings
+        : {}
+      // Hydrate report settings: prefer session (in-progress UI state), otherwise load persisted settings.
+      if (!loadActivityReportSettingsFromSession()) {
+        loadActivityReportSettingsFromActivitySettings()
+      }
       try {
         if (form.spaceId) {
           const sid = String((form.spaceId as any) || '')
@@ -2505,9 +2547,12 @@ async function save() {
     ui.showError('Select a project')
     return
   }
-  const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  const payload: any = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
   // Ensure projectId is always present (fallback to current project if needed)
   payload.projectId = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  // Persist report settings into activity.settings.report on every activity save.
+  const existingSettings = (payload.settings && typeof payload.settings === 'object') ? payload.settings : {}
+  payload.settings = { ...existingSettings, report: activityReport.value }
   // Clean up spaceId - must be null or valid ObjectId string, not empty string
   if (!payload.spaceId || payload.spaceId === '') {
     payload.spaceId = null
@@ -2580,7 +2625,10 @@ function finalizeNewActivityIfNeeded() {
 
 async function saveAndGetId(): Promise<string> {
   if (!isNew.value) return id.value
-  const created = await store.createActivity({ ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() })
+  const base: any = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  const existingSettings = (base.settings && typeof base.settings === 'object') ? base.settings : {}
+  base.settings = { ...existingSettings, report: activityReport.value }
+  const created = await store.createActivity(base)
   router.replace({ name: 'activity-edit', params: { id: created.id || created._id } })
   return String(created.id || created._id)
 }
@@ -2924,17 +2972,73 @@ async function downloadActivityPdf() {
         const canvas = await (window as any).html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
         const scale = targetWidthPx / canvas.width
         let offsetPx = 0
+        // Leave a small bottom padding to avoid clipping the last line on page breaks.
+        // 6pt ≈ 2.12mm (half a typical 12pt line height).
+        const descBottomPadMm = 2.2
+        const findWhitespaceCut = (srcCanvas: HTMLCanvasElement, startPx: number, desiredLenPx: number): number => {
+          try {
+            const ctx2d = srcCanvas.getContext('2d', { willReadFrequently: true } as any)
+            if (!ctx2d) return desiredLenPx
+            // Search near the bottom of the slice for a mostly-white horizontal row
+            const searchWindow = Math.min(90, Math.max(0, desiredLenPx))
+            const searchStart = Math.max(0, desiredLenPx - searchWindow)
+            const regionY = startPx + searchStart
+            if (regionY < 0 || regionY >= srcCanvas.height) return desiredLenPx
+            const regionH = Math.min(searchWindow, srcCanvas.height - regionY)
+            if (regionH <= 2) return desiredLenPx
+            const img = ctx2d.getImageData(0, regionY, srcCanvas.width, regionH)
+            const w = img.width
+            const h = img.height
+            const data = img.data
+            const stepX = 6 // sample stride
+            // A row is "blank" if < ~1% of sampled pixels are non-white
+            const maxInk = 0.01
+            for (let ry = h - 2; ry >= 2; ry--) {
+              let ink = 0
+              let samples = 0
+              const rowBase = ry * w * 4
+              for (let x = 0; x < w; x += stepX) {
+                const idx = rowBase + x * 4
+                const a = data[idx + 3]
+                if (a < 16) { samples++; continue }
+                const r = data[idx]
+                const g = data[idx + 1]
+                const b = data[idx + 2]
+                // treat near-white as background
+                if (r < 245 || g < 245 || b < 245) ink++
+                samples++
+              }
+              if (samples && (ink / samples) <= maxInk) {
+                // Cut at this row to avoid splitting a line of text.
+                const cutLen = searchStart + ry
+                // Ensure we don't return 0-length slices.
+                return Math.max(1, cutLen)
+              }
+            }
+          } catch (_) { /* ignore */ }
+          return desiredLenPx
+        }
         while (offsetPx < canvas.height - 1) {
-          const availableMm = bottomLimit - y
+          const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
+          // If we don't have enough vertical space for a reasonable slice, advance to next page
+          // to avoid rounding/scale artifacts that can clip the last line.
+          if (availableMm < 6) {
+            drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader()
+            continue
+          }
           const availableTargetPx = Math.max(10, Math.floor(availableMm * pxPerMm))
-          const segmentSrcPx = Math.min(Math.floor(availableTargetPx / scale), canvas.height - offsetPx)
+          // Pick the segment height in source pixels such that after scaling it stays
+          // strictly within the available target height (avoid rounding up causing clipping).
+          const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
+          const desiredSrcPx = Math.min(maxSrcPx, canvas.height - offsetPx)
+          const segmentSrcPx = findWhitespaceCut(canvas, offsetPx, desiredSrcPx)
           // Create a segment canvas to crop
           const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
           const segCtx = seg.getContext('2d')!
           segCtx.fillStyle = '#ffffff'; segCtx.fillRect(0,0,seg.width,seg.height)
           segCtx.drawImage(canvas, 0, offsetPx, canvas.width, segmentSrcPx, 0, 0, seg.width, seg.height)
           const segUrl = seg.toDataURL('image/png')
-          const segmentTargetHeightPx = Math.round(segmentSrcPx * scale)
+          const segmentTargetHeightPx = segmentSrcPx * scale
           const segmentTargetHeightMm = segmentTargetHeightPx * mmPerPx
       try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm) } catch (e) { /* ignore */ }
           y += segmentTargetHeightMm

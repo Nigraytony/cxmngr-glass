@@ -43,6 +43,8 @@ const activitySchema = new mongoose.Schema({
   spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space' },
   // list of systems/equipment inspected
   systems: [{ type: String }],
+  // Flexible settings bucket (e.g., report settings) persisted per activity
+  settings: { type: mongoose.Schema.Types.Mixed, default: {} },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   labels: [{ type: String }],
   // Activity-level audit logs (flexible schema)

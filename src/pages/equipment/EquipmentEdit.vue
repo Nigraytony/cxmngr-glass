@@ -1607,6 +1607,7 @@ import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { jsPDF } from 'jspdf'
+import { buildEquipmentLogDetails } from '../../utils/equipmentLogDiff'
 
 const route = useRoute()
 const router = useRouter()
@@ -2981,9 +2982,15 @@ async function save() {
   if (!form.value.id) form.value.id = (form.value as any)._id || id.value
   if (!form.value.id) return
   try {
-        await equipmentStore.update(form.value as Equipment & { id: string })
+    const before = JSON.parse(JSON.stringify(form.value || {}))
+    const saved = await equipmentStore.update(form.value as Equipment & { id: string })
     ui.showSuccess('Equipment saved')
-    appendLog('equipment.save', 'Equipment saved', { tag: form.value.tag || '', status: form.value.status, spaceId: (form.value as any).spaceId || null })
+    appendLog('equipment.save', 'Equipment saved', {
+      tag: form.value.tag || '',
+      status: form.value.status,
+      spaceId: (form.value as any).spaceId || null,
+      details: buildEquipmentLogDetails(before, saved)
+    })
   } catch (e) {
     console.error(e)
     ui.showError('Failed to save equipment')

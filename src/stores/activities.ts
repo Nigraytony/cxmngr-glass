@@ -32,6 +32,7 @@ export interface Activity {
   reviewer?: any
   location?: string
   systems?: string[]
+  settings?: any
   metadata?: any
   labels?: string[]
   createdAt?: string

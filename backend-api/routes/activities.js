@@ -87,7 +87,7 @@ router.get('/', auth, requireFeature('activities'), async (req, res) => {
     const filter = projectId ? { projectId } : {}
     // Include descriptionHtml so editors like ActivityEdit can show the description
     // without needing an extra per-activity fetch.
-    const projection = 'name descriptionHtml type startDate endDate projectId issues location spaceId systems metadata labels createdAt updatedAt reviewer'
+    const projection = 'name descriptionHtml type startDate endDate projectId issues location spaceId systems settings metadata labels createdAt updatedAt reviewer'
     const activities = await Activity.find(filter).select(projection).sort({ createdAt: -1 }).lean()
     res.status(200).send(activities)
   } catch (error) {
@@ -102,7 +102,7 @@ router.get('/:id', auth, loadActivityProjectId, requireFeature('activities'), as
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
-    const lightFields = 'name type startDate endDate projectId location spaceId systems metadata labels reviewer createdAt updatedAt descriptionHtml'
+    const lightFields = 'name type startDate endDate projectId location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos

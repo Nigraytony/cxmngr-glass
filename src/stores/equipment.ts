@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { getApiBase } from '../utils/api'
 import { getAuthHeaders } from '../utils/auth'
+import { buildEquipmentLogDetails } from '../utils/equipmentLogDiff'
 
 export interface Equipment {
   id?: string
@@ -115,7 +116,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
     try {
       const { useLogsStore } = await import('./logs')
       const logs = useLogsStore()
-      await logs.appendLog('equipment', String(saved.id || (saved as any)._id), { type: 'create', message: `Equipment created: ${saved.title || saved.tag || ''}`, details: saved })
+      await logs.appendLog('equipment', String(saved.id || (saved as any)._id), {
+        type: 'create',
+        message: `Equipment created: ${saved.title || saved.tag || ''}`,
+        details: buildEquipmentLogDetails(null, saved) || { created: true }
+      })
     } catch (e) { /* non-blocking */ }
     return saved
   }
@@ -123,6 +128,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   async function update(e: Equipment & { id: string }) {
     const id = e.id || (e as any)._id
     if (!id) throw new Error('Missing equipment id')
+    const prev = items.value.find(x => String(x.id || (x as any)._id || '') === String(id)) || null
     const payload: any = { ...e }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
@@ -144,7 +150,12 @@ export const useEquipmentStore = defineStore('equipment', () => {
     try {
       const { useLogsStore } = await import('./logs')
       const logs = useLogsStore()
-      await logs.appendLog('equipment', String(saved.id || (saved as any)._id), { type: 'update', message: `Equipment updated: ${saved.title || saved.tag || ''}`, details: payload })
+      await logs.appendLog('equipment', String(saved.id || (saved as any)._id), {
+        type: 'update',
+        message: `Equipment updated: ${saved.title || saved.tag || ''}`,
+        details: buildEquipmentLogDetails(prev, saved) || { updated: true },
+        patchKeys: Object.keys(payload || {})
+      })
     } catch (e) { /* non-blocking */ }
     return saved
   }
