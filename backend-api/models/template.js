@@ -37,6 +37,7 @@ const templateSchema = new mongoose.Schema({
   attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
   history: { type: String, required: false },
   labels: { type: String, required: false },
+  tags: { type: [String], default: [] },
   metadata: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

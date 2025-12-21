@@ -16,6 +16,7 @@ export interface Issue {
   foundBy?: string
   dueDate?: string
   assignedTo?: string
+  labels?: string[]
   severity?: 'Low' | 'Medium' | 'High'
   status?: 'Open' | 'In Progress' | 'Closed'
   closedDate?: string

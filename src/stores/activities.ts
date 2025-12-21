@@ -26,12 +26,17 @@ export interface Activity {
   endDate?: string
   projectId: string
   issues?: string[]
+  issuesCount?: number
   comments?: Array<{ userId: string; text: string; createdAt?: string }>
+  commentsCount?: number
   photos?: ActivityPhoto[]
+  photosCount?: number
   attachments?: any[]
+  attachmentsCount?: number
   reviewer?: any
   location?: string
   systems?: string[]
+  equipmentCount?: number
   settings?: any
   metadata?: any
   labels?: string[]
@@ -61,6 +66,70 @@ export const useActivitiesStore = defineStore('activities', () => {
     const status = String(a.status || a.state || '').toLowerCase()
     if (status.includes('deleted')) return true
     return false
+  }
+
+  function truncateString(s: string, max = 220) {
+    if (s.length <= max) return s
+    return `${s.slice(0, max)}…`
+  }
+
+  function isPlainObject(v: any) {
+    if (!v || typeof v !== 'object') return false
+    const proto = Object.getPrototypeOf(v)
+    return proto === Object.prototype || proto === null
+  }
+
+  function summarizeForLog(value: any, depth = 0): any {
+    if (value === null || value === undefined) return value
+    const t = typeof value
+    if (t === 'string') return truncateString(value)
+    if (t === 'number' || t === 'boolean') return value
+    if (value instanceof Date) return value.toISOString()
+    if (Array.isArray(value)) {
+      return {
+        _type: 'array',
+        length: value.length,
+        sample: depth >= 1 ? undefined : value.slice(0, 3).map((v) => summarizeForLog(v, depth + 1))
+      }
+    }
+    if (isPlainObject(value)) {
+      const keys = Object.keys(value)
+      // Avoid huge nested objects: only show keys + a small sample of primitive-ish values at top level.
+      const preview: Record<string, any> = {}
+      for (const k of keys.slice(0, 8)) {
+        const v = (value as any)[k]
+        const vt = typeof v
+        if (v == null || vt === 'string' || vt === 'number' || vt === 'boolean') preview[k] = summarizeForLog(v, depth + 1)
+      }
+      return {
+        _type: 'object',
+        keys: keys.slice(0, 20),
+        ...(Object.keys(preview).length ? { preview } : {})
+      }
+    }
+    // Fallback for things like File, Map, etc.
+    try {
+      return truncateString(JSON.stringify(value))
+    } catch (e) {
+      return String(value)
+    }
+  }
+
+  function buildDiffForLog(prev: any, patch: Record<string, any>) {
+    const changes: Record<string, { from: any; to: any }> = {}
+    const skipKeys = new Set(['photos', 'attachments', 'comments', 'logs'])
+    if (!patch || typeof patch !== 'object') return { changes, changedKeys: [] as string[] }
+    for (const [key, nextVal] of Object.entries(patch)) {
+      if (skipKeys.has(key)) continue
+      if (typeof nextVal === 'undefined') continue
+      const prevVal = prev ? (prev as any)[key] : undefined
+      // If the patch doesn't change the value, skip it.
+      try {
+        if (JSON.stringify(prevVal) === JSON.stringify(nextVal)) continue
+      } catch (e) { /* ignore equality errors */ }
+      changes[key] = { from: summarizeForLog(prevVal), to: summarizeForLog(nextVal) }
+    }
+    return { changes, changedKeys: Object.keys(changes) }
   }
 
   async function fetchActivities(projectId?: string) {
@@ -144,7 +213,11 @@ export const useActivitiesStore = defineStore('activities', () => {
       try {
         const { useLogsStore } = await import('./logs')
         const logs = useLogsStore()
-        await logs.appendLog('activities', String(created.id || created._id), { type: 'create', message: `Activity created: ${created.name || ''}`, details: created })
+        await logs.appendLog('activities', String(created.id || created._id), {
+          type: 'create',
+          message: `Activity created: ${created.name || ''}`,
+          details: { created: { id: created.id || created._id, name: created.name, type: created.type, projectId: created.projectId }, initial: summarizeForLog(payload) }
+        })
       } catch (e) { /* non-blocking */ }
       try {
         const projectStore = useProjectStore()
@@ -166,6 +239,9 @@ export const useActivitiesStore = defineStore('activities', () => {
     loading.value = true
     error.value = null
     try {
+      const prev = (current.value && String((current.value as any).id || (current.value as any)._id || '') === String(id))
+        ? (current.value as any)
+        : activities.value.find(a => String((a as any).id || (a as any)._id || '') === String(id))
       const res = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
       const updated = normalize(res.data)
       current.value = updated
@@ -174,13 +250,23 @@ export const useActivitiesStore = defineStore('activities', () => {
       try {
         const { useLogsStore } = await import('./logs')
         const logs = useLogsStore()
-        await logs.appendLog('activities', String(updated.id || updated._id), { type: 'update', message: `Activity updated: ${updated.name || ''}`, details: payload })
+        const diff = buildDiffForLog(prev, payload as any)
+        await logs.appendLog('activities', String(updated.id || updated._id), {
+          type: 'update',
+          message: `Activity updated: ${updated.name || ''}`,
+          details: { changedKeys: diff.changedKeys, changes: diff.changes }
+        })
       } catch (e) { /* non-blocking */ }
       try {
         const projectStore = useProjectStore()
         const pid = String(updated.projectId || (updated as any).project || '')
         if (pid) {
-          await projectStore.appendProjectLog(pid, { type: 'activity.update', message: `Activity updated: ${updated.name || ''}`, details: { id: updated.id || updated._id, changes: payload } })
+          const diff = buildDiffForLog(prev, payload as any)
+          await projectStore.appendProjectLog(pid, {
+            type: 'activity.update',
+            message: `Activity updated: ${updated.name || ''}`,
+            details: { id: updated.id || updated._id, changedKeys: diff.changedKeys, changes: diff.changes }
+          })
         }
       } catch (e) { /* non-blocking */ }
       return updated

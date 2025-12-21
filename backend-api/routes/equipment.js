@@ -151,7 +151,7 @@ router.post('/:id/logs', auth, async (req, res) => {
 }
 
 // Projection for list/light responses (omit heavy fields)
-const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels metadata createdAt updatedAt'
+const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt'
 
 async function buildSpaceChainResolver(projectId) {
   const spaces = await Space.find({ project: projectId }).select('_id id title tag parentSpace parent').lean()

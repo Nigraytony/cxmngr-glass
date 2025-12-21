@@ -13,6 +13,7 @@ const User = require('../models/user');
 const AdminAudit = require('../models/adminAudit');
 const Template = require('../models/template');
 const Task = require('../models/task');
+const TaskTemplate = require('../models/taskTemplate');
 const { sendInviteEmail, sendResetEmail } = require('../utils/mailer');
 // Project model already required above (used by webhook replay logic)
 
@@ -743,6 +744,92 @@ router.delete('/templates/:id', async (req, res) => {
     res.status(500).json({ error: err.message || 'Failed to delete template' });
   }
 });
+
+// -- Admin: Task Templates CRUD ------------------------------------------
+// These are global templates used by Premium users to seed project tasks.
+
+// GET /api/admin/task-templates?limit=50&skip=0&q=...&active=true|false
+router.get('/task-templates', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit || '50', 10), 500)
+    const skip = Math.max(parseInt(req.query.skip || '0', 10), 0)
+    const q = String(req.query.q || '').trim()
+    const filter = {}
+    if (req.query.active !== undefined && String(req.query.active).length) {
+      filter.isActive = String(req.query.active) === 'true'
+    }
+    if (q) {
+      filter.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { slug: { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } },
+        { version: { $regex: q, $options: 'i' } },
+      ]
+    }
+    const total = await TaskTemplate.countDocuments(filter)
+    const items = await TaskTemplate.find(filter)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+    res.json({ templates: items, total, skip, limit })
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to list task templates' })
+  }
+})
+
+// GET /api/admin/task-templates/:id
+router.get('/task-templates/:id', async (req, res) => {
+  try {
+    const t = await TaskTemplate.findById(req.params.id).lean()
+    if (!t) return res.status(404).json({ error: 'Task template not found' })
+    res.json(t)
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to fetch task template' })
+  }
+})
+
+// POST /api/admin/task-templates
+router.post('/task-templates', async (req, res) => {
+  try {
+    const body = req.body || {}
+    if (!body.name) return res.status(400).json({ error: 'name is required' })
+    if (!body.xml) return res.status(400).json({ error: 'xml is required' })
+    const t = new TaskTemplate({
+      ...body,
+      createdByUserId: req.user && req.user._id ? req.user._id : null,
+      updatedByUserId: req.user && req.user._id ? req.user._id : null,
+    })
+    await t.save()
+    res.status(201).json(t)
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to create task template' })
+  }
+})
+
+// PATCH /api/admin/task-templates/:id
+router.patch('/task-templates/:id', async (req, res) => {
+  try {
+    const patch = { ...(req.body || {}) }
+    patch.updatedByUserId = req.user && req.user._id ? req.user._id : null
+    const updated = await TaskTemplate.findByIdAndUpdate(req.params.id, patch, { new: true, runValidators: true })
+    if (!updated) return res.status(404).json({ error: 'Task template not found' })
+    res.json(updated)
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to update task template' })
+  }
+})
+
+// DELETE /api/admin/task-templates/:id
+router.delete('/task-templates/:id', async (req, res) => {
+  try {
+    const t = await TaskTemplate.findByIdAndDelete(req.params.id)
+    if (!t) return res.status(404).json({ error: 'Task template not found' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to delete task template' })
+  }
+})
 
 // -- Admin: Coupons / Promotion Codes / Credits --------------------------
 

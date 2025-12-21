@@ -283,13 +283,49 @@
                 </option>
               </select>
             </div>
-            <div class="mt-2">
-              <label class="block text-sm text-white/70">Description</label>
-              <textarea
-                v-model="form.description"
-                rows="4"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              />
+            <div class="mt-4">
+              <div class="flex items-center gap-3">
+                <div class="text-sm text-white/70 shrink-0">
+                  Tags
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="t in form.tags"
+                    :key="t"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                  >
+                    <span>{{ t }}</span>
+                    <button
+                      type="button"
+                      class="text-white/60 hover:text-white"
+                      aria-label="Remove tag"
+                      @click="removeTag(t)"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <input
+                  v-model="tagsInput"
+                  type="text"
+                  placeholder="Add a tag and press Enter…"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  @keydown.enter.prevent="addTagsFromInput"
+                  @keydown.,.prevent="addTagsFromInput"
+                >
+                <button
+                  type="button"
+                  class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                  @click="addTagsFromInput"
+                >
+                  Add
+                </button>
+              </div>
+              <div class="text-xs text-white/60 mt-1">
+                Tip: use commas or Enter to add multiple tags.
+              </div>
             </div>
             <div class="mt-4 flex items-center gap-2">
               <button
@@ -351,10 +387,10 @@
           </div>
           <div>
             <div class="text-white/70 text-sm">
-              Notes
+              Description
             </div>
             <textarea
-              v-model="form.notes"
+              v-model="form.description"
               rows="10"
               class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
             />
@@ -871,8 +907,37 @@ async function loadLogs() {
 
 watch(currentTab, (v) => { if (v === 'Logs') loadLogs() })
 
-const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '', description: '', attachments: [], attributes: [], notes: '', metaData: {} as any })
+const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '', description: '', attachments: [], attributes: [], notes: '', tags: [], metaData: {} as any })
 const saving = ref(false)
+const tagsInput = ref('')
+
+function normalizeTags(tags: any): string[] {
+  const arr = Array.isArray(tags) ? tags : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const t = String(raw || '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function addTagsFromInput() {
+  const raw = String(tagsInput.value || '')
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length === 0) return
+  form.value.tags = normalizeTags([ ...(form.value.tags || []), ...parts ])
+  tagsInput.value = ''
+}
+
+function removeTag(tag: string) {
+  const key = String(tag || '').trim().toLowerCase()
+  form.value.tags = (form.value.tags || []).filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
 
 const pageSection = ref<HTMLElement | null>(null)
 
@@ -1077,7 +1142,7 @@ async function load() {
       // Initialize attributes rows from space (ensure array of {key,value})
       const attrs = Array.isArray((s as any).attributes) ? (s as any).attributes.map((a: any) => ({ key: String(a?.key || ''), value: String(a?.value || '') })) : []
       attributesRows.value = attrs.length ? attrs : [{ key: '', value: '' }]
-      form.value = { ...s, attachments: normAtt, attributes: attrs, id: String((s as any).id || (s as any)._id) } as any
+      form.value = { ...s, attachments: normAtt, attributes: attrs, tags: normalizeTags((s as any).tags), id: String((s as any).id || (s as any)._id) } as any
     }
   } finally {
     pageLoading.value = false
@@ -1113,12 +1178,14 @@ async function save() {
       if (Array.isArray(payload.attachments)) payload.attachments = payload.attachments.map((a: any) => (typeof a === 'string' ? a : (a?.url || ''))).filter((s: any) => !!s)
       // Clean attributes: only non-empty rows
       if (Array.isArray(payload.attributes)) payload.attributes = payload.attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim()))
+      payload.tags = normalizeTags(payload.tags)
       await spaces.update(payload as any)
       await appendSpaceLog({ type: 'update', message: 'Space updated', details: { spaceId: payload.id || payload._id, title: payload.title, type: payload.type } })
     } else {
       const payload: any = { ...form.value }
       if (Array.isArray(payload.attachments)) payload.attachments = payload.attachments.map((a: any) => (typeof a === 'string' ? a : (a?.url || ''))).filter((s: any) => !!s)
       if (Array.isArray(payload.attributes)) payload.attributes = payload.attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim()))
+      payload.tags = normalizeTags(payload.tags)
       await spaces.create(payload as any)
       await appendSpaceLog({ type: 'create', message: 'Space created', details: { title: payload.title, type: payload.type } })
     }

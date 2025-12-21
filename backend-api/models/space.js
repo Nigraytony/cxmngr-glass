@@ -41,6 +41,7 @@ const spaceSchema = new mongoose.Schema({
   attachments: { type: [String], required: false },
   settings: {type: String, required: false},
   notes: { type: String, required: false },
+  tags: { type: [String], default: [] },
   metaData: { type: String, required: false },
   // Space-level audit logs (flexible schema)
   logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],

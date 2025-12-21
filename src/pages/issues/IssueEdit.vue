@@ -390,6 +390,54 @@
               </div>
             </div>
 
+            <div class="md:col-span-2 mt-2">
+              <div class="flex items-center gap-3">
+                <div class="text-sm text-white/70 shrink-0">
+                  Tags
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="t in form.labels"
+                    :key="t"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                  >
+                    <span>{{ t }}</span>
+                    <button
+                      type="button"
+                      class="text-white/60 hover:text-white"
+                      aria-label="Remove tag"
+                      :disabled="isClosed"
+                      @click="!isClosed && removeLabel(t)"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <input
+                  v-model="labelInput"
+                  type="text"
+                  placeholder="Add a tag and press Enter…"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 disabled:opacity-60"
+                  :disabled="isClosed"
+                  @keydown.enter.prevent="!isClosed && addLabelFromInput()"
+                  @keydown.,.prevent="!isClosed && addLabelFromInput()"
+                >
+                <button
+                  type="button"
+                  class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="isClosed"
+                  @click="addLabelFromInput()"
+                >
+                  Add
+                </button>
+              </div>
+              <div class="text-xs text-white/60 mt-1">
+                Tip: use commas or Enter to add multiple tags.
+              </div>
+            </div>
+
             <div class="md:col-span-2">
               <div class="flex items-center gap-3 mt-2 justify-end md:justify-start">
                 <!-- Prev/Next navigation -->
@@ -1552,10 +1600,43 @@ const form = reactive<any>({
   closedBy: '',
   closedDate: '',
   projectId: '',
+  labels: [] as string[],
   comments: [] as any[],
   attachments: [] as any[],
   photos: [] as any[],
 })
+
+const labelInput = ref('')
+
+function normalizeLabels(labels: any): string[] {
+  const arr = Array.isArray(labels) ? labels : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const t = String(raw || '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function addLabelFromInput() {
+  if (isClosed.value) return
+  const raw = String(labelInput.value || '')
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length === 0) return
+  form.labels = normalizeLabels([...(form.labels || []), ...parts])
+  labelInput.value = ''
+}
+
+function removeLabel(label: string) {
+  if (isClosed.value) return
+  const key = String(label || '').trim().toLowerCase()
+  form.labels = (form.labels || []).filter((t: string) => String(t || '').trim().toLowerCase() !== key)
+}
 
 const crumbs = computed(() => {
   const tail = isNew.value
@@ -1939,7 +2020,7 @@ onMounted(async () => {
   if (!isNew.value) {
     try {
       const i = await issues.fetchIssue(id.value)
-  Object.assign(form, {
+      Object.assign(form, {
         title: i?.title || i?.type || '',
         description: i?.description || '',
         type: normalizeIssueType(i?.type),
@@ -1957,6 +2038,7 @@ onMounted(async () => {
         closedBy: i?.closedBy || '',
         closedDate: i?.closedDate || '',
         projectId: i?.projectId ? String(i.projectId) : form.projectId,
+        labels: normalizeLabels((i as any)?.labels),
         comments: Array.isArray(i?.comments) ? normalizeComments(i?.comments) : [],
         // Prefer attachments from backend; fall back to legacy documents field if present
         attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
@@ -1987,7 +2069,7 @@ watch(id, async (nv, ov) => {
       title: '', description: '', type: null, priority: 'medium', status: 'open',
       number: null, foundBy: '', dateFound: '', dueDate: '', assignedTo: '', location: '', system: '', recommendation: '', resolution: '',
       closedBy: '', closedDate: '',
-      projectId: chooseProjectId(), comments: [], attachments: [], photos: []
+      projectId: chooseProjectId(), labels: [], comments: [], attachments: [], photos: []
     })
     return
   }
@@ -2011,6 +2093,7 @@ watch(id, async (nv, ov) => {
       closedBy: i?.closedBy || '',
       closedDate: i?.closedDate || '',
       projectId: i?.projectId ? String(i.projectId) : form.projectId,
+      labels: normalizeLabels((i as any)?.labels),
       comments: Array.isArray(i?.comments) ? normalizeComments(i?.comments) : [],
       attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
       photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
@@ -2065,6 +2148,7 @@ async function save() {
     closedDate: form.closedDate || undefined,
     recommendation: form.recommendation || undefined,
     resolution: form.resolution || undefined,
+    labels: normalizeLabels(form.labels),
     comments: form.comments,
     documents: form.attachments,
     photos: form.photos,
@@ -2122,6 +2206,7 @@ async function saveAndGetId(): Promise<string> {
     system: form.system || undefined,
     recommendation: form.recommendation || undefined,
     resolution: form.resolution || undefined,
+    labels: normalizeLabels(form.labels),
     comments: form.comments || [],
     documents: form.attachments || [],
     photos: form.photos || [],

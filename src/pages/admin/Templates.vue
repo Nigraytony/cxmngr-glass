@@ -20,7 +20,7 @@
       </button>
       <router-link
         v-if="isAdmin()"
-        to="/admin/templates/new"
+        :to="{ name: 'admin-templates-edit', params: { id: 'new' } }"
         class="ml-2 px-3 py-1 rounded bg-green-600"
       >
         New

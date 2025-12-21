@@ -88,20 +88,18 @@
         </div>
       </div>
       <div class="ml-2">
-        <div class="relative inline-block group inline-block rounded-md border border-white/10 px-3 py-2">
-          <input
-            ref="fileInput"
-            type="file"
-            accept=".xml"
-            class="text-sm text-white bg-transparent"
-            @change="onFileSelected"
+        <div class="relative inline-block group">
+          <button
+            class="px-3 py-2 rounded bg-white/6 text-white border border-white/10 hover:bg-white/10"
+            @click="openImportModal"
           >
-          
+            Import
+          </button>
           <div
             role="tooltip"
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
-            Choose file to import
+            Import tasks from a template or XML
           </div>
         </div>
       </div>
@@ -186,37 +184,46 @@
           Loading tasks…
         </p>
       </div>
-      <div v-else>
-        <div
-          v-if="tasks.length === 0"
-          class="text-white/70"
-        >
-          No tasks found for this project.
-        </div>
-        <template v-else>
-          <div class="overflow-x-auto rounded-md border border-white/10">
-            <table class="min-w-full text-sm compact-rows">
-              <thead class="bg-white/5 text-white/70">
-                <tr>
-                  <th class="w-8 px-2" />
-                  <th class="w-24 px-3 py-2 text-left">
-                    WBS
-                  </th>
-                  <th class="text-left px-3 py-2">
-                    Name
-                  </th>
-                  <th class="text-left px-3 py-2">
+	      <div v-else>
+	        <div
+	          v-if="tasks.length === 0"
+	          class="text-white/70"
+	        >
+	          No tasks found for this project.
+	        </div>
+	        <template v-else>
+	          <div class="overflow-x-auto rounded-md border border-white/10">
+	            <table class="min-w-full text-sm compact-rows">
+	              <thead class="bg-white/5 text-white/70">
+	                <tr>
+	                  <th class="w-8 px-2" />
+	                  <th class="w-24 px-3 py-2 text-left">
+	                    WBS
+	                  </th>
+	                  <th class="text-left px-3 py-2">
+	                    Name
+	                  </th>
+                  <th
+                    v-if="showDurationColumn"
+                    class="text-left px-3 py-2"
+                  >
                     Duration (hours)
                   </th>
-                  <th class="text-left px-3 py-2">
+                  <th
+                    v-if="showStartColumn"
+                    class="text-left px-3 py-2"
+                  >
                     Start
                   </th>
-                  <th class="text-left px-3 py-2">
+                  <th
+                    v-if="showFinishColumn"
+                    class="text-left px-3 py-2"
+                  >
                     Finish
                   </th>
-                  <th
-                    v-if="showCostColumn"
-                    class="text-left px-3 py-2"
+	                  <th
+	                    v-if="showCostColumn"
+	                    class="text-left px-3 py-2"
                   >
                     Cost
                   </th>
@@ -269,26 +276,32 @@
                         ><path d="M9 6.75a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM9 12a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 9 12Zm8 0a1.25 1.25 0 1 1-2.5 0A1.25 1.25 0 0 1 17 12ZM9 17.25a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Zm8 0a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0Z" /></svg>
                       </span>
                     </td>
-                    <td class="px-3 py-2 align-top">
+                    <td
+                      class="px-3 py-2 align-top cursor-pointer"
+                      @click="(e) => openTask(t, e)"
+                    >
                       <div class="text-sm font-medium">
                         {{ t.wbs || '—' }}
                       </div>
                     </td>
-                    <td class="px-3 py-2 align-top relative">
-                      <div :style="{ paddingLeft: `calc(${wbsDepth(t.wbs) * 1.25}rem + ${wbsDepth(t.wbs) * 3}ch)`, paddingBottom: '0.6rem' }">
-                        <div class="flex items-center gap-2">
+                    <td
+                      class="px-3 py-2 align-top relative cursor-pointer"
+                      @click="(e) => openTask(t, e)"
+                    >
+	                      <div :style="{ paddingLeft: `calc(${wbsDepth(t.wbs) * 1.25}rem + ${wbsDepth(t.wbs) * 3}ch)`, paddingBottom: '0.6rem' }">
+	                        <div class="flex items-center gap-2">
                           <button
                             v-if="hasChildren(t)"
                             :aria-expanded="!isCollapsed(t)"
-                            class="relative text-white/70 hover:text-white p-1"
+                            class="relative h-6 w-6 inline-grid place-items-center text-white/70 hover:text-white"
                             @click.stop="toggleCollapse(t)"
                           >
                             <span
                               v-if="isCollapsed(t) && descendantCount(t) > 0"
-                              class="inline-flex items-center justify-center mr-1 px-1.5 py-0.5 text-xs rounded-full border border-white/10 text-white bg-transparent"
+                              class="absolute -left-3 top-1/2 -translate-y-1/2 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] leading-none rounded-full border border-white/10 text-white bg-black/20"
                             >{{ descendantCount(t) }}</span>
                             <svg
-                              :class="['w-4 h-4 transition-transform inline-block', isCollapsed(t) ? '' : 'rotate-90']"
+                              :class="['w-4 h-4 transition-transform', isCollapsed(t) ? '' : 'rotate-90']"
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
                               fill="currentColor"
@@ -298,16 +311,28 @@
                               clip-rule="evenodd"
                             /></svg>
                           </button>
-                          <div class="font-semibold">
-                            {{ t.name }}
-                          </div>
-                        </div>
-                        <div class="text-xs text-white/70">
-                          {{ t.description || '' }}
-                        </div>
-                      </div>
+	                          <div class="font-semibold">
+	                            {{ t.name }}
+	                          </div>
+	                        </div>
+	                        <div class="text-xs text-white/70">
+	                          {{ t.description || '' }}
+	                        </div>
+	                        <div
+	                          v-if="t.activityId"
+	                          :class="['text-xs text-white/60 mt-0.5', hasChildren(t) ? 'pl-8' : '']"
+	                        >
+	                          Activity:
+	                          <RouterLink
+	                            :to="{ name: 'activity-edit', params: { id: String(t.activityId) } }"
+	                            class="text-white/80 hover:text-white underline"
+	                          >
+	                            {{ activityNameForTask(t) }}
+	                          </RouterLink>
+	                        </div>
+	                      </div>
                       <!-- thin progress bar positioned at the bottom of the name cell -->
-                      <div class="absolute left-3 right-3 bottom-0 h-3 flex items-center">
+                      <div class="absolute left-3 right-3 -bottom-px h-3 flex items-end">
                         <div class="relative w-full">
                           <div class="h-[3px] bg-white/10 rounded overflow-hidden">
                             <div
@@ -319,38 +344,79 @@
                             <span class="text-[9px] leading-none text-white/80">{{ pct(t) + '%' }}</span>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td class="px-3 py-2 align-top">
+	                      </div>
+	                    </td>
+                    <td
+                      v-if="showDurationColumn"
+                      class="px-3 py-2 align-top cursor-pointer"
+                      @click="(e) => openTask(t, e)"
+                    >
                       <div>{{ dur(t) != null ? dur(t) : '' }}</div>
                     </td>
-                    <td class="px-3 py-2 align-top">
+                    <td
+                      v-if="showStartColumn"
+                      class="px-3 py-2 align-top cursor-pointer"
+                      @click="(e) => openTask(t, e)"
+                    >
                       {{ fmt(startVal(t)) }}
                     </td>
-                    <td class="px-3 py-2 align-top">
+                    <td
+                      v-if="showFinishColumn"
+                      class="px-3 py-2 align-top cursor-pointer"
+                      @click="(e) => openTask(t, e)"
+                    >
                       {{ fmt(endVal(t)) }}
                     </td>
-                    <td
-                      v-if="showCostColumn"
-                      class="px-3 py-2 align-top"
+	                    <td
+	                      v-if="showCostColumn"
+	                      class="px-3 py-2 align-top cursor-pointer"
+                        @click="(e) => openTask(t, e)"
                     >
                       <div>{{ formatCurrency(costVal(t)) }}</div>
                     </td>
-                    <td class="px-3 py-2 text-right">
-                      <div class="inline-flex items-center justify-end">
-                        <label class="inline-flex items-center gap-2 mr-2 text-sm text-white/80">
-                          <input
-                            type="checkbox"
-                            :checked="isComplete(t)"
-                            class="w-4 h-4"
-                            @change="(e) => toggleComplete(t, e.target.checked)"
-                          >
-                        </label>
+	                    <td class="px-3 py-2 text-right">
+	                      <div class="inline-flex items-center justify-end">
+	                        <label class="inline-flex items-center gap-2 mr-2 text-sm text-white/80">
+	                          <input
+	                            type="checkbox"
+	                            :checked="isComplete(t)"
+	                            class="w-4 h-4"
+	                            @change="(e) => toggleComplete(t, e.target.checked)"
+	                          >
+	                        </label>
 
-                        <button
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2"
-                          title="Edit"
-                          @click="editingId = t._id; showEditModal = true"
+	                        <button
+	                          v-if="showCreateLinkActivityButton"
+	                          :disabled="!!t.activityId"
+	                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2 disabled:opacity-40 disabled:cursor-not-allowed"
+	                          :title="t.activityId ? 'Activity already linked' : 'Create & link activity'"
+	                          aria-label="Create and link activity"
+	                          @click="createAndLinkActivityForTask(t)"
+	                        >
+	                          <svg
+	                            xmlns="http://www.w3.org/2000/svg"
+	                            viewBox="0 0 24 24"
+	                            fill="none"
+	                            stroke="currentColor"
+	                            class="w-4 h-4"
+	                          >
+	                            <path
+	                              d="M8 6h13M8 12h13M8 18h13"
+	                              stroke-width="1.5"
+	                              stroke-linecap="round"
+	                            />
+	                            <path
+	                              d="M3 12h2M4 11v2"
+	                              stroke-width="1.5"
+	                              stroke-linecap="round"
+	                            />
+	                          </svg>
+	                        </button>
+
+	                        <button
+	                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2"
+	                          title="Edit"
+	                          @click="editingId = t._id; showEditModal = true"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -435,6 +501,121 @@
     </div>
 
     <Modal
+      v-model="showImportModal"
+      panel-class="max-w-xl"
+    >
+      <template #header>
+        <div class="text-lg font-semibold text-white">
+          Import tasks
+        </div>
+      </template>
+
+      <div class="space-y-4 text-white/90">
+        <div class="flex gap-2">
+          <button
+            :class="['px-3 py-2 rounded border', importTab === 'template' ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/10 text-white/80 hover:bg-white/5']"
+            @click="() => { importTab = 'template'; loadTaskTemplates() }"
+          >
+            Use template
+          </button>
+          <button
+            :class="['px-3 py-2 rounded border', importTab === 'upload' ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/10 text-white/80 hover:bg-white/5']"
+            @click="() => { importTab = 'upload' }"
+          >
+            Upload XML
+          </button>
+        </div>
+
+        <div
+          v-if="importTab === 'template'"
+          class="space-y-3"
+        >
+          <div class="flex gap-2">
+            <input
+              v-model="templateQuery"
+              type="text"
+              placeholder="Search templates"
+              class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white placeholder-white/50"
+              @keyup.enter="loadTaskTemplates"
+            >
+            <button
+              class="px-3 py-2 rounded bg-white/10 border border-white/15 text-white hover:bg-white/15"
+              @click="loadTaskTemplates"
+            >
+              Search
+            </button>
+          </div>
+
+          <div
+            v-if="templatesError"
+            class="text-red-400 text-sm"
+          >
+            {{ templatesError }}
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-sm text-white/80">Template</label>
+            <select
+              v-model="selectedTemplateId"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
+            >
+              <option value="">
+                Select a template…
+              </option>
+              <option
+                v-for="t in taskTemplates"
+                :key="t._id"
+                :value="t._id"
+              >
+                {{ [t.category, t.name].filter(Boolean).join(' — ') }} (v{{ t.version || '1.0.0' }})
+              </option>
+            </select>
+            <p class="text-xs text-white/60">
+              Templates seed tasks into the current project (they are copied into the Tasks table).
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="space-y-2"
+        >
+          <label class="block text-sm text-white/80">MS Project XML file</label>
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".xml"
+            class="text-sm text-white bg-transparent"
+            @change="onFileSelected"
+          >
+          <p class="text-xs text-white/60">
+            Uploading will import tasks into the current project.
+          </p>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button
+            class="px-3 py-2 rounded bg-white/6 text-white"
+            @click="showImportModal = false"
+          >
+            Close
+          </button>
+          <button
+            v-if="importTab === 'template'"
+            class="px-3 py-2 rounded bg-emerald-600 text-white disabled:opacity-50"
+            :disabled="importing || templatesLoading || !selectedTemplateId"
+            @click="importFromTemplate"
+          >
+            <span v-if="importing">Importing…</span>
+            <span v-else>Import</span>
+          </button>
+        </div>
+      </template>
+    </Modal>
+
+    <Modal
       v-model="showDeleteModal"
       panel-class="max-w-md"
     >
@@ -489,20 +670,64 @@
         @cancel="onEditCancel"
       />
     </Modal>
-    <Modal
-      v-model="showSettingsModal"
-      panel-class="max-w-md"
-    >
+	    <Modal
+	      v-model="showSettingsModal"
+	      panel-class="max-w-md"
+	    >
       <template #header>
         <div class="text-lg font-semibold text-white">
           Settings
         </div>
-      </template>
-      <div class="text-white/90 space-y-3">
-        <div
-          v-if="isAdmin"
-          class="space-y-4"
-        >
+	      </template>
+			      <div class="text-white/90 space-y-3">
+			        <div class="flex items-center gap-3">
+			          <label class="inline-flex items-center gap-2 text-sm">
+			            <input
+			              type="checkbox"
+			              class="w-4 h-4"
+			              :checked="ui.showTaskCreateLinkActivityButton"
+			              @change="(e) => { ui.setShowTaskCreateLinkActivityButton(e.target.checked); ui.showInfo('Settings updated') }"
+			            >
+			            <span>Show “Create &amp; link activity” button</span>
+			          </label>
+			        </div>
+			        <div class="flex items-center gap-3">
+			          <label class="inline-flex items-center gap-2 text-sm">
+			            <input
+			              type="checkbox"
+		              class="w-4 h-4"
+		              :checked="ui.showTaskDurationColumn"
+		              @change="(e) => { ui.setShowTaskDurationColumn(e.target.checked); ui.showInfo('Settings updated') }"
+		            >
+		            <span>Show Duration column</span>
+		          </label>
+		        </div>
+		        <div class="flex items-center gap-3">
+		          <label class="inline-flex items-center gap-2 text-sm">
+		            <input
+		              type="checkbox"
+		              class="w-4 h-4"
+		              :checked="ui.showTaskStartColumn"
+		              @change="(e) => { ui.setShowTaskStartColumn(e.target.checked); ui.showInfo('Settings updated') }"
+		            >
+		            <span>Show Start column</span>
+		          </label>
+		        </div>
+		        <div class="flex items-center gap-3">
+		          <label class="inline-flex items-center gap-2 text-sm">
+		            <input
+		              type="checkbox"
+		              class="w-4 h-4"
+		              :checked="ui.showTaskFinishColumn"
+		              @change="(e) => { ui.setShowTaskFinishColumn(e.target.checked); ui.showInfo('Settings updated') }"
+		            >
+		            <span>Show Finish column</span>
+		          </label>
+		        </div>
+	        <div
+	          v-if="isAdmin"
+	          class="space-y-4"
+	        >
           <div class="flex items-center gap-3">
             <label class="inline-flex items-center gap-2 text-sm">
               <input
@@ -514,25 +739,27 @@
               <span>Show Cost column</span>
             </label>
           </div>
-          <div>
-            <label class="block text-sm text-white/80 mb-1">Bill rate</label>
-            <div class="flex items-center gap-2">
-              <span class="text-white/70">$</span>
-              <input
-                v-model.number="billRateInput"
-                type="number"
-                min="0"
-                step="0.01"
-                class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
-                @change="persistBillRateSetting"
-                @blur="persistBillRateSetting"
-              >
-            </div>
-            <p class="text-xs text-white/60 mt-1">
-              Used when tasks auto-calculate cost as duration × bill rate.
-            </p>
-          </div>
-        </div>
+	          <div>
+	            <div class="flex items-center gap-3">
+	              <label class="text-sm text-white/80 whitespace-nowrap">Bill rate</label>
+	              <div class="flex items-center gap-2 flex-1">
+	                <span class="text-white/70">$</span>
+	                <input
+	                  v-model.number="billRateInput"
+	                  type="number"
+	                  min="0"
+	                  step="0.01"
+	                  class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
+	                  @change="persistBillRateSetting"
+	                  @blur="persistBillRateSetting"
+	                >
+	              </div>
+	            </div>
+	            <p class="text-xs text-white/60 mt-1">
+	              Used when tasks auto-calculate cost as duration × bill rate.
+	            </p>
+	          </div>
+	        </div>
         <div
           v-else
           class="text-sm text-white/70"
@@ -556,18 +783,22 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useProjectStore } from '../../stores/project'
-import { useUiStore } from '../../stores/ui'
-import { useAuthStore } from '../../stores/auth'
+  import { useProjectStore } from '../../stores/project'
+  import { useUiStore } from '../../stores/ui'
+  import { useAuthStore } from '../../stores/auth'
+  import { useActivitiesStore } from '../../stores/activities'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import { http } from '../../utils/http'
+import { useRouter } from 'vue-router'
 
-const projectStore = useProjectStore()
-const ui = useUiStore()
-const auth = useAuthStore()
+ const projectStore = useProjectStore()
+ const ui = useUiStore()
+ const auth = useAuthStore()
+ const activitiesStore = useActivitiesStore()
+const router = useRouter()
 const projectId = projectStore.currentProjectId
 const tasks = ref([])
 const q = ref('')
@@ -593,11 +824,40 @@ const isAdmin = computed(() => {
   return ['admin', 'globaladmin', 'superadmin'].includes(String(u.role))
 })
 
-const showCostColumn = computed(() => {
-  return isAdmin.value && !!ui.showCostColumn
-})
+		const showCostColumn = computed(() => {
+		  return isAdmin.value && !!ui.showCostColumn
+		})
 
-const headerColspan = computed(() => showCostColumn.value ? 8 : 7)
+		const activityById = computed(() => {
+		  const m = {}
+		  for (const a of (activitiesStore.activities || [])) {
+		    const id = String(a?.id || a?._id || '')
+		    if (id) m[id] = a
+		  }
+		  return m
+		})
+
+		function activityNameForTask(t) {
+		  const aid = t && t.activityId ? String(t.activityId) : ''
+		  if (!aid) return ''
+		  const a = activityById.value[aid]
+		  return a && a.name ? String(a.name) : aid
+		}
+
+		const showDurationColumn = computed(() => ui.showTaskDurationColumn !== false)
+		const showStartColumn = computed(() => ui.showTaskStartColumn !== false)
+		const showFinishColumn = computed(() => ui.showTaskFinishColumn !== false)
+		const showCreateLinkActivityButton = computed(() => ui.showTaskCreateLinkActivityButton !== false)
+
+		const headerColspan = computed(() => {
+		  // drag + WBS + Name + Actions
+		  let n = 4
+		  if (showDurationColumn.value) n += 1
+		  if (showStartColumn.value) n += 1
+		  if (showFinishColumn.value) n += 1
+		  if (showCostColumn.value) n += 1
+		  return n
+		})
 
 function onEditSaved(_res) {
   // close modal and refresh list
@@ -612,6 +872,17 @@ function onEditCancel() {
 function isComplete(t) {
   const effective = pct(t)
   return (t && (effective === 100 || (t.status && String(t.status).toLowerCase() === 'completed')))
+}
+
+function openTask(t, evt) {
+  try {
+    if (!t || !t._id) return
+    const target = evt && evt.target ? evt.target : null
+    if (target && typeof target.closest === 'function') {
+      if (target.closest('button, a, input, textarea, select, label, .drag-handle')) return
+    }
+    router.push({ name: 'task-edit', params: { id: String(t._id) } })
+  } catch (e) { /* ignore */ }
 }
 
 // Persist list UI state (search text and view mode) per project in sessionStorage
@@ -663,37 +934,53 @@ async function toggleComplete(t, checked) {
     item.status = checked ? 'Completed' : 'Not Started'
   }
 
-  // Send PATCH requests in parallel
   try {
-    const patches = toUpdate.map(item => {
-      if (!item || !item._id) return Promise.resolve()
-      return http.patch(`/api/tasks/${item._id}`, { status: item.status, percentComplete: item.percentComplete }).catch(err => ({ __err: err, id: item._id }))
-    })
-    const res = await Promise.all(patches)
-    // detect failures
-    const failed = res.filter(r => r && r.__err)
-    if (failed.length > 0) {
-      // rollback failed items
-      for (const f of failed) {
-        const id = f.id
-        const item = tasks.value.find(x => x._id === id)
-        if (item) {
-          const old = oldMap.get(id) || {}
-          item.status = old.status
-          item.percentComplete = old.percentComplete
-        }
-      }
-      try { alert('Failed to update some tasks') } catch (e) { console.error(e) }
-    }
+    // Update server-side subtree in one request to avoid partial failures.
+    await http.patch(`/api/tasks/subtree/${t._id}`, { projectId: projectStore.currentProjectId, status: checked ? 'Completed' : 'Not Started', percentComplete: checked ? 100 : 0 })
   } catch (err) {
-    // revert all on unexpected error
+    const status = err?.response?.status
+    const detail = err?.response?.data?.error || err?.message || String(err)
+
+    // Fallback for older deployments/dev servers that don't yet have subtree endpoint.
+    if (status === 404) {
+      try {
+        const patches = toUpdate.map(item => {
+          if (!item || !item._id) return Promise.resolve({ ok: true })
+          return http.patch(`/api/tasks/${item._id}`, { projectId: projectStore.currentProjectId, status: item.status, percentComplete: item.percentComplete })
+            .then(() => ({ ok: true }))
+            .catch(e => ({ ok: false, id: item._id, err: e }))
+        })
+        const res = await Promise.all(patches)
+        const failed = res.filter(r => r && r.ok === false)
+        if (failed.length > 0) {
+          // rollback failed items only
+          for (const f of failed) {
+            const id = f.id
+            const item = (tasks.value || []).find(x => x && x._id === id)
+            if (item) {
+              const old = oldMap.get(id) || {}
+              item.status = old.status
+              item.percentComplete = old.percentComplete
+            }
+          }
+          const msg = failed[0]?.err?.response?.data?.error || failed[0]?.err?.message
+          try { ui.showError(`Failed to update ${failed.length} task(s)${msg ? `: ${msg}` : ''}`) } catch (e) { /* ignore */ }
+        }
+        return
+      } catch (e) {
+        // fall through to full rollback below
+      }
+    }
+
+    // revert all on error
     for (const item of toUpdate) {
       const key = item._id || (item.wbs || '')
       const old = oldMap.get(key) || {}
       item.status = old.status
       item.percentComplete = old.percentComplete
     }
-    try { alert('Failed to update task status') } catch (e) { console.error(e) }
+    console.error('Failed to update task status', err)
+    try { ui.showError(`Failed to update task status${detail ? `: ${detail}` : ''}`) } catch (e) { /* ignore */ }
   }
 }
 
@@ -759,6 +1046,13 @@ const filtered = computed(() => {
 
 const fileInput = ref(null)
 const importing = ref(false)
+const showImportModal = ref(false)
+const importTab = ref('template') // 'template' | 'upload'
+const taskTemplates = ref([])
+const templatesLoading = ref(false)
+const templatesError = ref('')
+const templateQuery = ref('')
+const selectedTemplateId = ref('')
 const draggingId = ref(null)
 const dragOverIndex = ref(-1)
 const dragOverPos = ref('') // 'above' | 'on' | 'below'
@@ -1017,12 +1311,31 @@ function usesManualCost(task) {
   return task && task.autoCost === false
 }
 
+function numberOrZero(v) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+function expensesTotalValue(task) {
+  const e = (task && task.expenses && typeof task.expenses === 'object') ? task.expenses : {}
+  return [
+    e.airfare,
+    e.hotel,
+    e.rentalCar,
+    e.food,
+    e.mileage,
+    e.labor,
+    e.other1,
+    e.other2
+  ].map(numberOrZero).reduce((a, b) => a + b, 0)
+}
+
 function autoCostValue(task) {
   if (!task) return null
   const rate = billRate.value
   const duration = Number(task.duration)
   if (!Number.isFinite(rate) || !Number.isFinite(duration)) return null
-  const calc = duration * rate
+  const calc = (duration * rate) + expensesTotalValue(task)
   return Number.isFinite(calc) ? Number(calc.toFixed(2)) : null
 }
 
@@ -1181,6 +1494,46 @@ function onFileSelected(e) {
   const f = e.target.files && e.target.files[0]
   if (!f) return
   uploadFile(f).catch(() => {})
+}
+
+function openImportModal() {
+  showImportModal.value = true
+  importTab.value = 'template'
+  selectedTemplateId.value = ''
+  loadTaskTemplates().catch(() => {})
+}
+
+async function loadTaskTemplates() {
+  if (!projectStore.currentProjectId) return
+  templatesLoading.value = true
+  templatesError.value = ''
+  try {
+    const { data } = await http.get('/api/tasks/templates', { params: { projectId: projectStore.currentProjectId, q: templateQuery.value || '' } })
+    taskTemplates.value = (data && data.templates) ? data.templates : []
+  } catch (err) {
+    taskTemplates.value = []
+    templatesError.value = err?.response?.data?.error || err?.message || String(err)
+  } finally {
+    templatesLoading.value = false
+  }
+}
+
+async function importFromTemplate() {
+  if (!projectStore.currentProjectId) return alert('Select a project first')
+  if (!selectedTemplateId.value) return
+  importing.value = true
+  try {
+    const resp = await http.post('/api/tasks/import-template', { projectId: projectStore.currentProjectId, templateId: selectedTemplateId.value })
+    const count = resp.data && resp.data.imported ? resp.data.imported : 0
+    ui.showInfo(`Imported ${count} tasks`)
+    showImportModal.value = false
+    await fetch()
+  } catch (err) {
+    const msg = err?.response?.data?.error || err?.message || String(err)
+    ui.showError(`Import failed: ${msg}`)
+  } finally {
+    importing.value = false
+  }
 }
 
 function onDragStart(t, e) {
@@ -1388,9 +1741,40 @@ async function fetch() {
   try {
     const resp = await http.get('/api/tasks', { params: { projectId: projectStore.currentProjectId, limit: 200 } })
     tasks.value = resp.data.tasks || []
+    try { await activitiesStore.fetchActivities(projectStore.currentProjectId) } catch (e) { /* ignore */ }
   } catch (e) {
     tasks.value = []
   } finally { loading.value = false }
+}
+
+async function createAndLinkActivityForTask(t) {
+  if (!t || !t._id) return
+  if (t.activityId) return
+  const pid = String(projectStore.currentProjectId || '')
+  if (!pid) return
+  try {
+    const now = new Date().toISOString()
+    const name = t.name ? String(t.name) : `Task ${t._id}`
+    const created = await http.post('/api/activities', {
+      projectId: pid,
+      name,
+      type: 'Other',
+      startDate: now,
+      endDate: now
+    }).then(r => r.data)
+    const aid = created && (created._id || created.id) ? String(created._id || created.id) : ''
+    if (!aid) throw new Error('Activity not created')
+
+    await http.patch(`/api/tasks/${t._id}`, { projectId: pid, activityId: aid })
+    t.activityId = aid
+    // refresh cached activities so name lookup works immediately
+    try { await activitiesStore.fetchActivities(pid) } catch (e) { /* ignore */ }
+    try { ui.showSuccess('Activity created and linked') } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.error('createAndLinkActivityForTask error', e)
+    const msg = e?.response?.data?.error || e?.message || 'Failed to create/link activity'
+    try { ui.showError(msg) } catch (ee) { /* ignore */ }
+  }
 }
 
 onMounted(() => { fetch(); loadCollapsed() })

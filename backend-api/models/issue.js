@@ -19,6 +19,8 @@ const issueSchema = new mongoose.Schema({
   location: { type: String, required: false },
   recommendation: { type: String, required: false },
   resolution: { type: String, required: false },
+  // Free-form tags for filtering/grouping
+  labels: { type: [String], default: [] },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: false }, // Reference to an asset if applicable
   activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Activity', required: false }, // Reference to an activity if applicable
   // photos stored in DB as base64 strings (note: keep sizes small)

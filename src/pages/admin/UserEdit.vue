@@ -88,7 +88,7 @@
           Send reset
         </button>
         <router-link
-          to="/admin/users"
+          :to="{ name: 'admin-users' }"
           class="ml-2 px-4 py-2 rounded bg-gray-700"
         >
           Back
@@ -288,7 +288,7 @@ function formatDate(s) {
   try { return new Date(s).toLocaleString() } catch (e) { return String(s) }
 }
 
-const crumbs = computed(() => ([{ text: 'Admin', to: '/admin' }, { text: 'Users', to: '/admin/users' }, { text: id === 'new' ? 'Create User' : 'Edit User' }]))
+const crumbs = computed(() => ([{ text: 'Admin', to: '/app/admin' }, { text: 'Users', to: '/app/admin/users' }, { text: id === 'new' ? 'Create User' : 'Edit User' }]))
 </script>
 
 <style scoped>

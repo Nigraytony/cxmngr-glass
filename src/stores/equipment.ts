@@ -46,6 +46,7 @@ export interface Equipment {
   }>
   history?: any
   labels?: any
+  tags?: string[]
   metadata?: any
   createdAt?: string
   updatedAt?: string

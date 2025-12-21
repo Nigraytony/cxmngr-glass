@@ -63,7 +63,7 @@
           Delete
         </button>
         <router-link
-          to="/admin/projects"
+          :to="{ name: 'admin-projects' }"
           class="ml-2 px-4 py-2 rounded bg-gray-700"
         >
           Back

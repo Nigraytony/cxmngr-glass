@@ -15,7 +15,7 @@
       <div>
         <BreadCrumbs
           :items="crumbs"
-          class="mt-1 text-white/70"
+          class="mt-1 mb-4 text-white/70"
         />
       </div>
 
@@ -210,10 +210,54 @@
                   class="rounded-md"
                 />
               </div>
+              <div class="mt-3">
+                <div class="flex items-center gap-3">
+                  <div class="text-sm text-white/70 shrink-0">
+                    Tags
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="t in form.labels"
+                      :key="t"
+                      class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                    >
+                      <span>{{ t }}</span>
+                      <button
+                        type="button"
+                        class="text-white/60 hover:text-white"
+                        aria-label="Remove tag"
+                        @click="removeLabel(t)"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                  <input
+                    v-model="labelInput"
+                    type="text"
+                    placeholder="Add a tag and press Enter…"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    @keydown.enter.prevent="addLabelFromInput"
+                    @keydown.,.prevent="addLabelFromInput"
+                  >
+                  <button
+                    type="button"
+                    class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                    @click="addLabelFromInput"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div class="text-xs text-white/60 mt-1">
+                  Tip: use commas or Enter to add multiple tags.
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label class="block text-sm text-white/70">Type</label>
+	            <div>
+	              <label class="block text-sm text-white/70">Type</label>
               <div class="relative">
                 <button
                   type="button"
@@ -257,9 +301,44 @@
                     >
                       {{ type }}
                     </button>
-                  </div>
-                </div>
-              </div>
+	                </div>
+	              </div>
+	            </div>
+
+	            <div
+                v-if="linkedTasks.length > 0"
+                class="md:col-span-1 mt-3"
+              >
+	              <label class="block text-sm text-white/70">Linked Tasks</label>
+	              <div class="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/80">
+	                <div
+	                  v-if="linkedTasksLoading"
+	                  class="text-white/60"
+	                >
+	                  Loading…
+	                </div>
+	                <div
+	                  v-else
+	                  class="space-y-1"
+	                >
+	                  <div
+	                    v-for="t in linkedTasks"
+	                    :key="t._id"
+	                    class="flex items-center justify-between gap-2"
+	                  >
+	                    <div class="min-w-0 truncate">
+	                      <span v-if="t.wbs" class="text-white/60">{{ t.wbs }} — </span>{{ t.name }}
+	                    </div>
+	                    <RouterLink
+	                      :to="{ name: 'task-edit', params: { id: t._id } }"
+	                      class="text-xs text-white/70 hover:text-white underline shrink-0"
+	                    >
+	                      Open
+	                    </RouterLink>
+	                  </div>
+	                </div>
+	              </div>
+	            </div>
             </div>
 
             <div class="space-y-1">
@@ -724,7 +803,8 @@
                 <li
                   v-for="(l, idx) in logsList"
                   :key="idx"
-                  class="rounded-lg border border-white/10 bg-white/5 p-3"
+                  class="rounded-lg border border-white/10 bg-white/5 p-3 cursor-pointer hover:bg-white/7"
+                  @click="toggleLogExpanded(idx)"
                 >
                   <div class="flex items-center justify-between gap-3">
                     <div class="text-sm text-white/80">
@@ -736,10 +816,37 @@
                     </div>
                   </div>
                   <div
-                    v-if="l.details"
-                    class="mt-2 text-xs text-white/60 truncate"
+                    v-if="logExpandedIndex === idx && l.details"
+                    class="mt-2 text-xs text-white/70"
                   >
-                    {{ JSON.stringify(l.details) }}
+                    <template v-if="l.details && l.details.changes && Object.keys(l.details.changes).length">
+                      <div class="text-white/60 mb-2">
+                        Changed fields: <span class="text-white/80">{{ (l.details.changedKeys || Object.keys(l.details.changes)).join(', ') }}</span>
+                      </div>
+                      <div class="space-y-2">
+                        <div
+                          v-for="(c, key) in l.details.changes"
+                          :key="String(key)"
+                          class="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-md border border-white/10 bg-black/10 p-2"
+                        >
+                          <div>
+                            <div class="text-[10px] uppercase tracking-wide text-white/50 mb-1">
+                              {{ String(key) }} (from)
+                            </div>
+                            <pre class="text-xs text-white/70 whitespace-pre-wrap break-words">{{ prettyJson(c?.from) }}</pre>
+                          </div>
+                          <div>
+                            <div class="text-[10px] uppercase tracking-wide text-white/50 mb-1">
+                              {{ String(key) }} (to)
+                            </div>
+                            <pre class="text-xs text-white/70 whitespace-pre-wrap break-words">{{ prettyJson(c?.to) }}</pre>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <pre class="text-xs text-white/70 whitespace-pre-wrap break-words">{{ prettyJson(l.details) }}</pre>
+                    </template>
                   </div>
                 </li>
               </ul>
@@ -1855,9 +1962,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, computed, ref, watch } from 'vue'
-import { jsPDF } from 'jspdf'
-import { drawBrandedFooter, drawBrandedHeader } from '../../utils/pdfBranding'
+/* eslint-disable no-mixed-spaces-and-tabs */
+	import { onMounted, reactive, computed, ref, watch } from 'vue'
+	import { jsPDF } from 'jspdf'
+	import { drawBrandedFooter, drawBrandedHeader } from '../../utils/pdfBranding'
 // Ensure html2canvas is available for jsPDF html() rendering
 import html2canvas from 'html2canvas'
 ;(window as any).html2canvas = (window as any).html2canvas || html2canvas
@@ -2061,6 +2169,7 @@ const form = reactive({
   // selected space id (if chosen via the space picker)
   spaceId: null as string | null,
   systems: [] as string[],
+  labels: [] as string[],
   comments: [] as any[],
   attachments: [] as any[],
   issues: [] as string[],
@@ -2069,6 +2178,35 @@ const form = reactive({
 
 
 const systemsText = ref('')
+const labelInput = ref('')
+
+function normalizeLabels(labels: any): string[] {
+  const arr = Array.isArray(labels) ? labels : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const t = String(raw || '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function addLabelFromInput() {
+  const raw = String(labelInput.value || '')
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length === 0) return
+  form.labels = normalizeLabels([...(form.labels || []), ...parts])
+  labelInput.value = ''
+}
+
+function removeLabel(label: string) {
+  const key = String(label || '').trim().toLowerCase()
+  form.labels = (form.labels || []).filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
 
 // Space fuzzy-picker state
 const spaceQuery = ref(form.location || '')
@@ -2350,6 +2488,7 @@ onMounted(async () => {
         location: activityData?.location || '',
         spaceId: (activityData as any)?.spaceId || null,
         systems: activityData?.systems || [],
+        labels: normalizeLabels((activityData as any)?.labels),
         issues: Array.isArray((activityData as any)?.issues) ? (activityData as any).issues : [],
       })
       // Persisted settings bucket (e.g., report settings)
@@ -2378,6 +2517,7 @@ onMounted(async () => {
   } finally {
     pageLoading.value = false
   }
+  try { await loadLinkedTasks() } catch (_) { /* ignore */ }
 })
 
 const currentTab = ref('Info')
@@ -2388,6 +2528,24 @@ const attachmentsLoaded = ref(false)
 const equipmentLoaded = ref(false)
 const logsLoaded = ref(false)
 const fullEquipmentCache = new Map<string, any>()
+
+const linkedTasks = ref<any[]>([])
+const linkedTasksLoading = ref(false)
+
+async function loadLinkedTasks() {
+  const aid = String(isNew.value ? (pendingCreatedId.value || id.value || '') : (id.value || '')).trim()
+  const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!aid || !pid || aid === 'new') { linkedTasks.value = []; return }
+  linkedTasksLoading.value = true
+  try {
+    const resp = await http.get('/api/tasks', { params: { projectId: pid, activityId: aid, limit: 1000 } })
+    linkedTasks.value = Array.isArray(resp?.data?.tasks) ? resp.data.tasks : []
+  } catch (e) {
+    linkedTasks.value = []
+  } finally {
+    linkedTasksLoading.value = false
+  }
+}
 
 function hasPhotoData(list: any): boolean {
   const arr = Array.isArray(list) ? list : []
@@ -2769,24 +2927,24 @@ async function downloadActivityPdf() {
     // Helvetica is default; SourceSansPro removed
     setZeroCharSpace(doc)
     setBodyFont(doc, 'normal')
-    const margin = 12
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-    const bottomLimit = pageHeight - 26
+	    const margin = 12
+	    const pageWidth = doc.internal.pageSize.getWidth()
+	    const pageHeight = doc.internal.pageSize.getHeight()
+	    const bottomLimit = pageHeight - 26
 	    const pageDate = new Date().toLocaleDateString()
 	    let pageNo = 1
 	    let y = margin
 	    let pageHasBodyContent = false
 	    const markBodyContent = () => { pageHasBodyContent = true }
 	    // Resolve project logos (reuse current project store)
-	    let project: any = projectStore.currentProject || {}
+	    const project: any = projectStore.currentProject || {}
 	    const clientImg = await loadImage((project as any)?.logo)
 	    const cxaImg = await loadImage((project as any)?.commissioning_agent?.logo)
-    // Footer branding: icon + "cxma"
-    let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
-    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
-    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
-    const drawFooter = () => {
+	    // Footer branding: icon + "cxma"
+	    let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
+	    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
+	    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
+	    const drawFooter = () => {
       const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
       const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
       drawBrandedFooter(doc, {
@@ -2799,23 +2957,23 @@ async function downloadActivityPdf() {
         leftLabel: `${form.name || 'Activity'} Report`,
         setBold: () => setBodyFont(doc, 'bold'),
         setNormal: () => setBodyFont(doc, 'normal'),
-      })
-      doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-    }
+	      })
+	      doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
+	    }
 	    const drawHeader = () => {
 	      const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
 	      const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
 	      const res = drawBrandedHeader(doc, {
-        margin,
-        pageWidth,
-        title: `${form.name || 'Activity'} Report`,
+	        margin,
+	        pageWidth,
+	        title: `${form.name || 'Activity'} Report`,
         leftLogo: clientImg,
         rightLogo: cxaImg,
         logoH: 12,
         maxLogoW: 36,
-        titleFontSize: 20,
-        setTitleFont: () => setBodyFont(doc, 'bold'),
-      })
+	        titleFontSize: 20,
+	        setTitleFont: () => setBodyFont(doc, 'bold'),
+	      })
 	      y = res.nextY
 	      doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
 	    }
@@ -2847,14 +3005,25 @@ async function downloadActivityPdf() {
       const coverTitle = String(activityReport.value.coverTitle || '').trim()
       const coverSubtitle = String(activityReport.value.coverSubtitle || '').trim()
       const coverByLine = String(activityReport.value.coverByLine || '').trim()
-      const coverJumboSrc = String(activityReport.value.coverJumbotronDataUrl || '').trim()
+	      const coverJumboSrc = String(activityReport.value.coverJumbotronDataUrl || '').trim()
 
-      // Start cover content just below logos.
-      let coverY = y
-	      if (coverTitle) { setBodyFont(doc, 'bold'); doc.setFontSize(22); doc.text(coverTitle, pageWidth / 2, coverY + 10, { align: 'center' }); coverY += 14 }
-	      if (coverSubtitle) { setBodyFont(doc, 'bold'); doc.setFontSize(18); doc.text(coverSubtitle, pageWidth / 2, coverY + 10, { align: 'center' }); coverY += 12 }
+	      // Start cover content just below logos.
+	      let coverY = y
+	      if (coverTitle) {
+	        setBodyFont(doc, 'bold')
+	        doc.setFontSize(22)
+	        doc.text(coverTitle, pageWidth / 2, coverY + 10, { align: 'center' })
+	        coverY += 14
+	      }
+	      if (coverSubtitle) {
+	        setBodyFont(doc, 'bold')
+	        doc.setFontSize(18)
+	        doc.text(coverSubtitle, pageWidth / 2, coverY + 10, { align: 'center' })
+	        coverY += 12
+	      }
 	      if (coverTitle || coverSubtitle) markBodyContent()
-	      setBodyFont(doc, 'normal'); doc.setFontSize(12)
+	      setBodyFont(doc, 'normal')
+	      doc.setFontSize(12)
 
       const meta: Array<[string, string]> = [
         ['Project', projectLabel],
@@ -2866,36 +3035,38 @@ async function downloadActivityPdf() {
 
       const lineH = 7
       const metaBlockH = meta.length * lineH
-      const metaStartY = Math.max(coverY + 18, bottomLimit - metaBlockH - 10)
+	      const metaStartY = Math.max(coverY + 18, bottomLimit - metaBlockH - 10)
 
-      // Jumbotron photo in the middle of the page (optional)
+	      // Jumbotron photo in the middle of the page (optional)
 	      if (coverJumboSrc) {
 	        const boxX = margin
 	        const boxW = pageWidth - margin * 2
-        const boxTop = coverY + 6
-        const boxBottom = metaStartY - 8
-        const boxH = boxBottom - boxTop
-        if (boxH > 20) {
-          const img = await loadImage(coverJumboSrc)
-          if (img?.dataUrl) {
+	        const boxTop = coverY + 6
+	        const boxBottom = metaStartY - 8
+	        const boxH = boxBottom - boxTop
+	        if (boxH > 20) {
+	          const img = await loadImage(coverJumboSrc)
+	          if (img?.dataUrl) {
             const iw = Number((img as any).width || 0)
             const ih = Number((img as any).height || 0)
             const aspect = (iw > 0 && ih > 0) ? (iw / ih) : 1.6
             let drawW = boxW
             let drawH = drawW / aspect
-            if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect }
-            const dx = boxX + (boxW - drawW) / 2
-            const dy = boxTop + (boxH - drawH) / 2
+	            if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect }
+	            const dx = boxX + (boxW - drawW) / 2
+	            const dy = boxTop + (boxH - drawH) / 2
 	            try { doc.addImage(img.dataUrl, img.format || 'JPEG', dx, dy, drawW, drawH) } catch (e) { /* ignore */ }
 	            markBodyContent()
 	          }
 	        }
 	      }
 
-      let cy = metaStartY
+	      let cy = metaStartY
 	      for (const [k, v] of meta) {
-	        doc.setTextColor(100); doc.text(`${k}:`, margin, cy)
-	        doc.setTextColor(0); doc.text(String(v || '—'), margin + 26, cy)
+	        doc.setTextColor(100)
+	        doc.text(`${k}:`, margin, cy)
+	        doc.setTextColor(0)
+	        doc.text(String(v || '—'), margin + 26, cy)
 	        markBodyContent()
 	        cy += lineH
 	      }
@@ -2906,13 +3077,13 @@ async function downloadActivityPdf() {
 
 	    if (activityReport.value.include.toc) {
 	      const items: string[] = []
-      if (activityReport.value.include.info) items.push('Info')
-      if (activityReport.value.include.description) items.push('Description')
-      if (activityReport.value.include.photos) items.push('Photos')
-      if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
-      if (activityReport.value.include.issues) items.push('Issues')
-      if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
-      if (activityReport.value.include.attachments) items.push('Attachments')
+	      if (activityReport.value.include.info) items.push('Info')
+	      if (activityReport.value.include.description) items.push('Description')
+	      if (activityReport.value.include.photos) items.push('Photos')
+	      if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
+	      if (activityReport.value.include.issues) items.push('Issues')
+	      if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
+	      if (activityReport.value.include.attachments) items.push('Attachments')
 
 	      ensureSpace(14)
 	      setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
@@ -2924,13 +3095,13 @@ async function downloadActivityPdf() {
 	        markBodyContent()
 	        y += 7
 
-        // For "Equipment Reports", include sub-bullets for each equipment in current order.
-        if (it === 'Equipment Reports' && selectedEquip.value.length) {
-          const eqItems = [...(selectedEquip.value || [])]
+	        // For "Equipment Reports", include sub-bullets for each equipment in current order.
+	        if (it === 'Equipment Reports' && selectedEquip.value.length) {
+	          const eqItems = [...(selectedEquip.value || [])]
 	          for (const eq of eqItems) {
-            const tag = String(eq?.tag || '').trim()
-            const title = String(eq?.title || '').trim()
-            const label = [tag, title].filter(Boolean).join(' — ') || 'Equipment'
+	            const tag = String(eq?.tag || '').trim()
+	            const title = String(eq?.title || '').trim()
+	            const label = [tag, title].filter(Boolean).join(' — ') || 'Equipment'
 	            ensureSpace(6)
 	            doc.text(`- ${label}`, margin + 8, y)
 	            markBodyContent()
@@ -2944,30 +3115,37 @@ async function downloadActivityPdf() {
 	      doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
 	    }
 
-    // Info
+	    // Info
 	    if (activityReport.value.include.info) {
 	      setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(12)
 	      markBodyContent()
 	      const projectName = String((projectStore.currentProject as any)?.name || '')
 	      const projectLabel = projectName || String(form.projectId || '')
-      const info: Array<[string,string]> = [
-        ['Type', form.type],
-        ['Start', form.startDate],
-        ['End', form.endDate],
+	      const info: Array<[string,string]> = [
+	        ['Type', form.type],
+	        ['Start', form.startDate],
+	        ['End', form.endDate],
         ['Location', form.location],
-        ['Project', projectLabel]
-      ]
-	      const colW = (pageWidth - margin*2)/2; let i = 0
-	      for (const [label,value] of info) {
-	        const col = i % 2; const row = Math.floor(i / 2); const x = margin + col * colW; const yy = y + row * 8
+	        ['Project', projectLabel]
+	      ]
+	      const colW = (pageWidth - margin*2) / 2
+	      let i = 0
+	      for (const [label, value] of info) {
+	        const col = i % 2
+	        const row = Math.floor(i / 2)
+	        const x = margin + col * colW
+	        const yy = y + row * 8
 	        ensureSpace(11)
-	        doc.setTextColor(100); doc.text(label + ':', x, yy); doc.setTextColor(0)
+	        doc.setTextColor(100)
+	        doc.text(label + ':', x, yy)
+	        doc.setTextColor(0)
 	        const lines = doc.splitTextToSize(String(value || '—'), colW - 24) as string[]
 	        doc.text(lines, x + 24, yy)
 	        markBodyContent()
 	        i++
 	      }
-	      const rows = Math.ceil(info.length/2); y += rows*8 + 2
+	      const rows = Math.ceil(info.length / 2)
+	      y += rows * 8 + 2
 	    }
     // Description (rich HTML rendering)
     if (activityReport.value.include.description && form.descriptionHtml) {
@@ -3082,38 +3260,38 @@ async function downloadActivityPdf() {
                 return Math.max(1, cutLen)
               }
             }
-          } catch (_) { /* ignore */ }
-          return desiredLenPx
-        }
-	        while (offsetPx < contentHeightPx - 1) {
-	          const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
-	          // If we don't have enough vertical space for a reasonable slice, advance to next page
-	          // to avoid rounding/scale artifacts that can clip the last line.
-	          if (availableMm < 6) {
-	            drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-	            continue
-	          }
-          const availableTargetPx = Math.max(10, Math.floor(availableMm * pxPerMm))
-          // Pick the segment height in source pixels such that after scaling it stays
-          // strictly within the available target height (avoid rounding up causing clipping).
-          const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
-          const desiredSrcPx = Math.min(maxSrcPx, contentHeightPx - offsetPx)
+	        } catch (_) { /* ignore */ }
+	        return desiredLenPx
+	      }
+	      while (offsetPx < contentHeightPx - 1) {
+	        const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
+	        // If we don't have enough vertical space for a reasonable slice, advance to next page
+	        // to avoid rounding/scale artifacts that can clip the last line.
+	        if (availableMm < 6) {
+	          drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
+	          continue
+	        }
+	          const availableTargetPx = Math.max(10, Math.floor(availableMm * pxPerMm))
+	          // Pick the segment height in source pixels such that after scaling it stays
+	          // strictly within the available target height (avoid rounding up causing clipping).
+	          const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
+	          const desiredSrcPx = Math.min(maxSrcPx, contentHeightPx - offsetPx)
           const segmentSrcPx = findWhitespaceCut(canvas, offsetPx, desiredSrcPx)
           // Create a segment canvas to crop
-          const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
-          const segCtx = seg.getContext('2d')!
-          segCtx.fillStyle = '#ffffff'; segCtx.fillRect(0,0,seg.width,seg.height)
-          segCtx.drawImage(canvas, 0, offsetPx, canvas.width, segmentSrcPx, 0, 0, seg.width, seg.height)
+	          const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
+	          const segCtx = seg.getContext('2d')!
+	          segCtx.fillStyle = '#ffffff'; segCtx.fillRect(0,0,seg.width,seg.height)
+	          segCtx.drawImage(canvas, 0, offsetPx, canvas.width, segmentSrcPx, 0, 0, seg.width, seg.height)
 	          const segUrl = seg.toDataURL('image/png')
 	          const segmentTargetHeightPx = segmentSrcPx * scale
 	          const segmentTargetHeightMm = segmentTargetHeightPx * mmPerPx
-	      try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm); markBodyContent() } catch (e) { /* ignore */ }
+	          try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm); markBodyContent() } catch (e) { /* ignore */ }
 	          y += segmentTargetHeightMm
 	          offsetPx += segmentSrcPx
 	          if (offsetPx < contentHeightPx - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader() }
 	        }
 	        y += 2
-	  } catch (e) {
+	      } catch (e) {
 	        // Fallback to text if html render fails
 	        setBodyFont(doc, 'normal'); doc.setFontSize(12)
 	        const lines = htmlToLines(form.descriptionHtml)
@@ -3125,15 +3303,15 @@ async function downloadActivityPdf() {
 	        document.body.removeChild(container)
 	      }
 	    }
-    // Photos
+	    // Photos
 	    if (activityReport.value.include.photos) {
-      const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
-      const imgs: Array<{dataUrl:string,format?:ImageFormat}> = []
-      for (let p=0; p< Math.min(activityReport.value.photoLimit, phs.length); p++) {
-        const src = phs[p]?.data || phs[p]?.url || phs[p]
-        const imgRaw = await loadImage(src)
-        if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
-      }
+	      const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
+	      const imgs: Array<{dataUrl:string,format?:ImageFormat}> = []
+	      for (let p=0; p< Math.min(activityReport.value.photoLimit, phs.length); p++) {
+	        const src = phs[p]?.data || phs[p]?.url || phs[p]
+	        const imgRaw = await loadImage(src)
+	        if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
+	      }
 	      if (imgs.length) {
 	        sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
 	        markBodyContent()
@@ -3158,12 +3336,12 @@ async function downloadActivityPdf() {
 	    // before the Equipment List.
 	    let skipFinalFooter = false
 	    try {
-	      const totalPages = (doc as any).getNumberOfPages ? (doc as any).getNumberOfPages() : 1
-	      if (totalPages > 1 && !pageHasBodyContent && typeof (doc as any).deletePage === 'function') {
-	        ;(doc as any).deletePage(totalPages)
-	        skipFinalFooter = true
-	      }
-	    } catch (e) { /* ignore */ }
+		      const totalPages = (doc as any).getNumberOfPages ? (doc as any).getNumberOfPages() : 1
+		      if (totalPages > 1 && !pageHasBodyContent && typeof (doc as any).deletePage === 'function') {
+		        (doc as any).deletePage(totalPages)
+		        skipFinalFooter = true
+		      }
+		    } catch (e) { /* ignore */ }
 	    if (!skipFinalFooter) drawFooter()
 	    let baseBytes = doc.output('arraybuffer') as ArrayBuffer
     // Build issues doc separately (table) if needed.
@@ -3857,6 +4035,7 @@ async function onAddComment(text: string) {
 // Logs tab
 const logsList = ref<any[]>([])
 const logsLoading = ref(false)
+const logExpandedIndex = ref<number | null>(null)
 async function loadLogs(force = false) {
   if (logsLoading.value && !force) return
   const aid = isNew.value ? (pendingCreatedId.value || '') : id.value
@@ -3877,6 +4056,20 @@ async function loadLogs(force = false) {
   } finally {
     logsLoaded.value = true
     logsLoading.value = false
+  }
+}
+
+function toggleLogExpanded(idx: number) {
+  if (logExpandedIndex.value === idx) logExpandedIndex.value = null
+  else logExpandedIndex.value = idx
+}
+
+function prettyJson(v: any) {
+  try {
+    if (typeof v === 'string') return v
+    return JSON.stringify(v, null, 2)
+  } catch (e) {
+    try { return String(v) } catch (ee) { return '' }
   }
 }
 

@@ -5,7 +5,7 @@
     <div class="mt-4 mb-4 flex gap-2 items-center">
       <router-link
         v-if="isGlobalAdmin()"
-        to="/admin/users/new"
+        :to="{ name: 'admin-users-edit', params: { id: 'new' } }"
         class="w-10 h-10 flex items-center justify-center rounded-full bg-green-600 hover:bg-green-700 text-white"
         title="Create new user"
         aria-label="Create new user"

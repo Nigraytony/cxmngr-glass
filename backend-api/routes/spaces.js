@@ -79,6 +79,7 @@ router.post('/', auth, requirePermission('spaces.create', { projectParam: 'proje
       project: req.body.project, // Ensure project ID is valid
       parentSpace: req.body.parentSpace || '',
       attributes: Array.isArray(req.body.attributes) ? req.body.attributes : [],
+      tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       attachments: req.body.attachments || '',
       settings: req.body.settings || '',
       notes: req.body.notes || '',
@@ -94,7 +95,7 @@ router.post('/', auth, requirePermission('spaces.create', { projectParam: 'proje
 });
 
 // Light projection fields for list responses (include description for breadcrumbs/labels if needed)
-const LIGHT_FIELDS = 'tag title type project parentSpace description createdAt updatedAt parentChain'
+const LIGHT_FIELDS = 'tag title type project parentSpace description tags createdAt updatedAt parentChain'
 
 async function buildParentChains(projectId, items) {
   if (!projectId || !Array.isArray(items) || items.length === 0) return items

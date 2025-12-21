@@ -11,6 +11,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const sanitizeHtml = require('sanitize-html');
+const mongoose = require('mongoose');
 
 // multer memory storage for small images
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
@@ -84,11 +85,43 @@ router.post('/', auth, requirePermission('activities.create', { projectParam: 'p
 router.get('/', auth, requireFeature('activities'), async (req, res) => {
   try {
     const projectId = req.query.projectId
-    const filter = projectId ? { projectId } : {}
-    // Include descriptionHtml so editors like ActivityEdit can show the description
-    // without needing an extra per-activity fetch.
-    const projection = 'name descriptionHtml type startDate endDate projectId issues location spaceId systems settings metadata labels createdAt updatedAt reviewer'
-    const activities = await Activity.find(filter).select(projection).sort({ createdAt: -1 }).lean()
+    let filter = {}
+    if (projectId) {
+      const pid = String(projectId)
+      filter = { projectId: mongoose.Types.ObjectId.isValid(pid) ? new mongoose.Types.ObjectId(pid) : pid }
+    }
+
+    // Return a lightweight list with counts for UI list views, without embedding heavy arrays
+    // like photos (base64) or full comments/attachments.
+    const activities = await Activity.aggregate([
+      { $match: filter },
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          name: 1,
+          descriptionHtml: 1,
+          type: 1,
+          startDate: 1,
+          endDate: 1,
+          projectId: 1,
+          location: 1,
+          spaceId: 1,
+          systems: 1,
+          settings: 1,
+          metadata: 1,
+          labels: 1,
+          reviewer: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          issuesCount: { $size: { $ifNull: ['$issues', []] } },
+          photosCount: { $size: { $ifNull: ['$photos', []] } },
+          commentsCount: { $size: { $ifNull: ['$comments', []] } },
+          attachmentsCount: { $size: { $ifNull: ['$attachments', []] } },
+          equipmentCount: { $size: { $ifNull: ['$systems', []] } },
+        }
+      }
+    ])
+
     res.status(200).send(activities)
   } catch (error) {
     res.status(500).send(error)

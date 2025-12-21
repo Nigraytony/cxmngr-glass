@@ -16,6 +16,7 @@ export interface Template {
   responsible?: string
   template?: string
   status?: 'Ordered' | 'Shipped' | 'In Storage' | 'Installed' | 'Tested' | 'Operational' | 'Not Started'
+  tags?: string[]
   attributes?: any
   description?: string
   spaceId?: string | null

@@ -4,8 +4,8 @@
     <div>
       <BreadCrumbs
         :items="[
-          { text: 'Dashboard', to: '/' },
-          { text: 'Activities', to: '/activities' }
+          { text: 'Dashboard', to: '/app' },
+          { text: 'Activities', to: '/app/activities' }
         ]"
       />
     </div>
@@ -116,6 +116,51 @@
       >
         Refresh
       </button>
+      <div class="ml-auto flex items-center gap-2">
+        <button
+          class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
+          :class="viewMode === 'cards' ? 'bg-white/12 text-white' : 'bg-white/6 hover:bg-white/10 text-white/80'"
+          aria-label="Card view"
+          title="Card view"
+          @click="setViewMode('cards')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <button
+          class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
+          :class="viewMode === 'list' ? 'bg-white/12 text-white' : 'bg-white/6 hover:bg-white/10 text-white/80'"
+          aria-label="List view"
+          title="List view"
+          @click="setViewMode('list')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              d="M6 7h14M6 12h14M6 17h14M4 7h.01M4 12h.01M4 17h.01"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div
@@ -129,7 +174,7 @@
     </div>
     <div
       v-else
-      class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
+      class="min-w-0"
     >
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80 w-full">
@@ -142,25 +187,141 @@
         </div>
       </template>
       <template v-else>
-        <RouterLink
-          v-for="a in filtered"
-          :key="a.id"
-          :to="{ name: 'activity-edit', params: { id: a.id || a._id } }"
-          class="group relative block p-4 rounded-xl bg-white/10 border border-white/20 text-white/90 transition-all duration-200 ease-out hover:bg-white/12 hover:border-white/30 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/30 overflow-hidden"
+        <div
+          v-if="viewMode === 'cards'"
+          class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          <!-- subtle hover overlay -->
-          <div class="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-          <!-- bottom gradient like photo thumbnails -->
-          <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <RouterLink
+            v-for="a in pagedActivities"
+            :key="a.id"
+            :to="{ name: 'activity-edit', params: { id: a.id || a._id } }"
+            class="group relative block p-4 rounded-xl bg-white/10 border border-white/20 text-white/90 transition-all duration-200 ease-out hover:bg-white/12 hover:border-white/30 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-white/30 overflow-hidden"
+          >
+            <!-- subtle hover overlay -->
+            <div class="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+            <!-- bottom gradient like photo thumbnails -->
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-          <div class="relative">
-            <div class="flex items-center justify-between">
-              <h2 class="font-semibold">
-                {{ a.name }}
-              </h2>
-              <div class="flex items-center gap-2">
+            <div class="relative">
+              <div class="flex items-center justify-between gap-2">
+                <h2 class="font-semibold truncate">
+                  {{ a.name }}
+                </h2>
+                <div class="flex items-center gap-2 shrink-0">
+                  <button
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                    aria-label="Delete activity"
+                    :title="`Delete ${a.name || 'activity'}`"
+                    @click.stop.prevent="confirmDelete(a)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M6 7h12"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                        stroke-width="1.5"
+                      />
+                      <rect
+                        x="6"
+                        y="7"
+                        width="12"
+                        height="14"
+                        rx="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M10 11v6M14 11v6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                  </button>
+                  <!-- optional chevron icon to indicate clickable card -->
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    class="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <path
+                      d="M9 6l6 6-6 6"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="text-sm text-white/70 mt-1">
+                Type: {{ a.type }}
+              </div>
+              <div class="text-xs text-white/60">
+                Start: {{ fmt(a.startDate) }} · End: {{ fmt(a.endDate) }}
+              </div>
+              <div class="text-xs text-white/60 mt-1">
+                Space: {{ spaceLabel(a) }}
+              </div>
+              <div class="mt-2 flex flex-wrap gap-2 text-xs text-white/80">
+                <span class="px-2 py-0.5 rounded-full bg-white/10">Photos: {{ countField(a, 'photos') }}</span>
+                <span class="px-2 py-0.5 rounded-full bg-white/10">Issues: {{ countField(a, 'issues') }}</span>
+                <span class="px-2 py-0.5 rounded-full bg-white/10">Comments: {{ countField(a, 'comments') }}</span>
+                <span class="px-2 py-0.5 rounded-full bg-white/10">Attachments: {{ countField(a, 'attachments') }}</span>
+                <span class="px-2 py-0.5 rounded-full bg-white/10">Equipment: {{ countField(a, 'equipment') }}</span>
+              </div>
+            </div>
+          </RouterLink>
+        </div>
+
+        <div
+          v-else
+          class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl overflow-x-auto min-w-0"
+        >
+          <div class="flex flex-col gap-3">
+            <div
+              v-for="a in pagedActivities"
+              :key="a.id"
+              class="rounded-xl bg-white/10 border border-white/10 p-3 flex flex-col md:flex-row md:items-center gap-3"
+            >
+              <RouterLink
+                :to="{ name: 'activity-edit', params: { id: a.id || a._id } }"
+                class="flex-1 min-w-0"
+                style="text-decoration: none;"
+              >
+                <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 min-w-0">
+                  <div class="min-w-0 flex-1">
+                    <div class="text-base font-semibold text-white truncate">
+                      {{ a.name }}
+                    </div>
+                    <div class="text-xs text-white/70 flex flex-wrap gap-x-3 gap-y-1">
+                      <span>Type: <span class="text-white/90">{{ a.type || '—' }}</span></span>
+                      <span>Dates: <span class="text-white/90">{{ fmt(a.startDate) || '—' }} – {{ fmt(a.endDate) || '—' }}</span></span>
+                      <span>Space: <span class="text-white/90">{{ spaceLabel(a) }}</span></span>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap gap-2 text-xs">
+                    <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Photos: {{ countField(a, 'photos') }}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Issues: {{ countField(a, 'issues') }}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Comments: {{ countField(a, 'comments') }}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Attachments: {{ countField(a, 'attachments') }}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Equipment: {{ countField(a, 'equipment') }}</span>
+                  </div>
+                </div>
+              </RouterLink>
+
+              <div class="flex items-center gap-2 shrink-0">
                 <button
-                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                  class="w-9 h-9 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
                   aria-label="Delete activity"
                   :title="`Delete ${a.name || 'activity'}`"
                   @click.stop.prevent="confirmDelete(a)"
@@ -196,40 +357,63 @@
                     />
                   </svg>
                 </button>
-                <!-- optional chevron icon to indicate clickable card -->
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  class="w-4 h-4 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <path
-                    d="M9 6l6 6-6 6"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
               </div>
             </div>
-            <div class="text-sm text-white/70 mt-1">
-              Type: {{ a.type }}
-            </div>
-            <div class="text-xs text-white/60">
-              Start: {{ fmt(a.startDate) }} · End: {{ fmt(a.endDate) }}
-            </div>
-            <div class="mt-2 flex -space-x-2">
-              <img
-                v-for="(p,idx) in (a.photos || []).slice(0,3)"
-                :key="idx"
-                :src="p.data"
-                class="w-10 h-10 object-cover rounded-md border border-white/20"
-              >
-            </div>
           </div>
-        </RouterLink>
+        </div>
       </template>
+    </div>
+
+    <!-- Pagination controls -->
+    <div
+      v-if="projectStore.currentProjectId && totalItems > 0"
+      class="flex items-center justify-between px-2 py-3 text-white/70 text-sm"
+    >
+      <div class="flex items-center gap-2">
+        <span>Rows per page</span>
+        <select
+          v-model.number="pageSize"
+          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-sm"
+        >
+          <option
+            v-for="s in pageSizes"
+            :key="s"
+            :value="s"
+          >
+            {{ s }}
+          </option>
+        </select>
+        <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ totalItems }}</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button
+          :disabled="page === 1"
+          class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+          @click="prevPage"
+        >
+          Prev
+        </button>
+        <div class="flex items-center gap-1 px-1">
+          <button
+            v-for="p in pageButtons"
+            :key="`p-${p}`"
+            :disabled="p === 0"
+            class="min-w-8 px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+            :class="p === page ? 'bg-white/15 text-white' : ''"
+            @click="p !== 0 && goToPage(p)"
+          >
+            <span v-if="p === 0">…</span>
+            <span v-else>{{ p }}</span>
+          </button>
+        </div>
+        <button
+          :disabled="page === totalPages"
+          class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
+          @click="nextPage"
+        >
+          Next
+        </button>
+      </div>
     </div>
 
     <Modal
@@ -267,10 +451,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, computed, ref } from 'vue'
+import { onMounted, onBeforeUnmount, computed, ref, watch } from 'vue'
 import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
+import { useSpacesStore } from '../../stores/spaces'
 import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -278,6 +463,7 @@ import Modal from '../../components/Modal.vue'
 
 const store = useActivitiesStore()
 const projectStore = useProjectStore()
+const spacesStore = useSpacesStore()
 const q = ref('')
 const typeFilter = ref<string>('')
 const showDeleteModal = ref(false)
@@ -286,15 +472,61 @@ const deletingName = ref<string>('')
 const deleting = ref(false)
 const ui = useUiStore()
 const loading = computed(() => store.loading)
+const viewMode = ref<'cards' | 'list'>('cards')
+const pageSize = ref(12)
+const pageSizes = [6, 12, 24, 48, 96]
+const page = ref(1)
+
+function viewStorageKey() {
+  return `ui.activities.viewMode:${projectStore.currentProjectId || 'global'}`
+}
+
+function paginationStorageKey() {
+  return `ui.activities.pageSize:${projectStore.currentProjectId || 'global'}`
+}
+
+function loadViewMode() {
+  try {
+    const raw = localStorage.getItem(viewStorageKey())
+    if (raw === 'list' || raw === 'cards') viewMode.value = raw
+  } catch (e) { /* ignore */ }
+}
+
+function setViewMode(v: 'cards' | 'list') {
+  viewMode.value = v
+  try { localStorage.setItem(viewStorageKey(), v) } catch (e) { /* ignore */ }
+}
+
+function loadPageSize() {
+  try {
+    const raw = localStorage.getItem(paginationStorageKey())
+    const n = Number(raw)
+    if (Number.isFinite(n) && pageSizes.includes(n)) pageSize.value = n
+  } catch (e) { /* ignore */ }
+}
+
+function persistPageSize() {
+  try { localStorage.setItem(paginationStorageKey(), String(pageSize.value)) } catch (e) { /* ignore */ }
+}
 
 onMounted(async () => {
   await store.fetchActivities().catch(() => {})
+  if (projectStore.currentProjectId) await spacesStore.fetchByProject(projectStore.currentProjectId).catch(() => {})
+  loadViewMode()
+  loadPageSize()
 })
 
 function fmt(d?: string) {
   if (!d) return ''
   try { return new Date(d).toLocaleDateString() } catch (e) { return String(d) }
 }
+
+watch(() => projectStore.currentProjectId, async (pid) => {
+  if (pid) await spacesStore.fetchByProject(pid).catch(() => {})
+  loadViewMode()
+  loadPageSize()
+  page.value = 1
+})
 
 // Styled Type dropdown state and options (like Issues filters)
 const showTypeMenu = ref(false)
@@ -362,9 +594,81 @@ const filtered = computed(() => {
   }) as any
 })
 
+const totalItems = computed(() => (filtered.value || []).length)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
+const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value + 1))
+const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
+const pagedActivities = computed(() => {
+  const list = filtered.value || []
+  const start = (page.value - 1) * pageSize.value
+  return list.slice(start, start + pageSize.value)
+})
+
+function clampPage() {
+  if (page.value < 1) page.value = 1
+  if (page.value > totalPages.value) page.value = totalPages.value
+}
+
+watch([totalItems, pageSize], () => {
+  clampPage()
+})
+
+watch([q, typeFilter], () => {
+  page.value = 1
+})
+
+watch(pageSize, () => {
+  persistPageSize()
+  page.value = 1
+})
+
+function prevPage() { if (page.value > 1) page.value -= 1 }
+function nextPage() { if (page.value < totalPages.value) page.value += 1 }
+function goToPage(p: number) { page.value = p; clampPage() }
+
+const pageButtons = computed(() => {
+  const tp = totalPages.value
+  const current = page.value
+  if (tp <= 7) return Array.from({ length: tp }, (_, i) => i + 1)
+  const set = new Set<number>()
+  set.add(1); set.add(tp)
+  for (let i = current - 2; i <= current + 2; i++) {
+    if (i >= 1 && i <= tp) set.add(i)
+  }
+  const arr = Array.from(set).sort((a, b) => a - b)
+  // insert 0 as ellipsis markers
+  const out: number[] = []
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i]
+    out.push(v)
+    const next = arr[i + 1]
+    if (next && next - v > 1) out.push(0)
+  }
+  return out
+})
+
 function refresh() {
   // Always fetch for the current project (store handles project scoping)
   store.fetchActivities().catch(() => {})
+  page.value = 1
+}
+
+function spaceLabel(a: any) {
+  const sid = a && (a.spaceId || a.spaceID) ? String(a.spaceId || a.spaceID) : ''
+  if (!sid) return '—'
+  const sp: any = (spacesStore as any).byId ? (spacesStore as any).byId[sid] : null
+  if (!sp) return sid
+  return sp.title || sp.tag || sid
+}
+
+function countField(a: any, kind: 'photos' | 'issues' | 'comments' | 'attachments' | 'equipment') {
+  if (!a) return 0
+  if (kind === 'photos') return Number.isFinite(a.photosCount) ? a.photosCount : (Array.isArray(a.photos) ? a.photos.length : 0)
+  if (kind === 'issues') return Number.isFinite(a.issuesCount) ? a.issuesCount : (Array.isArray(a.issues) ? a.issues.length : 0)
+  if (kind === 'comments') return Number.isFinite(a.commentsCount) ? a.commentsCount : (Array.isArray(a.comments) ? a.comments.length : 0)
+  if (kind === 'attachments') return Number.isFinite(a.attachmentsCount) ? a.attachmentsCount : (Array.isArray(a.attachments) ? a.attachments.length : 0)
+  if (kind === 'equipment') return Number.isFinite(a.equipmentCount) ? a.equipmentCount : (Array.isArray(a.systems) ? a.systems.length : 0)
+  return 0
 }
 
 function confirmDelete(a: any) {

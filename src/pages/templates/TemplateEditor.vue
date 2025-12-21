@@ -376,6 +376,50 @@
                 class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
               />
             </div>
+            <div class="mt-2">
+              <div class="flex items-center gap-3">
+                <div class="text-sm text-white/70 shrink-0">
+                  Tags
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="t in (form as any).tags"
+                    :key="t"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                  >
+                    <span>{{ t }}</span>
+                    <button
+                      type="button"
+                      class="text-white/60 hover:text-white"
+                      aria-label="Remove tag"
+                      @click="removeTemplateTag(t)"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <input
+                  v-model="templateTagsInput"
+                  type="text"
+                  placeholder="Add a tag and press Enter…"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  @keydown.enter.prevent="addTemplateTagsFromInput"
+                  @keydown.,.prevent="addTemplateTagsFromInput"
+                >
+                <button
+                  type="button"
+                  class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                  @click="addTemplateTagsFromInput"
+                >
+                  Add
+                </button>
+              </div>
+              <div class="text-xs text-white/60 mt-1">
+                Tip: use commas or Enter to add multiple tags.
+              </div>
+            </div>
             <div class="mt-4 flex items-center gap-2">
               <button
                 :disabled="saving || !isValidForm"
@@ -1206,9 +1250,39 @@ const ui = useUiStore()
 
 const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Started']
 
-const form = ref<Template>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '', attributes: [] as any, checklists: [], functionalTests: [] } as any)
+const form = ref<Template>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '', tags: [], attributes: [] as any, checklists: [], functionalTests: [] } as any)
 const loading = ref(true)
 const saving = ref(false)
+const templateTagsInput = ref('')
+
+function normalizeTemplateTags(tags: any): string[] {
+  const arr = Array.isArray(tags) ? tags : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const t = String(raw || '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function addTemplateTagsFromInput() {
+  const raw = String(templateTagsInput.value || '')
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length === 0) return
+  ;(form.value as any).tags = normalizeTemplateTags([ ...(((form.value as any).tags) || []), ...parts ])
+  templateTagsInput.value = ''
+}
+
+function removeTemplateTag(tag: string) {
+  const key = String(tag || '').trim().toLowerCase()
+  ;(form.value as any).tags = ((((form.value as any).tags) || []) as any[])
+    .filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
 
 const crumbs = computed(() => [
   { text: 'Dashboard', to: '/' },
@@ -1444,6 +1518,11 @@ async function load() {
     const t = await templatesStore.fetchOne(id.value)
     if (t) {
       form.value = { ...t } as any
+      // Normalize tags from canonical field; fall back to legacy comma-separated labels if present
+      const legacyLabels = typeof (t as any).labels === 'string'
+        ? (t as any).labels.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : []
+      ;(form.value as any).tags = normalizeTemplateTags([ ...(((t as any).tags) || []), ...legacyLabels ])
       if (!form.value.projectId) form.value.projectId = (t as any).projectId || projectStore.currentProjectId || ''
       const pid = form.value.projectId || projectStore.currentProjectId || ''
       if (pid) {
@@ -1480,6 +1559,7 @@ async function save() {
       title: form.value.title,
       type: form.value.type,
       description: form.value.description || undefined,
+      tags: normalizeTemplateTags((form.value as any).tags),
       attributes: attrs
     }
     if (form.value.system && String(form.value.system).trim()) payload.system = String(form.value.system)

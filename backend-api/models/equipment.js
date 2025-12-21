@@ -39,6 +39,8 @@ const equipmentSchema = new mongoose.Schema({
     attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
     history: { type: String, required: false },
     labels: { type: String, required: false },
+    // Free-form tags used for filtering/grouping (stored as array of strings)
+    tags: { type: [String], default: [] },
     metadata: { type: String, required: false },
     // Equipment-level audit logs (flexible schema)
     logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],

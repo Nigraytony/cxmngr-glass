@@ -11,6 +11,7 @@ export interface Space {
   title: string
   type: string // e.g., Building, Floor, Room, Area, Level, Corridor, Roof
   description?: string
+  tags?: string[]
   project: string // projectId
   projectId?: string
   parentSpace?: string | null // parent Space id

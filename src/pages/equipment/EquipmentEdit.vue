@@ -402,6 +402,50 @@
                 class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
               />
             </div>
+            <div class="mt-2">
+              <div class="flex items-center gap-3">
+                <div class="text-sm text-white/70 shrink-0">
+                  Tags
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="t in (form as any).tags"
+                    :key="t"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                  >
+                    <span>{{ t }}</span>
+                    <button
+                      type="button"
+                      class="text-white/60 hover:text-white"
+                      aria-label="Remove tag"
+                      @click="removeTag(t)"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <input
+                  v-model="tagsInput"
+                  type="text"
+                  placeholder="Add a tag and press Enter…"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  @keydown.enter.prevent="addTagsFromInput"
+                  @keydown.,.prevent="addTagsFromInput"
+                >
+                <button
+                  type="button"
+                  class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                  @click="addTagsFromInput"
+                >
+                  Add
+                </button>
+              </div>
+              <div class="text-xs text-white/60 mt-1">
+                Tip: use commas or Enter to add multiple tags.
+              </div>
+            </div>
             <div class="mt-4 flex items-center gap-2">
               <button
                 class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
@@ -1620,8 +1664,38 @@ const ui = useUiStore()
 
 const statuses = ['Not Started', 'Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Working','Has Issues','Decommissioned']
 
-const form = ref<Equipment>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '', attachments: [], images: [], attributes: [] as any })
+const form = ref<Equipment>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '', attachments: [], images: [], attributes: [] as any, tags: [] })
 const loading = ref(true)
+const tagsInput = ref('')
+
+function normalizeTags(tags: any): string[] {
+  const arr = Array.isArray(tags) ? tags : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const t = String(raw || '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function addTagsFromInput() {
+  const raw = String(tagsInput.value || '')
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length === 0) return
+  ;(form.value as any).tags = normalizeTags([ ...((form.value as any).tags || []), ...parts ])
+  tagsInput.value = ''
+}
+
+function removeTag(tag: string) {
+  const key = String(tag || '').trim().toLowerCase()
+  ;(form.value as any).tags = (((form.value as any).tags || []) as any[])
+    .filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
 
 const crumbs = computed(() => [
   { text: 'Dashboard', to: '/' },
@@ -2948,6 +3022,7 @@ async function load() {
     const eq = data || (await equipmentStore.fetchOne(id.value))
     if (eq) {
       form.value = { ...eq, id: (eq as any)._id || (eq as any).id || id.value }
+      ;(form.value as any).tags = normalizeTags((form.value as any).tags)
       // photos are not fetched by default; reset flag so Photos tab can fetch when opened
       photosLoaded.value = Array.isArray((eq as any).photos) && (eq as any).photos.some((p: any) => p && p.data)
       issuesLoaded.value = false
@@ -2983,6 +3058,7 @@ async function save() {
   if (!form.value.id) return
   try {
     const before = JSON.parse(JSON.stringify(form.value || {}))
+    ;(form.value as any).tags = normalizeTags((form.value as any).tags)
     const saved = await equipmentStore.update(form.value as Equipment & { id: string })
     ui.showSuccess('Equipment saved')
     appendLog('equipment.save', 'Equipment saved', {

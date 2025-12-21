@@ -21,7 +21,7 @@
           >
             <template v-if="item.to && idx < items.length - 1">
               <RouterLink
-                :to="'/app' +item.to"
+                :to="normalizeTo(item.to)"
                 class="text-white/80 hover:underline"
               >
                 {{ item.text }}
@@ -43,12 +43,34 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
   items: { type: Array, default: () => [] },
   title: { type: String, default: '' }
 })
 
-import { computed } from 'vue'
+function normalizeTo(to) {
+  if (!to) return '/'
+  if (typeof to === 'string') {
+    const s = String(to).trim()
+    if (!s) return '/'
+    // Prefer app-prefixed routes for all breadcrumbs.
+    if (s === '/') return '/app'
+    if (s.startsWith('/app')) return s
+    if (s.startsWith('/')) return `/app${s}`
+    return `/app/${s.replace(/^\/+/, '')}`
+  }
+  // Support vue-router location objects.
+  if (to && typeof to === 'object' && typeof to.path === 'string') {
+    const p = String(to.path).trim()
+    if (!p) return to
+    if (p === '/') return { ...to, path: '/app' }
+    if (p.startsWith('/app')) return to
+    if (p.startsWith('/')) return { ...to, path: `/app${p}` }
+  }
+  return to
+}
 
 const pageTitle = computed(() => {
   if (props.title) return props.title

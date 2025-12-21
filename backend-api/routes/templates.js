@@ -64,7 +64,7 @@ function toPlainTemplate(doc) {
 }
 
 // Light projection for list responses (avoid heavy fields)
-const LIGHT_FIELDS = 'number tag title type system status projectId responsible template orderDate installationDate balanceDate testDate labels metadata createdAt updatedAt'
+const LIGHT_FIELDS = 'number tag title type system status projectId responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt'
 
 // Create
 router.post('/', auth, requirePermission('templates.create', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {

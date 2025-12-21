@@ -3,7 +3,37 @@
     <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }, { text: modeLabel } ]" />
 
     <div class="p-4 rounded bg-white/6 border border-white/10 text-white">
-      <div class="grid grid-cols-2 gap-3">
+      <div class="flex items-center gap-2 mb-4">
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="activeTab === 'info' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+          @click="activeTab = 'info'"
+        >
+          Info
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="activeTab === 'expenses' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+          @click="activeTab = 'expenses'"
+        >
+          Expenses
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="activeTab === 'settings' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+          @click="activeTab = 'settings'"
+        >
+          Settings
+        </button>
+      </div>
+
+      <div
+        v-if="activeTab === 'info'"
+        class="grid grid-cols-2 gap-3"
+      >
         <div>
           <label class="block text-white/70 text-sm">Name</label>
           <input
@@ -26,14 +56,36 @@
           >
         </div>
         <div>
-          <label class="block text-white/70 text-sm">Cost</label>
+          <label class="block text-white/70 text-sm">Duration (hours)</label>
           <input
-            v-model.number="task.cost"
+            v-model.number="task.duration"
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             class="w-full px-3 py-2 rounded bg-white/10"
           >
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Completion (%)</label>
+          <input
+            v-model.number="task.percentComplete"
+            type="number"
+            min="0"
+            max="100"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Status</label>
+          <select
+            v-model="task.status"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
+            <option value="Not Started">Not Started</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
         </div>
         <div>
           <label class="block text-white/70 text-sm">Start</label>
@@ -59,6 +111,174 @@
             rows="4"
           />
         </div>
+
+        <div class="col-span-2 mt-1">
+          <label class="block text-white/70 text-sm">Linked Activity</label>
+          <div class="mt-1 rounded bg-white/10 border border-white/15 px-3 py-2 text-sm text-white/80">
+            <div
+              v-if="task.activityId"
+              class="flex items-center justify-between gap-2"
+            >
+              <div class="min-w-0 truncate">
+                <span class="text-white/60 mr-1">Activity:</span>{{ linkedActivityName || task.activityId }}
+              </div>
+              <RouterLink
+                :to="{ name: 'activity-edit', params: { id: String(task.activityId) } }"
+                class="text-xs text-white/70 hover:text-white underline shrink-0"
+              >
+                Open
+              </RouterLink>
+            </div>
+            <div
+              v-else
+              class="text-white/60"
+            >
+              No activity linked.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="activeTab === 'expenses'"
+        class="grid grid-cols-2 gap-3"
+      >
+        <div class="col-span-2">
+          <div class="flex items-center justify-between">
+            <label class="block text-white/70 text-sm">Cost (incl. expenses)</label>
+            <label class="inline-flex items-center gap-2 text-xs text-white/70">
+              <input
+                v-model="manualCost"
+                type="checkbox"
+                class="w-4 h-4"
+              >
+              <span>Enter manually</span>
+            </label>
+          </div>
+          <input
+            :value="costInputValue"
+            type="number"
+            min="0"
+            step="0.01"
+            :disabled="!manualCost"
+            :class="['w-full px-3 py-2 rounded bg-white/10', !manualCost ? 'opacity-60 cursor-not-allowed' : '']"
+            @input="onCostInput"
+          >
+          <p
+            v-if="!manualCost"
+            class="text-xs text-white/60 mt-1"
+          >
+            Auto-calculated from duration × bill rate + expenses
+            <span v-if="autoCostPreview != null"> — ${{ autoCostPreview }}</span>.
+          </p>
+          <p
+            v-else
+            class="text-xs text-white/60 mt-1"
+          >
+            Enter total cost (base + expenses).
+          </p>
+        </div>
+
+        <div>
+          <label class="block text-white/70 text-sm">Airfare</label>
+          <input v-model.number="task.expenses.airfare" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Hotel</label>
+          <input v-model.number="task.expenses.hotel" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Rental Car</label>
+          <input v-model.number="task.expenses.rentalCar" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Food</label>
+          <input v-model.number="task.expenses.food" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Mileage</label>
+          <input v-model.number="task.expenses.mileage" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Labor</label>
+          <input v-model.number="task.expenses.labor" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Other 1</label>
+          <input v-model.number="task.expenses.other1" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Other 2</label>
+          <input v-model.number="task.expenses.other2" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        </div>
+        <div class="col-span-2 flex justify-end">
+          <div class="text-sm text-white/70">
+            Expenses total: <span class="text-white">${{ expensesTotal.toFixed(2) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else
+        class="space-y-3"
+      >
+        <label class="block text-white/70 text-sm">Linked Activity</label>
+        <div class="rounded bg-white/10 border border-white/15 px-3 py-2 text-sm text-white/70">
+          Bill rate is a per-user preference used for auto cost calculations.
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="block text-white/70 text-sm">Bill rate ($/hour)</label>
+            <input
+              v-model.number="billRateInput"
+              type="number"
+              min="0"
+              step="1"
+              class="w-full px-3 py-2 rounded bg-white/10"
+              @blur="saveBillRate"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-white/70 text-sm">Tags</label>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <span
+              v-for="t in task.tags"
+              :key="t"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+            >
+              <span>{{ t }}</span>
+              <button
+                type="button"
+                class="text-white/60 hover:text-white"
+                aria-label="Remove tag"
+                @click="removeTag(t)"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+          <div class="flex items-center gap-2 mt-2">
+            <input
+              v-model="tagInput"
+              placeholder="Add a tag and press Enter…"
+              class="w-full px-3 py-2 rounded bg-white/10"
+              @keydown.enter.prevent="addTagFromInput"
+              @keydown.,.prevent="addTagFromInput"
+            >
+            <button
+              type="button"
+              class="h-10 px-3 rounded bg-white/6 hover:bg-white/10 border border-white/15 text-white/80 text-sm"
+              @click="addTagFromInput"
+            >
+              Add
+            </button>
+          </div>
+          <p class="text-xs text-white/60 mt-1">
+            Tip: use commas or Enter to add multiple tags.
+          </p>
+        </div>
       </div>
 
       <div class="flex justify-end gap-2 mt-3">
@@ -80,25 +300,207 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { http } from '../../utils/http'
 import { useProjectStore } from '../../stores/project'
+import { useActivitiesStore } from '../../stores/activities'
+import { useUiStore } from '../../stores/ui'
 
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
+const activitiesStore = useActivitiesStore()
+const ui = useUiStore()
 const id = route.params.id
 const modeLabel = id === 'new' ? 'New Task' : 'Edit Task'
-const task = ref({ name: '', wbs: '', description: '', notes: '', start: '', end: '', projectId: projectStore.currentProjectId, assignee: '', percentComplete: 0, cost: 0, duration: undefined })
+const task = ref({
+  name: '',
+  wbs: '',
+  description: '',
+  notes: '',
+  start: '',
+  end: '',
+  projectId: projectStore.currentProjectId,
+  activityId: null,
+  assignee: '',
+  percentComplete: 0,
+  status: 'Not Started',
+  cost: 0,
+  duration: undefined,
+  autoCost: true,
+  expenses: { airfare: 0, hotel: 0, rentalCar: 0, food: 0, mileage: 0, labor: 0, other1: 0, other2: 0 },
+  tags: []
+})
 const saving = ref(false)
+const linkedActivityName = ref('')
+const activeTab = ref('info') // info | expenses | settings
+const billRateInput = ref(ui.tasksBillRate || 0)
+const tagInput = ref('')
+
+function numberOrZero(v) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+const defaultExpenses = Object.freeze({
+  airfare: 0,
+  hotel: 0,
+  rentalCar: 0,
+  food: 0,
+  mileage: 0,
+  labor: 0,
+  other1: 0,
+  other2: 0
+})
+
+function normalizeExpenses(expenses) {
+  const e = (expenses && typeof expenses === 'object') ? expenses : {}
+  return {
+    airfare: numberOrZero(e.airfare),
+    hotel: numberOrZero(e.hotel),
+    rentalCar: numberOrZero(e.rentalCar),
+    food: numberOrZero(e.food),
+    mileage: numberOrZero(e.mileage),
+    labor: numberOrZero(e.labor),
+    other1: numberOrZero(e.other1),
+    other2: numberOrZero(e.other2)
+  }
+}
+
+const expensesTotal = computed(() => {
+  const e = task.value && task.value.expenses ? task.value.expenses : {}
+  return [
+    e.airfare,
+    e.hotel,
+    e.rentalCar,
+    e.food,
+    e.mileage,
+    e.labor,
+    e.other1,
+    e.other2
+  ].map(numberOrZero).reduce((a, b) => a + b, 0)
+})
+
+const billRate = computed(() => {
+  const v = Number(ui.tasksBillRate)
+  return Number.isFinite(v) ? v : 0
+})
+
+const manualCost = computed({
+  get() {
+    return task.value.autoCost === false
+  },
+  set(val) {
+    const manual = Boolean(val)
+    task.value.autoCost = manual ? false : true
+    if (!manual) {
+      const autoVal = autoCostNumber.value
+      if (Number.isFinite(autoVal)) task.value.cost = autoVal
+    }
+  }
+})
+
+const autoCostNumber = computed(() => {
+  if (manualCost.value) return null
+  const rate = billRate.value
+  const duration = Number(task.value.duration)
+  if (!Number.isFinite(rate) || !Number.isFinite(duration)) return null
+  const calc = (duration * rate) + expensesTotal.value
+  if (!Number.isFinite(calc)) return null
+  return Number(calc.toFixed(2))
+})
+
+const autoCostPreview = computed(() => {
+  if (manualCost.value) return null
+  const val = autoCostNumber.value
+  if (!Number.isFinite(val)) return null
+  return val.toFixed(2)
+})
+
+const costInputValue = computed(() => {
+  if (manualCost.value) {
+    const manualVal = task.value.cost
+    if (manualVal === null || manualVal === undefined || manualVal === '') return ''
+    if (typeof manualVal === 'number') return manualVal
+    const numeric = Number(manualVal)
+    return Number.isFinite(numeric) ? numeric : String(manualVal)
+  }
+  const autoVal = autoCostNumber.value
+  if (Number.isFinite(autoVal)) return autoVal.toFixed(2)
+  const fallback = task.value.cost
+  if (fallback === null || fallback === undefined || fallback === '') return ''
+  if (typeof fallback === 'number') return fallback
+  const numeric = Number(fallback)
+  return Number.isFinite(numeric) ? numeric : String(fallback)
+})
+
+function onCostInput(e) {
+  if (!manualCost.value) return
+  const raw = e.target.value
+  if (raw === '') {
+    task.value.cost = null
+    return
+  }
+  const val = Number(raw)
+  task.value.cost = Number.isFinite(val) ? val : task.value.cost
+}
+
+function saveBillRate() {
+  ui.setTasksBillRate(billRateInput.value)
+  try { ui.showInfo('Bill rate updated') } catch (e) { /* ignore */ }
+}
+
+function normalizeTags(tags) {
+  const arr = Array.isArray(tags) ? tags : []
+  const out = []
+  const seen = new Set()
+  for (const raw of arr) {
+    const t = String(raw || '').trim()
+    if (!t) continue
+    const key = t.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(t)
+  }
+  return out
+}
+
+function addTagFromInput() {
+  const raw = String(tagInput.value || '')
+  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length === 0) return
+  task.value.tags = normalizeTags([...(task.value.tags || []), ...parts])
+  tagInput.value = ''
+}
+
+function removeTag(tag) {
+  const key = String(tag || '').trim().toLowerCase()
+  task.value.tags = (task.value.tags || []).filter(t => String(t || '').trim().toLowerCase() !== key)
+}
 
 async function load() {
   if (!id || id === 'new') return
   try {
     const r = await http.get(`/api/tasks/${id}`)
     Object.assign(task.value, r.data)
+    if (typeof task.value.autoCost !== 'boolean') task.value.autoCost = true
+    task.value.expenses = normalizeExpenses(task.value.expenses || defaultExpenses)
+    task.value.tags = normalizeTags(task.value.tags)
+    billRateInput.value = Number(ui.tasksBillRate) || 0
+    // hydrate linked activity title for display
+    try {
+      const pid = String(task.value.projectId || projectStore.currentProjectId || '')
+      if (pid) await activitiesStore.fetchActivities(pid).catch(() => {})
+      const aid = task.value && task.value.activityId ? String(task.value.activityId) : ''
+      if (aid) {
+        const hit = (activitiesStore.activities || []).find((a) => String(a?.id || a?._id || '') === aid)
+        linkedActivityName.value = hit && hit.name ? String(hit.name) : ''
+      } else {
+        linkedActivityName.value = ''
+      }
+    } catch (e) { linkedActivityName.value = '' }
   } catch (e) { /* ignore */ }
 }
 
@@ -107,6 +509,12 @@ async function save() {
   try {
     // ensure projectId
     if (!task.value.projectId && projectStore.currentProjectId) task.value.projectId = projectStore.currentProjectId
+    task.value.expenses = normalizeExpenses(task.value.expenses || defaultExpenses)
+    task.value.tags = normalizeTags(task.value.tags)
+    if (task.value.autoCost !== false) {
+      const autoVal = autoCostNumber.value
+      task.value.cost = Number.isFinite(autoVal) ? autoVal : task.value.cost
+    }
     if (id === 'new') {
       await http.post('/api/tasks', task.value)
       router.push({ name: 'tasks' })

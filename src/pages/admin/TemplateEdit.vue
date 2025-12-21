@@ -46,7 +46,7 @@
           Save
         </button>
         <router-link
-          to="/admin/templates"
+          :to="{ name: 'admin-templates' }"
           class="ml-2 px-4 py-2 rounded bg-gray-700"
         >
           Back
