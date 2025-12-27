@@ -472,7 +472,7 @@
     </div>
     <div
       v-else
-      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-x-auto min-w-0"
+      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl overflow-x-auto min-w-0"
     >
       <template v-if="!projectStore.currentProjectId">
         <div class="p-6 text-center text-white/80">

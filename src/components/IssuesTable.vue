@@ -135,7 +135,7 @@ const props = defineProps<{
 }>()
 
 // Emit unlink event when the optional Unlink button is used
-const emit = defineEmits<{
+defineEmits<{
   (e: 'unlink', issue: IssueLite): void
 }>()
 

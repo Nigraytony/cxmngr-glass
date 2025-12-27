@@ -12,10 +12,38 @@ const fs = require('fs');
 const path = require('path');
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
+const { rateLimit } = require('../middleware/rateLimit');
+const { requireNotDisabled } = require('../middleware/killSwitch');
+const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
+const { tryDeleteLocalUpload } = require('../utils/uploads')
+const { normalizeLogEvent } = require('../utils/logEvent')
+
+// Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
+// Note: some routes use `:id` for project-scoped entities (activityId); those are ObjectIds.
+router.param('id', (req, res, next, value) => {
+  if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' })
+  return next()
+})
+
+function isProdEnv() {
+  return String(process.env.NODE_ENV || '').toLowerCase() === 'production'
+}
+
+function safeErrorMessage(err, fallback) {
+  const fb = fallback || 'Server error'
+  if (isProdEnv()) return fb
+  const msg = err && (err.message || err.error || (typeof err === 'string' ? err : null))
+  return msg ? String(msg) : fb
+}
+
+function sendServerError(res, err, fallback) {
+  return res.status(500).send({ error: safeErrorMessage(err, fallback) })
+}
 
 // multer memory storage for small images
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadLimiter = rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'uploads' })
 
 // For routes where :id is an Activity id (not a project id), populate projectId
 // so plan/subscription guards can evaluate the correct project.
@@ -23,6 +51,7 @@ async function loadActivityProjectId(req, res, next) {
   try {
     const activityId = String(req.params.id || '').trim()
     if (!activityId) return res.status(400).send({ error: 'Activity id is required' })
+    if (!mongoose.Types.ObjectId.isValid(activityId)) return res.status(400).send({ error: 'Invalid activity id' })
     const activity = await Activity.findById(activityId).select('projectId').lean()
     if (!activity) return res.status(404).send({ error: 'Activity not found' })
     // Prefer query/body, but set both for compatibility with various guards.
@@ -31,33 +60,65 @@ async function loadActivityProjectId(req, res, next) {
     if (!req.body.projectId) req.body.projectId = activity.projectId
     return next()
   } catch (e) {
-    return res.status(500).send({ error: e?.message || String(e) })
+    return sendServerError(res, e, 'Failed to resolve activity project')
   }
 }
 
-function validatePhotosArray(photos) {
-  if (!Array.isArray(photos)) return true;
-  if (photos.length > 16) return false;
-  for (const p of photos) {
-    if (!p.data || !p.size) return false;
-    if (p.size > 250 * 1024) return false; // 250 KB
+async function requireActivitiesRead(req, res, next) {
+  try {
+    await runMiddleware(req, res, requirePermission('activities.read', { projectParam: 'projectId' }))
+    return next()
+  } catch (e) {
+    return sendServerError(res, e, 'Failed to authorize activities read')
   }
-  return true;
+}
+
+function pickActivityPayload(source) {
+  const body = source || {}
+  const out = {}
+  const allowed = [
+    'name',
+    'descriptionHtml',
+    'type',
+    'startDate',
+    'endDate',
+    'projectId',
+    'reviewer',
+    'location',
+    'spaceId',
+    'systems',
+    'settings',
+    'metadata',
+    'labels',
+  ]
+  for (const k of allowed) {
+    if (body[k] !== undefined) out[k] = body[k]
+  }
+  return out
 }
 
 // Create a new activity
-router.post('/', auth, requirePermission('activities.create', { projectParam: 'projectId' }), requireActiveProject, requireFeature('activities'), async (req, res) => {
-  console.log('[activity-create] Request body:', JSON.stringify(req.body, null, 2));
+router.post(
+  '/',
+  auth,
+  requireBodyField('projectId'),
+  requireObjectIdBody('projectId'),
+  requirePermission('activities.create', { projectParam: 'projectId' }),
+  requireActiveProject,
+  requireFeature('activities'),
+  async (req, res) => {
   try {
-    // if photos provided, validate count and sizes
-    if (req.body.photos && !validatePhotosArray(req.body.photos)) {
-      console.log('[activity-create] Photos validation failed');
-      return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
-    }
+    const payload = pickActivityPayload(req.body)
+    // Disallow clients from setting heavy media arrays on create; use upload endpoints.
+    delete payload.photos
+    delete payload.attachments
+    delete payload.issues
+    delete payload.comments
+    delete payload.logs
 
     // sanitize descriptionHtml if present
-    if (req.body.descriptionHtml) {
-      req.body.descriptionHtml = sanitizeHtml(req.body.descriptionHtml, {
+    if (payload.descriptionHtml) {
+      payload.descriptionHtml = sanitizeHtml(payload.descriptionHtml, {
         allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img']),
         allowedAttributes: {
           a: ['href', 'name', 'target'],
@@ -66,25 +127,28 @@ router.post('/', auth, requirePermission('activities.create', { projectParam: 'p
       });
     }
 
-    const activity = new Activity(req.body);
+    const activity = new Activity(payload);
     await activity.save();
 
     // Add activity to the corresponding project
     const project = await Project.findById(activity.projectId);
+    if (!project) return res.status(404).send({ error: 'Project not found' })
     project.activities.push(activity._id);
     await project.save();
 
     res.status(201).send(activity);
   } catch (error) {
     console.log('[activity-create] Error creating activity:', error);
-    res.status(400).send(error);
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to create activity' });
   }
 });
 
 // Read all activities (project-scoped, lightweight)
-router.get('/', auth, requireFeature('activities'), async (req, res) => {
+router.get('/', auth, requireFeature('activities'), requirePermission('activities.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
     let filter = {}
     if (projectId) {
       const pid = String(projectId)
@@ -124,13 +188,14 @@ router.get('/', auth, requireFeature('activities'), async (req, res) => {
 
     res.status(200).send(activities)
   } catch (error) {
-    res.status(500).send(error)
+    console.error('[activities] list error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to list activities' })
   }
 });
 
 // Read a single activity by ID
 // Supports light=true to omit heavy photo/attachment payloads, includePhotos=true to force photos
-router.get('/:id', auth, loadActivityProjectId, requireFeature('activities'), async (req, res) => {
+router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), requireActivitiesRead, async (req, res) => {
   try {
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
@@ -152,23 +217,25 @@ router.get('/:id', auth, loadActivityProjectId, requireFeature('activities'), as
     }
     res.status(200).send(activity)
   } catch (error) {
-    res.status(500).send(error)
+    console.error('[activities] get error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load activity' })
   }
 });
 
 // Photos-only endpoint to avoid sending other heavy fields
-router.get('/:id/photos', auth, loadActivityProjectId, requireFeature('activities'), async (req, res) => {
+router.get('/:id/photos', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), requireActivitiesRead, async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id).select('photos').lean()
     if (!activity) return res.status(404).send()
     res.status(200).send(activity.photos || [])
   } catch (error) {
-    res.status(500).send(error)
+    console.error('[activities] photos get error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load photos' })
   }
 })
 
 // Upload photos for an activity (multipart/form-data)
-router.post('/:id/photos', auth, loadActivityProjectId, requireFeature('activities'), upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), uploadLimiter, upload.array('photos', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
@@ -255,7 +322,7 @@ function getBackendBaseUrl(req) {
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
 // Upload attachments (documents) for an activity
-router.post('/:id/attachments', auth, loadActivityProjectId, requireFeature('activities'), uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), uploadLimiter, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
@@ -323,10 +390,9 @@ router.post('/:id/attachments', auth, loadActivityProjectId, requireFeature('act
 });
 
 // Remove an attachment by index; best-effort delete local file if under uploads
-router.delete('/:id/attachments/:index', auth, async (req, res) => {
+router.delete('/:id/attachments/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
     // attach projectId for RBAC/subscription checks
@@ -342,16 +408,7 @@ router.delete('/:id/attachments/:index', auth, async (req, res) => {
     activity.attachments = arr;
     await activity.save();
 
-    // Try delete local file
-    if (removed && removed.url && removed.url.includes('/uploads/activities/')) {
-      try {
-        const urlPath = removed.url.split('/uploads/')[1];
-        if (urlPath) {
-          const full = path.join(__dirname, '..', 'uploads', urlPath);
-          if (fs.existsSync(full)) fs.unlinkSync(full);
-        }
-      } catch (_) {}
-    }
+    tryDeleteLocalUpload({ url: removed && removed.url, prefix: 'activities' })
 
     res.status(200).send(activity);
   } catch (error) {
@@ -361,10 +418,9 @@ router.delete('/:id/attachments/:index', auth, async (req, res) => {
 });
 
 // Remove a single photo by index (avoids sending large base64 payloads)
-router.delete('/:id/photos/:index', auth, async (req, res) => {
+router.delete('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const activity = await Activity.findById(req.params.id)
     if (!activity) return res.status(404).send({ error: 'Activity not found' })
     // attach projectId for RBAC/subscription checks
@@ -387,10 +443,9 @@ router.delete('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Update a single photo's metadata (e.g., caption) by index
-router.patch('/:id/photos/:index', auth, async (req, res) => {
+router.patch('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const activity = await Activity.findById(req.params.id)
     if (!activity) return res.status(404).send({ error: 'Activity not found' })
     // attach projectId for RBAC/subscription checks
@@ -416,14 +471,19 @@ router.patch('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Update an activity by ID
-router.patch('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
-    if (req.body.photos && !validatePhotosArray(req.body.photos)) {
-      return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
-    }
+    const incoming = pickActivityPayload(req.body)
+    // Never allow changing ownership or heavy arrays via generic patch
+    delete incoming.projectId
+    delete incoming.photos
+    delete incoming.attachments
+    delete incoming.issues
+    delete incoming.comments
+    delete incoming.logs
 
-    if (req.body.descriptionHtml) {
-      req.body.descriptionHtml = sanitizeHtml(req.body.descriptionHtml, {
+    if (incoming.descriptionHtml) {
+      incoming.descriptionHtml = sanitizeHtml(incoming.descriptionHtml, {
         allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img']),
         allowedAttributes: {
           a: ['href', 'name', 'target'],
@@ -442,16 +502,17 @@ router.patch('/:id', auth, async (req, res) => {
     await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
     await runMiddleware(req, res, requireActiveProject);
 
-    const updated = await Activity.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updated = await Activity.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
     if (!updated) return res.status(404).send();
     res.status(200).send(updated);
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[activities] update error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update activity' });
   }
 });
 
 // Delete an activity by ID
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id);
     if (!activity) return res.status(404).send();
@@ -475,12 +536,13 @@ router.delete('/:id', auth, async (req, res) => {
 
     res.status(200).send(activity);
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[activities] delete error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to delete activity' });
   }
 });
 
 // Generate PDF report for an activity
-router.get('/:id/report', auth, async (req, res) => {
+router.get('/:id/report', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), requireActivitiesRead, async (req, res) => {
   try {
     const activity = await Activity.findById(req.params.id).populate('issues');
     if (!activity) return res.status(404).send({ error: 'Activity not found' });
@@ -587,7 +649,7 @@ router.get('/:id/report', auth, async (req, res) => {
 
 // Activity logs: append and read
 // GET /api/activities/:id/logs?limit=200&type=section_created
-router.get('/:id/logs', auth, async (req, res) => {
+router.get('/:id/logs', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), requireActivitiesRead, async (req, res) => {
   try {
     const id = req.params.id
     const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
@@ -610,18 +672,14 @@ router.get('/:id/logs', auth, async (req, res) => {
 })
 
 // POST /api/activities/:id/logs -> append one log event
-router.post('/:id/logs', auth, async (req, res) => {
+router.post('/:id/logs', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
+    await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }))
+    await runMiddleware(req, res, requireActiveProject)
     const id = req.params.id
-    const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
-    if (!event.type) return res.status(400).send({ error: 'type is required' })
-    event.ts = event.ts ? new Date(event.ts) : new Date()
-    if (!event.by && req.user) {
-      try {
-        const u = await require('../models/user').findById(req.user && (req.user._id || req.user.id)).lean()
-        if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
-      } catch {}
-    }
+    const byFallback = req.user ? ([req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email || String(req.user._id || req.user.id)) : null
+    const event = normalizeLogEvent(req.body, { byFallback })
+    if (!event) return res.status(400).send({ error: 'type is required' })
     const updated = await Activity.findByIdAndUpdate(
       id,
       { $push: { logs: { $each: [event], $slice: -5000 } }, $set: { updatedAt: new Date() } },

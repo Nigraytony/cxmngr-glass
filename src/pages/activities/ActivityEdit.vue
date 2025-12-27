@@ -256,8 +256,8 @@
               </div>
             </div>
 
-	            <div>
-	              <label class="block text-sm text-white/70">Type</label>
+            <div>
+              <label class="block text-sm text-white/70">Type</label>
               <div class="relative">
                 <button
                   type="button"
@@ -301,44 +301,47 @@
                     >
                       {{ type }}
                     </button>
-	                </div>
-	              </div>
-	            </div>
+                  </div>
+                </div>
+              </div>
 
-	            <div
+              <div
                 v-if="linkedTasks.length > 0"
                 class="md:col-span-1 mt-3"
               >
-	              <label class="block text-sm text-white/70">Linked Tasks</label>
-	              <div class="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/80">
-	                <div
-	                  v-if="linkedTasksLoading"
-	                  class="text-white/60"
-	                >
-	                  Loading…
-	                </div>
-	                <div
-	                  v-else
-	                  class="space-y-1"
-	                >
-	                  <div
-	                    v-for="t in linkedTasks"
-	                    :key="t._id"
-	                    class="flex items-center justify-between gap-2"
-	                  >
-	                    <div class="min-w-0 truncate">
-	                      <span v-if="t.wbs" class="text-white/60">{{ t.wbs }} — </span>{{ t.name }}
-	                    </div>
-	                    <RouterLink
-	                      :to="{ name: 'task-edit', params: { id: t._id } }"
-	                      class="text-xs text-white/70 hover:text-white underline shrink-0"
-	                    >
-	                      Open
-	                    </RouterLink>
-	                  </div>
-	                </div>
-	              </div>
-	            </div>
+                <label class="block text-sm text-white/70">Linked Tasks</label>
+                <div class="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/80">
+                  <div
+                    v-if="linkedTasksLoading"
+                    class="text-white/60"
+                  >
+                    Loading…
+                  </div>
+                  <div
+                    v-else
+                    class="space-y-1"
+                  >
+                    <div
+                      v-for="t in linkedTasks"
+                      :key="t._id"
+                      class="flex items-center justify-between gap-2"
+                    >
+                      <div class="min-w-0 truncate">
+                        <span
+                          v-if="t.wbs"
+                          class="text-white/60"
+                        >{{ t.wbs }} — </span>{{ t.name }}
+                      </div>
+                      <RouterLink
+                        :to="{ name: 'task-edit', params: { id: t._id } }"
+                        class="text-xs text-white/70 hover:text-white underline shrink-0"
+                      >
+                        Open
+                      </RouterLink>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="space-y-1">
@@ -754,8 +757,8 @@
                     </div>
                   </div>
                 </div>
+              </div>
             </div>
-          </div>
             <IssuesTable
               :issues="issuesForActivity"
               :show-unlink="true"
@@ -1787,7 +1790,10 @@
           </button>
         </div>
 
-        <div v-if="reportSettingsTab === 'general'" class="space-y-4">
+        <div
+          v-if="reportSettingsTab === 'general'"
+          class="space-y-4"
+        >
           <div class="grid grid-cols-2 gap-3">
             <label class="inline-flex items-center gap-2">
               <input
@@ -1873,7 +1879,10 @@
           </div>
         </div>
 
-        <div v-else class="space-y-4">
+        <div
+          v-else
+          class="space-y-4"
+        >
           <div class="grid grid-cols-1 gap-3">
             <div>
               <label class="block text-white/80 mb-1">Cover title</label>
@@ -1923,7 +1932,10 @@
                   Remove
                 </button>
               </div>
-              <div v-if="activityReport.coverJumbotronDataUrl" class="mt-3">
+              <div
+                v-if="activityReport.coverJumbotronDataUrl"
+                class="mt-3"
+              >
                 <img
                   :src="activityReport.coverJumbotronDataUrl"
                   class="max-h-40 w-full object-contain rounded-md border border-white/10 bg-black/10"
@@ -1963,9 +1975,9 @@
 
 <script setup lang="ts">
 /* eslint-disable no-mixed-spaces-and-tabs */
-	import { onMounted, reactive, computed, ref, watch } from 'vue'
-	import { jsPDF } from 'jspdf'
-	import { drawBrandedFooter, drawBrandedHeader } from '../../utils/pdfBranding'
+  import { onMounted, reactive, computed, ref, watch } from 'vue'
+  import { jsPDF } from 'jspdf'
+  import { drawBrandedFooter, drawBrandedHeader } from '../../utils/pdfBranding'
 // Ensure html2canvas is available for jsPDF html() rendering
 import html2canvas from 'html2canvas'
 ;(window as any).html2canvas = (window as any).html2canvas || html2canvas
@@ -2884,13 +2896,6 @@ async function loadImage(src?: string): Promise<LoadedImage> {
     return { dataUrl: dataUrl, format: fmt || 'PNG', width, height }
   } catch (e) { return {} }
 }
-function scaleToHeight(img: LoadedImage, targetH: number, fallbackW: number) {
-  const h = img?.height || targetH
-  const w = img?.width || fallbackW || targetH
-  if (!h || !w) return { w: fallbackW || targetH, h: targetH }
-  const sc = targetH / h
-  return { w: w * sc, h: targetH }
-}
 function htmlToLines(html: string): string[] {
   // Basic HTML -> lines preserving paragraphs and list items
   const cleaned = html.replace(/\r/gi, '')
@@ -2927,24 +2932,24 @@ async function downloadActivityPdf() {
     // Helvetica is default; SourceSansPro removed
     setZeroCharSpace(doc)
     setBodyFont(doc, 'normal')
-	    const margin = 12
-	    const pageWidth = doc.internal.pageSize.getWidth()
-	    const pageHeight = doc.internal.pageSize.getHeight()
-	    const bottomLimit = pageHeight - 26
-	    const pageDate = new Date().toLocaleDateString()
-	    let pageNo = 1
-	    let y = margin
-	    let pageHasBodyContent = false
-	    const markBodyContent = () => { pageHasBodyContent = true }
-	    // Resolve project logos (reuse current project store)
-	    const project: any = projectStore.currentProject || {}
-	    const clientImg = await loadImage((project as any)?.logo)
-	    const cxaImg = await loadImage((project as any)?.commissioning_agent?.logo)
-	    // Footer branding: icon + "cxma"
-	    let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
-	    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
-	    if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
-	    const drawFooter = () => {
+      const margin = 12
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const bottomLimit = pageHeight - 26
+      const pageDate = new Date().toLocaleDateString()
+      let pageNo = 1
+      let y = margin
+      let pageHasBodyContent = false
+      const markBodyContent = () => { pageHasBodyContent = true }
+      // Resolve project logos (reuse current project store)
+      const project: any = projectStore.currentProject || {}
+      const clientImg = await loadImage((project as any)?.logo)
+      const cxaImg = await loadImage((project as any)?.commissioning_agent?.logo)
+      // Footer branding: icon + "cxma"
+      let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
+      if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
+      if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
+      const drawFooter = () => {
       const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
       const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
       drawBrandedFooter(doc, {
@@ -2957,41 +2962,41 @@ async function downloadActivityPdf() {
         leftLabel: `${form.name || 'Activity'} Report`,
         setBold: () => setBodyFont(doc, 'bold'),
         setNormal: () => setBodyFont(doc, 'normal'),
-	      })
-	      doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-	    }
-	    const drawHeader = () => {
-	      const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
-	      const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-	      const res = drawBrandedHeader(doc, {
-	        margin,
-	        pageWidth,
-	        title: `${form.name || 'Activity'} Report`,
+        })
+        doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
+      }
+      const drawHeader = () => {
+        const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
+        const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
+        const res = drawBrandedHeader(doc, {
+          margin,
+          pageWidth,
+          title: `${form.name || 'Activity'} Report`,
         leftLogo: clientImg,
         rightLogo: cxaImg,
         logoH: 12,
         maxLogoW: 36,
-	        titleFontSize: 20,
-	        setTitleFont: () => setBodyFont(doc, 'bold'),
-	      })
-	      y = res.nextY
-	      doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-	    }
-	    const ensureSpace = (amount: number): boolean => {
-	      if (y + amount > bottomLimit) {
-	        drawFooter()
-	        doc.addPage()
-	        pageNo++
-	        y = margin
-	        pageHasBodyContent = false
-	        drawHeader()
-	        return true
-	      }
-	      return false
-	    }
-	    const sectionGap = (gap = 6) => { ensureSpace(gap); y += gap }
-	    // Do not include the standard report header on the cover page.
-	    if (!activityReport.value.include.coverPage) drawHeader()
+          titleFontSize: 20,
+          setTitleFont: () => setBodyFont(doc, 'bold'),
+        })
+        y = res.nextY
+        doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
+      }
+      const ensureSpace = (amount: number): boolean => {
+        if (y + amount > bottomLimit) {
+          drawFooter()
+          doc.addPage()
+          pageNo++
+          y = margin
+          pageHasBodyContent = false
+          drawHeader()
+          return true
+        }
+        return false
+      }
+      const sectionGap = (gap = 6) => { ensureSpace(gap); y += gap }
+      // Do not include the standard report header on the cover page.
+      if (!activityReport.value.include.coverPage) drawHeader()
 
     // Optional cover + TOC pages (inserted before main content)
     if (activityReport.value.include.coverPage) {
@@ -3005,25 +3010,25 @@ async function downloadActivityPdf() {
       const coverTitle = String(activityReport.value.coverTitle || '').trim()
       const coverSubtitle = String(activityReport.value.coverSubtitle || '').trim()
       const coverByLine = String(activityReport.value.coverByLine || '').trim()
-	      const coverJumboSrc = String(activityReport.value.coverJumbotronDataUrl || '').trim()
+        const coverJumboSrc = String(activityReport.value.coverJumbotronDataUrl || '').trim()
 
-	      // Start cover content just below logos.
-	      let coverY = y
-	      if (coverTitle) {
-	        setBodyFont(doc, 'bold')
-	        doc.setFontSize(22)
-	        doc.text(coverTitle, pageWidth / 2, coverY + 10, { align: 'center' })
-	        coverY += 14
-	      }
-	      if (coverSubtitle) {
-	        setBodyFont(doc, 'bold')
-	        doc.setFontSize(18)
-	        doc.text(coverSubtitle, pageWidth / 2, coverY + 10, { align: 'center' })
-	        coverY += 12
-	      }
-	      if (coverTitle || coverSubtitle) markBodyContent()
-	      setBodyFont(doc, 'normal')
-	      doc.setFontSize(12)
+        // Start cover content just below logos.
+        let coverY = y
+        if (coverTitle) {
+          setBodyFont(doc, 'bold')
+          doc.setFontSize(22)
+          doc.text(coverTitle, pageWidth / 2, coverY + 10, { align: 'center' })
+          coverY += 14
+        }
+        if (coverSubtitle) {
+          setBodyFont(doc, 'bold')
+          doc.setFontSize(18)
+          doc.text(coverSubtitle, pageWidth / 2, coverY + 10, { align: 'center' })
+          coverY += 12
+        }
+        if (coverTitle || coverSubtitle) markBodyContent()
+        setBodyFont(doc, 'normal')
+        doc.setFontSize(12)
 
       const meta: Array<[string, string]> = [
         ['Project', projectLabel],
@@ -3035,118 +3040,118 @@ async function downloadActivityPdf() {
 
       const lineH = 7
       const metaBlockH = meta.length * lineH
-	      const metaStartY = Math.max(coverY + 18, bottomLimit - metaBlockH - 10)
+        const metaStartY = Math.max(coverY + 18, bottomLimit - metaBlockH - 10)
 
-	      // Jumbotron photo in the middle of the page (optional)
-	      if (coverJumboSrc) {
-	        const boxX = margin
-	        const boxW = pageWidth - margin * 2
-	        const boxTop = coverY + 6
-	        const boxBottom = metaStartY - 8
-	        const boxH = boxBottom - boxTop
-	        if (boxH > 20) {
-	          const img = await loadImage(coverJumboSrc)
-	          if (img?.dataUrl) {
+        // Jumbotron photo in the middle of the page (optional)
+        if (coverJumboSrc) {
+          const boxX = margin
+          const boxW = pageWidth - margin * 2
+          const boxTop = coverY + 6
+          const boxBottom = metaStartY - 8
+          const boxH = boxBottom - boxTop
+          if (boxH > 20) {
+            const img = await loadImage(coverJumboSrc)
+            if (img?.dataUrl) {
             const iw = Number((img as any).width || 0)
             const ih = Number((img as any).height || 0)
             const aspect = (iw > 0 && ih > 0) ? (iw / ih) : 1.6
             let drawW = boxW
             let drawH = drawW / aspect
-	            if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect }
-	            const dx = boxX + (boxW - drawW) / 2
-	            const dy = boxTop + (boxH - drawH) / 2
-	            try { doc.addImage(img.dataUrl, img.format || 'JPEG', dx, dy, drawW, drawH) } catch (e) { /* ignore */ }
-	            markBodyContent()
-	          }
-	        }
-	      }
+              if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect }
+              const dx = boxX + (boxW - drawW) / 2
+              const dy = boxTop + (boxH - drawH) / 2
+              try { doc.addImage(img.dataUrl, img.format || 'JPEG', dx, dy, drawW, drawH) } catch (e) { /* ignore */ }
+              markBodyContent()
+            }
+          }
+        }
 
-	      let cy = metaStartY
-	      for (const [k, v] of meta) {
-	        doc.setTextColor(100)
-	        doc.text(`${k}:`, margin, cy)
-	        doc.setTextColor(0)
-	        doc.text(String(v || '—'), margin + 26, cy)
-	        markBodyContent()
-	        cy += lineH
-	      }
-	      y = cy + 2
-	      drawFooter()
-	      doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-	    }
+        let cy = metaStartY
+        for (const [k, v] of meta) {
+          doc.setTextColor(100)
+          doc.text(`${k}:`, margin, cy)
+          doc.setTextColor(0)
+          doc.text(String(v || '—'), margin + 26, cy)
+          markBodyContent()
+          cy += lineH
+        }
+        y = cy + 2
+        drawFooter()
+        doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
+      }
 
-	    if (activityReport.value.include.toc) {
-	      const items: string[] = []
-	      if (activityReport.value.include.info) items.push('Info')
-	      if (activityReport.value.include.description) items.push('Description')
-	      if (activityReport.value.include.photos) items.push('Photos')
-	      if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
-	      if (activityReport.value.include.issues) items.push('Issues')
-	      if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
-	      if (activityReport.value.include.attachments) items.push('Attachments')
+      if (activityReport.value.include.toc) {
+        const items: string[] = []
+        if (activityReport.value.include.info) items.push('Info')
+        if (activityReport.value.include.description) items.push('Description')
+        if (activityReport.value.include.photos) items.push('Photos')
+        if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
+        if (activityReport.value.include.issues) items.push('Issues')
+        if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
+        if (activityReport.value.include.attachments) items.push('Attachments')
 
-	      ensureSpace(14)
-	      setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
-	      markBodyContent()
-	      setBodyFont(doc, 'normal'); doc.setFontSize(12)
-	      for (const it of items) {
-	        ensureSpace(7)
-	        doc.text(`• ${it}`, margin + 2, y)
-	        markBodyContent()
-	        y += 7
+        ensureSpace(14)
+        setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
+        markBodyContent()
+        setBodyFont(doc, 'normal'); doc.setFontSize(12)
+        for (const it of items) {
+          ensureSpace(7)
+          doc.text(`• ${it}`, margin + 2, y)
+          markBodyContent()
+          y += 7
 
-	        // For "Equipment Reports", include sub-bullets for each equipment in current order.
-	        if (it === 'Equipment Reports' && selectedEquip.value.length) {
-	          const eqItems = [...(selectedEquip.value || [])]
-	          for (const eq of eqItems) {
-	            const tag = String(eq?.tag || '').trim()
-	            const title = String(eq?.title || '').trim()
-	            const label = [tag, title].filter(Boolean).join(' — ') || 'Equipment'
-	            ensureSpace(6)
-	            doc.text(`- ${label}`, margin + 8, y)
-	            markBodyContent()
-	            y += 6
-	          }
-	          y += 2
-	        }
-	      }
-	      y += 2
-	      drawFooter()
-	      doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-	    }
+          // For "Equipment Reports", include sub-bullets for each equipment in current order.
+          if (it === 'Equipment Reports' && selectedEquip.value.length) {
+            const eqItems = [...(selectedEquip.value || [])]
+            for (const eq of eqItems) {
+              const tag = String(eq?.tag || '').trim()
+              const title = String(eq?.title || '').trim()
+              const label = [tag, title].filter(Boolean).join(' — ') || 'Equipment'
+              ensureSpace(6)
+              doc.text(`- ${label}`, margin + 8, y)
+              markBodyContent()
+              y += 6
+            }
+            y += 2
+          }
+        }
+        y += 2
+        drawFooter()
+        doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
+      }
 
-	    // Info
-	    if (activityReport.value.include.info) {
-	      setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(12)
-	      markBodyContent()
-	      const projectName = String((projectStore.currentProject as any)?.name || '')
-	      const projectLabel = projectName || String(form.projectId || '')
-	      const info: Array<[string,string]> = [
-	        ['Type', form.type],
-	        ['Start', form.startDate],
-	        ['End', form.endDate],
+      // Info
+      if (activityReport.value.include.info) {
+        setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(12)
+        markBodyContent()
+        const projectName = String((projectStore.currentProject as any)?.name || '')
+        const projectLabel = projectName || String(form.projectId || '')
+        const info: Array<[string,string]> = [
+          ['Type', form.type],
+          ['Start', form.startDate],
+          ['End', form.endDate],
         ['Location', form.location],
-	        ['Project', projectLabel]
-	      ]
-	      const colW = (pageWidth - margin*2) / 2
-	      let i = 0
-	      for (const [label, value] of info) {
-	        const col = i % 2
-	        const row = Math.floor(i / 2)
-	        const x = margin + col * colW
-	        const yy = y + row * 8
-	        ensureSpace(11)
-	        doc.setTextColor(100)
-	        doc.text(label + ':', x, yy)
-	        doc.setTextColor(0)
-	        const lines = doc.splitTextToSize(String(value || '—'), colW - 24) as string[]
-	        doc.text(lines, x + 24, yy)
-	        markBodyContent()
-	        i++
-	      }
-	      const rows = Math.ceil(info.length / 2)
-	      y += rows * 8 + 2
-	    }
+          ['Project', projectLabel]
+        ]
+        const colW = (pageWidth - margin*2) / 2
+        let i = 0
+        for (const [label, value] of info) {
+          const col = i % 2
+          const row = Math.floor(i / 2)
+          const x = margin + col * colW
+          const yy = y + row * 8
+          ensureSpace(11)
+          doc.setTextColor(100)
+          doc.text(label + ':', x, yy)
+          doc.setTextColor(0)
+          const lines = doc.splitTextToSize(String(value || '—'), colW - 24) as string[]
+          doc.text(lines, x + 24, yy)
+          markBodyContent()
+          i++
+        }
+        const rows = Math.ceil(info.length / 2)
+        y += rows * 8 + 2
+      }
     // Description (rich HTML rendering)
     if (activityReport.value.include.description && form.descriptionHtml) {
       // Render description content without the "Description" label
@@ -3173,10 +3178,10 @@ async function downloadActivityPdf() {
       const mmPerPx = 1 / pxPerMm
       const targetWidthMm = pageWidth - margin*2
       const targetWidthPx = Math.round(targetWidthMm * pxPerMm)
-	      try {
-	        // Render with html2canvas and paginate manually for reliable output
-	        const canvas = await (window as any).html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
-	        const scale = targetWidthPx / canvas.width
+        try {
+          // Render with html2canvas and paginate manually for reliable output
+          const canvas = await (window as any).html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+          const scale = targetWidthPx / canvas.width
         // html2canvas can include a large amount of trailing whitespace; trim it to avoid
         // generating an extra "blank" page at the end of the Description section.
         const trimTrailingWhitespace = (srcCanvas: HTMLCanvasElement): number => {
@@ -3260,90 +3265,90 @@ async function downloadActivityPdf() {
                 return Math.max(1, cutLen)
               }
             }
-	        } catch (_) { /* ignore */ }
-	        return desiredLenPx
-	      }
-	      while (offsetPx < contentHeightPx - 1) {
-	        const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
-	        // If we don't have enough vertical space for a reasonable slice, advance to next page
-	        // to avoid rounding/scale artifacts that can clip the last line.
-	        if (availableMm < 6) {
-	          drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-	          continue
-	        }
-	          const availableTargetPx = Math.max(10, Math.floor(availableMm * pxPerMm))
-	          // Pick the segment height in source pixels such that after scaling it stays
-	          // strictly within the available target height (avoid rounding up causing clipping).
-	          const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
-	          const desiredSrcPx = Math.min(maxSrcPx, contentHeightPx - offsetPx)
+          } catch (_) { /* ignore */ }
+          return desiredLenPx
+        }
+        while (offsetPx < contentHeightPx - 1) {
+          const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
+          // If we don't have enough vertical space for a reasonable slice, advance to next page
+          // to avoid rounding/scale artifacts that can clip the last line.
+          if (availableMm < 6) {
+            drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
+            continue
+          }
+            const availableTargetPx = Math.max(10, Math.floor(availableMm * pxPerMm))
+            // Pick the segment height in source pixels such that after scaling it stays
+            // strictly within the available target height (avoid rounding up causing clipping).
+            const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
+            const desiredSrcPx = Math.min(maxSrcPx, contentHeightPx - offsetPx)
           const segmentSrcPx = findWhitespaceCut(canvas, offsetPx, desiredSrcPx)
           // Create a segment canvas to crop
-	          const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
-	          const segCtx = seg.getContext('2d')!
-	          segCtx.fillStyle = '#ffffff'; segCtx.fillRect(0,0,seg.width,seg.height)
-	          segCtx.drawImage(canvas, 0, offsetPx, canvas.width, segmentSrcPx, 0, 0, seg.width, seg.height)
-	          const segUrl = seg.toDataURL('image/png')
-	          const segmentTargetHeightPx = segmentSrcPx * scale
-	          const segmentTargetHeightMm = segmentTargetHeightPx * mmPerPx
-	          try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm); markBodyContent() } catch (e) { /* ignore */ }
-	          y += segmentTargetHeightMm
-	          offsetPx += segmentSrcPx
-	          if (offsetPx < contentHeightPx - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader() }
-	        }
-	        y += 2
-	      } catch (e) {
-	        // Fallback to text if html render fails
-	        setBodyFont(doc, 'normal'); doc.setFontSize(12)
-	        const lines = htmlToLines(form.descriptionHtml)
-	        for (const l of lines) {
-	          const wrapped = doc.splitTextToSize(l, pageWidth - margin * 2) as string[]
-	          for (const w of wrapped) { ensureSpace(7); doc.text(w, margin, y); markBodyContent(); y += 6 }
-	        }
-	      } finally {
-	        document.body.removeChild(container)
-	      }
-	    }
-	    // Photos
-	    if (activityReport.value.include.photos) {
-	      const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
-	      const imgs: Array<{dataUrl:string,format?:ImageFormat}> = []
-	      for (let p=0; p< Math.min(activityReport.value.photoLimit, phs.length); p++) {
-	        const src = phs[p]?.data || phs[p]?.url || phs[p]
-	        const imgRaw = await loadImage(src)
-	        if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
-	      }
-	      if (imgs.length) {
-	        sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
-	        markBodyContent()
-	        const thumbW = (pageWidth - margin * 2 - 8) / 3
-	        const thumbH = thumbW * 0.75
-	        for (let idx = 0; idx < imgs.length; idx++) {
-	          const col = idx % 3
-	          const row = Math.floor(idx / 3)
-	          const x = margin + col * (thumbW + 4)
-	          const yy = y + row * (thumbH + 4)
-	          if (yy + thumbH > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; idx -= (idx % 3); continue }
-	          doc.addImage(imgs[idx].dataUrl, imgs[idx].format || 'JPEG', x, yy, thumbW, thumbH)
-	          markBodyContent()
-	        }
-	        y += Math.ceil(imgs.length / 3) * (thumbH + 4) + 2
-	      }
-	    }
-	    // We intentionally delay issues & attachments so equipment reports can appear before them.
-	    // Close out the main activity doc (without attachments yet).
-	    // If the current page has only header/footer (no body content), it can be an accidental
-	    // trailing blank page created by a page-break. Drop it to avoid an empty separator page
-	    // before the Equipment List.
-	    let skipFinalFooter = false
-	    try {
-		      const totalPages = (doc as any).getNumberOfPages ? (doc as any).getNumberOfPages() : 1
-		      if (totalPages > 1 && !pageHasBodyContent && typeof (doc as any).deletePage === 'function') {
-		        (doc as any).deletePage(totalPages)
-		        skipFinalFooter = true
-		      }
-		    } catch (e) { /* ignore */ }
-	    if (!skipFinalFooter) drawFooter()
-	    let baseBytes = doc.output('arraybuffer') as ArrayBuffer
+            const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
+            const segCtx = seg.getContext('2d')!
+            segCtx.fillStyle = '#ffffff'; segCtx.fillRect(0,0,seg.width,seg.height)
+            segCtx.drawImage(canvas, 0, offsetPx, canvas.width, segmentSrcPx, 0, 0, seg.width, seg.height)
+            const segUrl = seg.toDataURL('image/png')
+            const segmentTargetHeightPx = segmentSrcPx * scale
+            const segmentTargetHeightMm = segmentTargetHeightPx * mmPerPx
+            try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm); markBodyContent() } catch (e) { /* ignore */ }
+            y += segmentTargetHeightMm
+            offsetPx += segmentSrcPx
+            if (offsetPx < contentHeightPx - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader() }
+          }
+          y += 2
+        } catch (e) {
+          // Fallback to text if html render fails
+          setBodyFont(doc, 'normal'); doc.setFontSize(12)
+          const lines = htmlToLines(form.descriptionHtml)
+          for (const l of lines) {
+            const wrapped = doc.splitTextToSize(l, pageWidth - margin * 2) as string[]
+            for (const w of wrapped) { ensureSpace(7); doc.text(w, margin, y); markBodyContent(); y += 6 }
+          }
+        } finally {
+          document.body.removeChild(container)
+        }
+      }
+      // Photos
+      if (activityReport.value.include.photos) {
+        const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
+        const imgs: Array<{dataUrl:string,format?:ImageFormat}> = []
+        for (let p=0; p< Math.min(activityReport.value.photoLimit, phs.length); p++) {
+          const src = phs[p]?.data || phs[p]?.url || phs[p]
+          const imgRaw = await loadImage(src)
+          if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
+        }
+        if (imgs.length) {
+          sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
+          markBodyContent()
+          const thumbW = (pageWidth - margin * 2 - 8) / 3
+          const thumbH = thumbW * 0.75
+          for (let idx = 0; idx < imgs.length; idx++) {
+            const col = idx % 3
+            const row = Math.floor(idx / 3)
+            const x = margin + col * (thumbW + 4)
+            const yy = y + row * (thumbH + 4)
+            if (yy + thumbH > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; idx -= (idx % 3); continue }
+            doc.addImage(imgs[idx].dataUrl, imgs[idx].format || 'JPEG', x, yy, thumbW, thumbH)
+            markBodyContent()
+          }
+          y += Math.ceil(imgs.length / 3) * (thumbH + 4) + 2
+        }
+      }
+      // We intentionally delay issues & attachments so equipment reports can appear before them.
+      // Close out the main activity doc (without attachments yet).
+      // If the current page has only header/footer (no body content), it can be an accidental
+      // trailing blank page created by a page-break. Drop it to avoid an empty separator page
+      // before the Equipment List.
+      let skipFinalFooter = false
+      try {
+          const totalPages = (doc as any).getNumberOfPages ? (doc as any).getNumberOfPages() : 1
+          if (totalPages > 1 && !pageHasBodyContent && typeof (doc as any).deletePage === 'function') {
+            (doc as any).deletePage(totalPages)
+            skipFinalFooter = true
+          }
+        } catch (e) { /* ignore */ }
+      if (!skipFinalFooter) drawFooter()
+      let baseBytes = doc.output('arraybuffer') as ArrayBuffer
     // Build issues doc separately (table) if needed.
     let issuesBytes: ArrayBuffer | null = null
     if (activityReport.value.include.issues) {

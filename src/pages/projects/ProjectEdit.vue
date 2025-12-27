@@ -1,5 +1,8 @@
 <template>
   <section class="space-y-6 relative">
+    <div>
+      <BreadCrumbs :items="crumbs" />
+    </div>
     <!-- global Toast is mounted in App.vue; toasts will be triggered via the ui store -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
       <button
@@ -600,7 +603,7 @@
               </div>
             </div>
 
-            <div class="p-4 rounded-lg border">
+            <div class="p-4 rounded-lg bg-white/5 border border-white/10">
               <p>
                 <strong>Status:</strong> {{ status }}
                 <span
@@ -668,7 +671,7 @@
               </div>
             </div>
 
-            <div class="p-4 rounded-lg border">
+            <div class="p-4 rounded-lg bg-white/5 border border-white/10">
               <label class="block text-sm font-medium mb-2">Choose a plan</label>
               <div class="relative inline-block w-full">
                 <select
@@ -863,7 +866,7 @@
               </div>
             </div>
 
-            <div class="p-4 rounded-lg border space-y-3">
+            <div class="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
               <div class="font-medium">
                 Billing admin
               </div>
@@ -893,7 +896,7 @@
               </div>
             </div>
 
-            <div class="p-4 rounded-lg border space-y-3">
+            <div class="p-4 rounded-lg bg-white/5 border border-white/10 space-y-3">
               <div class="font-medium">
                 Payment method
               </div>
@@ -1012,7 +1015,7 @@
             </div>
 
             <!-- Transactions: invoices/charges -->
-            <div class="p-4 rounded-lg border mt-4">
+            <div class="p-4 rounded-lg bg-white/5 border border-white/10 mt-4">
               <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
                 <div class="font-medium text-base">
                   Transactions
@@ -1235,7 +1238,7 @@
           <p class="text-sm text-white/70 mb-4">
             Project-specific settings and flags.
           </p>
-          <div class="rounded p-3 bg-white/5">
+          <div class="rounded p-3">
             <!-- special behavior and tags removed -->
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -1327,10 +1330,160 @@
                 </p>
               </div>
             </div>
+
+            <!-- AI configuration (Premium only) -->
+            <div class="mt-6 rounded p-3 bg-white/5 border border-white/10">
+              <div class="font-medium mb-1">
+                AI (Bring your own OpenAI key)
+              </div>
+              <div class="text-sm text-white/70 mb-3">
+                Store a project-scoped OpenAI API key (encrypted on the server). The key is never exposed back to the browser.
+              </div>
+
+              <div
+                v-if="!isProjectAdmin"
+                class="text-sm text-white/70"
+              >
+                Only project admins can manage AI settings.
+              </div>
+
+              <div
+                v-else-if="aiNotInPlan"
+                class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-100"
+              >
+                <div class="font-semibold">
+                  Upgrade required
+                </div>
+                <div class="text-sm mt-1">
+                  AI is available on the Premium plan.
+                </div>
+                <div class="mt-3">
+                  <button
+                    class="px-4 py-2 rounded bg-blue-600 text-white"
+                    @click="goToSubscriptionForUpgrade('ai')"
+                  >
+                    View plans
+                  </button>
+                </div>
+              </div>
+
+              <div v-else>
+                <div
+                  v-if="aiError"
+                  class="text-sm text-red-300 mb-2"
+                >
+                  {{ aiError }}
+                </div>
+
+                <label class="flex items-center gap-2 text-sm text-white/80">
+                  <input
+                    v-model="aiEnabled"
+                    type="checkbox"
+                    class="rounded border-white/20 bg-white/10"
+                  >
+                  Enable AI for this project
+                </label>
+
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm text-white/70">Provider</label>
+                    <div class="relative">
+                      <select
+                        v-model="aiProvider"
+                        class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                      >
+                        <option value="openai">
+                          OpenAI
+                        </option>
+                        <option value="gemini">
+                          Google Gemini
+                        </option>
+                        <option value="claude">
+                          Anthropic Claude
+                        </option>
+                      </select>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70"
+                      ><path
+                        d="M6 9l6 6 6-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      /></svg>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-white/70">Model</label>
+                    <input
+                      v-model="aiModel"
+                      type="text"
+                      placeholder="gpt-4o-mini"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-white/40"
+                    >
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <div class="flex items-center justify-between">
+                    <label class="block text-sm text-white/70">OpenAI API key</label>
+                    <span
+                      class="text-xs px-2 py-0.5 rounded-full border"
+                      :class="aiHasKey ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-100' : 'bg-white/5 border-white/10 text-white/60'"
+                    >
+                      {{ aiHasKey ? 'Saved' : 'Not set' }}
+                    </span>
+                  </div>
+                  <input
+                    v-model="aiKeyDraft"
+                    type="password"
+                    autocomplete="off"
+                    :placeholder="aiProvider === 'gemini' ? 'AIza…' : (aiProvider === 'claude' ? 'sk-ant-…' : 'sk-...')"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-white/40"
+                  >
+                  <div class="mt-1 text-xs text-white/60">
+                    Leave blank to keep the existing key. Use “Clear key” to remove it.
+                  </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    class="px-4 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30 text-white disabled:opacity-60"
+                    :disabled="aiSaving"
+                    @click="saveAiSettings"
+                  >
+                    {{ aiSaving ? 'Saving…' : 'Save AI settings' }}
+                  </button>
+                  <button
+                    class="px-4 py-2 rounded border border-white/20 hover:bg-white/10 text-white disabled:opacity-60"
+                    :disabled="aiSaving || aiTesting"
+                    @click="testAiSettings"
+                  >
+                    {{ aiTesting ? 'Testing…' : 'Test key' }}
+                  </button>
+                  <button
+                    class="px-4 py-2 rounded bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-60"
+                    :disabled="aiSaving || !aiHasKey"
+                    @click="clearAiKey"
+                  >
+                    Clear key
+                  </button>
+                  <span
+                    v-if="aiLastVerifiedAt"
+                    class="text-xs text-white/60"
+                  >
+                    Last verified: {{ new Date(aiLastVerifiedAt).toLocaleString() }}
+                  </span>
+                </div>
+              </div>
+            </div>
               
             <!-- Roles card: project-scoped role templates -->
             <div
-              class="mt-6 rounded p-3 bg-white/5"
+              class="mt-6 rounded p-3 bg-white/5 border border-white/10"
             >
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-3">
@@ -1902,15 +2055,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-// Removed unused import
-// import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import Modal from '../../components/Modal.vue'
 import { useUiStore } from '../../stores/ui'
 import { useProjectStore, fetchBillingSummary, previewPlanChange, changePlan, cancelSubscription, resumeSubscription, changeBillingAdmin, createSetupIntent, updatePaymentMethod, listPaymentMethods, detachPaymentMethod } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
 import http from '../../utils/http'
-import { apiUrl } from '../../utils/api'
+import { apiUrl, getApiBase } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
 import PermissionsModal from '../../components/PermissionsModal.vue'
 import BillingCardForm from '../../components/BillingCardForm.vue'
@@ -1949,12 +2101,13 @@ const transactions = ref<any[]>([])
 // Feature upgrade prompt from router redirect
 const upgradeFeature = computed(() => {
   const q = String(route.query.upgrade || '').toLowerCase()
-  return q && ['spaces','equipment','templates','activities','issues','tasks'].includes(q) ? q : ''
+  return q && ['spaces','equipment','templates','activities','issues','tasks','ai'].includes(q) ? q : ''
 })
 
 // Recommend a plan for a given feature (simple mapping; adjust as needed)
 function recommendPlanForFeature(f) {
   const key = String(f || '').toLowerCase()
+  if (key === 'ai') return 'premium'
   // For heavier features like templates and activities, recommend standard; for all others, basic
   const recommendedTier = (key === 'templates' || key === 'activities') ? 'standard' : 'basic'
   // Try to resolve to a concrete price id from loaded prices
@@ -2047,6 +2200,15 @@ function exportTransactionsCsv() {
   window.open(url, '_blank')
 }
 const authStore = useAuthStore()
+
+const crumbs = computed(() => {
+  const pid = String(projectId || (project.value && ((project.value as any)._id || (project.value as any).id)) || '')
+  const name = String((project.value && (project.value as any).name) || '').trim()
+  return [
+    { text: 'Dashboard', to: '/' },
+    { text: name || 'Project Settings', to: pid ? `/projects/edit/${pid}` : '/projects' },
+  ]
+})
 
 async function loadBillingSummary() {
   try {
@@ -2879,6 +3041,147 @@ function persistIssuesPageSize() {
 }
 watch(issuesPageSizeStorageKey, () => loadIssuesPageSizeLocal(), { immediate: true })
 
+// AI settings (Premium only; bring-your-own OpenAI key stored encrypted server-side)
+const aiEnabled = ref(false)
+const aiProvider = ref<'openai' | 'gemini' | 'claude'>('openai')
+const aiModel = ref('gpt-4o-mini')
+const aiHasKey = ref(false)
+const aiLastVerifiedAt = ref<string | null>(null)
+const aiNotInPlan = ref(false)
+const aiError = ref('')
+const aiKeyDraft = ref('')
+const aiSaving = ref(false)
+const aiTesting = ref(false)
+const aiLoaded = ref(false)
+
+function aiProjectId() {
+  return String(projectId || (project.value && ((project.value as any)._id || (project.value as any).id)) || '')
+}
+
+function goToSubscriptionForUpgrade(featureKey: string) {
+  activeTab.value = 'subscription'
+  router.replace({ query: { ...route.query, tab: 'subscription', upgrade: featureKey } })
+}
+
+async function loadAiSettings() {
+  const pid = aiProjectId()
+  if (!pid || !isProjectAdmin.value) return
+  if (aiLoaded.value) return
+  aiError.value = ''
+  aiNotInPlan.value = false
+  try {
+    const res = await http.get(`/api/projects/${pid}/ai`, { headers: getAuthHeaders() })
+    const data = res.data || {}
+    aiEnabled.value = !!data.enabled
+    const p = String(data.provider || 'openai').toLowerCase()
+    aiProvider.value = (p === 'gemini' ? 'gemini' : (p === 'claude' ? 'claude' : 'openai'))
+    aiModel.value = String(data.model || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')))
+    aiHasKey.value = !!data.hasKey
+    aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : null
+    aiLoaded.value = true
+  } catch (e: any) {
+    const code = e?.response?.data?.code
+    if (e?.response?.status === 403 && code === 'FEATURE_NOT_IN_PLAN') {
+      aiNotInPlan.value = true
+      aiLoaded.value = true
+      return
+    }
+    aiError.value = e?.response?.data?.error || e?.message || 'Failed to load AI settings'
+  }
+}
+
+async function saveAiSettings() {
+  const pid = aiProjectId()
+  if (!pid) return
+  aiSaving.value = true
+  aiError.value = ''
+  try {
+    const payload: any = {
+      enabled: !!aiEnabled.value,
+      provider: aiProvider.value,
+      model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')),
+    }
+    if (String(aiKeyDraft.value || '').trim()) payload.apiKey = String(aiKeyDraft.value).trim()
+    const res = await http.put(`/api/projects/${pid}/ai`, payload, { headers: getAuthHeaders() })
+    const data = res.data || {}
+    aiEnabled.value = !!data.enabled
+    {
+      const p = String(data.provider || aiProvider.value || 'openai').toLowerCase()
+      aiProvider.value = (p === 'gemini' ? 'gemini' : (p === 'claude' ? 'claude' : 'openai'))
+    }
+    aiModel.value = String(data.model || aiModel.value || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')))
+    aiHasKey.value = !!data.hasKey
+    aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : null
+    aiKeyDraft.value = ''
+    aiLoaded.value = true
+    ui.showSuccess('AI settings saved')
+  } catch (e: any) {
+    aiError.value = e?.response?.data?.error || e?.message || 'Failed to save AI settings'
+    ui.showError(aiError.value)
+  } finally {
+    aiSaving.value = false
+  }
+}
+
+async function clearAiKey() {
+  const pid = aiProjectId()
+  if (!pid) return
+  aiSaving.value = true
+  aiError.value = ''
+  try {
+    const payload: any = { enabled: !!aiEnabled.value, provider: aiProvider.value, model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')), apiKey: '' }
+    const res = await http.put(`/api/projects/${pid}/ai`, payload, { headers: getAuthHeaders() })
+    const data = res.data || {}
+    aiHasKey.value = !!data.hasKey
+    aiLastVerifiedAt.value = null
+    aiKeyDraft.value = ''
+    ui.showSuccess('AI key cleared')
+  } catch (e: any) {
+    aiError.value = e?.response?.data?.error || e?.message || 'Failed to clear AI key'
+    ui.showError(aiError.value)
+  } finally {
+    aiSaving.value = false
+  }
+}
+
+async function testAiSettings() {
+  const pid = aiProjectId()
+  if (!pid) return
+  aiTesting.value = true
+  aiError.value = ''
+  try {
+    const res = await http.post(`/api/projects/${pid}/ai/test`, {}, { headers: getAuthHeaders() })
+    const data = res.data || {}
+    aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : (aiLastVerifiedAt.value || null)
+    ui.showSuccess('AI key verified')
+  } catch (e: any) {
+    aiError.value = e?.response?.data?.error || e?.message || 'AI test failed'
+    ui.showError(aiError.value)
+  } finally {
+    aiTesting.value = false
+  }
+}
+
+watch(activeTab, (v) => {
+  if (v === 'settings') loadAiSettings()
+}, { immediate: true })
+
+// If the project changes (route switch), re-load AI settings for the new project.
+watch(project, () => {
+  aiLoaded.value = false
+  aiNotInPlan.value = false
+  aiError.value = ''
+  aiKeyDraft.value = ''
+  aiLastVerifiedAt.value = null
+}, { deep: false })
+
+watch(aiProvider, (p) => {
+  const next = String(p || '').toLowerCase()
+  if (next === 'gemini' && (!aiModel.value || aiModel.value === 'gpt-4o-mini' || aiModel.value.startsWith('claude'))) aiModel.value = 'gemini-1.5-flash'
+  if (next === 'claude' && (!aiModel.value || aiModel.value === 'gpt-4o-mini' || aiModel.value.startsWith('gemini'))) aiModel.value = 'claude-3-5-sonnet-latest'
+  if (next === 'openai' && (!aiModel.value || aiModel.value.startsWith('gemini') || aiModel.value.startsWith('claude'))) aiModel.value = 'gpt-4o-mini'
+})
+
 function tabClass(t) {
   return activeTab.value === t ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80'
 }
@@ -3159,38 +3462,162 @@ function ensureCommissioningAgent() {
   if (!project.value.commissioning_agent) project.value.commissioning_agent = {}
 }
 
+async function fileToResizedDataUrl(
+  file: File,
+  opts?: { maxDim?: number; mime?: string; quality?: number; maxBytes?: number }
+): Promise<string> {
+  const maxDim = opts?.maxDim ?? 512
+  const mime = opts?.mime ?? 'image/jpeg'
+  const maxBytes = opts?.maxBytes ?? 350 * 1024
+  let quality = opts?.quality ?? 0.9
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.readAsDataURL(file)
+  })
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image()
+    i.onload = () => resolve(i)
+    i.onerror = () => reject(new Error('Failed to load image'))
+    i.src = dataUrl
+  })
+
+  const srcW = img.naturalWidth || img.width || 1
+  const srcH = img.naturalHeight || img.height || 1
+  const scale = Math.min(1, maxDim / Math.max(srcW, srcH))
+  const w = Math.max(1, Math.round(srcW * scale))
+  const h = Math.max(1, Math.round(srcH * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas not supported')
+  ctx.drawImage(img, 0, 0, w, h)
+
+  const sizeOf = (s: string) => {
+    try {
+      const idx = s.indexOf(',')
+      const b64 = idx >= 0 ? s.slice(idx + 1) : s
+      // base64 length -> bytes
+      return Math.floor((b64.length * 3) / 4)
+    } catch (e) {
+      return Number.MAX_SAFE_INTEGER
+    }
+  }
+
+  // Iteratively reduce quality until under maxBytes (JPEG/WEBP only)
+  let out = canvas.toDataURL(mime, quality)
+  let bytes = sizeOf(out)
+  while (bytes > maxBytes && quality > 0.55) {
+    quality = Math.max(0.55, quality - 0.08)
+    out = canvas.toDataURL(mime, quality)
+    bytes = sizeOf(out)
+  }
+  return out
+}
+
+function approxDataUrlBytes(s: string): number {
+  try {
+    if (!s) return 0
+    const idx = s.indexOf(',')
+    const b64 = idx >= 0 ? s.slice(idx + 1) : s
+    return Math.floor((b64.length * 3) / 4)
+  } catch (e) {
+    return Number.MAX_SAFE_INTEGER
+  }
+}
+
+async function dataUrlToResizedDataUrl(
+  dataUrl: string,
+  opts?: { maxDim?: number; mime?: string; quality?: number; maxBytes?: number }
+): Promise<string> {
+  const maxDim = opts?.maxDim ?? 512
+  const mime = opts?.mime ?? 'image/jpeg'
+  const maxBytes = opts?.maxBytes ?? 350 * 1024
+  let quality = opts?.quality ?? 0.9
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image()
+    i.onload = () => resolve(i)
+    i.onerror = () => reject(new Error('Failed to load image'))
+    i.src = dataUrl
+  })
+
+  const srcW = img.naturalWidth || img.width || 1
+  const srcH = img.naturalHeight || img.height || 1
+  const scale = Math.min(1, maxDim / Math.max(srcW, srcH))
+  const w = Math.max(1, Math.round(srcW * scale))
+  const h = Math.max(1, Math.round(srcH * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas not supported')
+  ctx.drawImage(img, 0, 0, w, h)
+
+  let out = canvas.toDataURL(mime, quality)
+  let bytes = approxDataUrlBytes(out)
+  while (bytes > maxBytes && quality > 0.55) {
+    quality = Math.max(0.55, quality - 0.08)
+    out = canvas.toDataURL(mime, quality)
+    bytes = approxDataUrlBytes(out)
+  }
+  return out
+}
+
+async function ensureProjectLogosWithinLimit() {
+  if (!project.value) return
+  const MAX_BYTES = 350 * 1024
+  const OPTS = { maxDim: 512, mime: 'image/jpeg', quality: 0.9, maxBytes: MAX_BYTES }
+
+  try {
+    const logo = String(project.value.logo || '')
+    if (logo.startsWith('data:') && approxDataUrlBytes(logo) > MAX_BYTES) {
+      project.value.logo = await dataUrlToResizedDataUrl(logo, OPTS)
+    }
+  } catch (e) {
+    // ignore; let backend return 413 if still too large
+  }
+
+  try {
+    const cxaLogo = String(project.value?.commissioning_agent?.logo || '')
+    if (cxaLogo.startsWith('data:') && approxDataUrlBytes(cxaLogo) > MAX_BYTES) {
+      ensureCommissioningAgent()
+      project.value.commissioning_agent.logo = await dataUrlToResizedDataUrl(cxaLogo, OPTS)
+    }
+  } catch (e) {
+    // ignore; let backend return 413 if still too large
+  }
+}
+
 async function onClientLogoSelected(e) {
   const f = e.target.files && e.target.files[0]
   if (!f) return
-  // quick client-side preview
-  const reader = new FileReader()
-  reader.onload = async (ev) => {
-    project.value.logo = ev.target.result
-    try {
-      await projectStore.updateProject({ ...project.value })
-      ui.showSuccess('Client logo saved')
-    } catch (err) {
-      ui.showError('Failed to save client logo')
-    }
+  try {
+    project.value.logo = await fileToResizedDataUrl(f, { maxDim: 512, mime: 'image/jpeg', quality: 0.9, maxBytes: 350 * 1024 })
+    await projectStore.updateProject({ ...project.value })
+    ui.showSuccess('Client logo saved')
+  } catch (err: any) {
+    ui.showError(err?.response?.data?.error || err?.message || 'Failed to save client logo')
   }
-  reader.readAsDataURL(f)
 }
 
 async function onCxaLogoSelected(e) {
   const f = e.target.files && e.target.files[0]
   if (!f) return
   ensureCommissioningAgent()
-  const reader = new FileReader()
-  reader.onload = async (ev) => {
-    project.value.commissioning_agent.logo = ev.target.result
-    try {
-      await projectStore.updateProject({ ...project.value })
-      ui.showSuccess('Commissioning Agent logo saved')
-    } catch (err) {
-      ui.showError('Failed to save CxA logo')
-    }
+  try {
+    project.value.commissioning_agent.logo = await fileToResizedDataUrl(f, { maxDim: 512, mime: 'image/jpeg', quality: 0.9, maxBytes: 350 * 1024 })
+    await projectStore.updateProject({ ...project.value })
+    ui.showSuccess('Commissioning Agent logo saved')
+  } catch (err: any) {
+    ui.showError(err?.response?.data?.error || err?.message || 'Failed to save CxA logo')
   }
-  reader.readAsDataURL(f)
 }
 
 async function removeClientLogo() {
@@ -3219,6 +3646,7 @@ async function save() {
   if (saving.value) return
   try {
     saving.value = true
+    await ensureProjectLogosWithinLimit()
     await projectStore.updateProject(project.value)
     ui.showSuccess('Saved')
   } catch (e) {
@@ -3234,6 +3662,9 @@ async function save() {
       }
     } catch (ex) {
       msg = 'Failed to save'
+    }
+    if (msg === 'Network Error') {
+      msg = `Network Error: cannot reach API at ${getApiBase()}. Verify the backend is running and VITE_API_BASE is correct.`
     }
     ui.showError(msg)
   } finally {
@@ -3543,7 +3974,8 @@ async function openBillingPortal() {
   loading.value = true;
   try {
   console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
-    const { data } = await http.post('/api/stripe/portal-session', {}, { headers: getAuthHeaders() });
+    const pid = String(project.value?.id || project.value?._id || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+    const { data } = await http.post('/api/stripe/portal-session', { projectId: pid }, { headers: getAuthHeaders() });
     if (data && data.url) {
       ui.showSuccess('Opening billing portal...')
       window.location.href = data.url;

@@ -395,6 +395,15 @@
                 <div class="text-sm text-white/70 shrink-0">
                   Tags
                 </div>
+                <button
+                  v-if="canSuggestIssueTags"
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="isClosed || suggestingTags"
+                  @click="suggestIssueTags"
+                >
+                  {{ suggestingTags ? 'Suggesting…' : 'Suggest tags' }}
+                </button>
                 <div class="flex flex-wrap gap-2">
                   <span
                     v-for="t in form.labels"
@@ -435,6 +444,50 @@
               </div>
               <div class="text-xs text-white/60 mt-1">
                 Tip: use commas or Enter to add multiple tags.
+              </div>
+              <div
+                v-if="suggestedTagsFiltered.length"
+                class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs text-white/60">
+                    Suggested tags
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                      :disabled="isClosed"
+                      @click="applyAllSuggestedTags"
+                    >
+                      Add all
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                      @click="dismissSuggestedTags"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button
+                    v-for="s in suggestedTagsFiltered"
+                    :key="s.tag"
+                    type="button"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                    :title="s.reason || ''"
+                    :disabled="isClosed"
+                    @click="addLabel(s.tag)"
+                  >
+                    <span>{{ s.tag }}</span>
+                    <span
+                      v-if="typeof s.confidence === 'number'"
+                      class="text-white/60"
+                    >{{ Math.round(s.confidence * 100) }}%</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1493,6 +1546,7 @@ import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
+import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import { jsPDF } from 'jspdf'
 
 const route = useRoute()
@@ -1501,6 +1555,7 @@ const issues = useIssuesStore()
 const projectStore = useProjectStore()
 const ui = useUiStore()
 const auth = useAuthStore()
+const ai = useAiStore()
 
 const id = computed(() => String(route.params.id))
 const isNew = computed(() => id.value === 'new')
@@ -1607,6 +1662,14 @@ const form = reactive<any>({
 })
 
 const labelInput = ref('')
+const suggestingTags = ref(false)
+const suggestedTags = ref<SuggestedTag[]>([])
+const projectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''))
+const canSuggestIssueTags = computed(() => {
+  if (!projectId.value) return false
+  // If project is loaded and explicitly disabled, hide the feature; otherwise allow trying.
+  return projectStore.currentProject?.ai?.enabled !== false
+})
 
 function normalizeLabels(labels: any): string[] {
   const arr = Array.isArray(labels) ? labels : []
@@ -1623,6 +1686,13 @@ function normalizeLabels(labels: any): string[] {
   return out
 }
 
+function addLabel(label: string) {
+  if (isClosed.value) return
+  const tag = String(label || '').trim()
+  if (!tag) return
+  form.labels = normalizeLabels([...(form.labels || []), tag])
+}
+
 function addLabelFromInput() {
   if (isClosed.value) return
   const raw = String(labelInput.value || '')
@@ -1636,6 +1706,52 @@ function removeLabel(label: string) {
   if (isClosed.value) return
   const key = String(label || '').trim().toLowerCase()
   form.labels = (form.labels || []).filter((t: string) => String(t || '').trim().toLowerCase() !== key)
+}
+
+const suggestedTagsFiltered = computed(() => {
+  const existing = new Set((form.labels || []).map((t: string) => String(t || '').trim().toLowerCase()).filter(Boolean))
+  const list = Array.isArray(suggestedTags.value) ? suggestedTags.value : []
+  return list
+    .filter((s: any) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+    .slice(0, 12)
+})
+
+function dismissSuggestedTags() {
+  suggestedTags.value = []
+}
+
+function applyAllSuggestedTags() {
+  for (const s of suggestedTagsFiltered.value) addLabel(String((s as any).tag || ''))
+  dismissSuggestedTags()
+}
+
+async function suggestIssueTags() {
+  if (isClosed.value) return
+  if (!projectId.value) {
+    ui.showError('No project selected')
+    return
+  }
+  suggestingTags.value = true
+  try {
+    const entity = {
+      title: String(form.title || '').trim(),
+      type: form.type || null,
+      status: form.status || null,
+      system: String(form.system || '').trim(),
+      location: String(form.location || '').trim(),
+      description: htmlToText(form.description || ''),
+      recommendation: htmlToText(form.recommendation || ''),
+      resolution: htmlToText(form.resolution || ''),
+    }
+    const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+    const tags = await ai.suggestTags(projectId.value, 'issue', entity, { existingTags: form.labels || [], allowedTags: allowed as any })
+    suggestedTags.value = Array.isArray(tags) ? tags : []
+    if (!suggestedTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+  } finally {
+    suggestingTags.value = false
+  }
 }
 
 const crumbs = computed(() => {

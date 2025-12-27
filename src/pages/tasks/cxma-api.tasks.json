@@ -1,0 +1,7302 @@
+[
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef43"
+    },
+    "taskId": "T-1",
+    "wbs": "1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "PROJECT NAME (Proj #)",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.941Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef45"
+    },
+    "taskId": "T-2",
+    "wbs": "1.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "PRE-DESIGN / PLANNING",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.946Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef47"
+    },
+    "taskId": "T-3",
+    "wbs": "1.1.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Cx Kickoff Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-03T04:59:59.000Z"
+    },
+    "duration": 16,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 3200,
+    "autoCost": true,
+    "parentId": "1.1.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.948Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef49"
+    },
+    "taskId": "T-4",
+    "wbs": "1.1.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Define Commissioning Scope & Roles",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.949Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef4b"
+    },
+    "taskId": "T-5",
+    "wbs": "1.1.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Develop Owner’s Project Requirements (OPR)",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.950Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef4d"
+    },
+    "taskId": "T-6",
+    "wbs": "1.1.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Initiate Commissioning Issues Log",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.951Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef4f"
+    },
+    "taskId": "T-7",
+    "wbs": "1.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "DESIGN",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.952Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef51"
+    },
+    "taskId": "T-8",
+    "wbs": "1.2.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Basis of Design (BoD) Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.953Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef53"
+    },
+    "taskId": "T-9",
+    "wbs": "1.2.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "OPR / BoD Reconciliation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.954Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef55"
+    },
+    "taskId": "T-10",
+    "wbs": "1.2.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Schematic Design Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.955Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef57"
+    },
+    "taskId": "T-11",
+    "wbs": "1.2.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Design Development Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.956Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef59"
+    },
+    "taskId": "T-12",
+    "wbs": "1.2.5",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Construction Document Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.5",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.957Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef5b"
+    },
+    "taskId": "T-13",
+    "wbs": "1.2.6",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Owner’s Project Requirements",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.6",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.959Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef5d"
+    },
+    "taskId": "T-14",
+    "wbs": "1.2.7",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Controls Sequences Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.7",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.960Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef5f"
+    },
+    "taskId": "T-15",
+    "wbs": "1.2.8",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Cx Specification Integration",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.8",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.960Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef61"
+    },
+    "taskId": "T-16",
+    "wbs": "1.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "CONSTRUCTION",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.961Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef63"
+    },
+    "taskId": "T-17",
+    "wbs": "1.3.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Submittal Reviews",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.962Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef65"
+    },
+    "taskId": "T-18",
+    "wbs": "1.3.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Develop & Deliver Prefunctional Checklists",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.963Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef67"
+    },
+    "taskId": "T-19",
+    "wbs": "1.3.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Construction Issues Tracking",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.964Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef69"
+    },
+    "taskId": "T-20",
+    "wbs": "1.3.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Write FPT Procedures",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.964Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef6b"
+    },
+    "taskId": "T-21",
+    "wbs": "1.3.5",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Installation Verification",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.965Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef6d"
+    },
+    "taskId": "T-22",
+    "wbs": "1.3.5.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Site Visit - 1",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.966Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef6f"
+    },
+    "taskId": "T-23",
+    "wbs": "1.3.5.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Site Visit - 2",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.967Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef71"
+    },
+    "taskId": "T-24",
+    "wbs": "1.3.5.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Site Visit - 3",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.967Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef73"
+    },
+    "taskId": "T-25",
+    "wbs": "1.3.5.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Site Visit - 4",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.968Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef75"
+    },
+    "taskId": "T-26",
+    "wbs": "1.3.5.5",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Site Visit - 5",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5.5",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.969Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef77"
+    },
+    "taskId": "T-27",
+    "wbs": "1.3.5.6",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Site Visit - 6",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.5.6",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.970Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef79"
+    },
+    "taskId": "T-28",
+    "wbs": "1.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "TESTING",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.970Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef7b"
+    },
+    "taskId": "T-29",
+    "wbs": "1.4.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Functional Performance Test",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.971Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef7d"
+    },
+    "taskId": "T-30",
+    "wbs": "1.4.1.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Verify System Startup",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.972Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef7f"
+    },
+    "taskId": "T-31",
+    "wbs": "1.4.1.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Verify Test & Balancing",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.975Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef81"
+    },
+    "taskId": "T-32",
+    "wbs": "1.4.1.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Phase I Execution",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.976Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef83"
+    },
+    "taskId": "T-33",
+    "wbs": "1.4.1.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Phase II Execution",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.977Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef85"
+    },
+    "taskId": "T-34",
+    "wbs": "1.4.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "O&M Manual Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.978Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef87"
+    },
+    "taskId": "T-35",
+    "wbs": "1.4.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Training Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.979Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef89"
+    },
+    "taskId": "T-36",
+    "wbs": "1.4.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Systems Manual Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.979Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef8b"
+    },
+    "taskId": "T-37",
+    "wbs": "1.5",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "OPERATION",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.980Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef8d"
+    },
+    "taskId": "T-38",
+    "wbs": "1.5.1",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Final Commissioning Report",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.981Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef8f"
+    },
+    "taskId": "T-39",
+    "wbs": "1.5.2",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Owner Acceptance Confirmation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.982Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef91"
+    },
+    "taskId": "T-40",
+    "wbs": "1.5.3",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Seasonal Testing",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.982Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef93"
+    },
+    "taskId": "T-41",
+    "wbs": "1.5.4",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Warranty Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5.4",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.983Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455a76353019cb10d6ef95"
+    },
+    "taskId": "T-42",
+    "wbs": "1.5.5",
+    "projectId": {
+      "$oid": "6936deb9365d31c2f9c970a9"
+    },
+    "name": "Ongoing Commissioning Recommendations",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5.5",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:00:22.983Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:07:04.338Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455da4353019cb10d6f086"
+    },
+    "wbs": "1.0",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Project Name",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-19T14:13:56.634Z"
+    },
+    "end": {
+      "$date": "2025-12-19T14:13:56.634Z"
+    },
+    "duration": 8,
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 1600,
+    "autoCost": true,
+    "parentId": null,
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:13:56.634Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:12.793Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455dbc353019cb10d6f099"
+    },
+    "wbs": "1.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "DESIGN PHASE",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-19T14:14:20.320Z"
+    },
+    "end": {
+      "$date": "2025-12-19T14:14:20.320Z"
+    },
+    "percentComplete": 0,
+    "status": "Deleted",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": null,
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": true,
+    "createdAt": {
+      "$date": "2025-12-19T14:14:20.320Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:10.155Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0df"
+    },
+    "taskId": "T-1",
+    "wbs": "1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "PROJECT NAME (Proj #)",
+    "description": "",
+    "notes": "Project Notes 1.1 Cx Personnell: Both these gentlemen will be helping me to manage this project. They are also being trained in Cx Management.      1.1 Alex Aponte      1.2 Chance Giddens  1.2 [2015-05-18] - Project is on hold until contracting impacts from incorrect design submittals are sorted out. Apparantly the contractor was given the wrong design submittal. Work was halted until this was corrected. Nigel to contact the Corp in two weeks to setup Cx Kickoff and OPR Conference.",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-02-01T19:00:00.000Z"
+    },
+    "duration": 761,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.942Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.942Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0e1"
+    },
+    "taskId": "T-2",
+    "wbs": "1.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "DESIGN",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-20T14:00:00.000Z"
+    },
+    "duration": 19,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.944Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.944Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0e3"
+    },
+    "taskId": "T-3",
+    "wbs": "1.1.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Project Start",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.945Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.945Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0e5"
+    },
+    "taskId": "T-4",
+    "wbs": "1.1.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Basis of Design (BoD)",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-01T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.946Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.946Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0e7"
+    },
+    "taskId": "T-5",
+    "wbs": "1.1.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Review/Comment",
+    "description": "",
+    "notes": "Assume 5 Specialists take 5h each for: 1. Mech 2. Elec 3. Plum 4. Fire 5. Envel",
+    "start": {
+      "$date": "2025-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-01T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.2.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.949Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.949Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0e9"
+    },
+    "taskId": "T-6",
+    "wbs": "1.1.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC BoD Comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-01T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.2.2",
+    "dependencies": [
+      "T-5"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.955Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.955Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0eb"
+    },
+    "taskId": "T-7",
+    "wbs": "1.1.2.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Deliver Comments to A/E",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-01T21:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-01T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.2.3",
+    "dependencies": [
+      "T-6"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.956Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.956Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0ed"
+    },
+    "taskId": "T-8",
+    "wbs": "1.1.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Design Review 1",
+    "description": "",
+    "notes": "Scope of Work Document States: The commissioning provider shall review the preliminary construction bid documents created for implementing energy efficiency measures identified in the applicable energy audit and provide written comments to the design professional pertaining to the contract requirements that affect all the parties involved in the construction process (construction manager, general contractor, construction contractors (and any subcontractors)) and that are participating in commissioning, as well as any items that would aid in the proper commissioning of the Equipment/Systems.",
+    "start": {
+      "$date": "2025-01-02T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-06T20:00:00.000Z"
+    },
+    "duration": 4,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.3",
+    "dependencies": [
+      "T-4"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.957Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.957Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0ef"
+    },
+    "taskId": "T-9",
+    "wbs": "1.1.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Mobilize Design Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-02T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-02T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.3.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.958Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.958Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0f1"
+    },
+    "taskId": "T-10",
+    "wbs": "1.1.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Accomplish Design Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-02T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-06T18:00:00.000Z"
+    },
+    "duration": 4,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.3.2",
+    "dependencies": [
+      "T-9"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.962Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.962Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0f3"
+    },
+    "taskId": "T-11",
+    "wbs": "1.1.3.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Design Review Comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-06T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-06T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.3.3",
+    "dependencies": [
+      "T-10"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.963Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.963Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0f5"
+    },
+    "taskId": "T-12",
+    "wbs": "1.1.3.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Submit Comments to Client",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-06T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-06T20:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.3.4",
+    "dependencies": [
+      "T-11"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.964Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.964Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0f7"
+    },
+    "taskId": "T-13",
+    "wbs": "1.1.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Owner’s Project Requirements",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-06T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-09T22:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.4",
+    "dependencies": [
+      "T-8"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.965Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.965Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0f9"
+    },
+    "taskId": "T-14",
+    "wbs": "1.1.4.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Convene Workshop",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-06T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-07T20:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.4.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.965Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.965Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0fb"
+    },
+    "taskId": "T-15",
+    "wbs": "1.1.4.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel_OPR Wkshp",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-07T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-09T15:00:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.4.2",
+    "dependencies": [
+      "T-14"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.966Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.966Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0fd"
+    },
+    "taskId": "T-16",
+    "wbs": "1.1.4.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Process and Distribute Wrokshop Results",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-09T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-09T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.4.3",
+    "dependencies": [
+      "T-15"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.966Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.966Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f0ff"
+    },
+    "taskId": "T-17",
+    "wbs": "1.1.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Commissioning Plan",
+    "description": "",
+    "notes": "Scope of Work Document States: Write the Commissioning Plan. The commissioning plan shall identify the following items for each test:  a) Function to be tested (e.g., calibration, economizer control, etc.) b) Condition under which the test shall be performed (e.g., winter design conditions, full outside air, etc.) c) Measurable criteria for acceptable results. The commissioning provider shall submit the Commissioning Plan to the Contracting Agency for review and approval by the design professional and Contracting Agency within 30 calendar days after the final construction bid documents have been issued. The Commissioning Plan shall include a detailed description and schedule of all commissioning activities.",
+    "start": {
+      "$date": "2025-01-10T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-13T22:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.5",
+    "dependencies": [
+      "T-13"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.967Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.967Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f101"
+    },
+    "taskId": "T-18",
+    "wbs": "1.1.5.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Integrate Project Information into Draft Cx Plan",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-10T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-13T22:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.5.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.967Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.967Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f103"
+    },
+    "taskId": "T-19",
+    "wbs": "1.1.5.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Develop/Distribute Draft Cx Plan",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-10T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-10T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.5.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.968Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.968Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f105"
+    },
+    "taskId": "T-20",
+    "wbs": "1.1.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Spec Integration",
+    "description": "",
+    "notes": "Scope of Work Document States: When necessary the commissioning provider shall develop and provide appropriate specification sections for inclusion into the construction bid documents.",
+    "start": {
+      "$date": "2025-01-14T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-14T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.6",
+    "dependencies": [
+      "T-17"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.970Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.970Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f107"
+    },
+    "taskId": "T-21",
+    "wbs": "1.1.6.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Review Construction Specifications",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-14T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-14T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.6.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.971Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.971Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f109"
+    },
+    "taskId": "T-22",
+    "wbs": "1.1.6.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Integrate Cx Specs",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-14T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-14T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.6.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.972Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.972Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f10b"
+    },
+    "taskId": "T-23",
+    "wbs": "1.1.6.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Distribute Cx Specifications",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-14T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-14T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.6.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.973Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.973Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f10d"
+    },
+    "taskId": "T-24",
+    "wbs": "1.1.7",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Design Review 2",
+    "description": "",
+    "notes": "Scope of Work Document States: The commissioning provider shall review the preliminary construction bid documents created for implementing energy efficiency measures identified in the applicable energy audit and provide written comments to the design professional pertaining to the contract requirements that affect all the parties involved in the construction process (construction manager, general contractor, construction contractors (and any subcontractors)) and that are participating in commissioning, as well as any items that would aid in the proper commissioning of the Equipment/Systems.",
+    "start": {
+      "$date": "2025-01-14T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-17T20:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 600,
+    "autoCost": true,
+    "parentId": "1.1.7",
+    "dependencies": [
+      "T-20"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.973Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-23T13:36:07.426Z"
+    },
+    "__v": 0,
+    "expenses": {
+      "airfare": 0,
+      "hotel": 0,
+      "rentalCar": 0,
+      "food": 0,
+      "mileage": 0,
+      "labor": 0,
+      "other1": 0,
+      "other2": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f10f"
+    },
+    "taskId": "T-25",
+    "wbs": "1.1.7.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Mobilize Design Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-14T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-14T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.7.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.974Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.974Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f111"
+    },
+    "taskId": "T-26",
+    "wbs": "1.1.7.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Accomplish Design Review Including Back Check",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-15T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-16T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.7.2",
+    "dependencies": [
+      "T-25"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.975Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.975Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f113"
+    },
+    "taskId": "T-27",
+    "wbs": "1.1.7.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Design Review Comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-17T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-17T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.7.3",
+    "dependencies": [
+      "T-26"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.975Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.975Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f115"
+    },
+    "taskId": "T-28",
+    "wbs": "1.1.7.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Submit Comments to Client",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-17T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-17T20:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.7.4",
+    "dependencies": [
+      "T-27"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.976Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.976Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f117"
+    },
+    "taskId": "T-29",
+    "wbs": "1.1.8",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Initiate Issues Log (Task 658)",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-17T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-20T14:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 600,
+    "autoCost": true,
+    "parentId": "1.1.8",
+    "dependencies": [
+      "T-24"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.977Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-23T13:32:39.195Z"
+    },
+    "__v": 0,
+    "expenses": {
+      "airfare": 0,
+      "hotel": 0,
+      "rentalCar": 0,
+      "food": 0,
+      "mileage": 0,
+      "labor": 0,
+      "other1": 0,
+      "other2": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f119"
+    },
+    "taskId": "T-30",
+    "wbs": "1.1.8.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Import Design Review Comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-17T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-17T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.8.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.978Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.978Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f11b"
+    },
+    "taskId": "T-31",
+    "wbs": "1.1.8.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Publish Pending Issues Log",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-01-17T21:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-01-20T14:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.1.8.2",
+    "dependencies": [
+      "T-30"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.978Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.978Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f11d"
+    },
+    "taskId": "T-32",
+    "wbs": "1.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "CONSTRUCTION",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-23T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-02T18:30:00.000Z"
+    },
+    "duration": 254,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2",
+    "dependencies": [
+      "T-2"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.979Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.979Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f11f"
+    },
+    "taskId": "T-33",
+    "wbs": "1.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Construction Start",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-23T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-23T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 200,
+    "autoCost": true,
+    "parentId": "1.2.1",
+    "dependencies": [
+      "T-3"
+    ],
+    "assignee": null,
+    "tags": [
+      "construction"
+    ],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.981Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-21T01:48:33.561Z"
+    },
+    "__v": 0,
+    "expenses": {
+      "airfare": 0,
+      "hotel": 0,
+      "rentalCar": 0,
+      "food": 0,
+      "mileage": 0,
+      "labor": 0,
+      "other1": 0,
+      "other2": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f121"
+    },
+    "taskId": "T-34",
+    "wbs": "1.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Submittal Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-23T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-30T13:00:00.000Z"
+    },
+    "duration": 7,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.982Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.982Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f123"
+    },
+    "taskId": "T-35",
+    "wbs": "1.2.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Solicit submittal Log from GC",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-23T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-23T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.983Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.983Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f125"
+    },
+    "taskId": "T-36",
+    "wbs": "1.2.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Receive/Log/Tag/Distribute Submittals",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-23T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-23T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2.2",
+    "dependencies": [
+      "T-35"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.983Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.983Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f127"
+    },
+    "taskId": "T-37",
+    "wbs": "1.2.2.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Review and Comment on Submittals",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-23T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-29T18:00:00.000Z"
+    },
+    "duration": 6,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2.3",
+    "dependencies": [
+      "T-36"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.984Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f129"
+    },
+    "taskId": "T-38",
+    "wbs": "1.2.2.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Submittal Comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-29T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-29T20:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2.4",
+    "dependencies": [
+      "T-37"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.984Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.984Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f12b"
+    },
+    "taskId": "T-39",
+    "wbs": "1.2.2.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Distribute Comments to Team",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-29T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-04-30T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.2.5",
+    "dependencies": [
+      "T-38"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.985Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.985Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f12d"
+    },
+    "taskId": "T-40",
+    "wbs": "1.2.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Construction Checklists",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-30T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-09T18:00:00.000Z"
+    },
+    "duration": 9,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3",
+    "dependencies": [
+      "T-34"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.986Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.986Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f12f"
+    },
+    "taskId": "T-41",
+    "wbs": "1.2.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Tag Equipment in Web App",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-04-30T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-06T13:00:00.000Z"
+    },
+    "duration": 6,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.986Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.986Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f131"
+    },
+    "taskId": "T-42",
+    "wbs": "1.2.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Publish Checklists for Review/Comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-06T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-07T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3.2",
+    "dependencies": [
+      "T-41"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.987Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.987Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f133"
+    },
+    "taskId": "T-43",
+    "wbs": "1.2.3.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Update Checklists in Web App",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-07T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-08T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3.3",
+    "dependencies": [
+      "T-42"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.987Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.987Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f135"
+    },
+    "taskId": "T-44",
+    "wbs": "1.2.3.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Mine Approved Submittal for Tag Info",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-08T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-09T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3.4",
+    "dependencies": [
+      "T-43"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.988Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.988Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f137"
+    },
+    "taskId": "T-45",
+    "wbs": "1.2.3.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Subscribe to Web App",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-09T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-09T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3.5",
+    "dependencies": [
+      "T-44"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.989Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.989Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f139"
+    },
+    "taskId": "T-46",
+    "wbs": "1.2.3.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Train on Web App",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-09T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-09T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.3.6",
+    "dependencies": [
+      "T-45"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.992Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.992Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f13b"
+    },
+    "taskId": "T-47",
+    "wbs": "1.2.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Site Visit/Cx Meetings",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-09T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-02T18:30:00.000Z"
+    },
+    "duration": 238,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4",
+    "dependencies": [
+      "T-40"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.995Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.995Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f13d"
+    },
+    "taskId": "T-48",
+    "wbs": "1.2.4.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 1",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-09T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-14T13:00:00.000Z"
+    },
+    "duration": 5,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.995Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.995Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f13f"
+    },
+    "taskId": "T-49",
+    "wbs": "1.2.4.1.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-09T04:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-10T03:59:59.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 3000,
+    "autoCost": false,
+    "parentId": "1.2.4.1.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.996Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:39:56.769Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f141"
+    },
+    "taskId": "T-50",
+    "wbs": "1.2.4.1.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Print Meeting Docs",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-09T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-09T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.1.2",
+    "dependencies": [
+      "T-49"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.996Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.996Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f143"
+    },
+    "taskId": "T-51",
+    "wbs": "1.2.4.1.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-12T04:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-13T03:59:59.000Z"
+    },
+    "duration": 16,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 5000,
+    "autoCost": false,
+    "parentId": "1.2.4.1.3",
+    "dependencies": [
+      "T-50"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.997Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:41:08.553Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f145"
+    },
+    "taskId": "T-52",
+    "wbs": "1.2.4.1.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Cx Meeting & Site Visit Reivew",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-12T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-13T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.1.4",
+    "dependencies": [
+      "T-51"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.997Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.997Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f147"
+    },
+    "taskId": "T-53",
+    "wbs": "1.2.4.1.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-13T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-13T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.1.5",
+    "dependencies": [
+      "T-52"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.998Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.998Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f149"
+    },
+    "taskId": "T-54",
+    "wbs": "1.2.4.1.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-05-14T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-05-14T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.1.6",
+    "dependencies": [
+      "T-53"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.999Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e39353019cb10d6f14b"
+    },
+    "taskId": "T-55",
+    "wbs": "1.2.4.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 2",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-06-18T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-06-20T17:30:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.2",
+    "dependencies": [
+      "T-48"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:25.999Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:25.999Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f14d"
+    },
+    "taskId": "T-56",
+    "wbs": "1.2.4.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-06-18T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-06-18T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.2.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.000Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.000Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f14f"
+    },
+    "taskId": "T-57",
+    "wbs": "1.2.4.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-06-18T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-06-19T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.2.2",
+    "dependencies": [
+      "T-56"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.001Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.001Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f151"
+    },
+    "taskId": "T-58",
+    "wbs": "1.2.4.2.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-06-19T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-06-20T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.2.3",
+    "dependencies": [
+      "T-57"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.001Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.001Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f153"
+    },
+    "taskId": "T-59",
+    "wbs": "1.2.4.2.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-06-20T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-06-20T17:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.2.4",
+    "dependencies": [
+      "T-58"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.002Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.002Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f155"
+    },
+    "taskId": "T-60",
+    "wbs": "1.2.4.2.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-06-20T17:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-06-20T17:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.2.5",
+    "dependencies": [
+      "T-59"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.003Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.003Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f157"
+    },
+    "taskId": "T-61",
+    "wbs": "1.2.4.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 3",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-08-13T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-08-15T17:30:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.3",
+    "dependencies": [
+      "T-55"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.003Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.003Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f159"
+    },
+    "taskId": "T-62",
+    "wbs": "1.2.4.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-08-13T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-08-13T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.3.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.004Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.004Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f15b"
+    },
+    "taskId": "T-63",
+    "wbs": "1.2.4.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-08-13T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-08-14T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.3.2",
+    "dependencies": [
+      "T-62"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.005Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.005Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f15d"
+    },
+    "taskId": "T-64",
+    "wbs": "1.2.4.3.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-08-14T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-08-15T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.3.3",
+    "dependencies": [
+      "T-63"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.005Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.005Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f15f"
+    },
+    "taskId": "T-65",
+    "wbs": "1.2.4.3.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-08-15T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-08-15T17:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.3.4",
+    "dependencies": [
+      "T-64"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.006Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.006Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f161"
+    },
+    "taskId": "T-66",
+    "wbs": "1.2.4.3.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-08-15T17:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-08-15T17:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.3.5",
+    "dependencies": [
+      "T-65"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.007Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.007Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f163"
+    },
+    "taskId": "T-67",
+    "wbs": "1.2.4.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 4",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-09-10T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-09-12T17:30:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.4",
+    "dependencies": [
+      "T-61"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.008Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.008Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f165"
+    },
+    "taskId": "T-68",
+    "wbs": "1.2.4.4.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-09-10T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-09-10T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.4.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.008Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.008Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f167"
+    },
+    "taskId": "T-69",
+    "wbs": "1.2.4.4.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-09-10T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-09-11T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.4.2",
+    "dependencies": [
+      "T-68"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.009Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.009Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f169"
+    },
+    "taskId": "T-70",
+    "wbs": "1.2.4.4.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-09-11T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-09-12T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.4.3",
+    "dependencies": [
+      "T-69"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.010Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.010Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f16b"
+    },
+    "taskId": "T-71",
+    "wbs": "1.2.4.4.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-09-12T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-09-12T17:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.4.4",
+    "dependencies": [
+      "T-70"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.011Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.011Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f16d"
+    },
+    "taskId": "T-72",
+    "wbs": "1.2.4.4.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-09-12T17:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-09-12T17:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.4.5",
+    "dependencies": [
+      "T-71"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.014Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.014Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f16f"
+    },
+    "taskId": "T-73",
+    "wbs": "1.2.4.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 5",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-10-08T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-10-10T17:30:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.5",
+    "dependencies": [
+      "T-67"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.015Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.015Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f171"
+    },
+    "taskId": "T-74",
+    "wbs": "1.2.4.5.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-10-08T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-10-08T15:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.5.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.016Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.016Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f173"
+    },
+    "taskId": "T-75",
+    "wbs": "1.2.4.5.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-10-08T15:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-10-09T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.5.2",
+    "dependencies": [
+      "T-74"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.016Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.016Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f175"
+    },
+    "taskId": "T-76",
+    "wbs": "1.2.4.5.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-10-09T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-10-10T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.5.3",
+    "dependencies": [
+      "T-75"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.017Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.017Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f177"
+    },
+    "taskId": "T-77",
+    "wbs": "1.2.4.5.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-10-10T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-10-10T17:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.5.4",
+    "dependencies": [
+      "T-76"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.018Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.018Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f179"
+    },
+    "taskId": "T-78",
+    "wbs": "1.2.4.5.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-10-10T17:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-10-10T17:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.5.5",
+    "dependencies": [
+      "T-77"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.018Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.018Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f17b"
+    },
+    "taskId": "T-79",
+    "wbs": "1.2.4.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 6",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-11-05T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-11-07T18:30:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.6",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.019Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.019Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f17d"
+    },
+    "taskId": "T-80",
+    "wbs": "1.2.4.6.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-11-05T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-11-05T16:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.6.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.019Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.019Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f17f"
+    },
+    "taskId": "T-81",
+    "wbs": "1.2.4.6.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-11-05T16:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-11-06T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.6.2",
+    "dependencies": [
+      "T-80"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.020Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f181"
+    },
+    "taskId": "T-82",
+    "wbs": "1.2.4.6.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-11-06T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-11-07T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.6.3",
+    "dependencies": [
+      "T-81"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.020Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.020Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f183"
+    },
+    "taskId": "T-83",
+    "wbs": "1.2.4.6.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-11-07T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-11-07T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.6.4",
+    "dependencies": [
+      "T-82"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.021Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.021Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f185"
+    },
+    "taskId": "T-84",
+    "wbs": "1.2.4.6.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-11-07T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-11-07T18:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.6.5",
+    "dependencies": [
+      "T-83"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.022Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.022Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f187"
+    },
+    "taskId": "T-85",
+    "wbs": "1.2.4.7",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 7",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-03T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-05T18:30:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.7",
+    "dependencies": [
+      "T-79"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.023Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.023Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f189"
+    },
+    "taskId": "T-86",
+    "wbs": "1.2.4.7.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-03T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-03T16:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.7.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.024Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.024Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f18b"
+    },
+    "taskId": "T-87",
+    "wbs": "1.2.4.7.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-03T16:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-04T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.7.2",
+    "dependencies": [
+      "T-86"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.025Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.025Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f18d"
+    },
+    "taskId": "T-88",
+    "wbs": "1.2.4.7.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-04T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-05T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.7.3",
+    "dependencies": [
+      "T-87"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.026Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.026Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f18f"
+    },
+    "taskId": "T-89",
+    "wbs": "1.2.4.7.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-05T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-05T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.7.4",
+    "dependencies": [
+      "T-88"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.028Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f191"
+    },
+    "taskId": "T-90",
+    "wbs": "1.2.4.7.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-05T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-05T18:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.7.5",
+    "dependencies": [
+      "T-89"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.028Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.028Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f193"
+    },
+    "taskId": "T-91",
+    "wbs": "1.2.4.8",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Meeting/Site Visit - 8",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-31T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-03T04:59:59.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 400,
+    "autoCost": true,
+    "parentId": "1.2.4.8",
+    "dependencies": [
+      "T-85"
+    ],
+    "assignee": null,
+    "tags": [
+      "meeting",
+      "site visit"
+    ],
+    "activityId": "6945c42e0989c13417b083d1",
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.029Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-20T23:18:07.025Z"
+    },
+    "__v": 0,
+    "expenses": {
+      "airfare": 0,
+      "hotel": 0,
+      "rentalCar": 0,
+      "food": 0,
+      "mileage": 0,
+      "labor": 0,
+      "other1": 0,
+      "other2": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f195"
+    },
+    "taskId": "T-92",
+    "wbs": "1.2.4.8.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-31T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2025-12-31T16:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.8.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.030Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.030Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f197"
+    },
+    "taskId": "T-93",
+    "wbs": "1.2.4.8.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2025-12-31T16:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-01T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.8.2",
+    "dependencies": [
+      "T-92"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.030Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.030Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f199"
+    },
+    "taskId": "T-94",
+    "wbs": "1.2.4.8.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Conduct Site Review and Cx Meeting",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-01T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-03T04:59:59.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 200,
+    "autoCost": true,
+    "parentId": "1.2.4.8.3",
+    "dependencies": [
+      "T-96"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.031Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T20:55:57.057Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f19b"
+    },
+    "taskId": "T-95",
+    "wbs": "1.2.4.8.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-01T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-01T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.2.4.8.4",
+    "dependencies": [
+      "T-93"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.032Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.032Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f19d"
+    },
+    "taskId": "T-96",
+    "wbs": "1.2.4.8.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-01T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-02T04:59:59.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 200,
+    "autoCost": true,
+    "parentId": "1.2.4.8.5",
+    "dependencies": [
+      "T-95"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.032Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-20T19:10:25.434Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f19f"
+    },
+    "taskId": "T-97",
+    "wbs": "1.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "TESTING",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-02T18:30:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-06T21:00:00.000Z"
+    },
+    "duration": 94,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3",
+    "dependencies": [
+      "T-32"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.034Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.034Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1a1"
+    },
+    "taskId": "T-98",
+    "wbs": "1.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Systems Manual",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-28T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-02-04T15:30:00.000Z"
+    },
+    "duration": 7,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.035Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.035Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1a3"
+    },
+    "taskId": "T-99",
+    "wbs": "1.3.1.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Compose/Review Systems Manual",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-28T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-02-04T14:00:00.000Z"
+    },
+    "duration": 7,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.1.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.035Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.035Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1a5"
+    },
+    "taskId": "T-100",
+    "wbs": "1.3.1.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA Systems Manual",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-02-04T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-02-04T14:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.1.2",
+    "dependencies": [
+      "T-99"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.036Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1a7"
+    },
+    "taskId": "T-101",
+    "wbs": "1.3.1.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Distribute Systems Manual",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-02-04T14:30:00.000Z"
+    },
+    "end": {
+      "$date": "2026-02-04T15:30:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.1.3",
+    "dependencies": [
+      "T-100"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.036Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.036Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1a9"
+    },
+    "taskId": "T-102",
+    "wbs": "1.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Functional Performance Test",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-02T18:30:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-27T14:00:00.000Z"
+    },
+    "duration": 84,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.037Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.037Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1ab"
+    },
+    "taskId": "T-103",
+    "wbs": "1.3.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write FPT Procedures",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-01-02T18:30:00.000Z"
+    },
+    "end": {
+      "$date": "2026-01-09T18:30:00.000Z"
+    },
+    "duration": 7,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.037Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.037Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1ad"
+    },
+    "taskId": "T-104",
+    "wbs": "1.3.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Phase I Execution",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-02-25T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-12T14:00:00.000Z"
+    },
+    "duration": 15,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.038Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.038Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1af"
+    },
+    "taskId": "T-105",
+    "wbs": "1.3.2.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-02-25T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-02-26T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.038Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.038Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1b1"
+    },
+    "taskId": "T-106",
+    "wbs": "1.3.2.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-02-26T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-02T14:00:00.000Z"
+    },
+    "duration": 4,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2.2",
+    "dependencies": [
+      "T-105"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.039Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1b3"
+    },
+    "taskId": "T-107",
+    "wbs": "1.3.2.2.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Field Testing",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-02T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-09T13:00:00.000Z"
+    },
+    "duration": 7,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2.3",
+    "dependencies": [
+      "T-106"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.039Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.039Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1b5"
+    },
+    "taskId": "T-108",
+    "wbs": "1.3.2.2.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Report",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-09T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-11T13:00:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2.4",
+    "dependencies": [
+      "T-107"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.040Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.040Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1b7"
+    },
+    "taskId": "T-109",
+    "wbs": "1.3.2.2.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Update Cx Issues Log",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-11T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-12T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2.5",
+    "dependencies": [
+      "T-108"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.040Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.040Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1b9"
+    },
+    "taskId": "T-110",
+    "wbs": "1.3.2.2.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-12T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-12T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.2.6",
+    "dependencies": [
+      "T-109"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.041Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.041Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1bb"
+    },
+    "taskId": "T-111",
+    "wbs": "1.3.2.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Phase I Execution",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-12T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-27T14:00:00.000Z"
+    },
+    "duration": 15,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.041Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.041Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1bd"
+    },
+    "taskId": "T-112",
+    "wbs": "1.3.2.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-12T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-13T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3.1",
+    "dependencies": [
+      "T-105"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.041Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.041Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1bf"
+    },
+    "taskId": "T-113",
+    "wbs": "1.3.2.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-13T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-17T13:00:00.000Z"
+    },
+    "duration": 4,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3.2",
+    "dependencies": [
+      "T-112"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.045Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.045Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1c1"
+    },
+    "taskId": "T-114",
+    "wbs": "1.3.2.3.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Field Testing",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-17T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-24T13:00:00.000Z"
+    },
+    "duration": 7,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3.3",
+    "dependencies": [
+      "T-113"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.046Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.046Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1c3"
+    },
+    "taskId": "T-115",
+    "wbs": "1.3.2.3.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Report",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-24T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-26T13:00:00.000Z"
+    },
+    "duration": 2,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3.4",
+    "dependencies": [
+      "T-114"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.047Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.047Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1c5"
+    },
+    "taskId": "T-116",
+    "wbs": "1.3.2.3.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Update Cx Issues Log",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-26T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-27T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3.5",
+    "dependencies": [
+      "T-115"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.047Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.047Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1c7"
+    },
+    "taskId": "T-117",
+    "wbs": "1.3.2.3.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-27T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-27T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.2.3.6",
+    "dependencies": [
+      "T-116"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.047Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.047Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1c9"
+    },
+    "taskId": "T-118",
+    "wbs": "1.3.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "O&M Manual Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-27T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-01T14:00:00.000Z"
+    },
+    "duration": 5,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.3",
+    "dependencies": [
+      "T-102"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.048Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.048Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1cb"
+    },
+    "taskId": "T-119",
+    "wbs": "1.3.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Solicit manuals from GC",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-27T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-03-27T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.3.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.049Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.049Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1cd"
+    },
+    "taskId": "T-120",
+    "wbs": "1.3.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Review and provide comments",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-03-27T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-01T14:00:00.000Z"
+    },
+    "duration": 5,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.3.2",
+    "dependencies": [
+      "T-119"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.049Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.049Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1cf"
+    },
+    "taskId": "T-121",
+    "wbs": "1.3.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Training Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-06T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-06T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.4",
+    "dependencies": [
+      "T-118"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.050Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1d1"
+    },
+    "taskId": "T-122",
+    "wbs": "1.3.4.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Prepare Forms and Schedule",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-06T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-06T14:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.4.1",
+    "dependencies": [
+      "T-33"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.050Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.050Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1d3"
+    },
+    "taskId": "T-123",
+    "wbs": "1.3.4.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Execution",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-06T14:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-06T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.4.2",
+    "dependencies": [
+      "T-122",
+      "T-110"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.051Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.051Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1d5"
+    },
+    "taskId": "T-124",
+    "wbs": "1.3.4.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-06T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-06T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.3.4.3",
+    "dependencies": [
+      "T-123"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.051Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.051Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1d7"
+    },
+    "taskId": "T-125",
+    "wbs": "1.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "OPERATION",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-21T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-14T19:00:00.000Z"
+    },
+    "duration": 268,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4",
+    "dependencies": [
+      "T-97"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.052Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.052Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1d9"
+    },
+    "taskId": "T-126",
+    "wbs": "1.4.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Final Report",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-21T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-27T21:00:00.000Z"
+    },
+    "duration": 6,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1",
+    "dependencies": [],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.053Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.053Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1db"
+    },
+    "taskId": "T-127",
+    "wbs": "1.4.1.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Narratives",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-21T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-24T21:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.1",
+    "dependencies": [
+      "T-124"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.053Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.053Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1dd"
+    },
+    "taskId": "T-128",
+    "wbs": "1.4.1.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Assemble Final Report",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-27T12:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-27T17:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.2",
+    "dependencies": [
+      "T-127"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.054Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.054Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1df"
+    },
+    "taskId": "T-129",
+    "wbs": "1.4.1.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Final Report",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-27T17:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-27T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.3",
+    "dependencies": [
+      "T-128"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.055Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.055Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1e1"
+    },
+    "taskId": "T-130",
+    "wbs": "1.4.1.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Print/Distribute Copies to Owner",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-04-27T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-04-27T21:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.1.4",
+    "dependencies": [
+      "T-129"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.055Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.055Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1e3"
+    },
+    "taskId": "T-131",
+    "wbs": "1.4.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Seasonal Testing",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-09-21T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-09-22T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.2",
+    "dependencies": [
+      "T-126"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.056Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1e5"
+    },
+    "taskId": "T-132",
+    "wbs": "1.4.2.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Update Cx Issues Log",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-09-21T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-09-21T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.2.1",
+    "dependencies": [
+      "T-107"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.056Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.056Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1e7"
+    },
+    "taskId": "T-133",
+    "wbs": "1.4.2.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2026-09-21T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2026-09-22T13:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.2.2",
+    "dependencies": [
+      "T-132"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.058Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1e9"
+    },
+    "taskId": "T-134",
+    "wbs": "1.4.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Warranty Review",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-11T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-14T19:00:00.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3",
+    "dependencies": [
+      "T-131"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.058Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.058Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1eb"
+    },
+    "taskId": "T-135",
+    "wbs": "1.4.3.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Preparation",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-11T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-11T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3.1",
+    "dependencies": [
+      "T-123"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.059Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.059Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1ed"
+    },
+    "taskId": "T-136",
+    "wbs": "1.4.3.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Travel",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-12T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-12T20:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3.2",
+    "dependencies": [
+      "T-135"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.062Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.062Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1ef"
+    },
+    "taskId": "T-137",
+    "wbs": "1.4.3.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Review Cx Systems",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-12T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-13T20:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3.3",
+    "dependencies": [
+      "T-136"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.062Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.062Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1f1"
+    },
+    "taskId": "T-138",
+    "wbs": "1.4.3.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Update Cx Issues Log",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-13T20:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-13T22:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3.4",
+    "dependencies": [
+      "T-137"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.063Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.063Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1f3"
+    },
+    "taskId": "T-139",
+    "wbs": "1.4.3.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Write Reports",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-14T13:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-14T18:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3.5",
+    "dependencies": [
+      "T-138"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.064Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1f5"
+    },
+    "taskId": "T-140",
+    "wbs": "1.4.3.6",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC Deliverables",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-14T18:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-14T19:00:00.000Z"
+    },
+    "duration": 1,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.4.3.6",
+    "dependencies": [
+      "T-139"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.064Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T14:16:26.064Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1f7"
+    },
+    "taskId": "T-141",
+    "wbs": "1.5",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "ADMINISTRATION",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-14T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-02-01T19:00:00.000Z"
+    },
+    "duration": 18,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 3600,
+    "autoCost": true,
+    "parentId": "1.5",
+    "dependencies": [
+      "T-125"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.066Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-23T03:05:16.035Z"
+    },
+    "__v": 0,
+    "expenses": {
+      "airfare": 0,
+      "hotel": 0,
+      "rentalCar": 0,
+      "food": 0,
+      "mileage": 0,
+      "labor": 0,
+      "other1": 0,
+      "other2": 0
+    }
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1f9"
+    },
+    "taskId": "T-142",
+    "wbs": "1.5.1",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Cx Management",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-14T19:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-19T19:00:00.000Z"
+    },
+    "duration": 5,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 0,
+    "autoCost": true,
+    "parentId": "1.5.1",
+    "dependencies": [
+      "T-140"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.067Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T16:12:39.400Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1fb"
+    },
+    "taskId": "T-143",
+    "wbs": "1.5.2",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Update MS Project Plan",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-19T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-23T04:59:59.000Z"
+    },
+    "duration": 3,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 600,
+    "autoCost": true,
+    "parentId": "1.5.2",
+    "dependencies": [
+      "T-142"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.067Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T16:12:39.400Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1fd"
+    },
+    "taskId": "T-144",
+    "wbs": "1.5.3",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "Develop Monthly Invoices",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-22T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-01-28T04:59:59.000Z"
+    },
+    "duration": 10,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 2000,
+    "autoCost": true,
+    "parentId": "1.5.3",
+    "dependencies": [
+      "T-143"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T16:12:39.400Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "69455e3a353019cb10d6f1ff"
+    },
+    "taskId": "T-145",
+    "wbs": "1.5.4",
+    "projectId": {
+      "$oid": "690fb1299c5cec3a27d7d3ba"
+    },
+    "name": "QA/QC/Distrib Monthly Invoicing",
+    "description": "",
+    "notes": "",
+    "start": {
+      "$date": "2027-01-27T05:00:00.000Z"
+    },
+    "end": {
+      "$date": "2027-02-02T04:59:59.000Z"
+    },
+    "duration": 5,
+    "percentComplete": 0,
+    "status": "Not Started",
+    "cost": 1800,
+    "autoCost": true,
+    "parentId": "1.5.4",
+    "dependencies": [
+      "T-144"
+    ],
+    "assignee": null,
+    "tags": [],
+    "activityId": null,
+    "deleted": false,
+    "createdAt": {
+      "$date": "2025-12-19T14:16:26.068Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-23T13:42:12.444Z"
+    },
+    "__v": 0,
+    "expenses": {
+      "airfare": 500,
+      "hotel": 300,
+      "rentalCar": 0,
+      "food": 0,
+      "mileage": 0,
+      "labor": 0,
+      "other1": 0,
+      "other2": 0
+    }
+  }
+]

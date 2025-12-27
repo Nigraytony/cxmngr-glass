@@ -81,10 +81,18 @@
             v-model="task.status"
             class="w-full px-3 py-2 rounded bg-white/10"
           >
-            <option value="Not Started">Not Started</option>
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
+            <option value="Not Started">
+              Not Started
+            </option>
+            <option value="Pending">
+              Pending
+            </option>
+            <option value="In Progress">
+              In Progress
+            </option>
+            <option value="Completed">
+              Completed
+            </option>
           </select>
         </div>
         <div>
@@ -181,35 +189,83 @@
 
         <div>
           <label class="block text-white/70 text-sm">Airfare</label>
-          <input v-model.number="task.expenses.airfare" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.airfare"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Hotel</label>
-          <input v-model.number="task.expenses.hotel" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.hotel"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Rental Car</label>
-          <input v-model.number="task.expenses.rentalCar" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.rentalCar"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Food</label>
-          <input v-model.number="task.expenses.food" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.food"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Mileage</label>
-          <input v-model.number="task.expenses.mileage" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.mileage"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Labor</label>
-          <input v-model.number="task.expenses.labor" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.labor"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Other 1</label>
-          <input v-model.number="task.expenses.other1" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.other1"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div>
           <label class="block text-white/70 text-sm">Other 2</label>
-          <input v-model.number="task.expenses.other2" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+          <input
+            v-model.number="task.expenses.other2"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
         </div>
         <div class="col-span-2 flex justify-end">
           <div class="text-sm text-white/70">
@@ -289,10 +345,24 @@
           Cancel
         </RouterLink>
         <button
-          class="px-3 py-2 rounded bg-blue-600 text-white"
+          :disabled="saving"
+          type="button"
+          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           @click="save"
         >
-          {{ saving ? 'Saving...' : 'Save' }}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          ><path
+            d="M5 13l4 4L19 7"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          /></svg>
+          <span>{{ saving ? 'Saving...' : 'Save' }}</span>
         </button>
       </div>
     </div>
@@ -313,8 +383,8 @@ const router = useRouter()
 const projectStore = useProjectStore()
 const activitiesStore = useActivitiesStore()
 const ui = useUiStore()
-const id = route.params.id
-const modeLabel = id === 'new' ? 'New Task' : 'Edit Task'
+const id = computed(() => String(route.params.id || ''))
+const modeLabel = computed(() => (id.value === 'new' ? 'New Task' : 'Edit Task'))
 const task = ref({
   name: '',
   wbs: '',
@@ -481,9 +551,9 @@ function removeTag(tag) {
 }
 
 async function load() {
-  if (!id || id === 'new') return
+  if (!id.value || id.value === 'new') return
   try {
-    const r = await http.get(`/api/tasks/${id}`)
+    const r = await http.get(`/api/tasks/${id.value}`)
     Object.assign(task.value, r.data)
     if (typeof task.value.autoCost !== 'boolean') task.value.autoCost = true
     task.value.expenses = normalizeExpenses(task.value.expenses || defaultExpenses)
@@ -515,15 +585,26 @@ async function save() {
       const autoVal = autoCostNumber.value
       task.value.cost = Number.isFinite(autoVal) ? autoVal : task.value.cost
     }
-    if (id === 'new') {
-      await http.post('/api/tasks', task.value)
-      router.push({ name: 'tasks' })
+    if (id.value === 'new') {
+      const res = await http.post('/api/tasks', task.value)
+      const created = res?.data || {}
+      const createdId = String(created._id || created.id || '')
+      if (createdId) {
+        Object.assign(task.value, created)
+        // Stay on this page, but switch route from /tasks/new -> /tasks/:id
+        await router.replace({ name: 'task-edit', params: { id: createdId } })
+        ui.showSuccess('Saved')
+      } else {
+        ui.showSuccess('Saved')
+      }
     } else {
-      await http.patch(`/api/tasks/${id}`, task.value)
-      router.push({ name: 'tasks' })
+      const res = await http.patch(`/api/tasks/${id.value}`, task.value)
+      const updated = res?.data || null
+      if (updated && typeof updated === 'object') Object.assign(task.value, updated)
+      ui.showSuccess('Saved')
     }
   } catch (e) {
-    // ignore for now
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to save task')
   } finally { saving.value = false }
 }
 

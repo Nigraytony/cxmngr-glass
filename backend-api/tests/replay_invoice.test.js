@@ -1,13 +1,11 @@
 const { expect } = require('chai');
 const request = require('supertest');
-let MongoMemoryServer = null;
-try { ({ MongoMemoryServer } = require('mongodb-memory-server')); } catch (e) {}
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const { clearDb } = require('./testUtils');
 
 describe('Admin webhook replay - invoice events', function () {
   this.timeout(20000);
-  let mongoServer;
   let app;
   let WebhookEvent;
   let Project;
@@ -89,6 +87,8 @@ describe('Admin webhook replay - invoice events', function () {
     Project = require('../models/project');
     User = require('../models/user');
 
+    await clearDb();
+
     // expose setter helper by finding the fake constructor instance in require cache
     try {
       const stripePath = require.resolve('stripe');
@@ -105,6 +105,10 @@ describe('Admin webhook replay - invoice events', function () {
     }
   });
 
+  beforeEach(async () => {
+    await clearDb();
+  });
+
   after(async () => {
     // restore stripe cache if we replaced it
     try {
@@ -115,7 +119,6 @@ describe('Admin webhook replay - invoice events', function () {
       // ignore
     }
     await mongoose.disconnect();
-    if (mongoServer) await mongoServer.stop();
   });
 
   it('replays invoice.payment_succeeded and updates Project from subscription metadata', async () => {

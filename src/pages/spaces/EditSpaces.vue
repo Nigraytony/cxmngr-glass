@@ -330,6 +330,7 @@
             <div class="mt-4 flex items-center gap-2">
               <button
                 :disabled="saving"
+                type="button"
                 class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 @click="save"
               >
@@ -1170,7 +1171,19 @@ watch(() => route.params.id, async () => {
 async function save() {
   try {
     if (!form.value.title || !form.value.title.trim()) { ui.showError('Title is required'); return }
-    if (!form.value.project) form.value.project = projectStore.currentProjectId || ''
+    // Ensure we always send a valid project id for space creation
+    // (backend permissions + validation require it)
+    const resolvedProjectId = (() => {
+      const raw = (form.value as any).project || (form.value as any).projectId || null
+      if (raw && typeof raw === 'object') return String(raw._id || raw.id || '')
+      const pid = String(raw || projectStore.currentProjectId || route.query.projectId || localStorage.getItem('selectedProjectId') || '')
+      return pid && pid !== 'undefined' && pid !== 'null' ? pid : ''
+    })()
+    if (!resolvedProjectId) {
+      ui.showError('No project selected. Select a project in the top bar and try again.')
+      return
+    }
+    (form.value as any).project = resolvedProjectId
     saving.value = true
     if (form.value.id) {
       const payload: any = { ...form.value }
@@ -1180,19 +1193,30 @@ async function save() {
       if (Array.isArray(payload.attributes)) payload.attributes = payload.attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim()))
       payload.tags = normalizeTags(payload.tags)
       await spaces.update(payload as any)
-      await appendSpaceLog({ type: 'update', message: 'Space updated', details: { spaceId: payload.id || payload._id, title: payload.title, type: payload.type } })
     } else {
       const payload: any = { ...form.value }
       if (Array.isArray(payload.attachments)) payload.attachments = payload.attachments.map((a: any) => (typeof a === 'string' ? a : (a?.url || ''))).filter((s: any) => !!s)
       if (Array.isArray(payload.attributes)) payload.attributes = payload.attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim()))
       payload.tags = normalizeTags(payload.tags)
-      await spaces.create(payload as any)
-      await appendSpaceLog({ type: 'create', message: 'Space created', details: { title: payload.title, type: payload.type } })
+      const created: any = await spaces.create(payload as any)
+      const createdId = String(created?.id || created?._id || '')
+      if (createdId) {
+        // Ensure local form now tracks the real id
+        (form.value as any).id = createdId
+        // Switch from /spaces/new -> /spaces/:id so subsequent actions hit real endpoints
+        await router.replace({ name: 'space-edit', params: { id: createdId } })
+      }
     }
-  ui.showSuccess('Space saved')
     ui.showSuccess('Space saved')
   } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to save space')
+    const status = e?.response?.status
+    const url = e?.response?.config?.url || e?.config?.url
+    const serverMsg = e?.response?.data?.error
+    if (status === 404 && url) {
+      ui.showError(serverMsg || `Not found: ${url}`)
+    } else {
+      ui.showError(serverMsg || e?.message || 'Failed to save space')
+    }
   } finally {
     saving.value = false
   }

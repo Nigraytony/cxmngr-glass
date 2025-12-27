@@ -1,13 +1,11 @@
 const { expect } = require('chai');
 const request = require('supertest');
-let MongoMemoryServer = null;
-try { ({ MongoMemoryServer } = require('mongodb-memory-server')); } catch (e) {}
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const { clearDb } = require('./testUtils');
 
 describe('Admin webhook replay - invoice fallback to Stripe by ID', function () {
   this.timeout(20000);
-  let mongoServer;
   let app;
   let WebhookEvent;
   let Project;
@@ -67,6 +65,12 @@ describe('Admin webhook replay - invoice fallback to Stripe by ID', function () 
     WebhookEvent = require('../models/webhookEvent');
     Project = require('../models/project');
     User = require('../models/user');
+
+    await clearDb();
+  });
+
+  beforeEach(async () => {
+    await clearDb();
   });
 
   after(async () => {
@@ -80,7 +84,6 @@ describe('Admin webhook replay - invoice fallback to Stripe by ID', function () 
       else delete require.cache['stripe'];
     }
     await mongoose.disconnect();
-    if (mongoServer) await mongoServer.stop();
   });
 
   it('when subscription is an ID, admin replay calls Stripe and updates Project', async () => {

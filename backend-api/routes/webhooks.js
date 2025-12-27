@@ -14,6 +14,13 @@ const Project = require('../models/project');
 const WebhookEvent = require('../models/webhookEvent');
 const Invoice = require('../models/invoice');
 const Charge = require('../models/charge');
+const { isObjectId } = require('../middleware/validate');
+
+function getValidProjectId(value) {
+  if (!value) return null;
+  const s = String(value);
+  return isObjectId(s) ? s : null;
+}
 
 async function markEventStatus(eventId, status, extra = {}) {
   try {
@@ -53,18 +60,13 @@ router.post('/webhook', async (req, res) => {
     wevent = await WebhookEvent.findOneAndUpdate(
       { eventId },
       {
-        $setOnInsert: { eventId, type: event.type, receivedAt: new Date(), status: 'processing', meta: { raw: event }, attempts: 1 },
+        $setOnInsert: { eventId, type: event.type, receivedAt: new Date(), status: 'processing', meta: { raw: event } },
         $set: { type: event.type, meta: { raw: event } },
-        $inc: { attempts: 1 },
       },
       { upsert: true, new: true }
     );
     if (wevent && wevent.status === 'processed') {
       return res.json({ received: true, skipped: true });
-    }
-    if (wevent && wevent.status === 'processing' && !wevent.processedAt) {
-      // Another worker/request is already processing this event; avoid double-processing.
-      return res.status(202).json({ received: true, processing: true });
     }
     if (wevent && !wevent.meta) {
       // Ensure raw payload is retained for replay/diagnostics
@@ -84,7 +86,7 @@ router.post('/webhook', async (req, res) => {
         const session = event.data.object;
         if (session.subscription) {
           const sub = await stripe.subscriptions.retrieve(String(session.subscription));
-          const projectId = (session.metadata && session.metadata.projectId) || (sub.metadata && sub.metadata.projectId) || session.client_reference_id;
+          const projectId = getValidProjectId((session.metadata && session.metadata.projectId) || (sub.metadata && sub.metadata.projectId) || session.client_reference_id);
           if (projectId) {
             const proj = await Project.findById(projectId);
             const incomingTrialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
@@ -108,7 +110,7 @@ router.post('/webhook', async (req, res) => {
       case 'customer.subscription.updated':
       case 'customer.subscription.created': {
         const sub = event.data.object;
-        const projectId = sub.metadata && sub.metadata.projectId;
+        const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
         if (projectId) {
           const proj = await Project.findById(projectId);
           const incomingTrialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
@@ -136,7 +138,7 @@ router.post('/webhook', async (req, res) => {
         const invoice = event.data.object;
         // Persist invoice to DB
         try {
-          const projectIdFromMeta = invoice.metadata && invoice.metadata.projectId ? String(invoice.metadata.projectId) : null;
+          const projectIdFromMeta = getValidProjectId(invoice.metadata && invoice.metadata.projectId);
           const mapped = {
             invoiceId: invoice.id,
             projectId: projectIdFromMeta,
@@ -165,7 +167,7 @@ router.post('/webhook', async (req, res) => {
           if (subId) {
             try {
               const sub = await stripe.subscriptions.retrieve(String(subId));
-              const projectId = sub.metadata && sub.metadata.projectId;
+              const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
               if (projectId) {
                 await Project.findByIdAndUpdate(projectId, {
                   stripeSubscriptionStatus: sub.status,
@@ -187,7 +189,7 @@ router.post('/webhook', async (req, res) => {
           if (subId) {
             try {
               const sub = await stripe.subscriptions.retrieve(String(subId));
-              const projectId = sub.metadata && sub.metadata.projectId;
+              const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
               if (projectId) {
                 await Project.findByIdAndUpdate(projectId, {
                   stripeSubscriptionStatus: sub.status,
@@ -213,12 +215,12 @@ router.post('/webhook', async (req, res) => {
           // Try to determine projectId from charge metadata or linked invoice.
           // Prefer a lookup in our Invoice DB first (cheaper, avoids Stripe API calls),
           // then fall back to checking the Charge metadata and finally Stripe invoice metadata.
-          let projectId = charge.metadata && charge.metadata.projectId ? String(charge.metadata.projectId) : null;
+          let projectId = getValidProjectId(charge.metadata && charge.metadata.projectId);
           if (!projectId && charge.invoice) {
             try {
               const invDoc = await Invoice.findOne({ invoiceId: String(charge.invoice) }).lean();
               if (invDoc && invDoc.projectId) {
-                projectId = String(invDoc.projectId);
+                projectId = getValidProjectId(invDoc.projectId);
               }
             } catch (e) {
               // ignore DB lookup errors and continue to fallback
@@ -229,7 +231,7 @@ router.post('/webhook', async (req, res) => {
             // fallback to Stripe invoice metadata if DB didn't have it
             try {
               const inv = await stripe.invoices.retrieve(String(charge.invoice));
-              if (inv && inv.metadata && inv.metadata.projectId) projectId = String(inv.metadata.projectId);
+              if (inv && inv.metadata && inv.metadata.projectId) projectId = getValidProjectId(inv.metadata.projectId);
             } catch (e) {
               // ignore invoice retrieval errors
             }
@@ -256,7 +258,7 @@ router.post('/webhook', async (req, res) => {
       }
       case 'customer.subscription.deleted': {
         const sub = event.data.object;
-        const projectId = sub.metadata && sub.metadata.projectId;
+        const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
         if (projectId) {
           await Project.findByIdAndUpdate(projectId, {
             stripeSubscriptionStatus: 'canceled',

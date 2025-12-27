@@ -1,4 +1,79 @@
 TO DO FOR THE APP
+----------------------------------------
+LAUNCH READINESS (Subscription + Public Use) — Prioritized
+
+P0 (Launch blockers / security)
+- [x] Enforce RBAC on all project-scoped read endpoints (Owner: Backend, Effort: M) — prevent cross-project data leaks (projects list/get now auth+member-scoped; do a final audit).
+- [x] Add basic API rate limiting (login/reset/AI/uploads) without new deps (Owner: Backend, Effort: S).
+- [x] Add baseline security headers (no deps) (Owner: Backend, Effort: S).
+- [x] Add request validation on all write endpoints (no new deps; consistent helpers) (Owner: Backend, Effort: M) (expanded: uploads + AI + tasks import + broad ObjectId param guards across admin/projects/tasks/users/spaces/billing + core entities).
+- [x] Ensure rich-text fields are sanitized on all create/update paths (Activities/Issues/Templates/etc.) (Owner: Backend, Effort: M) (started: Activities/Issues/Templates/Spaces/Equipment; continue audit).
+- [x] Frontend: stop unauthenticated project list calls + ensure auth headers on all `/api/projects*` requests (Owner: Frontend, Effort: S).
+  - Note: In production, CORS now requires `CORS_ALLOWED_ORIGINS` or a valid `APP_URL`/`FRONTEND_URL` (backend blocks arbitrary browser origins by default).
+  - Note: Added validation/sanitization on `POST /api/projects` + `PUT /api/projects/:id`, invite id guards, and `POST /api/projects/addUser` input validation.
+  - Note: Added validation/sanitization on Tasks (`POST /api/tasks`, `PATCH /api/tasks/:id`, `POST /api/tasks/import-template`, `GET /api/tasks` projectId validation).
+  - Note: Added `projectId` validation on create endpoints for Activities/Issues/Equipment/Templates.
+  - Note: Moved project id validation earlier via `requireBodyField` + `requireObjectIdBody` middleware for create endpoints (Activities/Issues/Equipment/Templates/Spaces), and sanitized MS Project task import notes.
+  - Note: AI endpoints now verify the authenticated user is a member of the requested project before using project AI settings/key.
+  - Note: Added `requireFeature(...)` + projectId-loading middleware to Issues/Equipment/Activity media endpoints (photos/attachments) so plan gating and RBAC apply consistently.
+  - Note: Added `requireActiveProject` enforcement to Activity/Equipment log append endpoints (`POST /api/activities/:id/logs`, `POST /api/equipment/:id/logs`) for subscription consistency.
+  - Note: Fixed plan gating on core update/delete endpoints by loading parent `projectId` before `requireFeature(...)` (Activities/Issues/Equipment/Tasks).
+  - Note: AI endpoints now enforce active subscription (`requireActiveProject`) before processing `/api/ai/chat` and `/api/ai/suggest-tags`.
+  - Note: Tasks list search now uses `buildSafeRegex` (escapes user input + caps length) to avoid regex ReDoS risk on `GET /api/tasks?q=...`.
+  - Note: Projects invites email matching now uses a single safe helper (`buildExactCaseInsensitiveRegex`) and the duplicate `/api/projects/my-invites` route definition was removed.
+  - Note: Task import endpoints no longer return internal `detail` in production (`POST /api/tasks/import`, `POST /api/tasks/import-template`).
+  - Note: Core entity routes now avoid leaking internal error messages in production (Activities/Equipment/Issues/Tasks helper middleware + tasks list/get/delete failures).
+  - Note: ID-loading middleware now returns 400 on invalid ObjectIds (Activities/Equipment/Issues) instead of bubbling to 500.
+  - Note: Spaces list endpoints now validate optional `parentSpace` query param to avoid CastErrors/500s.
+  - Note: Tasks templates listing now avoids leaking internal errors in production (`GET /api/tasks/templates`).
+  - Note: Log append endpoints now normalize/size-cap log payloads via `backend-api/utils/logEvent.js` to prevent oversized/untrusted log entries (Activities/Issues/Spaces/Equipment/Projects).
+  - Note: Project membership guard now validates ObjectId and skips invalid memberId lookups to avoid CastErrors/500s (`backend-api/routes/projects.js`).
+  - Note: Tasks list now validates/clamps optional `activityId` filter to avoid unbounded query inputs (`GET /api/tasks?activityId=...`).
+  - Note: List endpoints now allowlist `sortBy` fields to avoid invalid sort keys triggering Mongo errors (Templates/Equipment/Issues/Spaces).
+  - Note: Projects list now allowlists `sortBy`/`sortDir` to avoid invalid sort keys triggering Mongo errors (`GET /api/projects`).
+  - Note: Admin endpoints now avoid leaking internal errors in production by using `safeErrorMessage` for 500s (`backend-api/routes/admin.js`).
+  - Note: Admin webhook events list now validates `date_from`/`date_to` query params to avoid invalid Date filters (`GET /api/admin/webhook-events`).
+  - Note: Admin webhook replay now ignores malformed Stripe `projectId` metadata (avoids CastErrors on `Project.findByIdAndUpdate`) (`POST /api/admin/webhook-events/:eventId/replay`).
+  - Note: Billing transactions endpoint now validates `start`/`end` query params (invalid dates return 400) (`GET /api/stripe/project/:id/transactions`).
+  - Note: List endpoints now validate/clamp filter values (e.g., `type/system/status/priority`) to avoid oversized query inputs (Projects/Templates/Equipment/Issues/Spaces).
+  - Note: List endpoints now treat empty/`All` filter values as “no filter” (instead of 400) while still rejecting oversized filters (Projects/Templates/Equipment/Issues/Spaces).
+  - Note: Project-scoped management endpoints now enforce active subscription (`PUT /api/projects/:id`, `/api/projects/addUser`, `/api/projects/:id/resend-invite`, `/api/projects/:id/logs`, `/api/projects/:id/roles*`, `/api/projects/:id/team/:memberId/permissions`, and invite acceptance flows).
+  - Note: Invite and password-reset acceptance flows now validate token format/length (`/api/projects/accept-invite`: 40-hex; `/api/users/reset-password`: 64-hex) to avoid unbounded query inputs.
+  - Note: Hardened legacy plan-change route by requiring project-admin permission (`POST /api/projects/:id/change-plan`).
+  - Note: Fixed admin user update to hash passwords correctly (avoid `findByIdAndUpdate` bypassing `User` pre-save hook) and added basic validation to admin audit/test-email/webhook-replay endpoints.
+  - Note: Hardened local upload deletion to prevent path traversal when removing attachments (Activities/Issues/Equipment/Spaces/Templates now delete only within `/uploads/<type>/`).
+  - Note: Hardened auth flows: registration no longer accepts client-supplied `role`/`projects`, and login no longer crashes on unknown emails; tasks template listing now validates `projectId` and enforces `tasks.read`.
+  - Note: Hardened profile + password reset: validate email format/uniqueness on user update, validate email format on forgot-password.
+  - Note: Fixed Space attachment delete to treat stored attachments as URL strings (not `{url}` objects) so local cleanup works.
+  - Note: Added ObjectId param validation to `GET /api/templates/project/:projectId` and `GET /api/equipment/project/:projectId` to avoid CastError/500s.
+  - Note: Hardened billing endpoints (`backend-api/routes/billing.js`): validate Stripe IDs (`price_`, `pm_`, `promo_`), cap promotion code length, allowlist `proration_behavior`, and enforce `projectId` presence/ObjectId on checkout/portal session creation.
+  - Note: Fixed Stripe webhook processing (`backend-api/routes/webhooks.js`) to avoid incorrectly returning `202` for new events, and validate `projectId` before any `Project.findById*` calls to prevent CastError/500s from malformed metadata.
+  - Note: Hardened plans admin endpoints (`backend-api/routes/plans.js`): validate project `stripePriceId` format before reconcile and stop returning internal error `details` in 500 responses.
+  - Note: Hardened admin list + billing tools (`backend-api/routes/admin.js`): validate `projectId` on admin tasks/templates list filters, validate inputs for billing credits (amount/currency/userId/email/customerId), and validate Stripe `promo_` IDs + payload for promotion-code updates.
+  - Note: Hardened templates CRUD (`backend-api/routes/templates.js`) by restricting create/update payloads to an allowlist and preventing client-side updates to `projectId`/media arrays (photos/attachments/issues) via the generic PATCH route.
+  - Note: Hardened mass-assignment in core entities: Activities (`backend-api/routes/activities.js`), Equipment (`backend-api/routes/equipment.js`), Tasks (`backend-api/routes/tasks.js`), Spaces (`backend-api/routes/spaces.js`), and Projects (`backend-api/routes/projects.js`) now use allowlists for create/update and block client updates to protected fields (ownership, subscription/billing, logs, and media arrays).
+  - Note: Removed remaining raw 500 error leakage from core routes (Activities/Equipment/Spaces/Issues/Templates/Projects) and tightened admin template create/update to use an allowlist (`backend-api/routes/admin.js`).
+  - Note: Hardened RBAC middleware (`backend-api/middleware/rbac.js`) to validate `projectId` before `Project.findById` to avoid CastError/500s, and made `backend-api/routes/projects.js` Stripe initialization safe when `STRIPE_SECRET_KEY` is missing (plus validated plan-change inputs).
+  - Note: Removed remaining raw error-object responses (`res.status(...).send(error)`) across routes and replaced with safe `{ error: message }` payloads with server-side logging (Users/Projects/Issues/Templates/Activities/Equipment/Spaces).
+  - Note: Hardened subscription + plan guards (`backend-api/middleware/subscription.js`, `backend-api/middleware/planGuard.js`) to validate `projectId` before DB lookups, preventing CastErrors and leaking internal error messages.
+  - Note: Hardened list search filters to avoid regex-injection/DoS by escaping and length-capping `search` into a safe `RegExp` (`backend-api/utils/search.js`) and applying across Issues/Templates/Spaces/Equipment list endpoints.
+  - Note: Extended safe regex handling to admin task search (`backend-api/routes/admin.js`) and projects list search (`backend-api/routes/projects.js`) to avoid regex injection and cap search length.
+  - Note: Extended safe regex handling to admin users/projects/task-templates search and `GET /api/tasks/templates` query (`backend-api/routes/admin.js`, `backend-api/routes/tasks.js`).
+
+P1 (Revenue + support readiness)
+- [x] Add “Billing Admin” UX + error messages for 402/plan limits across UI (Owner: Frontend, Effort: M) (global toast on 402/PLAN_LIMIT_REACHED via `src/utils/http.ts`).
+- [ ] Add admin tooling for subscription support (project lookup, webhook replay, billing status) (Owner: Backend+Frontend, Effort: M).
+- [x] Add “kill switch” flags for AI + email + uploads via env or admin settings (Owner: Backend, Effort: S) (env flags added; admin toggles optional).
+
+P2 (Operational hygiene)
+- [x] Add basic structured logging (request id, route, status; avoid PII) (Owner: Backend, Effort: M) (started: request-id + JSON request logs; removed verbose activity-create body logging).
+- [ ] Add backups/retention plan for Mongo + uploads (Owner: DevOps, Effort: M).
+- [ ] Add monitoring/alerting (errors + performance) (Owner: DevOps, Effort: M).
+
+Notes
+- “No new dependencies” means implement with Express/Mongoose + small helper modules.
+- Items above should be completed before wider public launch.
+
 ✅ 1.  Issues: Update the Issues to pull them from the DB instead of static issues
 ✅ 2.  Issues: keep all issue interraction on the Issues page
 ✅ 3.  APP: Add Project CRUD to the app
@@ -24,7 +99,7 @@ TO DO FOR THE APP
 23. Documentation: We need to add a robust documentation and FAQ module for the app. It should cover that app and Cx very well.
 24. Logging: Finish the logging features of the app and make it one that loggs everything for transparency and research.
 25. Tasks: Fix the gantt feature so that we have a good working gantt chart for each app.
-26. Tasks: The app needs the ability to tie a task to an activity in a 1:1 relationship. A completed Activity will mark the task as complete.
+✅ 26. Tasks: The app needs the ability to tie a task to an activity in a 1:1 relationship. A completed Activity will mark the task as complete.
 ✅ 27: Tasks: Update the Dashboard with Tasks information.
 28. Tasks: Include an attactive calendar view for tasks.
 29. Tasks: Export tasks to xlsx, csv, xml, mpp, and pdf files.

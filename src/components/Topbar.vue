@@ -414,10 +414,9 @@ async function onSelectProject(p) {
   if (!p) return
   if (isDefaultProject(p)) return // already default
   try {
-    const userId = auth.user && (auth.user._id || auth.user.id)
-    if (!userId) return
+    if (!getAuthHeaders()?.Authorization) { ui.showError('Not signed in'); return }
     const projectId = p.id || p._id
-  const { data } = await http.post(`/api/projects/${projectId}/set-default`, { userId }, { headers: getAuthHeaders() })
+  const { data } = await http.post(`/api/projects/${projectId}/set-default`, {}, { headers: getAuthHeaders() })
     // Update auth store's user while preserving token
     const incoming = (data && data.user) ? data.user : data
     const preserveToken = auth.token || (auth.user && auth.user.token) || null

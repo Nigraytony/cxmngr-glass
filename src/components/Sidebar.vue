@@ -173,6 +173,16 @@
         <span class="i">📁</span>
         <span v-if="open">Projects</span>
       </RouterLink>
+
+      <button
+        v-if="currentProjectId && featureEnabled('ai')"
+        type="button"
+        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10 hover:bg-white/20"
+        @click="openAiChat"
+      >
+        <span class="i">✨</span>
+        <span v-if="open">AI</span>
+      </button>
     </nav>
 
     <div class="absolute bottom-16 w-full px-2">
@@ -212,20 +222,31 @@
       <span v-if="open">‹</span>
       <span v-else>›</span>
     </button>
+
+    <!-- AI Chat overlay (only when sidebar is expanded) -->
+    <div
+      v-if="open && ai.open"
+      class="absolute inset-x-0 top-16 bottom-0 bg-black/70 backdrop-blur-xl border-t border-white/10"
+    >
+      <AiChatSidebar />
+    </div>
   </aside>
 </template>
 
 <script setup>
-defineProps({ open: { type: Boolean, default: true } })
-defineEmits(['toggle'])
+const props = defineProps({ open: { type: Boolean, default: true } })
+const emit = defineEmits(['toggle'])
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { useProjectStore } from '../stores/project'
 import { useAuthStore } from '../stores/auth'
+import { useAiStore } from '../stores/ai'
+import AiChatSidebar from './AiChatSidebar.vue'
 
 const route = useRoute()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+const ai = useAiStore()
 const currentProject = computed(() =>
   projectStore.currentProject ||
   (projectStore.projects || []).find(p => String(p.id || p._id) === currentProjectId.value) ||
@@ -243,28 +264,56 @@ function normalizeFeatureFlags(raw) {
   }
   return out
 }
+
+function normalizeTierKey(raw) {
+  const s = String(raw || '').toLowerCase().trim()
+  if (!s) return ''
+  if (s === 'basic' || s.startsWith('basic')) return 'basic'
+  if (s === 'standard' || s.startsWith('standard')) return 'standard'
+  if (s === 'premium' || s.startsWith('premium')) return 'premium'
+  // tolerate labels like "Standard — $49/mo"
+  if (s.includes('standard')) return 'standard'
+  if (s.includes('premium')) return 'premium'
+  if (s.includes('basic')) return 'basic'
+  return ''
+}
+
+// Conservative defaults when plan data isn't available yet.
+// (Prevents showing premium-only links like Templates/Tasks/AI by accident.)
+const DEFAULT_FEATURES = {
+  issues: true,
+  equipment: true,
+  spaces: true,
+  activities: true,
+  templates: false,
+  tasks: false,
+  ai: false,
+}
 // Plan feature map aligned with backend plans.js
 const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true },
-  standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
-  premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false, ai: false },
+  standard: { issues: true, equipment: true, spaces: true, templates: false, activities: true, tasks: false, ai: false },
+  premium:  { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true, ai: true },
 }
 
 const activeFeatures = computed(() => {
   const proj = currentProject.value || {}
-  const flags = normalizeFeatureFlags(proj.subscriptionFeatures)
-  if (Object.keys(flags).length) return flags
-  const tier = (proj.subscriptionTier || proj.subscription || '').toLowerCase()
-  if (tier && PLAN_FEATURES[tier]) return normalizeFeatureFlags(PLAN_FEATURES[tier])
-  // default: enable all if nothing specified
-  return { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true }
+  const base = { ...DEFAULT_FEATURES }
+  const tierKey = normalizeTierKey(proj.subscriptionTier || proj.subscription || '')
+  const tierFlags = tierKey && PLAN_FEATURES[tierKey] ? normalizeFeatureFlags(PLAN_FEATURES[tierKey]) : {}
+  const projectFlags = normalizeFeatureFlags(proj.subscriptionFeatures)
+  // Merge: defaults -> tier -> project flags.
+  // Note: Templates is premium-only; if `subscriptionFeatures.templates` is incorrectly true on Standard,
+  // do not show the Templates link unless the project is clearly premium (tier is premium or premium-only flags enabled).
+  const merged = { ...base, ...tierFlags, ...projectFlags }
+  const inferredPremium = tierKey === 'premium' || projectFlags.tasks === true || projectFlags.ai === true
+  if (!inferredPremium) merged.templates = false
+  return merged
 })
 
 const featureEnabled = (key) => {
-  const flags = activeFeatures.value
-  const v = flags ? flags[key.toLowerCase()] : undefined
-  if (v === false) return false
-  return true
+  const flags = activeFeatures.value || {}
+  return flags[key.toLowerCase()] === true
 }
 
 function isActive(path) {
@@ -272,7 +321,7 @@ function isActive(path) {
   if (path === '/') return route.path === '/'
   if (path === '/app') return route.path === '/app' || route.path.startsWith('/app')
   // special-case: when checking /projects, don't mark it active for project-settings route
-  if (path === '/projects' && route.name === 'project-settings') return false
+  if ((path === '/projects' || path === '/app/projects') && route.name === 'project-settings') return false
   return route.path.startsWith(path)
 }
 
@@ -287,5 +336,10 @@ const isGlobalAdmin = computed(() => {
   const role = (authStore.user && authStore.user.role) ? String(authStore.user.role).toLowerCase() : ''
   return role === 'globaladmin' || role === 'superadmin'
 })
+
+function openAiChat() {
+  if (!props.open) emit('toggle')
+  ai.toggleOpen(true)
+}
 
 </script>

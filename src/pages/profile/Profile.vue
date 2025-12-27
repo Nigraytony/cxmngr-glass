@@ -1,9 +1,12 @@
 <template>
   <section class="">
-    <div class="w-full mb-4">
+    <div
+      v-if="!hideBreadcrumbs"
+      class="w-full mb-4"
+    >
       <BreadCrumbs
-        :items="crumbs"
-        title="Profile"
+        :items="crumbItems"
+        :title="pageTitle"
       />
     </div>
 
@@ -318,6 +321,31 @@
           v-else-if="currentTab === 'Change Password'"
           class="space-y-4"
         >
+          <div
+            v-if="isSupportMode"
+            class="rounded-md p-3 bg-white/6 border border-white/10 text-sm text-white/80"
+          >
+            Passwords are not editable in support mode. Send the user a reset link instead.
+          </div>
+          <div
+            v-if="isSupportMode"
+            class="flex items-center gap-3"
+          >
+            <button
+              :disabled="pwdSaving"
+              class="px-4 py-2 rounded-lg bg-white/6 text-white"
+              :class="pwdSaving ? 'opacity-60 cursor-not-allowed' : 'hover:bg-white/10'"
+              @click="sendResetHandler"
+            >
+              Send password reset email
+            </button>
+            <div
+              v-if="pwdStatus"
+              class="ml-4 text-white/80"
+            >
+              {{ pwdStatus }}
+            </div>
+          </div>
           <p class="text-white/80">
             Change your account password.
           </p>
@@ -325,7 +353,7 @@
             <div>
               <label class="block text-white/80 mb-1">Email</label>
               <input
-                :value="auth.user?.email || ''"
+                :value="local.email || auth.user?.email || ''"
                 disabled
                 class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white/50"
               >
@@ -335,7 +363,9 @@
               <input
                 v-model="pwd.current"
                 type="password"
+                :disabled="isSupportMode"
                 class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+                :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
               >
               <p
                 v-if="pwdErrors.current"
@@ -349,7 +379,9 @@
               <input
                 v-model="pwd.new"
                 type="password"
+                :disabled="isSupportMode"
                 class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+                :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
               >
               <p
                 v-if="pwdErrors.new"
@@ -363,7 +395,9 @@
               <input
                 v-model="pwd.confirm"
                 type="password"
+                :disabled="isSupportMode"
                 class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
+                :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
               >
               <p
                 v-if="pwdErrors.confirm"
@@ -525,10 +559,16 @@
           <p class="text-white/80">
             Projects you're assigned to.
           </p>
+          <div
+            v-if="isSupportMode"
+            class="rounded-md p-3 bg-white/6 border border-white/10 text-sm text-white/80"
+          >
+            Project membership actions are disabled in support mode.
+          </div>
 
           <!-- Pending Invitations Section -->
           <div
-            v-if="invitationsStore.invites.length"
+            v-if="!isSupportMode && invitationsStore.invites.length"
             class="space-y-4"
           >
             <div class="flex items-center gap-2 text-white/90 font-medium">
@@ -653,6 +693,9 @@
                   <button
                     v-if="!proj.default"
                     class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/8"
+                    :disabled="isSupportMode"
+                    :aria-disabled="isSupportMode"
+                    :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
                     @click="makeDefault(proj)"
                   >
                     Select
@@ -667,12 +710,18 @@
                       <div class="flex items-center gap-2">
                         <button
                           class="px-3 py-1 rounded-lg bg-amber-400/30 hover:bg-amber-400/40 text-white text-sm border border-amber-400/40"
+                          :disabled="isSupportMode"
+                          :aria-disabled="isSupportMode"
+                          :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
                           @click="acceptProject(proj)"
                         >
                           Accept
                         </button>
                         <button
                           class="px-3 py-1 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+                          :disabled="isSupportMode"
+                          :aria-disabled="isSupportMode"
+                          :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
                           @click="declineProject(proj)"
                         >
                           Decline
@@ -689,6 +738,9 @@
                       <button
                         v-if="canLeaveProject(proj)"
                         class="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/25 text-red-300 text-sm border border-red-500/30"
+                        :disabled="isSupportMode"
+                        :aria-disabled="isSupportMode"
+                        :class="isSupportMode ? 'opacity-50 cursor-not-allowed' : ''"
                         @click="leaveProject(proj)"
                       >
                         Leave
@@ -808,8 +860,18 @@ import SignaturePad from '../../components/SignaturePad.vue'
 import { useUiStore } from '../../stores/ui'
 import { useInvitationsStore } from '../../stores/invitations'
 import { confirm as inlineConfirm } from '../../utils/confirm'
+import http from '../../utils/http'
+
+const props = defineProps({
+  userId: { type: String, default: null },
+  crumbs: { type: Array, default: null },
+  title: { type: String, default: null },
+  hideBreadcrumbs: { type: Boolean, default: false },
+})
 
 const auth = useAuthStore()
+const isSupportMode = computed(() => !!props.userId)
+const targetUserId = computed(() => String(props.userId || auth.user?._id || auth.user?.id || ''))
 
 function normalizeProjects(arr) {
   if (!Array.isArray(arr)) return []
@@ -835,42 +897,44 @@ const router = useRouter()
 const projectStore = useProjectStore()
 
 const local = reactive({
-  firstName: auth.user?.firstName || '',
-  lastName: auth.user?.lastName || '',
-  email: auth.user?.email || '',
-  role: auth.user?.role || 'user',
-  projects: normalizeProjects(auth.user?.projects),
+  firstName: '',
+  lastName: '',
+  email: '',
+  role: 'user',
+  projects: [],
   contact: {
-    company: auth.user?.contact?.company || '',
-    phone: auth.user?.contact?.phone || '',
+    company: '',
+    phone: '',
     address: {
-      street: auth.user?.contact?.address?.street || '',
-      city: auth.user?.contact?.address?.city || '',
-      state: auth.user?.contact?.address?.state || '',
-      zip: auth.user?.contact?.address?.zip || '',
-      country: auth.user?.contact?.address?.country || '',
-      taxId: auth.user?.contact?.address?.taxId || ''
+      street: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: '',
+      taxId: ''
     },
-    bio: auth.user?.contact?.bio || '',
-    avatar: auth.user?.contact?.avatar || '',
+    bio: '',
+    avatar: '',
     // optional signature stored on profile
-    signature: (auth.user && auth.user.contact && auth.user.contact.signature) || { title: '', person: '', block: '' },
+    signature: { title: '', person: '', block: '' },
     // optional per-page preference for list pages
-    perPage: auth.user?.contact?.perPage || null
+    perPage: null
   },
   social_media: {
-    linkedin: auth.user?.social_media?.linkedin || '',
-    x: auth.user?.social_media?.x || '',
-    github: auth.user?.social_media?.github || ''
+    linkedin: '',
+    x: '',
+    github: ''
   },
-  avatar: auth.user?.avatar || auth.user?.contact?.avatar || ''
+  avatar: ''
 })
 
-const crumbs = [
+const defaultCrumbs = [
   { text: 'Home', to: '/' },
   { text: 'Dashboard', to: '/dashboard' },
-  { text: 'Profile' }
+  { text: 'Profile' },
 ]
+const crumbItems = computed(() => (Array.isArray(props.crumbs) && props.crumbs.length ? props.crumbs : defaultCrumbs))
+const pageTitle = computed(() => String(props.title || 'Profile'))
 
 const tabs = ['Info', 'Change Password', 'Avatar', 'Projects', 'Settings']
 const currentTab = ref('Info')
@@ -972,16 +1036,62 @@ async function declineProject(proj) {
 
 onMounted(() => {
   // Fetch invites if not already loaded (Topbar might have loaded them)
-  try { if (!invitationsStore.invites.length) invitationsStore.fetchPending() } catch (e) { /* ignore invites load race */ }
+  try {
+    if (!isSupportMode.value && !invitationsStore.invites.length) invitationsStore.fetchPending()
+  } catch (e) { /* ignore invites load race */ }
 })
+
+function applyUserToLocal(u) {
+  if (!u) return
+  local.firstName = u.firstName || ''
+  local.lastName = u.lastName || ''
+  local.email = u.email || ''
+  local.role = u.role || 'user'
+  local.projects = normalizeProjects(u.projects)
+  local.contact.company = u.contact?.company || ''
+  local.contact.phone = u.contact?.phone || ''
+  local.contact.address = u.contact?.address || { street: '', city: '', state: '', zip: '', country: '', taxId: '' }
+  local.contact.bio = u.contact?.bio || ''
+  local.contact.avatar = u.contact?.avatar || ''
+  local.contact.signature = u.contact?.signature || { title: '', person: '', block: '' }
+  local.contact.perPage = u.contact?.perPage || null
+  local.social_media = u.social_media || { linkedin: '', x: '', github: '' }
+  local.avatar = u.avatar || u.contact?.avatar || ''
+}
+
+const supportUser = ref(null)
+const supportLoading = ref(false)
+async function loadSupportUser() {
+  if (!isSupportMode.value) return
+  try {
+    supportLoading.value = true
+    const { data } = await http.get(`/api/admin/users/${encodeURIComponent(targetUserId.value)}/profile`)
+    supportUser.value = data
+    applyUserToLocal(data)
+  } catch (e) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to load user profile')
+  } finally {
+    supportLoading.value = false
+  }
+}
 
 // Ensure the profile signature is kept in sync if the auth store refreshes the user after this
 watch(() => auth.user, (u) => {
   try {
+    if (isSupportMode.value) return
     if (u && u.contact && u.contact.signature) {
       local.contact.signature = u.contact.signature
     }
   } catch (e) { /* ignore */ }
+}, { immediate: true })
+
+watch(() => props.userId, () => {
+  if (isSupportMode.value) loadSupportUser()
+}, { immediate: true })
+
+watch(() => auth.user, (u) => {
+  if (isSupportMode.value) return
+  if (u) applyUserToLocal(u)
 }, { immediate: true })
 
 async function save() {
@@ -1008,55 +1118,51 @@ async function save() {
   }
 
   try {
-    const ok = await auth.updateUser(payload)
-    if (ok) {
-      // sync local copy with returned user
-      const u = auth.user
-      if (u) {
-        local.firstName = u.firstName || ''
-        local.lastName = u.lastName || ''
-        local.email = u.email || ''
-        local.role = u.role || 'user'
-  local.projects = normalizeProjects(u.projects)
-        local.contact.company = u.contact?.company || ''
-        local.contact.phone = u.contact?.phone || ''
-        local.contact.address = u.contact?.address || { street: '', city: '', state: '', zip: '', country: '', taxId: '' }
-        local.contact.bio = u.contact?.bio || ''
-  local.contact.avatar = u.contact?.avatar || ''
-  local.contact.signature = u.contact?.signature || { title: '', person: '', block: '' }
-    local.contact.perPage = u.contact?.perPage || null
-        local.social_media = u.social_media || { linkedin: '' }
-  local.avatar = u.avatar || u.contact?.avatar || ''
-      }
-      // Sync selected project id to projectStore/localStorage if a default project exists
-      try {
-        if (u && Array.isArray(u.projects)) {
-          const dp = u.projects.find(p => p && p.default)
-          if (dp) {
-            const id = typeof dp === 'string' ? dp : (dp._id || dp.id || null)
-            if (id) projectStore.setCurrentProject(id)
-          }
-        }
-  } catch (e) { /* ignore */ }
+    if (isSupportMode.value) {
+      const { data } = await http.patch(`/api/admin/users/${encodeURIComponent(targetUserId.value)}/profile`, payload)
+      supportUser.value = data
+      applyUserToLocal(data)
+      ui.showSuccess('Profile updated')
       status.value = 'Saved'
-  toast.message = 'Profile saved'
-  toast.variant = 'white'
-  toast.top = '50vh'
-  toast.show = true
       setTimeout(() => (status.value = ''), 2000)
     } else {
-      status.value = auth.error || 'Failed to save'
-  toast.message = status.value
-  toast.variant = 'white'
-  toast.top = '50vh'
-  toast.show = true
+      const ok = await auth.updateUser(payload)
+      if (ok) {
+        const u = auth.user
+        if (u) applyUserToLocal(u)
+        try {
+          if (u && Array.isArray(u.projects)) {
+            const dp = u.projects.find(p => p && p.default)
+            if (dp) {
+              const id = typeof dp === 'string' ? dp : (dp._id || dp.id || null)
+              if (id) projectStore.setCurrentProject(id)
+            }
+          }
+        } catch (e) { /* ignore */ }
+        status.value = 'Saved'
+        toast.message = 'Profile saved'
+        toast.variant = 'white'
+        toast.top = '50vh'
+        toast.show = true
+        setTimeout(() => (status.value = ''), 2000)
+      } else {
+        status.value = auth.error || 'Failed to save'
+        toast.message = status.value
+        toast.variant = 'white'
+        toast.top = '50vh'
+        toast.show = true
+      }
     }
   } catch (e) {
-    status.value = auth.error || 'Failed to save'
-  toast.message = status.value
-  toast.variant = 'white'
-  toast.top = '50vh'
-  toast.show = true
+    const msg = e?.response?.data?.error || auth.error || e?.message || 'Failed to save'
+    status.value = msg
+    if (isSupportMode.value) ui.showError(msg)
+    else {
+      toast.message = status.value
+      toast.variant = 'white'
+      toast.top = '50vh'
+      toast.show = true
+    }
   } finally {
     saving.value = false
   }
@@ -1196,6 +1302,7 @@ function validatePwd() {
 
 async function changePasswordHandler() {
   pwdStatus.value = ''
+  if (isSupportMode.value) return
   if (!validatePwd()) return
   pwdSaving.value = true
   try {
@@ -1222,26 +1329,54 @@ async function changePasswordHandler() {
   }
 }
 
+async function sendResetHandler() {
+  pwdStatus.value = ''
+  pwdSaving.value = true
+  try {
+    await http.post(`/api/admin/users/${encodeURIComponent(targetUserId.value)}/send-reset`)
+    pwdStatus.value = 'Reset email sent'
+    ui.showSuccess('Password reset email queued')
+    setTimeout(() => (pwdStatus.value = ''), 2500)
+  } catch (e) {
+    pwdStatus.value = e?.response?.data?.error || e?.message || 'Failed to send reset email'
+    ui.showError(pwdStatus.value)
+  } finally {
+    pwdSaving.value = false
+  }
+}
+
 async function uploadAvatar() {
   if (!preview.value) return
   avatarStatus.value = 'Uploading...'
   try {
-    const ok = await auth.updateUser({ avatar: preview.value, userId: auth.user?._id || auth.user?.id })
-    if (ok) {
-      local.avatar = auth.user?.avatar || auth.user?.contact?.avatar || preview.value
+    if (isSupportMode.value) {
+      await http.patch(`/api/admin/users/${encodeURIComponent(targetUserId.value)}/profile`, { avatar: preview.value })
+      local.avatar = preview.value
       preview.value = ''
       avatarStatus.value = 'Uploaded'
-      toast.message = 'Avatar updated'
-      toast.show = true
+      ui.showSuccess('Avatar updated')
     } else {
-      avatarStatus.value = auth.error || 'Upload failed'
+      const ok = await auth.updateUser({ avatar: preview.value, userId: auth.user?._id || auth.user?.id })
+      if (ok) {
+        local.avatar = auth.user?.avatar || auth.user?.contact?.avatar || preview.value
+        preview.value = ''
+        avatarStatus.value = 'Uploaded'
+        toast.message = 'Avatar updated'
+        toast.show = true
+      } else {
+        avatarStatus.value = auth.error || 'Upload failed'
+        toast.message = avatarStatus.value
+        toast.show = true
+      }
+    }
+  } catch (e) {
+    const msg = e?.response?.data?.error || auth.error || e?.message || 'Upload failed'
+    avatarStatus.value = msg
+    if (isSupportMode.value) ui.showError(msg)
+    else {
       toast.message = avatarStatus.value
       toast.show = true
     }
-  } catch (e) {
-    avatarStatus.value = auth.error || 'Upload failed'
-    toast.message = avatarStatus.value
-    toast.show = true
   } finally {
     setTimeout(() => (avatarStatus.value = ''), 2000)
   }
@@ -1250,22 +1385,34 @@ async function uploadAvatar() {
 async function removeAvatar() {
   avatarStatus.value = 'Removing...'
   try {
-    const ok = await auth.updateUser({ avatar: '' })
-    if (ok) {
-      local.avatar = auth.user?.avatar || auth.user?.contact?.avatar || ''
+    if (isSupportMode.value) {
+      await http.patch(`/api/admin/users/${encodeURIComponent(targetUserId.value)}/profile`, { avatar: '' })
+      local.avatar = ''
       preview.value = ''
       avatarStatus.value = 'Removed'
-      toast.message = 'Avatar removed'
-      toast.show = true
+      ui.showSuccess('Avatar removed')
     } else {
-      avatarStatus.value = auth.error || 'Remove failed'
+      const ok = await auth.updateUser({ avatar: '' })
+      if (ok) {
+        local.avatar = auth.user?.avatar || auth.user?.contact?.avatar || ''
+        preview.value = ''
+        avatarStatus.value = 'Removed'
+        toast.message = 'Avatar removed'
+        toast.show = true
+      } else {
+        avatarStatus.value = auth.error || 'Remove failed'
+        toast.message = avatarStatus.value
+        toast.show = true
+      }
+    }
+  } catch (e) {
+    const msg = e?.response?.data?.error || auth.error || e?.message || 'Remove failed'
+    avatarStatus.value = msg
+    if (isSupportMode.value) ui.showError(msg)
+    else {
       toast.message = avatarStatus.value
       toast.show = true
     }
-  } catch (e) {
-    avatarStatus.value = auth.error || 'Remove failed'
-    toast.message = avatarStatus.value
-    toast.show = true
   } finally {
     setTimeout(() => (avatarStatus.value = ''), 2000)
   }
@@ -1295,6 +1442,7 @@ function editProject(proj) {
 
 function canLeaveProject(proj) {
   try {
+    if (isSupportMode.value) return false
     if (!auth.user) return false
   // simple heuristic: if user's projects contains this project id, they can leave
     const pid = proj._id || proj.id
@@ -1304,6 +1452,7 @@ function canLeaveProject(proj) {
 }
 
 async function leaveProject(proj) {
+  if (isSupportMode.value) return ui.showError('Project actions are disabled in support mode')
   try {
     const pid = proj._id || proj.id
     if (!pid) return ui.showError('Project id missing')
@@ -1348,6 +1497,7 @@ async function leaveProject(proj) {
 }
 
 async function makeDefault(proj) {
+  if (isSupportMode.value) return ui.showError('Project actions are disabled in support mode')
   // update local copy: set selected project's default true, others false
   local.projects = local.projects.map(p => ({ ...p, default: (p._id || p.id) === (proj._id || proj.id) }))
 

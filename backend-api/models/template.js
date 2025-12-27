@@ -26,7 +26,9 @@ const templateSchema = new mongoose.Schema({
   installationDate: { type: Date, required: false },
   balanceDate: { type: Date, required: false },
   testDate: { type: Date, required: false },
-  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+  // When null/absent: this is a global/admin template, available to be copied into a project.
+  // When set: this template is project-scoped.
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: false, default: null },
   issues: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Issue' }],
   // Structured JSON arrays same as Equipment
   checklists: { type: [mongoose.Schema.Types.Mixed], default: [] },

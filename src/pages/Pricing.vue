@@ -3,7 +3,9 @@
     <PublicHeader />
     <div class="mx-auto max-w-7xl px-6 py-12 md:px-8">
       <div class="mb-4 flex items-center justify-between">
-        <h1 class="sr-only">Pricing</h1>
+        <h1 class="sr-only">
+          Pricing
+        </h1>
       </div>
       <form class="group/tiers isolate overflow-hidden">
         <div class="flow-root rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pb-10 pt-16 shadow-[0_24px_70px_rgba(15,23,42,0.45)] dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">

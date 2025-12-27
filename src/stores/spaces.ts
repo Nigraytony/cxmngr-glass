@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { getApiBase } from '../utils/api'
 import { getAuthHeaders } from '../utils/auth'
+import { useProjectStore } from './project'
 
 export interface Space {
   id?: string
@@ -107,6 +108,19 @@ export const useSpacesStore = defineStore('spaces', () => {
     if (!payload.project && payload.projectId) {
       payload.project = payload.projectId
     }
+    // Normalize populated project objects -> id strings
+    if (payload.project && typeof payload.project === 'object') {
+      payload.project = payload.project._id || payload.project.id || payload.projectId || ''
+    }
+    // Fallback to current project selection if not explicitly provided
+    if (!payload.project) {
+      try {
+        const projectStore = useProjectStore()
+        payload.project = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
+      } catch (e) {
+        payload.project = localStorage.getItem('selectedProjectId') || ''
+      }
+    }
     const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
     const saved = { ...data, id: data._id }
     items.value.push(saved)
@@ -124,6 +138,10 @@ export const useSpacesStore = defineStore('spaces', () => {
     const payload: any = { ...space }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
+    // Normalize populated project objects -> id strings (backend ignores on update but keep payload clean)
+    if (payload.project && typeof payload.project === 'object') {
+      payload.project = payload.project._id || payload.project.id || payload.projectId || ''
+    }
     const { data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() })
     const idx = items.value.findIndex(s => (s.id || (s as any)._id) === id)
     if (idx !== -1) items.value[idx] = { ...data, id: data._id }

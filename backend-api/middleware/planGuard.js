@@ -1,5 +1,6 @@
 const Project = require('../models/project')
 const plans = require('../config/plans')
+const { isObjectId } = require('./validate')
 
 function getPlansArray() {
   if (Array.isArray(plans)) return plans
@@ -34,12 +35,16 @@ async function loadProject(projectId) {
 function requireFeature(featureKey) {
   return async function featureGuard(req, res, next) {
     const projectId =
+      // Common project id carriers across routes
+      req.body?.project ||
+      req.params?.project ||
       req.body?.projectId ||
       req.query?.projectId ||
       req.params?.projectId ||
       req.params?.id ||
       req.body?.id;
     if (!projectId) return res.status(400).json({ error: 'projectId is required', code: 'PROJECT_ID_REQUIRED' })
+    if (!isObjectId(projectId)) return res.status(400).json({ error: 'Invalid projectId', code: 'PROJECT_ID_INVALID' })
     const project = await loadProject(projectId)
     // If the provided projectId does not resolve to a project, return a clear error
     // instead of silently falling back to the basic plan which can cause confusing 403s.
@@ -74,6 +79,7 @@ function enforceLimit(resourceKey, countFn) {
       req.params?.id ||
       req.body?.id;
     if (!projectId) return res.status(400).json({ error: 'projectId is required', code: 'PROJECT_ID_REQUIRED' })
+    if (!isObjectId(projectId)) return res.status(400).json({ error: 'Invalid projectId', code: 'PROJECT_ID_INVALID' })
     const project = await loadProject(projectId)
     const plan = getPlan(project)
     const limit = plan && plan.limits ? plan.limits[resourceKey] : 0

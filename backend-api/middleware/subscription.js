@@ -1,4 +1,5 @@
 const Project = require('../models/project');
+const { isObjectId } = require('./validate');
 
 /**
  * Middleware to ensure a project's subscription is active.
@@ -11,6 +12,8 @@ async function requireActiveProject(req, res, next) {
     // Prefer explicit projectId from body or query over generic route params like :id
     // This avoids misinterpreting resource ids (e.g., issue id) as a project id
     const projectId =
+      req.body?.project ||
+      req.params?.project ||
       req.body?.projectId ||
       req.query?.projectId ||
       req.params?.projectId ||
@@ -18,6 +21,9 @@ async function requireActiveProject(req, res, next) {
       req.body?.id;
     if (!projectId) {
       return res.status(400).send({ error: 'projectId is required' });
+    }
+    if (!isObjectId(projectId)) {
+      return res.status(400).send({ error: 'Invalid projectId' });
     }
 
     const project = await Project.findById(projectId);
@@ -27,7 +33,8 @@ async function requireActiveProject(req, res, next) {
     if (project.isActive === true) return next();
 
     // Fallback to Stripe subscription status if present.
-    const allowed = ['active', 'trialing'];
+    // Treat past_due as active to allow grace-period access while Stripe retries payment.
+    const allowed = ['active', 'trialing', 'past_due'];
     if (project.stripeSubscriptionStatus && allowed.includes(String(project.stripeSubscriptionStatus).toLowerCase())) {
       return next();
     }
@@ -35,7 +42,8 @@ async function requireActiveProject(req, res, next) {
     // Otherwise block the request with 402 Payment Required - indicates billing issue
     return res.status(402).send({ error: 'Project subscription inactive or payment required' });
   } catch (err) {
-    return res.status(500).send({ error: err.message || String(err) });
+    console.error('[subscription] requireActiveProject error', err && (err.stack || err.message || err))
+    return res.status(500).send({ error: 'Subscription check failed' });
   }
 }
 

@@ -57,7 +57,7 @@
 
     <div
       v-if="!loading"
-      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 overflow-visible"
+      class="rounded-2xl p-4 bg-white/10 backdrop-blur-xl overflow-visible"
     >
       <table class="min-w-full text-left">
         <thead>
@@ -982,14 +982,13 @@ async function confirmDelete(p) {
 async function makeDefault(project) {
   // Mirror working logic from Topbar: call backend with auth headers and update auth/user + store
   try {
-    const userId = auth.user && (auth.user._id || auth.user.id)
-  if (!userId) { ui.showError('Not signed in'); return }
+    if (!getAuthHeaders()?.Authorization) { ui.showError('Not signed in'); return }
     const projectId = project && (project.id || project._id)
   if (!projectId) { ui.showError('Missing project id'); return }
 
     const { data } = await http.post(
       `/api/projects/${projectId}/set-default`,
-      { userId },
+      {},
       { headers: getAuthHeaders() }
     )
 

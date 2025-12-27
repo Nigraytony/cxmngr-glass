@@ -1,4 +1,5 @@
 const Role = require('../models/role');
+const mongoose = require('mongoose');
 
 // requirePermission(permission, opts)
 // opts: { projectParam: 'projectId' } - look up project-scoped role from request params/body/query
@@ -24,9 +25,11 @@ const requirePermission = (permission, opts = {}) => {
       if (opts && opts.projectParam) {
         const projectId = req.params[opts.projectParam] || (req.body && req.body[opts.projectParam]) || (req.query && req.query[opts.projectParam]);
         if (projectId) {
+          const pid = String(projectId)
+          if (!mongoose.Types.ObjectId.isValid(pid)) return res.status(400).send({ error: `Invalid ${opts.projectParam}` })
           // lazy-load Project model to avoid circular deps
           const Project = require('../models/project');
-          const project = await Project.findById(projectId).lean();
+          const project = await Project.findById(pid).lean();
           if (project && Array.isArray(project.team)) {
             // find user's role entry in project team
             const userId = String(req.user._id || req.user.id || req.user._id);

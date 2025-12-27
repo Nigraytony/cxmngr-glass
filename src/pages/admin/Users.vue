@@ -235,27 +235,119 @@
             {{ (u.projects || []).length }}
           </td>
           <td class="p-2">
-            <router-link
-              v-if="isAdmin()"
-              :to="{ name: 'admin-users-edit', params: { id: u._id } }"
-              class="px-2 py-1 rounded bg-gray-700 mr-2"
-            >
-              Edit
-            </router-link>
-            <button
-              v-if="isGlobalAdmin()"
-              class="px-2 py-1 rounded bg-red-600 mr-2"
-              @click="confirmSoftDelete(u)"
-            >
-              Delete
-            </button>
-            <button
-              v-if="isGlobalAdmin()"
-              class="px-2 py-1 rounded bg-yellow-600"
-              @click="sendReset(u)"
-            >
-              Send reset
-            </button>
+            <div class="flex items-center gap-2">
+              <router-link
+                v-if="isAdmin()"
+                :to="{ name: 'admin-users-edit', params: { id: u._id } }"
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90"
+                title="Edit"
+                aria-label="Edit"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M12 20h9"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M16.5 3.5l4 4-10 10H6.5v-4.5l10-10z"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </router-link>
+
+              <button
+                v-if="isGlobalAdmin()"
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30"
+                title="Delete"
+                aria-label="Delete"
+                @click="confirmSoftDelete(u)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M3 6h18"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M8 6l1-2h6l1 2"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <rect
+                    x="6"
+                    y="6"
+                    width="12"
+                    height="14"
+                    rx="1.5"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M10 10v6M14 10v6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+
+              <button
+                v-if="isGlobalAdmin()"
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30"
+                title="Send reset"
+                aria-label="Send reset"
+                @click="sendReset(u)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7z"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M3 8l9 6 9-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M16 11h6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M19 8l3 3-3 3"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </td>
         </tr>
       </tbody>

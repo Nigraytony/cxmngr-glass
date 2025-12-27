@@ -1,8 +1,7 @@
-let MongoMemoryReplSet = null;
-try { ({ MongoMemoryReplSet } = require('mongodb-memory-server')); } catch (e) {}
 const request = require('supertest');
 const mongoose = require('mongoose');
 const assert = require('assert');
+const { clearDb } = require('./testUtils');
 
 // Ensure test mode so mailer is short-circuited
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
@@ -10,7 +9,6 @@ const mailSpy = require('./mailSpy');
 
 describe('Invite flow integration', function () {
   this.timeout(30000);
-  let mongod;
   let app;
 
   before(async () => {
@@ -37,16 +35,17 @@ describe('Invite flow integration', function () {
     if (mongoose.connection.readyState !== 1) {
       throw new Error('Failed to connect to in-memory mongo');
     }
+    await clearDb()
   });
 
   after(async () => {
     try { await mongoose.disconnect(); } catch (e) {}
-    try { if (mongod) await mongod.stop(); } catch (e) {}
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // reset mailSpy between test cases
     mailSpy.reset();
+    await clearDb()
   });
 
   it('creates an invite for a non-existing user and allows acceptance after registration', async () => {
@@ -65,6 +64,7 @@ describe('Invite flow integration', function () {
     // 2) Create a project using inviter's userId
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'Test Project', client: 'TestClient' });
     if (projectRes.status !== 201) console.error('create project failed:', projectRes.status, projectRes.body);
     assert(projectRes.status === 201, `expected 201 from create project, got ${projectRes.status}`);
@@ -120,7 +120,8 @@ describe('Invite flow integration', function () {
 
     // 7) Verify the project now contains the invitee
     const projectAfter = await request(app)
-      .get(`/api/projects/${project._id}`);
+      .get(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${inviterToken}`);
     if (projectAfter.status !== 200) throw new Error('get project after accept failed: ' + JSON.stringify(projectAfter.body));
     const team = projectAfter.body.team || [];
     const found = team.find((t) => String(t.email).toLowerCase() === 'invitee@example.com');
@@ -148,6 +149,7 @@ describe('Invite flow integration', function () {
     // project
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'ProjMismatch', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -193,6 +195,7 @@ describe('Invite flow integration', function () {
     // project
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'ProjDuplicate', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -261,6 +264,7 @@ describe('Invite flow integration', function () {
     // project
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'ProjCase', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -365,6 +369,7 @@ describe('Invite flow integration', function () {
 
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'TplProject', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -398,6 +403,7 @@ describe('Invite flow integration', function () {
 
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'AddProject', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -426,7 +432,8 @@ describe('Invite flow integration', function () {
 
     // fetch project and verify member permissions copied
     const projectAfter = await request(app)
-      .get(`/api/projects/${project._id}`);
+      .get(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${inviterToken}`);
     assert(projectAfter.status === 200);
     const team = projectAfter.body.team || [];
     const member = team.find((t) => String(t.email).toLowerCase() === 'existing-user@example.com');
@@ -445,6 +452,7 @@ describe('Invite flow integration', function () {
 
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'InviteTplProject', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -493,7 +501,8 @@ describe('Invite flow integration', function () {
 
     // verify project has member with copied permissions
     const projectAfter = await request(app)
-      .get(`/api/projects/${project._id}`);
+      .get(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${inviterToken}`);
     assert(projectAfter.status === 200);
     const member = (projectAfter.body.team || []).find((t) => String(t.email).toLowerCase() === String(email).toLowerCase());
     assert(member, 'invitee should be on project after accept');
@@ -512,6 +521,7 @@ describe('Invite flow integration', function () {
 
     const projectRes = await request(app)
       .post('/api/projects')
+      .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'PermProject', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
@@ -530,7 +540,8 @@ describe('Invite flow integration', function () {
 
     // fetch project to find member id
     const projectAfter = await request(app)
-      .get(`/api/projects/${project._id}`);
+      .get(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${inviterToken}`);
     const member = (projectAfter.body.team || []).find((t) => String(t.email).toLowerCase() === 'perm-member@example.com');
     assert(member);
     const memberId = member._id || member.id || member.email;
@@ -547,7 +558,8 @@ describe('Invite flow integration', function () {
 
     // verify persisted
     const projectFinal = await request(app)
-      .get(`/api/projects/${project._id}`);
+      .get(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${inviterToken}`);
     const m2 = (projectFinal.body.team || []).find((t) => String(t._id) === String(memberId) || String((t.email || '')).toLowerCase() === 'perm-member@example.com');
     assert(m2 && Array.isArray(m2.permissions) && m2.permissions.includes('issues.delete'));
   });

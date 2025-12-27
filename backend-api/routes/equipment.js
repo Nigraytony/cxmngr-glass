@@ -8,23 +8,131 @@ const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature, enforceLimit } = require('../middleware/planGuard');
+const { rateLimit } = require('../middleware/rateLimit');
+const { requireNotDisabled } = require('../middleware/killSwitch');
+const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
+const { tryDeleteLocalUpload } = require('../utils/uploads')
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const sanitizeHtml = require('sanitize-html');
+const { buildSafeRegex } = require('../utils/search')
+const { normalizeLogEvent } = require('../utils/logEvent')
+
+// Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
+router.param('id', (req, res, next, value) => {
+  if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' })
+  return next()
+})
+
+function normalizeSortBy(value, allowed, fallback) {
+  const s = String(value || '').trim()
+  return allowed.has(s) ? s : fallback
+}
+
+function normalizeSortDir(value) {
+  return String(value || '').toLowerCase() === 'asc' ? 1 : -1
+}
+
+function normalizeShortString(value, { maxLen = 64 } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (s.length > maxLen) return null
+  return s
+}
+
+function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (allowAll && s.toLowerCase() === 'all') return null
+  if (s.length > maxLen) return undefined
+  return s
+}
+
+const LIST_SORT_FIELDS = new Set([
+  'updatedAt',
+  'createdAt',
+  'number',
+  'tag',
+  'title',
+  'type',
+  'system',
+  'status',
+])
+
+function isProdEnv() {
+  return String(process.env.NODE_ENV || '').toLowerCase() === 'production'
+}
+
+function safeErrorMessage(err, fallback) {
+  const fb = fallback || 'Server error'
+  if (isProdEnv()) return fb
+  const msg = err && (err.message || err.error || (typeof err === 'string' ? err : null))
+  return msg ? String(msg) : fb
+}
+
+function sendServerError(res, err, fallback) {
+  return res.status(500).send({ error: safeErrorMessage(err, fallback) })
+}
 
 // multer memory storage for small images
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadLimiter = rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'uploads' })
 
-function validatePhotosArray(photos) {
-  if (!Array.isArray(photos)) return true;
-  if (photos.length > 16) return false;
-  for (const p of photos) {
-    if (!p.data || !p.size) return false;
-    if (p.size > 250 * 1024) return false; // 250 KB
+async function loadEquipmentProjectId(req, res, next) {
+  try {
+    const id = String(req.params.id || '').trim()
+    if (!id) return res.status(400).send({ error: 'Equipment id is required' })
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).send({ error: 'Invalid equipment id' })
+    const equipment = await Equipment.findById(id).select('projectId').lean()
+    if (!equipment) return res.status(404).send({ error: 'Equipment not found' })
+    req.query = { ...(req.query || {}), projectId: String(equipment.projectId) }
+    req.body = req.body || {}
+    if (!req.body.projectId) req.body.projectId = equipment.projectId
+    return next()
+  } catch (e) {
+    return sendServerError(res, e, 'Failed to resolve equipment project')
   }
-  return true;
+}
+
+function pickEquipmentPayload(source) {
+  const body = source || {}
+  const out = {}
+  const allowed = [
+    'number',
+    'tag',
+    'title',
+    'type',
+    'system',
+    'responsible',
+    'template',
+    'status',
+    'attributes',
+    'description',
+    'spaceId',
+    'orderDate',
+    'installationDate',
+    'balanceDate',
+    'testDate',
+    'projectId',
+    'checklists',
+    'functionalTests',
+    'fptSignatures',
+    'components',
+    'images',
+    'history',
+    'labels',
+    'tags',
+    'metadata',
+  ]
+  for (const k of allowed) {
+    if (body[k] !== undefined) out[k] = body[k]
+  }
+  return out
 }
 
 const ALLOWED_DOC_MIME = new Set([
@@ -56,17 +164,31 @@ function getBackendBaseUrl(req) {
 router.post(
   '/',
   auth,
+  requireBodyField('projectId'),
+  requireObjectIdBody('projectId'),
   requirePermission('equipment.create', { projectParam: 'projectId' }),
   requireActiveProject,
   requireFeature('equipment'),
   enforceLimit('equipment', async (projectId) => Equipment.countDocuments({ projectId })),
   async (req, res) => {
-  console.log(req.body);
   try {
-    if (req.body.photos && !validatePhotosArray(req.body.photos)) {
-      return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
+    const payload = pickEquipmentPayload(req.body)
+    // Disallow clients from setting heavy media arrays on create; use upload endpoints.
+    delete payload.photos
+    delete payload.attachments
+    delete payload.issues
+    delete payload.logs
+
+    if (typeof payload.description === 'string') {
+      payload.description = sanitizeHtml(String(payload.description), { allowedTags: [], allowedAttributes: {} }).trim()
     }
-    const equipment = new Equipment(req.body);
+    if (typeof payload.labels === 'string') {
+      payload.labels = sanitizeHtml(String(payload.labels), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof payload.metadata === 'string') {
+      payload.metadata = sanitizeHtml(String(payload.metadata), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    const equipment = new Equipment(payload);
     await equipment.save();
 
     // Add equipment to the corresponding project
@@ -76,7 +198,8 @@ router.post(
 
     res.status(201).send(equipment);
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[equipment] create error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to create equipment' });
   }
 });
 
@@ -87,10 +210,22 @@ function toPlainEquipment(doc) {
   if (typeof e.checklists === 'string') {
     try { e.checklists = JSON.parse(e.checklists) } catch { e.checklists = [] }
   }
+  if (!Array.isArray(e.checklists)) e.checklists = []
+  if (typeof e.functionalTests === 'string') {
+    try { e.functionalTests = JSON.parse(e.functionalTests) } catch { e.functionalTests = [] }
+  }
+  if (!Array.isArray(e.functionalTests)) e.functionalTests = []
+  // Back-compat: signatures may be stored as stringified JSON in some records
+  if (typeof e.fptSignatures === 'string') {
+    try { e.fptSignatures = JSON.parse(e.fptSignatures) } catch { e.fptSignatures = [] }
+  }
+  if (!Array.isArray(e.fptSignatures)) e.fptSignatures = []
+  return e
+}
 
 // Equipment logs: append and read
 // GET /api/equipment/:id/logs?limit=200&type=section_created
-router.get('/:id/logs', auth, async (req, res) => {
+router.get('/:id/logs', auth, requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const id = req.params.id
     const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
@@ -113,18 +248,12 @@ router.get('/:id/logs', auth, async (req, res) => {
 })
 
 // POST /api/equipment/:id/logs -> append one log event
-router.post('/:id/logs', auth, async (req, res) => {
+router.post('/:id/logs', auth, requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), requirePermission('equipment.update', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
   try {
     const id = req.params.id
-    const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
-    if (!event.type) return res.status(400).send({ error: 'type is required' })
-    event.ts = event.ts ? new Date(event.ts) : new Date()
-    if (!event.by && req.user) {
-      try {
-        const u = await require('../models/user').findById(req.user && (req.user._id || req.user.id)).lean()
-        if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
-      } catch {}
-    }
+    const byFallback = req.user ? ([req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email || String(req.user._id || req.user.id)) : null
+    const event = normalizeLogEvent(req.body, { byFallback })
+    if (!event) return res.status(400).send({ error: 'type is required' })
     const updated = await Equipment.findByIdAndUpdate(
       id,
       { $push: { logs: { $each: [event], $slice: -5000 } }, $set: { updatedAt: new Date() } },
@@ -137,18 +266,6 @@ router.post('/:id/logs', auth, async (req, res) => {
     return res.status(500).send({ error: 'Failed to append log' })
   }
 })
-  if (!Array.isArray(e.checklists)) e.checklists = []
-  if (typeof e.functionalTests === 'string') {
-    try { e.functionalTests = JSON.parse(e.functionalTests) } catch { e.functionalTests = [] }
-  }
-  if (!Array.isArray(e.functionalTests)) e.functionalTests = []
-  // Back-compat: signatures may be stored as stringified JSON in some records
-  if (typeof e.fptSignatures === 'string') {
-    try { e.fptSignatures = JSON.parse(e.fptSignatures) } catch { e.fptSignatures = [] }
-  }
-  if (!Array.isArray(e.fptSignatures)) e.fptSignatures = []
-  return e
-}
 
 // Projection for list/light responses (omit heavy fields)
 const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt'
@@ -186,32 +303,43 @@ async function buildSpaceChainResolver(projectId) {
 }
 
 // Read all equipment (paginated, filtered, light projection)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
-    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
-    const sortBy = String(req.query.sortBy || 'updatedAt')
-    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
-    const projectId = req.query.projectId
-    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+	    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+	    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+	    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+	    const sortDir = normalizeSortDir(req.query.sortDir)
+	    const projectId = req.query.projectId
+	    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
 
-    if (!projectId) {
-      return res.status(200).send({ items: [], total: 0 })
-    }
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
 
     const filter = { projectId }
-    if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
-        { system: { $regex: s, $options: 'i' } },
-      ]
-    }
-    if (req.query.type) filter.type = req.query.type
-    if (req.query.system) filter.system = req.query.system
-    if (req.query.status) filter.status = req.query.status
+	    if (req.query.search) {
+	      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+	      if (rx) filter.$or = [
+	        { tag: { $regex: rx } },
+	        { title: { $regex: rx } },
+	        { type: { $regex: rx } },
+	        { system: { $regex: rx } },
+	      ]
+	    }
+		    if (req.query.type !== undefined) {
+		      const v = normalizeOptionalFilterString(req.query.type)
+		      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
+		      if (v) filter.type = v
+		    }
+		    if (req.query.system !== undefined) {
+		      const v = normalizeOptionalFilterString(req.query.system)
+		      if (v === undefined) return res.status(400).send({ error: 'Invalid system' })
+		      if (v) filter.system = v
+		    }
+		    if (req.query.status !== undefined) {
+		      const v = normalizeOptionalFilterString(req.query.status)
+		      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
+		      if (v) filter.status = v
+		    }
 
     const totalAll = await Equipment.countDocuments({ projectId })
     const total = await Equipment.countDocuments(filter)
@@ -264,26 +392,28 @@ router.get('/', auth, async (req, res) => {
 
     res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[equipment] list error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to list equipment' });
   }
 });
 
 // Export equipment as CSV (all records matching filters for a project)
-router.get('/export', auth, requireFeature('equipment'), async (req, res) => {
+router.get('/export', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const projectId = req.query.projectId
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
     const filter = { projectId }
     if (req.query.type) filter.type = req.query.type
     if (req.query.system) filter.system = req.query.system
     if (req.query.status) filter.status = req.query.status
     if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
-        { system: { $regex: s, $options: 'i' } },
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
+        { system: { $regex: rx } },
       ]
     }
     const items = await Equipment.find(filter).lean()
@@ -345,28 +475,29 @@ router.get('/export', auth, requireFeature('equipment'), async (req, res) => {
 })
 
 // Read all equipment by project ID (light projection)
-router.get('/project/:projectId', auth, async (req, res) => {
+router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const filter = { projectId: req.params.projectId }
     if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
-        { system: { $regex: s, $options: 'i' } },
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
+        { system: { $regex: rx } },
       ]
     }
     if (req.query.status) filter.status = req.query.status
     const equipment = await Equipment.find(filter).select(LIGHT_FIELDS).lean()
     res.status(200).send(equipment);
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[equipment] get error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load equipment' });
   }
 });
 
 // Read a single equipment by ID (supports light/includePhotos)
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
@@ -384,15 +515,30 @@ router.get('/:id', auth, async (req, res) => {
     }
     res.status(200).send(toPlainEquipment(equipment));
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[equipment] list by project error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load equipment' });
   }
 });
 
 // Update equipment by ID
-router.patch('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), async (req, res) => {
   try {
-    if (req.body.photos && !validatePhotosArray(req.body.photos)) {
-      return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
+    const incoming = pickEquipmentPayload(req.body)
+    // Never allow changing ownership or heavy arrays via generic patch
+    delete incoming.projectId
+    delete incoming.photos
+    delete incoming.attachments
+    delete incoming.issues
+    delete incoming.logs
+
+    if (typeof incoming.description === 'string') {
+      incoming.description = sanitizeHtml(String(incoming.description), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof incoming.labels === 'string') {
+      incoming.labels = sanitizeHtml(String(incoming.labels), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof incoming.metadata === 'string') {
+      incoming.metadata = sanitizeHtml(String(incoming.metadata), { allowedTags: [], allowedAttributes: {} }).trim()
     }
 
     // Load equipment to determine project for RBAC/subscription checks
@@ -406,9 +552,9 @@ router.patch('/:id', auth, async (req, res) => {
     await runMiddleware(req, res, requireActiveProject);
 
     // Server-side validation: ensure fptSignatures does not contain duplicate createdBy entries
-    if (req.body && Array.isArray(req.body.fptSignatures)) {
+    if (incoming && Array.isArray(incoming.fptSignatures)) {
       const seen = new Set()
-      for (const s of req.body.fptSignatures) {
+      for (const s of incoming.fptSignatures) {
         if (s && s.createdBy) {
           const id = String(s.createdBy)
           if (seen.has(id)) return res.status(400).send({ error: 'Duplicate signature for the same user is not allowed' })
@@ -417,16 +563,17 @@ router.patch('/:id', auth, async (req, res) => {
       }
     }
 
-    const updated = await Equipment.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updated = await Equipment.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
     if (!updated) return res.status(404).send();
     res.status(200).send(toPlainEquipment(updated));
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[equipment] update error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update equipment' });
   }
 });
 
 // Upload photos for an equipment (multipart/form-data)
-router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), uploadLimiter, upload.array('photos', 16), async (req, res) => {
   try {
     const equipment = await Equipment.findById(req.params.id);
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' });
@@ -478,10 +625,9 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
 });
 
 // Remove a single photo by index
-router.delete('/:id/photos/:index', auth, async (req, res) => {
+router.delete('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadEquipmentProjectId, requireFeature('equipment'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const equipment = await Equipment.findById(req.params.id)
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' })
     // attach projectId for RBAC/subscription checks
@@ -504,10 +650,9 @@ router.delete('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Update photo metadata (e.g., caption) by index
-router.patch('/:id/photos/:index', auth, async (req, res) => {
+router.patch('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadEquipmentProjectId, requireFeature('equipment'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const equipment = await Equipment.findById(req.params.id)
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' })
     // attach projectId for RBAC/subscription checks
@@ -532,7 +677,7 @@ router.patch('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Delete equipment by ID
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), async (req, res) => {
   try {
     const equipment = await Equipment.findById(req.params.id);
     if (!equipment) return res.status(404).send();
@@ -556,15 +701,23 @@ router.delete('/:id', auth, async (req, res) => {
 
     res.status(200).send(toPlainEquipment(equipment));
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[equipment] report error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to generate equipment report' });
   }
 });
 
 // Upload attachments (documents) for equipment
-router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), uploadLimiter, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const equipment = await Equipment.findById(req.params.id);
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' });
+
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {};
+    req.body.projectId = equipment.projectId;
+
+    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
 
     const incoming = Array.isArray(req.files) ? req.files : [];
     if (incoming.length === 0) return res.status(400).send({ error: 'No files uploaded' });
@@ -611,28 +764,26 @@ router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async
 });
 
 // Remove an attachment by index
-router.delete('/:id/attachments/:index', auth, async (req, res) => {
+router.delete('/:id/attachments/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadEquipmentProjectId, requireFeature('equipment'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
     const equipment = await Equipment.findById(req.params.id);
     if (!equipment) return res.status(404).send({ error: 'Equipment not found' });
+
+    // attach projectId for RBAC/subscription checks
+    req.body = req.body || {};
+    req.body.projectId = equipment.projectId;
+
+    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
+    await runMiddleware(req, res, requireActiveProject);
+
     const arr = Array.isArray(equipment.attachments) ? equipment.attachments : [];
     if (idx >= arr.length) return res.status(400).send({ error: 'Attachment index out of range' });
     const [removed] = arr.splice(idx, 1);
     equipment.attachments = arr;
     await equipment.save();
 
-    // Best-effort delete local file
-    if (removed && removed.url && removed.url.includes('/uploads/equipment/')) {
-      try {
-        const urlPath = removed.url.split('/uploads/')[1];
-        if (urlPath) {
-          const full = path.join(__dirname, '..', 'uploads', urlPath);
-          if (fs.existsSync(full)) fs.unlinkSync(full);
-        }
-      } catch (_) {}
-    }
+    tryDeleteLocalUpload({ url: removed && removed.url, prefix: 'equipment' })
     res.status(200).send(toPlainEquipment(equipment));
   } catch (error) {
     console.error('[equipment] remove attachment error', error);

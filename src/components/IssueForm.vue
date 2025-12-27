@@ -211,7 +211,6 @@ const emit = defineEmits(['update:modelValue'])
 const issueTypeOptions = computed(() => lists?.issueTypes || [])
 const priorityOptions = computed(() => lists?.issuePriorities || [])
 const statusOptions = computed(() => lists?.issueStatuses || [])
-const systemOptions = computed(() => lists?.systemOptions || [])
 
 const local = reactive({ issue: { status: 'open', priority: 'medium', ...props.modelValue } })
 const isReadOnly = computed(() => {

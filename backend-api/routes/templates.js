@@ -7,13 +7,62 @@ const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature } = require('../middleware/planGuard');
+const { requireNotDisabled } = require('../middleware/killSwitch');
+const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
+const { tryDeleteLocalUpload } = require('../utils/uploads')
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { rateLimit } = require('../middleware/rateLimit');
+const sanitizeHtml = require('sanitize-html');
+const { buildSafeRegex } = require('../utils/search')
+
+// Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
+router.param('id', (req, res, next, value) => {
+  if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' })
+  return next()
+})
+
+function normalizeSortBy(value, allowed, fallback) {
+  const s = String(value || '').trim()
+  return allowed.has(s) ? s : fallback
+}
+
+function normalizeSortDir(value) {
+  return String(value || '').toLowerCase() === 'asc' ? 1 : -1
+}
+
+function normalizeShortString(value, { maxLen = 64 } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (s.length > maxLen) return null
+  return s
+}
+
+function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (allowAll && s.toLowerCase() === 'all') return null
+  if (s.length > maxLen) return undefined
+  return s
+}
+
+const LIST_SORT_FIELDS = new Set([
+  'updatedAt',
+  'createdAt',
+  'tag',
+  'title',
+  'type',
+  'system',
+  'status',
+])
 
 // Mirror equipment routes for templates
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadLimiter = rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'uploads' })
 
 function validatePhotosArray(photos) {
   if (!Array.isArray(photos)) return true;
@@ -23,6 +72,41 @@ function validatePhotosArray(photos) {
     if (p.size > 250 * 1024) return false; // 250 KB
   }
   return true;
+}
+
+function pickTemplatePayload(source) {
+  const body = source || {}
+  const out = {}
+  const allowed = [
+    'number',
+    'tag',
+    'title',
+    'type',
+    'system',
+    'responsible',
+    'template',
+    'status',
+    'attributes',
+    'description',
+    'spaceId',
+    'orderDate',
+    'installationDate',
+    'balanceDate',
+    'testDate',
+    'checklists',
+    'functionalTests',
+    'components',
+    'images',
+    'history',
+    'labels',
+    'tags',
+    'metadata',
+    'projectId',
+  ]
+  for (const k of allowed) {
+    if (body[k] !== undefined) out[k] = body[k]
+  }
+  return out
 }
 
 const ALLOWED_DOC_MIME = new Set([
@@ -67,46 +151,78 @@ function toPlainTemplate(doc) {
 const LIGHT_FIELDS = 'number tag title type system status projectId responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt'
 
 // Create
-router.post('/', auth, requirePermission('templates.create', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {
+router.post(
+  '/',
+  auth,
+  requireBodyField('projectId'),
+  requireObjectIdBody('projectId'),
+  requirePermission('templates.create', { projectParam: 'projectId' }),
+  requireActiveProject,
+  requireFeature('templates'),
+  async (req, res) => {
   try {
-    if (req.body.photos && !validatePhotosArray(req.body.photos)) {
-      return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
+    const payload = pickTemplatePayload(req.body)
+    if (typeof payload.description === 'string') {
+      payload.description = sanitizeHtml(String(payload.description), { allowedTags: [], allowedAttributes: {} }).trim()
     }
-    const rec = new Template(req.body);
+    if (typeof payload.labels === 'string') {
+      payload.labels = sanitizeHtml(String(payload.labels), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof payload.metadata === 'string') {
+      payload.metadata = sanitizeHtml(String(payload.metadata), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    // Disallow clients from setting heavy media arrays on create; use upload endpoints.
+    delete payload.photos
+    delete payload.attachments
+    delete payload.issues
+
+    const rec = new Template(payload);
     await rec.save();
     res.status(201).send(rec);
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[templates] create error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to create template' });
   }
 });
 
 // Read all (paginated, filtered, light projection, optional facets)
-router.get('/', auth, requireFeature('templates'), async (req, res) => {
+router.get('/', auth, requireFeature('templates'), requirePermission('templates.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1)
     const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
-    const sortBy = String(req.query.sortBy || 'updatedAt')
-    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+    const sortDir = normalizeSortDir(req.query.sortDir)
     const projectId = req.query.projectId
     const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
 
-    if (!projectId) {
-      return res.status(200).send({ items: [], total: 0, totalAll: 0 })
-    }
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
 
     const filter = { projectId }
     if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
-        { system: { $regex: s, $options: 'i' } },
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
+        { system: { $regex: rx } },
       ]
     }
-    if (req.query.type) filter.type = req.query.type
-    if (req.query.system) filter.system = req.query.system
-    if (req.query.status) filter.status = req.query.status
+    if (req.query.type !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.type)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
+      if (v) filter.type = v
+    }
+    if (req.query.system !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.system)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid system' })
+      if (v) filter.system = v
+    }
+    if (req.query.status !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.status)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
+      if (v) filter.status = v
+    }
 
     const totalAll = await Template.countDocuments({ projectId })
     const total = await Template.countDocuments(filter)
@@ -143,17 +259,19 @@ router.get('/', auth, requireFeature('templates'), async (req, res) => {
 
     res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[templates] list error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to list templates' });
   }
 });
 
 // Read by project
-router.get('/project/:projectId', auth, requirePermission('templates.read', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
+router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requirePermission('templates.read', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
   try {
     const list = await Template.find({ projectId: req.params.projectId }).select(LIGHT_FIELDS);
     res.status(200).send(list.map(toPlainTemplate));
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[templates] list by project error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load templates' });
   }
 });
 
@@ -171,32 +289,48 @@ const lookupTemplateProject = async (req, res, next) => {
 };
 
 // Read one
-router.get('/:id', auth, lookupTemplateProject, requirePermission('templates.read', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
+router.get('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, requirePermission('templates.read', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send();
     res.status(200).send(toPlainTemplate(rec));
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[templates] get error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load template' });
   }
 });
 
 // Update
-router.patch('/:id', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
+router.patch('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {
   try {
-    if (req.body.photos && !validatePhotosArray(req.body.photos)) {
-      return res.status(400).send({ error: 'Photos exceed limits (max 16, each <= 250KB) or invalid format' });
+    const incoming = pickTemplatePayload(req.body)
+    // Never allow changing template ownership via patch
+    delete incoming.projectId
+    delete incoming.photos
+    delete incoming.attachments
+    delete incoming.issues
+
+    if (typeof incoming.description === 'string') {
+      incoming.description = sanitizeHtml(String(incoming.description), { allowedTags: [], allowedAttributes: {} }).trim()
     }
-    const rec = await Template.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (typeof incoming.labels === 'string') {
+      incoming.labels = sanitizeHtml(String(incoming.labels), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof incoming.metadata === 'string') {
+      incoming.metadata = sanitizeHtml(String(incoming.metadata), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+
+    const rec = await Template.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
     if (!rec) return res.status(404).send();
     res.status(200).send(toPlainTemplate(rec));
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[templates] update error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update template' });
   }
 });
 
 // Delete
-router.delete('/:id', auth, lookupTemplateProject, requirePermission('templates.delete', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
+router.delete('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, requirePermission('templates.delete', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {
   try {
     const rec = await Template.findByIdAndDelete(req.params.id);
     if (!rec) return res.status(404).send();
@@ -210,12 +344,13 @@ router.delete('/:id', auth, lookupTemplateProject, requirePermission('templates.
     } catch (_) {}
     res.status(200).send(toPlainTemplate(rec));
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[templates] delete error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to delete template' });
   }
 });
 
 // Photos upload
-router.post('/:id/photos', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireFeature('templates'), upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), uploadLimiter, upload.array('photos', 16), async (req, res) => {
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send({ error: 'Template not found' });
@@ -260,10 +395,9 @@ router.post('/:id/photos', auth, lookupTemplateProject, requirePermission('templ
 });
 
 // Remove photo
-router.delete('/:id/photos/:index', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
+router.delete('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const rec = await Template.findById(req.params.id)
     if (!rec) return res.status(404).send({ error: 'Template not found' })
     const arr = Array.isArray(rec.photos) ? rec.photos : []
@@ -279,10 +413,9 @@ router.delete('/:id/photos/:index', auth, lookupTemplateProject, requirePermissi
 })
 
 // Update photo metadata
-router.patch('/:id/photos/:index', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
+router.patch('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const rec = await Template.findById(req.params.id)
     if (!rec) return res.status(404).send({ error: 'Template not found' })
     const arr = Array.isArray(rec.photos) ? rec.photos : []
@@ -300,7 +433,7 @@ router.patch('/:id/photos/:index', auth, lookupTemplateProject, requirePermissio
 })
 
 // Upload attachments
-router.post('/:id/attachments', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireFeature('templates'), uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), uploadLimiter, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send({ error: 'Template not found' });
@@ -350,10 +483,9 @@ router.post('/:id/attachments', auth, lookupTemplateProject, requirePermission('
 });
 
 // Remove attachment
-router.delete('/:id/attachments/:index', auth, lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), async (req, res) => {
+router.delete('/:id/attachments/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), lookupTemplateProject, requirePermission('templates.update', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send({ error: 'Template not found' });
     const arr = Array.isArray(rec.attachments) ? rec.attachments : [];
@@ -362,16 +494,7 @@ router.delete('/:id/attachments/:index', auth, lookupTemplateProject, requirePer
     rec.attachments = arr;
     await rec.save();
 
-    // Best-effort delete local file
-    if (removed && removed.url && removed.url.includes('/uploads/templates/')) {
-      try {
-        const urlPath = removed.url.split('/uploads/')[1];
-        if (urlPath) {
-          const full = path.join(__dirname, '..', 'uploads', urlPath);
-          if (fs.existsSync(full)) fs.unlinkSync(full);
-        }
-      } catch (_) {}
-    }
+    tryDeleteLocalUpload({ url: removed && removed.url, prefix: 'templates' })
     res.status(200).send(toPlainTemplate(rec));
   } catch (error) {
     console.error('[templates] remove attachment error', error);

@@ -59,6 +59,50 @@ export const useTemplatesStore = defineStore('templates', () => {
   const error = ref<string | null>(null)
   const errorCode = ref<string | null>(null)
 
+  function normalizeFeatureFlags(raw: any) {
+    const out: Record<string, boolean> = {}
+    if (!raw || typeof raw !== 'object') return out
+    for (const [k, v] of Object.entries(raw)) {
+      if (!k) continue
+      const key = String(k).toLowerCase()
+      if (v === false || v === 'false' || v === 0) { out[key] = false; continue }
+      if (v === true || v === 'true' || v === 1) { out[key] = true; continue }
+    }
+    return out
+  }
+
+  function normalizeTierKey(raw: any) {
+    const s = String(raw || '').toLowerCase().trim()
+    if (!s) return ''
+    if (s === 'basic' || s.startsWith('basic') || s.includes('basic')) return 'basic'
+    if (s === 'standard' || s.startsWith('standard') || s.includes('standard')) return 'standard'
+    if (s === 'premium' || s.startsWith('premium') || s.includes('premium')) return 'premium'
+    return ''
+  }
+
+  function isTemplatesDisabledForProject(projectId: string) {
+    try {
+      const projectStore = useProjectStore()
+      const pid = String(projectId || '')
+      const proj: any =
+        (projectStore.currentProject && String((projectStore.currentProject as any).id || (projectStore.currentProject as any)._id) === pid)
+          ? projectStore.currentProject
+          : (projectStore.projects || []).find((p: any) => String(p.id || p._id) === pid)
+      if (!proj) return false
+
+      const flags = normalizeFeatureFlags(proj.subscriptionFeatures)
+      const tier = normalizeTierKey(proj.subscriptionTier || proj.subscription || '')
+      const inferredPremium = tier === 'premium' || flags.tasks === true || flags.ai === true
+      // Templates is premium-only in the current product; treat any non-premium as disabled.
+      if (!inferredPremium) return true
+      if (Object.prototype.hasOwnProperty.call(flags, 'templates')) return flags.templates === false
+
+      return false
+    } catch (e) {
+      return false
+    }
+  }
+
   const byId = computed<Record<string, Template>>(() => {
     const m: Record<string, Template> = {}
     for (const e of items.value) {
@@ -74,6 +118,14 @@ export const useTemplatesStore = defineStore('templates', () => {
     error.value = null
     errorCode.value = null
     try {
+      // If we can determine from local project state that Templates aren't in the plan,
+      // skip the API call to avoid noisy 403s.
+      if (isTemplatesDisabledForProject(projectId)) {
+        items.value = []
+        error.value = null
+        errorCode.value = 'FEATURE_NOT_IN_PLAN'
+        return
+      }
       const { data } = await axios.get(`${API_BASE}/project/${projectId}`, { headers: getAuthHeaders() })
       items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
     } catch (e: any) {

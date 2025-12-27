@@ -18,9 +18,20 @@ const rolesAdminRoutes = require('./routes/roles_admin');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
+const aiRoutes = require('./routes/ai');
+const { securityHeaders } = require('./middleware/securityHeaders');
+const { requestLogger } = require('./middleware/requestLogger');
+const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Trust first proxy in production deployments (Azure/NGINX) so req.ip and
+// x-forwarded-* behave correctly for rate limiting and absolute URL building.
+// Set TRUST_PROXY=false to disable.
+if (String(process.env.TRUST_PROXY || 'true').toLowerCase() !== 'false') {
+  app.set('trust proxy', 1);
+}
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/cxmngr-api';
 if (!process.env.MONGODB_URI) {
   console.warn('[startup] MONGODB_URI not set; using local fallback.');
@@ -30,6 +41,7 @@ if (!process.env.MONGODB_URI) {
 // CORS_ALLOWED_ORIGINS can be a comma-separated list or "*" for any
 const allowedOriginsEnv = process.env.CORS_ALLOWED_ORIGINS;
 const appUrlEnv = process.env.APP_URL; // used for building links; include as allowed origin if present
+const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production'
 let corsOptions = {
   origin: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
@@ -69,11 +81,61 @@ if (allowedOriginsEnv === '*') {
   };
 }
 
+// In production, do not default to reflecting any Origin when no allowlist is set.
+// Prefer explicit `CORS_ALLOWED_ORIGINS`, otherwise derive from APP_URL/FRONTEND_URL.
+if (isProd && (!allowedOriginsEnv || !String(allowedOriginsEnv).trim())) {
+  const derived = []
+  const addOrigin = (raw) => {
+    try {
+      if (!raw) return
+      const o = new URL(String(raw)).origin
+      if (o && !derived.includes(o)) derived.push(o)
+    } catch (_) { /* ignore invalid url */ }
+  }
+  addOrigin(process.env.APP_URL)
+  addOrigin(process.env.FRONTEND_URL)
+
+  if (derived.length) {
+    corsOptions = {
+      ...corsOptions,
+      origin: function(origin, callback) {
+        if (!origin) return callback(null, true)
+        if (derived.includes(origin)) return callback(null, true)
+        console.warn(`[cors] blocked origin: ${origin}; allowed: ${derived.join(', ')}`)
+        return callback(new Error('Not allowed by CORS'))
+      },
+    }
+  } else {
+    console.warn('[cors] NODE_ENV=production but no CORS_ALLOWED_ORIGINS/APP_URL/FRONTEND_URL set; blocking browser origins by default.')
+    corsOptions = {
+      ...corsOptions,
+      origin: function(origin, callback) {
+        if (!origin) return callback(null, true)
+        return callback(new Error('Not allowed by CORS'))
+      },
+    }
+  }
+}
+
 // Middleware
 // Basic root for sanity
 app.get('/', (_req, res) => {
   res.type('text').send('CXMNGR API alive');
 });
+
+// Baseline security headers (no deps)
+app.use(securityHeaders);
+
+// Request context + structured request logs (JSON)
+app.use(requestLogger);
+
+// Enable CORS (restricted if CORS_ALLOWED_ORIGINS is set)
+// NOTE: Must be registered before body parsers so that even 4xx/413 responses
+// (e.g., payload too large) still include CORS headers and don't surface as
+// opaque "Network Error" in the browser.
+app.use(cors(corsOptions));
+// Handle preflight requests for all routes explicitly
+app.options('*', cors(corsOptions));
 
 // Capture raw body for Stripe webhook signature verification, then parse JSON normally
 // Allow larger payloads for equipment and other rich payloads; configurable via BODY_PARSER_LIMIT
@@ -94,10 +156,6 @@ app.use(express.json({
 
 // Also accept urlencoded bodies with the same limit
 app.use(express.urlencoded({ extended: true, limit: bodyParserLimit }))
-// Enable CORS (restricted if CORS_ALLOWED_ORIGINS is set)
-app.use(cors(corsOptions));
-// Handle preflight requests for all routes explicitly
-app.options('*', cors(corsOptions));
 
 // Serve uploaded files (local storage)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -144,6 +202,11 @@ app.use('/api/stripe', billingRoutes);
 app.use('/api/stripe', webhookRoutes);
 // Public plans endpoint
 app.use('/api/plans', plansRoutes);
+// AI endpoints (plan-gated per project)
+app.use('/api/ai', aiRoutes);
+
+// Central error handler (always last)
+app.use(errorHandler);
 
 // Connect to MongoDB (Cosmos DB for MongoDB or Atlas or self-hosted)
 async function connectMongo(retries = 5, delayMs = 4000) {

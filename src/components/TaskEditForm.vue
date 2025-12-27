@@ -215,35 +215,83 @@
 
       <div>
         <label class="block text-white/70 text-sm">Airfare</label>
-        <input v-model.number="task.expenses.airfare" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.airfare"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Hotel</label>
-        <input v-model.number="task.expenses.hotel" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.hotel"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Rental Car</label>
-        <input v-model.number="task.expenses.rentalCar" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.rentalCar"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Food</label>
-        <input v-model.number="task.expenses.food" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.food"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Mileage</label>
-        <input v-model.number="task.expenses.mileage" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.mileage"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Labor</label>
-        <input v-model.number="task.expenses.labor" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.labor"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Other 1</label>
-        <input v-model.number="task.expenses.other1" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.other1"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div>
         <label class="block text-white/70 text-sm">Other 2</label>
-        <input v-model.number="task.expenses.other2" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded bg-white/10">
+        <input
+          v-model.number="task.expenses.other2"
+          type="number"
+          min="0"
+          step="0.01"
+          class="w-full px-3 py-2 rounded bg-white/10"
+        >
       </div>
       <div class="col-span-2 flex justify-end">
         <div class="text-sm text-white/70">

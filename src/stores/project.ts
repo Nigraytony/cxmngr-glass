@@ -65,18 +65,31 @@ export interface Project {
   trialStarted?: boolean;
   trialStart?: string | null;
   trialEnd?: string | null;
+  // Subscription/feature gating
+  subscriptionTier?: 'basic' | 'standard' | 'premium';
+  subscriptionFeatures?: any;
+  // Optional per-project AI config (no secrets client-side)
+  ai?: {
+    enabled?: boolean;
+    provider?: string;
+    model?: string;
+    hasKey?: boolean;
+    lastVerifiedAt?: string | null;
+    updatedAt?: string | null;
+  };
   // Project-level search behavior applied across list pages
   searchMode?: 'substring' | 'exact' | 'fuzzy';
 }
 
 import { getApiBase } from '../utils/api'
-const API_BASE = `${getApiBase()}/api/projects`;
+const API_BASE = '/api/projects'
 
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from './auth';
-import { getAuthHeaders } from '../utils/auth'
+import { getAuthHeaders, getToken } from '../utils/auth'
+import http from '../utils/http'
 
 // Billing API helpers
 export async function fetchBillingSummary(projectId: string) {
@@ -180,30 +193,18 @@ export const useProjectStore = defineStore('project', () => {
 
   async function fetchProjects() {
     try {
-      // Prefer fetching the authenticated user's hydrated projects if available
-      try {
-        const auth = useAuthStore();
-        if (auth && auth.token) {
-          const resp = await axios.get(`${getApiBase()}/api/users/me`, { headers: getAuthHeaders() });
-          const userProjects = resp?.data?.user?.projects || [];
-          projects.value = Array.isArray(userProjects)
-            ? userProjects.map((p: any) => ({ ...p, id: p._id || p.id }))
-            : [];
-          return;
-        }
-      } catch (innerErr) {
-        // If fetching authenticated user's projects failed, do NOT fall back to the
-        // public projects list (that would leak all projects to an authenticated
-        // user who doesn't yet have projects in their profile). Instead treat as
-        // no projects available for this user.
-        projects.value = [];
-        return;
+      // Projects are always auth-scoped now; avoid noisy 401s when signed out.
+      if (!getToken()) {
+        projects.value = []
+        return
       }
 
-      // If there is no auth token, fetch public projects list (e.g., for anonymous views)
-      const res = await axios.get(API_BASE);
-      // Map backend _id to id for frontend
-      projects.value = Array.isArray(res.data) ? res.data.map((p: any) => ({ ...p, id: p._id })) : [];
+      // Prefer fetching the authenticated user's hydrated projects if available.
+      const resp = await http.get(`/api/users/me`, { headers: getAuthHeaders() })
+      const userProjects = resp?.data?.user?.projects || []
+      projects.value = Array.isArray(userProjects)
+        ? userProjects.map((p: any) => ({ ...p, id: p._id || p.id }))
+        : []
     } catch (err) {
       // Optionally handle error
       projects.value = [];
@@ -212,11 +213,8 @@ export const useProjectStore = defineStore('project', () => {
 
 
   async function addProject(project: Partial<Project>) {
-    // Get current userId from auth store
-    const authStore = useAuthStore();
-    const userId = authStore.user?.id;
-    if (!userId) throw new Error('No user ID found. Please log in.');
-    const res = await axios.post(API_BASE, { ...project, userId });
+    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    const res = await http.post(API_BASE, project, { headers: getAuthHeaders() })
     const newProject = { ...res.data, id: res.data._id };
     projects.value.push(newProject);
     try {
@@ -226,7 +224,9 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function fetchProject(id: string) {
-    const res = await axios.get(`${API_BASE}/${id}`)
+    if (!id) throw new Error('Missing project id')
+    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    const res = await http.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
     const p = { ...res.data, id: res.data._id }
     const idx = projects.value.findIndex(pr => pr.id === p.id)
     if (idx !== -1) projects.value.splice(idx, 1, p)
@@ -239,11 +239,15 @@ export const useProjectStore = defineStore('project', () => {
   async function updateProject(updated: Partial<Project> & { id?: string, _id?: string }) {
     const id = (updated.id || (updated as any)._id)
     if (!id) throw new Error('Missing project id')
+    if (!getToken()) throw new Error('Not signed in. Please log in.')
     // avoid sending immutable _id or id in the update payload
     const payload: any = { ...updated };
     if (payload.id) delete payload.id;
     if (payload._id) delete payload._id;
-    const res = await axios.put(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() });
+    // Never send large read-only fields back to the API; they can exceed body limits (413)
+    // and are managed by dedicated endpoints (e.g., /api/projects/:id/logs).
+    if (payload.logs) delete payload.logs
+    const res = await http.put(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() });
     const idx = projects.value.findIndex(p => p.id === id);
     if (idx !== -1) {
       projects.value[idx] = { ...res.data, id: res.data._id };
@@ -259,7 +263,9 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   async function deleteProject(id: string) {
-    await axios.delete(`/api/projects/${id}`);
+    if (!id) throw new Error('Missing project id')
+    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    await http.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() });
     projects.value = projects.value.filter(p => p.id !== id);
     try {
       await appendProjectLog(String(id), { type: 'delete', message: `Project deleted: ${id}` })
@@ -283,7 +289,8 @@ export const useProjectStore = defineStore('project', () => {
           }
   } catch (e) { /* ignore */ }
       }
-      await axios.post(`${API_BASE}/${projectId}/logs`, payload, { headers: getAuthHeaders() })
+      if (!getToken()) return
+      await http.post(`${API_BASE}/${projectId}/logs`, payload, { headers: getAuthHeaders() })
       // optimistic cache update
       const arr = logsCache.value[projectId] || []
       const ts = payload.ts ? new Date(payload.ts).toISOString() : new Date().toISOString()
@@ -299,7 +306,8 @@ export const useProjectStore = defineStore('project', () => {
       if (opts?.limit) params.limit = opts.limit
       if (opts?.page) params.page = opts.page
       if (opts?.type) params.type = opts.type
-      const res = await axios.get(`${API_BASE}/${projectId}/logs`, { params, headers: getAuthHeaders() })
+      if (!getToken()) return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
+      const res = await http.get(`${API_BASE}/${projectId}/logs`, { params, headers: getAuthHeaders() })
       const data = res.data || { items: [], total: 0, page: 1, limit: opts?.limit || 0, totalPages: 0 }
       // cache the last fetched page of items (optimistic)
       try {

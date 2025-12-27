@@ -1071,7 +1071,9 @@
           class="space-y-3"
         >
           <div class="flex items-center justify-between">
-            <div class="text-white/70 text-sm">Checklists</div>
+            <div class="text-white/70 text-sm">
+              Checklists
+            </div>
             <button
               class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
               @click="persistChecklists(checklists)"

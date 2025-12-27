@@ -1,13 +1,11 @@
 const { expect } = require('chai');
 const request = require('supertest');
-let MongoMemoryServer = null;
-try { ({ MongoMemoryServer } = require('mongodb-memory-server')); } catch (e) {}
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
+const { clearDb } = require('./testUtils');
 
 describe('Admin webhook replay - charge event', function () {
   this.timeout(20000);
-  let mongoServer;
   let app;
   let WebhookEvent;
   let Invoice;
@@ -38,11 +36,16 @@ describe('Admin webhook replay - charge event', function () {
     Invoice = require('../models/invoice');
     Charge = require('../models/charge');
     User = require('../models/user');
+
+    await clearDb();
   });
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongoServer) await mongoServer.stop();
+  });
+
+  beforeEach(async () => {
+    await clearDb();
   });
 
   it('replays a stored charge.succeeded event and uses Invoice.projectId', async () => {

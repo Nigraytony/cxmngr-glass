@@ -11,7 +11,30 @@ const { auth } = require('../middleware/auth');
 const crypto = require('crypto');
 const PasswordReset = require('../models/passwordReset');
 const { sendResetEmail } = require('../utils/mailer');
+const { rateLimit } = require('../middleware/rateLimit');
+const { requireObjectIdParam } = require('../middleware/validate');
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+
+const loginLimiter = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'login' })
+const registerLimiter = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'register' })
+const passwordResetLimiter = rateLimit({ windowMs: 10 * 60_000, max: 10, keyPrefix: 'pwreset' })
+const changePasswordLimiter = rateLimit({ windowMs: 10 * 60_000, max: 10, keyPrefix: 'change-password' })
+
+function normalizeShortString(value, { maxLen = 256 } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (s.length > maxLen) return null
+  return s
+}
+
+function normalizePasswordResetToken(value) {
+  const s = normalizeShortString(value, { maxLen: 128 })
+  if (!s) return null
+  // tokens are generated via `crypto.randomBytes(32).toString('hex')` (64 hex chars)
+  if (!/^[a-f0-9]{64}$/i.test(s)) return null
+  return s.toLowerCase()
+}
 
 // Helper: hydrate user.projects from the Projects collection (avoid stale embedded fields)
 async function hydrateUserProjects(userObj) {
@@ -54,11 +77,25 @@ async function hydrateUserProjects(userObj) {
 }
 
 // Register a new user
-router.post('/register', async (req, res) => {
+	router.post('/register', registerLimiter, async (req, res) => {
   // Accepts: firstName, lastName, company, email, password, role, projects[]
   try {
+    const email = String(req.body && req.body.email || '').trim().toLowerCase()
+    if (!email) return res.status(400).send({ error: 'email is required' })
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).send({ error: 'Invalid email' })
+
+    const firstName = String(req.body && req.body.firstName || '').trim()
+    const lastName = String(req.body && req.body.lastName || '').trim()
+    const company = String(req.body && req.body.company || '').trim()
+    const password = String(req.body && req.body.password || '')
+    if (!firstName) return res.status(400).send({ error: 'firstName is required' })
+    if (!lastName) return res.status(400).send({ error: 'lastName is required' })
+    if (!company) return res.status(400).send({ error: 'company is required' })
+    if (!password) return res.status(400).send({ error: 'password is required' })
+    if (password.length < 8) return res.status(400).send({ error: 'password must be at least 8 characters' })
+
     // Check if user already exists
-    const existing = await User.findOne({ email: req.body.email });
+    const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).send({ error: 'Email already registered.' });
     }
@@ -66,14 +103,15 @@ router.post('/register', async (req, res) => {
     // Build user object
     const user = new User({
       avatar: req.body.avatar || '',
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      email: req.body.email,
-      password: req.body.password, // Will be hashed by pre-save hook
-      role: req.body.role || 'user',
-      projects: req.body.projects || [],
+      firstName,
+      lastName,
+      email,
+      password, // Will be hashed by pre-save hook
+      // Security: never allow self-registration to set role or projects
+      role: 'user',
+      projects: [],
       contact: {
-        company: req.body.company,
+        company,
         phone: req.body.phone || '',
         address: {
           street: req.body.street || '',
@@ -128,14 +166,18 @@ router.post('/register', async (req, res) => {
 // ...existing code...
 
 // Login a user
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   // console.log(req.body);
    try {
-    const user = await User.findOne({ email: req.body.email });
-    const userDoc = user.toObject({ getters: true });
+    const email = String(req.body && req.body.email || '').trim().toLowerCase()
+    const password = String(req.body && req.body.password || '')
+    if (!email || !password) return res.status(400).send({ error: 'email and password are required' })
+
+    const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(req.body.password))) {
       return res.status(400).send({ error: 'Invalid login credentials' });
     }
+    const userDoc = user.toObject({ getters: true });
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       console.error('[users.login] JWT_SECRET is not set');
@@ -146,7 +188,8 @@ router.post('/login', async (req, res) => {
     const hydrated = await hydrateUserProjects(userDoc)
     res.send({ user: hydrated, token });
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[users.login] error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Login failed' });
   }
 });
 
@@ -170,11 +213,42 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // Update a user
-router.put('/update/:_id', async (req, res) => {
+router.put('/update/:_id', auth, requireObjectIdParam('_id'), async (req, res) => {
   // console.log(req.params, req.body);
   try {
+    const actorId = String(req.user && (req.user._id || req.user.id) || '')
+    const targetId = String(req.params._id || '')
+    const globalRole = String(req.user && req.user.role || '').trim()
+    const canAdminEdit = globalRole === 'globaladmin' || globalRole === 'superadmin'
+    const isSelf = actorId && targetId && actorId === targetId
+    if (!isSelf && !canAdminEdit) return res.status(403).send({ error: 'Forbidden' })
+
     // Sanitize project items to avoid writing duplicated project fields
     const payload = { ...(req.body || {}) }
+
+    // If email is being changed, validate and ensure uniqueness
+    if (payload.email !== undefined) {
+      const nextEmail = String(payload.email || '').trim().toLowerCase()
+      if (!nextEmail) return res.status(400).send({ error: 'email is required' })
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) return res.status(400).send({ error: 'Invalid email' })
+      const existing = await User.findOne({ email: nextEmail }).select('_id').lean()
+      if (existing && String(existing._id) !== String(targetId)) {
+        return res.status(400).send({ error: 'Email already registered.' })
+      }
+      payload.email = nextEmail
+    }
+
+    // Non-admins cannot change membership, role, billing, or activation fields via profile update.
+    if (!canAdminEdit) {
+      delete payload.projects
+      delete payload.role
+      delete payload.isActive
+      delete payload.deleted
+      delete payload.status
+      delete payload.stripeCustomerId
+      delete payload.permissions
+    }
+
     if (Array.isArray(payload.projects)) {
       payload.projects = payload.projects.map((p) => {
         const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id)))
@@ -245,23 +319,32 @@ router.put('/update/:_id', async (req, res) => {
     const hydrated = await hydrateUserProjects(userObj);
     res.send({ user: hydrated });
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[users.update] error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update user' });
   }
 });
 
 // Change user password (secure): verify current password and hash the new one
-router.post('/change-password', async (req, res) => {
+router.post('/change-password', auth, changePasswordLimiter, async (req, res) => {
   try {
     const { email, currentPassword, newPassword } = req.body || {};
-    if (!email || !currentPassword || !newPassword) {
-      return res.status(400).send({ error: 'email, currentPassword and newPassword are required' });
+    if (!currentPassword || !newPassword) {
+      return res.status(400).send({ error: 'currentPassword and newPassword are required' });
     }
 
-    // find user and include password for comparison (if schema excludes it by default)
-    const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(404).send({ error: 'User not found' });
+    // If caller provided an email, ensure it matches the authenticated user.
+    if (email) {
+      const normalized = String(email).trim().toLowerCase()
+      const actual = String(req.user && req.user.email || '').trim().toLowerCase()
+      if (actual && normalized && normalized !== actual) {
+        return res.status(400).send({ error: 'Email does not match authenticated user' })
+      }
     }
+
+    // Load the authenticated user with password for comparison.
+    const userId = req.user && (req.user._id || req.user.id)
+    const user = userId ? await User.findById(userId).select('+password') : null
+    if (!user) return res.status(404).send({ error: 'User not found' })
 
     // Verify current password using model helper
     if (!(await user.comparePassword(currentPassword))) {
@@ -286,11 +369,13 @@ router.post('/change-password', async (req, res) => {
 });
 
 // Request a password reset: creates a short-lived token and emails reset link
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body || {};
-    if (!email) return res.status(400).send({ error: 'email is required' });
-    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    const normalized = String(email || '').trim().toLowerCase()
+    if (!normalized) return res.status(400).send({ error: 'email is required' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return res.status(400).send({ error: 'Invalid email' })
+    const user = await User.findOne({ email: normalized });
     if (!user) return res.status(200).send({ message: 'If that account exists, a reset email has been sent' });
 
     // generate token
@@ -318,9 +403,10 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // Perform password reset using token
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', passwordResetLimiter, async (req, res) => {
   try {
-    const { token, newPassword } = req.body || {};
+    const token = normalizePasswordResetToken(req.body && req.body.token)
+    const newPassword = req.body && req.body.newPassword
     if (!token || !newPassword) return res.status(400).send({ error: 'token and newPassword are required' });
     if (typeof newPassword !== 'string' || newPassword.length < 8) return res.status(400).send({ error: 'New password must be at least 8 characters' });
 

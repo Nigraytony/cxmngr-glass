@@ -16,6 +16,31 @@ const Project = require('../models/project');
 const User = require('../models/user');
 const plans = require('../config/plans');
 const { auth } = require('../middleware/auth');
+const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam } = require('../middleware/validate');
+
+function normalizeShortString(value, { maxLen = 128 } = {}) {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (s.length > maxLen) return null;
+  return s;
+}
+
+function isStripeIdLike(value, prefix) {
+  const s = normalizeShortString(value, { maxLen: 128 });
+  if (!s) return false;
+  if (prefix && !s.startsWith(prefix)) return false;
+  // Stripe IDs are typically alphanumeric with underscores.
+  if (!/^[a-zA-Z0-9_]+$/.test(s)) return false;
+  return true;
+}
+
+function validateProrationBehavior(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const s = String(value).trim();
+  const allowed = new Set(['create_prorations', 'always_invoice', 'none']);
+  return allowed.has(s) ? s : null;
+}
 
 // Helper to determine if the requester can manage billing for this project.
 function canManageBilling(user, project) {
@@ -52,6 +77,9 @@ router.get('/ping', (req, res) => {
   console.log('[stripe-ping] ping received');
   res.json({ ok: true });
 });
+
+// Validate project id on all /project/:id/* routes to avoid CastErrors and 500s.
+router.use('/project/:id', requireObjectIdParam('id'));
 
 async function ensureStripeCustomer(user) {
   if (!stripe) throw new Error('Stripe not configured');
@@ -231,6 +259,9 @@ router.post('/project/:id/plan/preview', auth, async (req, res) => {
     const projectId = req.params.id;
     const { priceId, proration_behavior } = req.body || {};
     if (!priceId) return res.status(400).json({ error: 'priceId is required' });
+    if (!isStripeIdLike(priceId, 'price_')) return res.status(400).json({ error: 'Invalid priceId' });
+    const prorationBehavior = validateProrationBehavior(proration_behavior);
+    if (proration_behavior && !prorationBehavior) return res.status(400).json({ error: 'Invalid proration_behavior' });
 
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
@@ -246,7 +277,7 @@ router.post('/project/:id/plan/preview', auth, async (req, res) => {
       subscription: sub.id,
       subscription_items: [{ id: currentItem.id, price: priceId }],
       // If client asks to disable proration, propagate; otherwise let Stripe default to proration
-      proration_behavior: proration_behavior || undefined,
+      proration_behavior: prorationBehavior || undefined,
       expand: ['lines.data.discounts', 'discounts', 'total_discount_amounts.discount'],
     });
 
@@ -333,6 +364,9 @@ router.post('/project/:id/change-plan', auth, async (req, res) => {
     const projectId = req.params.id;
     const { priceId, proration_behavior } = req.body || {};
     if (!priceId) return res.status(400).json({ error: 'priceId is required' });
+    if (!isStripeIdLike(priceId, 'price_')) return res.status(400).json({ error: 'Invalid priceId' });
+    const prorationBehavior = validateProrationBehavior(proration_behavior);
+    if (proration_behavior && !prorationBehavior) return res.status(400).json({ error: 'Invalid proration_behavior' });
 
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
@@ -347,7 +381,7 @@ router.post('/project/:id/change-plan', auth, async (req, res) => {
     const updateParams = {
       items: [{ id: currentItem.id, price: priceId }],
       // Default to Stripe's prorations unless explicitly disabled by client
-      proration_behavior: proration_behavior || 'create_prorations',
+      proration_behavior: prorationBehavior || 'create_prorations',
     };
     // If still in trial, explicitly preserve the original trial_end so it cannot be extended/reset
     if (sub.status === 'trialing' && sub.trial_end) {
@@ -572,6 +606,7 @@ router.post('/project/:id/payment-method', auth, async (req, res) => {
     const projectId = req.params.id;
     const { paymentMethodId } = req.body || {};
     if (!paymentMethodId) return res.status(400).json({ error: 'paymentMethodId is required' });
+    if (!isStripeIdLike(paymentMethodId, 'pm_')) return res.status(400).json({ error: 'Invalid paymentMethodId' });
 
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
@@ -681,6 +716,7 @@ router.delete('/project/:id/payment-methods/:pmId', auth, async (req, res) => {
     if (!project) return res.status(404).json({ error: 'Project not found' });
     if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized to manage billing for this project' });
     if (!pmId) return res.status(400).json({ error: 'payment method id required' });
+    if (!isStripeIdLike(pmId, 'pm_')) return res.status(400).json({ error: 'Invalid payment method id' });
 
     // Ensure the PM belongs to the project's billing customer
     const customerId = await resolveBillingCustomerId(project, req.user);
@@ -719,7 +755,8 @@ router.post('/project/:id/promotion', auth, async (req, res) => {
     if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
     const projectId = req.params.id;
     const { code } = req.body || {};
-    if (!code) return res.status(400).json({ error: 'promotion code is required' });
+    const normalizedCode = normalizeShortString(code, { maxLen: 64 });
+    if (!normalizedCode) return res.status(400).json({ error: 'promotion code is required' });
 
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
@@ -727,7 +764,7 @@ router.post('/project/:id/promotion', auth, async (req, res) => {
     if (!project.stripeSubscriptionId) return res.status(400).json({ error: 'Project does not have an active subscription' });
 
     // Look up promotion code by its human-friendly code
-    const promoList = await stripe.promotionCodes.list({ code, active: true, limit: 1 });
+    const promoList = await stripe.promotionCodes.list({ code: normalizedCode, active: true, limit: 1 });
     const promo = Array.isArray(promoList.data) && promoList.data[0] ? promoList.data[0] : null;
     if (!promo) return res.status(404).json({ error: 'Promotion code not found or inactive' });
 
@@ -750,7 +787,7 @@ router.post('/project/:id/promotion', auth, async (req, res) => {
 });
 
 // Create Checkout Session for subscribing a project
-router.post('/create-checkout-session', auth, async (req, res) => {
+router.post('/create-checkout-session', auth, requireBodyField('projectId'), requireObjectIdBody('projectId'), async (req, res) => {
   try {
     if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
     const { projectId, planKey, promotionCode } = req.body;
@@ -763,13 +800,18 @@ router.post('/create-checkout-session', auth, async (req, res) => {
     }
     if (!priceId && req.body.priceId) priceId = req.body.priceId;
 
-    if (!projectId || !priceId) return res.status(400).json({ error: 'projectId and priceId required' });
+    if (!priceId) return res.status(400).json({ error: 'priceId required' });
+    if (!isStripeIdLike(priceId, 'price_')) return res.status(400).json({ error: 'Invalid priceId' });
+    if (promotionCode && !isStripeIdLike(promotionCode, 'promo_')) return res.status(400).json({ error: 'Invalid promotionCode' });
 
     const user = req.user;
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });
 
-    const customerId = await ensureStripeCustomer(user);
+    if (!canManageBilling(user, project)) return res.status(403).json({ error: 'Not authorized to manage billing for this project' });
+
+    const customerId = await resolveBillingCustomerId(project, user);
+    if (!customerId) return res.status(500).json({ error: 'Failed to resolve billing customer' });
 
     // One fixed trial per project
     const firstTimeTrial = !project.trialStarted && !project.stripeSubscriptionId;
@@ -845,11 +887,16 @@ router.post('/create-checkout-session', auth, async (req, res) => {
 });
 
 // Create Billing Portal Session
-router.post('/portal-session', auth, async (req, res) => {
+router.post('/portal-session', auth, requireBodyField('projectId'), requireObjectIdBody('projectId'), async (req, res) => {
   try {
     if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
-    const user = req.user;
-    const customerId = await ensureStripeCustomer(user);
+    const projectId = String(req.body.projectId);
+    const project = await Project.findById(projectId).lean();
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized to manage billing for this project' });
+
+    const customerId = await resolveBillingCustomerId(project, req.user);
+    if (!customerId) return res.status(500).json({ error: 'Failed to resolve billing customer' });
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:5173'}/account/billing-return`,
@@ -862,20 +909,26 @@ router.post('/portal-session', auth, async (req, res) => {
 });
 
 // GET /api/stripe/project/:id/transactions?type=all|invoice|charge&status=open|paid&start=ISO&end=ISO&page=1&limit=10&format=csv
-router.get('/project/:id/transactions', auth, async (req, res) => {
-  try {
-    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
-    const projectId = req.params.id;
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
-    const typeFilter = (req.query.type || 'all').toString().toLowerCase();
-    const statusFilter = req.query.status ? req.query.status.toString().toLowerCase() : null;
-    const format = (req.query.format || '').toString().toLowerCase();
-    const start = req.query.start ? new Date(req.query.start) : null;
-    const end = req.query.end ? new Date(req.query.end) : null;
-    const created = {};
-    if (start && !isNaN(start.getTime())) created.gte = Math.floor(start.getTime() / 1000);
-    if (end && !isNaN(end.getTime())) created.lte = Math.floor(end.getTime() / 1000);
+  router.get('/project/:id/transactions', auth, async (req, res) => {
+    try {
+      if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+      const projectId = req.params.id;
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
+      const typeFilter = (req.query.type || 'all').toString().toLowerCase();
+      const statusFilter = req.query.status ? req.query.status.toString().toLowerCase() : null;
+      const format = (req.query.format || '').toString().toLowerCase();
+      const start = req.query.start ? new Date(req.query.start) : null;
+      const end = req.query.end ? new Date(req.query.end) : null;
+      if (req.query.start && (!start || Number.isNaN(start.getTime()))) {
+        return res.status(400).json({ error: 'Invalid start date' });
+      }
+      if (req.query.end && (!end || Number.isNaN(end.getTime()))) {
+        return res.status(400).json({ error: 'Invalid end date' });
+      }
+      const created = {};
+      if (start && !isNaN(start.getTime())) created.gte = Math.floor(start.getTime() / 1000);
+      if (end && !isNaN(end.getTime())) created.lte = Math.floor(end.getTime() / 1000);
 
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).json({ error: 'Project not found' });

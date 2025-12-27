@@ -52,6 +52,16 @@ const userSchema = new mongoose.Schema({
   // Support soft-delete and a simple status enum for frontend display
   deleted: { type: Boolean, default: false },
   status: { type: String, enum: ['Active', 'Deleted', 'Inactive', 'Invited', 'Pending'], default: 'Active' },
+  // Admin support access: requires end-user PIN grant to allow an admin to view/edit user profile in support mode.
+  supportAccess: {
+    requestedByAdminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    requestedAt: { type: Date, default: null },
+    pinHash: { type: String, default: null },
+    pinExpiresAt: { type: Date, default: null },
+    grantedAdminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    grantedUntil: { type: Date, default: null },
+    grantedAt: { type: Date, default: null },
+  },
 });
 
 // Hash the password before saving the user

@@ -6,13 +6,62 @@ const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature } = require('../middleware/planGuard');
+const { requireNotDisabled } = require('../middleware/killSwitch');
+const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const mongoose = require('mongoose');
+const runMiddleware = require('../middleware/runMiddleware');
+const { rateLimit } = require('../middleware/rateLimit');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const sanitizeHtml = require('sanitize-html');
+const { tryDeleteLocalUpload } = require('../utils/uploads')
+const { buildSafeRegex } = require('../utils/search')
+const { normalizeLogEvent } = require('../utils/logEvent')
+
+// Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
+router.param('id', (req, res, next, value) => {
+  if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' })
+  return next()
+})
+
+function normalizeSortBy(value, allowed, fallback) {
+  const s = String(value || '').trim()
+  return allowed.has(s) ? s : fallback
+}
+
+function normalizeSortDir(value) {
+  return String(value || '').toLowerCase() === 'asc' ? 1 : -1
+}
+
+function normalizeShortString(value, { maxLen = 64 } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (s.length > maxLen) return null
+  return s
+}
+
+function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (allowAll && s.toLowerCase() === 'all') return null
+  if (s.length > maxLen) return undefined
+  return s
+}
+
+const LIST_SORT_FIELDS = new Set([
+  'updatedAt',
+  'createdAt',
+  'tag',
+  'title',
+  'type',
+])
 
 // documents uploader (up to ~10MB per file)
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadLimiter = rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'uploads' })
 
 // Allowed document mime types (match issues/activities routes)
 const ALLOWED_DOC_MIME = new Set([
@@ -44,6 +93,35 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+function normalizeOptionalObjectId(value) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return null
+  if (!mongoose.Types.ObjectId.isValid(s)) return undefined
+  return s
+}
+
+function pickSpacePayload(source) {
+  const body = source || {}
+  const out = {}
+  const allowed = [
+    'tag',
+    'title',
+    'type',
+    'description',
+    'parentSpace',
+    'attributes',
+    'tags',
+    'settings',
+    'notes',
+    'metaData',
+  ]
+  for (const k of allowed) {
+    if (body[k] !== undefined) out[k] = body[k]
+  }
+  return out
+}
+
 // Middleware to look up space and add project to request for RBAC
 const lookupSpaceProject = async (req, res, next) => {
   try {
@@ -57,8 +135,24 @@ const lookupSpaceProject = async (req, res, next) => {
   }
 };
 
+function normalizeProjectId(req, _res, next) {
+  try {
+    if (req.body && !req.body.project && req.body.projectId) req.body.project = req.body.projectId
+  } catch (_) { /* ignore */ }
+  next()
+}
+
 // Create a new space
-router.post('/', auth, requirePermission('spaces.create', { projectParam: 'project' }), requireActiveProject, requireFeature('spaces'), async (req, res) => {
+router.post(
+  '/',
+  auth,
+  normalizeProjectId,
+  requireBodyField('project'),
+  requireObjectIdBody('project'),
+  requirePermission('spaces.create', { projectParam: 'project' }),
+  requireActiveProject,
+  requireFeature('spaces'),
+  async (req, res) => {
   // console.log(req.body);
   try {
     // Normalize projectId -> project for callers that use projectId in payload
@@ -75,14 +169,18 @@ router.post('/', auth, requirePermission('spaces.create', { projectParam: 'proje
       tag: req.body.tag || '',
       title: req.body.title || '',
       type: req.body.type || '',
-      description: req.body.description || '',
+      description: typeof req.body.description === 'string'
+        ? sanitizeHtml(String(req.body.description), { allowedTags: [], allowedAttributes: {} }).trim()
+        : (req.body.description || ''),
       project: req.body.project, // Ensure project ID is valid
       parentSpace: req.body.parentSpace || '',
       attributes: Array.isArray(req.body.attributes) ? req.body.attributes : [],
       tags: Array.isArray(req.body.tags) ? req.body.tags : [],
       attachments: req.body.attachments || '',
       settings: req.body.settings || '',
-      notes: req.body.notes || '',
+      notes: typeof req.body.notes === 'string'
+        ? sanitizeHtml(String(req.body.notes), { allowedTags: [], allowedAttributes: {} }).trim()
+        : (req.body.notes || ''),
       metaData: req.body.metaData || '',
     });
 
@@ -129,24 +227,33 @@ async function buildParentChains(projectId, items) {
 }
 
 // Paginated, filtered list (query: projectId required)
-router.get('/', auth, requireFeature('spaces'), async (req, res) => {
+router.get('/', auth, requireFeature('spaces'), requirePermission('spaces.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const projectId = req.query.projectId
-    if (!projectId) return res.status(200).send({ items: [], total: 0 })
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
     const includeTypes = String(req.query.includeTypes || '').toLowerCase() === 'true' || String(req.query.includeTypes || '') === '1'
     const page = Math.max(1, parseInt(req.query.page, 10) || 1)
     const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 50))
-    const sortBy = String(req.query.sortBy || 'updatedAt')
-    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+    const sortDir = normalizeSortDir(req.query.sortDir)
     const filter = { project: projectId }
-    if (req.query.type) filter.type = req.query.type
-    if (req.query.parentSpace) filter.parentSpace = req.query.parentSpace
+    if (req.query.type !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.type)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
+      if (v) filter.type = v
+    }
+    if (req.query.parentSpace !== undefined) {
+      const parentSpace = normalizeOptionalObjectId(req.query.parentSpace)
+      if (parentSpace === undefined) return res.status(400).send({ error: 'Invalid parentSpace' })
+      if (parentSpace) filter.parentSpace = parentSpace
+    }
     if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
       ]
     }
     const total = await Space.countDocuments(filter)
@@ -169,27 +276,36 @@ router.get('/', auth, requireFeature('spaces'), async (req, res) => {
     }
     res.status(200).send({ items, total, types, typeCounts })
   } catch (error) {
-    res.status(500).send(error)
+    console.error('[spaces] list error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to list spaces' })
   }
 })
 
 // Get all spaces by project ID (light, optional search/filter, pagination)
-router.get('/project/:projectId', auth, requirePermission('spaces.read', { projectParam: 'projectId' }), requireFeature('spaces'), async (req, res) => {
+router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requirePermission('spaces.read', { projectParam: 'projectId' }), requireFeature('spaces'), async (req, res) => {
   try {
     const includeTypes = String(req.query.includeTypes || '').toLowerCase() === 'true' || String(req.query.includeTypes || '') === '1'
     const page = Math.max(1, parseInt(req.query.page, 10) || 1)
     const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 50))
-    const sortBy = String(req.query.sortBy || 'updatedAt')
-    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
+    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+    const sortDir = normalizeSortDir(req.query.sortDir)
     const filter = { project: req.params.projectId }
-    if (req.query.type) filter.type = req.query.type
-    if (req.query.parentSpace) filter.parentSpace = req.query.parentSpace
+    if (req.query.type !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.type)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
+      if (v) filter.type = v
+    }
+    if (req.query.parentSpace !== undefined) {
+      const parentSpace = normalizeOptionalObjectId(req.query.parentSpace)
+      if (parentSpace === undefined) return res.status(400).send({ error: 'Invalid parentSpace' })
+      if (parentSpace) filter.parentSpace = parentSpace
+    }
     if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
       ]
     }
     const total = await Space.countDocuments(filter)
@@ -212,12 +328,13 @@ router.get('/project/:projectId', auth, requirePermission('spaces.read', { proje
     }
     res.status(200).send({ items, total, types, typeCounts })
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[spaces] list by project error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load spaces' });
   }
 });
 
 // Read a single space by ID and find subSpaces (supports light/includeAttachments)
-router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
+router.get('/:id', auth, requireObjectIdParam('id'), lookupSpaceProject, requirePermission('spaces.read', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
   try {
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includeAttachments = String(req.query.includeAttachments || '').toLowerCase() === 'true' || String(req.query.includeAttachments || '') === '1'
@@ -248,26 +365,43 @@ router.get('/:id', auth, lookupSpaceProject, requirePermission('spaces.read', { 
     }
     res.status(200).send({ ...space, subSpaces });
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[spaces] get error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load space' });
   }
 });
 
 // Update a space by ID
-router.patch('/:id', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
+router.patch('/:id', auth, requireObjectIdParam('id'), lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireActiveProject, requireFeature('spaces'), async (req, res) => {
   // console.log('Updating space:', req.params.id, req.body);
   try {
-    const space = await Space.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const incoming = pickSpacePayload(req.body)
+    // Never allow changing ownership or attachments via generic patch
+    delete incoming.project
+    delete incoming.projectId
+    delete incoming.attachments
+    delete incoming.logs
+    delete incoming.equipment
+    delete incoming.subSpaces
+
+    if (typeof incoming.description === 'string') {
+      incoming.description = sanitizeHtml(String(incoming.description), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof incoming.notes === 'string') {
+      incoming.notes = sanitizeHtml(String(incoming.notes), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    const space = await Space.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
     if (!space) {
       return res.status(404).send();
     }
     res.status(200).send(space);
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[spaces] update error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update space' });
   }
 });
 
 // Delete a space by ID
-router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
+router.delete('/:id', auth, requireObjectIdParam('id'), lookupSpaceProject, requirePermission('spaces.delete', { projectParam: 'project' }), requireActiveProject, requireFeature('spaces'), async (req, res) => {
   try {
     const space = await Space.findByIdAndDelete(req.params.id);
     if (!space) {
@@ -275,13 +409,14 @@ router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete
     }
     res.status(200).send(space);
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[spaces] delete error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to delete space' });
   }
 });
 
   // Space logs: append and read
   // GET /api/spaces/:id/logs?limit=200&type=section_created
-  router.get('/:id/logs', auth, requireFeature('spaces'), async (req, res) => {
+  router.get('/:id/logs', auth, requireObjectIdParam('id'), lookupSpaceProject, requireFeature('spaces'), requirePermission('spaces.read', { projectParam: 'project' }), async (req, res) => {
     try {
       const id = req.params.id
       const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
@@ -304,18 +439,14 @@ router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete
   })
 
   // POST /api/spaces/:id/logs -> append one log event
-  router.post('/:id/logs', auth, requireFeature('spaces'), async (req, res) => {
+  router.post('/:id/logs', auth, requireObjectIdParam('id'), lookupSpaceProject, requireFeature('spaces'), async (req, res) => {
     try {
+      await runMiddleware(req, res, requirePermission('spaces.update', { projectParam: 'project' }))
+      await runMiddleware(req, res, requireActiveProject)
       const id = req.params.id
-      const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
-      if (!event.type) return res.status(400).send({ error: 'type is required' })
-      event.ts = event.ts ? new Date(event.ts) : new Date()
-      if (!event.by && req.user) {
-        try {
-          const u = await require('../models/user').findById(req.user && (req.user._id || req.user.id)).lean()
-          if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
-        } catch {}
-      }
+      const byFallback = req.user ? ([req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email || String(req.user._id || req.user.id)) : null
+      const event = normalizeLogEvent(req.body, { byFallback })
+      if (!event) return res.status(400).send({ error: 'type is required' })
       const updated = await Space.findByIdAndUpdate(
         id,
         { $push: { logs: { $each: [event], $slice: -5000 } }, $set: { updatedAt: new Date() } },
@@ -330,7 +461,7 @@ router.delete('/:id', auth, lookupSpaceProject, requirePermission('spaces.delete
   })
 
 // Upload attachments (documents) for a space
-router.post('/:id/attachments', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireFeature('spaces'), uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireActiveProject, requireFeature('spaces'), uploadLimiter, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const space = await Space.findById(req.params.id);
     if (!space) return res.status(404).send({ error: 'Space not found' });
@@ -391,10 +522,9 @@ router.post('/:id/attachments', auth, lookupSpaceProject, requirePermission('spa
 });
 
 // Remove an attachment by index for a space; best-effort delete local file if under uploads
-router.delete('/:id/attachments/:index', auth, lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireFeature('spaces'), async (req, res) => {
+router.delete('/:id/attachments/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), lookupSpaceProject, requirePermission('spaces.update', { projectParam: 'project' }), requireActiveProject, requireFeature('spaces'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
     const space = await Space.findById(req.params.id);
     if (!space) return res.status(404).send({ error: 'Space not found' });
 
@@ -404,17 +534,8 @@ router.delete('/:id/attachments/:index', auth, lookupSpaceProject, requirePermis
     space.attachments = arr;
     await space.save();
 
-    // Try delete local file if it points within /uploads/spaces/
-    try {
-      const url = String(removed || '');
-      if (url.includes('/uploads/spaces/')) {
-        const urlPath = url.split('/uploads/')[1];
-        if (urlPath) {
-          const full = path.join(__dirname, '..', 'uploads', urlPath);
-          if (fs.existsSync(full)) fs.unlinkSync(full);
-        }
-      }
-    } catch (_) {}
+    // Best-effort delete local file (only if under /uploads/spaces/)
+    tryDeleteLocalUpload({ url: removed ? String(removed) : '', prefix: 'spaces' })
 
     return res.status(200).send(space);
   } catch (error) {

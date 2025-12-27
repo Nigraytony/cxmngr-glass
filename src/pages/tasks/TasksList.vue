@@ -184,25 +184,25 @@
           Loading tasks…
         </p>
       </div>
-	      <div v-else>
-	        <div
-	          v-if="tasks.length === 0"
-	          class="text-white/70"
-	        >
-	          No tasks found for this project.
-	        </div>
-	        <template v-else>
-	          <div class="overflow-x-auto rounded-md border border-white/10">
-	            <table class="min-w-full text-sm compact-rows">
-	              <thead class="bg-white/5 text-white/70">
-	                <tr>
-	                  <th class="w-8 px-2" />
-	                  <th class="w-24 px-3 py-2 text-left">
-	                    WBS
-	                  </th>
-	                  <th class="text-left px-3 py-2">
-	                    Name
-	                  </th>
+      <div v-else>
+        <div
+          v-if="tasks.length === 0"
+          class="text-white/70"
+        >
+          No tasks found for this project.
+        </div>
+        <template v-else>
+          <div class="overflow-x-auto rounded-md border border-white/10">
+            <table class="min-w-full text-sm compact-rows">
+              <thead class="bg-white/5 text-white/70">
+                <tr>
+                  <th class="w-8 px-2" />
+                  <th class="w-24 px-3 py-2 text-left">
+                    WBS
+                  </th>
+                  <th class="text-left px-3 py-2">
+                    Name
+                  </th>
                   <th
                     v-if="showDurationColumn"
                     class="text-left px-3 py-2"
@@ -221,9 +221,9 @@
                   >
                     Finish
                   </th>
-	                  <th
-	                    v-if="showCostColumn"
-	                    class="text-left px-3 py-2"
+                  <th
+                    v-if="showCostColumn"
+                    class="text-left px-3 py-2"
                   >
                     Cost
                   </th>
@@ -232,17 +232,13 @@
                   </th>
                 </tr>
               </thead>
-              <transition-group
-                name="drop"
-                tag="tbody"
-              >
+              <tbody>
                 <template
                   v-for="(t, idx) in filtered"
-                  :key="t._id"
+                  :key="t?._id || t?.id || idx"
                 >
                   <tr
                     v-if="dragOverIndex === idx && dragOverPos === 'above'"
-                    :key="`placeholder-above-${idx}`"
                     class="h-6"
                   >
                     <td
@@ -288,8 +284,8 @@
                       class="px-3 py-2 align-top relative cursor-pointer"
                       @click="(e) => openTask(t, e)"
                     >
-	                      <div :style="{ paddingLeft: `calc(${wbsDepth(t.wbs) * 1.25}rem + ${wbsDepth(t.wbs) * 3}ch)`, paddingBottom: '0.6rem' }">
-	                        <div class="flex items-center gap-2">
+                      <div :style="{ paddingLeft: `calc(${wbsDepth(t.wbs) * 1.25}rem + ${wbsDepth(t.wbs) * 3}ch)`, paddingBottom: '0.6rem' }">
+                        <div class="flex items-center gap-2">
                           <button
                             v-if="hasChildren(t)"
                             :aria-expanded="!isCollapsed(t)"
@@ -311,26 +307,26 @@
                               clip-rule="evenodd"
                             /></svg>
                           </button>
-	                          <div class="font-semibold">
-	                            {{ t.name }}
-	                          </div>
-	                        </div>
-	                        <div class="text-xs text-white/70">
-	                          {{ t.description || '' }}
-	                        </div>
-	                        <div
-	                          v-if="t.activityId"
-	                          :class="['text-xs text-white/60 mt-0.5', hasChildren(t) ? 'pl-8' : '']"
-	                        >
-	                          Activity:
-	                          <RouterLink
-	                            :to="{ name: 'activity-edit', params: { id: String(t.activityId) } }"
-	                            class="text-white/80 hover:text-white underline"
-	                          >
-	                            {{ activityNameForTask(t) }}
-	                          </RouterLink>
-	                        </div>
-	                      </div>
+                          <div class="font-semibold">
+                            {{ t.name }}
+                          </div>
+                        </div>
+                        <div class="text-xs text-white/70">
+                          {{ t.description || '' }}
+                        </div>
+                        <div
+                          v-if="t.activityId"
+                          :class="['text-xs text-white/60 mt-0.5', hasChildren(t) ? 'pl-8' : '']"
+                        >
+                          Activity:
+                          <RouterLink
+                            :to="{ name: 'activity-edit', params: { id: String(t.activityId) } }"
+                            class="text-white/80 hover:text-white underline"
+                          >
+                            {{ activityNameForTask(t) }}
+                          </RouterLink>
+                        </div>
+                      </div>
                       <!-- thin progress bar positioned at the bottom of the name cell -->
                       <div class="absolute left-3 right-3 -bottom-px h-3 flex items-end">
                         <div class="relative w-full">
@@ -344,8 +340,8 @@
                             <span class="text-[9px] leading-none text-white/80">{{ pct(t) + '%' }}</span>
                           </div>
                         </div>
-	                      </div>
-	                    </td>
+                      </div>
+                    </td>
                     <td
                       v-if="showDurationColumn"
                       class="px-3 py-2 align-top cursor-pointer"
@@ -367,56 +363,56 @@
                     >
                       {{ fmt(endVal(t)) }}
                     </td>
-	                    <td
-	                      v-if="showCostColumn"
-	                      class="px-3 py-2 align-top cursor-pointer"
-                        @click="(e) => openTask(t, e)"
+                    <td
+                      v-if="showCostColumn"
+                      class="px-3 py-2 align-top cursor-pointer"
+                      @click="(e) => openTask(t, e)"
                     >
                       <div>{{ formatCurrency(costVal(t)) }}</div>
                     </td>
-	                    <td class="px-3 py-2 text-right">
-	                      <div class="inline-flex items-center justify-end">
-	                        <label class="inline-flex items-center gap-2 mr-2 text-sm text-white/80">
-	                          <input
-	                            type="checkbox"
-	                            :checked="isComplete(t)"
-	                            class="w-4 h-4"
-	                            @change="(e) => toggleComplete(t, e.target.checked)"
-	                          >
-	                        </label>
+                    <td class="px-3 py-2 text-right">
+                      <div class="inline-flex items-center justify-end">
+                        <label class="inline-flex items-center gap-2 mr-2 text-sm text-white/80">
+                          <input
+                            type="checkbox"
+                            :checked="isComplete(t)"
+                            class="w-4 h-4"
+                            @change="(e) => toggleComplete(t, e.target.checked)"
+                          >
+                        </label>
 
-	                        <button
-	                          v-if="showCreateLinkActivityButton"
-	                          :disabled="!!t.activityId"
-	                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2 disabled:opacity-40 disabled:cursor-not-allowed"
-	                          :title="t.activityId ? 'Activity already linked' : 'Create & link activity'"
-	                          aria-label="Create and link activity"
-	                          @click="createAndLinkActivityForTask(t)"
-	                        >
-	                          <svg
-	                            xmlns="http://www.w3.org/2000/svg"
-	                            viewBox="0 0 24 24"
-	                            fill="none"
-	                            stroke="currentColor"
-	                            class="w-4 h-4"
-	                          >
-	                            <path
-	                              d="M8 6h13M8 12h13M8 18h13"
-	                              stroke-width="1.5"
-	                              stroke-linecap="round"
-	                            />
-	                            <path
-	                              d="M3 12h2M4 11v2"
-	                              stroke-width="1.5"
-	                              stroke-linecap="round"
-	                            />
-	                          </svg>
-	                        </button>
+                        <button
+                          v-if="showCreateLinkActivityButton"
+                          :disabled="!!t.activityId"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                          :title="t.activityId ? 'Activity already linked' : 'Create & link activity'"
+                          aria-label="Create and link activity"
+                          @click="createAndLinkActivityForTask(t)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M8 6h13M8 12h13M8 18h13"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            />
+                            <path
+                              d="M3 12h2M4 11v2"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            />
+                          </svg>
+                        </button>
 
-	                        <button
-	                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2"
-	                          title="Edit"
-	                          @click="editingId = t._id; showEditModal = true"
+                        <button
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2"
+                          title="Edit"
+                          @click="editingId = t._id; showEditModal = true"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -474,18 +470,16 @@
 
                   <tr
                     v-if="dragOverIndex === idx && dragOverPos === 'below'"
-                    :key="`placeholder-below-${idx}`"
                     class="h-6"
                   >
                     <td
-                      :colspan="8"
+                      :colspan="headerColspan"
                       class="h-6 bg-emerald-400/10 border-t-2 border-emerald-400/60"
                     />
                   </tr>
                 </template>
                 <tr
                   v-if="dragOverIndex === filtered.length - 1 && dragOverPos === 'below'"
-                  :key="'placeholder-end'"
                   class="h-6"
                 >
                   <td
@@ -493,7 +487,7 @@
                     class="h-6 bg-emerald-400/10 border-t-2 border-emerald-400/60"
                   />
                 </tr>
-              </transition-group>
+              </tbody>
             </table>
           </div>
         </template>
@@ -519,10 +513,16 @@
             Use template
           </button>
           <button
-            :class="['px-3 py-2 rounded border', importTab === 'upload' ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/10 text-white/80 hover:bg-white/5']"
-            @click="() => { importTab = 'upload' }"
+            :class="['px-3 py-2 rounded border', importTab === 'upload-xml' ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/10 text-white/80 hover:bg-white/5']"
+            @click="() => { importTab = 'upload-xml' }"
           >
             Upload XML
+          </button>
+          <button
+            :class="['px-3 py-2 rounded border', importTab === 'upload-csv' ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/10 text-white/80 hover:bg-white/5']"
+            @click="() => { importTab = 'upload-csv' }"
+          >
+            Upload CSV
           </button>
         </div>
 
@@ -577,19 +577,37 @@
         </div>
 
         <div
-          v-else
+          v-else-if="importTab === 'upload-xml'"
           class="space-y-2"
         >
           <label class="block text-sm text-white/80">MS Project XML file</label>
           <input
-            ref="fileInput"
+            ref="xmlFileInput"
             type="file"
             accept=".xml"
             class="text-sm text-white bg-transparent"
-            @change="onFileSelected"
+            @change="onXmlFileSelected"
           >
           <p class="text-xs text-white/60">
             Uploading will import tasks into the current project.
+          </p>
+        </div>
+
+        <div
+          v-else
+          class="space-y-2"
+        >
+          <label class="block text-sm text-white/80">CSV file</label>
+          <input
+            ref="csvFileInput"
+            type="file"
+            accept=".csv,text/csv"
+            class="text-sm text-white bg-transparent"
+            @change="onCsvFileSelected"
+          >
+          <p class="text-xs text-white/60">
+            Uploading will import tasks into the current project. Header suggestions:
+            <span class="font-mono">taskId,wbs,name,description,start,finish,duration,percentComplete,status,notes,tags,dependencies</span>
           </p>
         </div>
       </div>
@@ -670,64 +688,64 @@
         @cancel="onEditCancel"
       />
     </Modal>
-	    <Modal
-	      v-model="showSettingsModal"
-	      panel-class="max-w-md"
-	    >
+    <Modal
+      v-model="showSettingsModal"
+      panel-class="max-w-md"
+    >
       <template #header>
         <div class="text-lg font-semibold text-white">
           Settings
         </div>
-	      </template>
-			      <div class="text-white/90 space-y-3">
-			        <div class="flex items-center gap-3">
-			          <label class="inline-flex items-center gap-2 text-sm">
-			            <input
-			              type="checkbox"
-			              class="w-4 h-4"
-			              :checked="ui.showTaskCreateLinkActivityButton"
-			              @change="(e) => { ui.setShowTaskCreateLinkActivityButton(e.target.checked); ui.showInfo('Settings updated') }"
-			            >
-			            <span>Show “Create &amp; link activity” button</span>
-			          </label>
-			        </div>
-			        <div class="flex items-center gap-3">
-			          <label class="inline-flex items-center gap-2 text-sm">
-			            <input
-			              type="checkbox"
-		              class="w-4 h-4"
-		              :checked="ui.showTaskDurationColumn"
-		              @change="(e) => { ui.setShowTaskDurationColumn(e.target.checked); ui.showInfo('Settings updated') }"
-		            >
-		            <span>Show Duration column</span>
-		          </label>
-		        </div>
-		        <div class="flex items-center gap-3">
-		          <label class="inline-flex items-center gap-2 text-sm">
-		            <input
-		              type="checkbox"
-		              class="w-4 h-4"
-		              :checked="ui.showTaskStartColumn"
-		              @change="(e) => { ui.setShowTaskStartColumn(e.target.checked); ui.showInfo('Settings updated') }"
-		            >
-		            <span>Show Start column</span>
-		          </label>
-		        </div>
-		        <div class="flex items-center gap-3">
-		          <label class="inline-flex items-center gap-2 text-sm">
-		            <input
-		              type="checkbox"
-		              class="w-4 h-4"
-		              :checked="ui.showTaskFinishColumn"
-		              @change="(e) => { ui.setShowTaskFinishColumn(e.target.checked); ui.showInfo('Settings updated') }"
-		            >
-		            <span>Show Finish column</span>
-		          </label>
-		        </div>
-	        <div
-	          v-if="isAdmin"
-	          class="space-y-4"
-	        >
+      </template>
+      <div class="text-white/90 space-y-3">
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              class="w-4 h-4"
+              :checked="ui.showTaskCreateLinkActivityButton"
+              @change="(e) => { ui.setShowTaskCreateLinkActivityButton(e.target.checked); ui.showInfo('Settings updated') }"
+            >
+            <span>Show “Create &amp; link activity” button</span>
+          </label>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              class="w-4 h-4"
+              :checked="ui.showTaskDurationColumn"
+              @change="(e) => { ui.setShowTaskDurationColumn(e.target.checked); ui.showInfo('Settings updated') }"
+            >
+            <span>Show Duration column</span>
+          </label>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              class="w-4 h-4"
+              :checked="ui.showTaskStartColumn"
+              @change="(e) => { ui.setShowTaskStartColumn(e.target.checked); ui.showInfo('Settings updated') }"
+            >
+            <span>Show Start column</span>
+          </label>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              class="w-4 h-4"
+              :checked="ui.showTaskFinishColumn"
+              @change="(e) => { ui.setShowTaskFinishColumn(e.target.checked); ui.showInfo('Settings updated') }"
+            >
+            <span>Show Finish column</span>
+          </label>
+        </div>
+        <div
+          v-if="isAdmin"
+          class="space-y-4"
+        >
           <div class="flex items-center gap-3">
             <label class="inline-flex items-center gap-2 text-sm">
               <input
@@ -739,27 +757,27 @@
               <span>Show Cost column</span>
             </label>
           </div>
-	          <div>
-	            <div class="flex items-center gap-3">
-	              <label class="text-sm text-white/80 whitespace-nowrap">Bill rate</label>
-	              <div class="flex items-center gap-2 flex-1">
-	                <span class="text-white/70">$</span>
-	                <input
-	                  v-model.number="billRateInput"
-	                  type="number"
-	                  min="0"
-	                  step="0.01"
-	                  class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
-	                  @change="persistBillRateSetting"
-	                  @blur="persistBillRateSetting"
-	                >
-	              </div>
-	            </div>
-	            <p class="text-xs text-white/60 mt-1">
-	              Used when tasks auto-calculate cost as duration × bill rate.
-	            </p>
-	          </div>
-	        </div>
+          <div>
+            <div class="flex items-center gap-3">
+              <label class="text-sm text-white/80 whitespace-nowrap">Bill rate</label>
+              <div class="flex items-center gap-2 flex-1">
+                <span class="text-white/70">$</span>
+                <input
+                  v-model.number="billRateInput"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
+                  @change="persistBillRateSetting"
+                  @blur="persistBillRateSetting"
+                >
+              </div>
+            </div>
+            <p class="text-xs text-white/60 mt-1">
+              Used when tasks auto-calculate cost as duration × bill rate.
+            </p>
+          </div>
+        </div>
         <div
           v-else
           class="text-sm text-white/70"
@@ -824,40 +842,40 @@ const isAdmin = computed(() => {
   return ['admin', 'globaladmin', 'superadmin'].includes(String(u.role))
 })
 
-		const showCostColumn = computed(() => {
-		  return isAdmin.value && !!ui.showCostColumn
-		})
+    const showCostColumn = computed(() => {
+      return isAdmin.value && !!ui.showCostColumn
+    })
 
-		const activityById = computed(() => {
-		  const m = {}
-		  for (const a of (activitiesStore.activities || [])) {
-		    const id = String(a?.id || a?._id || '')
-		    if (id) m[id] = a
-		  }
-		  return m
-		})
+    const activityById = computed(() => {
+      const m = {}
+      for (const a of (activitiesStore.activities || [])) {
+        const id = String(a?.id || a?._id || '')
+        if (id) m[id] = a
+      }
+      return m
+    })
 
-		function activityNameForTask(t) {
-		  const aid = t && t.activityId ? String(t.activityId) : ''
-		  if (!aid) return ''
-		  const a = activityById.value[aid]
-		  return a && a.name ? String(a.name) : aid
-		}
+    function activityNameForTask(t) {
+      const aid = t && t.activityId ? String(t.activityId) : ''
+      if (!aid) return ''
+      const a = activityById.value[aid]
+      return a && a.name ? String(a.name) : aid
+    }
 
-		const showDurationColumn = computed(() => ui.showTaskDurationColumn !== false)
-		const showStartColumn = computed(() => ui.showTaskStartColumn !== false)
-		const showFinishColumn = computed(() => ui.showTaskFinishColumn !== false)
-		const showCreateLinkActivityButton = computed(() => ui.showTaskCreateLinkActivityButton !== false)
+    const showDurationColumn = computed(() => ui.showTaskDurationColumn !== false)
+    const showStartColumn = computed(() => ui.showTaskStartColumn !== false)
+    const showFinishColumn = computed(() => ui.showTaskFinishColumn !== false)
+    const showCreateLinkActivityButton = computed(() => ui.showTaskCreateLinkActivityButton !== false)
 
-		const headerColspan = computed(() => {
-		  // drag + WBS + Name + Actions
-		  let n = 4
-		  if (showDurationColumn.value) n += 1
-		  if (showStartColumn.value) n += 1
-		  if (showFinishColumn.value) n += 1
-		  if (showCostColumn.value) n += 1
-		  return n
-		})
+    const headerColspan = computed(() => {
+      // drag + WBS + Name + Actions
+      let n = 4
+      if (showDurationColumn.value) n += 1
+      if (showStartColumn.value) n += 1
+      if (showFinishColumn.value) n += 1
+      if (showCostColumn.value) n += 1
+      return n
+    })
 
 function onEditSaved(_res) {
   // close modal and refresh list
@@ -1044,10 +1062,11 @@ const filtered = computed(() => {
   return visible
 })
 
-const fileInput = ref(null)
+const xmlFileInput = ref(null)
+const csvFileInput = ref(null)
 const importing = ref(false)
 const showImportModal = ref(false)
-const importTab = ref('template') // 'template' | 'upload'
+const importTab = ref('template') // 'template' | 'upload-xml' | 'upload-csv'
 const taskTemplates = ref([])
 const templatesLoading = ref(false)
 const templatesError = ref('')
@@ -1490,10 +1509,16 @@ function descendantCount(t) {
   return cnt
 }
 
-function onFileSelected(e) {
+function onXmlFileSelected(e) {
   const f = e.target.files && e.target.files[0]
   if (!f) return
-  uploadFile(f).catch(() => {})
+  uploadFile(f, 'xml').catch(() => {})
+}
+
+function onCsvFileSelected(e) {
+  const f = e.target.files && e.target.files[0]
+  if (!f) return
+  uploadFile(f, 'csv').catch(() => {})
 }
 
 function openImportModal() {
@@ -1718,21 +1743,32 @@ function computeWbsReorder(allTasks, dragged, target, pos) {
   return map
 }
 
-async function uploadFile(file) {
+async function uploadFile(file, format) {
   if (!projectStore.currentProjectId) return alert('Select a project first')
   importing.value = true
   try {
+    const projectId = String(projectStore.currentProjectId || '')
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('projectId', projectStore.currentProjectId)
-    const resp = await http.post('/api/tasks/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    fd.append('projectId', projectId)
+    const fmt = String(format || '').toLowerCase()
+    const baseUrl = (fmt === 'csv' || fmt === 'xml') ? `/api/tasks/import?format=${encodeURIComponent(fmt)}` : '/api/tasks/import'
+    const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}projectId=${encodeURIComponent(projectId)}`
+    // Don't manually set Content-Type for FormData; the browser will include the required boundary.
+    const resp = await http.post(url, fd)
     // show brief feedback then refresh
     const count = resp.data && resp.data.imported ? resp.data.imported : 0
-    try { alert(`Imported ${count} tasks`) } catch (e) { console.error(e) }
+    try { ui.showInfo(`Imported ${count} tasks`) } catch (e) { /* ignore */ }
+    showImportModal.value = false
     await fetch()
   } catch (err) {
-    try { alert('Import failed: ' + (err && err.response && err.response.data && err.response.data.error ? err.response.data.error : (err.message || err))) } catch (e) { console.error(e) }
-  } finally { importing.value = false; if (fileInput.value) fileInput.value.value = '' }
+    const msg = err && err.response && err.response.data && err.response.data.error ? err.response.data.error : (err.message || err)
+    try { ui.showError(`Import failed: ${msg}`) } catch (e) { /* ignore */ }
+  } finally {
+    importing.value = false
+    try { if (xmlFileInput.value) xmlFileInput.value.value = '' } catch (_) { /* ignore */ }
+    try { if (csvFileInput.value) csvFileInput.value.value = '' } catch (_) { /* ignore */ }
+  }
 }
 
 async function fetch() {

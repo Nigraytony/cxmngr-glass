@@ -7,15 +7,83 @@ const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature, enforceLimit } = require('../middleware/planGuard');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
+const { rateLimit } = require('../middleware/rateLimit');
+const { requireNotDisabled } = require('../middleware/killSwitch');
+const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
+const { tryDeleteLocalUpload } = require('../utils/uploads')
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const sanitizeHtml = require('sanitize-html');
+const { buildSafeRegex } = require('../utils/search')
+const { normalizeLogEvent } = require('../utils/logEvent')
+
+// Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
+router.param('id', (req, res, next, value) => {
+  if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' })
+  return next()
+})
+
+function normalizeSortBy(value, allowed, fallback) {
+  const s = String(value || '').trim()
+  return allowed.has(s) ? s : fallback
+}
+
+function normalizeSortDir(value) {
+  return String(value || '').toLowerCase() === 'asc' ? 1 : -1
+}
+
+function normalizeShortString(value, { maxLen = 64 } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (s.length > maxLen) return null
+  return s
+}
+
+function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } = {}) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (allowAll && s.toLowerCase() === 'all') return null
+  if (s.length > maxLen) return undefined
+  return s
+}
+
+const LIST_SORT_FIELDS = new Set([
+  'updatedAt',
+  'createdAt',
+  'number',
+  'tag',
+  'title',
+  'type',
+  'priority',
+  'status',
+  'dateFound',
+  'dueDate',
+])
+
+function isProdEnv() {
+  return String(process.env.NODE_ENV || '').toLowerCase() === 'production'
+}
+
+function safeErrorMessage(err, fallback) {
+  const fb = fallback || 'Server error'
+  if (isProdEnv()) return fb
+  const msg = err && (err.message || err.error || (typeof err === 'string' ? err : null))
+  return msg ? String(msg) : fb
+}
+
+function sendServerError(res, err, fallback) {
+  return res.status(500).send({ error: safeErrorMessage(err, fallback) })
+}
 
 // multer memory storage for small images
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
 // documents uploader (up to ~10MB per file)
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadLimiter = rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'uploads' })
 
 // Allowed document mime types (match activities routes)
 const ALLOWED_DOC_MIME = new Set([
@@ -58,6 +126,8 @@ const LIGHT_FIELDS = 'number tag title type priority severity status projectId s
 router.post(
   '/',
   auth,
+  requireBodyField('projectId'),
+  requireObjectIdBody('projectId'),
   requirePermission('issues.create', { projectParam: 'projectId' }),
   requireActiveProject,
   requireFeature('issues'),
@@ -65,7 +135,23 @@ router.post(
   async (req, res) => {
   try {
     const { projectId } = req.body || {};
-    if (!projectId) return res.status(400).send({ error: 'projectId is required' });
+
+    // Sanitize rich text fields (Quill HTML) to reduce XSS risk
+    if (req.body && req.body.description) {
+      req.body.description = sanitizeHtml(String(req.body.description), {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img']),
+        allowedAttributes: {
+          a: ['href', 'name', 'target'],
+          img: ['src', 'alt'],
+        },
+      });
+    }
+    if (req.body && req.body.recommendation) {
+      req.body.recommendation = sanitizeHtml(String(req.body.recommendation), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (req.body && req.body.resolution) {
+      req.body.resolution = sanitizeHtml(String(req.body.resolution), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
 
     // Atomically increment a per-project counter (lastIssueNumber)
     // Use findByIdAndUpdate on the Project to $inc lastIssueNumber and get the new value
@@ -90,38 +176,59 @@ router.post(
 
     res.status(201).send(issue);
   } catch (error) {
-    res.status(400).send(error);
+    console.error('[issues] create error', error && (error.stack || error.message || error))
+    res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to create issue' });
   }
 });
 
 // Read issues (paginated, filtered, light projection, optional facets)
-router.get('/', auth, async (req, res) => {
+router.get(
+  '/',
+  auth,
+  requireFeature('issues'),
+  requirePermission('issues.read', { projectParam: 'projectId' }),
+  async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
-    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
-    const sortBy = String(req.query.sortBy || 'updatedAt')
-    const sortDir = String(req.query.sortDir || 'desc').toLowerCase() === 'asc' ? 1 : -1
-    const projectId = req.query.projectId
-    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+	    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+	    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+	    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+	    const sortDir = normalizeSortDir(req.query.sortDir)
+	    const projectId = req.query.projectId
+	    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
 
     if (!projectId) {
       return res.status(200).send({ items: [], total: 0, totalAll: 0 })
     }
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) {
+      return res.status(400).send({ error: 'Invalid projectId' })
+    }
 
     const filter = { projectId }
     if (req.query.search) {
-      const s = String(req.query.search).trim()
-      if (s) filter.$or = [
-        { tag: { $regex: s, $options: 'i' } },
-        { title: { $regex: s, $options: 'i' } },
-        { type: { $regex: s, $options: 'i' } },
-        { priority: { $regex: s, $options: 'i' } },
-        { status: { $regex: s, $options: 'i' } },
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
+        { priority: { $regex: rx } },
+        { status: { $regex: rx } },
       ]
     }
-    if (req.query.type) filter.type = req.query.type
-    if (req.query.priority) filter.priority = req.query.priority
-    if (req.query.status) filter.status = req.query.status
+	    if (req.query.type !== undefined) {
+	      const v = normalizeOptionalFilterString(req.query.type)
+	      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
+	      if (v) filter.type = v
+	    }
+	    if (req.query.priority !== undefined) {
+	      const v = normalizeOptionalFilterString(req.query.priority)
+	      if (v === undefined) return res.status(400).send({ error: 'Invalid priority' })
+	      if (v) filter.priority = v
+	    }
+	    if (req.query.status !== undefined) {
+	      const v = normalizeOptionalFilterString(req.query.status)
+	      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
+	      if (v) filter.status = v
+	    }
 
     const totalAll = await Issue.countDocuments({ projectId })
     const total = await Issue.countDocuments(filter)
@@ -159,12 +266,29 @@ router.get('/', auth, async (req, res) => {
 
     res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[issues] list error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to list issues' });
   }
 });
 
+async function loadIssueProjectId(req, res, next) {
+  try {
+    const issueId = String(req.params.id || '').trim()
+    if (!issueId) return res.status(400).send({ error: 'Issue id is required' })
+    if (!mongoose.Types.ObjectId.isValid(issueId)) return res.status(400).send({ error: 'Invalid issue id' })
+    const issue = await Issue.findById(issueId).select('projectId').lean()
+    if (!issue) return res.status(404).send({ error: 'Issue not found' })
+    req.query = { ...(req.query || {}), projectId: String(issue.projectId) }
+    req.body = req.body || {}
+    if (!req.body.projectId) req.body.projectId = issue.projectId
+    return next()
+  } catch (e) {
+    return sendServerError(res, e, 'Failed to resolve issue project')
+  }
+}
+
 // Read a single issue by ID
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), requirePermission('issues.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) {
@@ -172,12 +296,34 @@ router.get('/:id', auth, async (req, res) => {
     }
     res.status(200).send(issue);
   } catch (error) {
-    res.status(500).send(error);
+    console.error('[issues] get error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load issue' });
   }
 });
 
+// Issue logs: read by issue id
+router.get('/:id/logs', auth, requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), requirePermission('issues.read', { projectParam: 'projectId' }), async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id).select('logs').lean()
+    if (!issue) return res.status(404).send({ error: 'Issue not found' })
+    const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
+    const type = req.query.type ? String(req.query.type) : null
+    let logs = Array.isArray(issue.logs) ? issue.logs.slice() : []
+    if (type) logs = logs.filter((e) => e && e.type === type)
+    logs.sort((a, b) => {
+      const ta = a && a.ts ? new Date(a.ts).getTime() : 0
+      const tb = b && b.ts ? new Date(b.ts).getTime() : 0
+      return tb - ta
+    })
+    logs = logs.slice(0, limit)
+    return res.status(200).send(logs)
+  } catch (error) {
+    return sendServerError(res, error, 'Failed to load issue logs')
+  }
+})
+
 // Upload photos for an issue (multipart/form-data)
-router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) => {
+router.post('/:id/photos', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), uploadLimiter, upload.array('photos', 16), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id)
     if (!issue) return res.status(404).send({ error: 'Issue not found' })
@@ -231,8 +377,7 @@ router.post('/:id/photos', auth, upload.array('photos', 16), async (req, res) =>
 // Update an issue by ID
 // Updating an issue requires an active subscription. Load the issue first, set projectId so middleware can validate,
 // then perform the update if allowed.
-router.patch('/:id', auth, async (req, res) => {
-  console.log('Issue is:', req.body, req.params);
+router.patch('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).send();
@@ -240,6 +385,23 @@ router.patch('/:id', auth, async (req, res) => {
     // ensure middleware can see the parent project ID
     req.body = req.body || {}
     req.body.projectId = issue.projectId
+
+    // Sanitize rich text fields (Quill HTML) to reduce XSS risk
+    if (typeof req.body.description === 'string') {
+      req.body.description = sanitizeHtml(String(req.body.description), {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img']),
+        allowedAttributes: {
+          a: ['href', 'name', 'target'],
+          img: ['src', 'alt'],
+        },
+      });
+    }
+    if (typeof req.body.recommendation === 'string') {
+      req.body.recommendation = sanitizeHtml(String(req.body.recommendation), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+    if (typeof req.body.resolution === 'string') {
+      req.body.resolution = sanitizeHtml(String(req.body.resolution), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
 
     // require project update permission then subscription
     await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }));
@@ -283,17 +445,19 @@ router.patch('/:id', auth, async (req, res) => {
       if (!updated) return res.status(404).send();
       return res.status(200).send(updated);
     } catch (err) {
-      return res.status(400).send(err);
+      console.error('[issues] update inner error', err && (err.stack || err.message || err))
+      return res.status(400).send({ error: err && err.message ? String(err.message) : 'Failed to update issue' });
     }
   } catch (error) {
-    return res.status(500).send(error);
+    console.error('[issues] update error', error && (error.stack || error.message || error))
+    return res.status(500).send({ error: 'Failed to update issue' });
   }
 });
 
 // Delete an issue by ID
 // Deleting an issue requires an active subscription for the parent project. Load the issue, set projectId for middleware,
 // then delete if allowed.
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).send();
@@ -314,53 +478,24 @@ router.delete('/:id', auth, async (req, res) => {
       }
       return res.status(200).send(issue);
     } catch (err) {
-      return res.status(500).send(err);
+      console.error('[issues] delete inner error', err && (err.stack || err.message || err))
+      return res.status(500).send({ error: 'Failed to delete issue' });
     }
   } catch (error) {
-    return res.status(500).send(error);
+    console.error('[issues] delete error', error && (error.stack || error.message || error))
+    return res.status(500).send({ error: 'Failed to delete issue' });
   }
 });
 
-// Issue logs: append and read
-// GET /api/issues/:id/logs?limit=200&type=section_created
-router.get('/:id/logs', auth, async (req, res) => {
-  try {
-    const id = req.params.id
-    const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 200))
-    const type = req.query.type ? String(req.query.type) : null
-    const issue = await Issue.findById(id).select('logs').lean()
-    if (!issue) return res.status(404).send({ error: 'Issue not found' })
-    let logs = Array.isArray(issue.logs) ? issue.logs.slice() : []
-    if (type) logs = logs.filter((e) => e && e.type === type)
-    // Sort by ts descending; if missing ts, push to end
-    logs.sort((a, b) => {
-      const ta = a && a.ts ? new Date(a.ts).getTime() : 0
-      const tb = b && b.ts ? new Date(b.ts).getTime() : 0
-      return tb - ta
-    })
-    logs = logs.slice(0, limit)
-    return res.status(200).send(logs)
-  } catch (err) {
-    console.error('get issue logs error', err)
-    return res.status(500).send({ error: 'Failed to load logs' })
-  }
-})
-
 // POST /api/issues/:id/logs -> append one log event
-router.post('/:id/logs', auth, async (req, res) => {
+router.post('/:id/logs', auth, requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), async (req, res) => {
   try {
+    await runMiddleware(req, res, requirePermission('issues.update', { projectParam: 'projectId' }))
+    await runMiddleware(req, res, requireActiveProject)
     const id = req.params.id
-    const event = (typeof req.body === 'object' && req.body) ? { ...req.body } : {}
-    if (!event.type) return res.status(400).send({ error: 'type is required' })
-    // Normalize fields
-    event.ts = event.ts ? new Date(event.ts) : new Date()
-    // Best-effort: if by not set, try to populate from auth user
-    if (!event.by && req.user) {
-      try {
-        const u = await require('../models/user').findById(req.user && (req.user._id || req.user.id)).lean()
-        if (u) event.by = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || String(u._id)
-      } catch {}
-    }
+    const byFallback = req.user ? ([req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email || String(req.user._id || req.user.id)) : null
+    const event = normalizeLogEvent(req.body, { byFallback })
+    if (!event) return res.status(400).send({ error: 'type is required' })
     // Cap total size to last 5000 entries
     const updated = await Issue.findByIdAndUpdate(
       id,
@@ -376,10 +511,9 @@ router.post('/:id/logs', auth, async (req, res) => {
 })
 
 // Remove a single photo by index for an issue
-router.delete('/:id/photos/:index', auth, async (req, res) => {
+router.delete('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadIssueProjectId, requireFeature('issues'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10)
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid photo index' })
     const issue = await Issue.findById(req.params.id)
     if (!issue) return res.status(404).send({ error: 'Issue not found' })
 
@@ -403,7 +537,7 @@ router.delete('/:id/photos/:index', auth, async (req, res) => {
 })
 
 // Upload attachments (documents) for an issue
-router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async (req, res) => {
+router.post('/:id/attachments', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), uploadLimiter, uploadDocs.array('attachments', 16), async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).send({ error: 'Issue not found' });
@@ -470,10 +604,9 @@ router.post('/:id/attachments', auth, uploadDocs.array('attachments', 16), async
 });
 
 // Remove an attachment by index; best-effort delete local file if under uploads
-router.delete('/:id/attachments/:index', auth, async (req, res) => {
+router.delete('/:id/attachments/:index', auth, requireNotDisabled('uploads'), requireObjectIdParam('id'), requireIntParam('index', { min: 0 }), loadIssueProjectId, requireFeature('issues'), async (req, res) => {
   try {
     const idx = parseInt(req.params.index, 10);
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).send({ error: 'Invalid attachment index' });
     const issue = await Issue.findById(req.params.id);
     if (!issue) return res.status(404).send({ error: 'Issue not found' });
 
@@ -490,16 +623,7 @@ router.delete('/:id/attachments/:index', auth, async (req, res) => {
     issue.attachments = arr;
     await issue.save();
 
-    // Try delete local file
-    if (removed && removed.url && removed.url.includes('/uploads/issues/')) {
-      try {
-        const urlPath = removed.url.split('/uploads/')[1];
-        if (urlPath) {
-          const full = path.join(__dirname, '..', 'uploads', urlPath);
-          if (fs.existsSync(full)) fs.unlinkSync(full);
-        }
-      } catch (_) {}
-    }
+    tryDeleteLocalUpload({ url: removed && removed.url, prefix: 'issues' })
 
     return res.status(200).send(issue);
   } catch (error) {

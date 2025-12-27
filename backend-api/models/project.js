@@ -108,6 +108,21 @@ const projectSchema = new mongoose.Schema({
   // Plan/tier metadata to drive feature gating
   subscriptionTier: { type: String, default: 'basic', enum: ['basic', 'standard', 'premium'] },
   subscriptionFeatures: { type: mongoose.Schema.Types.Mixed, default: null },
+  // Optional per-project AI configuration (Bring-your-own key).
+  // Secrets are stored encrypted and excluded from default query projections.
+  ai: {
+    enabled: { type: Boolean, default: false },
+    provider: { type: String, default: 'openai' },
+    model: { type: String, default: 'gpt-4o-mini' },
+    hasKey: { type: Boolean, default: false },
+    apiKey: {
+      enc: { type: String, select: false, default: '' },
+      iv: { type: String, select: false, default: '' },
+      tag: { type: String, select: false, default: '' },
+    },
+    lastVerifiedAt: { type: Date, default: null },
+    updatedAt: { type: Date, default: null },
+  },
 });
 
 // Keep updatedAt current and normalize embedded emails on save
