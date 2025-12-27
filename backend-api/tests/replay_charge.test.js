@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const { clearDb } = require('./testUtils');
 
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+
 describe('Admin webhook replay - charge event', function () {
   this.timeout(20000);
   let app;

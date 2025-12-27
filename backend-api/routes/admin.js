@@ -8,9 +8,14 @@ const Charge = require('../models/charge');
 const Stripe = require('stripe');
 
 let stripe = null;
-if (process.env.STRIPE_SECRET_KEY) {
+// In tests we stub Stripe via require cache; allow initialization with a dummy key so
+// admin webhook replay endpoints don't hard-fail with 503 in CI.
+const stripeKey =
+  process.env.STRIPE_SECRET_KEY ||
+  (String(process.env.NODE_ENV || '').toLowerCase() === 'test' ? 'test' : null);
+if (stripeKey) {
   try {
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
+    stripe = new Stripe(stripeKey, { apiVersion: '2024-06-20' });
   } catch (e) {
     console.error('[startup] Failed to init Stripe (admin):', e && e.message);
   }
