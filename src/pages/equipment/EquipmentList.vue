@@ -139,7 +139,7 @@
         >
           <button
             :aria-expanded="showTypeMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
             @click="toggleTypeMenu"
           >
             <span class="flex items-center gap-2">
@@ -161,7 +161,7 @@
           </button>
           <div
             v-if="showTypeMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            class="absolute left-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
             role="menu"
           >
             <div class="py-1">
@@ -187,7 +187,7 @@
         >
           <button
             :aria-expanded="showSystemMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
             @click="toggleSystemMenu"
           >
             <span class="flex items-center gap-2">
@@ -209,7 +209,7 @@
           </button>
           <div
             v-if="showSystemMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            class="absolute left-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
             role="menu"
           >
             <div class="py-1">
@@ -235,7 +235,7 @@
         >
           <button
             :aria-expanded="showStatusMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
             @click="toggleStatusMenu"
           >
             <span class="flex items-center gap-2">
@@ -257,7 +257,7 @@
           </button>
           <div
             v-if="showStatusMenu"
-            class="absolute right-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            class="absolute right-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
             role="menu"
           >
             <div class="py-1">
@@ -281,15 +281,121 @@
           </div>
         </div>
       </div>
+      <div class="flex items-center gap-2">
+        <label class="text-white/70 text-sm">Has</label>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="onlyWithChecklists ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+          @click="toggleOnlyWithChecklists"
+        >
+          <span class="inline-flex items-center gap-2">
+            <span>Checklists</span>
+            <span
+              v-if="checklistsTotalCount > 0"
+              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+            >{{ checklistsTotalCount }}</span>
+          </span>
+        </button>
+        <div
+          v-if="onlyWithChecklists"
+          class="flex items-center gap-2"
+        >
+          <label class="text-white/60 text-sm">Checklist system</label>
+          <div
+            ref="checklistSystemMenuRef"
+            class="relative"
+          >
+            <button
+              :aria-expanded="showChecklistSystemMenu ? 'true' : 'false'"
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
+              @click="toggleChecklistSystemMenu"
+            >
+              <span>{{ checklistSystemFilterLabel }}</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-3 h-3 ml-1"
+              ><path
+                d="M6 9l6 6 6-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg>
+            </button>
+            <div
+              v-if="showChecklistSystemMenu"
+              class="absolute left-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+              role="menu"
+            >
+              <div class="py-1">
+                <button
+                  role="menuitem"
+                  :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', !checklistSystemFilter ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                  @click="setChecklistSystemFilter('')"
+                >
+                  <span>Any</span>
+                </button>
+                <button
+                  v-for="opt in checklistSystemOptions"
+                  :key="opt.value"
+                  role="menuitem"
+                  :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', checklistSystemFilterKey === normalizeKey(opt.value) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                  @click="setChecklistSystemFilter(opt.value)"
+                >
+                  <span class="inline-flex items-center justify-between gap-2 w-full">
+                    <span>{{ opt.text }}</span>
+                    <span
+                      v-if="checklistSystemCountFor(opt.value) > 0"
+                      class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90 shrink-0"
+                    >{{ checklistSystemCountFor(opt.value) }}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="onlyWithFpt ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+          @click="toggleOnlyWithFpt"
+        >
+          <span class="inline-flex items-center gap-2">
+            <span>FPT</span>
+            <span
+              v-if="fptTotalCount > 0"
+              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+            >{{ fptTotalCount }}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="onlyWithIssues ? 'bg-amber-500/20 border-amber-400/60 text-amber-100 hover:bg-amber-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+          @click="toggleOnlyWithIssues"
+        >
+          <span class="inline-flex items-center gap-2">
+            <span>Issues</span>
+            <span
+              v-if="issuesTotalCount > 0"
+              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+            >{{ issuesTotalCount }}</span>
+          </span>
+        </button>
+      </div>
     </div>
 
     <!-- list -->
-    <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 overflow-x-hidden">
-      <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
-        <div class="col-span-1">
+    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl overflow-x-auto min-w-0">
+      <div class="flex items-center justify-between gap-3 gap-y-2 flex-wrap px-2 py-1 text-white/70 text-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-white/60">Sort</span>
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('tag')"
           >
             <span>Tag</span>
@@ -306,11 +412,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-3">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('title')"
           >
             <span>Title</span>
@@ -327,11 +431,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-1">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('type')"
           >
             <span>Type</span>
@@ -348,11 +450,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-1">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('system')"
           >
             <span>System</span>
@@ -369,14 +469,12 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-4">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('space')"
           >
-            <span>Location (Space)</span>
+            <span>Location</span>
             <span
               v-if="sortKey==='space' && sortDir===1"
               class="text-xs"
@@ -390,11 +488,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-1">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('status')"
           >
             <span>Status</span>
@@ -412,149 +508,221 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-1 text-right">
-          Actions
-        </div>
       </div>
-      <div class="divide-y divide-white/10">
+
+      <div class="flex flex-col gap-3 mt-2">
         <div
           v-for="e in paged"
           :key="e.id"
-          class="grid grid-cols-12 items-center px-2 py-2 text-white/90"
+          class="rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm"
         >
-          <div
-            class="col-span-1 truncate"
-            :title="e.tag"
+          <RouterLink
+            :to="equipmentEditTo(e)"
+            class="flex-1 min-w-0"
+            tabindex="0"
+            style="text-decoration: none;"
           >
-            {{ e.tag || '-' }}
-          </div>
-          <div
-            class="col-span-3 truncate"
-            :title="e.title"
-          >
-            {{ e.title }}
-          </div>
-          <div class="col-span-1 truncate">
-            {{ e.type }}
-          </div>
-          <div class="col-span-1 truncate">
-            {{ e.system || '-' }}
-          </div>
-          <div
-            class="col-span-4 truncate text-sm"
-            :title="equipmentSpaceChain(e)"
-          >
-            {{ equipmentSpaceChain(e) || '-' }}
-          </div>
-          <div class="col-span-1 truncate">
-            {{ e.status || '-' }}
-          </div>
-          <div class="col-span-1 flex items-center justify-end gap-2">
-            <RouterLink
-              :to="{ name: 'equipment-edit', params: { id: e.id || (e as any)._id } }"
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Open"
-              :title="'Open ' + (e.title || e.tag)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              ><path
-                d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"
-                stroke-width="1.5"
-              /><circle
-                cx="12"
-                cy="12"
-                r="3"
-                stroke-width="1.5"
-              /></svg>
-            </RouterLink>
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Duplicate"
-              title="Duplicate"
-              @click="duplicateEquipment(e)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+              <div class="flex flex-col min-w-[70px] items-start">
+                <div class="text-xs text-white/60">
+                  Tag
+                </div>
+                <div class="text-lg font-bold text-white">
+                  {{ e.tag || '-' }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Title:</span>
+                  <span class="text-base font-semibold text-white truncate">{{ e.title || '-' }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Type:</span>
+                  <span
+                    v-if="e.type"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ e.type }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">System:</span>
+                  <span
+                    v-if="e.system"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ e.system }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">Status:</span>
+                  <span
+                    v-if="e.status"
+                    :class="statusBadgeClassEquipment(e.status) + ' text-xs px-2 py-0.5 rounded-full'"
+                  >{{ e.status }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                </div>
+                <div class="w-full border-t border-dashed border-white/30 my-1" />
+                <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
+                  <span v-if="equipmentSpaceChain(e)"><span class="text-white/80">Location:</span> {{ equipmentSpaceChain(e) }}</span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ countNum((e as any).checklistsCount) }}</span>
+                    <span>Checklists</span>
+                  </span>
+                  <span
+                    v-if="checklistSystemSummary(e)"
+                    class="text-[11px] text-white/60"
+                    :title="checklistSystemSummary(e)"
+                  >
+                    ({{ checklistSystemSummary(e) }})
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ countNum((e as any).fptCount) }}</span>
+                    <span>FPT</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ countNum((e as any).issuesCount) }}</span>
+                    <span>Issues</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </RouterLink>
+          <div class="flex flex-col items-end min-w-[160px] justify-end gap-1">
+            <div class="flex items-center justify-end gap-2">
+              <RouterLink
+                :to="equipmentEditTo(e)"
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Open"
+                :title="'Open ' + (e.title || e.tag)"
               >
-                <rect
-                  x="9"
-                  y="3"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"
+                  stroke-width="1.5"
+                /><circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  stroke-width="1.5"
+                /></svg>
+              </RouterLink>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Duplicate"
+                title="Duplicate"
+                @click="duplicateEquipment(e)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <rect
+                    x="9"
+                    y="3"
+                    width="12"
+                    height="12"
+                    rx="2"
+                    stroke-width="1.5"
+                  />
+                  <rect
+                    x="3"
+                    y="9"
+                    width="12"
+                    height="12"
+                    rx="2"
+                    stroke-width="1.5"
+                  />
+                </svg>
+              </button>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Edit"
+                @click="openEdit(e)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                  stroke-width="1.5"
+                /><path
+                  d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                  stroke-width="1.5"
+                /></svg>
+              </button>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                aria-label="Delete"
+                @click="confirmRemove(e)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M6 7h12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><path
+                  d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                  stroke-width="1.5"
+                /><rect
+                  x="6"
+                  y="7"
                   width="12"
-                  height="12"
+                  height="14"
                   rx="2"
                   stroke-width="1.5"
-                />
-                <rect
-                  x="3"
-                  y="9"
-                  width="12"
-                  height="12"
-                  rx="2"
+                /><path
+                  d="M10 11v6M14 11v6"
                   stroke-width="1.5"
-                />
-              </svg>
-            </button>
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Edit"
-              @click="openEdit(e)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              ><path
-                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
-                stroke-width="1.5"
-              /><path
-                d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
-                stroke-width="1.5"
-              /></svg>
-            </button>
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
-              aria-label="Delete"
-              @click="confirmRemove(e)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              ><path
-                d="M6 7h12"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              /><path
-                d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
-                stroke-width="1.5"
-              /><rect
-                x="6"
-                y="7"
-                width="12"
-                height="14"
-                rx="2"
-                stroke-width="1.5"
-              /><path
-                d="M10 11v6M14 11v6"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              /></svg>
-            </button>
+                  stroke-linecap="round"
+                /></svg>
+              </button>
+            </div>
+            <div class="flex items-center justify-end gap-2 text-[11px]">
+              <RouterLink
+                :to="equipmentEditTo(e, 'Checklists')"
+                class="text-white/70 hover:text-white underline underline-offset-2"
+                title="Open Checklists tab"
+              >
+                Checklists
+              </RouterLink>
+              <RouterLink
+                :to="equipmentEditTo(e, 'FPT')"
+                class="text-white/70 hover:text-white underline underline-offset-2"
+                title="Open FPT tab"
+              >
+                FPT
+              </RouterLink>
+              <RouterLink
+                :to="equipmentEditTo(e, 'Issues')"
+                class="text-white/70 hover:text-white underline underline-offset-2"
+                title="Open Issues tab"
+              >
+                Issues
+              </RouterLink>
+            </div>
           </div>
         </div>
+
         <div
           v-if="!loading && !Number(serverTotal) && !serverEquipment.length"
           class="p-6 text-white/60 text-center"
@@ -567,9 +735,7 @@
         >
           No matching equipment.
         </div>
-        <div
-          v-if="loading"
-        >
+        <div v-if="loading">
           <Spinner />
         </div>
       </div>
@@ -1135,6 +1301,10 @@ const search = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
 const systemFilter = ref('')
+const onlyWithChecklists = ref(false)
+const onlyWithFpt = ref(false)
+const onlyWithIssues = ref(false)
+const checklistSystemFilter = ref('')
 const serverTypes = ref<string[]>([])
 const serverStatuses = ref<string[]>([])
 const serverSystems = ref<string[]>([])
@@ -1151,6 +1321,99 @@ const equipment = computed(() => equipmentStore.items)
 const loading = computed(() => equipmentStore.loading)
 
 const parentMap = computed(() => spacesStore.byId)
+
+function countNum(n: any): number {
+  const v = Number(n)
+  return Number.isFinite(v) && v >= 0 ? v : 0
+}
+
+function normalizeKey(s: any): string {
+  return String(s || '').trim().toLowerCase()
+}
+
+function hasChecklistSystem(e: any, sys: string): boolean {
+  const want = normalizeKey(sys)
+  if (!want) return true
+  const items: Array<any> = Array.isArray(e?.checklistsBySystem) ? e.checklistsBySystem : []
+  return items.some((x) => normalizeKey(x?.system) === want && countNum(x?.count) > 0)
+}
+
+function checklistCountForEquipment(e: any): number {
+  const direct = countNum(e?.checklistsCount)
+  if (direct > 0) return direct
+  const items: Array<any> = Array.isArray(e?.checklistsBySystem) ? e.checklistsBySystem : []
+  return items.reduce((sum, x) => sum + countNum(x?.count), 0)
+}
+
+function checklistSystemSummary(e: any): string {
+  const items: Array<any> = Array.isArray(e?.checklistsBySystem) ? e.checklistsBySystem : []
+  const parts = items
+    .filter((x) => x && x.system)
+    .map((x) => `${String(x.system)} ${countNum(x.count)}`)
+  if (parts.length <= 4) return parts.join(' · ')
+  return `${parts.slice(0, 4).join(' · ')} · +${parts.length - 4} more`
+}
+
+const checklistsTotalCount = computed(() => {
+  const serverVal = Number(serverChecklistsTotalCount.value || 0)
+  if (serverVal > 0) return serverVal
+  const base = listEquipment.value || []
+  return base.reduce((sum: number, e: any) => sum + checklistCountForEquipment(e), 0)
+})
+
+const checklistsBySystemCounts = computed<Record<string, number>>(() => {
+  const m: Record<string, number> = {}
+  const serverItems = serverChecklistSystems.value || []
+  if (Array.isArray(serverItems) && serverItems.length) {
+    for (const x of serverItems) {
+      const key = normalizeKey((x as any)?.system)
+      if (!key) continue
+      const cnt = countNum((x as any)?.count)
+      if (cnt <= 0) continue
+      m[key] = (m[key] || 0) + cnt
+    }
+    return m
+  }
+  const base = listEquipment.value || []
+  for (const e of base as any[]) {
+    const items: Array<any> = Array.isArray(e?.checklistsBySystem) ? e.checklistsBySystem : []
+    for (const x of items) {
+      const key = normalizeKey(x?.system)
+      if (!key) continue
+      const cnt = countNum(x?.count)
+      if (cnt <= 0) continue
+      m[key] = (m[key] || 0) + cnt
+    }
+  }
+  return m
+})
+
+function checklistSystemCountFor(value: string): number {
+  const key = normalizeKey(value)
+  if (!key) return 0
+  return checklistsBySystemCounts.value[key] || 0
+}
+
+const fptTotalCount = computed(() => {
+  const serverVal = Number(serverFptTotalCount.value || 0)
+  if (serverVal > 0) return serverVal
+  const base = listEquipment.value || []
+  return base.reduce((sum: number, e: any) => sum + countNum((e as any)?.fptCount), 0)
+})
+
+const issuesTotalCount = computed(() => {
+  const serverVal = Number(serverIssuesTotalCount.value || 0)
+  if (serverVal > 0) return serverVal
+  const base = listEquipment.value || []
+  return base.reduce((sum: number, e: any) => sum + countNum((e as any)?.issuesCount), 0)
+})
+
+function equipmentEditTo(e: any, tab?: 'Checklists' | 'FPT' | 'Issues') {
+  const id = String(e?.id || (e as any)?._id || '')
+  const to: any = { name: 'equipment-edit', params: { id } }
+  if (tab) to.query = { tab }
+  return to
+}
 
 function equipmentSpaceChain(e?: any) {
   if (!e) return ''
@@ -1188,11 +1451,19 @@ const filtered = computed(() => {
   const t = typeFilter.value
   const s = statusFilter.value
   const sys = systemFilter.value
+  const reqChecklists = onlyWithChecklists.value
+  const reqFpt = onlyWithFpt.value
+  const reqIssues = onlyWithIssues.value
+  const checklistSys = checklistSystemFilter.value
   const baseList = (Array.isArray(serverEquipment.value) && serverEquipment.value.length > 0) ? listEquipment.value : equipment.value
   return (baseList || []).filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
+    if (reqChecklists && countNum((e as any).checklistsCount) <= 0) return false
+    if (reqChecklists && checklistSys && !hasChecklistSystem(e, checklistSys)) return false
+    if (reqFpt && countNum((e as any).fptCount) <= 0) return false
+    if (reqIssues && countNum((e as any).issuesCount) <= 0) return false
     if (!q) return true
     const fields = [e.tag || '', e.title || '', e.type || '', e.system || ''].map(f => f.toLowerCase())
     return fields.some(f => f.includes(q))
@@ -1241,6 +1512,10 @@ function loadListState() {
       if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
       if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
       if (typeof data.systemFilter === 'string') systemFilter.value = data.systemFilter
+      if (typeof data.onlyWithChecklists === 'boolean') onlyWithChecklists.value = data.onlyWithChecklists
+      if (typeof data.onlyWithFpt === 'boolean') onlyWithFpt.value = data.onlyWithFpt
+      if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
+      if (typeof data.checklistSystemFilter === 'string') checklistSystemFilter.value = data.checklistSystemFilter
       if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
       if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
     }
@@ -1253,6 +1528,10 @@ function persistListState() {
       typeFilter: typeFilter.value,
       statusFilter: statusFilter.value,
       systemFilter: systemFilter.value,
+      onlyWithChecklists: onlyWithChecklists.value,
+      onlyWithFpt: onlyWithFpt.value,
+      onlyWithIssues: onlyWithIssues.value,
+      checklistSystemFilter: checklistSystemFilter.value,
       sortKey: sortKey.value,
       sortDir: sortDir.value
     }
@@ -1260,7 +1539,7 @@ function persistListState() {
   } catch (e) { /* ignore storage errors */ }
 }
 watch(stateStorageKey, () => loadListState(), { immediate: true })
-watch([search, typeFilter, statusFilter, systemFilter, sortKey, sortDir], () => persistListState())
+watch([search, typeFilter, statusFilter, systemFilter, onlyWithChecklists, onlyWithFpt, onlyWithIssues, checklistSystemFilter, sortKey, sortDir], () => persistListState())
 
 const parentOptions = computed(() => spacesStore.items)
 
@@ -1296,7 +1575,26 @@ const modalSystemOptions = computed(() => {
 const serverEquipment = ref([])
 const serverTotal = ref(0)
 const serverTotalAll = ref(0)
+const serverChecklistsTotalCount = ref(0)
+const serverChecklistSystems = ref<Array<{ system: string; count: number }>>([])
+const serverFptTotalCount = ref(0)
+const serverIssuesTotalCount = ref(0)
 const listEquipment = computed(() => serverEquipment.value)
+
+const checklistSystemOptions = computed(() => {
+  const arr: Array<any> = (lists as any)?.systemOptions || []
+  return arr
+    .filter((opt: any) => opt && opt.value !== undefined && opt.value !== null && String(opt.value).trim())
+    .map((opt: any) => ({ value: String(opt.value), text: String(opt.text ?? opt.value) }))
+})
+
+const checklistSystemFilterKey = computed(() => normalizeKey(checklistSystemFilter.value))
+const checklistSystemFilterLabel = computed(() => {
+  const key = checklistSystemFilterKey.value
+  if (!key) return 'Any'
+  const match = checklistSystemOptions.value.find((o) => normalizeKey(o.value) === key)
+  return match ? match.text : checklistSystemFilter.value
+})
 
 const preSystemFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -1368,9 +1666,11 @@ const systemFilterOptions = computed(() => {
 const showTypeMenu = ref(false)
 const showSystemMenu = ref(false)
 const showStatusMenu = ref(false)
+const showChecklistSystemMenu = ref(false)
 const typeMenuRef = ref<HTMLElement | null>(null)
 const systemMenuRef = ref<HTMLElement | null>(null)
 const statusMenuRef = ref<HTMLElement | null>(null)
+const checklistSystemMenuRef = ref<HTMLElement | null>(null)
 
 // Modal dropdown state
 const showModalTypeDropdown = ref(false)
@@ -1388,15 +1688,44 @@ function toggleSystemMenu() { showSystemMenu.value = !showSystemMenu.value }
 function closeSystemMenu() { showSystemMenu.value = false }
 function toggleStatusMenu() { showStatusMenu.value = !showStatusMenu.value }
 function closeStatusMenu() { showStatusMenu.value = false }
+function toggleChecklistSystemMenu() { showChecklistSystemMenu.value = !showChecklistSystemMenu.value }
+function closeChecklistSystemMenu() { showChecklistSystemMenu.value = false }
+
+function setChecklistSystemFilter(value: string) {
+  checklistSystemFilter.value = String(value || '')
+  closeChecklistSystemMenu()
+  page.value = 1
+}
+
+function toggleOnlyWithChecklists() {
+  onlyWithChecklists.value = !onlyWithChecklists.value
+  if (!onlyWithChecklists.value) {
+    checklistSystemFilter.value = ''
+    closeChecklistSystemMenu()
+  }
+  page.value = 1
+}
+
+function toggleOnlyWithFpt() {
+  onlyWithFpt.value = !onlyWithFpt.value
+  page.value = 1
+}
+
+function toggleOnlyWithIssues() {
+  onlyWithIssues.value = !onlyWithIssues.value
+  page.value = 1
+}
 
 function handleClickOutside(e: MouseEvent) {
   const tEl = typeMenuRef.value
   const sEl = systemMenuRef.value
   const stEl = statusMenuRef.value
+  const csEl = checklistSystemMenuRef.value
   const target = e.target as Node
   if (tEl && !tEl.contains(target)) closeTypeMenu()
   if (sEl && !sEl.contains(target)) closeSystemMenu()
   if (stEl && !stEl.contains(target)) closeStatusMenu()
+  if (csEl && !csEl.contains(target)) closeChecklistSystemMenu()
 }
 onMounted(() => document.addEventListener('click', handleClickOutside))
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
@@ -2030,6 +2359,10 @@ async function fetchEquipmentPage(projectId?: string) {
     if (typeFilter.value) params.type = typeFilter.value
     if (systemFilter.value) params.system = systemFilter.value
     if (statusFilter.value) params.status = statusFilter.value
+    if (onlyWithChecklists.value) params.hasChecklists = '1'
+    if (onlyWithFpt.value) params.hasFpt = '1'
+    if (onlyWithIssues.value) params.hasIssues = '1'
+    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}
@@ -2047,6 +2380,10 @@ async function fetchEquipmentPage(projectId?: string) {
     else serverEquipment.value = []
     serverTotal.value = Number(data.total ?? data.count ?? serverEquipment.value.length)
     serverTotalAll.value = Number(data.totalAll || serverTotal.value || serverEquipment.value.length)
+    serverChecklistsTotalCount.value = Number((data as any).checklistsTotalCount || 0)
+    serverChecklistSystems.value = Array.isArray((data as any).checklistSystems) ? (data as any).checklistSystems : []
+    serverFptTotalCount.value = Number((data as any).fptTotalCount || 0)
+    serverIssuesTotalCount.value = Number((data as any).issuesTotalCount || 0)
     if (Array.isArray(data.types)) {
       const map: Record<string, number> = {}
       const list: string[] = []
@@ -2116,7 +2453,7 @@ function debounce(fn: (...args: any[]) => any, wait = 200) {
 }
 
 const debouncedFetch = debounce(() => { fetchEquipmentPage().catch(() => {}) }, 150)
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter.value, () => systemFilter.value, () => statusFilter.value], () => debouncedFetch(), { immediate: false })
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter.value, () => systemFilter.value, () => statusFilter.value, () => onlyWithChecklists.value, () => onlyWithFpt.value, () => onlyWithIssues.value, () => checklistSystemFilter.value], () => debouncedFetch(), { immediate: false })
 const validUploadRows = computed(() => (uploadRows.value || []).filter(r => r.tag && r.type && r.title))
 const uploadInvalidRowsCount = computed(() => (uploadRows.value || []).length - validUploadRows.value.length)
 const uploadDuplicateTags = computed<string[]>(() => {
@@ -2377,6 +2714,10 @@ async function downloadEquipmentList() {
     status: statusFilter.value || '',
     system: systemFilter.value || '',
   }
+  if (onlyWithChecklists.value) params.hasChecklists = '1'
+  if (onlyWithFpt.value) params.hasFpt = '1'
+  if (onlyWithIssues.value) params.hasIssues = '1'
+  if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
   try {
     const res = await http.get('/api/equipment/export', {
       params,

@@ -25,8 +25,12 @@ export interface Equipment {
   testDate?: string
   projectId: string
   issues?: string[]
+  issuesCount?: number
   checklists?: any
+  checklistsCount?: number
+  checklistsBySystem?: Array<{ system: string; count: number }>
   functionalTests?: any
+  fptCount?: number
   fptSignatures?: any
   images?: any
   attachments?: any

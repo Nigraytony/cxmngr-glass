@@ -270,6 +270,96 @@ router.post('/:id/logs', auth, requireObjectIdParam('id'), loadEquipmentProjectI
 // Projection for list/light responses (omit heavy fields)
 const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt'
 
+function countArrayExpr(field) {
+  return { $cond: [{ $isArray: field }, { $size: field }, 0] }
+}
+
+function normalizeBoolFlag(value) {
+  const s = String(value ?? '').trim().toLowerCase()
+  return s === '1' || s === 'true' || s === 'yes' || s === 'y' || s === 'on'
+}
+
+function appendExpr(filter, expr) {
+  if (!expr) return
+  if (!filter.$expr) {
+    filter.$expr = expr
+    return
+  }
+  if (filter.$expr && typeof filter.$expr === 'object' && Array.isArray(filter.$expr.$and)) {
+    filter.$expr.$and.push(expr)
+    return
+  }
+  filter.$expr = { $and: [filter.$expr, expr] }
+}
+
+function applyHasFilters(filter, query) {
+  if (normalizeBoolFlag(query?.hasChecklists)) appendExpr(filter, { $gt: [countArrayExpr('$checklists'), 0] })
+  if (normalizeBoolFlag(query?.hasFpt)) appendExpr(filter, { $gt: [countArrayExpr('$functionalTests'), 0] })
+  if (normalizeBoolFlag(query?.hasIssues)) appendExpr(filter, { $gt: [countArrayExpr('$issues'), 0] })
+
+  const checklistSystem = normalizeOptionalFilterString(query?.checklistSystem, { maxLen: 64 })
+  if (checklistSystem === undefined) return 'Invalid checklistSystem'
+  if (checklistSystem) {
+    const sysLower = String(checklistSystem).toLowerCase()
+    appendExpr(filter, {
+      $gt: [
+        {
+          $size: {
+            $filter: {
+              input: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] },
+              as: 'c',
+              cond: { $eq: [{ $toLower: { $ifNull: ['$$c.system', ''] } }, sysLower] },
+            },
+          },
+        },
+        0,
+      ],
+    })
+  }
+  return null
+}
+
+function checklistSystemsExpr() {
+  // Extract checklist.system for each checklist section; omit empty values.
+  const raw = {
+    $map: {
+      input: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] },
+      as: 'c',
+      in: { $ifNull: ['$$c.system', null] },
+    },
+  }
+  return {
+    $filter: {
+      input: raw,
+      as: 's',
+      cond: { $and: [{ $ne: ['$$s', null] }, { $ne: ['$$s', ''] }] },
+    },
+  }
+}
+
+function checklistSystemCountsExpr() {
+  const systems = checklistSystemsExpr()
+  const unique = { $setUnion: [systems, []] }
+  return {
+    $map: {
+      input: unique,
+      as: 'sys',
+      in: {
+        system: '$$sys',
+        count: {
+          $size: {
+            $filter: {
+              input: systems,
+              as: 's',
+              cond: { $eq: ['$$s', '$$sys'] },
+            },
+          },
+        },
+      },
+    },
+  }
+}
+
 async function buildSpaceChainResolver(projectId) {
   const spaces = await Space.find({ project: projectId }).select('_id id title tag parentSpace parent').lean()
   const map = new Map()
@@ -315,7 +405,10 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
 
-    const filter = { projectId }
+    const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
+    const filter = { projectId: projectObjectId }
+    const hasErr = applyHasFilters(filter, req.query)
+    if (hasErr) return res.status(400).send({ error: hasErr })
 	    if (req.query.search) {
 	      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
 	      if (rx) filter.$or = [
@@ -343,17 +436,36 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
 
     const totalAll = await Equipment.countDocuments({ projectId })
     const total = await Equipment.countDocuments(filter)
-    const items = await Equipment.find(filter)
-      .select(LIGHT_FIELDS)
-      .sort({ [sortBy]: sortDir })
-      .skip((page - 1) * perPage)
-      .limit(perPage)
-      .lean()
+
+    const items = await Equipment.aggregate([
+      { $match: filter },
+      { $sort: { [sortBy]: sortDir, _id: sortDir } },
+      { $skip: (page - 1) * perPage },
+      { $limit: perPage },
+      {
+        $project: {
+          ...LIGHT_FIELDS.split(' ').reduce((acc, k) => { acc[k] = 1; return acc }, {}),
+          issuesCount: countArrayExpr('$issues'),
+          checklistsCount: countArrayExpr('$checklists'),
+          checklistsBySystem: checklistSystemCountsExpr(),
+          fptCount: countArrayExpr('$functionalTests'),
+        },
+      },
+    ])
+    for (const it of items) {
+      if (Array.isArray(it.checklistsBySystem)) {
+        it.checklistsBySystem = it.checklistsBySystem
+          .filter((x) => x && x.system && Number(x.count) > 0)
+          .sort((a, b) => String(a.system).localeCompare(String(b.system)))
+      } else {
+        it.checklistsBySystem = []
+      }
+    }
     // Enrich with space breadcrumb chains (server-side to avoid extra client lookups)
     let spaceChainFor = null
     if (items.some(it => it.spaceId)) {
       try {
-        spaceChainFor = await buildSpaceChainResolver(projectId)
+        spaceChainFor = await buildSpaceChainResolver(projectObjectId)
       } catch (e) {
         spaceChainFor = null
       }
@@ -383,10 +495,67 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
         { $match: projectMatch },
         { $group: { _id: '$system', count: { $sum: 1 } } },
       ])
+      const aggChecklistCounts = await Equipment.aggregate([
+        { $match: projectMatch },
+        {
+          $project: {
+            checklistsCount: countArrayExpr('$checklists'),
+            checklistsBySystem: checklistSystemCountsExpr(),
+          },
+        },
+        {
+          $facet: {
+            total: [
+              { $group: { _id: null, count: { $sum: '$checklistsCount' } } },
+            ],
+            systems: [
+              { $unwind: '$checklistsBySystem' },
+              {
+                $group: {
+                  _id: { $toLower: { $ifNull: ['$checklistsBySystem.system', ''] } },
+                  system: { $first: '$checklistsBySystem.system' },
+                  count: { $sum: { $ifNull: ['$checklistsBySystem.count', 0] } },
+                },
+              },
+              { $match: { system: { $ne: null } } },
+              { $sort: { system: 1 } },
+            ],
+          },
+        },
+      ])
+      const checklistsTotalCount = Number(aggChecklistCounts?.[0]?.total?.[0]?.count || 0)
+      const checklistSystems = Array.isArray(aggChecklistCounts?.[0]?.systems)
+        ? aggChecklistCounts[0].systems
+            .filter((x) => x && x.system && Number(x.count) > 0)
+            .map((x) => ({ system: x.system, count: Number(x.count) || 0 }))
+        : []
+
+      const aggCounts = await Equipment.aggregate([
+        { $match: projectMatch },
+        {
+          $project: {
+            issuesCount: countArrayExpr('$issues'),
+            fptCount: countArrayExpr('$functionalTests'),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            issuesTotalCount: { $sum: '$issuesCount' },
+            fptTotalCount: { $sum: '$fptCount' },
+          },
+        },
+      ])
+      const issuesTotalCount = Number(aggCounts?.[0]?.issuesTotalCount || 0)
+      const fptTotalCount = Number(aggCounts?.[0]?.fptTotalCount || 0)
       facets = {
         types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
         statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
         systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+        checklistsTotalCount,
+        checklistSystems,
+        issuesTotalCount,
+        fptTotalCount,
       }
     }
 
@@ -404,6 +573,8 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
     const filter = { projectId }
+    const hasErr = applyHasFilters(filter, req.query)
+    if (hasErr) return res.status(400).send({ error: hasErr })
     if (req.query.type) filter.type = req.query.type
     if (req.query.system) filter.system = req.query.system
     if (req.query.status) filter.status = req.query.status
@@ -477,7 +648,9 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
 // Read all equipment by project ID (light projection)
 router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-    const filter = { projectId: req.params.projectId }
+    const filter = { projectId: new mongoose.Types.ObjectId(String(req.params.projectId)) }
+    const hasErr = applyHasFilters(filter, req.query)
+    if (hasErr) return res.status(400).send({ error: hasErr })
     if (req.query.search) {
       const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
       if (rx) filter.$or = [
@@ -488,7 +661,28 @@ router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requi
       ]
     }
     if (req.query.status) filter.status = req.query.status
-    const equipment = await Equipment.find(filter).select(LIGHT_FIELDS).lean()
+    const equipment = await Equipment.aggregate([
+      { $match: filter },
+      { $sort: { updatedAt: -1, _id: -1 } },
+      {
+        $project: {
+          ...LIGHT_FIELDS.split(' ').reduce((acc, k) => { acc[k] = 1; return acc }, {}),
+          issuesCount: countArrayExpr('$issues'),
+          checklistsCount: countArrayExpr('$checklists'),
+          checklistsBySystem: checklistSystemCountsExpr(),
+          fptCount: countArrayExpr('$functionalTests'),
+        },
+      },
+    ])
+    for (const it of equipment) {
+      if (Array.isArray(it.checklistsBySystem)) {
+        it.checklistsBySystem = it.checklistsBySystem
+          .filter((x) => x && x.system && Number(x.count) > 0)
+          .sort((a, b) => String(a.system).localeCompare(String(b.system)))
+      } else {
+        it.checklistsBySystem = []
+      }
+    }
     res.status(200).send(equipment);
   } catch (error) {
     console.error('[equipment] get error', error && (error.stack || error.message || error))
