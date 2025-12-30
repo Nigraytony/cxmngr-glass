@@ -25,6 +25,11 @@ const activitySchema = new mongoose.Schema({
       'Test and Balance Review',
       'Other'
     ], default: 'Site Visit Review' },
+  status: {
+    type: String,
+    enum: ['draft', 'published', 'completed'],
+    default: 'draft',
+  },
   startDate: { type: Date, default: Date.now },
   endDate: { type: Date, default: Date.now },
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
@@ -68,6 +73,7 @@ activitySchema.pre('save', function (next) {
 
 // Useful indexes to speed up common queries
 activitySchema.index({ projectId: 1 })
+activitySchema.index({ projectId: 1, status: 1 })
 activitySchema.index({ startDate: 1 })
 activitySchema.index({ 'comments.userId': 1 })
 activitySchema.index({ spaceId: 1 })

@@ -305,6 +305,24 @@
                 </div>
               </div>
 
+              <div class="mt-3">
+                <label class="block text-sm text-white/70">Status</label>
+                <select
+                  v-model="form.status"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+                >
+                  <option value="draft">
+                    Draft
+                  </option>
+                  <option value="published">
+                    Published
+                  </option>
+                  <option value="completed">
+                    Completed
+                  </option>
+                </select>
+              </div>
+
               <div
                 v-if="linkedTasks.length > 0"
                 class="md:col-span-1 mt-3"
@@ -366,7 +384,7 @@
             </div>
 
             <div class="mt-1">
-              <label class="block text-sm text-white/70">Space</label>
+              <label class="block text-sm text-white/70">Location</label>
               <div class="relative">
                 <input
                   v-model="spaceQuery"
@@ -2174,6 +2192,7 @@ const form = reactive({
   name: '',
   descriptionHtml: '',
   type: 'Site Visit Review',
+  status: 'draft' as 'draft' | 'published' | 'completed',
   startDate: '',
   endDate: '',
   projectId: '',
@@ -2494,6 +2513,7 @@ onMounted(async () => {
         // Prefer stored HTML; fallback to plain description if present
         descriptionHtml: activityData?.descriptionHtml || activityData?.description || '',
         type: activityData?.type || 'Site Visit Review',
+        status: activityData?.status || 'draft',
         startDate: activityData?.startDate ? activityData.startDate.substring(0,10) : form.startDate,
         endDate: activityData?.endDate ? activityData.endDate.substring(0,10) : form.endDate,
         projectId: activityData?.projectId || form.projectId,

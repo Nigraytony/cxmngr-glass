@@ -80,6 +80,7 @@ function pickActivityPayload(source) {
     'name',
     'descriptionHtml',
     'type',
+    'status',
     'startDate',
     'endDate',
     'projectId',
@@ -95,6 +96,16 @@ function pickActivityPayload(source) {
     if (body[k] !== undefined) out[k] = body[k]
   }
   return out
+}
+
+function normalizeActivityStatus(value) {
+  if (value === undefined) return undefined
+  if (value === null) throw new Error('status cannot be null')
+  const s = String(value).trim().toLowerCase()
+  if (!s) throw new Error('status is required')
+  const allowed = new Set(['draft', 'published', 'completed'])
+  if (!allowed.has(s)) throw new Error(`Invalid status: ${s}`)
+  return s
 }
 
 // Create a new activity
@@ -115,6 +126,10 @@ router.post(
     delete payload.issues
     delete payload.comments
     delete payload.logs
+
+    if (payload.status !== undefined) {
+      payload.status = normalizeActivityStatus(payload.status)
+    }
 
     // sanitize descriptionHtml if present
     if (payload.descriptionHtml) {
@@ -168,6 +183,7 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
           startDate: 1,
           endDate: 1,
           projectId: 1,
+          status: { $ifNull: ['$status', 'draft'] },
           location: 1,
           spaceId: 1,
           systems: 1,
@@ -193,6 +209,114 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
   }
 });
 
+// Project-wide activity analytics for charts
+// GET /api/activities/analytics?projectId=...
+router.get('/analytics', auth, requireFeature('activities'), requirePermission('activities.read', { projectParam: 'projectId' }), async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
+    const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
+    const projectMatch = { projectId: projectObjectId }
+
+    const [
+      activitiesByStatusAgg,
+      activitiesByTypeAgg,
+      activitiesByLocationAgg,
+      activitiesByMonthAgg,
+      totalsAgg,
+    ] = await Promise.all([
+      Activity.aggregate([
+        { $match: projectMatch },
+        { $project: { status: { $ifNull: ['$status', 'draft'] } } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Activity.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$type', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Activity.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$location', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 50 },
+      ]),
+      Activity.aggregate([
+        { $match: projectMatch },
+        { $project: { startDate: { $ifNull: ['$startDate', '$createdAt'] } } },
+        {
+          $project: {
+            month: {
+              $dateToString: { format: '%Y-%m', date: '$startDate' },
+            },
+          },
+        },
+        { $group: { _id: { $ifNull: ['$month', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Activity.aggregate([
+        { $match: projectMatch },
+        {
+          $project: {
+            issuesCount: { $size: { $ifNull: ['$issues', []] } },
+            photosCount: { $size: { $ifNull: ['$photos', []] } },
+            commentsCount: { $size: { $ifNull: ['$comments', []] } },
+            attachmentsCount: { $size: { $ifNull: ['$attachments', []] } },
+            equipmentCount: { $size: { $ifNull: ['$systems', []] } },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalActivities: { $sum: 1 },
+            totalIssues: { $sum: '$issuesCount' },
+            totalPhotos: { $sum: '$photosCount' },
+            totalComments: { $sum: '$commentsCount' },
+            totalAttachments: { $sum: '$attachmentsCount' },
+            totalEquipment: { $sum: '$equipmentCount' },
+          },
+        },
+      ]),
+    ])
+
+    const activitiesByStatus = Array.isArray(activitiesByStatusAgg)
+      ? activitiesByStatusAgg.map((x) => ({ name: String(x._id || 'draft'), count: Number(x.count || 0) }))
+      : []
+    const activitiesByType = Array.isArray(activitiesByTypeAgg)
+      ? activitiesByTypeAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+    const activitiesByLocation = Array.isArray(activitiesByLocationAgg)
+      ? activitiesByLocationAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+    const activitiesByMonth = Array.isArray(activitiesByMonthAgg)
+      ? activitiesByMonthAgg.map((x) => ({ month: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+
+    const totalsRow = Array.isArray(totalsAgg) && totalsAgg[0] ? totalsAgg[0] : {}
+    const totals = {
+      totalActivities: Number(totalsRow.totalActivities || 0),
+      totalIssues: Number(totalsRow.totalIssues || 0),
+      totalPhotos: Number(totalsRow.totalPhotos || 0),
+      totalComments: Number(totalsRow.totalComments || 0),
+      totalAttachments: Number(totalsRow.totalAttachments || 0),
+      totalEquipment: Number(totalsRow.totalEquipment || 0),
+    }
+
+    return res.status(200).send({
+      totals,
+      activitiesByStatus,
+      activitiesByType,
+      activitiesByLocation,
+      activitiesByMonth,
+    })
+  } catch (error) {
+    console.error('[activities] analytics error', error && (error.stack || error.message || error))
+    return res.status(500).send({ error: 'Failed to load activity analytics' })
+  }
+})
+
 // Read a single activity by ID
 // Supports light=true to omit heavy photo/attachment payloads, includePhotos=true to force photos
 router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), requireActivitiesRead, async (req, res) => {
@@ -200,7 +324,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
-    const lightFields = 'name type startDate endDate projectId location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml'
+    const lightFields = 'name type status startDate endDate projectId location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos
@@ -481,6 +605,10 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, re
     delete incoming.issues
     delete incoming.comments
     delete incoming.logs
+
+    if (incoming.status !== undefined) {
+      incoming.status = normalizeActivityStatus(incoming.status)
+    }
 
     if (incoming.descriptionHtml) {
       incoming.descriptionHtml = sanitizeHtml(incoming.descriptionHtml, {

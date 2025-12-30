@@ -45,6 +45,7 @@
     </div>
 
     <nav class="px-2 space-y-1">
+      <!-- Dashboard -->
       <RouterLink
         to="/app"
         :class="[
@@ -56,66 +57,22 @@
         <span class="i">🏠</span>
         <span v-if="open">Dashboard</span>
       </RouterLink>
+      <!-- Assistant -->
+      <!--
       <RouterLink
-        v-if="featureEnabled('spaces')"
-        to="/app/spaces"
+        v-if="featureEnabled('ai')"
+        to="/app/assistant"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/assistant') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/spaces') ? 'page' : null"
+        :aria-current="isActive('/app/assistant') ? 'page' : null"
       >
-        <span class="i">🏢</span>
-        <span v-if="open">Spaces</span>
+        <span class="i">🤖</span>
+        <span v-if="open">Assistant</span>
       </RouterLink>
-      <RouterLink
-        v-if="featureEnabled('equipment')"
-        to="/app/equipment"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/equipment') ? 'page' : null"
-      >
-        <span class="i">🧰</span>
-        <span v-if="open">Equipment</span>
-      </RouterLink>
-      <RouterLink
-        v-if="featureEnabled('templates')"
-        to="/app/templates"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/templates') ? 'page' : null"
-      >
-        <span class="i">📦</span>
-        <span v-if="open">Templates</span>
-      </RouterLink>
-      <RouterLink
-        v-if="featureEnabled('issues')"
-        to="/app/issues"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/issues') ? 'page' : null"
-      >
-        <span class="i">🐞</span>
-        <span v-if="open">Issues</span>
-      </RouterLink>
-      <RouterLink
-        v-if="featureEnabled('activities')"
-        to="/app/activities"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/activities') ? 'page' : null"
-      >
-        <span class="i">📝</span>
-        <span v-if="open">Activities</span>
-      </RouterLink>
+      -->
+      <!-- Tasks -->
       <RouterLink
         v-if="featureEnabled('tasks')"
         to="/app/tasks"
@@ -162,18 +119,71 @@
         </span>
         <span v-if="open">Tasks</span>
       </RouterLink>
+      <!-- Activities -->
       <RouterLink
-        to="/app/projects"
+        v-if="featureEnabled('activities')"
+        to="/app/activities"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/projects') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          isActive('/app/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
         ]"
-        :aria-current="isActive('/app/projects') ? 'page' : null"
+        :aria-current="isActive('/app/activities') ? 'page' : null"
       >
-        <span class="i">📁</span>
-        <span v-if="open">Projects</span>
+        <span class="i">📝</span>
+        <span v-if="open">Activities</span>
       </RouterLink>
-
+      <!-- Templates -->
+      <RouterLink
+        v-if="featureEnabled('templates')"
+        to="/app/templates"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/app/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/app/templates') ? 'page' : null"
+      >
+        <span class="i">📦</span>
+        <span v-if="open">Templates</span>
+      </RouterLink>
+      <!-- Spaces -->
+      <RouterLink
+        v-if="featureEnabled('spaces')"
+        to="/app/spaces"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/app/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/spaces') ? 'page' : null"
+      >
+        <span class="i">🏢</span>
+        <span v-if="open">Spaces</span>
+      </RouterLink>
+      <!-- Equipment -->
+      <RouterLink
+        v-if="featureEnabled('equipment')"
+        to="/app/equipment"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/app/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/app/equipment') ? 'page' : null"
+      >
+        <span class="i">🧰</span>
+        <span v-if="open">Equipment</span>
+      </RouterLink>
+      <!-- Issues -->
+      <RouterLink
+        v-if="featureEnabled('issues')"
+        to="/app/issues"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/app/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/app/issues') ? 'page' : null"
+      >
+        <span class="i">🐞</span>
+        <span v-if="open">Issues</span>
+      </RouterLink>
       <button
         v-if="currentProjectId && featureEnabled('ai')"
         type="button"

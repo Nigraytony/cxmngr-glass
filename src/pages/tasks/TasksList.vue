@@ -103,6 +103,52 @@
           </div>
         </div>
       </div>
+      <div class="ml-2">
+        <div class="relative inline-block group">
+          <button
+            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+            aria-label="Toggle analytics"
+            @click="toggleAnalytics"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                d="M4 19V5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M4 19h16"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M7 16l3-4 3 2 4-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M17 8h2v2"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Analytics
+          </div>
+        </div>
+      </div>
       <div class="ml-2 flex items-end gap-2">
         <div class="relative inline-block group">
           <button
@@ -163,6 +209,12 @@
         </div>
       </div>
     </div>
+
+    <TasksListCharts
+      v-if="projectId && showAnalytics"
+      :analytics="tasksAnalytics"
+      :loading="tasksAnalyticsLoading"
+    />
 
     <div
       v-if="!projectId"
@@ -605,9 +657,11 @@
             class="text-sm text-white bg-transparent"
             @change="onCsvFileSelected"
           >
-          <p class="text-xs text-white/60">
+          <p class="text-xs text-white/60 break-words">
             Uploading will import tasks into the current project. Header suggestions:
-            <span class="font-mono">taskId,wbs,name,description,start,finish,duration,percentComplete,status,notes,tags,dependencies</span>
+            <span class="font-mono break-all block">
+              taskId,wbs,name,description,start,finish,duration,percentComplete,status,notes,tags,dependencies
+            </span>
           </p>
         </div>
       </div>
@@ -801,23 +855,24 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-  import { useProjectStore } from '../../stores/project'
-  import { useUiStore } from '../../stores/ui'
-  import { useAuthStore } from '../../stores/auth'
-  import { useActivitiesStore } from '../../stores/activities'
+import { useProjectStore } from '../../stores/project'
+import { useUiStore } from '../../stores/ui'
+import { useAuthStore } from '../../stores/auth'
+import { useActivitiesStore } from '../../stores/activities'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
+import TasksListCharts from '../../components/charts/TasksListCharts.vue'
 import { http } from '../../utils/http'
 import { useRouter } from 'vue-router'
 
- const projectStore = useProjectStore()
- const ui = useUiStore()
- const auth = useAuthStore()
- const activitiesStore = useActivitiesStore()
+const projectStore = useProjectStore()
+const ui = useUiStore()
+const auth = useAuthStore()
+const activitiesStore = useActivitiesStore()
 const router = useRouter()
-const projectId = projectStore.currentProjectId
+const projectId = computed(() => projectStore.currentProjectId)
 const tasks = ref([])
 const q = ref('')
 const loading = ref(false)
@@ -907,6 +962,53 @@ function openTask(t, evt) {
 const listStateKey = computed(() => `tasksListState:${projectStore.currentProjectId || 'global'}`)
 function hasSessionStorage() {
   try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
+}
+
+// Analytics: default from Profile settings, overridden per-session
+const analyticsStateKey = computed(() => `tasksListChartsOpen:${projectStore.currentProjectId || 'global'}`)
+const showAnalyticsDefault = computed(() => !!auth.user?.contact?.ui?.tasksListChartsDefault)
+const showAnalytics = ref(false)
+const tasksAnalytics = ref(null)
+const tasksAnalyticsLoading = ref(false)
+
+function loadAnalyticsState() {
+  if (!hasSessionStorage()) {
+    showAnalytics.value = showAnalyticsDefault.value
+    return
+  }
+  try {
+    const raw = sessionStorage.getItem(analyticsStateKey.value)
+    if (raw === '1') showAnalytics.value = true
+    else if (raw === '0') showAnalytics.value = false
+    else showAnalytics.value = showAnalyticsDefault.value
+  } catch (e) {
+    showAnalytics.value = showAnalyticsDefault.value
+  }
+}
+
+function persistAnalyticsState() {
+  if (!hasSessionStorage()) return
+  try { sessionStorage.setItem(analyticsStateKey.value, showAnalytics.value ? '1' : '0') } catch (e) { /* ignore */ }
+}
+
+async function fetchTasksAnalytics(pid) {
+  const projectId = pid || projectStore.currentProjectId
+  if (!projectId) return
+  tasksAnalyticsLoading.value = true
+  try {
+    const { data } = await http.get('/api/tasks/analytics', { params: { projectId } })
+    tasksAnalytics.value = data || null
+  } catch (e) {
+    console.error('fetchTasksAnalytics error', e)
+  } finally {
+    tasksAnalyticsLoading.value = false
+  }
+}
+
+function toggleAnalytics() {
+  showAnalytics.value = !showAnalytics.value
+  persistAnalyticsState()
+  if (showAnalytics.value) fetchTasksAnalytics().catch(() => {})
 }
 function loadListState() {
   if (!hasSessionStorage()) return
@@ -1150,7 +1252,12 @@ function persistBillRateSetting() {
 // persist collapsed state when it changes
 watch(collapsed, () => saveCollapsed())
 // when project changes, reload persisted collapsed state
-watch(() => projectStore.currentProjectId, () => { loadCollapsed() })
+watch(() => projectStore.currentProjectId, () => {
+  loadCollapsed()
+  loadAnalyticsState()
+  if (showAnalytics.value) fetchTasksAnalytics().catch(() => {})
+  fetch()
+})
 // when tasks change we may want to reload persisted collapsed ids to keep consistency
 watch(tasks, () => { /* noop placeholder - keep collapsed ids by id, no action needed */ })
 watch(() => ui.tasksBillRate, (v) => {
@@ -1778,6 +1885,7 @@ async function fetch() {
     const resp = await http.get('/api/tasks', { params: { projectId: projectStore.currentProjectId, limit: 200 } })
     tasks.value = resp.data.tasks || []
     try { await activitiesStore.fetchActivities(projectStore.currentProjectId) } catch (e) { /* ignore */ }
+    if (showAnalytics.value) fetchTasksAnalytics(projectStore.currentProjectId).catch(() => {})
   } catch (e) {
     tasks.value = []
   } finally { loading.value = false }
@@ -1813,7 +1921,12 @@ async function createAndLinkActivityForTask(t) {
   }
 }
 
-onMounted(() => { fetch(); loadCollapsed() })
+onMounted(() => {
+  loadAnalyticsState()
+  fetch()
+  loadCollapsed()
+  if (showAnalytics.value) fetchTasksAnalytics().catch(() => {})
+})
 
 function confirmDelete(t) {
   deletingId.value = t && t._id ? t._id : null
@@ -1836,8 +1949,9 @@ function cancelDelete() { deletingId.value = null; deletingName.value = ''; dele
 async function doDelete() {
   if (!deletingId.value) return
   try {
-    // Use server-side subtree delete for consistency and efficiency
-    const resp = await http.delete(`/api/tasks/subtree/${deletingId.value}`)
+    // Use server-side subtree delete for consistency and efficiency.
+    // Use hard delete so tasks are actually removed from the DB (not just hidden via soft-delete).
+    const resp = await http.delete(`/api/tasks/subtree/${deletingId.value}`, { params: { hard: true } })
     const data = resp && resp.data ? resp.data : {}
     const ids = Array.isArray(data.ids) ? data.ids.map(String) : []
 
@@ -1848,8 +1962,15 @@ async function doDelete() {
       // fallback: remove the single id locally
       tasks.value = (tasks.value || []).filter(x => x._id !== deletingId.value)
     }
+    try {
+      ui.showSuccess(deletingCount.value > 1 ? `Deleted ${deletingCount.value} tasks` : 'Task deleted')
+    } catch (e) { /* ignore */ }
+    // Ensure UI is consistent with server state.
+    await fetch()
   } catch (e) {
     console.error('Failed to delete tasks', e)
+    const msg = e?.response?.data?.error || e?.message || 'Failed to delete task(s)'
+    try { ui.showError(msg) } catch (ee) { /* ignore */ }
   } finally {
     // close modal and reset deleting state
     try { cancelDelete() } catch (e) { deletingId.value = null }

@@ -116,6 +116,55 @@
       >
         Refresh
       </button>
+      <div class="relative inline-block group shrink-0">
+        <button
+          :disabled="!projectStore.currentProjectId"
+          aria-label="Toggle analytics"
+          :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          @click="toggleAnalytics"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              d="M4 19V5"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M8 19v-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M12 19V9"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M16 19v-3"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M20 19V7"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
+          {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
+        </div>
+      </div>
       <div class="ml-auto flex items-center gap-2">
         <button
           class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
@@ -163,6 +212,28 @@
       </div>
     </div>
 
+    <!-- analytics -->
+    <div
+      v-if="showAnalytics"
+      class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
+    >
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-white font-semibold">
+          Analytics
+        </div>
+        <button
+          class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/90"
+          @click="showAnalytics = false"
+        >
+          Hide
+        </button>
+      </div>
+      <ActivitiesListCharts
+        :analytics="activitiesAnalytics"
+        :loading="analyticsLoading"
+      />
+    </div>
+
     <div
       v-if="loading"
       class="rounded-2xl p-6 bg-white/6 border border-white/10 text-white/70 flex flex-col items-center justify-center"
@@ -187,6 +258,164 @@
         </div>
       </template>
       <template v-else>
+        <div class="flex items-center justify-between gap-3 gap-y-2 flex-wrap px-2 py-1 text-white/70 text-sm mb-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-white/60">Sort</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('name')"
+            >
+              <span>Name</span>
+              <span
+                v-if="sortKey==='name' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='name' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('type')"
+            >
+              <span>Type</span>
+              <span
+                v-if="sortKey==='type' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='type' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('status')"
+            >
+              <span>Status</span>
+              <span
+                v-if="sortKey==='status' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='status' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('startDate')"
+            >
+              <span>Start</span>
+              <span
+                v-if="sortKey==='startDate' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='startDate' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('endDate')"
+            >
+              <span>End</span>
+              <span
+                v-if="sortKey==='endDate' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='endDate' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('location')"
+            >
+              <span>Location</span>
+              <span
+                v-if="sortKey==='location' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='location' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('updatedAt')"
+            >
+              <span>Updated</span>
+              <span
+                v-if="sortKey==='updatedAt' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='updatedAt' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('createdAt')"
+            >
+              <span>Created</span>
+              <span
+                v-if="sortKey==='createdAt' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='createdAt' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+          </div>
+        </div>
+
         <div
           v-if="viewMode === 'cards'"
           class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -262,14 +491,22 @@
                   </svg>
                 </div>
               </div>
-              <div class="text-sm text-white/70 mt-1">
-                Type: {{ a.type }}
+              <div class="mt-1 flex items-center justify-between gap-2">
+                <div class="text-sm text-white/70 truncate">
+                  Type: {{ a.type }}
+                </div>
+                <span
+                  class="px-2 py-0.5 rounded-full border text-xs shrink-0"
+                  :class="statusPillClass(a)"
+                >
+                  {{ statusLabel(a) }}
+                </span>
               </div>
               <div class="text-xs text-white/60">
                 Start: {{ fmt(a.startDate) }} · End: {{ fmt(a.endDate) }}
               </div>
               <div class="text-xs text-white/60 mt-1">
-                Space: {{ spaceLabel(a) }}
+                Location: {{ spaceLabel(a) }}
               </div>
               <div class="mt-2 flex flex-wrap gap-2 text-xs text-white/80">
                 <span class="px-2 py-0.5 rounded-full bg-white/10">Photos: {{ countField(a, 'photos') }}</span>
@@ -304,8 +541,15 @@
                     </div>
                     <div class="text-xs text-white/70 flex flex-wrap gap-x-3 gap-y-1">
                       <span>Type: <span class="text-white/90">{{ a.type || '—' }}</span></span>
+                      <span class="inline-flex items-center gap-2">
+                        Status:
+                        <span
+                          class="px-2 py-0.5 rounded-full border text-xs"
+                          :class="statusPillClass(a)"
+                        >{{ statusLabel(a) }}</span>
+                      </span>
                       <span>Dates: <span class="text-white/90">{{ fmt(a.startDate) || '—' }} – {{ fmt(a.endDate) || '—' }}</span></span>
-                      <span>Space: <span class="text-white/90">{{ spaceLabel(a) }}</span></span>
+                      <span>Location: <span class="text-white/90">{{ spaceLabel(a) }}</span></span>
                     </div>
                   </div>
 
@@ -460,6 +704,10 @@ import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
+import ActivitiesListCharts from '../../components/charts/ActivitiesListCharts.vue'
+import type { ActivitiesAnalytics } from '../../components/charts/ActivitiesListCharts.vue'
+import http from '../../utils/http'
+import { getAuthHeaders } from '../../utils/auth'
 
 const store = useActivitiesStore()
 const projectStore = useProjectStore()
@@ -476,6 +724,12 @@ const viewMode = ref<'cards' | 'list'>('cards')
 const pageSize = ref(12)
 const pageSizes = [6, 12, 24, 48, 96]
 const page = ref(1)
+const sortKey = ref<'createdAt' | 'updatedAt' | 'name' | 'type' | 'status' | 'startDate' | 'endDate' | 'location'>('createdAt')
+const sortDir = ref<1 | -1>(-1) // default matches API list sort (created desc)
+const showAnalytics = ref(false)
+const analyticsLoading = ref(false)
+const activitiesAnalytics = ref<ActivitiesAnalytics | null>(null)
+const analyticsForProjectId = ref('')
 
 function viewStorageKey() {
   return `ui.activities.viewMode:${projectStore.currentProjectId || 'global'}`
@@ -483,6 +737,32 @@ function viewStorageKey() {
 
 function paginationStorageKey() {
   return `ui.activities.pageSize:${projectStore.currentProjectId || 'global'}`
+}
+
+function sortStorageKey() {
+  return `ui.activities.sort:${projectStore.currentProjectId || 'global'}`
+}
+
+function loadSort() {
+  try {
+    const raw = localStorage.getItem(sortStorageKey())
+    if (!raw) return
+    const data = JSON.parse(raw)
+    const allowed = new Set(['createdAt', 'updatedAt', 'name', 'type', 'status', 'startDate', 'endDate', 'location'])
+    if (data && allowed.has(String(data.sortKey))) sortKey.value = String(data.sortKey) as any
+    if (data && (data.sortDir === 1 || data.sortDir === -1)) sortDir.value = data.sortDir
+  } catch (e) { /* ignore */ }
+}
+
+function persistSort() {
+  try {
+    localStorage.setItem(sortStorageKey(), JSON.stringify({ sortKey: sortKey.value, sortDir: sortDir.value }))
+  } catch (e) { /* ignore */ }
+}
+
+function setSort(key: any) {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 1 ? -1 : 1
+  else { sortKey.value = key; sortDir.value = 1 }
 }
 
 function loadViewMode() {
@@ -495,6 +775,42 @@ function loadViewMode() {
 function setViewMode(v: 'cards' | 'list') {
   viewMode.value = v
   try { localStorage.setItem(viewStorageKey(), v) } catch (e) { /* ignore */ }
+}
+
+function analyticsStorageKey() {
+  return `ui.activities.showAnalytics:${projectStore.currentProjectId || 'global'}`
+}
+
+function loadShowAnalytics() {
+  try {
+    const raw = localStorage.getItem(analyticsStorageKey())
+    if (raw === '1' || raw === 'true') showAnalytics.value = true
+  } catch (e) { /* ignore */ }
+}
+
+async function fetchAnalytics() {
+  const pid = String(projectStore.currentProjectId || '')
+  if (!pid) return
+  if (analyticsForProjectId.value === pid && activitiesAnalytics.value) return
+  analyticsLoading.value = true
+  try {
+    const res = await http.get('/api/activities/analytics', { params: { projectId: pid }, headers: getAuthHeaders() })
+    activitiesAnalytics.value = (res && res.data) ? res.data : null
+    analyticsForProjectId.value = pid
+  } catch (e: any) {
+    analyticsForProjectId.value = pid
+    activitiesAnalytics.value = null
+    if (e?.response?.status === 403 && e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN') return
+    ui.showError(e?.response?.data?.error || 'Failed to load activity analytics')
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+function toggleAnalytics() {
+  showAnalytics.value = !showAnalytics.value
+  try { localStorage.setItem(analyticsStorageKey(), showAnalytics.value ? '1' : '0') } catch (e) { /* ignore */ }
+  if (showAnalytics.value) fetchAnalytics().catch(() => {})
 }
 
 function loadPageSize() {
@@ -510,10 +826,13 @@ function persistPageSize() {
 }
 
 onMounted(async () => {
-  await store.fetchActivities().catch(() => {})
-  if (projectStore.currentProjectId) await spacesStore.fetchByProject(projectStore.currentProjectId).catch(() => {})
   loadViewMode()
   loadPageSize()
+  loadSort()
+  loadShowAnalytics()
+  await store.fetchActivities().catch(() => {})
+  if (projectStore.currentProjectId) await spacesStore.fetchByProject(projectStore.currentProjectId).catch(() => {})
+  if (showAnalytics.value) fetchAnalytics().catch(() => {})
 })
 
 function fmt(d?: string) {
@@ -525,7 +844,12 @@ watch(() => projectStore.currentProjectId, async (pid) => {
   if (pid) await spacesStore.fetchByProject(pid).catch(() => {})
   loadViewMode()
   loadPageSize()
+  loadSort()
+  loadShowAnalytics()
   page.value = 1
+  analyticsForProjectId.value = ''
+  activitiesAnalytics.value = null
+  if (showAnalytics.value) fetchAnalytics().catch(() => {})
 })
 
 // Styled Type dropdown state and options (like Issues filters)
@@ -598,8 +922,54 @@ const totalItems = computed(() => (filtered.value || []).length)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageSize.value)))
 const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value + 1))
 const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
+const sortedActivities = computed(() => {
+  const list = filtered.value ? [...filtered.value] : []
+  const key = sortKey.value
+  const dir = sortDir.value
+
+  function asText(v: any) {
+    return String(v || '').trim().toLowerCase()
+  }
+
+  function asTime(v: any) {
+    if (!v) return 0
+    const t = new Date(v).getTime()
+    return Number.isFinite(t) ? t : 0
+  }
+
+  const statusOrder: Record<string, number> = { draft: 0, published: 1, completed: 2 }
+
+  list.sort((a: any, b: any) => {
+    if (key === 'status') {
+      const av = statusOrder[statusValue(a)] ?? 0
+      const bv = statusOrder[statusValue(b)] ?? 0
+      if (av !== bv) return (av - bv) * dir
+      const an = asText(a?.name)
+      const bn = asText(b?.name)
+      if (an < bn) return -1
+      if (an > bn) return 1
+      return 0
+    }
+    if (key === 'startDate' || key === 'endDate' || key === 'createdAt' || key === 'updatedAt') {
+      const av = asTime(a?.[key])
+      const bv = asTime(b?.[key])
+      if (av !== bv) return (av - bv) * dir
+      const an = asText(a?.name)
+      const bn = asText(b?.name)
+      if (an < bn) return -1
+      if (an > bn) return 1
+      return 0
+    }
+    const av = asText(a?.[key])
+    const bv = asText(b?.[key])
+    if (av < bv) return -1 * dir
+    if (av > bv) return 1 * dir
+    return 0
+  })
+  return list
+})
 const pagedActivities = computed(() => {
-  const list = filtered.value || []
+  const list = sortedActivities.value || []
   const start = (page.value - 1) * pageSize.value
   return list.slice(start, start + pageSize.value)
 })
@@ -614,6 +984,11 @@ watch([totalItems, pageSize], () => {
 })
 
 watch([q, typeFilter], () => {
+  page.value = 1
+})
+
+watch([sortKey, sortDir], () => {
+  persistSort()
   page.value = 1
 })
 
@@ -650,6 +1025,7 @@ const pageButtons = computed(() => {
 function refresh() {
   // Always fetch for the current project (store handles project scoping)
   store.fetchActivities().catch(() => {})
+  if (showAnalytics.value) fetchAnalytics().catch(() => {})
   page.value = 1
 }
 
@@ -669,6 +1045,26 @@ function countField(a: any, kind: 'photos' | 'issues' | 'comments' | 'attachment
   if (kind === 'attachments') return Number.isFinite(a.attachmentsCount) ? a.attachmentsCount : (Array.isArray(a.attachments) ? a.attachments.length : 0)
   if (kind === 'equipment') return Number.isFinite(a.equipmentCount) ? a.equipmentCount : (Array.isArray(a.systems) ? a.systems.length : 0)
   return 0
+}
+
+function statusValue(a: any): 'draft' | 'published' | 'completed' {
+  const s = String(a?.status || 'draft').trim().toLowerCase()
+  if (s === 'published' || s === 'completed' || s === 'draft') return s
+  return 'draft'
+}
+
+function statusLabel(a: any) {
+  const s = statusValue(a)
+  if (s === 'published') return 'Published'
+  if (s === 'completed') return 'Completed'
+  return 'Draft'
+}
+
+function statusPillClass(a: any) {
+  const s = statusValue(a)
+  if (s === 'published') return 'bg-green-500/15 text-green-200 border-green-500/30'
+  if (s === 'completed') return 'bg-white/10 text-white/80 border-white/15'
+  return 'bg-yellow-500/15 text-yellow-200 border-yellow-500/30'
 }
 
 function confirmDelete(a: any) {

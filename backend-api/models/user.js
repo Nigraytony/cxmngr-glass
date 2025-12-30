@@ -36,6 +36,12 @@ const userSchema = new mongoose.Schema({
     },
     // Optional per-page preference for list pages (stored as a number of items per page)
     perPage: { type: Number, required: false },
+    // Optional UI preferences
+    ui: {
+      equipmentListChartsDefault: { type: Boolean, required: false },
+      issuesListChartsDefault: { type: Boolean, required: false },
+      tasksListChartsDefault: { type: Boolean, required: false },
+    },
   },
   social_media: {
     linkedin: { type: String, required: false }, // Optional LinkedIn profile URL

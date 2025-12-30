@@ -106,6 +106,26 @@
                   <span>Profile</span>
                 </button>
               </li>
+              <li>
+                <button
+                  class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2"
+                  @click="goProjects"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4 text-white/90"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><path
+                    d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
+                  <span>Projects</span>
+                </button>
+              </li>
 
               <!-- Projects list -->
               <li class="my-1 border-t border-white/10" />
@@ -346,6 +366,11 @@ const initials = computed(() => {
 function goProfile() {
   menuOpen.value = false
   router.push({ path: '/app/profile' })
+}
+
+function goProjects() {
+  menuOpen.value = false
+  router.push({ path: '/app/projects' })
 }
 
 function toggleMenu() { menuOpen.value = !menuOpen.value; if (menuOpen.value) updateDropdownPosition() }

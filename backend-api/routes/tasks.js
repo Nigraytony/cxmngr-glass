@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Task = require('../models/task');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
@@ -41,6 +42,246 @@ function safeErrorMessage(err, fallback) {
 function sendServerError(res, err, fallback) {
   return res.status(500).send({ error: safeErrorMessage(err, fallback) })
 }
+
+function parseWbsForSort(wbs) {
+  const s = String(wbs || '').trim()
+  if (!s) return []
+  return s.split('.').map(part => {
+    const n = Number(part)
+    return Number.isFinite(n) ? n : part
+  })
+}
+
+function compareWbs(a, b) {
+  const aa = parseWbsForSort(a)
+  const bb = parseWbsForSort(b)
+  const max = Math.max(aa.length, bb.length)
+  for (let i = 0; i < max; i += 1) {
+    const av = aa[i]
+    const bv = bb[i]
+    if (av === undefined) return -1
+    if (bv === undefined) return 1
+    if (typeof av === 'number' && typeof bv === 'number') {
+      if (av !== bv) return av - bv
+    } else {
+      const as = String(av)
+      const bs = String(bv)
+      if (as !== bs) return as.localeCompare(bs)
+    }
+  }
+  return 0
+}
+
+// Project-wide tasks analytics (counts and costs)
+router.get(
+  '/analytics',
+  auth,
+  requireFeature('tasks'),
+  requireObjectIdQuery('projectId'),
+  requirePermission('tasks.read', { projectParam: 'projectId' }),
+  async (req, res) => {
+    try {
+      const projectId = String(req.query.projectId)
+      const projectObjectId = new mongoose.Types.ObjectId(projectId)
+      const match = {
+        projectId: projectObjectId,
+        deleted: { $ne: true },
+        status: { $ne: 'Deleted' },
+      }
+
+      const totalTasks = await Task.countDocuments(match)
+      const completedTasks = await Task.countDocuments({
+        ...match,
+        $or: [{ percentComplete: 100 }, { status: 'Completed' }],
+      })
+
+      const avgAgg = await Task.aggregate([
+        { $match: match },
+        { $group: { _id: null, avgPercentComplete: { $avg: { $ifNull: ['$percentComplete', 0] } } } },
+      ])
+      const avgPercentComplete = avgAgg && avgAgg[0] && avgAgg[0].avgPercentComplete ? Number(avgAgg[0].avgPercentComplete) : 0
+
+      const tasksByStatusRaw = await Task.aggregate([
+        { $match: match },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ])
+      const tasksByStatus = tasksByStatusRaw
+        .map(r => ({ name: r && r._id ? String(r._id) : '(none)', count: Number(r && r.count ? r.count : 0) }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      const completionRaw = await Task.aggregate([
+        { $match: match },
+        {
+          $project: {
+            percentComplete: { $ifNull: ['$percentComplete', 0] },
+          },
+        },
+        {
+          $addFields: {
+            bucket: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$percentComplete', 100] }, then: '100%' },
+                  { case: { $gte: ['$percentComplete', 75] }, then: '75-99%' },
+                  { case: { $gte: ['$percentComplete', 50] }, then: '50-74%' },
+                  { case: { $gte: ['$percentComplete', 25] }, then: '25-49%' },
+                  { case: { $gte: ['$percentComplete', 1] }, then: '1-24%' },
+                ],
+                default: '0%',
+              },
+            },
+          },
+        },
+        { $group: { _id: '$bucket', count: { $sum: 1 } } },
+      ])
+      const completionOrder = ['0%', '1-24%', '25-49%', '50-74%', '75-99%', '100%']
+      const tasksByCompletion = completionRaw
+        .map(r => ({ bucket: String(r && r._id ? r._id : '0%'), count: Number(r && r.count ? r.count : 0) }))
+        .sort((a, b) => completionOrder.indexOf(a.bucket) - completionOrder.indexOf(b.bucket))
+
+      const withTotalCostAddFields = {
+        totalCost: {
+          $add: [
+            { $ifNull: ['$cost', 0] },
+            {
+              $add: [
+                { $ifNull: ['$expenses.airfare', 0] },
+                { $ifNull: ['$expenses.hotel', 0] },
+                { $ifNull: ['$expenses.rentalCar', 0] },
+                { $ifNull: ['$expenses.food', 0] },
+                { $ifNull: ['$expenses.mileage', 0] },
+                { $ifNull: ['$expenses.labor', 0] },
+                { $ifNull: ['$expenses.other1', 0] },
+                { $ifNull: ['$expenses.other2', 0] },
+              ],
+            },
+          ],
+        },
+      }
+
+      const totalCostAgg = await Task.aggregate([
+        { $match: match },
+        { $addFields: withTotalCostAddFields },
+        { $group: { _id: null, totalCost: { $sum: '$totalCost' } } },
+      ])
+      const totalCost = totalCostAgg && totalCostAgg[0] && totalCostAgg[0].totalCost ? Number(totalCostAgg[0].totalCost) : 0
+
+      const topCostTasks = await Task.aggregate([
+        { $match: match },
+        { $addFields: withTotalCostAddFields },
+        { $sort: { totalCost: -1 } },
+        { $limit: 10 },
+        { $project: { taskId: 1, wbs: 1, name: 1, totalCost: 1 } },
+      ])
+
+      // Phase: derive by first 2 segments of WBS (e.g. "1.2.4" -> "1.2")
+      const phaseCountsRaw = await Task.aggregate([
+        { $match: match },
+        { $addFields: { wbsSafe: { $ifNull: ['$wbs', ''] } } },
+        { $addFields: { parts: { $cond: [{ $ne: ['$wbsSafe', ''] }, { $split: ['$wbsSafe', '.'] }, []] } } },
+        {
+          $addFields: {
+            phaseWbs: {
+              $cond: [
+                { $eq: [{ $size: '$parts' }, 0] },
+                '(No WBS)',
+                {
+                  $cond: [
+                    { $gte: [{ $size: '$parts' }, 2] },
+                    { $concat: [{ $arrayElemAt: ['$parts', 0] }, '.', { $arrayElemAt: ['$parts', 1] }] },
+                    { $arrayElemAt: ['$parts', 0] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { $group: { _id: '$phaseWbs', count: { $sum: 1 } } },
+      ])
+
+      const phaseWbsList = phaseCountsRaw
+        .map(r => (r && r._id ? String(r._id) : '(No WBS)'))
+        .filter(v => v && v !== '(No WBS)')
+
+      const phaseNameDocs = await Task.find({ projectId: projectObjectId, wbs: { $in: phaseWbsList } })
+        .select('wbs name')
+        .lean()
+      const phaseNameByWbs = {}
+      for (const t of phaseNameDocs || []) {
+        const w = t && t.wbs ? String(t.wbs) : ''
+        if (w && !phaseNameByWbs[w]) phaseNameByWbs[w] = t && t.name ? String(t.name) : w
+      }
+
+      const tasksByPhase = phaseCountsRaw
+        .map(r => {
+          const wbs = r && r._id ? String(r._id) : '(No WBS)'
+          const label = wbs === '(No WBS)' ? '(No phase)' : (phaseNameByWbs[wbs] || wbs)
+          return { wbs, label, count: Number(r && r.count ? r.count : 0) }
+        })
+        .sort((a, b) => {
+          if (a.wbs === '(No WBS)') return 1
+          if (b.wbs === '(No WBS)') return -1
+          return compareWbs(a.wbs, b.wbs)
+        })
+
+      const costByPhaseRaw = await Task.aggregate([
+        { $match: match },
+        { $addFields: withTotalCostAddFields },
+        { $addFields: { wbsSafe: { $ifNull: ['$wbs', ''] } } },
+        { $addFields: { parts: { $cond: [{ $ne: ['$wbsSafe', ''] }, { $split: ['$wbsSafe', '.'] }, []] } } },
+        {
+          $addFields: {
+            phaseWbs: {
+              $cond: [
+                { $eq: [{ $size: '$parts' }, 0] },
+                '(No WBS)',
+                {
+                  $cond: [
+                    { $gte: [{ $size: '$parts' }, 2] },
+                    { $concat: [{ $arrayElemAt: ['$parts', 0] }, '.', { $arrayElemAt: ['$parts', 1] }] },
+                    { $arrayElemAt: ['$parts', 0] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { $group: { _id: '$phaseWbs', totalCost: { $sum: '$totalCost' } } },
+      ])
+
+      const costByPhase = costByPhaseRaw
+        .map(r => {
+          const wbs = r && r._id ? String(r._id) : '(No WBS)'
+          const label = wbs === '(No WBS)' ? '(No phase)' : (phaseNameByWbs[wbs] || wbs)
+          return { wbs, label, totalCost: Number(r && r.totalCost ? r.totalCost : 0) }
+        })
+        .sort((a, b) => {
+          if (a.wbs === '(No WBS)') return 1
+          if (b.wbs === '(No WBS)') return -1
+          return compareWbs(a.wbs, b.wbs)
+        })
+
+      res.status(200).json({
+        totalTasks,
+        completedTasks,
+        avgPercentComplete,
+        totalCost,
+        tasksByStatus,
+        tasksByCompletion,
+        tasksByPhase,
+        costByPhase,
+        topCostTasks: (topCostTasks || []).map(t => ({
+          taskId: t && t.taskId ? String(t.taskId) : '',
+          wbs: t && t.wbs ? String(t.wbs) : '',
+          name: t && t.name ? String(t.name) : '',
+          totalCost: Number(t && t.totalCost ? t.totalCost : 0),
+        })),
+      })
+    } catch (error) {
+      return sendServerError(res, error, 'Failed to load tasks analytics')
+    }
+  }
+)
 
 function pickTaskPayload(source) {
   const body = source || {}
@@ -708,10 +949,17 @@ router.delete('/:id', auth, requireObjectIdParam('id'), loadTaskProjectId, requi
     await runMiddleware(req, res, requirePermission('tasks.delete', { projectParam: 'projectId' }));
     await runMiddleware(req, res, requireActiveProject);
 
-    // Perform soft-delete by default
-    task.deleted = true;
-    task.status = 'Deleted';
-    await task.save();
+    const hard = String(req.query.hard || '').toLowerCase() === 'true' || String(req.query.hard || '') === '1'
+
+    if (hard) {
+      // Permanently remove the task
+      await Task.deleteOne({ _id: task._id })
+    } else {
+      // Perform soft-delete by default
+      task.deleted = true;
+      task.status = 'Deleted';
+      await task.save();
+    }
 
     // Remove task reference from project (best-effort)
     try {
@@ -730,7 +978,7 @@ router.delete('/:id', auth, requireObjectIdParam('id'), loadTaskProjectId, requi
 	  }
 	});
 
-// DELETE /api/tasks/subtree/:id - soft-delete a task and all descendant tasks (by WBS prefix)
+// DELETE /api/tasks/subtree/:id - delete a task and all descendant tasks (by WBS prefix)
 router.delete('/subtree/:id', auth, requireObjectIdParam('id'), loadTaskProjectId, requireFeature('tasks'), async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
@@ -759,9 +1007,18 @@ router.delete('/subtree/:id', auth, requireObjectIdParam('id'), loadTaskProjectI
 
     if (ids.length === 0) return res.status(200).json({ modifiedCount: 0, ids: [] });
 
-    // Soft-delete all matching tasks
-    const update = { deleted: true, status: 'Deleted' };
-    const result = await Task.updateMany({ _id: { $in: ids } }, update);
+    const hard = String(req.query.hard || '').toLowerCase() === 'true' || String(req.query.hard || '') === '1'
+
+    let modified = 0
+    if (hard) {
+      const result = await Task.deleteMany({ _id: { $in: ids } })
+      modified = (result && (result.deletedCount || result.n)) || 0
+    } else {
+      // Soft-delete all matching tasks
+      const update = { deleted: true, status: 'Deleted' };
+      const result = await Task.updateMany({ _id: { $in: ids } }, update);
+      modified = (result && (result.modifiedCount || result.nModified)) || 0
+    }
 
     // Remove references from project.tasks (best-effort)
     try {
@@ -770,7 +1027,6 @@ router.delete('/subtree/:id', auth, requireObjectIdParam('id'), loadTaskProjectI
       }
     } catch (e) { /* ignore */ }
 
-	    const modified = (result && (result.modifiedCount || result.nModified)) || 0;
 	    res.status(200).json({ modifiedCount: modified, ids });
 	  } catch (error) {
 	    return sendServerError(res, error, 'Failed to delete tasks')

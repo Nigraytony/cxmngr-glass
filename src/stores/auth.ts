@@ -33,7 +33,12 @@ export interface User {
         block?: string;
       };
       perPage?: number;
-  },
+	      ui?: {
+	        equipmentListChartsDefault?: boolean;
+	        issuesListChartsDefault?: boolean;
+	        tasksListChartsDefault?: boolean;
+	      };
+	  },
   social_media?: {
     linkedin?: string;
     x?: string;

@@ -242,6 +242,56 @@
           >Hide closed</label>
         </div>
 
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Toggle analytics"
+            :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="toggleAnalytics"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                d="M4 19V5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M8 19v-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 19V9"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M16 19v-3"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M20 19V7"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
+          </div>
+        </div>
+
         <div
           ref="downloadsRef"
           class="relative"
@@ -461,6 +511,28 @@
       </div>
     </div>
 
+    <!-- analytics -->
+    <div
+      v-if="showAnalytics"
+      class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
+    >
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-white font-semibold">
+          Analytics
+        </div>
+        <button
+          class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          @click="showAnalytics = false"
+        >
+          Hide
+        </button>
+      </div>
+      <IssuesListCharts
+        :analytics="issuesAnalytics"
+        :loading="analyticsLoading"
+      />
+    </div>
+
     <div
       v-if="loading"
       class="rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 min-w-0 flex flex-col items-center justify-center text-white/70"
@@ -485,6 +557,125 @@
         </div>
       </template>
       <template v-else>
+        <div class="flex items-center justify-between gap-3 gap-y-2 flex-wrap px-2 py-1 text-white/70 text-sm mb-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-white/60">Sort</span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('number')"
+            >
+              <span>Number</span>
+              <span
+                v-if="sortKey==='number' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='number' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('title')"
+            >
+              <span>Title</span>
+              <span
+                v-if="sortKey==='title' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='title' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('type')"
+            >
+              <span>Type</span>
+              <span
+                v-if="sortKey==='type' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='type' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('priority')"
+            >
+              <span>Priority</span>
+              <span
+                v-if="sortKey==='priority' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='priority' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('status')"
+            >
+              <span>Status</span>
+              <span
+                v-if="sortKey==='status' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='status' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
+              @click="setSort('updatedAt')"
+            >
+              <span>Updated</span>
+              <span
+                v-if="sortKey==='updatedAt' && sortDir===1"
+                class="text-xs"
+              >▲</span>
+              <span
+                v-else-if="sortKey==='updatedAt' && sortDir===-1"
+                class="text-xs"
+              >▼</span>
+              <span
+                v-else
+                class="text-xs opacity-40"
+              >⇅</span>
+            </button>
+          </div>
+        </div>
         <!-- Card-based issue list -->
         <div class="flex flex-col gap-4">
           <div
@@ -913,7 +1104,7 @@
   </section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Utility: format a date string to a readable format
 function formatDate(date) {
   if (!date) return ''
@@ -927,6 +1118,8 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
 import IssueForm from '../../components/IssueForm.vue'
 import Spinner from '../../components/Spinner.vue'
+import IssuesListCharts from '../../components/charts/IssuesListCharts.vue'
+import type { IssuesAnalytics } from '../../components/charts/IssuesListCharts.vue'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
@@ -946,6 +1139,48 @@ const issuesStore = useIssuesStore()
 const router = useRouter()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+
+function readChartsPreference(): boolean {
+  try {
+    const raw = sessionStorage.getItem('issuesListCharts:open')
+    if (raw === 'true') return true
+    if (raw === 'false') return false
+  } catch (e) { /* ignore */ }
+  try {
+    const v = (authStore.user as any)?.contact?.ui?.issuesListChartsDefault
+    if (v === true) return true
+    if (v === false) return false
+  } catch (e) { /* ignore */ }
+  return false
+}
+
+const showAnalytics = ref(readChartsPreference())
+const analyticsLoading = ref(false)
+const issuesAnalytics = ref<IssuesAnalytics | null>(null)
+const analyticsForProjectId = ref('')
+
+function toggleAnalytics() {
+  showAnalytics.value = !showAnalytics.value
+  try { sessionStorage.setItem('issuesListCharts:open', showAnalytics.value ? 'true' : 'false') } catch (e) { /* ignore */ }
+}
+
+async function fetchIssuesAnalytics(projectId?: string) {
+  const pid = String(projectId || projectStore.currentProjectId || '')
+  if (!pid) return
+  if (analyticsForProjectId.value === pid && issuesAnalytics.value) return
+  analyticsLoading.value = true
+  try {
+    const res = await http.get('/api/issues/analytics', { params: { projectId: pid }, headers: getAuthHeaders() })
+    issuesAnalytics.value = (res && res.data) ? res.data : null
+    analyticsForProjectId.value = pid
+  } catch (e: any) {
+    analyticsForProjectId.value = pid
+    issuesAnalytics.value = null
+    ui.showError(e?.response?.data?.error || 'Failed to load issue analytics')
+  } finally {
+    analyticsLoading.value = false
+  }
+}
 const serverIssues = ref([])
 const serverTotal = ref(0)
 const serverTotalAll = ref(0)
@@ -1398,6 +1633,18 @@ const hideClosed = ref(false)
 const sortKey = ref('')
 const sortDir = ref(1) // 1 = asc, -1 = desc
 
+function setSort(key: string) {
+  const k = String(key || '').trim()
+  if (!k) return
+  if (sortKey.value === k) {
+    sortDir.value = sortDir.value === 1 ? -1 : 1
+  } else {
+    sortKey.value = k
+    sortDir.value = 1
+  }
+  page.value = 1
+}
+
 // Persist list UI state per project (search, filters, sort)
 const listStateKey = computed(() => `issuesListState:${projectStore.currentProjectId || 'global'}`)
 function hasSessionStorage() {
@@ -1630,7 +1877,13 @@ const preferredProjectId = computed(() => {
 watch(preferredProjectId, (id) => {
   page.value = 1
   fetchIssuesPage(id).catch(() => {})
+  if (showAnalytics.value) fetchIssuesAnalytics(String(id)).catch(() => {})
 }, { immediate: true })
+
+watch(showAnalytics, (open) => {
+  if (!open) return
+  fetchIssuesAnalytics().catch(() => {})
+})
 
 // Fetch when paging/sort/search/filter changes (debounced)
 function fetchIssuesPage(projectId) {

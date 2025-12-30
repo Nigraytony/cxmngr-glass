@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Issue = require('../models/issue');
+const Equipment = require('../models/equipment');
 const Project = require('../models/project');
 const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature, enforceLimit } = require('../middleware/planGuard');
@@ -270,6 +271,103 @@ router.get(
     res.status(500).send({ error: 'Failed to list issues' });
   }
 });
+
+// Project-wide issue analytics for charts
+router.get('/analytics', auth, requireFeature('issues'), requirePermission('issues.read', { projectParam: 'projectId' }), async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
+    const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
+    const projectMatch = { projectId: projectObjectId }
+
+    const [
+      issuesByStatusAgg,
+      issuesByTypeAgg,
+      issuesByPriorityAgg,
+      issuesBySystemAgg,
+      issuesByLocationAgg,
+      issuesByEquipmentAgg,
+    ] = await Promise.all([
+      Issue.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$status', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Issue.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$type', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Issue.aggregate([
+        { $match: projectMatch },
+        { $project: { priority: { $ifNull: ['$priority', '$severity'] } } },
+        { $group: { _id: { $ifNull: ['$priority', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Issue.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$system', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Issue.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$location', 'Unspecified'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Issue.aggregate([
+        { $match: projectMatch },
+        { $match: { assetId: { $ne: null } } },
+        { $group: { _id: '$assetId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 50 },
+      ]),
+    ])
+
+    const issuesByStatus = Array.isArray(issuesByStatusAgg)
+      ? issuesByStatusAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+    const issuesByType = Array.isArray(issuesByTypeAgg)
+      ? issuesByTypeAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+    const issuesByPriority = Array.isArray(issuesByPriorityAgg)
+      ? issuesByPriorityAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+    const issuesBySystem = Array.isArray(issuesBySystemAgg)
+      ? issuesBySystemAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+    const issuesByLocation = Array.isArray(issuesByLocationAgg)
+      ? issuesByLocationAgg.map((x) => ({ name: String(x._id || 'Unspecified'), count: Number(x.count || 0) }))
+      : []
+
+    const equipmentIds = Array.isArray(issuesByEquipmentAgg) ? issuesByEquipmentAgg.map((x) => x && x._id).filter(Boolean) : []
+    let equipmentMap = new Map()
+    if (equipmentIds.length) {
+      const equip = await Equipment.find({ _id: { $in: equipmentIds } }).select('_id tag title').lean()
+      equipmentMap = new Map(equip.map((e) => [String(e._id), e]))
+    }
+    const issuesByEquipment = Array.isArray(issuesByEquipmentAgg)
+      ? issuesByEquipmentAgg.map((x) => {
+        const eid = String(x._id || '')
+        const e = equipmentMap.get(eid)
+        const label = String(e?.tag || e?.title || 'Unknown')
+        return { equipmentId: eid, name: label, count: Number(x.count || 0) }
+      })
+      : []
+
+    return res.status(200).send({
+      issuesByStatus,
+      issuesByType,
+      issuesByPriority,
+      issuesBySystem,
+      issuesByLocation,
+      issuesByEquipment,
+    })
+  } catch (error) {
+    console.error('[issues] analytics error', error && (error.stack || error.message || error))
+    return sendServerError(res, error, 'Failed to load analytics')
+  }
+})
 
 async function loadIssueProjectId(req, res, next) {
   try {

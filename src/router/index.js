@@ -27,6 +27,7 @@ const SpaceEdit = () => import('../pages/spaces/EditSpaces.vue')
 const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
 // Use the cleaned up editor component to avoid malformed legacy file
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
+const Assistant = () => import('../pages/assistant/Assistant.vue')
 // Marketing/public homepage
 const HomePage = () => import('../pages/home/HomePage.vue')
 const Pricing = () => import('../pages/Pricing.vue')
@@ -45,6 +46,7 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'dashboard', component: DashboardHome },
+      { path: 'assistant', name: 'assistant', component: Assistant },
       { path: 'issues', name: 'issues', component: () => import(/* webpackChunkName: "issues" */ '../pages/issues/IssuesList.vue') },
     { path: 'issues/:id', name: 'issue-edit', component: IssueEdit, props: true },
   { path: 'activities', name: 'activities', component: () => import(/* webpackChunkName: "activities" */ '../pages/activities/ActivitiesList.vue') },
@@ -169,6 +171,7 @@ router.beforeEach(async (to) => {
 
   // Feature gating based on project subscription features
   const featureRouteMap = {
+    ai: ['assistant'],
     spaces: ['spaces', 'space-edit'],
     equipment: ['equipment', 'equipment-edit'],
     templates: ['templates', 'template-edit'],

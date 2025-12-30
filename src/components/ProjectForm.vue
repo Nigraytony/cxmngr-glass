@@ -51,10 +51,21 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="block text-white/80 mb-1">Type</label>
-        <input
+        <select
           v-model="local.project_type"
           class="w-full rounded-lg p-2 bg-white/5 border border-white/10 text-white"
         >
+          <option value="">
+            Select type…
+          </option>
+          <option
+            v-for="t in projectTypeOptions"
+            :key="t"
+            :value="t"
+          >
+            {{ t }}
+          </option>
+        </select>
       </div>
 
       <div>
@@ -147,6 +158,16 @@ const local = reactive({
   endDate: toInputDate(props.modelValue.endDate || props.modelValue.end_date),
   
 })
+
+const projectTypeOptions = [
+  'New Building Cx',
+  'LEED Fundamental Cx',
+  'LEED Enhanced Cx',
+  'LEED Enhanced Cx with Envelope',
+  'Envelope Cx',
+  'Retro Cx',
+  'Facility Condition Assessment',
+]
 
 // tagsText and toISOStringDateFromInput helper removed (unused)
 

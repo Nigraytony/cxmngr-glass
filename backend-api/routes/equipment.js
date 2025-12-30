@@ -392,6 +392,196 @@ async function buildSpaceChainResolver(projectId) {
   }
 }
 
+// Project-wide equipment analytics for charts (counts + progress)
+router.get('/analytics', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
+    const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
+    const projectMatch = { projectId: projectObjectId }
+
+    const [
+      equipmentBySystemAgg,
+      equipmentByStatusAgg,
+      checklistsBySystemAgg,
+      issuesByEquipmentSystemAgg,
+      checklistProgressAgg,
+      fptProgressAgg,
+    ] = await Promise.all([
+      Equipment.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$system', 'Unknown'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Equipment.aggregate([
+        { $match: projectMatch },
+        { $group: { _id: { $ifNull: ['$status', 'Unknown'] }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Equipment.aggregate([
+        { $match: projectMatch },
+        { $project: { checklistsBySystem: checklistSystemCountsExpr() } },
+        { $unwind: { path: '$checklistsBySystem', preserveNullAndEmptyArrays: false } },
+        { $match: { 'checklistsBySystem.system': { $nin: [null, ''] } } },
+        {
+          $group: {
+            _id: '$checklistsBySystem.system',
+            system: { $first: '$checklistsBySystem.system' },
+            checklistsCount: { $sum: { $ifNull: ['$checklistsBySystem.count', 0] } },
+            equipmentCount: { $sum: 1 },
+          },
+        },
+        { $sort: { system: 1 } },
+      ]),
+      Equipment.aggregate([
+        { $match: projectMatch },
+        {
+          $project: {
+            system: { $ifNull: ['$system', 'Unknown'] },
+            issuesCount: countArrayExpr('$issues'),
+          },
+        },
+        { $group: { _id: '$system', system: { $first: '$system' }, issuesCount: { $sum: '$issuesCount' } } },
+        { $sort: { system: 1 } },
+      ]),
+      Equipment.aggregate([
+        { $match: projectMatch },
+        { $project: { checklists: 1 } },
+        { $unwind: { path: '$checklists', preserveNullAndEmptyArrays: true } },
+        { $project: { question: '$checklists.questions' } },
+        { $unwind: { path: '$question', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: null,
+            totalQuestions: { $sum: { $cond: [{ $ne: ['$question', null] }, 1, 0] } },
+            answeredQuestions: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$question', null] },
+                      {
+                        $or: [
+                          { $eq: ['$question.done', true] },
+                          { $eq: ['$question.is_complete', true] },
+                          {
+                            $and: [
+                              { $ne: ['$question.answer', null] },
+                              {
+                                $ne: [
+                                  { $convert: { input: '$question.answer', to: 'string', onError: '', onNull: '' } },
+                                  '',
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+      Equipment.aggregate([
+        { $match: projectMatch },
+        { $project: { functionalTests: 1 } },
+        { $unwind: { path: '$functionalTests', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: null,
+            totalTests: { $sum: { $cond: [{ $ne: ['$functionalTests', null] }, 1, 0] } },
+            doneTests: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$functionalTests', null] },
+                      {
+                        $or: [
+                          { $eq: ['$functionalTests.pass', true] },
+                          { $eq: ['$functionalTests.pass', false] },
+                          { $eq: ['$functionalTests.done', true] },
+                          { $eq: ['$functionalTests.is_complete', true] },
+                          {
+                            $and: [
+                              { $ne: ['$functionalTests.answer', null] },
+                              {
+                                $ne: [
+                                  { $convert: { input: '$functionalTests.answer', to: 'string', onError: '', onNull: '' } },
+                                  '',
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            passTests: { $sum: { $cond: [{ $eq: ['$functionalTests.pass', true] }, 1, 0] } },
+            failTests: { $sum: { $cond: [{ $eq: ['$functionalTests.pass', false] }, 1, 0] } },
+          },
+        },
+      ]),
+    ])
+
+    const equipmentBySystem = Array.isArray(equipmentBySystemAgg)
+      ? equipmentBySystemAgg.map((x) => ({ name: String(x?._id || 'Unknown'), count: Number(x?.count || 0) }))
+      : []
+    const equipmentByStatus = Array.isArray(equipmentByStatusAgg)
+      ? equipmentByStatusAgg.map((x) => ({ name: String(x?._id || 'Unknown'), count: Number(x?.count || 0) }))
+      : []
+    const checklistsBySystem = Array.isArray(checklistsBySystemAgg)
+      ? checklistsBySystemAgg
+          .filter((x) => x && x.system)
+          .map((x) => ({
+            system: String(x.system),
+            checklistsCount: Number(x.checklistsCount || 0),
+            equipmentCount: Number(x.equipmentCount || 0),
+          }))
+      : []
+    const issuesByEquipmentSystem = Array.isArray(issuesByEquipmentSystemAgg)
+      ? issuesByEquipmentSystemAgg
+          .filter((x) => x && x.system)
+          .map((x) => ({ system: String(x.system), issuesCount: Number(x.issuesCount || 0) }))
+      : []
+
+    const checklistTotals = (Array.isArray(checklistProgressAgg) && checklistProgressAgg[0]) ? checklistProgressAgg[0] : {}
+    const totalQuestions = Number(checklistTotals.totalQuestions || 0)
+    const answeredQuestions = Number(checklistTotals.answeredQuestions || 0)
+    const checklistProgressPct = totalQuestions ? Math.round((answeredQuestions / totalQuestions) * 100) : 0
+
+    const fptTotals = (Array.isArray(fptProgressAgg) && fptProgressAgg[0]) ? fptProgressAgg[0] : {}
+    const totalTests = Number(fptTotals.totalTests || 0)
+    const doneTests = Number(fptTotals.doneTests || 0)
+    const passTests = Number(fptTotals.passTests || 0)
+    const failTests = Number(fptTotals.failTests || 0)
+    const fptProgressPct = totalTests ? Math.round((doneTests / totalTests) * 100) : 0
+
+    return res.status(200).send({
+      equipmentBySystem,
+      equipmentByStatus,
+      checklistsBySystem,
+      issuesByEquipmentSystem,
+      checklistProgress: { answeredQuestions, totalQuestions, pct: checklistProgressPct },
+      fptProgress: { doneTests, totalTests, pct: fptProgressPct, passTests, failTests },
+    })
+  } catch (error) {
+    console.error('[equipment] analytics error', error && (error.stack || error.message || error))
+    return res.status(500).send({ error: 'Failed to load equipment analytics' })
+  }
+})
+
 // Read all equipment (paginated, filtered, light projection)
 router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {

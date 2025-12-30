@@ -762,6 +762,50 @@
               Account settings and preferences.
             </p>
             <div class="rounded-md p-3 bg-white/6 border border-white/10">
+              <div class="mb-4">
+                <div class="text-sm text-white/70 mb-2">
+                  Default views
+                </div>
+                <label class="flex items-start gap-3">
+                  <input
+                    v-model="local.contact.ui.equipmentListChartsDefault"
+                    type="checkbox"
+                    class="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-emerald-400 focus:ring-emerald-400/40"
+                  >
+                  <span class="text-sm text-white/80">
+                    Show Equipment analytics charts by default
+                    <span class="block text-xs text-white/60 mt-1">
+                      You can still toggle charts on/off per session from the Equipment page.
+                    </span>
+                  </span>
+                </label>
+                <label class="flex items-start gap-3 mt-3">
+                  <input
+                    v-model="local.contact.ui.issuesListChartsDefault"
+                    type="checkbox"
+                    class="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-emerald-400 focus:ring-emerald-400/40"
+                  >
+                  <span class="text-sm text-white/80">
+                    Show Issues analytics charts by default
+                    <span class="block text-xs text-white/60 mt-1">
+                      You can still toggle charts on/off per session from the Issues page.
+                    </span>
+                  </span>
+                </label>
+                <label class="flex items-start gap-3 mt-3">
+                  <input
+                    v-model="local.contact.ui.tasksListChartsDefault"
+                    type="checkbox"
+                    class="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-emerald-400 focus:ring-emerald-400/40"
+                  >
+                  <span class="text-sm text-white/80">
+                    Show Tasks analytics charts by default
+                    <span class="block text-xs text-white/60 mt-1">
+                      You can still toggle charts on/off per session from the Tasks page.
+                    </span>
+                  </span>
+                </label>
+              </div>
               <div class="text-sm text-white/70 mb-2">
                 Signature on file
               </div>
@@ -918,7 +962,12 @@ const local = reactive({
     // optional signature stored on profile
     signature: { title: '', person: '', block: '' },
     // optional per-page preference for list pages
-    perPage: null
+    perPage: null,
+    ui: {
+      equipmentListChartsDefault: false,
+      issuesListChartsDefault: false,
+      tasksListChartsDefault: false,
+    },
   },
   social_media: {
     linkedin: '',
@@ -1055,6 +1104,7 @@ function applyUserToLocal(u) {
   local.contact.avatar = u.contact?.avatar || ''
   local.contact.signature = u.contact?.signature || { title: '', person: '', block: '' }
   local.contact.perPage = u.contact?.perPage || null
+  local.contact.ui = { equipmentListChartsDefault: false, issuesListChartsDefault: false, tasksListChartsDefault: false, ...(u.contact?.ui || {}) }
   local.social_media = u.social_media || { linkedin: '', x: '', github: '' }
   local.avatar = u.avatar || u.contact?.avatar || ''
 }
@@ -1111,7 +1161,8 @@ async function save() {
       bio: local.contact.bio,
       avatar: local.contact.avatar,
       signature: local.contact.signature,
-      perPage: local.contact.perPage
+      perPage: local.contact.perPage,
+      ui: local.contact.ui,
     },
     social_media: local.social_media,
     avatar: local.avatar
@@ -1179,6 +1230,7 @@ function reset() {
   local.contact.address = auth.user?.contact?.address || { street: '', city: '', state: '', zip: '', country: '', taxId: '' }
   local.contact.bio = auth.user?.contact?.bio || ''
   local.contact.avatar = auth.user?.contact?.avatar || ''
+  local.contact.ui = { equipmentListChartsDefault: false, issuesListChartsDefault: false, tasksListChartsDefault: false, ...(auth.user?.contact?.ui || {}) }
   local.contact.signature = auth.user?.contact?.signature || { title: '', person: '', block: '' }
   local.contact.perPage = auth.user?.contact?.perPage || null
   local.social_media.linkedin = auth.user?.social_media?.linkedin || ''

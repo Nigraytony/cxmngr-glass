@@ -22,6 +22,7 @@ export interface Activity {
   name: string
   descriptionHtml?: string
   type?: string
+  status?: 'draft' | 'published' | 'completed'
   startDate?: string
   endDate?: string
   projectId: string
@@ -57,7 +58,7 @@ export const useActivitiesStore = defineStore('activities', () => {
 
   function normalize(a: any): Activity & any {
     if (!a) return a
-    return { ...a, id: a._id || a.id }
+    return { ...a, id: a._id || a.id, status: a.status || 'draft' }
   }
 
   function isDeletedActivity(a: any): boolean {
