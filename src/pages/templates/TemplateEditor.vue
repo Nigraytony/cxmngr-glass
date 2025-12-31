@@ -1190,10 +1190,7 @@
       </div>
 
       <!-- Footer navigation across all tabs -->
-      <div class="mt-6 pt-3 border-t border-white/10 flex items-center gap-2 justify-between">
-        <div class="text-xs text-white/60">
-          {{ positionText }}
-        </div>
+      <div class="mt-6 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2 justify-start">
         <div class="flex items-center gap-2">
           <button
             :disabled="!prevTemplateId"
@@ -1209,6 +1206,12 @@
           >
             Next
           </button>
+        </div>
+        <div
+          v-if="positionText"
+          class="w-full text-center text-xs text-white/60"
+        >
+          {{ positionText }}
         </div>
       </div>
     </div>

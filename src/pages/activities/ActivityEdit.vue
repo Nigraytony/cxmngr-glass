@@ -2477,6 +2477,27 @@ onMounted(async () => {
     if (pid) form.projectId = String(pid)
     const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()+0).padStart(2,'0')
     form.startDate = `${yyyy}-${mm}-${dd}`; form.endDate = `${yyyy}-${mm}-${dd}`
+    if (isNew.value) {
+      try {
+        const q: any = (route.query as any) || {}
+        const name = String(q.name || q.title || '').trim()
+        const type = String(q.type || '').trim()
+        const location = String(q.location || '').trim()
+        const spaceId = String(q.spaceId || '').trim()
+        const status = String(q.status || '').trim().toLowerCase()
+        const startDate = String(q.startDate || '').trim()
+        const endDate = String(q.endDate || '').trim()
+
+        if (name) form.name = name
+        if (type && types.includes(type)) form.type = type
+        if (location) form.location = location
+        if (spaceId) form.spaceId = spaceId
+        if (status === 'draft' || status === 'published' || status === 'completed') (form as any).status = status
+        const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v)
+        if (startDate && isDate(startDate)) form.startDate = startDate
+        if (endDate && isDate(endDate)) form.endDate = endDate
+      } catch (_) { /* ignore prefill errors */ }
+    }
     if (!isNew.value) {
       let activityData: any = null
       // Prefer project-scoped list lookup to avoid 404 noise

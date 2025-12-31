@@ -21,6 +21,7 @@ const AdminProjects = () => import('../pages/admin/Projects.vue')
 const AdminTemplates = () => import('../pages/admin/Templates.vue')
 const AdminTaskTemplates = () => import('../pages/admin/TaskTemplates.vue')
 const AdminTaskTemplateEdit = () => import('../pages/admin/TaskTemplateEdit.vue')
+const AdminAssistantArticles = () => import('../pages/admin/AssistantArticles.vue')
 const AdminBilling = () => import('../pages/admin/Billing.vue')
 const ActivityEdit = () => import('../pages/activities/ActivityEdit.vue')
 const SpaceEdit = () => import('../pages/spaces/EditSpaces.vue')
@@ -73,6 +74,7 @@ const routes = [
         { path: 'admin/templates/:id', name: 'admin-templates-edit', component: () => import('../pages/admin/TemplateEdit.vue'), meta: { adminOnly: true }, props: true },
         { path: 'admin/templates/task-templates', name: 'admin-task-templates', component: AdminTaskTemplates, meta: { adminOnly: true } },
         { path: 'admin/templates/task-templates/:id', name: 'admin-task-templates-edit', component: AdminTaskTemplateEdit, meta: { adminOnly: true }, props: true },
+        { path: 'admin/assistant-articles', name: 'admin-assistant-articles', component: AdminAssistantArticles, meta: { adminOnly: true } },
         { path: 'admin/billing', name: 'admin-billing', component: AdminBilling, meta: { adminOnly: true } },
       { path: 'profile', name: 'profile', component: Profile },
     ]
@@ -171,7 +173,6 @@ router.beforeEach(async (to) => {
 
   // Feature gating based on project subscription features
   const featureRouteMap = {
-    ai: ['assistant'],
     spaces: ['spaces', 'space-edit'],
     equipment: ['equipment', 'equipment-edit'],
     templates: ['templates', 'template-edit'],

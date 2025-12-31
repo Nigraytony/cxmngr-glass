@@ -813,9 +813,9 @@
       <!-- pagination controls -->
       <div
         v-if="filtered.length"
-        class="flex items-center justify-between px-2 py-3 text-white/70 text-sm"
+        class="grid gap-2 px-2 py-3 text-white/70 text-sm md:grid-cols-[1fr_auto_1fr] md:items-center"
       >
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 md:justify-self-start">
           <span>Rows per page</span>
           <select
             v-model.number="pageSize"
@@ -831,7 +831,7 @@
           </select>
           <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ displayTotal }}</span>
         </div>
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1 md:justify-self-center">
           <button
             :disabled="page === 1"
             class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
@@ -848,6 +848,10 @@
             Next
           </button>
         </div>
+        <div
+          aria-hidden="true"
+          class="hidden md:block"
+        />
       </div>
     </div>
 

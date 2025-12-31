@@ -27,6 +27,9 @@
         </main>
       </div>
     </div>
+
+    <AskAssistantButton />
+    <AssistantModal />
   </div>
 </template>
 
@@ -34,6 +37,8 @@
 import Sidebar from '../components/Sidebar.vue'
 import Topbar from '../components/Topbar.vue'
 import Spinner from '../components/Spinner.vue'
+import AskAssistantButton from '../components/assistant/AskAssistantButton.vue'
+import AssistantModal from '../components/assistant/AssistantModal.vue'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'

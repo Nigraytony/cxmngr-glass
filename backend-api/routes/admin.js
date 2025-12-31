@@ -35,6 +35,7 @@ const { rateLimit } = require('../middleware/rateLimit')
 const crypto = require('crypto')
 // Project model already required above (used by webhook replay logic)
 const sanitizeHtml = require('sanitize-html')
+const adminAssistantArticlesRoutes = require('./adminAssistantArticles')
 
 function normalizeShortString(value, { maxLen = 256 } = {}) {
   if (value === undefined || value === null) return null
@@ -215,6 +216,8 @@ async function resolveProjectCustomerId(project) {
 }
 
 // GET /api/admin/webhook-events?limit=50&status=processed&skip=0&date_from=2025-10-01&date_to=2025-10-21&projectId=...
+router.use('/assistant-articles', adminAssistantArticlesRoutes)
+
 router.get('/webhook-events', async (req, res) => {
   try {
     if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });

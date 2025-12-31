@@ -337,7 +337,7 @@
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 mt-3">
+      <div class="flex justify-start gap-2 mt-3">
         <RouterLink
           to="/app/tasks"
           class="px-3 py-2 rounded bg-white/6 text-white"

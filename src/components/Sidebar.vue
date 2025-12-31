@@ -58,9 +58,7 @@
         <span v-if="open">Dashboard</span>
       </RouterLink>
       <!-- Assistant -->
-      <!--
       <RouterLink
-        v-if="featureEnabled('ai')"
         to="/app/assistant"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -71,7 +69,6 @@
         <span class="i">🤖</span>
         <span v-if="open">Assistant</span>
       </RouterLink>
-      -->
       <!-- Tasks -->
       <RouterLink
         v-if="featureEnabled('tasks')"

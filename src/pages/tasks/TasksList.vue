@@ -865,13 +865,14 @@ import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import TasksListCharts from '../../components/charts/TasksListCharts.vue'
 import { http } from '../../utils/http'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const projectStore = useProjectStore()
 const ui = useUiStore()
 const auth = useAuthStore()
 const activitiesStore = useActivitiesStore()
 const router = useRouter()
+const route = useRoute()
 const projectId = computed(() => projectStore.currentProjectId)
 const tasks = ref([])
 const q = ref('')
@@ -1257,6 +1258,7 @@ watch(() => projectStore.currentProjectId, () => {
   loadAnalyticsState()
   if (showAnalytics.value) fetchTasksAnalytics().catch(() => {})
   fetch()
+  handleImportDeepLink().catch(() => {})
 })
 // when tasks change we may want to reload persisted collapsed ids to keep consistency
 watch(tasks, () => { /* noop placeholder - keep collapsed ids by id, no action needed */ })
@@ -1628,11 +1630,51 @@ function onCsvFileSelected(e) {
   uploadFile(f, 'csv').catch(() => {})
 }
 
+function asBoolQuery(v) {
+  const s = String(v || '').trim().toLowerCase()
+  return s === '1' || s === 'true' || s === 'yes'
+}
+
+function normalizeImportTab(v) {
+  const s = String(v || '').trim().toLowerCase()
+  if (s === 'template') return 'template'
+  if (s === 'upload-xml' || s === 'xml') return 'upload-xml'
+  if (s === 'upload-csv' || s === 'csv') return 'upload-csv'
+  return null
+}
+
 function openImportModal() {
   showImportModal.value = true
   importTab.value = 'template'
   selectedTemplateId.value = ''
   loadTaskTemplates().catch(() => {})
+}
+
+async function handleImportDeepLink() {
+  if (!projectStore.currentProjectId) return
+  const shouldOpen = asBoolQuery(route.query.import) || asBoolQuery(route.query.openImport)
+  if (!shouldOpen) return
+
+  const nextTab = normalizeImportTab(route.query.tab)
+  const nextQuery = String(route.query.templateQ || route.query.q || '').trim()
+
+  showImportModal.value = true
+  importTab.value = nextTab || 'template'
+  selectedTemplateId.value = ''
+
+  if (importTab.value === 'template') {
+    templateQuery.value = nextQuery
+    await loadTaskTemplates()
+  }
+
+  // Clear query params so we don't reopen on subsequent reactive updates.
+  const next = { ...route.query }
+  delete next.import
+  delete next.openImport
+  delete next.tab
+  delete next.templateQ
+  delete next.q
+  router.replace({ query: next }).catch(() => {})
 }
 
 async function loadTaskTemplates() {
@@ -1926,6 +1968,7 @@ onMounted(() => {
   fetch()
   loadCollapsed()
   if (showAnalytics.value) fetchTasksAnalytics().catch(() => {})
+  handleImportDeepLink().catch(() => {})
 })
 
 function confirmDelete(t) {

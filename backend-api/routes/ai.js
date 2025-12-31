@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { auth } = require('../middleware/auth')
-const { requireFeature } = require('../middleware/planGuard')
+const { requireFeature, getPlan } = require('../middleware/planGuard')
 const { requireActiveProject } = require('../middleware/subscription')
 const Project = require('../models/project')
 const { decryptString } = require('../utils/encryption')
@@ -68,6 +68,13 @@ function normalizeProvider(v) {
   return 'openai'
 }
 
+function hasServerKeyForProvider(provider) {
+  const p = normalizeProvider(provider)
+  if (p === 'gemini') return Boolean(asString(process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || '').trim())
+  if (p === 'claude') return Boolean(asString(process.env.ANTHROPIC_API_KEY || '').trim())
+  return Boolean(asString(process.env.OPENAI_API_KEY || '').trim())
+}
+
 function normalizeTags(input) {
   const arr = Array.isArray(input) ? input : []
   const out = []
@@ -126,6 +133,70 @@ function tryParseJson(text) {
   }
   return null
 }
+
+// GET /api/ai/status?projectId=...
+// Returns non-sensitive configuration state for UI purposes (no secrets).
+router.get(
+  '/status',
+  auth,
+  requireNotDisabled('ai'),
+  requireActiveProject,
+  rateLimit({ windowMs: 60_000, max: 120, keyPrefix: 'ai-status' }),
+  async (req, res) => {
+    try {
+      const projectId = asString(req.query && req.query.projectId).trim()
+      if (!projectId) return res.status(400).json({ error: 'projectId is required' })
+      if (!isObjectId(projectId)) return res.status(400).json({ error: 'Invalid projectId' })
+
+      const project = await Project.findById(projectId)
+        .select('team users subscriptionTier stripePriceId priceId subscriptionFeatures ai.enabled ai.provider ai.model ai.hasKey')
+        .lean()
+      if (!project) return res.status(404).json({ error: 'Project not found' })
+      if (!isProjectMember(project, req.user)) return res.status(403).json({ error: 'Forbidden' })
+
+      const plan = getPlan(project)
+      const planAllowsAi = Boolean(plan && plan.features && plan.features.ai === true)
+
+      const ai = project.ai || {}
+      const provider = normalizeProvider(ai.provider)
+      const model =
+        provider === 'gemini'
+          ? (asString(ai.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim() || 'gemini-1.5-flash')
+          : provider === 'claude'
+            ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest')
+            : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
+      const enabled = ai.enabled === true
+      const hasProjectKey = ai.hasKey === true
+      const hasServerKey = hasServerKeyForProvider(provider)
+
+      const keySource = hasProjectKey ? 'project' : (hasServerKey ? 'server' : null)
+      const canChat = planAllowsAi && enabled && (hasProjectKey || hasServerKey)
+      const reason =
+        !planAllowsAi ? 'FEATURE_NOT_IN_PLAN' :
+        !enabled ? 'AI_DISABLED' :
+        (!hasProjectKey && !hasServerKey) ? 'AI_NOT_CONFIGURED' :
+        null
+
+      return res.json({
+        projectId,
+        plan: { key: plan?.key || null, allowsAi: planAllowsAi },
+        ai: {
+          enabled,
+          provider,
+          model,
+          hasProjectKey,
+          hasServerKey,
+          keySource,
+          canChat,
+          ...(reason ? { reason } : {}),
+        },
+      })
+    } catch (err) {
+      console.error('[ai] status error', { reqId: req.id, error: err && (err.stack || err.message || err) })
+      return res.status(500).json({ error: 'Failed to load AI status', reqId: req.id || null })
+    }
+  }
+)
 
 async function callOpenAiChat({ apiKey, model, messages }) {
   const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -264,7 +335,8 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
     if (!isObjectId(projectId)) return res.status(400).json({ error: 'Invalid projectId' })
 
     const project = await Project.findById(projectId)
-      .select('team users ai +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
+      // Avoid projection path collisions by selecting specific ai fields instead of `ai` plus nested encrypted fields.
+      .select('team users ai.enabled ai.provider ai.model ai.hasKey +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
       .lean()
     if (!project) return res.status(404).json({ error: 'Project not found' })
     if (!isProjectMember(project, req.user)) return res.status(403).json({ error: 'Forbidden' })
@@ -304,7 +376,14 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
       'Never fabricate IDs, database values, or project-specific facts.',
     ].join(' ')
 
-    const ctxLine = context ? `Context (may help): ${JSON.stringify(context).slice(0, 2000)}` : ''
+    let ctxLine = ''
+    if (context) {
+      try {
+        ctxLine = `Context (may help): ${JSON.stringify(context).slice(0, 2000)}`
+      } catch (e) {
+        ctxLine = 'Context (may help): [unserializable context object]'
+      }
+    }
     const messages = [
       { role: 'system', content: system },
       ...(ctxLine ? [{ role: 'system', content: ctxLine }] : []),
@@ -324,8 +403,9 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
     }
     return res.status(200).json({ message: text || '' })
   } catch (err) {
-    console.error('[ai] chat error', err && (err.stack || err.message || err))
-    return res.status(500).json({ error: 'AI request failed' })
+    const msg = err && err.message ? String(err.message) : ''
+    console.error('[ai] chat error', { reqId: req.id, error: err && (err.stack || err.message || err) })
+    return res.status(500).json({ error: msg || 'AI request failed', reqId: req.id || null })
   }
 })
 
@@ -341,7 +421,8 @@ router.post('/suggest-tags', auth, requireNotDisabled('ai'), requireBodyField('p
     if (!entityType) return res.status(400).json({ error: 'entityType is required' })
 
     const project = await Project.findById(projectId)
-      .select('team users tags ai +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
+      // Avoid projection path collisions by selecting specific ai fields instead of `ai` plus nested encrypted fields.
+      .select('team users tags ai.enabled ai.provider ai.model ai.hasKey +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
       .lean()
     if (!project) return res.status(404).json({ error: 'Project not found' })
     if (!isProjectMember(project, req.user)) return res.status(403).json({ error: 'Forbidden' })
@@ -421,8 +502,9 @@ router.post('/suggest-tags', auth, requireNotDisabled('ai'), requireBodyField('p
 
     return res.status(200).json({ tags })
   } catch (err) {
-    console.error('[ai] suggest-tags error', err && (err.stack || err.message || err))
-    return res.status(500).json({ error: 'AI request failed' })
+    const msg = err && err.message ? String(err.message) : ''
+    console.error('[ai] suggest-tags error', { reqId: req.id, error: err && (err.stack || err.message || err) })
+    return res.status(500).json({ error: msg || 'AI request failed', reqId: req.id || null })
   }
 })
 

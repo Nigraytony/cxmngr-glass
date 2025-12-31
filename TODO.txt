@@ -214,3 +214,44 @@ TONE
 - Be concise but not cryptic.
 - Favor practical guidance over theory.
 - When something is risky or suboptimal, say so and suggest a better alternative.
+
+
+Assistant module
+The assistant module is cxma's way of guiding the CxA/admin through the commissioning process to meet the project scope and remain LEED/ASHRAE/Cx compliant.
+
+IP / Copyright safety (Assistant)
+- Default behavior: store only CXMA-authored guidance, plus links/citations to official sources. Do not copy/paste copyrighted standards text into CXMA.
+- Future “user uploads standards PDF and ask questions” requires explicit licensing/terms review + strict safeguards (project-scoped, no redistribution, excerpt limits, retention/deletion).
+
+UI/UX (global + dedicated page)
+- [x] Floating "Ask Assistant" button visible across `/app/*` pages (opens modal; does not reroute).
+- [x] Modal includes "Open full Assistant" option (routes to `/app/assistant`).
+- [x] First-run closable intro/notification (persisted client-side).
+- [x] Dedicated `/app/assistant` page scaffolded as split layout (checklist left, docs/chat right).
+- [x] Assistant available to all subscription plans (AI features gated separately).
+- [x] Provide a compliance checklist UI (checkable, visual completed state).
+- [x] Provide context-driven documentation panel (trusted sources only).
+- [ ] Provide tips/coachmarks throughout app via toasts/alerts (non-spammy; per-user dismissal).
+
+AI behavior (Premium only)
+- [x] Premium-only chat UI wired to existing AI store/providers.
+- [x] AI chat integrates with Assistant docs panel (grounding/context selection + trusted links).
+- [ ] Auto-tagging + extraction flows exposed in UI (where relevant).
+
+Project-driven behavior
+- [x] Read `project.type` and suggest/offer automated actions (task templates, compliance guidance).
+- [ ] "Generate tasks from project type" action (creates tasks in current project; confirmation required).
+
+Permissions & safety
+- [ ] Enforce assistant scope restrictions server-side (no profile, no billing; project-scoped only; read subscription plan).
+- [ ] Never allow: PII handling, sending emails, billing changes, destructive actions.
+- [ ] Require explicit confirmation before destructive actions (delete tasks/activities/etc).
+
+Chat storage
+- [x] Persist chats per-project (visibility: project members; Premium-only).
+- [x] Decide retention policy (90 days rolling TTL, capped at 300 messages per project).
+- [x] Export/delete controls (currently: no).
+
+Polish (button overlap fixes)
+- [x] Avoid "Ask Assistant" covering key bottom action bars (TaskEdit/EquipmentEdit/TemplateEditor).
+- [x] Avoid "Ask Assistant" covering pagination controls (SpacesList/EquipmentList/IssuesList).

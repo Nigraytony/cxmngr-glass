@@ -2104,6 +2104,17 @@ const upgradeFeature = computed(() => {
   return q && ['spaces','equipment','templates','activities','issues','tasks','ai'].includes(q) ? q : ''
 })
 
+function setActiveTabFromQuery() {
+  const t = String(route.query.tab || '').trim().toLowerCase()
+  if (!t) return
+  const allowed = ['info', 'team', 'logo', 'subscription', 'settings', 'logs']
+  if (allowed.includes(t)) activeTab.value = t
+}
+
+watch(() => route.query.tab, () => {
+  setActiveTabFromQuery()
+})
+
 // Recommend a plan for a given feature (simple mapping; adjust as needed)
 function recommendPlanForFeature(f) {
   const key = String(f || '').toLowerCase()
@@ -3189,6 +3200,7 @@ function tabClass(t) {
 // local showToast removed; use `ui.showSuccess` / `ui.showError` instead
 
 onMounted(async () => {
+  setActiveTabFromQuery()
   if (projectId) {
     try {
       const p = await projectStore.fetchProject(projectId)

@@ -1143,8 +1143,8 @@
       </div>
 
       <!-- Bottom navigation: Report actions + Previous/Next across equipment -->
-      <div class="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sticky bottom-0 z-20 bg-white/6 backdrop-blur-xl">
-        <div class="flex items-center gap-2">
+      <div class="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-start gap-2 sticky bottom-0 z-20 bg-white/6 backdrop-blur-xl">
+        <div class="flex items-center flex-wrap gap-2">
           <button
             v-if="prevEquipmentId"
             class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
@@ -1164,11 +1164,7 @@
             /></svg>
             <span>Previous</span>
           </button>
-        </div>
-        <div class="flex-1 text-center text-xs text-white/60">
-          <span v-if="positionText">{{ positionText }}</span>
-        </div>
-        <div class="flex items-center gap-2">
+
           <button
             class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
             title="Report settings"
@@ -1189,6 +1185,7 @@
             /></svg>
             <span>Report Settings</span>
           </button>
+
           <button
             class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
             title="Download PDF report"
@@ -1219,6 +1216,7 @@
             /></svg>
             <span>Download PDF</span>
           </button>
+
           <button
             v-if="nextEquipmentId"
             class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
@@ -1238,6 +1236,13 @@
               stroke-linejoin="round"
             /></svg>
           </button>
+        </div>
+
+        <div
+          v-if="positionText"
+          class="w-full text-center text-xs text-white/60"
+        >
+          {{ positionText }}
         </div>
       </div>
     </div>

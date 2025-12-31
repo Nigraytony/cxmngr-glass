@@ -216,6 +216,41 @@
           <span>Billing (Coupons & Credits)</span>
         </div>
       </router-link>
+      <router-link
+        :to="{ name: 'admin-assistant-articles' }"
+        class="p-4 rounded bg-white/5 border border-white/10 text-white"
+      >
+        <div class="flex items-center gap-3">
+          <svg
+            class="w-5 h-5 text-white/80"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden
+          >
+            <path
+              d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M6.5 3H20v18H6.5A2.5 2.5 0 0 1 4 18.5V5.5A2.5 2.5 0 0 1 6.5 3Z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M8 7h8M8 11h8M8 15h6"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>Assistant Articles</span>
+        </div>
+      </router-link>
       <!-- Send Test Email -->
       <div class="p-4 rounded bg-white/5 border border-white/10 text-white space-y-2">
         <div class="flex items-center justify-between gap-3">

@@ -19,6 +19,7 @@ const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
 const aiRoutes = require('./routes/ai');
+const assistantRoutes = require('./routes/assistant');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -204,6 +205,8 @@ app.use('/api/stripe', webhookRoutes);
 app.use('/api/plans', plansRoutes);
 // AI endpoints (plan-gated per project)
 app.use('/api/ai', aiRoutes);
+// Assistant endpoints (project-scoped; AI gated separately)
+app.use('/api/assistant', assistantRoutes);
 
 // Central error handler (always last)
 app.use(errorHandler);
