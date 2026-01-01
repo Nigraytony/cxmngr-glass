@@ -255,8 +255,8 @@ Project-driven behavior
 
 Permissions & safety
 - [x] Enforce assistant project access server-side on assistant endpoints (project-scoped; requires active project).
-- [ ] Enforce stricter assistant scope restrictions for AI chat/tooling (no profile, no billing; project-scoped only; read subscription plan).
-- [ ] Never allow: PII handling, sending emails, billing changes, destructive actions.
+- [x] Enforce stricter assistant scope restrictions for AI chat/tooling (project-scoped only; plan-gated; server-side guardrails + disallowed request detection).
+- [x] Never allow: PII handling, sending emails, billing changes, destructive actions (server-side preflight refusal in `/api/ai/chat`).
 - [ ] Require explicit confirmation before destructive actions (delete tasks/activities/etc).
 
 Chat storage

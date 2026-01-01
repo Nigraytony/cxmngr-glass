@@ -209,12 +209,17 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from '../Modal.vue'
 import { useAssistantStore } from '../../stores/assistant'
+import { useAuthStore } from '../../stores/auth'
+import { useUiStore } from '../../stores/ui'
 import AssistantChat from './AssistantChat.vue'
 import AssistantHelper from './AssistantHelper.vue'
 import http from '../../utils/http'
+import { coachmarkStorageKey, hasSeenCoachmark, markCoachmarkSeen } from '../../utils/coachmarks'
 
 const assistant = useAssistantStore()
 const router = useRouter()
+const auth = useAuthStore()
+const ui = useUiStore()
 
 function normalizeFeatureFlags(raw: any) {
   const out: Record<string, boolean> = {}
@@ -287,7 +292,16 @@ async function fetchAiStatus() {
 }
 
 watch(() => assistant.open, (v) => {
-  if (v) void fetchAiStatus()
+  if (!v) return
+  void fetchAiStatus()
+
+  const projectId = String(assistant.context?.projectId || '').trim()
+  if (!projectId) return
+  const userId = auth.user?._id ? String(auth.user._id) : null
+  const key = coachmarkStorageKey('assistant.modal.tip', { projectId, userId })
+  if (hasSeenCoachmark(key)) return
+  markCoachmarkSeen(key)
+  ui.showInfo('Tip: Click a checklist item to read guidance. Use the checkbox to mark it complete.', { duration: 10000 })
 })
 watch(() => assistant.context?.projectId, () => {
   if (assistant.open) void fetchAiStatus()
