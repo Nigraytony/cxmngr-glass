@@ -23,7 +23,9 @@ describe('Invite flow integration', function () {
     process.env.SMTP_HOST = process.env.SMTP_HOST || 'localhost';
     process.env.SMTP_PORT = process.env.SMTP_PORT || '2525';
 
-    // Require the app after env is configured so DB connects to the in-memory server
+    // Ensure a fresh app instance so connectMongo() runs after previous tests disconnected
+    try { delete require.cache[require.resolve('../index')]; } catch (e) {}
+    // Require the app after env is configured so DB connects to the server
     app = require('../index.js');
 
     // Wait for mongoose to connect (connectMongo in index.js attempts connection)

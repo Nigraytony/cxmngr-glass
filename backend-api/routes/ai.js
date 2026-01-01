@@ -134,6 +134,85 @@ function tryParseJson(text) {
   return null
 }
 
+function buildAssistantGuardrailsText() {
+  return [
+    'Safety + scope rules:',
+    '- You are project-scoped. Do not access or infer user profile data or billing details.',
+    '- Do NOT request, accept, or handle secrets (API keys, passwords, tokens). If a user shares one, instruct them to revoke/rotate it and use Project Settings instead.',
+    '- Do NOT send emails, invites, or notifications on the user’s behalf. Provide in-app guidance only.',
+    '- Do NOT change billing/subscriptions. Provide navigation guidance to Project Settings → Subscription.',
+    '- Do NOT perform or instruct destructive actions (delete/wipe data). If asked, explain how to do it safely in the UI and require explicit user confirmation.',
+    '- Do NOT provide or process sensitive PII (SSNs, passport IDs, credit cards, bank details).',
+  ].join('\n')
+}
+
+function detectDisallowedAiRequest(text) {
+  const t = asString(text).toLowerCase()
+  if (!t) return null
+
+  const hasAny = (re) => re.test(t)
+
+  // Secrets / credentials
+  if (hasAny(/\b(api[_\-\s]?key|openai[_\-\s]?key|anthropic[_\-\s]?key|gemini[_\-\s]?key|secret|password|token|bearer)\b/)) {
+    return {
+      code: 'DISALLOWED_SECRETS',
+      message: [
+        'I can’t help with secrets (API keys, passwords, tokens).',
+        'Please do not paste keys into chat. Revoke/rotate any key that was shared, then add your key via Project Settings → AI.',
+      ].join('\n'),
+    }
+  }
+
+  // Billing changes
+  const billingKeyword = /\b(billing|subscription|stripe|invoice|payment|charge|card|credit\s*card)\b/
+  const billingAction = /\b(cancel|upgrade|downgrade|change|update|refund)\b/
+  if (hasAny(billingKeyword) && hasAny(billingAction)) {
+    return {
+      code: 'DISALLOWED_BILLING',
+      message: [
+        'I can’t make billing or subscription changes.',
+        'To manage billing, go to Project Settings → Subscription.',
+      ].join('\n'),
+    }
+  }
+
+  // Emails (sending)
+  const emailAction = /\b(send|email|mail|smtp)\b/
+  const emailTarget = /\b(to|recipient|invite|invitation|reset)\b/
+  if (hasAny(emailAction) && hasAny(emailTarget) && hasAny(/\bemail\b/)) {
+    return {
+      code: 'DISALLOWED_EMAIL',
+      message: [
+        'I can’t send emails on your behalf.',
+        'If you’re trying to invite someone, use the in-app invite flow in Project Settings → Team.',
+      ].join('\n'),
+    }
+  }
+
+  // PII
+  if (hasAny(/\b(ssn|social\s*security|passport|driver'?s\s*license|credit\s*card|cvv|cvc|routing\s*number|bank\s*account)\b/)) {
+    return {
+      code: 'DISALLOWED_PII',
+      message: 'I can’t help with sensitive personal or financial information.',
+    }
+  }
+
+  // Destructive actions
+  const destructiveVerb = /\b(delete|remove|destroy|wipe|purge|drop)\b/
+  const destructiveTarget = /\b(project|task|tasks|activity|activities|issue|issues|equipment|template|templates|space|spaces|database|db)\b/
+  if (hasAny(destructiveVerb) && hasAny(destructiveTarget)) {
+    return {
+      code: 'DISALLOWED_DESTRUCTIVE',
+      message: [
+        'I can’t perform destructive actions like deleting or wiping data.',
+        'If you want, tell me exactly what you want to remove and I can walk you through the safest way to do it in CXMA (with confirmations).',
+      ].join('\n'),
+    }
+  }
+
+  return null
+}
+
 // GET /api/ai/status?projectId=...
 // Returns non-sensitive configuration state for UI purposes (no secrets).
 router.get(
@@ -343,6 +422,14 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
     const ai = project.ai || {}
     if (!ai.enabled) return res.status(403).json({ error: 'AI is disabled for this project' })
 
+    const userMessages = normalizeMessages(req.body && req.body.messages)
+    const lastUser = [...userMessages].reverse().find((m) => m && m.role === 'user') || null
+    const disallowed = detectDisallowedAiRequest(lastUser ? lastUser.content : '')
+    if (disallowed) {
+      // Return a safe assistant-style reply without calling any provider.
+      return res.status(200).json({ message: disallowed.message })
+    }
+
     // Prefer project key; fallback to server key if present
     let apiKey = ''
     if (ai.hasKey) {
@@ -366,7 +453,6 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
         : provider === 'claude'
           ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest')
         : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
-    const userMessages = normalizeMessages(req.body && req.body.messages)
     const context = (req.body && typeof req.body.context === 'object' && req.body.context) ? req.body.context : null
 
     const system = [
@@ -374,7 +460,8 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
       'Be concise and practical. Prefer checklists, next steps, and clear recommendations.',
       'If the user asks for actions that require app data you do not have, ask what you need.',
       'Never fabricate IDs, database values, or project-specific facts.',
-    ].join(' ')
+      buildAssistantGuardrailsText(),
+    ].join('\n')
 
     let ctxLine = ''
     if (context) {
