@@ -235,7 +235,7 @@
                 <div class="flex items-start justify-between gap-2">
                   <input
                     type="checkbox"
-                    class="mt-0.5 form-checkbox h-5 w-5 rounded bg-white/10 border-white/30 text-emerald-400 cursor-pointer"
+                    class="mt-0.5 form-checkbox h-6 w-6 rounded bg-white/10 border-white/30 text-emerald-400 cursor-pointer"
                     :aria-label="`Mark complete: ${item.title}`"
                     :checked="item.completed === true"
                     :disabled="checklistStore.loading"
@@ -657,16 +657,36 @@
           </div>
 
           <div
-            v-if="canUseAi"
-            class="mt-4 rounded-xl border border-white/10 bg-black/30 overflow-hidden"
-          >
-            <AssistantChat class="h-[420px]" />
-          </div>
-          <div
-            v-else
             class="mt-4"
           >
-            <AssistantHelper />
+            <div
+              v-if="aiStatusLoading"
+              class="text-xs text-white/60"
+            >
+              Loading AI status…
+            </div>
+            <div
+              v-else-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === false"
+              class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-50"
+            >
+              <div class="font-semibold">
+                AI is not ready for this project
+              </div>
+              <div class="mt-1 text-sm text-amber-100/90">
+                <span v-if="aiStatus.ai.reason === 'FEATURE_NOT_IN_PLAN'">Upgrade to the Premium plan to enable AI.</span>
+                <span v-else-if="aiStatus.ai.reason === 'AI_DISABLED'">AI is disabled for this project.</span>
+                <span v-else>AI needs an API key (project key or server key fallback) to operate.</span>
+              </div>
+            </div>
+            <div
+              v-else-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === true"
+              class="rounded-xl border border-white/10 bg-black/30 overflow-hidden"
+            >
+              <AssistantChat class="h-[420px]" />
+            </div>
+            <div v-else>
+              <AssistantHelper />
+            </div>
           </div>
         </div>
       </div>
@@ -689,18 +709,6 @@ import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
 import { confirm } from '../../utils/confirm'
 
-function normalizeTierKey(raw: any) {
-  const s = String(raw || '').toLowerCase().trim()
-  if (!s) return ''
-  if (s === 'basic' || s.startsWith('basic')) return 'basic'
-  if (s === 'standard' || s.startsWith('standard')) return 'standard'
-  if (s === 'premium' || s.startsWith('premium')) return 'premium'
-  if (s.includes('standard')) return 'standard'
-  if (s.includes('premium')) return 'premium'
-  if (s.includes('basic')) return 'basic'
-  return ''
-}
-
 const projectStore = useProjectStore()
 const assistantStore = useAssistantStore()
 const checklistStore = useAssistantChecklistStore()
@@ -711,7 +719,26 @@ const authStore = useAuthStore()
 
 const projectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 const projectType = computed(() => String(projectStore.currentProject?.project_type || projectStore.currentProject?.type || '').trim())
-const canUseAi = computed(() => normalizeTierKey(projectStore.currentProject?.subscriptionTier || projectStore.currentProject?.subscription) === 'premium')
+
+const aiStatusLoading = ref(false)
+const aiStatus = ref<any | null>(null)
+
+async function fetchAiStatus() {
+  const pid = String(projectId.value || '').trim()
+  if (!pid) {
+    aiStatus.value = null
+    return
+  }
+  aiStatusLoading.value = true
+  try {
+    const { data } = await http.get('/api/ai/status', { params: { projectId: pid } })
+    aiStatus.value = data || null
+  } catch (_) {
+    aiStatus.value = null
+  } finally {
+    aiStatusLoading.value = false
+  }
+}
 
 const dismissedRecommendedActionsStorageKey = computed(() => {
   const uid = String(authStore.user?._id || authStore.user?.id || authStore.user?.email || 'anon')
@@ -1032,10 +1059,12 @@ async function ensureLoaded() {
 
 onMounted(() => {
   ensureLoaded().catch(() => {})
+  fetchAiStatus().catch(() => {})
 })
 
 watch(projectId, () => {
   ensureLoaded().catch(() => {})
+  fetchAiStatus().catch(() => {})
   selectedItemId.value = ''
   selectedArticleSlug.value = ''
   articleQuery.value = ''
