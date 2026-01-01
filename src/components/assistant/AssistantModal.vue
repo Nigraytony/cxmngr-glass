@@ -134,28 +134,21 @@
         <div class="lg:col-span-3 rounded-xl border border-white/10 bg-white/5 overflow-hidden min-h-0 h-full">
           <div class="h-full min-h-0 flex flex-col">
             <div
-              v-if="!assistant.canUseAi"
-              class="p-4"
-            >
-              <AssistantHelper />
-            </div>
-
-            <div
-              v-else-if="aiStatusLoading"
+              v-if="aiStatusLoading"
               class="p-4 text-sm text-white/70"
             >
               Loading AI status…
             </div>
 
             <div
-              v-else-if="!aiStatus"
-              class="p-4 text-sm text-white/70"
+              v-else-if="!aiStatus || !aiStatus.ai"
+              class="p-4"
             >
-              Unable to load AI status.
+              <AssistantHelper />
             </div>
 
             <div
-              v-else-if="aiStatus.ai && aiStatus.ai.canChat === false"
+              v-else-if="aiStatus.ai.canChat === false"
               class="p-4"
             >
               <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-50">
