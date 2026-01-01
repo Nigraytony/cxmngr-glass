@@ -229,21 +229,33 @@ UI/UX (global + dedicated page)
 - [x] First-run closable intro/notification (persisted client-side).
 - [x] Dedicated `/app/assistant` page scaffolded as split layout (checklist left, docs/chat right).
 - [x] Assistant available to all subscription plans (AI features gated separately).
-- [x] Provide a compliance checklist UI (checkable, visual completed state).
-- [x] Provide context-driven documentation panel (trusted sources only).
+- [x] Provide a compliance checklist UI (checkable, visual completed state; card click selects, checkbox toggles).
+- [x] Provide checklist CRUD:
+  - [x] Add custom checklist item (icon button in header).
+  - [x] Delete checklist item (hides seeded items via persisted `hiddenItemIds`).
+- [x] Provide recommended actions:
+  - [x] Quick import tasks from template (project-type aware).
+  - [x] Dismiss/hide individual recommended actions (per-user/per-project, persisted client-side).
+- [x] Provide context-driven documentation panel (trusted sources only + CXMA platform guidance + deep links).
+- [x] Add long-form Assistant articles (authorable) with browse + search when no checklist item is selected.
+- [x] Admin UI for Assistant articles CRUD (`/app/admin/assistant-articles`) including author field.
 - [ ] Provide tips/coachmarks throughout app via toasts/alerts (non-spammy; per-user dismissal).
 
-AI behavior (Premium only)
-- [x] Premium-only chat UI wired to existing AI store/providers.
+AI behavior (plan-gated)
+- [x] Chat UI wired to existing AI store/providers (OpenAI/Gemini/Claude).
+- [x] Ask Assistant modal chat panel scrolls (send button stays visible).
 - [x] AI chat integrates with Assistant docs panel (grounding/context selection + trusted links).
+- [x] Production stability: chat visibility uses `/api/ai/status` (not only cached `currentProject` plan fields).
+- [x] BYO key: Project AI Settings can save/test encrypted project keys (requires `AI_ENCRYPTION_KEY` on backend).
 - [ ] Auto-tagging + extraction flows exposed in UI (where relevant).
 
 Project-driven behavior
 - [x] Read `project.type` and suggest/offer automated actions (task templates, compliance guidance).
-- [ ] "Generate tasks from project type" action (creates tasks in current project; confirmation required).
+- [x] "Generate tasks from project type" action (Quick import tasks from template; project-type aware).
 
 Permissions & safety
-- [ ] Enforce assistant scope restrictions server-side (no profile, no billing; project-scoped only; read subscription plan).
+- [x] Enforce assistant project access server-side on assistant endpoints (project-scoped; requires active project).
+- [ ] Enforce stricter assistant scope restrictions for AI chat/tooling (no profile, no billing; project-scoped only; read subscription plan).
 - [ ] Never allow: PII handling, sending emails, billing changes, destructive actions.
 - [ ] Require explicit confirmation before destructive actions (delete tasks/activities/etc).
 
