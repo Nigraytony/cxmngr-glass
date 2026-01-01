@@ -226,6 +226,15 @@ function mergeChecklistItems(existingItems, templateItems) {
   return merged
 }
 
+function filterHiddenItems(items, hiddenIds) {
+  const hidden = new Set((Array.isArray(hiddenIds) ? hiddenIds : []).map((x) => asString(x).trim()).filter(Boolean))
+  if (!hidden.size) return Array.isArray(items) ? items : []
+  return (Array.isArray(items) ? items : []).filter((it) => {
+    const id = asString(it && it.id).trim()
+    return id && !hidden.has(id)
+  })
+}
+
 function normalizeChatRole(v) {
   const role = asString(v).trim().toLowerCase()
   if (role === 'assistant' || role === 'user' || role === 'system') return role
@@ -256,11 +265,15 @@ async function ensureChecklistForProject(projectId, projectType) {
   const existing = await AssistantChecklist.findOne({ projectId })
   if (existing) {
     const template = getAssistantChecklistTemplateForProjectType(projectType)
-    if (!template) return existing.toObject()
+    if (!template) {
+      const out = existing.toObject()
+      out.items = filterHiddenItems(out.items, out.hiddenItemIds)
+      return out
+    }
 
     const nextProjectType = asString(template.projectType || projectType).trim()
     const nextTemplateKey = asString(template.templateKey || existing.templateKey).trim()
-    const nextItems = mergeChecklistItems(existing.items, template.items)
+    const nextItems = filterHiddenItems(mergeChecklistItems(existing.items, template.items), existing.hiddenItemIds)
 
     const templateList = (Array.isArray(template.items) ? template.items : []).map(normalizeTemplateItem).filter((t) => t.id)
     const existingById = new Map((Array.isArray(existing.items) ? existing.items : []).map((it) => [asString(it && it.id).trim(), it]))
@@ -308,6 +321,7 @@ async function ensureChecklistForProject(projectId, projectType) {
     projectId,
     projectType: template.projectType || asString(projectType).trim(),
     templateKey: template.templateKey,
+    hiddenItemIds: [],
     items: (Array.isArray(template.items) ? template.items : []).map((it) => ({
       id: asString(it.id).trim(),
       category: asString(it.category).trim(),
@@ -330,6 +344,12 @@ async function ensureChecklistForProject(projectId, projectType) {
     })),
   })
   return doc.toObject()
+}
+
+function generateCustomChecklistItemId() {
+  const rand = Math.random().toString(36).slice(2, 8)
+  const ts = Date.now().toString(36)
+  return `custom-${ts}-${rand}`.slice(0, 64)
 }
 
 // Premium AI chat history (per-project). Retained ~90 days (TTL) and capped for size.
@@ -446,6 +466,70 @@ router.get(
   }
 )
 
+// Add a custom checklist item to the current project (creates an empty checklist if no template exists yet).
+router.post(
+  '/checklist/items',
+  auth,
+  requireObjectIdQuery('projectId'),
+  requireActiveProject,
+  requireAssistantProjectAccess,
+  rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'assistant-checklist-create' }),
+  async (req, res) => {
+    try {
+      const projectId = asString(req.query.projectId).trim()
+      const project = req.assistantProject
+      const projectType = getProjectType(project)
+      const title = asString(req.body && req.body.title).trim().slice(0, 200)
+      const category = asString(req.body && req.body.category).trim().slice(0, 80)
+      const description = asString(req.body && req.body.description).trim().slice(0, 2000)
+      if (!title) return res.status(400).json({ error: 'title is required' })
+
+      let checklist = await AssistantChecklist.findOne({ projectId })
+      if (!checklist) {
+        checklist = await AssistantChecklist.create({
+          projectId,
+          projectType: asString(projectType).trim(),
+          templateKey: 'custom',
+          hiddenItemIds: [],
+          items: [],
+        })
+      }
+
+      const itemId = generateCustomChecklistItemId()
+      const item = {
+        id: itemId,
+        category,
+        title,
+        description,
+        guidance: '',
+        platformGuidance: '',
+        platformLinks: [],
+        sourceTitle: '',
+        sourceUrl: '',
+        completed: false,
+        completedAt: null,
+        completedBy: null,
+      }
+
+      checklist.items = Array.isArray(checklist.items) ? checklist.items.concat([item]) : [item]
+      await checklist.save()
+
+      const out = checklist.toObject()
+      out.items = filterHiddenItems(out.items, out.hiddenItemIds)
+      return res.status(201).json({
+        id: out._id,
+        projectId: out.projectId,
+        projectType: out.projectType,
+        templateKey: out.templateKey,
+        progress: computeProgress(out.items),
+        items: out.items,
+      })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to create checklist item' })
+    }
+  }
+)
+
 // Update a single checklist item's completion state
 router.patch(
   '/checklist/:id/items/:itemId',
@@ -492,6 +576,50 @@ router.patch(
       })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to update checklist item' })
+    }
+  }
+)
+
+// Delete (hide) a single checklist item for this project.
+router.delete(
+  '/checklist/:id/items/:itemId',
+  auth,
+  requireObjectIdParam('id'),
+  async (req, res) => {
+    try {
+      const id = asString(req.params.id).trim()
+      const itemId = asString(req.params.itemId).trim().slice(0, 64)
+      if (!itemId) return res.status(400).json({ error: 'Invalid itemId' })
+
+      const doc = await AssistantChecklist.findById(id).select('projectId items hiddenItemIds').lean()
+      if (!doc) return res.status(404).json({ error: 'Checklist not found' })
+
+      const project = await Project.findById(doc.projectId).select('team users isActive stripeSubscriptionStatus').lean()
+      if (!project) return res.status(404).json({ error: 'Project not found' })
+      if (!isSubscriptionActive(project)) return res.status(402).json({ error: 'Project subscription inactive or payment required' })
+      if (!isProjectMember(project, req.user)) return res.status(403).json({ error: 'Forbidden' })
+
+      const result = await AssistantChecklist.updateOne(
+        { _id: id },
+        {
+          $pull: { items: { id: itemId } },
+          $addToSet: { hiddenItemIds: itemId },
+        }
+      )
+      if (!result) return res.status(500).json({ error: 'Failed to delete checklist item' })
+
+      const updated = await AssistantChecklist.findById(id).lean()
+      const items = filterHiddenItems(updated.items, updated.hiddenItemIds)
+      return res.json({
+        id: updated._id,
+        projectId: updated.projectId,
+        projectType: updated.projectType,
+        templateKey: updated.templateKey,
+        progress: computeProgress(items),
+        items,
+      })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to delete checklist item' })
     }
   }
 )

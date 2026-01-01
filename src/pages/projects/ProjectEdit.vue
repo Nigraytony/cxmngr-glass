@@ -3127,7 +3127,12 @@ async function saveAiSettings() {
     aiLoaded.value = true
     ui.showSuccess('AI settings saved')
   } catch (e: any) {
-    aiError.value = e?.response?.data?.error || e?.message || 'Failed to save AI settings'
+    const code = e?.response?.data?.code
+    if (code === 'AI_ENCRYPTION_KEY_MISSING') {
+      aiError.value = 'Server is missing AI_ENCRYPTION_KEY, so project keys cannot be securely stored. Ask an admin to configure it on the backend, then try again.'
+    } else {
+      aiError.value = e?.response?.data?.error || e?.message || 'Failed to save AI settings'
+    }
     ui.showError(aiError.value)
   } finally {
     aiSaving.value = false
@@ -3166,7 +3171,12 @@ async function testAiSettings() {
     aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : (aiLastVerifiedAt.value || null)
     ui.showSuccess('AI key verified')
   } catch (e: any) {
-    aiError.value = e?.response?.data?.error || e?.message || 'AI test failed'
+    const code = e?.response?.data?.code
+    if (code === 'AI_ENCRYPTION_KEY_MISSING') {
+      aiError.value = 'Server is missing AI_ENCRYPTION_KEY, so the saved project key cannot be decrypted. Ask an admin to configure it on the backend, then try again.'
+    } else {
+      aiError.value = e?.response?.data?.error || e?.message || 'AI test failed'
+    }
     ui.showError(aiError.value)
   } finally {
     aiTesting.value = false

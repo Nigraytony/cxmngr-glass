@@ -558,7 +558,16 @@ router.put('/:id/ai', auth, requireObjectIdParam('id'), requirePermission('proje
         project.ai.hasKey = false
         project.ai.lastVerifiedAt = null
       } else {
-        const enc = encryptString(keyRaw.trim())
+        let enc
+        try {
+          enc = encryptString(keyRaw.trim())
+        } catch (err) {
+          const msg = err && err.message ? String(err.message) : 'AI_ENCRYPTION_KEY is not configured'
+          return res.status(500).send({
+            error: msg,
+            code: 'AI_ENCRYPTION_KEY_MISSING',
+          })
+        }
         project.ai.apiKey = enc
         project.ai.hasKey = true
       }
@@ -584,7 +593,7 @@ router.put('/:id/ai', auth, requireObjectIdParam('id'), requirePermission('proje
 router.post('/:id/ai/test', auth, requireObjectIdParam('id'), requirePermission('projects.update', { projectParam: 'id' }), requireActiveProject, requireFeature('ai'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
-      .select('ai +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
+      .select('ai.enabled ai.provider ai.model ai.hasKey ai.lastVerifiedAt ai.updatedAt +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
     if (!project) return res.status(404).send({ error: 'Project not found' })
 
     const enabled = !!(project.ai && project.ai.enabled)
@@ -595,7 +604,12 @@ router.post('/:id/ai/test', auth, requireObjectIdParam('id'), requirePermission(
     // Prefer project key; fallback to server key if present
     let apiKey = ''
     if (project.ai && project.ai.hasKey) {
-      apiKey = decryptString(project.ai.apiKey || {})
+      try {
+        apiKey = decryptString(project.ai.apiKey || {})
+      } catch (err) {
+        const msg = err && err.message ? String(err.message) : 'AI_ENCRYPTION_KEY is not configured'
+        return res.status(500).send({ error: msg, code: 'AI_ENCRYPTION_KEY_MISSING' })
+      }
     } else {
       apiKey =
         provider === 'gemini'
@@ -672,6 +686,9 @@ router.post('/:id/ai/test', auth, requireObjectIdParam('id'), requirePermission(
     return res.status(200).send({ ok: true, lastVerifiedAt: project.ai.lastVerifiedAt })
   } catch (e) {
     const msg = e && e.message ? e.message : 'AI test failed'
+    if (/AI_ENCRYPTION_KEY/i.test(String(msg))) {
+      return res.status(500).send({ error: String(msg), code: 'AI_ENCRYPTION_KEY_MISSING' })
+    }
     return res.status(400).send({ error: msg })
   }
 })

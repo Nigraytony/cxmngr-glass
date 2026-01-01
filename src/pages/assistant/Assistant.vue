@@ -44,14 +44,93 @@
               Project type: {{ projectType || '—' }}
             </div>
           </div>
-          <button
+          <div
             v-if="projectId"
-            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
-            :disabled="checklistStore.loading"
-            @click="checklistStore.fetchChecklist(projectId)"
+            class="flex items-center gap-2"
           >
-            Refresh
-          </button>
+            <button
+              class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
+              :disabled="checklistStore.loading"
+              @click="checklistStore.fetchChecklist(projectId)"
+            >
+              Refresh
+            </button>
+            <div class="relative inline-block group">
+              <button
+                type="button"
+                aria-label="Add checklist item"
+                title="Add checklist item"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+                :disabled="checklistStore.loading"
+                @click="toggleAddItem"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Add checklist item
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="projectId && showAddItem"
+          class="mt-3 space-y-2"
+        >
+          <div class="text-xs text-white/60">
+            Add a custom checklist item for this project.
+          </div>
+          <input
+            v-model="newItemTitle"
+            class="w-full rounded-md bg-white/5 border border-white/15 px-3 py-2 text-sm text-white/90 placeholder:text-white/40"
+            placeholder="Title (required)"
+            maxlength="200"
+          >
+          <input
+            v-model="newItemCategory"
+            class="w-full rounded-md bg-white/5 border border-white/15 px-3 py-2 text-sm text-white/90 placeholder:text-white/40"
+            placeholder="Category (optional)"
+            maxlength="80"
+          >
+          <textarea
+            v-model="newItemDescription"
+            class="w-full rounded-md bg-white/5 border border-white/15 px-3 py-2 text-sm text-white/90 placeholder:text-white/40 min-h-[90px]"
+            placeholder="Description (optional)"
+            maxlength="2000"
+          />
+          <div class="flex items-center gap-2">
+            <button
+              class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 text-sm text-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
+              type="button"
+              :disabled="checklistStore.loading || !newItemTitle.trim()"
+              @click="createChecklistItem"
+            >
+              Add to checklist
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+              type="button"
+              :disabled="checklistStore.loading"
+              @click="toggleAddItem"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
 
         <div
@@ -65,21 +144,47 @@
             Quick CXMA shortcuts based on the current project type.
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
-            <button
-              class="px-3 py-1.5 rounded-md bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
-              :disabled="quickImportLoading || !projectId || !projectType"
-              @click="quickImportTasksFromTemplate"
+            <div
+              v-if="!dismissedRecommendedActions.has('quick-import')"
+              class="relative inline-flex"
             >
-              {{ quickImportLoading ? 'Importing…' : 'Quick import tasks' }}
-            </button>
-            <RouterLink
+              <button
+                class="px-3 pr-7 py-1.5 rounded-md bg-emerald-500/20 border border-emerald-500/30 hover:bg-emerald-500/25 text-xs text-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="quickImportLoading || !projectId || !projectType"
+                @click="quickImportTasksFromTemplate"
+              >
+                {{ quickImportLoading ? 'Importing…' : 'Quick import tasks' }}
+              </button>
+              <button
+                class="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-emerald-100/70 hover:text-emerald-100 hover:bg-white/10"
+                type="button"
+                aria-label="Hide this recommended action"
+                @click.stop.prevent="dismissRecommendedAction('quick-import')"
+              >
+                ×
+              </button>
+            </div>
+
+            <div
               v-for="a in recommendedActions"
               :key="a.key"
-              :to="a.to"
-              class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/85"
+              class="relative inline-flex"
             >
-              {{ a.title }}
-            </RouterLink>
+              <RouterLink
+                :to="a.to"
+                class="px-3 pr-7 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/85"
+              >
+                {{ a.title }}
+              </RouterLink>
+              <button
+                class="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-white/60 hover:text-white/85 hover:bg-white/10"
+                type="button"
+                aria-label="Hide this recommended action"
+                @click.stop.prevent="dismissRecommendedAction(a.key)"
+              >
+                ×
+              </button>
+            </div>
           </div>
         </div>
 
@@ -127,7 +232,7 @@
                 :class="selectedItemId === item.id ? 'ring-1 ring-emerald-400/40' : ''"
                 @click="selectItem(item.id)"
               >
-                <div class="flex items-start gap-2">
+                <div class="flex items-start justify-between gap-2">
                   <input
                     type="checkbox"
                     class="mt-0.5 form-checkbox h-5 w-5 rounded bg-white/10 border-white/30 text-emerald-400 cursor-pointer"
@@ -155,6 +260,14 @@
                       {{ item.description }}
                     </div>
                   </div>
+                  <button
+                    class="shrink-0 rounded-md p-1.5 text-white/50 hover:text-white/80 hover:bg-white/10"
+                    type="button"
+                    aria-label="Delete checklist item"
+                    @click.stop.prevent="deleteChecklistItem(item)"
+                  >
+                    🗑
+                  </button>
                 </div>
               </div>
             </div>
@@ -572,6 +685,7 @@ import { useAssistantChecklistStore, type AssistantChecklistItem } from '../../s
 import { useAssistantDocsStore } from '../../stores/assistantDocs'
 import { useAssistantArticlesStore } from '../../stores/assistantArticles'
 import { useUiStore } from '../../stores/ui'
+import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
 import { confirm } from '../../utils/confirm'
 
@@ -593,13 +707,103 @@ const checklistStore = useAssistantChecklistStore()
 const docsStore = useAssistantDocsStore()
 const articlesStore = useAssistantArticlesStore()
 const ui = useUiStore()
+const authStore = useAuthStore()
 
 const projectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 const projectType = computed(() => String(projectStore.currentProject?.project_type || projectStore.currentProject?.type || '').trim())
 const canUseAi = computed(() => normalizeTierKey(projectStore.currentProject?.subscriptionTier || projectStore.currentProject?.subscription) === 'premium')
 
+const dismissedRecommendedActionsStorageKey = computed(() => {
+  const uid = String(authStore.user?._id || authStore.user?.id || authStore.user?.email || 'anon')
+  const pid = String(projectId.value || '').trim()
+  return `assistant.recommended.dismissed:${uid}:${pid || 'no-project'}`
+})
+const dismissedRecommendedActions = ref<Set<string>>(new Set())
+watch(
+  dismissedRecommendedActionsStorageKey,
+  (key) => {
+    try {
+      const raw = localStorage.getItem(key)
+      const list = raw ? JSON.parse(raw) : []
+      dismissedRecommendedActions.value = new Set(Array.isArray(list) ? list.map((x) => String(x)) : [])
+    } catch {
+      dismissedRecommendedActions.value = new Set()
+    }
+  },
+  { immediate: true },
+)
+function dismissRecommendedAction(key: string) {
+  const k = String(key || '').trim()
+  if (!k) return
+  const next = new Set(dismissedRecommendedActions.value)
+  next.add(k)
+  dismissedRecommendedActions.value = next
+  try {
+    localStorage.setItem(dismissedRecommendedActionsStorageKey.value, JSON.stringify(Array.from(next)))
+  } catch {
+    /* ignore */
+  }
+}
+
 const checklist = computed(() => checklistStore.checklist)
 const selectedItemId = ref<string>('')
+const showAddItem = ref(false)
+const newItemTitle = ref('')
+const newItemCategory = ref('')
+const newItemDescription = ref('')
+
+function toggleAddItem() {
+  showAddItem.value = !showAddItem.value
+  if (!showAddItem.value) {
+    newItemTitle.value = ''
+    newItemCategory.value = ''
+    newItemDescription.value = ''
+  }
+}
+
+async function createChecklistItem() {
+  if (!projectId.value) return
+  try {
+    await checklistStore.createItem(
+      {
+        title: newItemTitle.value,
+        category: newItemCategory.value,
+        description: newItemDescription.value,
+      },
+      projectId.value
+    )
+    showAddItem.value = false
+    newItemTitle.value = ''
+    newItemCategory.value = ''
+    newItemDescription.value = ''
+    ui.showSuccess('Checklist item added')
+  } catch (e: any) {
+    ui.showError(e?.message || 'Failed to add checklist item')
+  }
+}
+
+async function deleteChecklistItem(item: AssistantChecklistItem) {
+  const current = checklist.value
+  if (!current?.id) return
+  const iid = String(item?.id || '').trim()
+  if (!iid) return
+  const ok = await confirm({
+    title: 'Delete checklist item?',
+    message: `This will remove this item from the checklist for this project:\n\n${String(item.title || '').trim()}\n\nContinue?`,
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    danger: true,
+  })
+  if (!ok) return
+  try {
+    await checklistStore.deleteItem(iid)
+    if (selectedItemId.value === iid) selectedItemId.value = ''
+    ui.showSuccess('Checklist item deleted')
+  } catch (e: any) {
+    ui.showError(e?.message || 'Failed to delete checklist item')
+  }
+}
+
 const selectedItem = computed(() => {
   const list = checklist.value?.items || []
   const id = String(selectedItemId.value || '').trim()
@@ -628,8 +832,10 @@ const recommendedActions = computed(() => {
     { key: 'project-settings', title: 'Project settings', to: '/app/projects/edit/{projectId}' },
   ]
 
+  const visible = actions
+    .filter((a) => !dismissedRecommendedActions.value.has(a.key))
   if (!ptype) {
-    return actions
+    return visible
       .filter((a) => a.key !== 'import-template')
       .map((a) => ({ ...a, to: typeof a.to === 'string' ? replace(a.to) : a.to }))
   }
@@ -657,7 +863,7 @@ const recommendedActions = computed(() => {
     return 'Commissioning Kickoff / OPR Workshop'
   })()
 
-  return actions.map((a) => ({
+  return visible.map((a) => ({
     ...a,
     title: a.key === 'create-kickoff' ? kickoffLabel : a.title,
     to: a.key === 'create-kickoff'

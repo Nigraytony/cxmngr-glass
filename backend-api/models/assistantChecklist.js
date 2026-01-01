@@ -32,6 +32,7 @@ const assistantChecklistSchema = new mongoose.Schema(
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true, unique: true },
     projectType: { type: String, default: '' },
     templateKey: { type: String, required: true },
+    hiddenItemIds: { type: [String], default: [] },
     items: { type: [assistantChecklistItemSchema], default: [] },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },

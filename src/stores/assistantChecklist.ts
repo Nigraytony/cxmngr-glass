@@ -102,6 +102,65 @@ export const useAssistantChecklistStore = defineStore('assistantChecklist', () =
     }
   }
 
+  async function createItem(payload: { title: string; category?: string; description?: string }, projectId?: string) {
+    const projectStore = useProjectStore()
+    const pid = String(projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+    if (!pid) {
+      const msg = 'Project is required'
+      error.value = msg
+      throw new Error(msg)
+    }
+    const title = String(payload?.title || '').trim()
+    if (!title) {
+      const msg = 'Title is required'
+      error.value = msg
+      throw new Error(msg)
+    }
+    loading.value = true
+    error.value = null
+    errorCode.value = null
+    try {
+      const { data } = await axios.post(
+        `${API_BASE}/checklist/items`,
+        {
+          title,
+          category: String(payload?.category || '').trim(),
+          description: String(payload?.description || '').trim(),
+        },
+        { params: { projectId: pid }, headers: getAuthHeaders() }
+      )
+      checklist.value = data || null
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || 'Failed to create checklist item'
+      error.value = msg
+      throw new Error(msg)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteItem(itemId: string) {
+    const current = checklist.value
+    if (!current?.id) return
+    const iid = String(itemId || '').trim()
+    if (!iid) return
+    loading.value = true
+    error.value = null
+    try {
+      const { data } = await axios.delete(
+        `${API_BASE}/checklist/${encodeURIComponent(current.id)}/items/${encodeURIComponent(iid)}`,
+        { headers: getAuthHeaders() }
+      )
+      checklist.value = data || null
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || 'Failed to delete checklist item'
+      error.value = msg
+      throw new Error(msg)
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     checklist,
     loading,
@@ -110,5 +169,7 @@ export const useAssistantChecklistStore = defineStore('assistantChecklist', () =
     hasProject,
     fetchChecklist,
     setItemCompleted,
+    createItem,
+    deleteItem,
   }
 })
