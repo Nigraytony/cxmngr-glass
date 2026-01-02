@@ -297,7 +297,18 @@
         </div>
 
         <div>
-          <label class="block text-white/70 text-sm">Tags</label>
+          <div class="flex items-center gap-3">
+            <label class="block text-white/70 text-sm">Tags</label>
+            <button
+              v-if="canSuggestTaskTags"
+              type="button"
+              class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="suggestingTaskTags"
+              @click="suggestTaskTags"
+            >
+              {{ suggestingTaskTags ? 'Suggesting…' : 'Suggest tags' }}
+            </button>
+          </div>
           <div class="flex flex-wrap gap-2 mt-2">
             <span
               v-for="t in task.tags"
@@ -334,6 +345,48 @@
           <p class="text-xs text-white/60 mt-1">
             Tip: use commas or Enter to add multiple tags.
           </p>
+          <div
+            v-if="suggestedTaskTagsFiltered.length"
+            class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-xs text-white/60">
+                Suggested tags
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                  @click="applyAllSuggestedTaskTags"
+                >
+                  Add all
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                  @click="dismissSuggestedTaskTags"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="s in suggestedTaskTagsFiltered"
+                :key="s.tag"
+                type="button"
+                class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                :title="s.reason || ''"
+                @click="addTag(String(s.tag || ''))"
+              >
+                <span>{{ s.tag }}</span>
+                <span
+                  v-if="typeof s.confidence === 'number'"
+                  class="text-white/60"
+                >{{ Math.round(s.confidence * 100) }}%</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -377,12 +430,14 @@ import { http } from '../../utils/http'
 import { useProjectStore } from '../../stores/project'
 import { useActivitiesStore } from '../../stores/activities'
 import { useUiStore } from '../../stores/ui'
+import { useAiStore } from '../../stores/ai'
 
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
 const activitiesStore = useActivitiesStore()
 const ui = useUiStore()
+const ai = useAiStore()
 const id = computed(() => String(route.params.id || ''))
 const modeLabel = computed(() => (id.value === 'new' ? 'New Task' : 'Edit Task'))
 const task = ref({
@@ -408,6 +463,18 @@ const linkedActivityName = ref('')
 const activeTab = ref('info') // info | expenses | settings
 const billRateInput = ref(ui.tasksBillRate || 0)
 const tagInput = ref('')
+const suggestingTaskTags = ref(false)
+const suggestedTaskTags = ref([])
+
+const canSuggestTaskTags = computed(() => {
+  const pid = String(task.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) return false
+  const p = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 function numberOrZero(v) {
   const n = Number(v)
@@ -537,6 +604,12 @@ function normalizeTags(tags) {
   return out
 }
 
+function addTag(tag) {
+  const t = String(tag || '').trim()
+  if (!t) return
+  task.value.tags = normalizeTags([...(task.value.tags || []), t])
+}
+
 function addTagFromInput() {
   const raw = String(tagInput.value || '')
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
@@ -548,6 +621,51 @@ function addTagFromInput() {
 function removeTag(tag) {
   const key = String(tag || '').trim().toLowerCase()
   task.value.tags = (task.value.tags || []).filter(t => String(t || '').trim().toLowerCase() !== key)
+}
+
+const suggestedTaskTagsFiltered = computed(() => {
+  const existing = new Set((task.value.tags || []).map(t => String(t || '').trim().toLowerCase()).filter(Boolean))
+  const list = Array.isArray(suggestedTaskTags.value) ? suggestedTaskTags.value : []
+  return list
+    .filter((s) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+    .slice(0, 12)
+})
+
+function dismissSuggestedTaskTags() {
+  suggestedTaskTags.value = []
+}
+
+function applyAllSuggestedTaskTags() {
+  for (const s of suggestedTaskTagsFiltered.value) addTag(String(s.tag || ''))
+  dismissSuggestedTaskTags()
+}
+
+async function suggestTaskTags() {
+  const pid = String(task.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) {
+    ui.showError('No project selected')
+    return
+  }
+  suggestingTaskTags.value = true
+  try {
+    const entity = {
+      name: String(task.value.name || '').trim(),
+      wbs: String(task.value.wbs || '').trim(),
+      status: String(task.value.status || '').trim(),
+      percentComplete: Number(task.value.percentComplete || 0),
+      assignee: String(task.value.assignee || '').trim(),
+      description: String(task.value.description || '').trim(),
+      notes: String(task.value.notes || '').trim(),
+    }
+    const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+    const tags = await ai.suggestTags(pid, 'task', entity, { existingTags: task.value.tags || [], allowedTags: allowed })
+    suggestedTaskTags.value = Array.isArray(tags) ? tags : []
+    if (!suggestedTaskTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+  } catch (e) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+  } finally {
+    suggestingTaskTags.value = false
+  }
 }
 
 async function load() {

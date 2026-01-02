@@ -407,6 +407,15 @@
                 <div class="text-sm text-white/70 shrink-0">
                   Tags
                 </div>
+                <button
+                  v-if="canSuggestEquipmentTags"
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="suggestingEquipmentTags"
+                  @click="suggestEquipmentTags"
+                >
+                  {{ suggestingEquipmentTags ? 'Suggesting…' : 'Suggest tags' }}
+                </button>
                 <div class="flex flex-wrap gap-2">
                   <span
                     v-for="t in (form as any).tags"
@@ -444,6 +453,48 @@
               </div>
               <div class="text-xs text-white/60 mt-1">
                 Tip: use commas or Enter to add multiple tags.
+              </div>
+              <div
+                v-if="suggestedEquipmentTagsFiltered.length"
+                class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs text-white/60">
+                    Suggested tags
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                      @click="applyAllSuggestedEquipmentTags"
+                    >
+                      Add all
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                      @click="dismissSuggestedEquipmentTags"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button
+                    v-for="s in suggestedEquipmentTagsFiltered"
+                    :key="s.tag"
+                    type="button"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                    :title="s.reason || ''"
+                    @click="addTag(String(s.tag || ''))"
+                  >
+                    <span>{{ s.tag }}</span>
+                    <span
+                      v-if="typeof s.confidence === 'number'"
+                      class="text-white/60"
+                    >{{ Math.round(s.confidence * 100) }}%</span>
+                  </button>
+                </div>
               </div>
             </div>
             <div class="mt-4 flex items-center gap-2">
@@ -1653,6 +1704,7 @@ import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
+import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import lists from '../../lists.js'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
@@ -1668,12 +1720,25 @@ const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const equipmentStore = useEquipmentStore()
 const ui = useUiStore()
+const ai = useAiStore()
 
 const statuses = ['Not Started', 'Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Working','Has Issues','Decommissioned']
 
 const form = ref<Equipment>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '', attachments: [], images: [], attributes: [] as any, tags: [] })
 const loading = ref(true)
 const tagsInput = ref('')
+const suggestingEquipmentTags = ref(false)
+const suggestedEquipmentTags = ref<SuggestedTag[]>([])
+
+const canSuggestEquipmentTags = computed(() => {
+  const pid = String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 function normalizeTags(tags: any): string[] {
   const arr = Array.isArray(tags) ? tags : []
@@ -1690,6 +1755,12 @@ function normalizeTags(tags: any): string[] {
   return out
 }
 
+function addTag(tag: string) {
+  const t = String(tag || '').trim()
+  if (!t) return
+  ;(form.value as any).tags = normalizeTags([ ...((form.value as any).tags || []), t ])
+}
+
 function addTagsFromInput() {
   const raw = String(tagsInput.value || '')
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
@@ -1702,6 +1773,52 @@ function removeTag(tag: string) {
   const key = String(tag || '').trim().toLowerCase()
   ;(form.value as any).tags = (((form.value as any).tags || []) as any[])
     .filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
+
+const suggestedEquipmentTagsFiltered = computed(() => {
+  const existing = new Set((((form.value as any).tags) || []).map((t: any) => String(t || '').trim().toLowerCase()).filter(Boolean))
+  const list = Array.isArray(suggestedEquipmentTags.value) ? suggestedEquipmentTags.value : []
+  return list
+    .filter((s: any) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+    .slice(0, 12)
+})
+
+function dismissSuggestedEquipmentTags() {
+  suggestedEquipmentTags.value = []
+}
+
+function applyAllSuggestedEquipmentTags() {
+  for (const s of suggestedEquipmentTagsFiltered.value) addTag(String((s as any).tag || ''))
+  dismissSuggestedEquipmentTags()
+}
+
+async function suggestEquipmentTags() {
+  const pid = String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) {
+    ui.showError('No project selected')
+    return
+  }
+  suggestingEquipmentTags.value = true
+  try {
+    const entity = {
+      tag: String((form.value as any).tag || '').trim(),
+      title: String((form.value as any).title || '').trim(),
+      type: String((form.value as any).type || '').trim(),
+      system: String((form.value as any).system || '').trim(),
+      status: String((form.value as any).status || '').trim(),
+      description: String((form.value as any).description || '').trim(),
+      attributes: Array.isArray((form.value as any).attributes) ? (form.value as any).attributes : [],
+    }
+    const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+    const existing = Array.isArray((form.value as any).tags) ? (form.value as any).tags : []
+    const tags = await ai.suggestTags(pid, 'equipment', entity, { existingTags: existing, allowedTags: allowed as any })
+    suggestedEquipmentTags.value = Array.isArray(tags) ? tags : []
+    if (!suggestedEquipmentTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+  } finally {
+    suggestingEquipmentTags.value = false
+  }
 }
 
 const crumbs = computed(() => [

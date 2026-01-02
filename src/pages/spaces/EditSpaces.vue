@@ -288,6 +288,15 @@
                 <div class="text-sm text-white/70 shrink-0">
                   Tags
                 </div>
+                <button
+                  v-if="canSuggestSpaceTags"
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="suggestingSpaceTags"
+                  @click="suggestSpaceTags"
+                >
+                  {{ suggestingSpaceTags ? 'Suggesting…' : 'Suggest tags' }}
+                </button>
                 <div class="flex flex-wrap gap-2">
                   <span
                     v-for="t in form.tags"
@@ -325,6 +334,48 @@
               </div>
               <div class="text-xs text-white/60 mt-1">
                 Tip: use commas or Enter to add multiple tags.
+              </div>
+              <div
+                v-if="suggestedSpaceTagsFiltered.length"
+                class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs text-white/60">
+                    Suggested tags
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                      @click="applyAllSuggestedSpaceTags"
+                    >
+                      Add all
+                    </button>
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                      @click="dismissSuggestedSpaceTags"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <button
+                    v-for="s in suggestedSpaceTagsFiltered"
+                    :key="s.tag"
+                    type="button"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                    :title="s.reason || ''"
+                    @click="addTag(String(s.tag || ''))"
+                  >
+                    <span>{{ s.tag }}</span>
+                    <span
+                      v-if="typeof s.confidence === 'number'"
+                      class="text-white/60"
+                    >{{ Math.round(s.confidence * 100) }}%</span>
+                  </button>
+                </div>
               </div>
             </div>
             <div class="mt-4 flex items-center gap-2">
@@ -850,6 +901,7 @@ import { getAuthHeaders } from '../../utils/auth'
 import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
 import IssuesTable from '../../components/IssuesTable.vue'
+import { useAiStore, type SuggestedTag } from '../../stores/ai'
 
 const route = useRoute()
 const router = useRouter()
@@ -858,6 +910,7 @@ const projectStore = useProjectStore()
 const ui = useUiStore()
 const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
+const ai = useAiStore()
 const pageLoading = ref(true)
 
 const id = computed(() => String(route.params.id || ''))
@@ -911,6 +964,18 @@ watch(currentTab, (v) => { if (v === 'Logs') loadLogs() })
 const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '', description: '', attachments: [], attributes: [], notes: '', tags: [], metaData: {} as any })
 const saving = ref(false)
 const tagsInput = ref('')
+const suggestingSpaceTags = ref(false)
+const suggestedSpaceTags = ref<SuggestedTag[]>([])
+
+const canSuggestSpaceTags = computed(() => {
+  const pid = String((form.value as any).project || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 function normalizeTags(tags: any): string[] {
   const arr = Array.isArray(tags) ? tags : []
@@ -927,6 +992,12 @@ function normalizeTags(tags: any): string[] {
   return out
 }
 
+function addTag(tag: string) {
+  const t = String(tag || '').trim()
+  if (!t) return
+  form.value.tags = normalizeTags([ ...(form.value.tags || []), t ])
+}
+
 function addTagsFromInput() {
   const raw = String(tagsInput.value || '')
   const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
@@ -938,6 +1009,50 @@ function addTagsFromInput() {
 function removeTag(tag: string) {
   const key = String(tag || '').trim().toLowerCase()
   form.value.tags = (form.value.tags || []).filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
+
+const suggestedSpaceTagsFiltered = computed(() => {
+  const existing = new Set((form.value.tags || []).map((t: string) => String(t || '').trim().toLowerCase()).filter(Boolean))
+  const list = Array.isArray(suggestedSpaceTags.value) ? suggestedSpaceTags.value : []
+  return list
+    .filter((s: any) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+    .slice(0, 12)
+})
+
+function dismissSuggestedSpaceTags() {
+  suggestedSpaceTags.value = []
+}
+
+function applyAllSuggestedSpaceTags() {
+  for (const s of suggestedSpaceTagsFiltered.value) addTag(String((s as any).tag || ''))
+  dismissSuggestedSpaceTags()
+}
+
+async function suggestSpaceTags() {
+  const pid = String((form.value as any).project || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) {
+    ui.showError('No project selected')
+    return
+  }
+  suggestingSpaceTags.value = true
+  try {
+    const entity = {
+      title: String((form.value as any).title || '').trim(),
+      type: String((form.value as any).type || '').trim(),
+      tag: String((form.value as any).tag || '').trim(),
+      description: String((form.value as any).description || '').trim(),
+      parentSpace: String((form.value as any).parentSpace || '').trim(),
+      attributes: Array.isArray((form.value as any).attributes) ? (form.value as any).attributes : [],
+    }
+    const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+    const tags = await ai.suggestTags(pid, 'space', entity, { existingTags: form.value.tags || [], allowedTags: allowed as any })
+    suggestedSpaceTags.value = Array.isArray(tags) ? tags : []
+    if (!suggestedSpaceTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+  } finally {
+    suggestingSpaceTags.value = false
+  }
 }
 
 const pageSection = ref<HTMLElement | null>(null)

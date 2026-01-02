@@ -215,6 +215,15 @@
                   <div class="text-sm text-white/70 shrink-0">
                     Tags
                   </div>
+                  <button
+                    v-if="canSuggestActivityTags"
+                    type="button"
+                    class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                    :disabled="suggestingActivityTags"
+                    @click="suggestActivityTags"
+                  >
+                    {{ suggestingActivityTags ? 'Suggesting…' : 'Suggest tags' }}
+                  </button>
                   <div class="flex flex-wrap gap-2">
                     <span
                       v-for="t in form.labels"
@@ -252,6 +261,48 @@
                 </div>
                 <div class="text-xs text-white/60 mt-1">
                   Tip: use commas or Enter to add multiple tags.
+                </div>
+                <div
+                  v-if="suggestedActivityTagsFiltered.length"
+                  class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="text-xs text-white/60">
+                      Suggested tags
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                        @click="applyAllSuggestedActivityTags"
+                      >
+                        Add all
+                      </button>
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                        @click="dismissSuggestedActivityTags"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <button
+                      v-for="s in suggestedActivityTagsFiltered"
+                      :key="s.tag"
+                      type="button"
+                      class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                      :title="s.reason || ''"
+                      @click="addLabel(String(s.tag || ''))"
+                    >
+                      <span>{{ s.tag }}</span>
+                      <span
+                        v-if="typeof s.confidence === 'number'"
+                        class="text-white/60"
+                      >{{ Math.round(s.confidence * 100) }}%</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2019,8 +2070,10 @@ import IssuesTable from '../../components/IssuesTable.vue'
 import IssueForm from '../../components/IssueForm.vue'
 import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
-import { useSpacesStore } from '../../stores/spaces'
+  import { useSpacesStore } from '../../stores/spaces'
 import Spinner from '../../components/Spinner.vue'
+import { useAiStore } from '../../stores/ai'
+import type { SuggestedTag } from '../../stores/ai'
 
 // Accept route params passed as attrs to avoid extraneous attribute warnings when rendering fragments
 const props = defineProps<{ id?: string }>()
@@ -2033,6 +2086,7 @@ const ui = useUiStore()
 const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
+const ai = useAiStore()
 
 const id = computed(() => String(props.id || route.params.id || ''))
 const isNew = computed(() => id.value === 'new')
@@ -2210,6 +2264,17 @@ const form = reactive({
 
 const systemsText = ref('')
 const labelInput = ref('')
+const suggestingActivityTags = ref(false)
+const suggestedActivityTags = ref<SuggestedTag[]>([])
+const canSuggestActivityTags = computed(() => {
+  const pid = resolvedProjectId()
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 function normalizeLabels(labels: any): string[] {
   const arr = Array.isArray(labels) ? labels : []
@@ -2234,9 +2299,59 @@ function addLabelFromInput() {
   labelInput.value = ''
 }
 
+function addLabel(label: string) {
+  const tag = String(label || '').trim()
+  if (!tag) return
+  form.labels = normalizeLabels([...(form.labels || []), tag])
+}
+
 function removeLabel(label: string) {
   const key = String(label || '').trim().toLowerCase()
   form.labels = (form.labels || []).filter((t) => String(t || '').trim().toLowerCase() !== key)
+}
+
+const suggestedActivityTagsFiltered = computed(() => {
+  const existing = new Set((form.labels || []).map((t: string) => String(t || '').trim().toLowerCase()).filter(Boolean))
+  const list = Array.isArray(suggestedActivityTags.value) ? suggestedActivityTags.value : []
+  return list
+    .filter((s: any) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+    .slice(0, 12)
+})
+
+function dismissSuggestedActivityTags() {
+  suggestedActivityTags.value = []
+}
+
+function applyAllSuggestedActivityTags() {
+  for (const s of suggestedActivityTagsFiltered.value) addLabel(String((s as any).tag || ''))
+  dismissSuggestedActivityTags()
+}
+
+async function suggestActivityTags() {
+  const pid = resolvedProjectId()
+  if (!pid) {
+    ui.showError('No project selected')
+    return
+  }
+  suggestingActivityTags.value = true
+  try {
+    const entity = {
+      name: String(form.name || '').trim(),
+      type: String(form.type || '').trim(),
+      status: String(form.status || '').trim(),
+      location: String(form.location || '').trim(),
+      systems: Array.isArray(form.systems) ? form.systems : [],
+      description: htmlToText(form.descriptionHtml || ''),
+    }
+    const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+    const tags = await ai.suggestTags(pid, 'activity', entity, { existingTags: form.labels || [], allowedTags: allowed as any })
+    suggestedActivityTags.value = Array.isArray(tags) ? tags : []
+    if (!suggestedActivityTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+  } finally {
+    suggestingActivityTags.value = false
+  }
 }
 
 // Space fuzzy-picker state
