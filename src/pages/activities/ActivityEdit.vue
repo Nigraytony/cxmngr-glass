@@ -4363,6 +4363,16 @@ async function uploadDocument(file: File, onProgress: (pct: number) => void) {
   return res.data
 }
 async function removeAttachment(i: number) {
+  const att = (form.attachments || [])[i]
+  const label = String(att?.filename || att?.name || att?.url || '').trim() || `Attachment #${i + 1}`
+  const ok = await inlineConfirm({
+    title: 'Remove attachment',
+    message: `Remove "${label}"? This cannot be undone.`,
+    confirmText: 'Remove',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
   const aid = isNew.value ? (pendingCreatedId.value || id.value) : id.value
   if (aid && aid !== 'new') {
     try {

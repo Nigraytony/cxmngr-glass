@@ -1780,6 +1780,16 @@ async function uploadAttachment(file: File, onProgress: (pct: number) => void) {
   return res.data
 }
 async function removeAttachment(index: number) {
+  const att = (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments : [])[index]
+  const label = String(att?.filename || att?.name || att?.url || '').trim() || `Attachment #${index + 1}`
+  const ok = await inlineConfirm({
+    title: 'Remove attachment',
+    message: `Remove "${label}"? This cannot be undone.`,
+    confirmText: 'Remove',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
   const tid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!tid) return
   try {

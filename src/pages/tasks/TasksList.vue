@@ -276,12 +276,12 @@
           No tasks found for this project.
         </div>
         <template v-else>
-          <div class="overflow-x-auto rounded-md border border-white/10">
-            <table class="min-w-full text-sm compact-rows">
+          <div class="rounded-md border border-white/10">
+            <table class="w-full table-fixed text-sm compact-rows">
               <thead class="bg-white/5 text-white/70">
                 <tr>
                   <th class="w-8 px-2" />
-                  <th class="w-24 px-3 py-2 text-left">
+                  <th class="w-20 px-3 py-2 text-left">
                     WBS
                   </th>
                   <th class="text-left px-3 py-2">
@@ -289,29 +289,29 @@
                   </th>
                   <th
                     v-if="showDurationColumn"
-                    class="text-left px-3 py-2"
+                    class="w-24 text-left px-3 py-2"
                   >
                     Duration (hours)
                   </th>
                   <th
                     v-if="showStartColumn"
-                    class="text-left px-3 py-2"
+                    class="w-24 text-left px-3 py-2"
                   >
                     Start
                   </th>
                   <th
                     v-if="showFinishColumn"
-                    class="text-left px-3 py-2"
+                    class="w-24 text-left px-3 py-2"
                   >
                     Finish
                   </th>
                   <th
                     v-if="showCostColumn"
-                    class="text-left px-3 py-2"
+                    class="w-28 text-left px-3 py-2"
                   >
                     Cost
                   </th>
-                  <th class="text-right px-3 py-2">
+                  <th class="w-48 text-right px-3 py-2">
                     Actions
                   </th>
                 </tr>
@@ -357,7 +357,7 @@
                       </span>
                     </td>
                     <td
-                      class="px-3 py-2 align-top cursor-pointer"
+                      class="px-3 py-2 align-top cursor-pointer break-words"
                       @click="(e) => openTask(t, e)"
                     >
                       <div class="text-sm font-medium">
@@ -365,7 +365,7 @@
                       </div>
                     </td>
                     <td
-                      class="px-3 py-2 align-top relative cursor-pointer"
+                      class="px-3 py-2 align-top relative cursor-pointer break-words"
                       @click="(e) => openTask(t, e)"
                     >
                       <div :style="{ paddingLeft: `calc(${wbsDepth(t.wbs) * 1.25}rem + ${wbsDepth(t.wbs) * 3}ch)`, paddingBottom: '0.6rem' }">
@@ -454,9 +454,9 @@
                     >
                       <div>{{ formatCurrency(costVal(t)) }}</div>
                     </td>
-                    <td class="px-3 py-2 text-right">
-                      <div class="inline-flex items-center justify-end">
-                        <label class="inline-flex items-center gap-2 mr-2 text-sm text-white/80">
+                    <td class="px-3 py-2 text-right overflow-hidden">
+                      <div class="flex flex-wrap items-center justify-end gap-2">
+                        <label class="inline-flex items-center gap-2 text-sm text-white/80">
                           <input
                             type="checkbox"
                             :checked="isComplete(t)"
@@ -468,7 +468,7 @@
                         <button
                           v-if="showCreateLinkActivityButton"
                           :disabled="!!t.activityId"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed"
                           :title="t.activityId ? 'Activity already linked' : 'Create & link activity'"
                           aria-label="Create and link activity"
                           @click="createAndLinkActivityForTask(t)"
@@ -494,7 +494,7 @@
                         </button>
 
                         <button
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 mr-2"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
                           title="Edit"
                           @click="editingId = t._id; showEditModal = true"
                         >
@@ -2073,6 +2073,16 @@ onMounted(() => {
       ui.showInfo('Tip: Use Analytics for quick insights, and Auto-tag to suggest tags from your project tag library.', { duration: 10000 })
     })
   }
+})
+
+watch(showImportModal, (open) => {
+  if (!open) return
+  const pid = String(resolvedProjectId.value || '').trim()
+  const uid = auth.user?._id ? String(auth.user._id) : null
+  if (!pid) return
+  runCoachmarkOnce('tasks.import.modal.tip', { projectId: pid, userId: uid }, () => {
+    ui.showInfo('Tip: Choose either CSV or XML for an import. CSV supports previewing the first 50 tasks before importing.', { duration: 10000 })
+  })
 })
 
 function confirmDelete(t) {

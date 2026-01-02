@@ -431,6 +431,8 @@ import { useProjectStore } from '../../stores/project'
 import { useActivitiesStore } from '../../stores/activities'
 import { useUiStore } from '../../stores/ui'
 import { useAiStore } from '../../stores/ai'
+import { useAuthStore } from '../../stores/auth'
+import { runCoachmarkOnce } from '../../utils/coachmarks'
 
 const route = useRoute()
 const router = useRouter()
@@ -438,6 +440,7 @@ const projectStore = useProjectStore()
 const activitiesStore = useActivitiesStore()
 const ui = useUiStore()
 const ai = useAiStore()
+const auth = useAuthStore()
 const id = computed(() => String(route.params.id || ''))
 const modeLabel = computed(() => (id.value === 'new' ? 'New Task' : 'Edit Task'))
 const task = ref({
@@ -726,7 +729,16 @@ async function save() {
   } finally { saving.value = false }
 }
 
-onMounted(() => load())
+onMounted(async () => {
+  await load()
+
+  const pid = String(task.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  const uid = auth.user?._id ? String(auth.user._id) : null
+  if (!pid) return
+  runCoachmarkOnce('tasks.edit.tags.tip', { projectId: pid, userId: uid }, () => {
+    ui.showInfo('Tip: Add tags in Settings (or use “Suggest tags”). Suggestions are limited to your project tag library.', { duration: 10000 })
+  })
+})
 </script>
 
 <style scoped>

@@ -708,6 +708,7 @@ import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
 import { confirm } from '../../utils/confirm'
+import { runCoachmarkOnce } from '../../utils/coachmarks'
 
 const projectStore = useProjectStore()
 const assistantStore = useAssistantStore()
@@ -1060,6 +1061,14 @@ async function ensureLoaded() {
 onMounted(() => {
   ensureLoaded().catch(() => {})
   fetchAiStatus().catch(() => {})
+
+  const pid = String(projectId.value || '').trim()
+  const uid = authStore.user?._id ? String(authStore.user._id) : null
+  if (pid) {
+    runCoachmarkOnce('assistant.docs.tip', { projectId: pid, userId: uid }, () => {
+      ui.showInfo('Tip: Select a checklist item (checkbox toggles completion) to see CXMA guidance + trusted docs. If nothing is selected, browse/search articles on the right.', { duration: 12000 })
+    })
+  }
 })
 
 watch(projectId, () => {

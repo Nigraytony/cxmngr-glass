@@ -239,9 +239,12 @@ UI/UX (global + dedicated page)
 - [x] Provide context-driven documentation panel (trusted sources only + CXMA platform guidance + deep links).
 - [x] Add long-form Assistant articles (authorable) with browse + search when no checklist item is selected.
 - [x] Admin UI for Assistant articles CRUD (`/app/admin/assistant-articles`) including author field.
-- [ ] Provide tips/coachmarks throughout app via toasts/alerts (non-spammy; per-user dismissal).
+- [x] Provide tips/coachmarks throughout app via toasts/alerts (non-spammy; per-user dismissal).
   - [x] Initial toolbar coachmarks on list pages (Tasks/Issues/Equipment/Activities/Spaces).
-  - [ ] Expand to key edit flows + empty states (reports, imports, Assistant docs).
+  - [x] Expand to key edit flows + empty states (reports, imports, Assistant docs).
+    - [x] TaskEdit: first-run tip for tags + "Suggest tags".
+    - [x] Tasks import modal: first-run tip for CSV/XML choice + preview.
+    - [x] Assistant docs panel: first-run tip for checklist selection vs article browse/search.
 
 AI behavior (plan-gated)
 - [x] Chat UI wired to existing AI store/providers (OpenAI/Gemini/Claude).
@@ -249,11 +252,11 @@ AI behavior (plan-gated)
 - [x] AI chat integrates with Assistant docs panel (grounding/context selection + trusted links).
 - [x] Production stability: chat visibility uses `/api/ai/status` (not only cached `currentProject` plan fields).
 - [x] BYO key: Project AI Settings can save/test encrypted project keys (requires `AI_ENCRYPTION_KEY` on backend).
-- [ ] Auto-tagging + extraction flows exposed in UI (where relevant).
+- [x] Auto-tagging flows exposed in UI (where relevant).
   - [x] Editor auto-tag: "Suggest tags" in taggable edit pages (project tag library only).
   - [x] Bulk auto-tag: "Auto-tag this page" on list pages (Tasks/Issues/Equipment/Activities/Spaces).
   - [x] Bulk auto-tag empty state includes quick link to Project Settings tag library.
-  - [ ] Extraction flows (e.g., extract draft checklist items/tasks/activities from uploaded content) — future.
+- [ ] Extraction flows (e.g., extract draft checklist items/tasks/activities from uploaded content) — future.
 
 Project-driven behavior
 - [x] Read `project.type` and suggest/offer automated actions (task templates, compliance guidance).
@@ -263,7 +266,8 @@ Permissions & safety
 - [x] Enforce assistant project access server-side on assistant endpoints (project-scoped; requires active project).
 - [x] Enforce stricter assistant scope restrictions for AI chat/tooling (project-scoped only; plan-gated; server-side guardrails + disallowed request detection).
 - [x] Never allow: PII handling, sending emails, billing changes, destructive actions (server-side preflight refusal in `/api/ai/chat`).
-- [ ] Require explicit confirmation before destructive actions (delete tasks/activities/etc).
+- [x] Require explicit confirmation before destructive actions (delete tasks/activities/etc).
+  - [x] Added confirm modals for attachment deletion in Issue/Activity/Equipment/Template/Space editors.
 
 Chat storage
 - [x] Persist chats per-project (visibility: project members; Premium-only).

@@ -902,6 +902,7 @@ import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
 import IssuesTable from '../../components/IssuesTable.vue'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
+import { confirm as inlineConfirm } from '../../utils/confirm'
 
 const route = useRoute()
 const router = useRouter()
@@ -1379,10 +1380,19 @@ async function uploadDocument(file: File, onProgress: (pct: number) => void) {
 async function deleteAttachment(i: number) {
   const sid = id.value
   if (!sid) return
+  const att = attachmentsList.value[i]
+  const label = String(att?.filename || att?.name || att?.url || '').trim() || `Attachment #${i + 1}`
+  const ok = await inlineConfirm({
+    title: 'Remove attachment',
+    message: `Remove "${label}"? This cannot be undone.`,
+    confirmText: 'Remove',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await axios.delete(`${getApiBase()}/api/spaces/${sid}/attachments/${i}`, { headers: { ...getAuthHeaders() } })
     await refreshAfterUpload()
-  ui.showSuccess('Attachment removed')
     ui.showSuccess('Attachment removed')
     await appendSpaceLog({ type: 'attachment.remove', message: 'Attachment removed', details: { index: i } })
   } catch (e: any) {
