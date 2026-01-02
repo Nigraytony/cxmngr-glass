@@ -906,9 +906,10 @@ import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import TasksListCharts from '../../components/charts/TasksListCharts.vue'
-import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
-import { http } from '../../utils/http'
-import { useRoute, useRouter } from 'vue-router'
+  import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
+  import { http } from '../../utils/http'
+  import { runCoachmarkOnce } from '../../utils/coachmarks'
+  import { useRoute, useRouter } from 'vue-router'
 
 const projectStore = useProjectStore()
 const ui = useUiStore()
@@ -2064,6 +2065,14 @@ onMounted(() => {
   loadCollapsed()
   if (showAnalytics.value) fetchTasksAnalytics().catch(() => {})
   handleImportDeepLink().catch(() => {})
+
+  const pid = String(resolvedProjectId.value || '').trim()
+  const uid = auth.user?._id ? String(auth.user._id) : null
+  if (pid) {
+    runCoachmarkOnce('tasks.list.toolbar.tip', { projectId: pid, userId: uid }, () => {
+      ui.showInfo('Tip: Use Analytics for quick insights, and Auto-tag to suggest tags from your project tag library.', { duration: 10000 })
+    })
+  }
 })
 
 function confirmDelete(t) {

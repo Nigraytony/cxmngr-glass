@@ -1400,8 +1400,9 @@ import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
 import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
-import { confirm as inlineConfirm } from '../../utils/confirm'
-import Modal from '../../components/Modal.vue'
+  import { confirm as inlineConfirm } from '../../utils/confirm'
+  import { runCoachmarkOnce } from '../../utils/coachmarks'
+  import Modal from '../../components/Modal.vue'
 import EquipmentListCharts from '../../components/charts/EquipmentListCharts.vue'
 import type { EquipmentAnalytics } from '../../components/charts/EquipmentListCharts.vue'
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
@@ -1877,7 +1878,17 @@ function handleClickOutside(e: MouseEvent) {
   if (stEl && !stEl.contains(target)) closeStatusMenu()
   if (csEl && !csEl.contains(target)) closeChecklistSystemMenu()
 }
-onMounted(() => document.addEventListener('click', handleClickOutside))
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+
+  const pid = String(resolvedProjectId.value || '').trim()
+  const uid = auth.user?._id ? String(auth.user._id) : null
+  if (pid) {
+    runCoachmarkOnce('equipment.list.toolbar.tip', { projectId: pid, userId: uid }, () => {
+      ui.showInfo('Tip: Use Analytics to spot trends, and filters to focus on equipment with checklists, FPTs, or issues.', { duration: 10000 })
+    })
+  }
+})
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 // Modal Type dropdown functions

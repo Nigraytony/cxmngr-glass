@@ -1180,8 +1180,9 @@ import { getAuthHeaders } from '../../utils/auth'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
-import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
-import { confirm as inlineConfirm } from '../../utils/confirm'
+  import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
+  import { confirm as inlineConfirm } from '../../utils/confirm'
+  import { runCoachmarkOnce } from '../../utils/coachmarks'
 // Preferred/common export columns in desired order
 const removedColumns = ['projectId', 'comments', 'attachments', 'photos', 'documents', 'updatedAt', 'closedBy']
 const preferredColumns = ['number','title','description','type','priority','severity','status','foundBy','dateFound','assignedTo','responsible_person','dueDate','createdAt','closedDate','location','system']
@@ -1593,6 +1594,14 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 onMounted(async () => {
   // fetch issues for current project on mount
   try { await issuesStore.fetchIssues() } catch (e) { /* ignore */ }
+
+  const pid = String(resolvedProjectId.value || '').trim()
+  const uid = authStore.user?._id ? String(authStore.user._id) : null
+  if (pid) {
+    runCoachmarkOnce('issues.list.toolbar.tip', { projectId: pid, userId: uid }, () => {
+      ui.showInfo('Tip: Use Analytics to see issues by status/type, and Auto-tag to suggest tags from your project library.', { duration: 10000 })
+    })
+  }
 })
 
 function validateIssue(obj) {

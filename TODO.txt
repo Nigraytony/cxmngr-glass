@@ -240,6 +240,8 @@ UI/UX (global + dedicated page)
 - [x] Add long-form Assistant articles (authorable) with browse + search when no checklist item is selected.
 - [x] Admin UI for Assistant articles CRUD (`/app/admin/assistant-articles`) including author field.
 - [ ] Provide tips/coachmarks throughout app via toasts/alerts (non-spammy; per-user dismissal).
+  - [x] Initial toolbar coachmarks on list pages (Tasks/Issues/Equipment/Activities/Spaces).
+  - [ ] Expand to key edit flows + empty states (reports, imports, Assistant docs).
 
 AI behavior (plan-gated)
 - [x] Chat UI wired to existing AI store/providers (OpenAI/Gemini/Claude).

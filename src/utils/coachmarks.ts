@@ -37,3 +37,10 @@ export function markCoachmarkSeen(storageKey: string) {
   }
 }
 
+export function runCoachmarkOnce(baseKey: string, scope: CoachmarkScope, onFirst: () => void) {
+  const key = coachmarkStorageKey(baseKey, scope)
+  if (hasSeenCoachmark(key)) return false
+  markCoachmarkSeen(key)
+  onFirst()
+  return true
+}

@@ -736,10 +736,11 @@
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, computed, ref, watch } from 'vue'
-import { useActivitiesStore } from '../../stores/activities'
-import { useProjectStore } from '../../stores/project'
-import { useUiStore } from '../../stores/ui'
-import { useSpacesStore } from '../../stores/spaces'
+	import { useActivitiesStore } from '../../stores/activities'
+	import { useProjectStore } from '../../stores/project'
+	import { useUiStore } from '../../stores/ui'
+	import { useAuthStore } from '../../stores/auth'
+	import { useSpacesStore } from '../../stores/spaces'
 import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -747,12 +748,14 @@ import Modal from '../../components/Modal.vue'
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import ActivitiesListCharts from '../../components/charts/ActivitiesListCharts.vue'
 import type { ActivitiesAnalytics } from '../../components/charts/ActivitiesListCharts.vue'
-import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
+	import http from '../../utils/http'
+	import { getAuthHeaders } from '../../utils/auth'
+	import { runCoachmarkOnce } from '../../utils/coachmarks'
 
-const store = useActivitiesStore()
-const projectStore = useProjectStore()
-const spacesStore = useSpacesStore()
+	const store = useActivitiesStore()
+	const projectStore = useProjectStore()
+	const spacesStore = useSpacesStore()
+	const auth = useAuthStore()
 const q = ref('')
 const typeFilter = ref<string>('')
 const showDeleteModal = ref(false)
@@ -899,6 +902,14 @@ onMounted(async () => {
   await store.fetchActivities().catch(() => {})
   if (projectStore.currentProjectId) await spacesStore.fetchByProject(projectStore.currentProjectId).catch(() => {})
   if (showAnalytics.value) fetchAnalytics().catch(() => {})
+
+  const pid = String(resolvedProjectId.value || '').trim()
+  const uid = auth.user?._id ? String(auth.user._id) : null
+  if (pid) {
+    runCoachmarkOnce('activities.list.toolbar.tip', { projectId: pid, userId: uid }, () => {
+      ui.showInfo('Tip: Use sort + list view for quick scanning, and Auto-tag to apply consistent tags faster.', { duration: 10000 })
+    })
+  }
 })
 
 function fmt(d?: string) {

@@ -890,10 +890,11 @@ import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
-import { useAuthStore } from '../../stores/auth'
-import { confirm as inlineConfirm } from '../../utils/confirm'
-import * as XLSX from 'xlsx'
-import { useRouter } from 'vue-router'
+	import { useAuthStore } from '../../stores/auth'
+	import { confirm as inlineConfirm } from '../../utils/confirm'
+	import { runCoachmarkOnce } from '../../utils/coachmarks'
+	import * as XLSX from 'xlsx'
+	import { useRouter } from 'vue-router'
 
 const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
@@ -1058,7 +1059,17 @@ function onClickOutside(e: MouseEvent) {
   const target = e.target as Node
   if (!el.contains(target)) closeTypeMenu()
 }
-onMounted(() => document.addEventListener('click', onClickOutside))
+onMounted(() => {
+  document.addEventListener('click', onClickOutside)
+
+  const pid = String(resolvedProjectId.value || '').trim()
+  const uid = auth.user?._id ? String(auth.user._id) : null
+  if (pid) {
+    runCoachmarkOnce('spaces.list.toolbar.tip', { projectId: pid, userId: uid }, () => {
+      ui.showInfo('Tip: Use the Type filter to find spaces quickly. Auto-tag can suggest tags from your project tag library.', { duration: 10000 })
+    })
+  }
+})
 onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 
 // Pagination (list view only)
