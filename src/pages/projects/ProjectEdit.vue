@@ -1239,7 +1239,50 @@
             Project-specific settings and flags.
           </p>
           <div class="rounded p-3">
-            <!-- special behavior and tags removed -->
+            <div class="mb-6">
+              <div class="flex items-center gap-3">
+                <label class="block text-white/80 mb-1">Project tags (tag library)</label>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <span
+                  v-for="t in (project?.tags || [])"
+                  :key="t"
+                  class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                >
+                  <span>{{ t }}</span>
+                  <button
+                    v-if="isProjectAdmin"
+                    type="button"
+                    class="text-white/60 hover:text-white"
+                    aria-label="Remove tag"
+                    @click="removeProjectTag(t)"
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+              <div class="flex items-center gap-2 mt-2 max-w-xl">
+                <input
+                  v-model="projectTagInput"
+                  :disabled="!isProjectAdmin"
+                  placeholder="Add a tag and press Enter…"
+                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/15 text-white placeholder-white/50 disabled:opacity-60"
+                  @keydown.enter.prevent="addProjectTagFromInput"
+                  @keydown.,.prevent="addProjectTagFromInput"
+                >
+                <button
+                  type="button"
+                  class="h-10 px-3 rounded bg-white/6 hover:bg-white/10 border border-white/15 text-white/80 text-sm disabled:opacity-60"
+                  :disabled="!isProjectAdmin"
+                  @click="addProjectTagFromInput"
+                >
+                  Add
+                </button>
+              </div>
+              <p class="text-xs text-white/60 mt-1 max-w-2xl">
+                Used as the project’s tag library for “Suggest tags” and bulk auto‑tagging. Tip: use commas or Enter to add multiple tags.
+              </p>
+            </div>
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-white/80 mb-1">Search mode</label>
@@ -3025,13 +3068,40 @@ const isProjectAdmin = computed(() => {
   const r = String(m.role || '').toLowerCase()
   return r === 'admin' || r === 'cxa' || r === 'cxa' || r === 'cxa'
 })
-// use auth store token; fall back to localStorage if necessary
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _tagsText = computed({
-  get() { return (project.value && Array.isArray(project.value.tags)) ? project.value.tags.join(', ') : '' },
-  set(v) { if (project.value) project.value.tags = v.split(',').map(s => s.trim()).filter(Boolean) }
-})
+const projectTagInput = ref('')
+function normalizeProjectTags(tags: any) {
+  const arr = Array.isArray(tags) ? tags : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const t of arr) {
+    const s = String(t || '').trim()
+    if (!s) continue
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+  }
+  return out
+}
+function addProjectTag(tag: string) {
+  if (!project.value) return
+  const t = String(tag || '').trim()
+  if (!t) return
+  project.value.tags = normalizeProjectTags([...(project.value.tags || []), t])
+}
+function addProjectTagFromInput() {
+  if (!project.value) return
+  const raw = String(projectTagInput.value || '').trim()
+  if (!raw) return
+  const parts = raw.split(/[,;]+/).map(s => s.trim()).filter(Boolean)
+  for (const p of parts) addProjectTag(p)
+  projectTagInput.value = ''
+}
+function removeProjectTag(tag: string) {
+  if (!project.value) return
+  const key = String(tag || '').trim().toLowerCase()
+  project.value.tags = (project.value.tags || []).filter(t => String(t || '').trim().toLowerCase() !== key)
+}
 
 // Issues per-page (local, per-project) preference UI
 const issuesPageSizeLocal = ref(10)

@@ -174,6 +174,36 @@
           {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
         </div>
       </div>
+      <div class="relative inline-block group shrink-0">
+        <button
+          :disabled="!canAutoTagEquipmentPage"
+          aria-label="Auto-tag this page"
+          :title="canAutoTagEquipmentPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          @click="showAutoTagModal = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
+          Auto-tag this page
+        </div>
+      </div>
       <input
         v-model="search"
         type="text"
@@ -1345,6 +1375,16 @@
         </div>
       </template>
     </Modal>
+
+    <BulkAutoTagModal
+      v-model="showAutoTagModal"
+      :project-id="resolvedProjectId"
+      entity-type="equipment"
+      :allowed-tags="projectAllowedTags"
+      :items="autoTagEquipmentItems"
+      :can-suggest="canAutoTagEquipmentPage"
+      :apply-tags="applyEquipmentTags"
+    />
   </section>
 </template>
 
@@ -1364,6 +1404,7 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import Modal from '../../components/Modal.vue'
 import EquipmentListCharts from '../../components/charts/EquipmentListCharts.vue'
 import type { EquipmentAnalytics } from '../../components/charts/EquipmentListCharts.vue'
+import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import * as XLSX from 'xlsx'
 
 const projectStore = useProjectStore()
@@ -1371,6 +1412,19 @@ const auth = useAuthStore()
 const spacesStore = useSpacesStore()
 const equipmentStore = useEquipmentStore()
 const ui = useUiStore()
+const showAutoTagModal = ref(false)
+
+const resolvedProjectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
+const projectAllowedTags = computed(() => Array.isArray((projectStore.currentProject as any)?.tags) ? (projectStore.currentProject as any).tags : [])
+const canAutoTagEquipmentPage = computed(() => {
+  const pid = resolvedProjectId.value
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Started']
 
@@ -2215,6 +2269,34 @@ const paged = computed(() => {
   const end = start + pageSize.value
   return list.slice(start, end)
 })
+
+const autoTagEquipmentItems = computed(() => {
+  const list: any[] = Array.isArray(paged.value) ? paged.value : []
+  return list
+    .map((e: any) => {
+      const id = String(e?.id || e?._id || '').trim()
+      if (!id) return null
+      const title = String(e?.tag || e?.title || '').trim() || id
+      const subtitle = [e?.type, e?.status].filter(Boolean).join(' • ')
+      const existing = Array.isArray(e?.tags) ? e.tags : []
+      const entity = {
+        tag: String(e?.tag || '').trim(),
+        title: String(e?.title || '').trim(),
+        type: String(e?.type || '').trim(),
+        system: String(e?.system || '').trim(),
+        status: String(e?.status || '').trim(),
+        description: String(e?.description || '').trim(),
+        attributes: Array.isArray(e?.attributes) ? e.attributes : (e?.attributes && typeof e.attributes === 'object' ? e.attributes : {}),
+      }
+      return { id, title, subtitle, existingTags: existing, entity }
+    })
+    .filter(Boolean) as any
+})
+
+async function applyEquipmentTags(id: string, tags: string[]) {
+  await equipmentStore.updateFields(id, { tags })
+}
+
 const displayTotal = computed(() => Number(serverTotalAll.value || serverTotal.value || 0))
 const startItem = computed(() => totalFiltered.value ? (page.value - 1) * pageSize.value + 1 : 0)
 const endItem = computed(() => Math.min(totalFiltered.value, page.value * pageSize.value))

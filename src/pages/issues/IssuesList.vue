@@ -292,6 +292,42 @@
           </div>
         </div>
 
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!canAutoTagIssuesPage"
+            aria-label="Auto-tag this page"
+            :title="canAutoTagIssuesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="showAutoTagModal = true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M4 7v0"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Auto-tag this page
+          </div>
+        </div>
+
         <div
           ref="downloadsRef"
           class="relative"
@@ -1034,6 +1070,16 @@
       </template>
     </Modal>
 
+    <BulkAutoTagModal
+      v-model="showAutoTagModal"
+      :project-id="resolvedProjectId"
+      entity-type="issue"
+      :allowed-tags="projectAllowedTags"
+      :items="autoTagIssueItems"
+      :can-suggest="canAutoTagIssuesPage"
+      :apply-tags="applyIssueTags"
+    />
+
     <!-- Choose Columns Modal -->
     <Modal v-model="showColumnsModal">
       <template #header>
@@ -1124,6 +1170,7 @@ import IssueForm from '../../components/IssueForm.vue'
 import Spinner from '../../components/Spinner.vue'
 import IssuesListCharts from '../../components/charts/IssuesListCharts.vue'
 import type { IssuesAnalytics } from '../../components/charts/IssuesListCharts.vue'
+import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
@@ -1143,6 +1190,50 @@ const issuesStore = useIssuesStore()
 const router = useRouter()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
+const showAutoTagModal = ref(false)
+
+const resolvedProjectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
+const projectAllowedTags = computed(() => Array.isArray((projectStore.currentProject as any)?.tags) ? (projectStore.currentProject as any).tags : [])
+const canAutoTagIssuesPage = computed(() => {
+  const pid = resolvedProjectId.value
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
+
+const autoTagIssueItems = computed(() => {
+  const list: any[] = Array.isArray(pagedIssues.value) ? pagedIssues.value : []
+  return list
+    .map((issue: any) => {
+      const id = String(issue?.id || issue?._id || '').trim()
+      if (!id) return null
+      const num = issue?.number != null ? String(issue.number) : ''
+      const title = String(issue?.title || '').trim() || `Issue ${num || id}`
+      const existing = Array.isArray(issue?.labels) ? issue.labels : []
+      const entity = {
+        number: issue?.number ?? null,
+        title,
+        type: issue?.type || null,
+        status: issue?.status || null,
+        priority: issue?.priority || issue?.severity || null,
+        system: String(issue?.system || '').trim(),
+        location: String(issue?.location || '').trim(),
+        description: String(issue?.description || '').trim(),
+        recommendation: String(issue?.recommendation || '').trim(),
+        resolution: String(issue?.resolution || '').trim(),
+      }
+      const subtitle = [issue?.type, issue?.status].filter(Boolean).join(' • ')
+      return { id, title: num ? `#${num} ${title}` : title, subtitle, existingTags: existing, entity }
+    })
+    .filter(Boolean) as any
+})
+
+async function applyIssueTags(id: string, tags: string[]) {
+  await issuesStore.updateIssue(id, { labels: tags })
+}
 
 function readChartsPreference(): boolean {
   try {

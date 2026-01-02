@@ -8,6 +8,7 @@ const { decryptString } = require('../utils/encryption')
 const { rateLimit } = require('../middleware/rateLimit')
 const { requireNotDisabled } = require('../middleware/killSwitch')
 const { isObjectId, requireBodyField, requireObjectIdBody } = require('../middleware/validate')
+const sanitizeHtml = require('sanitize-html')
 
 function asString(v) {
   return typeof v === 'string' ? v : (v == null ? '' : String(v))
@@ -88,6 +89,107 @@ function normalizeTags(input) {
     out.push(tag)
   }
   return out
+}
+
+function truncateText(v, maxLen) {
+  const s = asString(v).trim()
+  if (!s) return ''
+  const max = Math.max(0, Number.isFinite(maxLen) ? maxLen : 0)
+  if (!max) return ''
+  return s.length > max ? `${s.slice(0, max)}…` : s
+}
+
+function stripHtmlToText(v, maxLen) {
+  const raw = asString(v)
+  if (!raw) return ''
+  const cleaned = sanitizeHtml(raw, { allowedTags: [], allowedAttributes: {} })
+    .replace(/\s+/g, ' ')
+    .trim()
+  return truncateText(cleaned, maxLen)
+}
+
+function sanitizeEntityForTagging(entityType, entity) {
+  const input = (entity && typeof entity === 'object') ? entity : {}
+  const COMMON = [
+    'title', 'name', 'tag', 'type', 'system', 'status', 'priority',
+    'location', 'space', 'spaceName',
+    'description', 'descriptionHtml', 'notes', 'recommendation', 'resolution',
+    'labels', 'metadata',
+    'wbs', 'phase', 'percentComplete',
+    'manufacturer', 'model', 'condition',
+  ]
+  const ALLOW = {
+    issue: ['number', 'equipment', 'equipmentTag', 'equipmentSystem'],
+    equipment: ['tags', 'attributes'],
+    activity: ['startDate', 'endDate'],
+    task: ['taskId', 'start', 'finish', 'duration', 'dependencies'],
+    space: ['parentSpace'],
+    template: ['checklists', 'fpt', 'components'],
+    tasktemplate: ['xml', 'source'],
+  }
+  const allowedKeys = new Set([...(ALLOW[asString(entityType).toLowerCase()] || []), ...COMMON])
+
+  const out = {}
+  for (const key of allowedKeys) {
+    if (!(key in input)) continue
+    const val = input[key]
+    if (val == null) continue
+
+    if (typeof val === 'string') {
+      if (key.toLowerCase().includes('html')) out[key] = stripHtmlToText(val, 2500)
+      else if (['description', 'notes', 'recommendation', 'resolution', 'metadata'].includes(key)) out[key] = truncateText(val, 2500)
+      else out[key] = truncateText(val, 240)
+      continue
+    }
+
+    if (typeof val === 'number' || typeof val === 'boolean') {
+      out[key] = val
+      continue
+    }
+
+    if (Array.isArray(val)) {
+      const joined = val
+        .slice(0, 25)
+        .map((x) => asString(x).trim())
+        .filter(Boolean)
+        .join(', ')
+      if (joined) out[key] = truncateText(joined, 800)
+      continue
+    }
+
+    if (val && typeof val === 'object') {
+      // Keep very small objects only (e.g. attributes), but stringify with caps.
+      try {
+        const json = JSON.stringify(val)
+        if (json && json.length <= 1200) out[key] = val
+      } catch (_) {
+        // ignore
+      }
+    }
+  }
+  return out
+}
+
+function enforceAllowedTagsStrict(suggested, allowedTags, existingTags) {
+  const allowed = normalizeTags(allowedTags)
+  const existing = normalizeTags(existingTags)
+  const allowedMap = new Map(allowed.map((t) => [t.toLowerCase(), t]))
+  const existingSet = new Set(existing.map((t) => t.toLowerCase()))
+
+  const out = []
+  const seen = new Set()
+  for (const it of Array.isArray(suggested) ? suggested : []) {
+    const proposed = asString(it && it.tag).trim()
+    if (!proposed) continue
+    const key = proposed.toLowerCase()
+    const canonical = allowedMap.get(key)
+    if (!canonical) continue
+    if (existingSet.has(key)) continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ ...it, tag: canonical })
+  }
+  return out.slice(0, 12)
 }
 
 function normalizeSuggestedTags(list) {
@@ -540,9 +642,20 @@ router.post('/suggest-tags', auth, requireNotDisabled('ai'), requireBodyField('p
           ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest')
           : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
 
-    const entity = (req.body && typeof req.body.entity === 'object' && req.body.entity) ? req.body.entity : {}
+    const rawEntity = (req.body && typeof req.body.entity === 'object' && req.body.entity) ? req.body.entity : {}
     const existingTags = normalizeTags(req.body && req.body.existingTags)
-    const allowedTags = normalizeTags((req.body && req.body.allowedTags) || project.tags || [])
+    // Strictly enforce the project's tag library; request may optionally narrow it but cannot expand it.
+    const projectTags = normalizeTags(project.tags || [])
+    const requestAllowed = normalizeTags(req.body && req.body.allowedTags)
+    const allowedTags = requestAllowed.length
+      ? projectTags.filter((t) => requestAllowed.some((a) => a.toLowerCase() === t.toLowerCase()))
+      : projectTags
+
+    if (!allowedTags.length) {
+      return res.status(422).json({ error: 'Project has no tag library configured (add tags in Project Settings)', tags: [] })
+    }
+
+    const entity = sanitizeEntityForTagging(entityType, rawEntity)
 
     const system = [
       'You are a tagging assistant inside a commissioning management web app.',
@@ -552,14 +665,17 @@ router.post('/suggest-tags', auth, requireNotDisabled('ai'), requireBodyField('p
       'Rules:',
       '- Provide 3 to 8 tags.',
       '- Tags are short (1-4 words), no emojis, no leading "#".',
-      '- Prefer tags from allowedTags when relevant; you may suggest up to 2 new tags if needed.',
+      '- You MUST ONLY choose tags from allowedTags (do not invent new tags).',
+      '- Use the exact spelling from allowedTags.',
+      '- Do not repeat existingTags.',
       '- confidence is between 0 and 1.',
       '- reason is short (<= 12 words).',
     ].join('\n')
 
+    const allowedTagsForPrompt = allowedTags.slice(0, 600)
     const user = [
       `entityType: ${entityType}`,
-      `allowedTags: ${JSON.stringify(allowedTags).slice(0, 2000)}`,
+      `allowedTags: ${JSON.stringify(allowedTagsForPrompt)}`,
       `existingTags: ${JSON.stringify(existingTags).slice(0, 1000)}`,
       `entity: ${JSON.stringify(entity).slice(0, 6000)}`,
     ].join('\n')
@@ -585,7 +701,8 @@ router.post('/suggest-tags', auth, requireNotDisabled('ai'), requireBodyField('p
     let list = []
     if (Array.isArray(parsed)) list = parsed
     else if (parsed && typeof parsed === 'object') list = parsed.tags || parsed.suggestedTags || parsed.labels || []
-    const tags = normalizeSuggestedTags(list)
+    const normalized = normalizeSuggestedTags(list)
+    const tags = enforceAllowedTagsStrict(normalized, allowedTags, existingTags)
 
     return res.status(200).json({ tags })
   } catch (err) {

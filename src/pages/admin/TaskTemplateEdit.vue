@@ -128,15 +128,24 @@
           />
         </div>
 
-        <div>
-          <div class="flex items-center gap-3">
-            <div class="text-sm text-white/70 shrink-0">
-              Tags
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="t in form.tags"
-                :key="t"
+          <div>
+            <div class="flex items-center gap-3">
+              <div class="text-sm text-white/70 shrink-0">
+                Tags
+              </div>
+              <button
+                v-if="canSuggestTemplateTags"
+                type="button"
+                class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="suggestingTemplateTags"
+                @click="suggestTemplateTags"
+              >
+                {{ suggestingTemplateTags ? 'Suggesting…' : 'Suggest tags' }}
+              </button>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="t in form.tags"
+                  :key="t"
                 class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
               >
                 <span>{{ t }}</span>
@@ -168,11 +177,53 @@
               Add
             </button>
           </div>
-          <div class="text-xs text-white/60 mt-1">
-            Tip: use commas or Enter to add multiple tags.
+            <div class="text-xs text-white/60 mt-1">
+              Tip: use commas or Enter to add multiple tags.
+            </div>
+            <div
+              v-if="suggestedTemplateTagsFiltered.length"
+              class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-xs text-white/60">
+                  Suggested tags
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                    @click="applyAllSuggestedTemplateTags"
+                  >
+                    Add all
+                  </button>
+                  <button
+                    type="button"
+                    class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                    @click="dismissSuggestedTemplateTags"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="s in suggestedTemplateTagsFiltered"
+                  :key="s.tag"
+                  type="button"
+                  class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                  :title="s.reason || ''"
+                  @click="addTemplateTag(String(s.tag || ''))"
+                >
+                  <span>{{ s.tag }}</span>
+                  <span
+                    v-if="typeof s.confidence === 'number'"
+                    class="text-white/60"
+                  >{{ Math.round(s.confidence * 100) }}%</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
       <div
         v-else-if="currentTab === 'XML'"
@@ -452,24 +503,30 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import http from '../../utils/http'
-import BreadCrumbs from '../../components/BreadCrumbs.vue'
-import { useUiStore } from '../../stores/ui'
+  import http from '../../utils/http'
+  import BreadCrumbs from '../../components/BreadCrumbs.vue'
+  import { useUiStore } from '../../stores/ui'
+  import { useProjectStore } from '../../stores/project'
+  import { useAiStore } from '../../stores/ai'
 
-const ui = useUiStore()
-const route = useRoute()
-const router = useRouter()
-const id = computed(() => String(route.params.id || ''))
-const isNew = computed(() => id.value === 'new')
+  const ui = useUiStore()
+  const projectStore = useProjectStore()
+  const ai = useAiStore()
+  const route = useRoute()
+  const router = useRouter()
+  const id = computed(() => String(route.params.id || ''))
+  const isNew = computed(() => id.value === 'new')
 const tabs = ['Info', 'XML', 'CSV', 'Preview'] as const
 const currentTab = ref<typeof tabs[number]>('Info')
 
 const loading = ref(false)
 const saving = ref(false)
-const error = ref('')
-const xmlFile = ref(null)
-const csvFile = ref(null)
-const tagsInput = ref('')
+  const error = ref('')
+  const xmlFile = ref(null)
+  const csvFile = ref(null)
+  const tagsInput = ref('')
+  const suggestingTemplateTags = ref(false)
+  const suggestedTemplateTags = ref<Array<{ tag: string; confidence?: number; reason?: string }>>([])
 
 const form = ref({
   name: '',
@@ -530,16 +587,75 @@ function addTagsFromInput() {
   tagsInput.value = ''
 }
 
-function removeTag(tag) {
-  const key = String(tag || '').trim().toLowerCase()
-  form.value.tags = (Array.isArray(form.value.tags) ? form.value.tags : [])
-    .filter((t) => String(t || '').trim().toLowerCase() !== key)
-}
+  function removeTag(tag) {
+    const key = String(tag || '').trim().toLowerCase()
+    form.value.tags = (Array.isArray(form.value.tags) ? form.value.tags : [])
+      .filter((t) => String(t || '').trim().toLowerCase() !== key)
+  }
 
-function snapshotForm(v) {
-  const s = v || {}
-  return JSON.stringify({
-    name: String(s.name || ''),
+  function addTemplateTag(tag: string) {
+    const t = String(tag || '').trim()
+    if (!t) return
+    form.value.tags = normalizeTags([...(form.value.tags || []), t])
+  }
+
+  const canSuggestTemplateTags = computed(() => {
+    const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+    if (!pid) return false
+    const p = projectStore.currentProject || {}
+    if (p.ai && p.ai.enabled === false) return false
+    const tier = String(p.subscriptionTier || '').toLowerCase()
+    const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+    return tier === 'premium' || hasFeature
+  })
+
+  const suggestedTemplateTagsFiltered = computed(() => {
+    const existing = new Set((form.value.tags || []).map(t => String(t || '').trim().toLowerCase()).filter(Boolean))
+    const list = Array.isArray(suggestedTemplateTags.value) ? suggestedTemplateTags.value : []
+    return list
+      .filter((s) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+      .slice(0, 12)
+  })
+
+  function dismissSuggestedTemplateTags() {
+    suggestedTemplateTags.value = []
+  }
+
+  function applyAllSuggestedTemplateTags() {
+    for (const s of suggestedTemplateTagsFiltered.value) addTemplateTag(String(s.tag || ''))
+    dismissSuggestedTemplateTags()
+  }
+
+  async function suggestTemplateTags() {
+    const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+    if (!pid) {
+      ui.showError('Select a project to enable tag suggestions')
+      return
+    }
+    suggestingTemplateTags.value = true
+    try {
+      const entity = {
+        name: String(form.value.name || '').trim(),
+        category: String(form.value.category || '').trim(),
+        version: String(form.value.version || '').trim(),
+        description: String(form.value.description || '').trim(),
+        sourceType: String(form.value.sourceType || '').trim(),
+      }
+      const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+      const tags = await ai.suggestTags(pid, 'taskTemplate', entity, { existingTags: form.value.tags || [], allowedTags: allowed })
+      suggestedTemplateTags.value = Array.isArray(tags) ? tags : []
+      if (!suggestedTemplateTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+    } catch (e: any) {
+      ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+    } finally {
+      suggestingTemplateTags.value = false
+    }
+  }
+
+  function snapshotForm(v) {
+    const s = v || {}
+    return JSON.stringify({
+      name: String(s.name || ''),
     slug: String(s.slug || ''),
     category: String(s.category || ''),
     version: String(s.version || ''),

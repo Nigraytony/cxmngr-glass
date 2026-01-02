@@ -248,6 +248,10 @@ AI behavior (plan-gated)
 - [x] Production stability: chat visibility uses `/api/ai/status` (not only cached `currentProject` plan fields).
 - [x] BYO key: Project AI Settings can save/test encrypted project keys (requires `AI_ENCRYPTION_KEY` on backend).
 - [ ] Auto-tagging + extraction flows exposed in UI (where relevant).
+  - [x] Editor auto-tag: "Suggest tags" in taggable edit pages (project tag library only).
+  - [x] Bulk auto-tag: "Auto-tag this page" on list pages (Tasks/Issues/Equipment/Activities/Spaces).
+  - [x] Bulk auto-tag empty state includes quick link to Project Settings tag library.
+  - [ ] Extraction flows (e.g., extract draft checklist items/tasks/activities from uploaded content) — future.
 
 Project-driven behavior
 - [x] Read `project.type` and suggest/offer automated actions (task templates, compliance guidance).

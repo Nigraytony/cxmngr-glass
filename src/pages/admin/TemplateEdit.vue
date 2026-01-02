@@ -292,6 +292,15 @@
               <div class="text-sm text-white/70 shrink-0">
                 Tags
               </div>
+              <button
+                v-if="canSuggestAdminTemplateTags"
+                type="button"
+                class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="suggestingAdminTemplateTags"
+                @click="suggestAdminTemplateTags"
+              >
+                {{ suggestingAdminTemplateTags ? 'Suggesting…' : 'Suggest tags' }}
+              </button>
               <div class="flex flex-wrap gap-2">
                 <span
                   v-for="t in (form as any).tags"
@@ -329,6 +338,48 @@
             </div>
             <div class="text-xs text-white/60 mt-1">
               Tip: use commas or Enter to add multiple tags.
+            </div>
+            <div
+              v-if="suggestedAdminTemplateTagsFiltered.length"
+              class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div class="text-xs text-white/60">
+                  Suggested tags
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                    @click="applyAllSuggestedAdminTemplateTags"
+                  >
+                    Add all
+                  </button>
+                  <button
+                    type="button"
+                    class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                    @click="dismissSuggestedAdminTemplateTags"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="s in suggestedAdminTemplateTagsFiltered"
+                  :key="s.tag"
+                  type="button"
+                  class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                  :title="s.reason || ''"
+                  @click="addAdminTemplateTag(String(s.tag || ''))"
+                >
+                  <span>{{ s.tag }}</span>
+                  <span
+                    v-if="typeof s.confidence === 'number'"
+                    class="text-white/60"
+                  >{{ Math.round(s.confidence * 100) }}%</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -564,6 +615,8 @@ import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import ChecklistPanel from '../../components/ChecklistPanel.vue'
 import FunctionalTestsPanel from '../../components/FunctionalTestsPanel.vue'
 import { useUiStore } from '../../stores/ui'
+import { useProjectStore } from '../../stores/project'
+import { useAiStore } from '../../stores/ai'
 import lists from '../../lists.js'
 import { RouterLink } from 'vue-router'
 
@@ -577,6 +630,8 @@ const loading = ref(false)
 const saving = ref(false)
 
 const ui = useUiStore()
+const projectStore = useProjectStore()
+const ai = useAiStore()
 
 type AdminTemplate = Record<string, any>
 
@@ -634,6 +689,69 @@ function removeTemplateTag(tag: string) {
   const key = String(tag || '').trim().toLowerCase()
   form.value.tags = (Array.isArray(form.value.tags) ? form.value.tags : [])
     .filter((t: any) => String(t || '').trim().toLowerCase() !== key)
+}
+
+const suggestingAdminTemplateTags = ref(false)
+const suggestedAdminTemplateTags = ref<Array<{ tag: string; confidence?: number; reason?: string }>>([])
+
+function addAdminTemplateTag(tag: string) {
+  const t = String(tag || '').trim()
+  if (!t) return
+  form.value.tags = normalizeTemplateTags([ ...(form.value.tags || []), t ])
+}
+
+const canSuggestAdminTemplateTags = computed(() => {
+  const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) return false
+  const p = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
+
+const suggestedAdminTemplateTagsFiltered = computed(() => {
+  const existing = new Set((form.value.tags || []).map((t: any) => String(t || '').trim().toLowerCase()).filter(Boolean))
+  const list = Array.isArray(suggestedAdminTemplateTags.value) ? suggestedAdminTemplateTags.value : []
+  return list
+    .filter((s) => s && s.tag && !existing.has(String(s.tag).trim().toLowerCase()))
+    .slice(0, 12)
+})
+
+function dismissSuggestedAdminTemplateTags() {
+  suggestedAdminTemplateTags.value = []
+}
+
+function applyAllSuggestedAdminTemplateTags() {
+  for (const s of suggestedAdminTemplateTagsFiltered.value) addAdminTemplateTag(String(s.tag || ''))
+  dismissSuggestedAdminTemplateTags()
+}
+
+async function suggestAdminTemplateTags() {
+  const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  if (!pid) {
+    ui.showError('Select a project to enable tag suggestions')
+    return
+  }
+  suggestingAdminTemplateTags.value = true
+  try {
+    const entity = {
+      tag: String(form.value.tag || '').trim(),
+      title: String(form.value.title || '').trim(),
+      type: String(form.value.type || '').trim(),
+      system: String(form.value.system || '').trim(),
+      status: String(form.value.status || '').trim(),
+      description: String(form.value.description || '').trim(),
+    }
+    const allowed = Array.isArray(projectStore.currentProject?.tags) ? projectStore.currentProject?.tags : []
+    const tags = await ai.suggestTags(pid, 'template', entity, { existingTags: form.value.tags || [], allowedTags: allowed })
+    suggestedAdminTemplateTags.value = Array.isArray(tags) ? tags : []
+    if (!suggestedAdminTemplateTagsFiltered.value.length) ui.showInfo('No new tag suggestions')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to suggest tags')
+  } finally {
+    suggestingAdminTemplateTags.value = false
+  }
 }
 
 const systemSelectOptions = computed(() => {

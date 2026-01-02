@@ -149,6 +149,38 @@
           </div>
         </div>
       </div>
+      <div class="ml-2">
+        <div class="relative inline-block group">
+          <button
+            :disabled="!canAutoTagTasksPage"
+            aria-label="Auto-tag this page"
+            :title="canAutoTagTasksPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-40"
+            @click="showAutoTagModal = true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-4 h-4"
+            >
+              <path
+                d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Auto-tag this page
+          </div>
+        </div>
+      </div>
       <div class="ml-2 flex items-end gap-2">
         <div class="relative inline-block group">
           <button
@@ -742,6 +774,16 @@
         @cancel="onEditCancel"
       />
     </Modal>
+    <BulkAutoTagModal
+      v-model="showAutoTagModal"
+      title="Auto-tag visible tasks"
+      :project-id="resolvedProjectId"
+      entity-type="task"
+      :allowed-tags="projectAllowedTags"
+      :items="autoTagTaskItems"
+      :can-suggest="canAutoTagTasksPage"
+      :apply-tags="applyTaskTags"
+    />
     <Modal
       v-model="showSettingsModal"
       panel-class="max-w-md"
@@ -864,6 +906,7 @@ import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import TasksListCharts from '../../components/charts/TasksListCharts.vue'
+import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import { http } from '../../utils/http'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -874,6 +917,7 @@ const activitiesStore = useActivitiesStore()
 const router = useRouter()
 const route = useRoute()
 const projectId = computed(() => projectStore.currentProjectId)
+const resolvedProjectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 const tasks = ref([])
 const q = ref('')
 const loading = ref(false)
@@ -886,6 +930,23 @@ const showEditModal = ref(false)
 const editingId = ref(null)
 const showSettingsModal = ref(false)
 const billRateInput = ref(ui.tasksBillRate || 0)
+const showAutoTagModal = ref(false)
+
+const projectAllowedTags = computed(() => {
+  const p = projectStore.currentProject || {}
+  const tags = p && Array.isArray(p.tags) ? p.tags : []
+  return tags.map(t => String(t).trim()).filter(Boolean)
+})
+
+const canAutoTagTasksPage = computed(() => {
+  const pid = resolvedProjectId.value
+  if (!pid) return false
+  const p = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 const billRate = computed(() => {
   const v = Number(ui.tasksBillRate)
@@ -1164,6 +1225,40 @@ const filtered = computed(() => {
 
   return visible
 })
+
+const autoTagTaskItems = computed(() => {
+  const list = Array.isArray(filtered.value) ? filtered.value : []
+  return list.slice(0, 25).map(t => {
+    const id = String(t?._id || t?.id || '').trim()
+    if (!id) return null
+    const title = String(t?.name || t?.title || '').trim() || `Task ${String(t?.wbs || id)}`
+    const subtitle = String(t?.wbs || '').trim()
+    const existingTags = Array.isArray(t?.tags) ? t.tags : []
+    const entity = {
+      taskId: t?.taskId || null,
+      wbs: t?.wbs || null,
+      name: title,
+      status: t?.status || null,
+      percentComplete: t?.percentComplete ?? null,
+      start: t?.start || null,
+      finish: t?.end || t?.finish || null,
+      duration: t?.duration ?? null,
+      description: String(t?.description || '').trim(),
+      notes: String(t?.notes || '').trim(),
+      dependencies: Array.isArray(t?.dependencies) ? t.dependencies : [],
+    }
+    return { id, title, subtitle, existingTags, entity }
+  }).filter(Boolean)
+})
+
+async function applyTaskTags(id, tags) {
+  await http.patch(`/api/tasks/${id}`, { tags })
+  const idx = (tasks.value || []).findIndex(x => String(x?._id || x?.id || '') === String(id))
+  if (idx >= 0) {
+    const current = tasks.value[idx] || {}
+    tasks.value[idx] = { ...current, tags: Array.isArray(tags) ? tags : [] }
+  }
+}
 
 const xmlFileInput = ref(null)
 const csvFileInput = ref(null)

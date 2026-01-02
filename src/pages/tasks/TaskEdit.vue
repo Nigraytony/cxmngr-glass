@@ -120,6 +120,99 @@
           />
         </div>
 
+        <div class="col-span-2">
+          <div class="flex items-center gap-3">
+            <label class="block text-white/70 text-sm">Tags</label>
+            <button
+              v-if="canSuggestTaskTags"
+              type="button"
+              class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="suggestingTaskTags"
+              @click="suggestTaskTags"
+            >
+              {{ suggestingTaskTags ? 'Suggesting…' : 'Suggest tags' }}
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <span
+              v-for="t in task.tags"
+              :key="t"
+              class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+            >
+              <span>{{ t }}</span>
+              <button
+                type="button"
+                class="text-white/60 hover:text-white"
+                aria-label="Remove tag"
+                @click="removeTag(t)"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+          <div class="flex items-center gap-2 mt-2">
+            <input
+              v-model="tagInput"
+              placeholder="Add a tag and press Enter…"
+              class="w-full px-3 py-2 rounded bg-white/10"
+              @keydown.enter.prevent="addTagFromInput"
+              @keydown.,.prevent="addTagFromInput"
+            >
+            <button
+              type="button"
+              class="h-10 px-3 rounded bg-white/6 hover:bg-white/10 border border-white/15 text-white/80 text-sm"
+              @click="addTagFromInput"
+            >
+              Add
+            </button>
+          </div>
+          <p class="text-xs text-white/60 mt-1">
+            Tip: use commas or Enter to add multiple tags.
+          </p>
+          <div
+            v-if="suggestedTaskTagsFiltered.length"
+            class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-xs text-white/60">
+                Suggested tags
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
+                  @click="applyAllSuggestedTaskTags"
+                >
+                  Add all
+                </button>
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                  @click="dismissSuggestedTaskTags"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <button
+                v-for="s in suggestedTaskTagsFiltered"
+                :key="s.tag"
+                type="button"
+                class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
+                :title="s.reason || ''"
+                @click="addTag(String(s.tag || ''))"
+              >
+                <span>{{ s.tag }}</span>
+                <span
+                  v-if="typeof s.confidence === 'number'"
+                  class="text-white/60"
+                >{{ Math.round(s.confidence * 100) }}%</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="col-span-2 mt-1">
           <label class="block text-white/70 text-sm">Linked Activity</label>
           <div class="mt-1 rounded bg-white/10 border border-white/15 px-3 py-2 text-sm text-white/80">
@@ -293,99 +386,6 @@
               class="w-full px-3 py-2 rounded bg-white/10"
               @blur="saveBillRate"
             >
-          </div>
-        </div>
-
-        <div>
-          <div class="flex items-center gap-3">
-            <label class="block text-white/70 text-sm">Tags</label>
-            <button
-              v-if="canSuggestTaskTags"
-              type="button"
-              class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
-              :disabled="suggestingTaskTags"
-              @click="suggestTaskTags"
-            >
-              {{ suggestingTaskTags ? 'Suggesting…' : 'Suggest tags' }}
-            </button>
-          </div>
-          <div class="flex flex-wrap gap-2 mt-2">
-            <span
-              v-for="t in task.tags"
-              :key="t"
-              class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
-            >
-              <span>{{ t }}</span>
-              <button
-                type="button"
-                class="text-white/60 hover:text-white"
-                aria-label="Remove tag"
-                @click="removeTag(t)"
-              >
-                ×
-              </button>
-            </span>
-          </div>
-          <div class="flex items-center gap-2 mt-2">
-            <input
-              v-model="tagInput"
-              placeholder="Add a tag and press Enter…"
-              class="w-full px-3 py-2 rounded bg-white/10"
-              @keydown.enter.prevent="addTagFromInput"
-              @keydown.,.prevent="addTagFromInput"
-            >
-            <button
-              type="button"
-              class="h-10 px-3 rounded bg-white/6 hover:bg-white/10 border border-white/15 text-white/80 text-sm"
-              @click="addTagFromInput"
-            >
-              Add
-            </button>
-          </div>
-          <p class="text-xs text-white/60 mt-1">
-            Tip: use commas or Enter to add multiple tags.
-          </p>
-          <div
-            v-if="suggestedTaskTagsFiltered.length"
-            class="mt-2 rounded-md border border-white/10 bg-black/20 p-3"
-          >
-            <div class="flex items-center justify-between gap-2">
-              <div class="text-xs text-white/60">
-                Suggested tags
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80"
-                  @click="applyAllSuggestedTaskTags"
-                >
-                  Add all
-                </button>
-                <button
-                  type="button"
-                  class="px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
-                  @click="dismissSuggestedTaskTags"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <button
-                v-for="s in suggestedTaskTagsFiltered"
-                :key="s.tag"
-                type="button"
-                class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 hover:bg-white/15"
-                :title="s.reason || ''"
-                @click="addTag(String(s.tag || ''))"
-              >
-                <span>{{ s.tag }}</span>
-                <span
-                  v-if="typeof s.confidence === 'number'"
-                  class="text-white/60"
-                >{{ Math.round(s.confidence * 100) }}%</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>

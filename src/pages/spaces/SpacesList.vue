@@ -204,6 +204,36 @@
           <span>List View</span>
         </span>
       </button>
+      <div class="relative inline-block group">
+        <button
+          :disabled="!canAutoTagSpacesPage"
+          aria-label="Auto-tag this page"
+          :title="canAutoTagSpacesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          @click="showAutoTagModal = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
+          Auto-tag this page
+        </div>
+      </div>
       <!-- Download Excel button -->
       <button
         :disabled="!filtered.length"
@@ -837,6 +867,16 @@
         </form>
       </div>
     </div>
+    <BulkAutoTagModal
+      v-model="showAutoTagModal"
+      title="Auto-tag visible spaces"
+      :project-id="resolvedProjectId"
+      entity-type="space"
+      :allowed-tags="projectAllowedTags"
+      :items="autoTagSpaceItems"
+      :can-suggest="canAutoTagSpacesPage"
+      :apply-tags="applySpaceTags"
+    />
   </section>
 </template>
 
@@ -844,6 +884,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
+import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
@@ -867,6 +908,31 @@ const typeFilter = ref('')
 const modalOpen = ref(false)
 const editing = ref(false)
 const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '' })
+const showAutoTagModal = ref(false)
+
+const resolvedProjectId = computed(() => {
+  try {
+    return String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  } catch (e) {
+    return String(projectStore.currentProjectId || '').trim()
+  }
+})
+
+const projectAllowedTags = computed(() => {
+  const p: any = projectStore.currentProject || {}
+  const tags = p && Array.isArray(p.tags) ? p.tags : []
+  return tags.map((t: any) => String(t).trim()).filter(Boolean)
+})
+
+const canAutoTagSpacesPage = computed(() => {
+  const pid = resolvedProjectId.value
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 const spaces = computed(() => spacesStore.items)
 // server-driven list for paging (list view)
@@ -1034,6 +1100,42 @@ const paged = computed(() => {
   // Server always returns a page slice; just return the list
   return list
 })
+
+const autoTagSpaceItems = computed(() => {
+  const list: any[] = Array.isArray(paged.value) ? (paged.value as any[]) : []
+  return list.slice(0, 25).map((s: any) => {
+    const id = String(s?.id || s?._id || '').trim()
+    if (!id) return null
+    const title = String(s?.title || s?.tag || '').trim() || `Space ${id}`
+    const subtitle = String(s?.type || '').trim()
+    const existingTags = Array.isArray(s?.tags) ? s.tags : []
+    const entity = {
+      tag: s?.tag || null,
+      title,
+      type: s?.type || null,
+      description: String(s?.description || '').trim(),
+      parentSpace: s?.parentSpace || null,
+      parentChain: spaceParentChainLabelById(s?.parentSpace || null),
+    }
+    return { id, title, subtitle, existingTags, entity }
+  }).filter(Boolean) as any
+})
+
+async function applySpaceTags(id: string, tags: string[]) {
+  const sid = String(id || '').trim()
+  if (!sid) return
+
+  const fromStore: any = (spacesStore.byId && (spacesStore.byId as any)[sid]) ? (spacesStore.byId as any)[sid] : null
+  const fromPage: any = (listSpaces.value || []).find((s: any) => String(s?.id || s?._id || '') === sid) || null
+  const base: any = { ...(fromPage || {}), ...(fromStore || {}) }
+
+  if (!base.title && (fromPage?.title || fromStore?.title)) base.title = fromPage?.title || fromStore?.title
+  if (!base.type && (fromPage?.type || fromStore?.type)) base.type = fromPage?.type || fromStore?.type
+  if (!base.project && base.projectId) base.project = base.projectId
+  if (!base.project) base.project = resolvedProjectId.value
+
+  await spacesStore.update({ ...base, id: sid, tags: Array.isArray(tags) ? tags : [] } as any)
+}
 
 // Fetch page from server
 async function fetchSpacesPage(projectId?: string) {

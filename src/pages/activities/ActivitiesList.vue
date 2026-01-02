@@ -165,6 +165,36 @@
           {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
         </div>
       </div>
+      <div class="relative inline-block group shrink-0">
+        <button
+          :disabled="!canAutoTagActivitiesPage"
+          aria-label="Auto-tag this page"
+          :title="canAutoTagActivitiesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          @click="showAutoTagModal = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-5 h-5"
+          >
+            <path
+              d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
+          Auto-tag this page
+        </div>
+      </div>
       <div class="ml-auto flex items-center gap-2">
         <button
           class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
@@ -691,6 +721,16 @@
         </div>
       </template>
     </Modal>
+    <BulkAutoTagModal
+      v-model="showAutoTagModal"
+      title="Auto-tag visible activities"
+      :project-id="resolvedProjectId"
+      entity-type="activity"
+      :allowed-tags="projectAllowedTags"
+      :items="autoTagActivityItems"
+      :can-suggest="canAutoTagActivitiesPage"
+      :apply-tags="applyActivityTags"
+    />
   </div>
 </template>
 
@@ -704,6 +744,7 @@ import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
+import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import ActivitiesListCharts from '../../components/charts/ActivitiesListCharts.vue'
 import type { ActivitiesAnalytics } from '../../components/charts/ActivitiesListCharts.vue'
 import http from '../../utils/http'
@@ -730,6 +771,31 @@ const showAnalytics = ref(false)
 const analyticsLoading = ref(false)
 const activitiesAnalytics = ref<ActivitiesAnalytics | null>(null)
 const analyticsForProjectId = ref('')
+const showAutoTagModal = ref(false)
+
+const resolvedProjectId = computed(() => {
+  try {
+    return String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+  } catch (e) {
+    return String(projectStore.currentProjectId || '').trim()
+  }
+})
+
+const projectAllowedTags = computed(() => {
+  const p: any = projectStore.currentProject || {}
+  const tags = p && Array.isArray(p.tags) ? p.tags : []
+  return tags.map((t: any) => String(t).trim()).filter(Boolean)
+})
+
+const canAutoTagActivitiesPage = computed(() => {
+  const pid = resolvedProjectId.value
+  if (!pid) return false
+  const p: any = projectStore.currentProject || {}
+  if (p.ai && p.ai.enabled === false) return false
+  const tier = String(p.subscriptionTier || '').toLowerCase()
+  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  return tier === 'premium' || hasFeature
+})
 
 function viewStorageKey() {
   return `ui.activities.viewMode:${projectStore.currentProjectId || 'global'}`
@@ -973,6 +1039,38 @@ const pagedActivities = computed(() => {
   const start = (page.value - 1) * pageSize.value
   return list.slice(start, start + pageSize.value)
 })
+
+function stripHtml(input: any) {
+  const s = String(input || '')
+  return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+const autoTagActivityItems = computed(() => {
+  const list: any[] = Array.isArray(pagedActivities.value) ? (pagedActivities.value as any[]) : []
+  return list.slice(0, 25).map((a: any) => {
+    const id = String(a?.id || a?._id || '').trim()
+    if (!id) return null
+    const title = String(a?.name || '').trim() || `Activity ${id}`
+    const subtitle = String(a?.type || '').trim() || String(a?.location || '').trim()
+    const existingTags = Array.isArray(a?.labels) ? a.labels : []
+    const entity = {
+      name: title,
+      type: a?.type || null,
+      status: a?.status || null,
+      location: a?.location || null,
+      space: spaceLabel(a),
+      systems: Array.isArray(a?.systems) ? a.systems : [],
+      startDate: a?.startDate || null,
+      endDate: a?.endDate || null,
+      description: stripHtml(a?.descriptionHtml || ''),
+    }
+    return { id, title, subtitle, existingTags, entity }
+  }).filter(Boolean) as any
+})
+
+async function applyActivityTags(id: string, tags: string[]) {
+  await store.updateActivity(String(id), { labels: Array.isArray(tags) ? tags : [] } as any)
+}
 
 function clampPage() {
   if (page.value < 1) page.value = 1
