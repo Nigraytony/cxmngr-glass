@@ -1219,8 +1219,21 @@ async function fetchTemplatesPage(projectId?: string) {
   }
 
   try {
+    const pid = String(
+      projectId ??
+        projectStore.currentProjectId ??
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') ??
+        ''
+    ).trim()
+    if (!pid) {
+      serverTemplates.value = []
+      serverTotal.value = 0
+      serverTotalAll.value = 0
+      return
+    }
+
     const params: any = { page: page.value, perPage: pageSize.value, includeFacets: true }
-    if (projectId) params.projectId = projectId
+    params.projectId = pid
     if (search.value) params.search = search.value
     if (typeFilter.value) params.type = typeFilter.value
     if (systemFilter.value) params.system = systemFilter.value

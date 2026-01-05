@@ -110,6 +110,15 @@
           </div>
         </div>
       </div>
+
+      <div>
+        <label class="block text-white/70 text-sm">Start Date</label>
+        <input
+          v-model="startDateFrom"
+          type="date"
+          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-56"
+        >
+      </div>
       <button
         class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
         @click="refresh()"
@@ -758,6 +767,7 @@ import type { ActivitiesAnalytics } from '../../components/charts/ActivitiesList
 	const auth = useAuthStore()
 const q = ref('')
 const typeFilter = ref<string>('')
+const startDateFrom = ref<string>('')
 const showDeleteModal = ref(false)
 const deletingActivity = ref<string | null>(null)
 const deletingName = ref<string>('')
@@ -917,6 +927,14 @@ function fmt(d?: string) {
   try { return new Date(d).toLocaleDateString() } catch (e) { return String(d) }
 }
 
+function parseInputDateToTime(value: string) {
+  const v = String(value || '').trim()
+  if (!v) return null
+  // Input is YYYY-MM-DD; use local midnight to avoid TZ surprises.
+  const t = new Date(`${v}T00:00:00`).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
 watch(() => projectStore.currentProjectId, async (pid) => {
   if (pid) await spacesStore.fetchByProject(pid).catch(() => {})
   loadViewMode()
@@ -983,12 +1001,28 @@ function fuzzyMatch(text: string, pattern: string) {
 const filtered = computed(() => {
   let list = store.activities
   // activities in store are already filtered by current project in fetchActivities()
+  // Apply filters regardless of search query.
+  if (typeFilter.value) {
+    const tf = String(typeFilter.value).toLowerCase()
+    list = (list as any[]).filter((a: any) => String(a?.type || '').toLowerCase() === tf) as any
+  }
+
+  const fromT = parseInputDateToTime(startDateFrom.value)
+  if (fromT != null) {
+    list = (list as any[]).filter((a: any) => {
+      const raw = a?.startDate || a?.createdAt
+      const t = raw ? new Date(raw).getTime() : NaN
+      if (!Number.isFinite(t)) return false
+      return t >= fromT
+    }) as any
+  }
+
   if (!q.value) return list
+
   const s = q.value.toLowerCase()
   const mode = searchMode.value
-  const base = typeFilter.value ? list.filter((a: any) => String(a.type || '').toLowerCase() === String(typeFilter.value).toLowerCase()) : list
-  return base.filter((a: any) => {
-    const fields = [(a.name || ''), (a.type || '')].map(f => f.toLowerCase())
+  return (list as any[]).filter((a: any) => {
+    const fields = [(a?.name || ''), (a?.type || '')].map((f: any) => String(f).toLowerCase())
     if (mode === 'exact') return fields.some(f => f === s)
     if (mode === 'fuzzy') return fields.some(f => fuzzyMatch(f, s))
     return fields.some(f => f.includes(s))
@@ -1092,7 +1126,7 @@ watch([totalItems, pageSize], () => {
   clampPage()
 })
 
-watch([q, typeFilter], () => {
+watch([q, typeFilter, startDateFrom], () => {
   page.value = 1
 })
 

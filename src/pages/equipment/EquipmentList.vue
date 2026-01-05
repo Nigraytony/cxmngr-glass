@@ -1599,18 +1599,18 @@ function spaceParentChainLabelById(spaceId?: string | null) {
 // Use server-provided page when available; otherwise fall back to full store list
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const t = typeFilter.value
-  const s = statusFilter.value
-  const sys = systemFilter.value
+  const t = normalizeListFilterValue(typeFilter.value)
+  const s = normalizeListFilterValue(statusFilter.value)
+  const sys = normalizeListFilterValue(systemFilter.value).toLowerCase()
   const reqChecklists = onlyWithChecklists.value
   const reqFpt = onlyWithFpt.value
   const reqIssues = onlyWithIssues.value
-  const checklistSys = checklistSystemFilter.value
+  const checklistSys = normalizeListFilterValue(checklistSystemFilter.value)
   const baseList = (Array.isArray(serverEquipment.value) && serverEquipment.value.length > 0) ? listEquipment.value : equipment.value
   return (baseList || []).filter(e => {
     if (t && e.type !== t) return false
     if (s && e.status !== s) return false
-    if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
+    if (sys && String(e.system || '').toLowerCase() !== sys) return false
     if (reqChecklists && countNum((e as any).checklistsCount) <= 0) return false
     if (reqChecklists && checklistSys && !hasChecklistSystem(e, checklistSys)) return false
     if (reqFpt && countNum((e as any).fptCount) <= 0) return false
@@ -1653,6 +1653,15 @@ function setSort(key: string) {
 
 // Persist list view state (search/sort/filters) per project to sessionStorage
 const stateStorageKey = computed(() => `equipmentListState:${projectStore.currentProjectId || 'global'}`)
+
+function normalizeListFilterValue(value: unknown) {
+  const v = String(value ?? '').trim()
+  if (!v) return ''
+  const lower = v.toLowerCase()
+  if (lower === 'all' || lower === 'any') return ''
+  return v
+}
+
 function loadListState() {
   try {
     const raw = sessionStorage.getItem(stateStorageKey.value)
@@ -1660,13 +1669,13 @@ function loadListState() {
     const data = JSON.parse(raw)
     if (data && typeof data === 'object') {
       if (typeof data.search === 'string') search.value = data.search
-      if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
-      if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
-      if (typeof data.systemFilter === 'string') systemFilter.value = data.systemFilter
+      if (typeof data.typeFilter === 'string') typeFilter.value = normalizeListFilterValue(data.typeFilter)
+      if (typeof data.statusFilter === 'string') statusFilter.value = normalizeListFilterValue(data.statusFilter)
+      if (typeof data.systemFilter === 'string') systemFilter.value = normalizeListFilterValue(data.systemFilter).toLowerCase()
       if (typeof data.onlyWithChecklists === 'boolean') onlyWithChecklists.value = data.onlyWithChecklists
       if (typeof data.onlyWithFpt === 'boolean') onlyWithFpt.value = data.onlyWithFpt
       if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
-      if (typeof data.checklistSystemFilter === 'string') checklistSystemFilter.value = data.checklistSystemFilter
+      if (typeof data.checklistSystemFilter === 'string') checklistSystemFilter.value = normalizeListFilterValue(data.checklistSystemFilter)
       if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
       if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
     }
@@ -1676,13 +1685,13 @@ function persistListState() {
   try {
     const payload = {
       search: search.value,
-      typeFilter: typeFilter.value,
-      statusFilter: statusFilter.value,
-      systemFilter: systemFilter.value,
+      typeFilter: normalizeListFilterValue(typeFilter.value),
+      statusFilter: normalizeListFilterValue(statusFilter.value),
+      systemFilter: normalizeListFilterValue(systemFilter.value).toLowerCase(),
       onlyWithChecklists: onlyWithChecklists.value,
       onlyWithFpt: onlyWithFpt.value,
       onlyWithIssues: onlyWithIssues.value,
-      checklistSystemFilter: checklistSystemFilter.value,
+      checklistSystemFilter: normalizeListFilterValue(checklistSystemFilter.value),
       sortKey: sortKey.value,
       sortDir: sortDir.value
     }
@@ -1749,8 +1758,8 @@ const checklistSystemFilterLabel = computed(() => {
 
 const preSystemFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const t = typeFilter.value
-  const s = statusFilter.value
+  const t = normalizeListFilterValue(typeFilter.value)
+  const s = normalizeListFilterValue(statusFilter.value)
   const base = listEquipment.value || []
   return base.filter(e => {
     if (t && e.type !== t) return false
@@ -2029,8 +2038,8 @@ function selectModalSpace(spaceId: string) {
 // Counts and option lists for Type/System/Status
 const preTypeFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const sys = systemFilter.value
-  const s = statusFilter.value
+  const sys = normalizeListFilterValue(systemFilter.value).toLowerCase()
+  const s = normalizeListFilterValue(statusFilter.value)
   return equipment.value.filter(e => {
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
     if (s && e.status !== s) return false
@@ -2122,8 +2131,8 @@ function systemCount(nameOrVal: string) {
 
 const preStatusFiltered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const t = typeFilter.value
-  const sys = systemFilter.value
+  const t = normalizeListFilterValue(typeFilter.value)
+  const sys = normalizeListFilterValue(systemFilter.value).toLowerCase()
   return equipment.value.filter(e => {
     if (t && e.type !== t) return false
     if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
@@ -2574,16 +2583,22 @@ async function fetchEquipmentPage(projectId?: string) {
       return
     }
 
-    const params: any = { page: page.value, perPage: pageSize.value, includeFacets: true }
+  const params: any = { page: page.value, perPage: pageSize.value, includeFacets: true }
     params.projectId = pid
-    if (search.value) params.search = search.value
-    if (typeFilter.value) params.type = typeFilter.value
-    if (systemFilter.value) params.system = systemFilter.value
-    if (statusFilter.value) params.status = statusFilter.value
+    const q = String(search.value || '').trim()
+    const t = normalizeListFilterValue(typeFilter.value)
+    const sys = normalizeListFilterValue(systemFilter.value).toLowerCase()
+    const s = normalizeListFilterValue(statusFilter.value)
+    const checklistSys = normalizeListFilterValue(checklistSystemFilter.value)
+
+    if (q) params.search = q
+    if (t) params.type = t
+    if (sys) params.system = sys
+    if (s) params.status = s
     if (onlyWithChecklists.value) params.hasChecklists = '1'
     if (onlyWithFpt.value) params.hasFpt = '1'
     if (onlyWithIssues.value) params.hasIssues = '1'
-    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
+    if (onlyWithChecklists.value && checklistSys) params.checklistSystem = checklistSys
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}

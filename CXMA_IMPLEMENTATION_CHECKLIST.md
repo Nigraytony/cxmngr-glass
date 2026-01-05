@@ -72,7 +72,7 @@ This document combines the high-level application specification from `cxma_app_s
 
 - [ ] Confirm the Equipment model includes: attributes, components, photos, attachments, checklists, FPTs, issues, logs, and metadata, and is linked to Spaces and Activities. (Spec 3.2)
 - [x] Fix the equipment selection behavior when multiple assets share the same tag on a project (e.g., in Activities/Issues). (TODO #10)
-- [ ] Investigate and fix why the Equipment list is being filtered when there is no filter applied. (TODO #15)
+- [x] Investigate and fix why the Equipment list is being filtered when there is no filter applied. (TODO #15)
 - [ ] Add charting in the Equipment module to track progress (e.g., collapsible panel with charts and percentages for equipment, checklists, and functional tests). (TODO #16)
 - [ ] Fix multi-file upload support on the Equipment Photos/File Upload tabs. (TODO #17)
 - [ ] Implement bulk-edit for Equipment, including selecting which fields to update and checkbox selection of Equipment items. (TODO #18)
@@ -94,9 +94,9 @@ This document combines the high-level application specification from `cxma_app_s
 ## 6. Activities
 
 - [x] Do not filter Activities by project list; only Activities for the default project need to be available. (TODO #8)
-- [ ] Add filtering on Activity Type and Start Date. (TODO #9)
+- [x] Add filtering on Activity Type and Start Date. (TODO #9)
 - [x] Fix the Equipment list for Activities when there are assets with the same tag on a project so selection is deterministic. (TODO #10)
-- [ ] Add pagination to the Activities page and provide a list view mode. (TODO #11)
+- [x] Add pagination to the Activities page and provide a list view mode. (TODO #11)
 - [ ] Confirm Activities support photos, many Equipment, Issues, comments, attachments, settings, logs, metadata, and sub-activities (action items). (Spec 3.4)
 - [ ] Add analytics or dashboard views for Activities with the most issues/equipment. (Spec 2, Spec 3.4)
 
@@ -193,7 +193,7 @@ This document combines the high-level application specification from `cxma_app_s
 - [x] Persist table sorting per session for all relevant list views. (TODO #12)
 - [x] Persist pagination "per page" selections per session. (TODO #13)
 - [x] Show a spinner when entering Edit pages while they load. (TODO #40)
-- [ ] Fix dropdown lists that show white text on a white background throughout the app. (TODO #56)
+- [x] Fix dropdown lists that show white text on a white background throughout the app. (TODO #56)
 - [ ] Perform a UI QA pass for consistent spacing, typography, and responsiveness across modules (desktop, tablet, mobile). (Spec 6)
 
 ---

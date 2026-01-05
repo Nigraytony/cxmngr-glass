@@ -82,9 +82,9 @@ Notes
 ✅ 6.  Profile: Add project Cards in th projects tab of the user profile
 ✅ 7.  Profile: Implement a Forgot Password functionality in the app
 ✅ 8.  Activities: Don't filter on projects. Only activities for the default project needs to be available
-9.  Activities: Filter on Type and Start Date
+✅ 9.  Activities: Filter on Type and Start Date
 ✅ 10. Activities: Fix the equipment list - if there are assets with the same tag on a project it can't choose between/among them.
-11. Activities: Add pagination to this page.Need a LIST view for activities.
+✅ 11. Activities: Add pagination to this page.Need a LIST view for activities.
 ✅ 12. Lists: All table sorting need to persist for the session
 ✅ 13. Lists: Pagination per page selections need to persist for the session
 ✅ 14. Spaces: All locations need to be displayed as breadcrumbed heirarchy
@@ -130,7 +130,9 @@ Notes
 53. Mobile App: Start investigating what it would take to spinup a mobile app from this web app.
 54. Desktop App: Start investigating what it would take to spinup a desktop app from this web app.
 55. AI: Post-MVP, add blueprint/PDF ingestion flow that reads uploaded drawings and proposes draft Spaces/Equipment lists for user review.
-56. Bug Fix: Dropdown lists are white text on white background. Needs to be fixed throughout the app.
+✅ 56. Bug Fix: Dropdown lists are white text on white background. Needs to be fixed throughout the app.
+
+57. Bug Fix: Templates list sorting (tag/title/type/system/status) works locally but in live app the list goes blank after sorting.
 
 
 Please remember that:

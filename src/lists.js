@@ -210,6 +210,7 @@ export default {
     { value: "heat pump", text: "Heat Pump" },
     { value: "TU", text: "Terminal Unit" },
     { value:"heater", text: "Unit Heater"},
+    { value:"cooling tower", text: "Cooling Tower"},
     { value:"chiller", text: "Chiller"},
     { value:"boiler", text: "Boiler"},
     { value:"pump", text: "HVAC Pump"},

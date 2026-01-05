@@ -18,3 +18,15 @@ body {
   transition: background-color 200ms ease, background 200ms ease;
   overflow-y: auto;
 }
+
+@layer base {
+  /*
+   * Native <select> dropdown menus are typically rendered with a light background,
+   * but option text often inherits the <select> color (e.g. `text-white`).
+   * Force option/optgroup text to a readable color to avoid white-on-white.
+   */
+  select option,
+  select optgroup {
+    @apply text-slate-900;
+  }
+}
