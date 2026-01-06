@@ -2314,7 +2314,21 @@ const autoTagEquipmentItems = computed(() => {
 })
 
 async function applyEquipmentTags(id: string, tags: string[]) {
-  await equipmentStore.updateFields(id, { tags })
+  const eid = String(id || '').trim()
+  if (!eid) return
+  await equipmentStore.updateFields(eid, { tags })
+
+  // This page may be showing a server-driven slice (`serverEquipment`), so also patch it
+  // so tags appear immediately after auto-tag apply.
+  try {
+    const arr: any[] = Array.isArray(serverEquipment.value) ? (serverEquipment.value as any[]) : []
+    const idx = arr.findIndex((e: any) => String(e?.id || e?._id || '').trim() === eid)
+    if (idx >= 0) {
+      const cur = arr[idx] || {}
+      const next = { ...cur, tags: Array.isArray(tags) ? tags : [] }
+      serverEquipment.value.splice(idx, 1, next)
+    }
+  } catch (e) { /* ignore */ }
 }
 
 const displayTotal = computed(() => Number(serverTotalAll.value || serverTotal.value || 0))
@@ -2673,6 +2687,26 @@ async function fetchEquipmentPage(projectId?: string) {
       page.value = totalPagesNow
       // retry with the adjusted page so UI doesn't snap to page 1 on transient empty result
       await fetchEquipmentPage(pid)
+    }
+  } catch (e: any) {
+    // In production, a stale/invalid selectedProjectId often results in 403s that previously
+    // looked like "no equipment". Surface a helpful error so the user can recover.
+    serverEquipment.value = []
+    serverTotal.value = 0
+    serverTotalAll.value = 0
+    serverChecklistsTotalCount.value = 0
+    serverChecklistSystems.value = []
+    serverFptTotalCount.value = 0
+    serverIssuesTotalCount.value = 0
+    try {
+      const status = e?.response?.status
+      const msg = e?.response?.data?.error || e?.message || 'Failed to load equipment'
+      if (status === 401) ui.showError('Session expired. Please log in again.')
+      else if (status === 403) ui.showError(msg || 'You do not have access to this project. Select another project.')
+      else if (status === 400 && String(msg || '').toLowerCase().includes('projectid')) ui.showError('Select a project to view equipment.')
+      else ui.showError(msg)
+    } catch (_) {
+      // ignore
     }
   } finally {
     setLoading(false)

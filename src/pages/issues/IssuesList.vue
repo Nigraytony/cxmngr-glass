@@ -1233,7 +1233,20 @@ const autoTagIssueItems = computed(() => {
 })
 
 async function applyIssueTags(id: string, tags: string[]) {
-  await issuesStore.updateIssue(id, { labels: tags })
+  const iid = String(id || '').trim()
+  if (!iid) return
+  const next = Array.isArray(tags) ? tags : []
+  await issuesStore.updateIssue(iid, { labels: next })
+
+  // This page often renders a server-driven slice; patch it so labels appear immediately.
+  try {
+    const arr: any[] = Array.isArray(serverIssues.value) ? (serverIssues.value as any[]) : []
+    const idx = arr.findIndex((it: any) => String(it?.id || it?._id || '').trim() === iid)
+    if (idx >= 0) {
+      const cur = arr[idx] || {}
+      serverIssues.value.splice(idx, 1, { ...cur, labels: next })
+    }
+  } catch (e) { /* ignore */ }
 }
 
 function readChartsPreference(): boolean {

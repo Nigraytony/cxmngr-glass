@@ -89,7 +89,7 @@ Notes
 ✅ 13. Lists: Pagination per page selections need to persist for the session
 ✅ 14. Spaces: All locations need to be displayed as breadcrumbed heirarchy
 ✅ 15. Equipment: Need to investigate why equipment list is being filtered when there is no filter
-16. Equipment: Add charting in the equipment module to track progress. Maybe a colapsible panel that shows charts and percentage counst for equipment, checklists, and functional tests.
+✅ 16. Equipment: Add charting in the equipment module to track progress. Maybe a colapsible panel that shows charts and percentage counst for equipment, checklists, and functional tests.
 17. Equipment: Photo/File Upload tabs should be able to upload multiple files at once but feature not working. Need to fix.
 18. Equipment: Need to add feature to bulk edit equipment. Maybe select what fields to be affected and checkbox selection of equipment.
 19. Equipment: Reporting - need a Report component where we can select what fields/tabs to include and in what order.
@@ -131,8 +131,10 @@ Notes
 54. Desktop App: Start investigating what it would take to spinup a desktop app from this web app.
 55. AI: Post-MVP, add blueprint/PDF ingestion flow that reads uploaded drawings and proposes draft Spaces/Equipment lists for user review.
 ✅ 56. Bug Fix: Dropdown lists are white text on white background. Needs to be fixed throughout the app.
-
 57. Bug Fix: Templates list sorting (tag/title/type/system/status) works locally but in live app the list goes blank after sorting.
+58. Make all dropdown lists alphabetical.
+59. When a template is created it needs to appear without needing to refresh the page.
+60. Auto tagging is not working on any of the pages.
 
 
 Please remember that:

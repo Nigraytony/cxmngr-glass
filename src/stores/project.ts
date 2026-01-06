@@ -149,6 +149,71 @@ export const useProjectStore = defineStore('project', () => {
   const currentProject = ref<Project | null>(null);
   const logsCache = ref<Record<string, any[]>>({});
 
+  function normalizeProjectId(input: any): string {
+    const v = (typeof input === 'string' || typeof input === 'number')
+      ? String(input)
+      : (input && typeof input === 'object')
+        ? String((input as any)._id || (input as any).id || '')
+        : ''
+    return v.trim()
+  }
+
+  function projectIdsSet(): Set<string> {
+    const set = new Set<string>()
+    for (const p of (projects.value || [])) {
+      const id = normalizeProjectId((p as any)?.id || (p as any)?._id)
+      if (id) set.add(id)
+    }
+    return set
+  }
+
+  function pickDefaultProjectIdFromAuth(): string {
+    try {
+      const auth = useAuthStore()
+      const arr: any[] = Array.isArray((auth as any)?.user?.projects) ? ((auth as any).user.projects as any[]) : []
+      const dp = arr.find((p: any) => p && typeof p === 'object' && p.default)
+      return normalizeProjectId(dp)
+    } catch (e) {
+      return ''
+    }
+  }
+
+  function ensureValidCurrentProject(): void {
+    try {
+      const allowed = projectIdsSet()
+      const stored = (typeof window !== 'undefined') ? (localStorage.getItem('selectedProjectId') || '') : ''
+      const cur = normalizeProjectId(currentProjectId.value || stored)
+
+      if (cur && allowed.has(cur)) {
+        // Keep store in sync with localStorage if needed.
+        if (!currentProjectId.value) currentProjectId.value = cur
+        if (typeof window !== 'undefined') {
+          try { localStorage.setItem('selectedProjectId', cur) } catch (e) { /* ignore */ }
+        }
+        return
+      }
+
+      let nextId = pickDefaultProjectIdFromAuth()
+      if (!nextId || !allowed.has(nextId)) {
+        nextId = normalizeProjectId((projects.value && projects.value[0]) ? ((projects.value[0] as any).id || (projects.value[0] as any)._id) : '')
+      }
+
+      if (nextId && allowed.has(nextId)) {
+        setCurrentProject(nextId)
+        return
+      }
+
+      // No accessible projects.
+      currentProjectId.value = null
+      currentProject.value = null
+      if (typeof window !== 'undefined') {
+        try { localStorage.removeItem('selectedProjectId') } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      // best-effort
+    }
+  }
+
   // Load selected project from localStorage on init
   if (typeof window !== 'undefined') {
     const storedId = localStorage.getItem('selectedProjectId');
@@ -205,6 +270,9 @@ export const useProjectStore = defineStore('project', () => {
       projects.value = Array.isArray(userProjects)
         ? userProjects.map((p: any) => ({ ...p, id: p._id || p.id }))
         : []
+
+      // If a previous session left an inaccessible project selected, snap to a valid one.
+      ensureValidCurrentProject()
     } catch (err) {
       // Optionally handle error
       projects.value = [];
@@ -323,14 +391,8 @@ export const useProjectStore = defineStore('project', () => {
   if (typeof window !== 'undefined') {
     // fetch all projects and then populate currentProject from localStorage if available
     fetchProjects().then(() => {
-      const stored = localStorage.getItem('selectedProjectId')
-      if (stored) {
-        currentProjectId.value = stored
-        fetchProject(stored).catch(() => {})
-      } else {
-        // if auth has a default project we already try to set currentProjectId earlier
-        if (currentProjectId.value) fetchProject(currentProjectId.value).catch(() => {})
-      }
+      ensureValidCurrentProject()
+      if (currentProjectId.value) fetchProject(String(currentProjectId.value)).catch(() => {})
     })
   }
 
@@ -343,7 +405,7 @@ export const useProjectStore = defineStore('project', () => {
       if (dp) {
         const dd: any = dp
         const id = typeof dp === 'string' ? dp : (dd._id || dd.id || null)
-        if (id) currentProjectId.value = id
+        if (id && String(id) !== String(currentProjectId.value || '')) setCurrentProject(String(id))
       }
     }, { immediate: true })
   } catch (e) {

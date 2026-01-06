@@ -1145,7 +1145,18 @@ async function applySpaceTags(id: string, tags: string[]) {
   if (!base.project && base.projectId) base.project = base.projectId
   if (!base.project) base.project = resolvedProjectId.value
 
-  await spacesStore.update({ ...base, id: sid, tags: Array.isArray(tags) ? tags : [] } as any)
+  const nextTags = Array.isArray(tags) ? tags : []
+  await spacesStore.update({ ...base, id: sid, tags: nextTags } as any)
+
+  // Also patch the server-driven page slice so tags update immediately.
+  try {
+    const arr: any[] = Array.isArray(serverSpaces.value) ? (serverSpaces.value as any[]) : []
+    const idx = arr.findIndex((s: any) => String(s?.id || s?._id || '').trim() === sid)
+    if (idx >= 0) {
+      const cur = arr[idx] || {}
+      serverSpaces.value.splice(idx, 1, { ...cur, tags: nextTags })
+    }
+  } catch (e) { /* ignore */ }
 }
 
 // Fetch page from server

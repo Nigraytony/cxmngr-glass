@@ -12,7 +12,7 @@ const spaceSchema = new mongoose.Schema({
     trim: true
   },
   type: { type: String, 
-    enum: ['Area', 'Building', 'Campus', 'Floor', 'Room' ], 
+    enum: ['Area', 'Building', 'Campus', 'Corridor', 'Floor', 'Level', 'Room' ], 
     default: 'Room' 
   },
   description: {

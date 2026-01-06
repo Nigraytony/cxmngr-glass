@@ -1147,6 +1147,10 @@ async function save() {
     } else {
       await templatesStore.create(form.value as Template)
       ui.showSuccess('Template created')
+
+      // Ensure the server-driven list reflects the new template without a manual refresh.
+      page.value = 1
+      await fetchTemplatesPage(String(form.value.projectId || projectStore.currentProjectId || ''))
     }
     modalOpen.value = false
   } catch (e: any) {
