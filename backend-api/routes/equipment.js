@@ -447,7 +447,7 @@ router.get('/analytics', auth, requireFeature('equipment'), requirePermission('e
       ]),
       Equipment.aggregate([
         { $match: projectMatch },
-        { $project: { checklists: 1 } },
+        { $project: { checklists: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] } } },
         { $unwind: { path: '$checklists', preserveNullAndEmptyArrays: true } },
         { $project: { question: '$checklists.questions' } },
         { $unwind: { path: '$question', preserveNullAndEmptyArrays: true } },
@@ -490,7 +490,7 @@ router.get('/analytics', auth, requireFeature('equipment'), requirePermission('e
       ]),
       Equipment.aggregate([
         { $match: projectMatch },
-        { $project: { functionalTests: 1 } },
+        { $project: { functionalTests: { $cond: [{ $isArray: '$functionalTests' }, '$functionalTests', []] } } },
         { $unwind: { path: '$functionalTests', preserveNullAndEmptyArrays: true } },
         {
           $group: {
@@ -582,6 +582,45 @@ router.get('/analytics', auth, requireFeature('equipment'), requirePermission('e
   }
 })
 
+function safeArrayLen(value) {
+  if (Array.isArray(value)) return value.length
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed.length : 0
+    } catch (e) {
+      return 0
+    }
+  }
+  return 0
+}
+
+function safeChecklistsArray(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (e) {
+      return []
+    }
+  }
+  return []
+}
+
+function checklistSystemCountsFromChecklists(checklists) {
+  const items = safeChecklistsArray(checklists)
+  const counts = new Map()
+  for (const c of items) {
+    const sys = c && typeof c === 'object' ? String(c.system || '').trim() : ''
+    if (!sys) continue
+    counts.set(sys, (counts.get(sys) || 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([system, count]) => ({ system, count }))
+    .sort((a, b) => String(a.system).localeCompare(String(b.system)))
+}
+
 // Read all equipment (paginated, filtered, light projection)
 router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
@@ -627,21 +666,49 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
     const totalAll = await Equipment.countDocuments({ projectId })
     const total = await Equipment.countDocuments(filter)
 
-    const items = await Equipment.aggregate([
-      { $match: filter },
-      { $sort: { [sortBy]: sortDir, _id: sortDir } },
-      { $skip: (page - 1) * perPage },
-      { $limit: perPage },
-      {
-        $project: {
-          ...LIGHT_FIELDS.split(' ').reduce((acc, k) => { acc[k] = 1; return acc }, {}),
-          issuesCount: countArrayExpr('$issues'),
-          checklistsCount: countArrayExpr('$checklists'),
-          checklistsBySystem: checklistSystemCountsExpr(),
-          fptCount: countArrayExpr('$functionalTests'),
+    let items = []
+    try {
+      items = await Equipment.aggregate([
+        { $match: filter },
+        { $sort: { [sortBy]: sortDir, _id: sortDir } },
+        { $skip: (page - 1) * perPage },
+        { $limit: perPage },
+        {
+          $project: {
+            ...LIGHT_FIELDS.split(' ').reduce((acc, k) => { acc[k] = 1; return acc }, {}),
+            issuesCount: countArrayExpr('$issues'),
+            checklistsCount: countArrayExpr('$checklists'),
+            checklistsBySystem: checklistSystemCountsExpr(),
+            fptCount: countArrayExpr('$functionalTests'),
+          },
         },
-      },
-    ])
+      ])
+    } catch (e) {
+      // Some legacy records may have unexpected shapes (e.g., stringified JSON arrays).
+      // Fall back to a simple query so the list still loads.
+      const docs = await Equipment.find(filter)
+        .sort({ [sortBy]: sortDir, _id: sortDir })
+        .skip((page - 1) * perPage)
+        .limit(perPage)
+        .select(`${LIGHT_FIELDS} issues checklists functionalTests`)
+        .lean()
+
+      items = (docs || []).map((it) => {
+        const issuesCount = safeArrayLen(it && it.issues)
+        const checklistsCount = safeArrayLen(it && it.checklists)
+        const fptCount = safeArrayLen(it && it.functionalTests)
+        const checklistsBySystem = checklistSystemCountsFromChecklists(it && it.checklists)
+        const out = { ...(it || {}) }
+        out.issuesCount = issuesCount
+        out.checklistsCount = checklistsCount
+        out.fptCount = fptCount
+        out.checklistsBySystem = checklistsBySystem
+        delete out.issues
+        delete out.checklists
+        delete out.functionalTests
+        return out
+      })
+    }
     for (const it of items) {
       if (Array.isArray(it.checklistsBySystem)) {
         it.checklistsBySystem = it.checklistsBySystem
