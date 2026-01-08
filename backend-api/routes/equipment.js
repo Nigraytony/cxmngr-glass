@@ -618,12 +618,13 @@ function checklistSystemCountsFromChecklists(checklists) {
 // Read all equipment (paginated, filtered, light projection)
 router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-	    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
-	    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
-	    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
-	    const sortDir = normalizeSortDir(req.query.sortDir)
-	    const projectId = req.query.projectId
-	    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+      const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+      const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+      const sortDir = normalizeSortDir(req.query.sortDir)
+      const projectId = req.query.projectId
+      const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+      const reqId = req.id || req.headers['x-request-id'] || null
 
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
@@ -657,17 +658,36 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
 		      if (v) filter.status = v
 		    }
 
-    const totalAll = await Equipment.countDocuments({ projectId: projectObjectId })
-    const total = await Equipment.countDocuments(filter)
+    let totalAll = 0
+    try {
+      totalAll = await Equipment.countDocuments({ projectId: projectObjectId })
+    } catch (e) {
+      console.error('[equipment] list totalAll error', { reqId, error: e && (e.stack || e.message || e) })
+      return res.status(500).send({ error: 'Failed to list equipment', reqId, phase: 'count_totalAll' })
+    }
+
+    let total = 0
+    try {
+      total = await Equipment.countDocuments(filter)
+    } catch (e) {
+      console.error('[equipment] list total error', { reqId, error: e && (e.stack || e.message || e) })
+      return res.status(500).send({ error: 'Failed to list equipment', reqId, phase: 'count_total' })
+    }
 
     // Avoid aggregation operators here (Cosmos/Mongo-compatible backends can be picky).
     // Use a plain query and compute counts/derived fields in JS.
-    const docs = await Equipment.find(filter)
-      .sort({ [sortBy]: sortDir, _id: sortDir })
-      .skip((page - 1) * perPage)
-      .limit(perPage)
-      .select(`${LIGHT_FIELDS} issues checklists functionalTests`)
-      .lean()
+    let docs = []
+    try {
+      docs = await Equipment.find(filter)
+        .sort({ [sortBy]: sortDir, _id: sortDir })
+        .skip((page - 1) * perPage)
+        .limit(perPage)
+        .select(`${LIGHT_FIELDS} issues checklists functionalTests`)
+        .lean()
+    } catch (e) {
+      console.error('[equipment] list find error', { reqId, error: e && (e.stack || e.message || e) })
+      return res.status(500).send({ error: 'Failed to list equipment', reqId, phase: 'find_page' })
+    }
 
     const items = (docs || []).map((it) => {
       const issuesCount = safeArrayLen(it && it.issues)
@@ -699,6 +719,7 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
       try {
         spaceChainFor = await buildSpaceChainResolver(projectObjectId)
       } catch (e) {
+        console.error('[equipment] list spaceChain error', { reqId, error: e && (e.stack || e.message || e) })
         spaceChainFor = null
       }
     }
@@ -790,15 +811,16 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
           fptTotalCount,
         }
       } catch (e) {
-        console.error('[equipment] facets error', { reqId: req.id, error: e && (e.stack || e.message || e) })
+        console.error('[equipment] facets error', { reqId, error: e && (e.stack || e.message || e) })
         facets = {}
       }
     }
 
     res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
-    console.error('[equipment] list error', { reqId: req.id, error: error && (error.stack || error.message || error) })
-    res.status(500).send({ error: 'Failed to list equipment', reqId: req.id || null });
+    const reqId = req.id || req.headers['x-request-id'] || null
+    console.error('[equipment] list error', { reqId, error: error && (error.stack || error.message || error) })
+    res.status(500).send({ error: 'Failed to list equipment', reqId, phase: 'unknown' });
   }
 });
 
