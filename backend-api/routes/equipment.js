@@ -689,21 +689,35 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
       return res.status(500).send({ error: 'Failed to list equipment', reqId, phase: 'find_page' })
     }
 
-    const items = (docs || []).map((it) => {
-      const issuesCount = safeArrayLen(it && it.issues)
-      const checklistsCount = safeArrayLen(it && it.checklists)
-      const fptCount = safeArrayLen(it && it.functionalTests)
-      const checklistsBySystem = checklistSystemCountsFromChecklists(it && it.checklists)
-      const out = { ...(it || {}) }
-      out.issuesCount = issuesCount
-      out.checklistsCount = checklistsCount
-      out.fptCount = fptCount
-      out.checklistsBySystem = checklistsBySystem
-      delete out.issues
-      delete out.checklists
-      delete out.functionalTests
-      return out
-    })
+    const items = []
+    for (const it of (docs || [])) {
+      try {
+        const issuesCount = safeArrayLen(it && it.issues)
+        const checklistsCount = safeArrayLen(it && it.checklists)
+        const fptCount = safeArrayLen(it && it.functionalTests)
+        const checklistsBySystem = checklistSystemCountsFromChecklists(it && it.checklists)
+        const out = { ...(it || {}) }
+        out.issuesCount = issuesCount
+        out.checklistsCount = checklistsCount
+        out.fptCount = fptCount
+        out.checklistsBySystem = checklistsBySystem
+        delete out.issues
+        delete out.checklists
+        delete out.functionalTests
+        items.push(out)
+      } catch (e) {
+        console.error('[equipment] list item map error', { reqId, error: e && (e.stack || e.message || e) })
+        const out = { ...(it || {}) }
+        out.issuesCount = 0
+        out.checklistsCount = 0
+        out.fptCount = 0
+        out.checklistsBySystem = []
+        delete out.issues
+        delete out.checklists
+        delete out.functionalTests
+        items.push(out)
+      }
+    }
     for (const it of items) {
       if (Array.isArray(it.checklistsBySystem)) {
         it.checklistsBySystem = it.checklistsBySystem
@@ -727,7 +741,13 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
       for (const it of items) {
         if (!it) continue
         const sid = it.spaceId || it.space
-        if (sid) it.spaceChain = spaceChainFor(sid)
+        if (!sid) continue
+        try {
+          it.spaceChain = spaceChainFor(sid)
+        } catch (e) {
+          console.error('[equipment] list spaceChainFor error', { reqId, error: e && (e.stack || e.message || e) })
+          it.spaceChain = ''
+        }
       }
     }
     let facets = {}
