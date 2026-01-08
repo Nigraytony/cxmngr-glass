@@ -20,6 +20,10 @@ const sanitizeHtml = require('sanitize-html');
 const { buildSafeRegex } = require('../utils/search')
 const { normalizeLogEvent } = require('../utils/logEvent')
 
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
 router.param('id', (req, res, next, value) => {
   if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' })
@@ -293,28 +297,18 @@ function appendExpr(filter, expr) {
 }
 
 function applyHasFilters(filter, query) {
-  if (normalizeBoolFlag(query?.hasChecklists)) appendExpr(filter, { $gt: [countArrayExpr('$checklists'), 0] })
-  if (normalizeBoolFlag(query?.hasFpt)) appendExpr(filter, { $gt: [countArrayExpr('$functionalTests'), 0] })
-  if (normalizeBoolFlag(query?.hasIssues)) appendExpr(filter, { $gt: [countArrayExpr('$issues'), 0] })
+  // Use simple query operators (more Mongo-compatible) instead of $expr pipelines.
+  // This avoids 500s on some Mongo-compatible backends.
+  if (normalizeBoolFlag(query?.hasChecklists)) filter['checklists.0'] = { $exists: true }
+  if (normalizeBoolFlag(query?.hasFpt)) filter['functionalTests.0'] = { $exists: true }
+  if (normalizeBoolFlag(query?.hasIssues)) filter['issues.0'] = { $exists: true }
 
   const checklistSystem = normalizeOptionalFilterString(query?.checklistSystem, { maxLen: 64 })
   if (checklistSystem === undefined) return 'Invalid checklistSystem'
   if (checklistSystem) {
-    const sysLower = String(checklistSystem).toLowerCase()
-    appendExpr(filter, {
-      $gt: [
-        {
-          $size: {
-            $filter: {
-              input: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] },
-              as: 'c',
-              cond: { $eq: [{ $toLower: { $ifNull: ['$$c.system', ''] } }, sysLower] },
-            },
-          },
-        },
-        0,
-      ],
-    })
+    // Match any checklist section with a system label (case-insensitive exact match).
+    // Note: legacy records with stringified checklists won't match this filter, but will not 500.
+    filter['checklists.system'] = { $regex: new RegExp(`^${escapeRegex(checklistSystem)}$`, 'i') }
   }
   return null
 }
@@ -666,49 +660,30 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
     const totalAll = await Equipment.countDocuments({ projectId: projectObjectId })
     const total = await Equipment.countDocuments(filter)
 
-    let items = []
-    try {
-      items = await Equipment.aggregate([
-        { $match: filter },
-        { $sort: { [sortBy]: sortDir, _id: sortDir } },
-        { $skip: (page - 1) * perPage },
-        { $limit: perPage },
-        {
-          $project: {
-            ...LIGHT_FIELDS.split(' ').reduce((acc, k) => { acc[k] = 1; return acc }, {}),
-            issuesCount: countArrayExpr('$issues'),
-            checklistsCount: countArrayExpr('$checklists'),
-            checklistsBySystem: checklistSystemCountsExpr(),
-            fptCount: countArrayExpr('$functionalTests'),
-          },
-        },
-      ])
-    } catch (e) {
-      // Some legacy records may have unexpected shapes (e.g., stringified JSON arrays).
-      // Fall back to a simple query so the list still loads.
-      const docs = await Equipment.find(filter)
-        .sort({ [sortBy]: sortDir, _id: sortDir })
-        .skip((page - 1) * perPage)
-        .limit(perPage)
-        .select(`${LIGHT_FIELDS} issues checklists functionalTests`)
-        .lean()
+    // Avoid aggregation operators here (Cosmos/Mongo-compatible backends can be picky).
+    // Use a plain query and compute counts/derived fields in JS.
+    const docs = await Equipment.find(filter)
+      .sort({ [sortBy]: sortDir, _id: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .select(`${LIGHT_FIELDS} issues checklists functionalTests`)
+      .lean()
 
-      items = (docs || []).map((it) => {
-        const issuesCount = safeArrayLen(it && it.issues)
-        const checklistsCount = safeArrayLen(it && it.checklists)
-        const fptCount = safeArrayLen(it && it.functionalTests)
-        const checklistsBySystem = checklistSystemCountsFromChecklists(it && it.checklists)
-        const out = { ...(it || {}) }
-        out.issuesCount = issuesCount
-        out.checklistsCount = checklistsCount
-        out.fptCount = fptCount
-        out.checklistsBySystem = checklistsBySystem
-        delete out.issues
-        delete out.checklists
-        delete out.functionalTests
-        return out
-      })
-    }
+    const items = (docs || []).map((it) => {
+      const issuesCount = safeArrayLen(it && it.issues)
+      const checklistsCount = safeArrayLen(it && it.checklists)
+      const fptCount = safeArrayLen(it && it.functionalTests)
+      const checklistsBySystem = checklistSystemCountsFromChecklists(it && it.checklists)
+      const out = { ...(it || {}) }
+      out.issuesCount = issuesCount
+      out.checklistsCount = checklistsCount
+      out.fptCount = fptCount
+      out.checklistsBySystem = checklistsBySystem
+      delete out.issues
+      delete out.checklists
+      delete out.functionalTests
+      return out
+    })
     for (const it of items) {
       if (Array.isArray(it.checklistsBySystem)) {
         it.checklistsBySystem = it.checklistsBySystem
