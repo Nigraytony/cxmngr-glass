@@ -663,7 +663,7 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
 		      if (v) filter.status = v
 		    }
 
-    const totalAll = await Equipment.countDocuments({ projectId })
+    const totalAll = await Equipment.countDocuments({ projectId: projectObjectId })
     const total = await Equipment.countDocuments(filter)
 
     let items = []
@@ -737,89 +737,93 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
     let facets = {}
     if (includeFacets) {
       // Facets should reflect the entire project (not just the current page or search filter)
-      let projectObjectId = null
-      try { projectObjectId = new mongoose.Types.ObjectId(projectId) } catch {}
-      const projectMatch = projectObjectId ? { projectId: projectObjectId } : { projectId }
-      const aggTypes = await Equipment.aggregate([
-        { $match: projectMatch },
-        { $group: { _id: '$type', count: { $sum: 1 } } },
-      ])
-      const aggStatuses = await Equipment.aggregate([
-        { $match: projectMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ])
-      const aggSystems = await Equipment.aggregate([
-        { $match: projectMatch },
-        { $group: { _id: '$system', count: { $sum: 1 } } },
-      ])
-      const aggChecklistCounts = await Equipment.aggregate([
-        { $match: projectMatch },
-        {
-          $project: {
-            checklistsCount: countArrayExpr('$checklists'),
-            checklistsBySystem: checklistSystemCountsExpr(),
+      // If a facet aggregation fails for any reason, degrade gracefully (items still load).
+      try {
+        const projectMatch = { projectId: projectObjectId }
+        const aggTypes = await Equipment.aggregate([
+          { $match: projectMatch },
+          { $group: { _id: '$type', count: { $sum: 1 } } },
+        ])
+        const aggStatuses = await Equipment.aggregate([
+          { $match: projectMatch },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ])
+        const aggSystems = await Equipment.aggregate([
+          { $match: projectMatch },
+          { $group: { _id: '$system', count: { $sum: 1 } } },
+        ])
+        const aggChecklistCounts = await Equipment.aggregate([
+          { $match: projectMatch },
+          {
+            $project: {
+              checklistsCount: countArrayExpr('$checklists'),
+              checklistsBySystem: checklistSystemCountsExpr(),
+            },
           },
-        },
-        {
-          $facet: {
-            total: [
-              { $group: { _id: null, count: { $sum: '$checklistsCount' } } },
-            ],
-            systems: [
-              { $unwind: '$checklistsBySystem' },
-              {
-                $group: {
-                  _id: { $toLower: { $ifNull: ['$checklistsBySystem.system', ''] } },
-                  system: { $first: '$checklistsBySystem.system' },
-                  count: { $sum: { $ifNull: ['$checklistsBySystem.count', 0] } },
+          {
+            $facet: {
+              total: [
+                { $group: { _id: null, count: { $sum: '$checklistsCount' } } },
+              ],
+              systems: [
+                { $unwind: '$checklistsBySystem' },
+                {
+                  $group: {
+                    _id: { $toLower: { $ifNull: ['$checklistsBySystem.system', ''] } },
+                    system: { $first: '$checklistsBySystem.system' },
+                    count: { $sum: { $ifNull: ['$checklistsBySystem.count', 0] } },
+                  },
                 },
-              },
-              { $match: { system: { $ne: null } } },
-              { $sort: { system: 1 } },
-            ],
+                { $match: { system: { $ne: null } } },
+                { $sort: { system: 1 } },
+              ],
+            },
           },
-        },
-      ])
-      const checklistsTotalCount = Number(aggChecklistCounts?.[0]?.total?.[0]?.count || 0)
-      const checklistSystems = Array.isArray(aggChecklistCounts?.[0]?.systems)
-        ? aggChecklistCounts[0].systems
-            .filter((x) => x && x.system && Number(x.count) > 0)
-            .map((x) => ({ system: x.system, count: Number(x.count) || 0 }))
-        : []
+        ])
+        const checklistsTotalCount = Number(aggChecklistCounts?.[0]?.total?.[0]?.count || 0)
+        const checklistSystems = Array.isArray(aggChecklistCounts?.[0]?.systems)
+          ? aggChecklistCounts[0].systems
+              .filter((x) => x && x.system && Number(x.count) > 0)
+              .map((x) => ({ system: x.system, count: Number(x.count) || 0 }))
+          : []
 
-      const aggCounts = await Equipment.aggregate([
-        { $match: projectMatch },
-        {
-          $project: {
-            issuesCount: countArrayExpr('$issues'),
-            fptCount: countArrayExpr('$functionalTests'),
+        const aggCounts = await Equipment.aggregate([
+          { $match: projectMatch },
+          {
+            $project: {
+              issuesCount: countArrayExpr('$issues'),
+              fptCount: countArrayExpr('$functionalTests'),
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            issuesTotalCount: { $sum: '$issuesCount' },
-            fptTotalCount: { $sum: '$fptCount' },
+          {
+            $group: {
+              _id: null,
+              issuesTotalCount: { $sum: '$issuesCount' },
+              fptTotalCount: { $sum: '$fptCount' },
+            },
           },
-        },
-      ])
-      const issuesTotalCount = Number(aggCounts?.[0]?.issuesTotalCount || 0)
-      const fptTotalCount = Number(aggCounts?.[0]?.fptTotalCount || 0)
-      facets = {
-        types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
-        statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
-        systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
-        checklistsTotalCount,
-        checklistSystems,
-        issuesTotalCount,
-        fptTotalCount,
+        ])
+        const issuesTotalCount = Number(aggCounts?.[0]?.issuesTotalCount || 0)
+        const fptTotalCount = Number(aggCounts?.[0]?.fptTotalCount || 0)
+        facets = {
+          types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+          statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+          systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+          checklistsTotalCount,
+          checklistSystems,
+          issuesTotalCount,
+          fptTotalCount,
+        }
+      } catch (e) {
+        console.error('[equipment] facets error', { reqId: req.id, error: e && (e.stack || e.message || e) })
+        facets = {}
       }
     }
 
     res.status(200).send({ items, total, totalAll, ...facets })
   } catch (error) {
-    console.error('[equipment] list error', error && (error.stack || error.message || error))
-    res.status(500).send({ error: 'Failed to list equipment' });
+    console.error('[equipment] list error', { reqId: req.id, error: error && (error.stack || error.message || error) })
+    res.status(500).send({ error: 'Failed to list equipment', reqId: req.id || null });
   }
 });
 
