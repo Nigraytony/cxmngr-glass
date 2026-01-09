@@ -339,8 +339,14 @@ function checklistSystemsExpr() {
     $map: {
       input: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] },
       as: 'c',
-      // Cast to string defensively; some legacy records may store non-string values.
-      in: { $convert: { input: '$$c.system', to: 'string', onError: null, onNull: null } },
+      // Only accept strings; legacy records may store non-string values.
+      in: {
+        $cond: [
+          { $eq: [{ $type: '$$c.system' }, 'string'] },
+          { $ifNull: ['$$c.system', null] },
+          null,
+        ],
+      },
     },
   }
   return {
@@ -417,8 +423,8 @@ function checklistSystemCountsFromChecklists(checklists) {
   for (const section of checklists) {
     if (!section || typeof section !== 'object') continue
     const raw = section.system
-    if (raw === undefined || raw === null) continue
-    const system = String(raw).trim()
+    if (typeof raw !== 'string') continue
+    const system = raw.trim()
     if (!system) continue
     counts.set(system, (counts.get(system) || 0) + 1)
   }
