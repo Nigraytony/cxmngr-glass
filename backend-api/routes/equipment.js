@@ -279,6 +279,20 @@ function normalizeBoolFlag(value) {
   return s === '1' || s === 'true' || s === 'yes' || s === 'y' || s === 'on'
 }
 
+function safeLowerExpr(inputExpr) {
+  // Defensive cast for legacy/malformed records: $toLower errors on non-strings.
+  return {
+    $toLower: {
+      $convert: {
+        input: inputExpr,
+        to: 'string',
+        onError: '',
+        onNull: '',
+      },
+    },
+  }
+}
+
 function appendExpr(filter, expr) {
   if (!expr) return
   if (!filter.$expr) {
@@ -308,7 +322,7 @@ function applyHasFilters(filter, query) {
             $filter: {
               input: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] },
               as: 'c',
-              cond: { $eq: [{ $toLower: { $ifNull: ['$$c.system', ''] } }, sysLower] },
+              cond: { $eq: [safeLowerExpr('$$c.system'), sysLower] },
             },
           },
         },
@@ -325,7 +339,8 @@ function checklistSystemsExpr() {
     $map: {
       input: { $cond: [{ $isArray: '$checklists' }, '$checklists', []] },
       as: 'c',
-      in: { $ifNull: ['$$c.system', null] },
+      // Cast to string defensively; some legacy records may store non-string values.
+      in: { $convert: { input: '$$c.system', to: 'string', onError: null, onNull: null } },
     },
   }
   return {
@@ -390,6 +405,26 @@ async function buildSpaceChainResolver(projectId) {
     cache.set(sid, chain)
     return chain
   }
+}
+
+function safeArrayLen(value) {
+  return Array.isArray(value) ? value.length : 0
+}
+
+function checklistSystemCountsFromChecklists(checklists) {
+  if (!Array.isArray(checklists)) return []
+  const counts = new Map()
+  for (const section of checklists) {
+    if (!section || typeof section !== 'object') continue
+    const raw = section.system
+    if (raw === undefined || raw === null) continue
+    const system = String(raw).trim()
+    if (!system) continue
+    counts.set(system, (counts.get(system) || 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([system, count]) => ({ system, count }))
+    .sort((a, b) => String(a.system).localeCompare(String(b.system)))
 }
 
 // Project-wide equipment analytics for charts (counts + progress)
@@ -585,12 +620,12 @@ router.get('/analytics', auth, requireFeature('equipment'), requirePermission('e
 // Read all equipment (paginated, filtered, light projection)
 router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-	    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
-	    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
-	    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
-	    const sortDir = normalizeSortDir(req.query.sortDir)
-	    const projectId = req.query.projectId
-	    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
+		    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+		    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
+		    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+		    const sortDir = normalizeSortDir(req.query.sortDir)
+		    const projectId = req.query.projectId
+		    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
 
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
@@ -624,24 +659,29 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
 		      if (v) filter.status = v
 		    }
 
-    const totalAll = await Equipment.countDocuments({ projectId })
+    const totalAll = await Equipment.countDocuments({ projectId: projectObjectId })
     const total = await Equipment.countDocuments(filter)
 
-    const items = await Equipment.aggregate([
-      { $match: filter },
-      { $sort: { [sortBy]: sortDir, _id: sortDir } },
-      { $skip: (page - 1) * perPage },
-      { $limit: perPage },
-      {
-        $project: {
-          ...LIGHT_FIELDS.split(' ').reduce((acc, k) => { acc[k] = 1; return acc }, {}),
-          issuesCount: countArrayExpr('$issues'),
-          checklistsCount: countArrayExpr('$checklists'),
-          checklistsBySystem: checklistSystemCountsExpr(),
-          fptCount: countArrayExpr('$functionalTests'),
-        },
-      },
-    ])
+    // Avoid complex aggregation operators here; compute derived fields in JS for compatibility and robustness.
+    const docs = await Equipment.find(filter)
+      .sort({ [sortBy]: sortDir, _id: sortDir })
+      .skip((page - 1) * perPage)
+      .limit(perPage)
+      .select(`${LIGHT_FIELDS} issues checklists functionalTests`)
+      .lean()
+
+    const items = []
+    for (const it of (docs || [])) {
+      const out = { ...(it || {}) }
+      out.issuesCount = safeArrayLen(out.issues)
+      out.checklistsCount = safeArrayLen(out.checklists)
+      out.fptCount = safeArrayLen(out.functionalTests)
+      out.checklistsBySystem = checklistSystemCountsFromChecklists(out.checklists)
+      delete out.issues
+      delete out.checklists
+      delete out.functionalTests
+      items.push(out)
+    }
     for (const it of items) {
       if (Array.isArray(it.checklistsBySystem)) {
         it.checklistsBySystem = it.checklistsBySystem
@@ -670,82 +710,95 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
     let facets = {}
     if (includeFacets) {
       // Facets should reflect the entire project (not just the current page or search filter)
-      let projectObjectId = null
-      try { projectObjectId = new mongoose.Types.ObjectId(projectId) } catch {}
-      const projectMatch = projectObjectId ? { projectId: projectObjectId } : { projectId }
-      const aggTypes = await Equipment.aggregate([
-        { $match: projectMatch },
-        { $group: { _id: '$type', count: { $sum: 1 } } },
-      ])
-      const aggStatuses = await Equipment.aggregate([
-        { $match: projectMatch },
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ])
-      const aggSystems = await Equipment.aggregate([
-        { $match: projectMatch },
-        { $group: { _id: '$system', count: { $sum: 1 } } },
-      ])
-      const aggChecklistCounts = await Equipment.aggregate([
-        { $match: projectMatch },
-        {
-          $project: {
-            checklistsCount: countArrayExpr('$checklists'),
-            checklistsBySystem: checklistSystemCountsExpr(),
+      // If a facet aggregation fails for any reason, degrade gracefully (items still load).
+      try {
+        const projectMatch = { projectId: projectObjectId }
+        const aggTypes = await Equipment.aggregate([
+          { $match: projectMatch },
+          { $group: { _id: '$type', count: { $sum: 1 } } },
+        ])
+        const aggStatuses = await Equipment.aggregate([
+          { $match: projectMatch },
+          { $group: { _id: '$status', count: { $sum: 1 } } },
+        ])
+        const aggSystems = await Equipment.aggregate([
+          { $match: projectMatch },
+          { $group: { _id: '$system', count: { $sum: 1 } } },
+        ])
+        const aggChecklistCounts = await Equipment.aggregate([
+          { $match: projectMatch },
+          {
+            $project: {
+              checklistsCount: countArrayExpr('$checklists'),
+              checklistsBySystem: checklistSystemCountsExpr(),
+            },
           },
-        },
-        {
-          $facet: {
-            total: [
-              { $group: { _id: null, count: { $sum: '$checklistsCount' } } },
-            ],
-            systems: [
-              { $unwind: '$checklistsBySystem' },
-              {
-                $group: {
-                  _id: { $toLower: { $ifNull: ['$checklistsBySystem.system', ''] } },
-                  system: { $first: '$checklistsBySystem.system' },
-                  count: { $sum: { $ifNull: ['$checklistsBySystem.count', 0] } },
+          {
+            $facet: {
+              total: [
+                { $group: { _id: null, count: { $sum: '$checklistsCount' } } },
+              ],
+              systems: [
+                { $unwind: '$checklistsBySystem' },
+                {
+                  $group: {
+                    _id: safeLowerExpr('$checklistsBySystem.system'),
+                    system: {
+                      $first: {
+                        $convert: {
+                          input: '$checklistsBySystem.system',
+                          to: 'string',
+                          onError: null,
+                          onNull: null,
+                        },
+                      },
+                    },
+                    count: { $sum: { $ifNull: ['$checklistsBySystem.count', 0] } },
+                  },
                 },
-              },
-              { $match: { system: { $ne: null } } },
-              { $sort: { system: 1 } },
-            ],
+                { $match: { system: { $nin: [null, ''] } } },
+                { $sort: { system: 1 } },
+              ],
+            },
           },
-        },
-      ])
-      const checklistsTotalCount = Number(aggChecklistCounts?.[0]?.total?.[0]?.count || 0)
-      const checklistSystems = Array.isArray(aggChecklistCounts?.[0]?.systems)
-        ? aggChecklistCounts[0].systems
-            .filter((x) => x && x.system && Number(x.count) > 0)
-            .map((x) => ({ system: x.system, count: Number(x.count) || 0 }))
-        : []
+        ])
+        const checklistsTotalCount = Number(aggChecklistCounts?.[0]?.total?.[0]?.count || 0)
+        const checklistSystems = Array.isArray(aggChecklistCounts?.[0]?.systems)
+          ? aggChecklistCounts[0].systems
+              .filter((x) => x && x.system && Number(x.count) > 0)
+              .map((x) => ({ system: x.system, count: Number(x.count) || 0 }))
+          : []
 
-      const aggCounts = await Equipment.aggregate([
-        { $match: projectMatch },
-        {
-          $project: {
-            issuesCount: countArrayExpr('$issues'),
-            fptCount: countArrayExpr('$functionalTests'),
+        const aggCounts = await Equipment.aggregate([
+          { $match: projectMatch },
+          {
+            $project: {
+              issuesCount: countArrayExpr('$issues'),
+              fptCount: countArrayExpr('$functionalTests'),
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            issuesTotalCount: { $sum: '$issuesCount' },
-            fptTotalCount: { $sum: '$fptCount' },
+          {
+            $group: {
+              _id: null,
+              issuesTotalCount: { $sum: '$issuesCount' },
+              fptTotalCount: { $sum: '$fptCount' },
+            },
           },
-        },
-      ])
-      const issuesTotalCount = Number(aggCounts?.[0]?.issuesTotalCount || 0)
-      const fptTotalCount = Number(aggCounts?.[0]?.fptTotalCount || 0)
-      facets = {
-        types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
-        statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
-        systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
-        checklistsTotalCount,
-        checklistSystems,
-        issuesTotalCount,
-        fptTotalCount,
+        ])
+        const issuesTotalCount = Number(aggCounts?.[0]?.issuesTotalCount || 0)
+        const fptTotalCount = Number(aggCounts?.[0]?.fptTotalCount || 0)
+        facets = {
+          types: aggTypes.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+          statuses: aggStatuses.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+          systems: aggSystems.map(a => ({ name: a?._id || 'Unknown', count: a?.count || 0 })).filter(f => f.name),
+          checklistsTotalCount,
+          checklistSystems,
+          issuesTotalCount,
+          fptTotalCount,
+        }
+      } catch (e) {
+        console.error('[equipment] facets error', e && (e.stack || e.message || e))
+        facets = {}
       }
     }
 
