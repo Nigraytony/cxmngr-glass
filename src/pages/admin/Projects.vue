@@ -30,7 +30,7 @@
 
       <input
         v-model="q"
-        placeholder="Search projects"
+        placeholder="Search projects (name, client, or id)"
         class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1 placeholder:text-gray-400"
         @keyup.enter="load"
       >
@@ -194,7 +194,13 @@
       <thead>
         <tr class="text-white/80">
           <th class="p-2">
-            Name
+            Project
+          </th>
+          <th class="p-2">
+            Tier
+          </th>
+          <th class="p-2">
+            Billing
           </th>
           <th class="p-2">
             Created
@@ -217,7 +223,48 @@
           class="border-t border-white/5"
         >
           <td class="p-2 text-white">
-            {{ p.title || p.name }}
+            <div class="font-medium">
+              {{ p.title || p.name }}
+            </div>
+            <div class="text-xs text-white/50">
+              {{ p._id }}
+            </div>
+            <div
+              v-if="p.client"
+              class="text-xs text-white/50"
+            >
+              {{ p.client }}
+            </div>
+          </td>
+          <td class="p-2 text-white/80">
+            {{ displayTier(p) }}
+          </td>
+          <td class="p-2 text-sm text-white/80">
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center gap-2">
+                <span :class="billingBadgeClass(p) + ' text-xs px-2 py-0.5 rounded-full'">
+                  {{ displayBillingStatus(p) }}
+                </span>
+                <span
+                  v-if="p.stripeIsPastDue"
+                  class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-200"
+                >
+                  Past due
+                </span>
+              </div>
+              <div
+                v-if="p.stripeCurrentPeriodEnd"
+                class="text-xs text-white/60"
+              >
+                Renews {{ formatDateShort(p.stripeCurrentPeriodEnd) }}
+              </div>
+              <div
+                v-else
+                class="text-xs text-white/50"
+              >
+                —
+              </div>
+            </div>
           </td>
           <td class="p-2 text-white/80">
             {{ formatDate(p.createdAt) }}
@@ -252,6 +299,46 @@
                   />
                   <path
                     d="M16.5 3.5l4 4-10 10H6.5v-4.5l10-10z"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </router-link>
+
+              <router-link
+                v-if="isAdmin()"
+                :to="{ name: 'admin-webhooks', query: { projectId: p._id } }"
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90"
+                title="Webhook events"
+                aria-label="Webhook events"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M3 12a4 4 0 0 1 4-4h1"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M8 8l-2-2 2-2"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M21 12a4 4 0 0 1-4 4h-1"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M16 16l2 2-2 2"
                     stroke-width="1.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -372,6 +459,36 @@ const currentPage = computed(() => {
 function formatDate(d) {
   if (!d) return ''
   return new Date(d).toLocaleString()
+}
+
+function formatDateShort(d) {
+  if (!d) return ''
+  try {
+    return new Date(d).toLocaleDateString()
+  } catch (e) {
+    return String(d)
+  }
+}
+
+function displayTier(p) {
+  const t = p?.subscriptionTier
+  if (!t) return '—'
+  return String(t)
+}
+
+function displayBillingStatus(p) {
+  const s = p?.stripeSubscriptionStatus
+  if (!s) return 'none'
+  return String(s)
+}
+
+function billingBadgeClass(p) {
+  const s = (p?.stripeSubscriptionStatus || '').toString().toLowerCase()
+  if (!s) return 'bg-white/10 text-white/80'
+  if (s === 'active' || s === 'trialing') return 'bg-green-500/20 border border-green-500/40 text-green-200'
+  if (s === 'past_due' || s === 'unpaid') return 'bg-red-500/20 border border-red-500/40 text-red-200'
+  if (s === 'canceled' || s === 'incomplete' || s === 'incomplete_expired') return 'bg-white/10 border border-white/20 text-white/70'
+  return 'bg-white/10 border border-white/20 text-white/70'
 }
 
 async function load() {

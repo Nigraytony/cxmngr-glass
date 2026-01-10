@@ -1,14 +1,21 @@
 <template>
   <div class="p-4">
-    <h2 class="text-2xl mb-4">
-      Webhook Events
-    </h2>
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Webhook Events' }]" />
 
     <p class="text-white/70 mb-4">
       Browse and replay recent webhook events.
     </p>
 
-    <div class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-2">
+    <div class="mb-4 grid grid-cols-1 md:grid-cols-5 gap-2">
+      <div>
+        <label class="block text-white/80">Project ID</label>
+        <input
+          v-model="filter.projectId"
+          type="text"
+          placeholder="Optional project id"
+          class="rounded-lg p-2 bg-white/5 border border-white/10 text-white placeholder:text-gray-400"
+        >
+      </div>
       <div>
         <label class="block text-white/80">Status</label>
         <select
@@ -222,12 +229,14 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
+import BreadCrumbs from '../../components/BreadCrumbs.vue'
 
 const events = ref([])
-const filter = ref({ status: '', date_from: '', date_to: '' })
+const filter = ref({ projectId: '', status: '', date_from: '', date_to: '' })
 const error = ref('')
 const ui = useUiStore()
 const expanded = ref({})
@@ -239,6 +248,7 @@ const pendingReplay = ref(null)
 const replayInProgress = ref(false)
 
 const auth = useAuthStore()
+const route = useRoute()
 
 function canReplay() {
   const me = auth.user
@@ -250,6 +260,7 @@ async function load() {
   try {
     error.value = ''
     const params = { skip: skip.value, limit: limit.value }
+    if (filter.value.projectId) params.projectId = String(filter.value.projectId).trim()
     if (filter.value.status) params.status = filter.value.status
     if (filter.value.date_from) params.date_from = filter.value.date_from
     if (filter.value.date_to) params.date_to = filter.value.date_to
@@ -346,7 +357,11 @@ function formatDate(d) {
   return new Date(d).toLocaleString()
 }
 
-onMounted(() => load())
+onMounted(() => {
+  const q = route?.query?.projectId
+  if (q) filter.value.projectId = String(q)
+  load()
+})
 </script>
 
 <style scoped>

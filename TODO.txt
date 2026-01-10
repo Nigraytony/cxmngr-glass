@@ -62,7 +62,7 @@ P0 (Launch blockers / security)
 
 P1 (Revenue + support readiness)
 - [x] Add “Billing Admin” UX + error messages for 402/plan limits across UI (Owner: Frontend, Effort: M) (global toast on 402/PLAN_LIMIT_REACHED via `src/utils/http.ts`).
-- [ ] Add admin tooling for subscription support (project lookup, webhook replay, billing status) (Owner: Backend+Frontend, Effort: M).
+- [x] Add admin tooling for subscription support (project lookup, webhook replay, billing status) (Owner: Backend+Frontend, Effort: M) (admin projects search supports id; projects list shows tier/billing; deep-link to webhook events via projectId filter).
 - [x] Add “kill switch” flags for AI + email + uploads via env or admin settings (Owner: Backend, Effort: S) (env flags added; admin toggles optional).
 
 P2 (Operational hygiene)

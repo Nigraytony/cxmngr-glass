@@ -1026,10 +1026,43 @@ router.get('/projects', async (req, res) => {
     const q = normalizeShortString(req.query.q, { maxLen: 128 }) || '';
     const filter = {};
     if (q) {
-      const rx = buildSafeRegex(q, { maxLen: 128 })
-      filter.$or = [{ title: { $regex: rx } }, { name: { $regex: rx } }];
+      // Support direct lookup by Mongo ObjectId (common admin workflow).
+      if (mongoose.Types.ObjectId.isValid(String(q))) {
+        filter._id = new mongoose.Types.ObjectId(String(q))
+      } else {
+        const rx = buildSafeRegex(q, { maxLen: 128 })
+        filter.$or = [
+          { title: { $regex: rx } },
+          { name: { $regex: rx } },
+          { client: { $regex: rx } },
+        ];
+      }
     }
-    const list = await Project.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const list = await Project.find(filter)
+      .select([
+        '_id',
+        'title',
+        'name',
+        'client',
+        'createdAt',
+        'updatedAt',
+        'status',
+        'isActive',
+        'deleted',
+        'subscriptionTier',
+        'stripeSubscriptionStatus',
+        'stripeCurrentPeriodEnd',
+        'stripeIsPastDue',
+        'stripeLastInvoiceStatus',
+        'stripeLastPaymentStatus',
+        'stripeSubscriptionId',
+        'stripePriceId',
+        'billingAdminUserId',
+      ].join(' '))
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
     const total = await Project.countDocuments(filter);
     res.json({ projects: list, total, skip, limit });
   } catch (err) {
