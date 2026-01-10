@@ -1,9 +1,7 @@
 <template>
   <button
     type="button"
-    class="fixed bottom-6 right-6 z-40 rounded-full px-4 h-12 flex items-center gap-2
-           bg-white/10 hover:bg-white/15 border border-white/15 shadow-xl backdrop-blur-xl
-           text-white/90"
+    :class="buttonClass"
     @click="onClick"
   >
     <span class="text-lg leading-none">✨</span>
@@ -12,11 +10,22 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAssistantStore } from '../../stores/assistant'
 
+const props = defineProps({
+  variant: { type: String, default: 'floating' } // 'floating' | 'inline'
+})
+
 const route = useRoute()
 const assistant = useAssistantStore()
+
+const buttonClass = computed(() => {
+  const base = 'rounded-full flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-xl text-white/90'
+  if (props.variant === 'inline') return `${base} px-3 h-9 shadow`
+  return `${base} fixed bottom-6 right-6 z-40 px-4 h-12 shadow-xl`
+})
 
 function onClick() {
   assistant.openWithContext({
@@ -25,4 +34,3 @@ function onClick() {
   })
 }
 </script>
-

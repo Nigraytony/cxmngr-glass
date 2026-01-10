@@ -771,13 +771,12 @@
       </div>
     </div>
 
-    <!-- modal -->
-    <div
-      v-if="modalOpen"
-      class="fixed inset-0 z-50 grid place-items-center bg-black/50"
+    <Modal
+      v-model="modalOpen"
+      panel-class="max-w-[640px]"
     >
-      <div class="w-[640px] max-w-[95vw] rounded-xl border border-white/20 bg-white/10 backdrop-blur p-4 text-white">
-        <div class="flex items-center justify-between mb-3">
+      <template #header>
+        <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">
             {{ editing ? 'Edit Space' : 'Create Space' }}
           </h2>
@@ -788,85 +787,86 @@
             ✕
           </button>
         </div>
-        <form @submit.prevent="save">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-sm text-white/70">Tag</label>
-              <input
-                v-model="form.tag"
-                type="text"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-            </div>
-            <div>
-              <label class="text-sm text-white/70">Type</label>
-              <select
-                v-model="form.type"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="t in spaceTypes"
-                  :key="t"
-                  :value="t"
-                >
-                  {{ t }}
-                </option>
-              </select>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Title</label>
-              <input
-                v-model="form.title"
-                type="text"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Parent Space</label>
-              <select
-                v-model="form.parentSpace"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option :value="''">
-                  None
-                </option>
-                <option
-                  v-for="p in parentOptions"
-                  :key="p.id"
-                  :value="p.id"
-                >
-                  {{ p.title }} ({{ p.type }})
-                </option>
-              </select>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Description</label>
-              <textarea
-                v-model="form.description"
-                rows="3"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              />
-            </div>
-          </div>
-          <div class="mt-4 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
-              @click="closeModal"
+      </template>
+
+      <form @submit.prevent="save">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-white/70">Tag</label>
+            <input
+              v-model="form.tag"
+              type="text"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
-            >
-              Save
-            </button>
           </div>
-        </form>
-      </div>
-    </div>
+          <div>
+            <label class="text-sm text-white/70">Type</label>
+            <select
+              v-model="form.type"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+              <option
+                v-for="t in spaceTypes"
+                :key="t"
+                :value="t"
+              >
+                {{ t }}
+              </option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Title</label>
+            <input
+              v-model="form.title"
+              type="text"
+              required
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Parent Space</label>
+            <select
+              v-model="form.parentSpace"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+              <option :value="''">
+                None
+              </option>
+              <option
+                v-for="p in parentOptions"
+                :key="p.id"
+                :value="p.id"
+              >
+                {{ p.title }} ({{ p.type }})
+              </option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Description</label>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            />
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
+            @click="closeModal"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </Modal>
     <BulkAutoTagModal
       v-model="showAutoTagModal"
       title="Auto-tag visible spaces"
@@ -884,6 +884,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Spinner from '../../components/Spinner.vue'
+import Modal from '../../components/Modal.vue'
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'

@@ -62,7 +62,7 @@ P0 (Launch blockers / security)
 
 P1 (Revenue + support readiness)
 - [x] Add “Billing Admin” UX + error messages for 402/plan limits across UI (Owner: Frontend, Effort: M) (global toast on 402/PLAN_LIMIT_REACHED via `src/utils/http.ts`).
-- [x] Add admin tooling for subscription support (project lookup, webhook replay, billing status) (Owner: Backend+Frontend, Effort: M) (admin projects search supports id; projects list shows tier/billing; deep-link to webhook events via projectId filter).
+- [ ] Add admin tooling for subscription support (project lookup, webhook replay, billing status) (Owner: Backend+Frontend, Effort: M).
 - [x] Add “kill switch” flags for AI + email + uploads via env or admin settings (Owner: Backend, Effort: S) (env flags added; admin toggles optional).
 
 P2 (Operational hygiene)
@@ -117,7 +117,7 @@ Notes
 ✅ 40. Bug Fix: When entering Edit pages we need to show a spinner while the page loads.
 ✅ 41. Bug Fix: Cannot upload photos in the IssueEdit.vue Photos tab.
 ✅ 42. Templates: Add the ability to upload templates from a csv or an xslx file.
-43. App: Fix ghosting when a modal is open
+✅ 43. App: Fix ghosting when a modal is open
 ✅ 44. App: Allow the main area to scroll while leaving the sidebar as is (stationary).
 45. App: Add footer at bottom of page.
 ✅ 46. Tasks: Remove Gantt feature for now. We can come back to it in a later version of the app.
@@ -130,7 +130,7 @@ Notes
 53. Mobile App: Start investigating what it would take to spinup a mobile app from this web app.
 54. Desktop App: Start investigating what it would take to spinup a desktop app from this web app.
 55. AI: Post-MVP, add blueprint/PDF ingestion flow that reads uploaded drawings and proposes draft Spaces/Equipment lists for user review.
-56. Bug Fix: Dropdown lists are white text on white background. Needs to be fixed throughout the app.
+✅ 56. Bug Fix: Dropdown lists are white text on white background. Needs to be fixed throughout the app.
 
 
 Please remember that:

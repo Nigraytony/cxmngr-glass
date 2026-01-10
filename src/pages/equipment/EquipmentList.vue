@@ -885,13 +885,12 @@
       </div>
     </div>
 
-    <!-- modal -->
-    <div
-      v-if="modalOpen"
-      class="fixed inset-0 z-50 grid place-items-center bg-black/50"
+    <Modal
+      v-model="modalOpen"
+      panel-class="max-w-[640px]"
     >
-      <div class="w-[640px] max-w-[95vw] rounded-xl border border-white/20 bg-white/10 backdrop-blur p-4 text-white">
-        <div class="flex items-center justify-between mb-3">
+      <template #header>
+        <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">
             {{ editing ? 'Edit Equipment' : 'Create Equipment' }}
           </h2>
@@ -902,8 +901,10 @@
             ✕
           </button>
         </div>
-        <form @submit.prevent="save">
-          <div class="grid grid-cols-2 gap-3">
+      </template>
+
+      <form @submit.prevent="save">
+        <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-sm text-white/70">Tag</label>
               <input
@@ -1150,9 +1151,8 @@
               Save
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Modal>
 
     <!-- Upload equipment modal -->
     <Modal

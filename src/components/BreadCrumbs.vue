@@ -35,7 +35,8 @@
         </ol>
       </nav>
 
-      <div>
+      <div class="flex items-center gap-2">
+        <AskAssistantButton variant="inline" />
         <slot name="actions" />
       </div>
     </div>
@@ -44,6 +45,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import AskAssistantButton from './assistant/AskAssistantButton.vue'
 
 const props = defineProps({
   items: { type: Array, default: () => [] },

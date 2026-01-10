@@ -18,3 +18,15 @@ body {
   transition: background-color 200ms ease, background 200ms ease;
   overflow-y: auto;
 }
+
+/*
+  Ensure native <select> dropdown menus remain readable.
+  Some browsers/themes can render the menu (white background) with inherited white text.
+*/
+select option,
+select optgroup {
+  background-color: #fff;
+  color: #0f172a;
+  background-color: Canvas;
+  color: CanvasText;
+}

@@ -2,7 +2,7 @@
   <teleport to="body">
     <div
       v-if="modelValue"
-      :class="['fixed inset-0 grid place-items-center', zIndexClass]"
+      :class="['fixed inset-0 grid place-items-center overflow-y-auto p-4', zIndexClass]"
       :style="zIndexStyle"
     >
       <div
@@ -55,6 +55,7 @@
 
 <script setup>
 import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
+import { lockBodyScroll, unlockBodyScroll } from '../utils/scrollLock'
 const props = defineProps({ modelValue: { type: Boolean, default: false }, zIndexClass: { type: String, default: 'z-50' }, zIndex: { type: Number, default: null }, panelClass: { type: String, default: '' }, mainClass: { type: String, default: '' } })
 const emit = defineEmits(['update:modelValue'])
 
@@ -67,12 +68,15 @@ function onKey(e) {
 }
 
 watch(() => props.modelValue, (val) => {
-  if (val) document.body.style.overflow = 'hidden'
-  else document.body.style.overflow = ''
+  if (val) lockBodyScroll()
+  else unlockBodyScroll()
 })
 
 onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  if (props.modelValue) unlockBodyScroll()
+})
 
 const zIndexStyle = computed(() => props.zIndex != null ? ({ zIndex: props.zIndex }) : null)
 </script>

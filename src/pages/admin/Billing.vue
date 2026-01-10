@@ -10,18 +10,20 @@
           Create a coupon and promotion code for discounts. <span class="text-red-300">*</span> required. At least one of percent or amount is required.
         </div>
 
-        <!-- Confirm modal -->
-        <div
-          v-if="confirmOpen"
-          class="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm"
+        <Modal
+          v-model="confirmOpen"
+          panel-class="max-w-md"
+          main-class="text-white"
         >
-          <div class="w-full max-w-md rounded-xl bg-white/10 border border-white/20 p-4 space-y-3 text-white shadow-xl">
+          <template #header>
             <div class="text-lg font-semibold">
               {{ confirmTitle }}
             </div>
-            <div class="text-sm text-white/80">
-              {{ confirmMessage }}
-            </div>
+          </template>
+          <div class="text-sm text-white/80">
+            {{ confirmMessage }}
+          </div>
+          <template #footer>
             <div class="flex justify-end gap-3">
               <button
                 class="px-3 py-2 rounded bg-white/10 border border-white/20"
@@ -36,8 +38,8 @@
                 Yes
               </button>
             </div>
-          </div>
-        </div>
+          </template>
+        </Modal>
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-2">
             <input
@@ -610,6 +612,7 @@ import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
 import { useUiStore } from '../../stores/ui'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import Modal from '../../components/Modal.vue'
 
 const ui = useUiStore()
 
