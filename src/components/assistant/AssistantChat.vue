@@ -13,7 +13,11 @@
       </button>
     </div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2">
+    <div
+      ref="messagesEl"
+      class="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2"
+      @scroll="onMessagesScroll"
+    >
       <div
         v-if="ai.messages.length === 0"
         class="text-xs text-white/60 leading-relaxed"
@@ -64,90 +68,136 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useProjectStore } from '../../stores/project'
-import { useAssistantStore } from '../../stores/assistant'
-import { useAssistantChecklistStore } from '../../stores/assistantChecklist'
-import { useAssistantDocsStore } from '../../stores/assistantDocs'
-import { useAiStore } from '../../stores/ai'
-import { useUiStore } from '../../stores/ui'
+  import { computed, nextTick, onMounted, ref, watch } from 'vue'
+  import { useRoute } from 'vue-router'
+  import { useProjectStore } from '../../stores/project'
+  import { useAssistantStore } from '../../stores/assistant'
+  import { useAssistantChecklistStore } from '../../stores/assistantChecklist'
+  import { useAssistantDocsStore } from '../../stores/assistantDocs'
+  import { useAiStore } from '../../stores/ai'
+  import { useUiStore } from '../../stores/ui'
 
-const route = useRoute()
-const projectStore = useProjectStore()
-const assistant = useAssistantStore()
-const checklistStore = useAssistantChecklistStore()
-const docsStore = useAssistantDocsStore()
-const ai = useAiStore()
-const ui = useUiStore()
+  const route = useRoute()
+  const projectStore = useProjectStore()
+  const assistant = useAssistantStore()
+  const checklistStore = useAssistantChecklistStore()
+  const docsStore = useAssistantDocsStore()
+  const ai = useAiStore()
+  const ui = useUiStore()
 
-const projectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''))
-const selectedChecklistItem = computed(() => {
-  const entityType = assistant.context?.entityType ? String(assistant.context.entityType) : ''
-  const entityId = assistant.context?.entityId ? String(assistant.context.entityId) : ''
-  if (entityType !== 'assistantChecklistItem' || !entityId) return null
-  const items = checklistStore.checklist?.items || []
-  const it = items.find((x: any) => x && String(x.id) === entityId) || null
-  if (!it) return null
-  return {
-    id: String(it.id || ''),
-    category: it.category ? String(it.category) : '',
-    title: it.title ? String(it.title) : '',
-    description: it.description ? String(it.description) : '',
-    guidance: it.guidance ? String(it.guidance) : '',
+  const messagesEl = ref<HTMLElement | null>(null)
+  const autoScrollEnabled = ref(true)
+
+  function isNearBottom(el: HTMLElement) {
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 80
   }
-})
 
-const trustedLinks = computed(() => {
-  const d = docsStore.docs
-  const docs = Array.isArray(d?.docs) ? d!.docs : []
-  const general = Array.isArray(d?.general) ? d!.general : []
-  const compact = (arr: any[]) => arr
-    .map((x) => ({ title: String(x?.title || ''), url: String(x?.url || '') }))
-    .filter((x) => x.title && x.url)
-    .slice(0, 8)
-  return {
-    docs: compact(docs),
-    general: compact(general),
+  function onMessagesScroll() {
+    const el = messagesEl.value
+    if (!el) return
+    autoScrollEnabled.value = isNearBottom(el)
   }
-})
 
-const context = computed(() => ({
-  // Always include basic route context
-  routeName: route.name || null,
-  routePath: route.path || null,
-  projectId: projectId.value || null,
-  // Include assistant context (e.g., selected item) if available
-  assistant: {
-    ...(assistant.context || {}),
-    projectType: assistant.projectType || null,
-    tier: assistant.tierKey || null,
-    selectedChecklistItem: selectedChecklistItem.value,
-    trustedLinks: trustedLinks.value,
-  },
-}))
-
-async function ensureHistoryLoaded() {
-  if (!projectId.value) return
-  try {
-    await ai.loadHistory(projectId.value, { limit: 60 })
-  } catch (e: any) {
-    // Non-fatal; still allow chat to operate.
-    // eslint-disable-next-line no-console
-    console.warn('Failed to load assistant chat history', e?.response?.data || e?.message || e)
+  function nextFrame() {
+    return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
   }
-}
 
-async function onSend() {
-  try {
-    await ai.send(projectId.value, context.value)
-  } catch (e: any) {
-    const msg = e?.response?.data?.error || e?.message || 'Failed to send AI message'
-    const reqId = e?.response?.data?.reqId
-    ui.showError(reqId ? `${msg} (reqId: ${reqId})` : msg)
+  async function scrollMessagesToBottom(force = false) {
+    const el = messagesEl.value
+    if (!el) return
+    if (!force && !autoScrollEnabled.value) return
+    await nextTick()
+    // Give layout a moment to settle (tab switches / modal open)
+    await nextFrame()
+    el.scrollTop = el.scrollHeight
   }
-}
 
-onMounted(() => { void ensureHistoryLoaded() })
-watch(projectId, () => { void ensureHistoryLoaded() })
+  const projectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''))
+  const selectedChecklistItem = computed(() => {
+    const entityType = assistant.context?.entityType ? String(assistant.context.entityType) : ''
+    const entityId = assistant.context?.entityId ? String(assistant.context.entityId) : ''
+    if (entityType !== 'assistantChecklistItem' || !entityId) return null
+    const items = checklistStore.checklist?.items || []
+    const it = items.find((x: any) => x && String(x.id) === entityId) || null
+    if (!it) return null
+    return {
+      id: String(it.id || ''),
+      category: it.category ? String(it.category) : '',
+      title: it.title ? String(it.title) : '',
+      description: it.description ? String(it.description) : '',
+      guidance: it.guidance ? String(it.guidance) : '',
+    }
+  })
+
+  const trustedLinks = computed(() => {
+    const d = docsStore.docs
+    const docs = Array.isArray(d?.docs) ? d!.docs : []
+    const general = Array.isArray(d?.general) ? d!.general : []
+    const compact = (arr: any[]) => arr
+      .map((x) => ({ title: String(x?.title || ''), url: String(x?.url || '') }))
+      .filter((x) => x.title && x.url)
+      .slice(0, 8)
+    return {
+      docs: compact(docs),
+      general: compact(general),
+    }
+  })
+
+  const context = computed(() => ({
+    routeName: route.name || null,
+    routePath: route.path || null,
+    projectId: projectId.value || null,
+    assistant: {
+      ...(assistant.context || {}),
+      projectType: assistant.projectType || null,
+      tier: assistant.tierKey || null,
+      selectedChecklistItem: selectedChecklistItem.value,
+      trustedLinks: trustedLinks.value,
+    },
+  }))
+
+  async function ensureHistoryLoaded() {
+    if (!projectId.value) return
+    try {
+      await ai.loadHistory(projectId.value, { limit: 60 })
+    } catch (e: any) {
+      // Non-fatal; still allow chat to operate.
+      // eslint-disable-next-line no-console
+      console.warn('Failed to load assistant chat history', e?.response?.data || e?.message || e)
+    } finally {
+      await scrollMessagesToBottom(true)
+    }
+  }
+
+  async function onSend() {
+    try {
+      await ai.send(projectId.value, context.value)
+      await scrollMessagesToBottom(true)
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.message || 'Failed to send AI message'
+      const reqId = e?.response?.data?.reqId
+      ui.showError(reqId ? `${msg} (reqId: ${reqId})` : msg)
+    }
+  }
+
+  onMounted(() => {
+    void ensureHistoryLoaded()
+    // If history is already present, still jump to the latest on entry.
+    void scrollMessagesToBottom(true)
+  })
+  watch(projectId, () => { void ensureHistoryLoaded() })
+
+  watch(
+    () => ai.messages.length,
+    async () => {
+      await scrollMessagesToBottom(false)
+    }
+  )
+
+  watch(
+    () => ai.sending,
+    async () => {
+      await scrollMessagesToBottom(false)
+    }
+  )
 </script>

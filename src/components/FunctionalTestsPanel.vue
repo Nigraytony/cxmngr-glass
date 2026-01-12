@@ -2049,7 +2049,8 @@ function openIssue(i: number) {
   issueDraft.value.type = 'FPT'
   issueDraft.value.status = 'open'
   issueDraft.value.priority = 'medium'
-  issueDraft.value.location = normalizeText(props.equipmentSpace) ?? normalizeText(props.equipmentTag) ?? ''
+  // `Issue.location` should represent physical location/space; store equipment tag in `Issue.tag`.
+  issueDraft.value.location = normalizeText(props.equipmentSpace) || ''
   issueDraft.value.system = t && (t as any).system ? String((t as any).system) : ''
   issueDraft.value.foundBy = ''
   issueDraft.value.dateFound = ''
@@ -2069,7 +2070,7 @@ async function createIssueFromTest() {
     if (!pid) return
     const draft = issueDraft.value || ({} as any)
     const assetId = normalizeId(props.equipmentId)
-    const location = normalizeText(draft.location) || (normalizeText(props.equipmentSpace) ?? normalizeText(props.equipmentTag))
+    const location = normalizeText(draft.location) || normalizeText(props.equipmentSpace)
     const payload: any = {
       projectId: pid,
       title: (draft.title || '').trim() || 'FPT Issue',
@@ -2078,6 +2079,7 @@ async function createIssueFromTest() {
       severity: toApiPriority(draft.priority),
       status: toApiStatus(draft.status),
       system: normalizeText(draft.system) || (t && (t as any).system ? (t as any).system : undefined),
+      tag: normalizeText(props.equipmentTag) || undefined,
       assignedTo: draft.assignedTo || undefined,
       foundBy: draft.foundBy || undefined,
       dateFound: draft.dateFound || undefined,

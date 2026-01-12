@@ -15,8 +15,11 @@
           @toggle-sidebar="ui.toggleSidebar()"
           @logout="handleLogout"
         />
-        <main class="flex-1 overflow-y-auto p-6 min-w-0">
-          <div class="min-h-full flex flex-col">
+        <main
+          class="flex-1 p-6 min-w-0"
+          :class="isAssistantRoute ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'"
+        >
+          <template v-if="isAssistantRoute">
             <div class="flex-1 min-h-0">
               <Suspense>
                 <template #default>
@@ -27,8 +30,22 @@
                 </template>
               </Suspense>
             </div>
-            <AppFooter class="mt-8" />
-          </div>
+          </template>
+          <template v-else>
+            <div class="min-h-full flex flex-col">
+              <div class="flex-1 min-h-0">
+                <Suspense>
+                  <template #default>
+                    <RouterView />
+                  </template>
+                  <template #fallback>
+                    <Spinner />
+                  </template>
+                </Suspense>
+              </div>
+              <AppFooter class="mt-8" />
+            </div>
+          </template>
         </main>
       </div>
     </div>
@@ -45,11 +62,14 @@ import AppFooter from '../components/AppFooter.vue'
 import AssistantModal from '../components/assistant/AssistantModal.vue'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const ui = useUiStore()
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+const isAssistantRoute = computed(() => route.name === 'assistant')
 
 function handleLogout() {
   auth.logout()

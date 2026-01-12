@@ -554,6 +554,7 @@ const props = defineProps<{
   projectId?: string | null
   assetId?: string | null
   assetTag?: string | null
+  assetSpace?: string | null
   assetSystem?: string | null
   statuses?: string[]
 }>()
@@ -767,6 +768,7 @@ function saveComponent() {
 
 function openCompIssueModal() {
   const eqTag = String(props.assetTag || '')
+  const eqSpace = String(props.assetSpace || '')
   const eqSystem = String(props.assetSystem || '')
   compIssueDraft.value = {
     status: 'open',
@@ -774,7 +776,8 @@ function openCompIssueModal() {
     title: `${(compDraft.value.title || compDraft.value.type || 'Component')} issue`,
     type: '',
     description: (compDraft.value.notes || '').trim() || `Issue for component ${(compDraft.value.title || compDraft.value.type || '').trim() || 'component'}`,
-    location: eqTag || '',
+    // `Issue.location` should represent physical location/space; store equipment tag in `Issue.tag`.
+    location: eqSpace || '',
     system: eqSystem || ''
   }
   showCompIssueModal.value = true
@@ -787,6 +790,8 @@ async function createCompIssue() {
     const title = (compIssueDraft.value.title || '').trim() || `${(compDraft.value.title || compDraft.value.type || 'Component')} issue`
     const description = (compIssueDraft.value.description || '').trim() || `Issue for ${(props.assetTag || 'entity')} – ${(compDraft.value.title || compDraft.value.type || 'component')}`
     const payload: any = { ...compIssueDraft.value, title, description, projectId: pid }
+    if (props.assetTag) payload.tag = String(props.assetTag)
+    if (props.assetSpace && !payload.location) payload.location = String(props.assetSpace)
     if (aid) payload.assetId = aid
     const created = await issuesStore.createIssue(payload)
     const newId = String((created as any).id || (created as any)._id)

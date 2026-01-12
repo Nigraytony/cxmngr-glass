@@ -1112,6 +1112,7 @@
             :asset-id="String(form.id || (form as any)._id || id)"
             :asset-tag="String(form.tag || '')"
             :asset-system="String(form.system || '')"
+            :asset-space="equipmentSpaceName"
             @change="onComponentsChange"
           />
         </div>
@@ -1137,6 +1138,7 @@
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
             :equipment-id="String(form.id || (form as any)._id || id)"
             :equipment-tag="String(form.tag || '')"
+            :equipment-space="equipmentSpaceName"
             @change="onChecklistsChange"
           />
         </div>
@@ -2560,12 +2562,14 @@ const compIssueDraft = ref<any>({
   title: '',
   type: '',
   description: '',
+  tag: '',
   location: '',
   system: ''
 })
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openCompIssueModal() {
   const eqTag = String((form.value as any)?.tag || '')
+  const eqSpace = String(equipmentSpaceName.value || '')
   const eqSystem = String((form.value as any)?.system || '')
   compIssueDraft.value = {
     status: 'open',
@@ -2573,7 +2577,9 @@ function openCompIssueModal() {
     title: `${(compDraft.value.title || compDraft.value.type || 'Component')} issue`,
     type: '',
     description: (compDraft.value.notes || '').trim() || `Issue for component ${(compDraft.value.title || compDraft.value.type || '').trim() || 'component'}`,
-    location: eqTag || '',
+    // `Issue.location` should represent physical location/space; store equipment tag in `Issue.tag`.
+    tag: eqTag || '',
+    location: eqSpace || '',
     system: eqSystem || ''
   }
   showCompIssueModal.value = true
@@ -2846,8 +2852,9 @@ async function addComponentIssue() {
       description: '',
       status: 'Open',
       assetId: eid,
+      tag: form.value.tag || undefined,
       system: form.value.system || undefined,
-      location: form.value.tag || undefined
+      location: equipmentSpaceName.value || undefined
     }
     const iss = await issuesStore.createIssue(payload as any)
     const newId = String(iss.id || iss._id)

@@ -9,6 +9,7 @@ export interface Issue {
   id?: string
   projectId: string
   number?: number
+  tag?: string
   title: string
   description: string
   type?: string

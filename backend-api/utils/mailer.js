@@ -240,7 +240,7 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
 
   const html = `
     <p>Hello,</p>
-    <p>An admin (${requesterEmail || 'CXMngr'}) is requesting access to your profile to provide support.</p>
+    <p>An admin (${requesterEmail || 'CxManager'}) is requesting access to your profile to provide support.</p>
     <p><strong>Your access PIN is: ${String(pin)}</strong></p>
     <p>This PIN expires in ${Number(expiresMinutes) || 10} minutes.</p>
     <p>If you did not request support, you can ignore this email.</p>

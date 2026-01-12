@@ -110,21 +110,21 @@ Notes
 33. Stripe: Add live account with features-based subscriptions, coupons, and discounts.
 34. Admin: build out the admin pages more. Give super/global admins window into projects and billing using consent token/key
 ✅ 35. Administration: All new users get a "user" role on registration - admin role is granted by global/super admins only. Project-based roles are separate.
-36. Administration: Setup email/smtp service on Azure.
-37. Administration: Purchase a domain name for cx-manager.com and tie it to the app.
+✅ 36. Administration: Setup email/smtp service on Azure. (Mailtrap)
+✅ 37. Administration: Purchase a domain name for cx-manager.com and tie it to the app. (cxma.io, cxma.ai)
 38. Administration: Create a Cx Manager entity for legal compliance.
-39. Bug Fix: When Issues are created from within an equipment it is placing the equipment tag in the location field and vice versa. Need to fix.
+✅ 39. Bug Fix: When Issues are created from within an Equipment it is placing the equipment.tag in the issue.location field. Please place the equipment.spaceId (breadcrumb style) in the issue.location field. Also, please place the equipment.system in issue.system field.
 ✅ 40. Bug Fix: When entering Edit pages we need to show a spinner while the page loads.
 ✅ 41. Bug Fix: Cannot upload photos in the IssueEdit.vue Photos tab.
 ✅ 42. Templates: Add the ability to upload templates from a csv or an xslx file.
 ✅ 43. App: Fix ghosting when a modal is open
 ✅ 44. App: Allow the main area to scroll while leaving the sidebar as is (stationary).
-45. App: Add footer at bottom of page.
+✅ 45. App: Add footer at bottom of page.
 ✅ 46. Tasks: Remove Gantt feature for now. We can come back to it in a later version of the app.
 ✅ 47. Tasks: Collapse All needs to show at least one task.
 ✅ 48. Tasks: Opt-out of auto cost needs to be added to each task.
-49. Tasks: Add an optional Travel section to each task that helps to calculate travel cost of a task if needed.
-50. Tasks: Make this task list into a component and then Use it for other features such as LEED/Fundamental/Enhanced Cx Tasks, Project Tracking, and Proposals
+✅ 49. Tasks: Add an optional Travel section to each task that helps to calculate travel cost of a task if needed.
+✅ 50. Tasks: Make this task list into a component and then Use it for other features such as LEED/Fundamental/Enhanced Cx Tasks, Project Tracking, and Proposals
 ✅ 51. Admin: Enable Features based on subscription level
 52. Admin: Offload photo and files from the server to an S3 bucket or Azure equivalent.
 53. Mobile App: Start investigating what it would take to spinup a mobile app from this web app.

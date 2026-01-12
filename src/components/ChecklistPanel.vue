@@ -961,6 +961,7 @@ const props = defineProps<{
   projectId?: string | null
   equipmentId?: string | null
   equipmentTag?: string | null
+  equipmentSpace?: string | null
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', v: ChecklistSection[]): void
@@ -1149,7 +1150,8 @@ function openAttachIssue(si: number, qi: number | null = null) {
   issueDraft.value.type = 'checklist'
   issueDraft.value.status = 'open'
   issueDraft.value.priority = 'medium'
-  issueDraft.value.location = normalizeText(props.equipmentTag) || normalizeId(props.equipmentId) || ''
+  // `Issue.location` should represent physical location/space; store equipment tag in `Issue.tag`.
+  issueDraft.value.location = normalizeText(props.equipmentSpace) || ''
   issueDraft.value.system = (sec?.system as any) ? String(sec.system) : ''
   issueDraft.value.foundBy = ''
   issueDraft.value.dateFound = ''
@@ -1177,7 +1179,8 @@ async function saveAttachIssue() {
       severity: toApiPriority(draft.priority),
       status: toApiStatus(draft.status),
       system: normalizeText(draft.system) || (sec?.system as any) || undefined,
-      location: normalizeText(draft.location) || normalizeText(props.equipmentTag) || undefined,
+      tag: normalizeText(props.equipmentTag) || undefined,
+      location: normalizeText(draft.location) || normalizeText(props.equipmentSpace) || undefined,
       assetId: normalizeId(props.equipmentId),
       assignedTo: normalizeText(draft.assignedTo),
       foundBy: normalizeText(draft.foundBy),
