@@ -13,25 +13,7 @@ const DocFolder = require('../models/docFolder')
 const DocFile = require('../models/docFile')
 const { validateFolderName, validateFilename } = require('../utils/docsValidation')
 const { generateBlobSasUrl, blobExists, deleteBlob } = require('../utils/blobSas')
-
-function getAllowedContentTypes() {
-  const raw = asString(process.env.DOCS_ALLOWED_CONTENT_TYPES).trim()
-  if (raw) return raw.split(',').map((v) => v.trim().toLowerCase()).filter(Boolean)
-  return [
-    'image/jpeg',
-    'image/png',
-    'image/heic',
-    'image/heif',
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  ]
-}
-
-function getMaxSizeBytes() {
-  const v = Number(process.env.DOCS_MAX_SIZE_BYTES)
-  return Number.isFinite(v) && v > 0 ? v : 25 * 1024 * 1024
-}
+const { getDocsAllowedContentTypes, getDocsMaxSizeBytes } = require('../config/docs')
 
 function asString(v) {
   return typeof v === 'string' ? v : (v == null ? '' : String(v))
@@ -402,12 +384,12 @@ router.post(
 
       const contentType = asString(req.body && req.body.contentType).trim().toLowerCase()
       if (!contentType) return res.status(400).json({ error: 'contentType is required' })
-      const allowed = new Set(getAllowedContentTypes())
+      const allowed = new Set(getDocsAllowedContentTypes())
       if (!allowed.has(contentType)) return res.status(400).json({ error: 'Unsupported contentType' })
 
       const sizeBytes = Number(req.body && req.body.sizeBytes)
       if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return res.status(400).json({ error: 'sizeBytes must be a positive number' })
-      const maxSizeBytes = getMaxSizeBytes()
+      const maxSizeBytes = getDocsMaxSizeBytes()
       if (sizeBytes > maxSizeBytes) return res.status(400).json({ error: `File is too large (max ${maxSizeBytes} bytes)` })
 
       const uuid = crypto.randomUUID()
@@ -610,10 +592,12 @@ router.delete(
       if (file.status !== 'deleted') {
         try {
           const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'd', expiresInSec: 600 })
-          await deleteBlob(sas.url)
+          const del = await deleteBlob(sas.url)
+          if (!del.deleted) return res.status(502).json({ error: 'Failed to delete blob' })
         } catch (e) {
           const status = Number(e && e.status)
           if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+          return res.status(502).json({ error: 'Failed to delete blob' })
         }
         await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: { status: 'deleted' } })
       }
