@@ -20,6 +20,7 @@ const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
 const aiRoutes = require('./routes/ai');
 const assistantRoutes = require('./routes/assistant');
+const projectDocsRoutes = require('./routes/projectDocs');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -174,6 +175,8 @@ app.get('/api/health', (req, res) => {
 app.use('/api/projects', 
   projectRoutes
 );
+// Project-scoped documents (folders/files; blob bytes live in Azure storage)
+app.use('/api/projects/:projectId/docs', projectDocsRoutes);
 app.use('/api/issues', 
   issueRoutes
 );
