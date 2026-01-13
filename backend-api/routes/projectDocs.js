@@ -1,4 +1,5 @@
 const express = require('express')
+const crypto = require('crypto')
 const mongoose = require('mongoose')
 
 const router = express.Router({ mergeParams: true })
@@ -11,6 +12,26 @@ const Project = require('../models/project')
 const DocFolder = require('../models/docFolder')
 const DocFile = require('../models/docFile')
 const { validateFolderName, validateFilename } = require('../utils/docsValidation')
+const { generateBlobSasUrl, blobExists, deleteBlob } = require('../utils/blobSas')
+
+function getAllowedContentTypes() {
+  const raw = asString(process.env.DOCS_ALLOWED_CONTENT_TYPES).trim()
+  if (raw) return raw.split(',').map((v) => v.trim().toLowerCase()).filter(Boolean)
+  return [
+    'image/jpeg',
+    'image/png',
+    'image/heic',
+    'image/heif',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ]
+}
+
+function getMaxSizeBytes() {
+  const v = Number(process.env.DOCS_MAX_SIZE_BYTES)
+  return Number.isFinite(v) && v > 0 ? v : 25 * 1024 * 1024
+}
 
 function asString(v) {
   return typeof v === 'string' ? v : (v == null ? '' : String(v))
@@ -366,7 +387,56 @@ router.post(
   requireObjectIdParam('projectId'),
   requireActiveProject,
   requireDocsProjectAccess,
-  async (_req, res) => res.status(501).json({ error: 'Not implemented yet' })
+  requireObjectIdBody('folderId'),
+  async (req, res) => {
+    try {
+      const orgId = req.docsOrgId
+      const projectId = req.params.projectId
+      const folderId = String(req.body.folderId)
+
+      const folder = await DocFolder.findOne({ _id: folderId, orgId, projectId }).select('_id').lean()
+      if (!folder) return res.status(404).json({ error: 'Folder not found' })
+
+      const filenameV = validateFilename(req.body && req.body.filename)
+      if (!filenameV.ok) return res.status(400).json({ error: filenameV.error })
+
+      const contentType = asString(req.body && req.body.contentType).trim().toLowerCase()
+      if (!contentType) return res.status(400).json({ error: 'contentType is required' })
+      const allowed = new Set(getAllowedContentTypes())
+      if (!allowed.has(contentType)) return res.status(400).json({ error: 'Unsupported contentType' })
+
+      const sizeBytes = Number(req.body && req.body.sizeBytes)
+      if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return res.status(400).json({ error: 'sizeBytes must be a positive number' })
+      const maxSizeBytes = getMaxSizeBytes()
+      if (sizeBytes > maxSizeBytes) return res.status(400).json({ error: `File is too large (max ${maxSizeBytes} bytes)` })
+
+      const uuid = crypto.randomUUID()
+      const blobName = `docs/${projectId}/${uuid}`
+
+      const file = await DocFile.create({
+        orgId,
+        projectId,
+        folderId,
+        originalName: filenameV.value,
+        blobName,
+        contentType,
+        sizeBytes,
+        status: 'pending',
+        createdBy: req.user._id,
+      })
+
+      const sas = await generateBlobSasUrl({ blobName, permissions: 'cw', expiresInSec: 600 })
+      return res.status(201).json({
+        fileId: String(file._id),
+        uploadUrl: sas.url,
+        expiresAt: sas.expiresAt,
+      })
+    } catch (e) {
+      const status = Number(e && e.status)
+      if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+      return res.status(500).json({ error: 'Failed to request upload' })
+    }
+  }
 )
 
 // POST /api/projects/:projectId/docs/files/:fileId/complete
@@ -379,7 +449,56 @@ router.post(
   requireActiveProject,
   requireDocsProjectAccess,
   loadFile,
-  async (_req, res) => res.status(501).json({ error: 'Not implemented yet' })
+  async (req, res) => {
+    try {
+      const orgId = req.docsOrgId
+      const projectId = req.params.projectId
+      const fileId = req.params.fileId
+      const file = req.docFile
+
+      if (file.status === 'deleted') return res.status(409).json({ error: 'File is deleted' })
+      if (file.status === 'ready') {
+        return res.json({
+          file: {
+            id: String(file._id),
+            originalName: file.originalName,
+            contentType: file.contentType,
+            sizeBytes: file.sizeBytes,
+            status: file.status,
+            createdAt: file.createdAt,
+            updatedAt: file.updatedAt,
+          },
+        })
+      }
+
+      const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'r', expiresInSec: 600 })
+      const head = await blobExists(sas.url)
+      if (!head.exists) return res.status(404).json({ error: 'Blob not found' })
+
+      const next = { status: 'ready' }
+      if (Number.isFinite(head.sizeBytes) && head.sizeBytes > 0) next.sizeBytes = head.sizeBytes
+      const ct = asString(head.contentType).trim().toLowerCase()
+      if (ct && ct !== 'application/octet-stream') next.contentType = ct
+
+      await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: next })
+      const updated = await DocFile.findOne({ _id: fileId, orgId, projectId }).lean()
+      return res.json({
+        file: {
+          id: String(updated._id),
+          originalName: updated.originalName,
+          contentType: updated.contentType,
+          sizeBytes: updated.sizeBytes,
+          status: updated.status,
+          createdAt: updated.createdAt,
+          updatedAt: updated.updatedAt,
+        },
+      })
+    } catch (e) {
+      const status = Number(e && e.status)
+      if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+      return res.status(500).json({ error: 'Failed to complete upload' })
+    }
+  }
 )
 
 // GET /api/projects/:projectId/docs/files/:fileId/download-url
@@ -392,7 +511,18 @@ router.get(
   requireActiveProject,
   requireDocsProjectAccess,
   loadFile,
-  async (_req, res) => res.status(501).json({ error: 'Not implemented yet' })
+  async (req, res) => {
+    try {
+      const file = req.docFile
+      if (file.status !== 'ready') return res.status(409).json({ error: 'File is not ready' })
+      const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'r', expiresInSec: 600 })
+      return res.json({ downloadUrl: sas.url, expiresAt: sas.expiresAt })
+    } catch (e) {
+      const status = Number(e && e.status)
+      if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+      return res.status(500).json({ error: 'Failed to create download URL' })
+    }
+  }
 )
 
 // PATCH /api/projects/:projectId/docs/files/:fileId
@@ -476,7 +606,17 @@ router.delete(
       const orgId = req.docsOrgId
       const projectId = req.params.projectId
       const fileId = req.params.fileId
-      await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: { status: 'deleted' } })
+      const file = req.docFile
+      if (file.status !== 'deleted') {
+        try {
+          const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'd', expiresInSec: 600 })
+          await deleteBlob(sas.url)
+        } catch (e) {
+          const status = Number(e && e.status)
+          if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+        }
+        await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: { status: 'deleted' } })
+      }
       return res.json({ ok: true })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to delete file' })
@@ -485,4 +625,3 @@ router.delete(
 )
 
 module.exports = router
-
