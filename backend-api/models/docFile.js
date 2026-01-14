@@ -12,6 +12,9 @@ const docFileSchema = new mongoose.Schema(
     sizeBytes: { type: Number, required: true },
     status: { type: String, enum: ['pending', 'ready', 'deleted'], default: 'pending', index: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 )
@@ -30,4 +33,3 @@ docFileSchema.pre('validate', function (next) {
 })
 
 module.exports = mongoose.model('DocFile', docFileSchema)
-

@@ -131,6 +131,31 @@ Notes
 54. Desktop App: Start investigating what it would take to spinup a desktop app from this web app.
 55. AI: Post-MVP, add blueprint/PDF ingestion flow that reads uploaded drawings and proposes draft Spaces/Equipment lists for user review.
 ✅ 56. Bug Fix: Dropdown lists are white text on white background. Needs to be fixed throughout the app.
+57. We need to add a Documents Module.
+58. We need to include the concept of Systems (CHW System, HW System, BAS, FA System, etc.)
+59. We need to have a way to upload Attributes, Checklists, and FPTs without using JSON.
+60. We need to update the Issues list to include filters for System, Responsible, location, Tags, Dates, CreatedBy.
+61. Add a "My Checklists" Filter in the equipment list.
+62. Reporting on Checklist using both data and charts are essential
+63. Reporting on functional test using both data and charts are essential
+64. Multiple Attempts in FPT (Attempt 1, Attempt 2).
+65. When a new project is created there it needs to be pre-populated with a few roles. Pre-populate with admin, CxA, client, architect, design engineer, general contractor, mechanical/electrical/plumbing/TAB/controls/other contractor roles.
+66. Activities cannot be CRUD by non-admin/CxA if their status is Draft.
+67. Add the ability to assign a person/role/company the ability to fill an equipment.checklist based on checklist.system.
+68. In the EquipmentEdit.vue EditChecklist Modal all the input field texts need to be text-gray-300 color.
+69. In the TemplatesList.vue Create Template Modal all the input field texts need to be text-gray-300 color.
+70. In the TemplateEdit.vue Add Component Modal all the input field texts need to be text-gray-300 color.
+71. In the TemplateEdit.vue New Checklist Modal all the input field texts need to be text-gray-300 color.
+72. In the TemplateEdit.vue New FPT Modal all the input field texts and labels need to be text-gray-300 color.
+73. In the SpacesList.vue Create Space Modal all the input field texts need to be text-gray-300 color.
+74. In the SpacesList.vue Edit Space Modal all the input field texts need to be text-gray-300 color.
+75. In the EquipmentList.vue Create Equipment Modal all the input field texts need to be text-gray-300 color.
+76. In the EquipmentList.vue Edit Equipment Modal all the input field texts need to be text-gray-300 color.
+77. In the EquipmentEdit.vue Add Component Modal all the input field texts need to be text-gray-300 color.
+78. In the EquipmentEdit.vue New Checklist Modal all the input field texts need to be text-gray-300 color.
+79. In the EquipmentEdit.vue New FPT Modal all the input field texts and labels need to be text-gray-300 color.
+80. In the ProjectEdit.vue Edit Member Modal all the input field texts and placeholders need to be text-gray-300 color. The Cancel button as text as well.
+
 
 
 Please remember that:

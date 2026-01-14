@@ -142,6 +142,8 @@ function buildServiceSasQuery({ accountName, accountKey, container, blobName, pe
   const sv = version
   const canonicalizedResource = `/blob/${accountName}/${container}/${blobName}`
 
+  // String-to-sign format is version-dependent; for `sv` >= 2020-02-10 it includes
+  // an extra "signedEncryptionScope" field between signedSnapshotTime and rscc.
   const stringToSign = [
     sp,
     st,
@@ -153,6 +155,7 @@ function buildServiceSasQuery({ accountName, accountKey, container, blobName, pe
     sv,
     sr,
     '', // signedSnapshotTime
+    '', // signedEncryptionScope
     '', // rscc
     '', // rscd
     '', // rsce
@@ -173,6 +176,8 @@ function buildUserDelegationSasQuery({ accountName, userDelegationKey, container
   const sv = version
   const canonicalizedResource = `/blob/${accountName}/${container}/${blobName}`
 
+  // String-to-sign format is version-dependent; for `sv` >= 2020-02-10 it includes
+  // an extra "signedEncryptionScope" field between signedSnapshotTime and rscc.
   const stringToSign = [
     sp,
     st,
@@ -189,6 +194,7 @@ function buildUserDelegationSasQuery({ accountName, userDelegationKey, container
     sv,
     sr,
     '', // signedSnapshotTime
+    '', // signedEncryptionScope
     '', // rscc
     '', // rscd
     '', // rsce
@@ -216,29 +222,62 @@ function buildUserDelegationSasQuery({ accountName, userDelegationKey, container
 }
 
 function resolveStorageConfig() {
+  const diag = diagnoseStorageConfig()
+  return diag.ok ? diag.cfg : null
+}
+
+function diagnoseStorageConfig() {
   const container = asString(process.env.DOCS_BLOB_CONTAINER || process.env.AZURE_STORAGE_CONTAINER || '').trim()
-  if (!container) return null
+  if (!container) {
+    return {
+      ok: false,
+      status: 503,
+      code: 'DOCS_CONTAINER_MISSING',
+      error: 'Azure storage is not configured',
+      hint: 'Set DOCS_BLOB_CONTAINER (or AZURE_STORAGE_CONTAINER) to the name of a private blob container.',
+    }
+  }
 
   const cs = process.env.AZURE_STORAGE_CONNECTION_STRING
   if (cs) {
     const parsed = parseConnectionString(cs)
-    if (!parsed) return null
-    return { mode: 'accountKey', container, ...parsed }
+    if (!parsed) {
+      return {
+        ok: false,
+        status: 503,
+        code: 'AZURE_CONNECTION_STRING_INVALID',
+        error: 'Azure storage is not configured',
+        hint: 'AZURE_STORAGE_CONNECTION_STRING must be an account-key connection string containing AccountName=... and AccountKey=... (SAS-only connection strings are not supported).',
+      }
+    }
+    return { ok: true, cfg: { mode: 'accountKey', container, ...parsed } }
   }
 
   const accountName = asString(process.env.DOCS_BLOB_ACCOUNT || process.env.AZURE_STORAGE_ACCOUNT || '').trim()
-  if (!accountName) return null
+  if (!accountName) {
+    return {
+      ok: false,
+      status: 503,
+      code: 'DOCS_ACCOUNT_MISSING',
+      error: 'Azure storage is not configured',
+      hint: 'Set AZURE_STORAGE_CONNECTION_STRING (local dev) or DOCS_BLOB_ACCOUNT (Azure Managed Identity).',
+    }
+  }
+
   // For managed identity we assume default public endpoint.
-  return { mode: 'managedIdentity', container, accountName, blobEndpoint: `https://${accountName}.blob.core.windows.net` }
+  return { ok: true, cfg: { mode: 'managedIdentity', container, accountName, blobEndpoint: `https://${accountName}.blob.core.windows.net` } }
 }
 
 async function generateBlobSasUrl({ blobName, permissions, expiresInSec = 600 }) {
-  const cfg = resolveStorageConfig()
-  if (!cfg) {
-    const err = new Error('Azure storage is not configured')
-    err.status = 503
+  const diag = diagnoseStorageConfig()
+  if (!diag.ok) {
+    const err = new Error(diag.error || 'Azure storage is not configured')
+    err.status = diag.status || 503
+    err.code = diag.code
+    err.hint = diag.hint
     throw err
   }
+  const cfg = diag.cfg
 
   const version = '2022-11-02'
   const now = new Date()
@@ -304,8 +343,8 @@ async function deleteBlob(blobUrlWithSas) {
 
 module.exports = {
   resolveStorageConfig,
+  diagnoseStorageConfig,
   generateBlobSasUrl,
   blobExists,
   deleteBlob,
 }
-

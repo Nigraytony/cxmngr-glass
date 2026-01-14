@@ -58,6 +58,7 @@ const routes = [
       { path: 'equipment/:id', name: 'equipment-edit', component: EquipmentEdit, props: true },
     { path: 'templates', name: 'templates', component: () => import(/* webpackChunkName: "templates" */ '../pages/templates/TemplatesList.vue') },
     { path: 'templates/:id', name: 'template-edit', component: TemplateEdit, props: true },
+      { path: 'documents', name: 'documents', component: () => import('../pages/documents/Documents.vue') },
       { path: 'projects', name: 'projects', component: () => import('../pages/projects/ProjectsList.vue') },
       { path: 'tasks', name: 'tasks', component: () => import('../pages/tasks/TasksList.vue') },
       { path: 'tasks/:id', name: 'task-edit', component: () => import('../pages/tasks/TaskEdit.vue'), props: true },

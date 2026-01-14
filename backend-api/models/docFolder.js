@@ -9,12 +9,19 @@ const docFolderSchema = new mongoose.Schema(
     // Materialized path of folder names, e.g. "Root/Child/Sub"
     path: { type: String, required: true, index: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 )
 
 // Unique folder name among siblings inside a project+org.
-docFolderSchema.index({ orgId: 1, projectId: 1, parentId: 1, name: 1 }, { unique: true })
+// Allow reusing the same name after soft-delete by making the unique index apply only to non-deleted rows.
+docFolderSchema.index(
+  { orgId: 1, projectId: 1, parentId: 1, name: 1 },
+  { unique: true, partialFilterExpression: { deletedAt: null } }
+)
 
 docFolderSchema.pre('validate', function (next) {
   try {
@@ -27,4 +34,3 @@ docFolderSchema.pre('validate', function (next) {
 })
 
 module.exports = mongoose.model('DocFolder', docFolderSchema)
-

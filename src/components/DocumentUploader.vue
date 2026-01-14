@@ -44,7 +44,17 @@
       >
         <div class="flex items-center justify-between text-xs mb-1 gap-3">
           <span class="truncate">{{ u.name }} ({{ Math.round(u.size/1024) }}KB)</span>
-          <span class="text-white/60 truncate">{{ u.status }}<span v-if="u.message"> — {{ u.message }}</span></span>
+          <div class="flex items-center gap-2 min-w-0">
+            <button
+              v-if="enableRetry && u.status === 'error'"
+              type="button"
+              class="px-2 py-0.5 rounded bg-white/10 border border-white/10 hover:bg-white/15 text-white/80"
+              @click="retryUpload(u)"
+            >
+              Retry
+            </button>
+            <span class="text-white/60 truncate">{{ u.status }}<span v-if="u.message"> — {{ u.message }}</span></span>
+          </div>
         </div>
         <div class="w-full h-2 bg-white/10 rounded overflow-hidden">
           <div
@@ -70,6 +80,7 @@ const props = defineProps<{
   multiple?: boolean
   disabled?: boolean
   concurrency?: number
+  enableRetry?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -79,14 +90,15 @@ const emit = defineEmits<{
 }>()
 
 const buttonLabel = computed(() => props.buttonLabel ?? 'Upload Files')
-const accept = computed(() => props.accept ?? '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*')
+const accept = computed(() => props.accept ?? '.pdf,.docx,.xlsx,.jpg,.jpeg,.png,.heic,.heif')
 const multiple = computed(() => props.multiple ?? true)
 const disabled = computed(() => props.disabled ?? false)
 const concurrency = computed(() => Math.max(1, Math.floor(props.concurrency ?? 2)))
+const enableRetry = computed(() => props.enableRetry ?? false)
 
 // Upload state
  type UploadStatus = 'pending' | 'uploading' | 'done' | 'error'
- interface UploadItem { id: string; name: string; size: number; progress: number; status: UploadStatus; message?: string }
+ interface UploadItem { id: string; name: string; size: number; progress: number; status: UploadStatus; message?: string; file?: File }
 const uploads = ref<UploadItem[]>([])
 const uploadingNow = ref(false)
 const dragActive = ref(false)
@@ -102,7 +114,7 @@ onBeforeUnmount(() => {
 })
 
 function addUpload(file: File): UploadItem {
-  const item: UploadItem = { id: uid(), name: file.name, size: file.size, progress: 0, status: 'pending' }
+  const item: UploadItem = { id: uid(), name: file.name, size: file.size, progress: 0, status: 'pending', file }
   uploads.value.unshift(item)
   return item
 }
@@ -180,8 +192,13 @@ async function processFiles(files: File[]) {
         removalTimers.set(item.id, tid)
         emit('file-done', { file: f, result })
       } catch (e: any) {
-        const serverMsg = e?.response?.data?.error || e?.response?.data?.message
-        updateUpload(item, { status: 'error', message: serverMsg || e?.message || 'Upload failed' })
+        const data = e?.response?.data
+        const serverMsg = data?.error || data?.message
+        const code = data?.code ? ` (${data.code})` : ''
+        const allowedExt = Array.isArray(data?.allowedExtensions) && data.allowedExtensions.length
+          ? ` Allowed: ${data.allowedExtensions.map((x: string) => `.${x}`).join(', ')}`
+          : ''
+        updateUpload(item, { status: 'error', message: (serverMsg ? `${serverMsg}${code}${allowedExt}` : '') || e?.message || 'Upload failed' })
         emit('error', { file: f, error: e })
       }
     }
@@ -190,5 +207,39 @@ async function processFiles(files: File[]) {
   await Promise.all(workers)
   uploadingNow.value = false
   emit('done')
+}
+
+async function retryUpload(item: UploadItem) {
+  if (!enableRetry.value) return
+  if (!item || item.status !== 'error') return
+  if (disabled.value || uploadingNow.value) return
+  if (!item.file) return
+
+  const existingTimer = removalTimers.get(item.id)
+  if (existingTimer) { clearTimeout(existingTimer); removalTimers.delete(item.id) }
+
+  try {
+    uploadingNow.value = true
+    updateUpload(item, { status: 'uploading', progress: 0, message: '' })
+    const result = await props.upload(item.file, (pct: number) => updateUpload(item, { progress: pct }))
+    updateUpload(item, { status: 'done', progress: 100 })
+    const tid = setTimeout(() => {
+      uploads.value = uploads.value.filter(u => u.id !== item.id)
+      removalTimers.delete(item.id)
+    }, 5000)
+    removalTimers.set(item.id, tid)
+    emit('file-done', { file: item.file, result })
+  } catch (e: any) {
+    const data = e?.response?.data
+    const serverMsg = data?.error || data?.message
+    const code = data?.code ? ` (${data.code})` : ''
+    const allowedExt = Array.isArray(data?.allowedExtensions) && data.allowedExtensions.length
+      ? ` Allowed: ${data.allowedExtensions.map((x: string) => `.${x}`).join(', ')}`
+      : ''
+    updateUpload(item, { status: 'error', message: (serverMsg ? `${serverMsg}${code}${allowedExt}` : '') || e?.message || 'Upload failed' })
+    emit('error', { file: item.file, error: e })
+  } finally {
+    uploadingNow.value = false
+  }
 }
 </script>

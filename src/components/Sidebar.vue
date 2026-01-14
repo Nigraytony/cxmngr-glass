@@ -142,6 +142,19 @@
         <span class="i">📦</span>
         <span v-if="open">Templates</span>
       </RouterLink>
+      <!-- Documents -->
+      <RouterLink
+        v-if="featureEnabled('documents')"
+        to="/app/documents"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/app/documents') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/app/documents') ? 'page' : null"
+      >
+        <span class="i">📁</span>
+        <span v-if="open">Documents</span>
+      </RouterLink>
       <!-- Spaces -->
       <RouterLink
         v-if="featureEnabled('spaces')"
@@ -293,14 +306,15 @@ const DEFAULT_FEATURES = {
   spaces: true,
   activities: true,
   templates: false,
+  documents: false,
   tasks: false,
   ai: false,
 }
 // Plan feature map aligned with backend plans.js
 const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false, ai: false },
-  standard: { issues: true, equipment: true, spaces: true, templates: false, activities: true, tasks: false, ai: false },
-  premium:  { issues: true, equipment: true, spaces: true, templates: true, activities: true, tasks: true, ai: true },
+  basic:    { issues: true, equipment: true, spaces: false, templates: false, documents: false, activities: false, tasks: false, ai: false },
+  standard: { issues: true, equipment: true, spaces: true, templates: false, documents: false, activities: true, tasks: false, ai: false },
+  premium:  { issues: true, equipment: true, spaces: true, templates: true, documents: true, activities: true, tasks: true, ai: true },
 }
 
 const activeFeatures = computed(() => {
@@ -315,6 +329,8 @@ const activeFeatures = computed(() => {
   const merged = { ...base, ...tierFlags, ...projectFlags }
   const inferredPremium = tierKey === 'premium' || projectFlags.tasks === true || projectFlags.ai === true
   if (!inferredPremium) merged.templates = false
+  if (!inferredPremium) merged.documents = false
+  else merged.documents = true
   return merged
 })
 

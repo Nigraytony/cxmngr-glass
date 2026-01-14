@@ -8,7 +8,7 @@ function getClientIp(req) {
 
 // Very small in-memory rate limiter (single-instance).
 // For multi-instance deployments, use a shared store (Redis) later.
-function rateLimit({ windowMs = 60_000, max = 60, keyPrefix = 'rl', skip } = {}) {
+function rateLimit({ windowMs = 60_000, max = 60, keyPrefix = 'rl', skip, keyFn } = {}) {
   const buckets = new Map()
 
   function cleanup(now) {
@@ -24,8 +24,8 @@ function rateLimit({ windowMs = 60_000, max = 60, keyPrefix = 'rl', skip } = {})
       // Avoid test flakiness and speed up integration tests.
       if (String(process.env.NODE_ENV || '').toLowerCase() === 'test') return next()
       if (typeof skip === 'function' && skip(req)) return next()
-      const ip = getClientIp(req) || 'unknown'
-      const key = `${keyPrefix}:${ip}`
+      const keyPart = (typeof keyFn === 'function' ? keyFn(req) : '') || getClientIp(req) || 'unknown'
+      const key = `${keyPrefix}:${String(keyPart).slice(0, 256)}`
       const now = Date.now()
       let bucket = buckets.get(key)
       if (!bucket || bucket.resetAt <= now) {

@@ -1,6 +1,17 @@
-require('dotenv').config();
-const express = require('express');
+const fs = require('fs');
 const path = require('path');
+const dotenv = require('dotenv');
+
+// Load backend env regardless of current working directory (local dev).
+// In production (Azure App Service) environment variables are provided by the platform.
+const backendEnvPath = path.join(__dirname, '.env');
+if (fs.existsSync(backendEnvPath)) {
+  dotenv.config({ path: backendEnvPath });
+} else {
+  dotenv.config();
+}
+
+const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const projectRoutes = require('./routes/projects');

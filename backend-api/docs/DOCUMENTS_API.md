@@ -53,6 +53,13 @@ curl -sS -X DELETE "$API_BASE/api/projects/$PROJECT_ID/docs/folders/$FOLDER_ID" 
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### Recursive delete folder (delete subfolders + files)
+
+```sh
+curl -sS -X DELETE "$API_BASE/api/projects/$PROJECT_ID/docs/folders/$FOLDER_ID?recursive=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Files (direct-to-Blob upload)
 
 ### List files in folder (returns `ready` only by default)
@@ -123,4 +130,3 @@ curl -sS -X PATCH "$API_BASE/api/projects/$PROJECT_ID/docs/files/$FILE_ID" \
 curl -sS -X DELETE "$API_BASE/api/projects/$PROJECT_ID/docs/files/$FILE_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
-

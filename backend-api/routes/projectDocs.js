@@ -12,11 +12,59 @@ const Project = require('../models/project')
 const DocFolder = require('../models/docFolder')
 const DocFile = require('../models/docFile')
 const { validateFolderName, validateFilename } = require('../utils/docsValidation')
-const { generateBlobSasUrl, blobExists, deleteBlob } = require('../utils/blobSas')
+const { generateBlobSasUrl, blobExists, deleteBlob, diagnoseStorageConfig } = require('../utils/blobSas')
 const { getDocsAllowedContentTypes, getDocsMaxSizeBytes } = require('../config/docs')
+const { rateLimit } = require('../middleware/rateLimit')
 
 function asString(v) {
   return typeof v === 'string' ? v : (v == null ? '' : String(v))
+}
+
+function getLowerExt(filename) {
+  const base = asString(filename).trim()
+  const idx = base.lastIndexOf('.')
+  if (idx <= 0 || idx === base.length - 1) return ''
+  return base.slice(idx + 1).toLowerCase()
+}
+
+function getAllowedExtensionsForContentType(contentType) {
+  const ct = asString(contentType).trim().toLowerCase()
+  switch (ct) {
+    case 'image/jpeg':
+      return ['jpg', 'jpeg']
+    case 'image/png':
+      return ['png']
+    case 'image/heic':
+      return ['heic']
+    case 'image/heif':
+      return ['heif']
+    case 'application/pdf':
+      return ['pdf']
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      return ['docx']
+    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+      return ['xlsx']
+    default:
+      return []
+  }
+}
+
+function validateFilenameContentTypePair({ filename, contentType }) {
+  const ext = getLowerExt(filename)
+  const allowed = getAllowedExtensionsForContentType(contentType)
+  if (!allowed.length) return { ok: true } // unknown mapping; allow
+  if (!ext) {
+    return { ok: false, error: 'Filename must include a file extension', code: 'FILENAME_EXTENSION_REQUIRED' }
+  }
+  if (!allowed.includes(ext)) {
+    return {
+      ok: false,
+      error: `Filename extension ".${ext}" does not match contentType "${asString(contentType)}"`,
+      code: 'FILENAME_CONTENTTYPE_MISMATCH',
+      allowedExtensions: allowed,
+    }
+  }
+  return { ok: true }
 }
 
 function isGlobalAdmin(user) {
@@ -43,6 +91,12 @@ function isProjectMember(project, user) {
   }
 }
 
+function docsRateLimitKey(req) {
+  const userId = asString(req.user && (req.user._id || req.user.id)).trim()
+  const projectId = asString(req.params && req.params.projectId).trim()
+  return `${userId}:${projectId}`
+}
+
 async function requireDocsProjectAccess(req, res, next) {
   try {
     const projectId = asString(req.params.projectId).trim()
@@ -63,9 +117,20 @@ function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function sendStorageConfigError(res, err) {
+  const status = Number(err && err.status)
+  if (status !== 503) return false
+  return res.status(503).json({
+    error: (err && err.message) || 'Azure storage is not configured',
+    code: err && err.code,
+    hint: err && err.hint,
+  })
+}
+
 async function computeFolderPath({ orgId, projectId, parentId, name }) {
   if (!parentId) return name
-  const parent = await DocFolder.findOne({ _id: parentId, orgId, projectId }).select('path').lean()
+  // Legacy tolerance: some older docs may have a different orgId stored; projectId is the real tenant boundary.
+  const parent = await DocFolder.findOne({ _id: parentId, projectId, deletedAt: null }).select('path').lean()
   if (!parent) return null
   const base = asString(parent.path).trim()
   return base ? `${base}/${name}` : name
@@ -73,10 +138,9 @@ async function computeFolderPath({ orgId, projectId, parentId, name }) {
 
 async function loadFolder(req, res, next) {
   try {
-    const orgId = req.docsOrgId
     const projectId = req.params.projectId
     const folderId = req.params.folderId
-    const folder = await DocFolder.findOne({ _id: folderId, orgId, projectId }).lean()
+    const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).lean()
     if (!folder) return res.status(404).json({ error: 'Folder not found' })
     req.docFolder = folder
     return next()
@@ -87,10 +151,9 @@ async function loadFolder(req, res, next) {
 
 async function loadFile(req, res, next) {
   try {
-    const orgId = req.docsOrgId
     const projectId = req.params.projectId
     const fileId = req.params.fileId
-    const file = await DocFile.findOne({ _id: fileId, orgId, projectId }).lean()
+    const file = await DocFile.findOne({ _id: fileId, projectId }).lean()
     if (!file) return res.status(404).json({ error: 'File not found' })
     req.docFile = file
     return next()
@@ -101,11 +164,17 @@ async function loadFile(req, res, next) {
 
 function buildTree(folders) {
   const nodes = new Map()
-  const childrenByParent = new Map()
   for (const f of folders) {
     const id = String(f._id)
     nodes.set(id, { id, name: f.name, path: f.path, parentId: f.parentId ? String(f.parentId) : null, children: [] })
-    const parentKey = f.parentId ? String(f.parentId) : '__root__'
+  }
+
+  const childrenByParent = new Map()
+  for (const f of folders) {
+    const id = String(f._id)
+    const rawParentKey = f.parentId ? String(f.parentId) : '__root__'
+    // If a folder references a missing parent (legacy data), treat it as a root child so it's visible.
+    const parentKey = rawParentKey !== '__root__' && !nodes.has(rawParentKey) ? '__root__' : rawParentKey
     const list = childrenByParent.get(parentKey) || []
     list.push(id)
     childrenByParent.set(parentKey, list)
@@ -116,7 +185,9 @@ function buildTree(folders) {
     ids.sort((a, b) => {
       const an = nodes.get(a)?.name || ''
       const bn = nodes.get(b)?.name || ''
-      return an.localeCompare(bn)
+      const c = an.localeCompare(bn, undefined, { sensitivity: 'base' })
+      if (c !== 0) return c
+      return a.localeCompare(b)
     })
     for (const id of ids) {
       const node = nodes.get(id)
@@ -141,12 +212,47 @@ router.get(
   requireDocsProjectAccess,
   async (req, res) => {
     try {
-      const orgId = req.docsOrgId
       const projectId = req.params.projectId
-      const folders = await DocFolder.find({ orgId, projectId }).select('name path parentId').lean()
+      const includeDeleted = isTruthy(req.query.includeDeleted)
+      if (includeDeleted && !isGlobalAdmin(req.user)) {
+        return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN_DEBUG_LISTING' })
+      }
+      // Note: projectId is the tenant boundary; allow reading folders even if legacy orgId mismatches.
+      const folders = await DocFolder.find(includeDeleted ? { projectId } : { projectId, deletedAt: null })
+        .select('name path parentId')
+        .lean()
       return res.json({ root: buildTree(folders) })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to load folder tree' })
+    }
+  }
+)
+
+// GET /api/projects/:projectId/docs/storage-status
+// Returns a non-secret diagnostic about Azure Blob configuration so UI can guide setup.
+router.get(
+  '/storage-status',
+  auth,
+  requireNotDisabled('uploads'),
+  requireObjectIdParam('projectId'),
+  requireActiveProject,
+  requireDocsProjectAccess,
+  async (req, res) => {
+    try {
+      const diag = diagnoseStorageConfig()
+      if (!diag.ok) {
+        return res.status(503).json({ ok: false, error: diag.error, code: diag.code, hint: diag.hint })
+      }
+      const cfg = diag.cfg || {}
+      return res.json({
+        ok: true,
+        mode: cfg.mode,
+        container: cfg.container,
+        accountName: cfg.accountName,
+        blobEndpoint: cfg.blobEndpoint,
+      })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to check storage status' })
     }
   }
 )
@@ -180,6 +286,7 @@ router.post(
         name: nameV.value,
         path,
         createdBy: req.user._id,
+        updatedBy: req.user._id,
       })
 
       return res.status(201).json({
@@ -193,7 +300,7 @@ router.post(
         },
       })
     } catch (e) {
-      if (e && e.code === 11000) return res.status(409).json({ error: 'A folder with this name already exists in this location' })
+      if (e && e.code === 11000) return res.status(409).json({ error: 'A folder with this name already exists in this location', code: 'DUPLICATE_FOLDER_NAME' })
       return res.status(500).json({ error: 'Failed to create folder' })
     }
   }
@@ -233,7 +340,7 @@ router.patch(
         } else {
           const pid = String(parentIdRaw)
           if (!mongoose.Types.ObjectId.isValid(pid)) return res.status(400).json({ error: 'Invalid parentId' })
-          if (pid === String(folderId)) return res.status(400).json({ error: 'Cannot move a folder into itself' })
+          if (pid === String(folderId)) return res.status(400).json({ error: 'Cannot move a folder into itself', code: 'INVALID_FOLDER_MOVE' })
           nextParentId = pid
         }
       }
@@ -244,31 +351,32 @@ router.patch(
 
       // Prevent moving into own subtree by checking path prefix.
       if (nextParentId) {
-        const parent = await DocFolder.findOne({ _id: nextParentId, orgId, projectId }).select('path').lean()
+        const parent = await DocFolder.findOne({ _id: nextParentId, projectId, deletedAt: null }).select('path').lean()
         const parentPath = asString(parent && parent.path)
         if (parentPath && (parentPath === oldPath || parentPath.startsWith(`${oldPath}/`))) {
-          return res.status(400).json({ error: 'Cannot move a folder into its own descendant' })
+          return res.status(400).json({ error: 'Cannot move a folder into its own descendant', code: 'INVALID_FOLDER_MOVE' })
         }
       }
 
       // Update folder
       await DocFolder.updateOne(
-        { _id: folderId, orgId, projectId },
-        { $set: { name: nextName, parentId: nextParentId, path: newPath } }
+        { _id: folderId, projectId },
+        { $set: { name: nextName, parentId: nextParentId, path: newPath, updatedBy: req.user._id } }
       )
 
       // Update descendants (best-effort; keep it simple and bounded)
       if (newPath !== oldPath) {
         const prefix = new RegExp(`^${escapeRegex(oldPath)}/`)
-        const descendants = await DocFolder.find({ orgId, projectId, path: prefix }).select('_id path').lean()
+        const descendants = await DocFolder.find({ projectId, deletedAt: null, path: prefix }).select('_id path').lean()
         for (const d of descendants) {
           const dPath = asString(d.path)
-          const updated = dPath.replace(oldPath, newPath)
-          await DocFolder.updateOne({ _id: d._id, orgId, projectId }, { $set: { path: updated } })
+          // Replace only the leading prefix, not any later occurrences.
+          const updated = dPath.startsWith(oldPath) ? `${newPath}${dPath.slice(oldPath.length)}` : dPath
+          await DocFolder.updateOne({ _id: d._id, projectId }, { $set: { path: updated, updatedBy: req.user._id } })
         }
       }
 
-      const updatedFolder = await DocFolder.findOne({ _id: folderId, orgId, projectId }).lean()
+      const updatedFolder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).lean()
       return res.json({
         folder: {
           id: String(updatedFolder._id),
@@ -280,7 +388,7 @@ router.patch(
         },
       })
     } catch (e) {
-      if (e && e.code === 11000) return res.status(409).json({ error: 'A folder with this name already exists in this location' })
+      if (e && e.code === 11000) return res.status(409).json({ error: 'A folder with this name already exists in this location', code: 'DUPLICATE_FOLDER_NAME' })
       return res.status(500).json({ error: 'Failed to update folder' })
     }
   }
@@ -301,14 +409,59 @@ router.delete(
       const orgId = req.docsOrgId
       const projectId = req.params.projectId
       const folderId = req.params.folderId
+      const recursive = isTruthy(req.query.recursive)
 
-      const subfolderCount = await DocFolder.countDocuments({ orgId, projectId, parentId: folderId })
-      if (subfolderCount > 0) return res.status(409).json({ error: 'Folder is not empty' })
-      const fileCount = await DocFile.countDocuments({ orgId, projectId, folderId, status: { $ne: 'deleted' } })
-      if (fileCount > 0) return res.status(409).json({ error: 'Folder is not empty' })
+      if (!recursive) {
+        const subfolderCount = await DocFolder.countDocuments({ projectId, deletedAt: null, parentId: folderId })
+        if (subfolderCount > 0) return res.status(409).json({ error: 'Folder is not empty', code: 'FOLDER_NOT_EMPTY', subfolderCount })
+        const fileCount = await DocFile.countDocuments({ projectId, folderId, status: { $ne: 'deleted' } })
+        if (fileCount > 0) return res.status(409).json({ error: 'Folder is not empty', code: 'FOLDER_NOT_EMPTY', fileCount })
 
-      await DocFolder.deleteOne({ _id: folderId, orgId, projectId })
-      return res.json({ ok: true })
+        await DocFolder.updateOne(
+          { _id: folderId, projectId },
+          { $set: { deletedAt: new Date(), deletedBy: req.user._id, updatedBy: req.user._id } }
+        )
+        return res.json({ ok: true })
+      }
+
+      // Recursive delete: delete all descendant folders and mark all files as deleted (and delete blobs).
+      const rootFolder = req.docFolder
+      const rootPath = asString(rootFolder.path)
+      const pathRe = rootPath ? new RegExp(`^${escapeRegex(rootPath)}(?:/|$)`) : null
+      const folderDocs = await DocFolder.find(
+        pathRe ? { projectId, deletedAt: null, path: pathRe } : { projectId, deletedAt: null, _id: folderId }
+      ).select('_id').lean()
+      const folderIds = Array.from(new Set(folderDocs.map((f) => String(f._id))))
+      if (!folderIds.includes(String(folderId))) folderIds.push(String(folderId))
+
+      const files = await DocFile.find({
+        projectId,
+        folderId: { $in: folderIds },
+        status: { $ne: 'deleted' },
+      }).select('_id blobName').lean()
+
+      for (const f of files) {
+        try {
+          const sas = await generateBlobSasUrl({ blobName: asString(f.blobName), permissions: 'd', expiresInSec: 600 })
+          await deleteBlob(sas.url)
+        } catch (_) {
+          // best-effort
+        }
+        try {
+          await DocFile.updateOne(
+            { _id: f._id, projectId },
+            { $set: { status: 'deleted', deletedAt: new Date(), deletedBy: req.user._id, updatedBy: req.user._id } }
+          )
+        } catch (_) {
+          // best-effort
+        }
+      }
+
+      await DocFolder.updateMany(
+        { projectId, _id: { $in: folderIds } },
+        { $set: { deletedAt: new Date(), deletedBy: req.user._id, updatedBy: req.user._id } }
+      )
+      return res.json({ ok: true, recursive: true, deletedFolders: folderIds.length, deletedFiles: files.length })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to delete folder' })
     }
@@ -326,20 +479,23 @@ router.get(
   requireDocsProjectAccess,
   async (req, res) => {
     try {
-      const orgId = req.docsOrgId
       const projectId = req.params.projectId
       const folderId = String(req.query.folderId)
       const includePending = isTruthy(req.query.includePending)
       const includeDeleted = isTruthy(req.query.includeDeleted)
 
-      const folder = await DocFolder.findOne({ _id: folderId, orgId, projectId }).select('_id').lean()
+      if ((includePending || includeDeleted) && !isGlobalAdmin(req.user)) {
+        return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN_DEBUG_LISTING' })
+      }
+
+      const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).select('_id').lean()
       if (!folder) return res.status(404).json({ error: 'Folder not found' })
 
       const status = includeDeleted
         ? (includePending ? { $in: ['pending', 'ready', 'deleted'] } : { $in: ['ready', 'deleted'] })
         : (includePending ? { $in: ['pending', 'ready'] } : 'ready')
 
-      const files = await DocFile.find({ orgId, projectId, folderId, status })
+      const files = await DocFile.find({ projectId, folderId, status })
         .sort({ updatedAt: -1 })
         .select('originalName contentType sizeBytes status createdAt updatedAt')
         .lean()
@@ -366,6 +522,7 @@ router.post(
   '/files/request-upload',
   auth,
   requireNotDisabled('uploads'),
+  rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'docs-upload', keyFn: docsRateLimitKey }),
   requireObjectIdParam('projectId'),
   requireActiveProject,
   requireDocsProjectAccess,
@@ -376,7 +533,8 @@ router.post(
       const projectId = req.params.projectId
       const folderId = String(req.body.folderId)
 
-      const folder = await DocFolder.findOne({ _id: folderId, orgId, projectId }).select('_id').lean()
+      // projectId is the tenant boundary; allow request even if legacy orgId differs.
+      const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).select('_id').lean()
       if (!folder) return res.status(404).json({ error: 'Folder not found' })
 
       const filenameV = validateFilename(req.body && req.body.filename)
@@ -391,6 +549,11 @@ router.post(
       if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return res.status(400).json({ error: 'sizeBytes must be a positive number' })
       const maxSizeBytes = getDocsMaxSizeBytes()
       if (sizeBytes > maxSizeBytes) return res.status(400).json({ error: `File is too large (max ${maxSizeBytes} bytes)` })
+
+      const pairV = validateFilenameContentTypePair({ filename: filenameV.value, contentType })
+      if (!pairV.ok) {
+        return res.status(400).json({ error: pairV.error, code: pairV.code, allowedExtensions: pairV.allowedExtensions })
+      }
 
       const uuid = crypto.randomUUID()
       const blobName = `docs/${projectId}/${uuid}`
@@ -408,14 +571,28 @@ router.post(
       })
 
       const sas = await generateBlobSasUrl({ blobName, permissions: 'cw', expiresInSec: 600 })
+      try {
+        console.log(JSON.stringify({
+          level: 'info',
+          msg: 'docs.request-upload',
+          reqId: req.id,
+          projectId,
+          userId: String(req.user && (req.user._id || req.user.id) || ''),
+          folderId,
+          fileId: String(file._id),
+          blobName,
+          originalName: file.originalName,
+          contentType: file.contentType,
+          sizeBytes: file.sizeBytes,
+        }))
+      } catch (_) {}
       return res.status(201).json({
         fileId: String(file._id),
         uploadUrl: sas.url,
         expiresAt: sas.expiresAt,
       })
     } catch (e) {
-      const status = Number(e && e.status)
-      if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+      if (sendStorageConfigError(res, e)) return
       return res.status(500).json({ error: 'Failed to request upload' })
     }
   }
@@ -457,13 +634,36 @@ router.post(
       const head = await blobExists(sas.url)
       if (!head.exists) return res.status(404).json({ error: 'Blob not found' })
 
+      const expectedCt = asString(file.contentType).trim().toLowerCase()
+      const actualCt = asString(head.contentType).trim().toLowerCase()
+      if (actualCt && actualCt !== 'application/octet-stream' && expectedCt && actualCt !== expectedCt) {
+        return res.status(409).json({
+          error: 'Blob contentType does not match expected',
+          code: 'CONTENT_TYPE_MISMATCH',
+          expected: expectedCt,
+          actual: actualCt,
+        })
+      }
+
       const next = { status: 'ready' }
       if (Number.isFinite(head.sizeBytes) && head.sizeBytes > 0) next.sizeBytes = head.sizeBytes
-      const ct = asString(head.contentType).trim().toLowerCase()
-      if (ct && ct !== 'application/octet-stream') next.contentType = ct
+      if (actualCt && actualCt !== 'application/octet-stream') next.contentType = actualCt
+      next.updatedBy = req.user._id
 
       await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: next })
       const updated = await DocFile.findOne({ _id: fileId, orgId, projectId }).lean()
+      try {
+        console.log(JSON.stringify({
+          level: 'info',
+          msg: 'docs.complete',
+          reqId: req.id,
+          projectId,
+          userId: String(req.user && (req.user._id || req.user.id) || ''),
+          fileId,
+          blobName: file.blobName,
+          status: 'ready',
+        }))
+      } catch (_) {}
       return res.json({
         file: {
           id: String(updated._id),
@@ -476,8 +676,7 @@ router.post(
         },
       })
     } catch (e) {
-      const status = Number(e && e.status)
-      if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+      if (sendStorageConfigError(res, e)) return
       return res.status(500).json({ error: 'Failed to complete upload' })
     }
   }
@@ -500,8 +699,7 @@ router.get(
       const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'r', expiresInSec: 600 })
       return res.json({ downloadUrl: sas.url, expiresAt: sas.expiresAt })
     } catch (e) {
-      const status = Number(e && e.status)
-      if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
+      if (sendStorageConfigError(res, e)) return
       return res.status(500).json({ error: 'Failed to create download URL' })
     }
   }
@@ -529,13 +727,18 @@ router.patch(
       if (req.body && req.body.filename !== undefined) {
         const v = validateFilename(req.body.filename)
         if (!v.ok) return res.status(400).json({ error: v.error })
+        const pairV = validateFilenameContentTypePair({ filename: v.value, contentType: file.contentType })
+        if (!pairV.ok) {
+          return res.status(400).json({ error: pairV.error, code: pairV.code, allowedExtensions: pairV.allowedExtensions })
+        }
         next.originalName = v.value
       }
 
       if (req.body && req.body.folderId !== undefined) {
         const fid = String(req.body.folderId || '')
         if (!mongoose.Types.ObjectId.isValid(fid)) return res.status(400).json({ error: 'Invalid folderId' })
-        const folder = await DocFolder.findOne({ _id: fid, orgId, projectId }).select('_id').lean()
+        // projectId is the tenant boundary; allow move even if legacy orgId differs.
+        const folder = await DocFolder.findOne({ _id: fid, projectId, deletedAt: null }).select('_id').lean()
         if (!folder) return res.status(404).json({ error: 'Folder not found' })
         next.folderId = fid
       }
@@ -554,6 +757,7 @@ router.patch(
         })
       }
 
+      next.updatedBy = req.user._id
       await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: next })
       const updated = await DocFile.findOne({ _id: fileId, orgId, projectId }).lean()
       return res.json({
@@ -589,19 +793,37 @@ router.delete(
       const projectId = req.params.projectId
       const fileId = req.params.fileId
       const file = req.docFile
-      if (file.status !== 'deleted') {
-        try {
-          const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'd', expiresInSec: 600 })
-          const del = await deleteBlob(sas.url)
-          if (!del.deleted) return res.status(502).json({ error: 'Failed to delete blob' })
-        } catch (e) {
-          const status = Number(e && e.status)
-          if (status === 503) return res.status(503).json({ error: 'Azure storage is not configured' })
-          return res.status(502).json({ error: 'Failed to delete blob' })
-        }
-        await DocFile.updateOne({ _id: fileId, orgId, projectId }, { $set: { status: 'deleted' } })
+      if (file.status === 'deleted') return res.json({ ok: true, blobDeleted: true })
+
+      let blobDeleted = false
+      // Delete blob first (best effort), then mark metadata deleted.
+      try {
+        const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'd', expiresInSec: 600 })
+        const del = await deleteBlob(sas.url)
+        blobDeleted = !!del.deleted
+      } catch (e) {
+        // If Azure isn't configured, bubble the diagnostic so the user can fix it.
+        if (sendStorageConfigError(res, e)) return
+        blobDeleted = false
       }
-      return res.json({ ok: true })
+
+      await DocFile.updateOne(
+        { _id: fileId, orgId, projectId },
+        { $set: { status: 'deleted', deletedBy: req.user._id, deletedAt: new Date(), updatedBy: req.user._id } }
+      )
+      try {
+        console.log(JSON.stringify({
+          level: 'info',
+          msg: 'docs.delete',
+          reqId: req.id,
+          projectId,
+          userId: String(req.user && (req.user._id || req.user.id) || ''),
+          fileId,
+          blobName: file.blobName,
+          blobDeleted,
+        }))
+      } catch (_) {}
+      return res.json({ ok: true, blobDeleted })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to delete file' })
     }
