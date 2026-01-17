@@ -338,6 +338,20 @@ router.post('/project/:id/reconcile-subscription', auth, async (req, res) => {
     const firstItem = preferred.items && preferred.items.data && preferred.items.data[0];
     const priceId = firstItem && firstItem.price && firstItem.price.id ? firstItem.price.id : (project.stripePriceId || null);
 
+    // Apply plan defaults immediately so the project UI can gate features correctly
+    // without requiring a manual “reset features to plan defaults”.
+    let planKey = null
+    let planDefaults = null
+    try {
+      if (Array.isArray(plans) && priceId) {
+        const byPrice = plans.find(p => p && String(p.priceId) === String(priceId))
+        if (byPrice) {
+          planKey = byPrice.key || null
+          planDefaults = byPrice.features || null
+        }
+      }
+    } catch (e) { /* ignore */ }
+
     await Project.findByIdAndUpdate(projectId, {
       stripeSubscriptionId: preferred.id,
       stripeSubscriptionStatus: preferred.status,
@@ -346,6 +360,8 @@ router.post('/project/:id/reconcile-subscription', auth, async (req, res) => {
       stripeCanceledAt: preferred.canceled_at ? new Date(preferred.canceled_at * 1000) : null,
       stripePriceId: priceId || project.stripePriceId || null,
       isActive: ['active', 'trialing', 'past_due'].includes(preferred.status),
+      ...(planKey ? { subscriptionTier: planKey } : {}),
+      ...(planDefaults ? { subscriptionFeatures: planDefaults } : {}),
     });
 
     return res.json({ ok: true, subscriptionId: preferred.id, status: preferred.status, priceId: priceId || null });
@@ -399,11 +415,12 @@ router.post('/project/:id/change-plan', auth, async (req, res) => {
 
     // Determine plan defaults for subscriptionFeatures by matching priceId
     let planDefaults = null;
+    let planKey = null;
     try {
       if (Array.isArray(plans)) {
-        const byPrice = plans.find(p => p && p.priceId === priceId);
-        const byKey = !byPrice && updated && updated.items && updated.items.data && updated.items.data[0] && updated.items.data[0].plan && updated.items.data[0].plan.product ? plans.find(p => p && p.key === String(p.key)) : null;
+        const byPrice = plans.find(p => p && String(p.priceId) === String(priceId));
         planDefaults = (byPrice && byPrice.features) || null;
+        planKey = (byPrice && byPrice.key) || null;
       }
     } catch (e) { /* ignore plan mapping errors */ }
 
@@ -419,6 +436,7 @@ router.post('/project/:id/change-plan', auth, async (req, res) => {
       trialStarted: project.trialStarted || Boolean(updated.trial_end),
       // Reset subscriptionFeatures to plan defaults unless explicitly preserved by client
       ...(planDefaults ? { subscriptionFeatures: planDefaults } : {}),
+      ...(planKey ? { subscriptionTier: planKey } : {}),
     });
 
     return res.json({ ok: true, status: updated.status, priceId });
@@ -836,8 +854,8 @@ router.post('/create-checkout-session', auth, requireBodyField('projectId'), req
           metadata: { projectId: String(project._id), userId: String(user._id) },
         }
       }),
-      success_url: `${process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/projects/edit/${project._id}?checkout=success`,
-      cancel_url: `${process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/projects/edit/${project._id}?checkout=cancel`,
+      success_url: `${process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/app/projects/edit/${project._id}?checkout=success`,
+      cancel_url: `${process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/app/projects/edit/${project._id}?checkout=cancel`,
       allow_promotion_codes: true,
       client_reference_id: String(project._id),
       metadata: { projectId: String(project._id), userId: String(user._id) },
@@ -846,9 +864,19 @@ router.post('/create-checkout-session', auth, requireBodyField('projectId'), req
       sessionParams.discounts = [{ promotion_code: promotionCode }];
     }
 
-    // Persist intended price on project
+    // Persist intended price + plan defaults on project so UI gating is consistent
+    // even before Stripe has linked a subscription (webhook/reconcile).
     try {
+      const planByPriceId = {};
+      if (Array.isArray(plans)) {
+        for (const p of plans) {
+          if (p && p.priceId) planByPriceId[p.priceId] = p;
+        }
+      }
+      const plan = planByPriceId[priceId] || null;
       project.stripePriceId = priceId;
+      if (plan && plan.key) project.subscriptionTier = String(plan.key);
+      if (plan && plan.features && typeof plan.features === 'object') project.subscriptionFeatures = plan.features;
       await project.save();
     } catch (e) {
       console.warn('[stripe] failed to persist priceId on project', e && e.message);
@@ -934,6 +962,19 @@ router.post('/portal-session', auth, requireBodyField('projectId'), requireObjec
     if (!project) return res.status(404).json({ error: 'Project not found' });
     if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized' });
 
+    // Strict project scoping: if the project is not linked to a subscription yet,
+    // do not fall back to customer-wide history (it can include other projects).
+    if (!project.stripeSubscriptionId) {
+      return res.json({
+        items: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 1,
+        warning: 'Project is not linked to a subscription yet. Use “Reconcile subscription link” to connect billing before viewing transactions.',
+      });
+    }
+
     const customerId = await resolveBillingCustomerId(project, req.user);
     const fetchCount = Math.min(100, page * limit);
 
@@ -947,8 +988,7 @@ router.post('/portal-session', auth, requireBodyField('projectId'), requireObjec
         status: statusFilter || undefined,
         created: Object.keys(created).length ? created : undefined,
       };
-      if (project.stripeSubscriptionId) invoiceParams.subscription = project.stripeSubscriptionId;
-      else if (customerId) invoiceParams.customer = customerId;
+      invoiceParams.subscription = project.stripeSubscriptionId;
       const invResp = await stripe.invoices.list(invoiceParams);
       const invoices = Array.isArray(invResp.data) ? invResp.data : [];
       for (const inv of invoices) {
@@ -997,7 +1037,9 @@ router.post('/portal-session', auth, requireBodyField('projectId'), requireObjec
       for (const ch of charges) {
         // Skip charges that already correspond to invoices we captured
         if (ch.invoice) continue;
-        if (ch.metadata && ch.metadata.projectId && String(ch.metadata.projectId) !== String(projectId)) continue;
+        // Strict project scoping: only include explicitly project-tagged charges.
+        if (!ch.metadata || !ch.metadata.projectId) continue;
+        if (String(ch.metadata.projectId) !== String(projectId)) continue;
         transactions.push({
           id: ch.id,
           type: 'charge',
@@ -1057,7 +1099,7 @@ router.post('/portal-session', auth, requireBodyField('projectId'), requireObjec
 });
 
 // GET /api/stripe/project/:id/invoices?page=1&limit=10
-router.get('/project/:id/invoices', auth, async (req, res) => {
+  router.get('/project/:id/invoices', auth, async (req, res) => {
   try {
     if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
     const id = req.params.id
@@ -1066,27 +1108,17 @@ router.get('/project/:id/invoices', auth, async (req, res) => {
     const project = await Project.findById(id)
     if (!project) return res.status(404).json({ error: 'Project not found' })
 
-    // Try to list invoices for the subscription first, otherwise fall back to customer (current user)
-    let invoices = []
-    if (project.stripeSubscriptionId) {
-      // list invoices for the subscription; request page*limit and slice (Stripe uses cursor pagination)
-      const fetchCount = Math.min(100, page * limit)
-      const resp = await stripe.invoices.list({ subscription: project.stripeSubscriptionId, limit: fetchCount })
-      invoices = Array.isArray(resp.data) ? resp.data : []
-      // filter by metadata.projectId when present
-      invoices = invoices.filter(inv => !inv.metadata || !inv.metadata.projectId || String(inv.metadata.projectId) === String(id))
-    } else {
-      // fallback: use current authenticated user's customer id if available
-      const user = req.user
-      if (user && user.stripeCustomerId) {
-        const fetchCount = Math.min(100, page * limit)
-        const resp = await stripe.invoices.list({ customer: user.stripeCustomerId, limit: fetchCount })
-        invoices = Array.isArray(resp.data) ? resp.data : []
-        invoices = invoices.filter(inv => !inv.metadata || !inv.metadata.projectId || String(inv.metadata.projectId) === String(id))
-      } else {
-        return res.status(400).json({ error: 'No subscription or customer available to list invoices' })
-      }
+    // Strict project scoping: do not fall back to customer-wide invoices.
+    if (!project.stripeSubscriptionId) {
+      return res.json({ items: [], total: 0, page, limit, totalPages: 1, warning: 'Project is not linked to a subscription yet.' })
     }
+
+    // List invoices for the subscription; request page*limit and slice (Stripe uses cursor pagination)
+    const fetchCount = Math.min(100, page * limit)
+    const resp = await stripe.invoices.list({ subscription: project.stripeSubscriptionId, limit: fetchCount })
+    let invoices = Array.isArray(resp.data) ? resp.data : []
+    // If metadata exists and indicates a different project, exclude it.
+    invoices = invoices.filter(inv => !(inv.metadata && inv.metadata.projectId && String(inv.metadata.projectId) !== String(id)))
 
     const total = invoices.length
     const totalPages = Math.max(1, Math.ceil(total / limit))

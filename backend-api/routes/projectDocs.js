@@ -15,6 +15,7 @@ const { validateFolderName, validateFilename } = require('../utils/docsValidatio
 const { generateBlobSasUrl, blobExists, deleteBlob, diagnoseStorageConfig } = require('../utils/blobSas')
 const { getDocsAllowedContentTypes, getDocsMaxSizeBytes } = require('../config/docs')
 const { rateLimit } = require('../middleware/rateLimit')
+const { isOfficeDoc, convertOfficeDocToPdfBlob } = require('../utils/docsPreview')
 
 function asString(v) {
   return typeof v === 'string' ? v : (v == null ? '' : String(v))
@@ -705,6 +706,104 @@ router.get(
   }
 )
 
+// GET /api/projects/:projectId/docs/files/:fileId/preview-url
+// For PDFs/images: returns the original blob read SAS.
+// For Office docs (docx/xlsx): converts to PDF (best-effort) and returns a read SAS for the preview.
+router.get(
+  '/files/:fileId/preview-url',
+  auth,
+  requireNotDisabled('uploads'),
+  requireObjectIdParam('projectId'),
+  requireObjectIdParam('fileId'),
+  requireActiveProject,
+  requireDocsProjectAccess,
+  loadFile,
+  async (req, res) => {
+    try {
+      const orgId = req.docsOrgId
+      const projectId = req.params.projectId
+      const fileId = req.params.fileId
+      const file = req.docFile
+
+      if (file.status === 'deleted') return res.status(409).json({ error: 'File is deleted' })
+      if (file.status !== 'ready') return res.status(409).json({ error: 'File is not ready' })
+
+      const ct = asString(file.contentType).trim().toLowerCase()
+      const isPdf = ct.includes('pdf')
+      const isImg = ct.startsWith('image/')
+
+      // If already previewable, just return download SAS for original.
+      if (isPdf || isImg) {
+        const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'r', expiresInSec: 600 })
+        return res.json({ previewUrl: sas.url, contentType: file.contentType, source: 'original', expiresAt: sas.expiresAt })
+      }
+
+      if (!isOfficeDoc(ct)) {
+        return res.status(415).json({ error: 'Preview not supported for this file type', code: 'PREVIEW_UNSUPPORTED' })
+      }
+
+      // Use cached preview if present and accessible.
+      if (file.previewBlobName && file.previewStatus === 'ready') {
+        const sas = await generateBlobSasUrl({ blobName: file.previewBlobName, permissions: 'r', expiresInSec: 600 })
+        const head = await blobExists(sas.url)
+        if (head.exists) {
+          return res.json({ previewUrl: sas.url, contentType: 'application/pdf', source: 'converted', expiresAt: sas.expiresAt })
+        }
+      }
+
+      // Convert on demand.
+      await DocFile.updateOne(
+        { _id: fileId, orgId, projectId },
+        { $set: { previewStatus: 'pending', previewError: '', updatedBy: req.user._id } }
+      )
+
+      let result
+      try {
+        const originalRead = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'r', expiresInSec: 600 })
+        result = await convertOfficeDocToPdfBlob({
+          downloadUrl: originalRead.url,
+          projectId,
+          fileId,
+          contentType: file.contentType,
+          generateUploadUrl: (previewBlobName) => generateBlobSasUrl({ blobName: previewBlobName, permissions: 'cw', expiresInSec: 600 }),
+        })
+      } catch (e) {
+        try {
+          await DocFile.updateOne(
+            { _id: fileId, orgId, projectId },
+            { $set: { previewStatus: 'error', previewError: (e && e.message) ? String(e.message).slice(0, 500) : 'Preview conversion failed', updatedBy: req.user._id } }
+          )
+        } catch (_) {}
+        throw e
+      }
+
+      await DocFile.updateOne(
+        { _id: fileId, orgId, projectId },
+        {
+          $set: {
+            previewBlobName: result.previewBlobName,
+            previewContentType: 'application/pdf',
+            previewStatus: 'ready',
+            previewUpdatedAt: new Date(),
+            updatedBy: req.user._id,
+          },
+        }
+      )
+
+      const previewRead = await generateBlobSasUrl({ blobName: result.previewBlobName, permissions: 'r', expiresInSec: 600 })
+      return res.json({ previewUrl: previewRead.url, contentType: 'application/pdf', source: 'converted', expiresAt: previewRead.expiresAt })
+    } catch (e) {
+      if (sendStorageConfigError(res, e)) return
+      const status = Number(e && e.status) || 500
+      const code = e && e.code
+      const hint = e && e.hint
+      const msg = (e && e.message) || 'Failed to create preview URL'
+      if (code) return res.status(status).json(hint ? { error: msg, code, hint } : { error: msg, code })
+      return res.status(status).json({ error: msg })
+    }
+  }
+)
+
 // PATCH /api/projects/:projectId/docs/files/:fileId
 router.patch(
   '/files/:fileId',
@@ -796,11 +895,21 @@ router.delete(
       if (file.status === 'deleted') return res.json({ ok: true, blobDeleted: true })
 
       let blobDeleted = false
+      let previewBlobDeleted = false
       // Delete blob first (best effort), then mark metadata deleted.
       try {
         const sas = await generateBlobSasUrl({ blobName: file.blobName, permissions: 'd', expiresInSec: 600 })
         const del = await deleteBlob(sas.url)
         blobDeleted = !!del.deleted
+        if (file.previewBlobName) {
+          try {
+            const psas = await generateBlobSasUrl({ blobName: file.previewBlobName, permissions: 'd', expiresInSec: 600 })
+            const pdel = await deleteBlob(psas.url)
+            previewBlobDeleted = !!pdel.deleted
+          } catch (_) {
+            previewBlobDeleted = false
+          }
+        }
       } catch (e) {
         // If Azure isn't configured, bubble the diagnostic so the user can fix it.
         if (sendStorageConfigError(res, e)) return
@@ -821,6 +930,7 @@ router.delete(
           fileId,
           blobName: file.blobName,
           blobDeleted,
+          previewBlobDeleted,
         }))
       } catch (_) {}
       return res.json({ ok: true, blobDeleted })

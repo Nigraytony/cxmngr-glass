@@ -1124,6 +1124,18 @@
                 </div>
               </div>
               <div
+                v-if="checkoutPending"
+                class="mb-3 rounded bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-100"
+              >
+                Checkout is pending. If you just completed checkout, wait a moment and refresh. If it doesn’t link automatically, use “Reconcile subscription link”.
+              </div>
+              <div
+                v-if="transactionsWarning"
+                class="mb-3 rounded bg-yellow-500/10 border border-yellow-500/20 px-3 py-2 text-xs text-yellow-100"
+              >
+                {{ transactionsWarning }}
+              </div>
+              <div
                 v-if="transactionsLoading"
                 class="text-white/70"
               >
@@ -2188,6 +2200,7 @@ const transactionsStatus = ref('all')
 const transactionsType = ref('all')
 const transactionsStart = ref('')
 const transactionsEnd = ref('')
+const transactionsWarning = ref<string | null>(null)
 const billingSummary = ref<any | null>(null)
 const billingLoading = ref(false)
 const billingError = ref<string | null>(null)
@@ -2216,6 +2229,7 @@ async function loadTransactions() {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
     if (!pid) return
     transactionsLoading.value = true
+    transactionsWarning.value = null
     const params: any = {
       page: transactionsPage.value,
       limit: transactionsPerPage.value,
@@ -2228,10 +2242,12 @@ async function loadTransactions() {
     const data = res.data || { items: [], total: 0 }
     transactions.value = Array.isArray(data.items) ? data.items : []
     transactionsTotal.value = Number(data.total || 0)
+    transactionsWarning.value = typeof data.warning === 'string' ? data.warning : null
   } catch (e) {
     console.error('loadTransactions err', e)
     transactions.value = []
     transactionsTotal.value = 0
+    transactionsWarning.value = null
   } finally {
     transactionsLoading.value = false
   }
@@ -3277,6 +3293,21 @@ function tabClass(t) {
   return activeTab.value === t ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80'
 }
 
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function refreshBillingStateAfterCheckout() {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await refreshProject()
+    await loadBillingSummary()
+    await loadTransactions()
+    if (project.value?.stripeSubscriptionId) return true
+    await sleep(1500 + attempt * 1500)
+  }
+  return false
+}
+
 // local showToast removed; use `ui.showSuccess` / `ui.showError` instead
 
 onMounted(async () => {
@@ -3331,7 +3362,15 @@ onMounted(async () => {
   }
   // If returning from Stripe checkout, refresh project to pick up webhook updates
   if (route.query && route.query.checkout === 'success') {
-    await refreshProject();
+    await refreshBillingStateAfterCheckout()
+    if (!project.value?.stripeSubscriptionId) {
+      try {
+        await handleReconcileSubscription()
+        await refreshBillingStateAfterCheckout()
+      } catch (e) {
+        // ignore: user can reconcile manually if needed
+      }
+    }
     ui.showSuccess('Subscription updated')
   } else if (route.query && route.query.checkout === 'cancel') {
     ui.showError('Checkout cancelled')
@@ -3800,6 +3839,7 @@ const planLabel = computed(() => {
   return id || 'No plan'
 });
 const hasSubscription = computed(() => Boolean(billingSummary.value?.subscriptionId || project.value?.stripeSubscriptionId))
+const checkoutPending = computed(() => Boolean(project.value?.stripePriceId) && !project.value?.stripeSubscriptionId)
 // Frontend permission guard mirroring backend canManageBilling: allow global admins, project billing admin, or team admins
 const canManageBilling = computed(() => {
   try {

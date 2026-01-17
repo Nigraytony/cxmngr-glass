@@ -21,6 +21,7 @@ const { isObjectId, requireObjectIdParam } = require('../middleware/validate')
 const sanitizeHtml = require('sanitize-html')
 const { buildSafeRegex } = require('../utils/search')
 const { normalizeLogEvent } = require('../utils/logEvent')
+const plans = require('../config/plans')
 
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
 router.param('id', (req, res, next, value) => {
@@ -189,6 +190,33 @@ function pickProjectPayload(source) {
   return out
 }
 
+function normalizeTierKey(value) {
+  const s = String(value || '').trim().toLowerCase()
+  if (!s) return ''
+  if (s.startsWith('basic')) return 'basic'
+  if (s.startsWith('standard')) return 'standard'
+  if (s.startsWith('premium')) return 'premium'
+  if (s.includes('basic')) return 'basic'
+  if (s.includes('standard')) return 'standard'
+  if (s.includes('premium')) return 'premium'
+  return ''
+}
+
+function resolvePlanDefaultsForProject({ stripePriceId, subscriptionTier } = {}) {
+  const all = Array.isArray(plans) ? plans : []
+  if (stripePriceId) {
+    const byPrice = all.find(p => p && String(p.priceId) === String(stripePriceId))
+    if (byPrice && byPrice.key && byPrice.features) return { tier: String(byPrice.key), features: byPrice.features }
+  }
+  const tierKey = normalizeTierKey(subscriptionTier)
+  if (tierKey) {
+    const byKey = all.find(p => p && String(p.key) === tierKey)
+    return { tier: tierKey, features: byKey && byKey.features ? byKey.features : null }
+  }
+  const basic = all.find(p => p && String(p.key) === 'basic')
+  return { tier: 'basic', features: basic && basic.features ? basic.features : null }
+}
+
 // Create a new project
 router.post('/', auth, async (req, res) => {
   // console.log('Creating project with data:', req.body);
@@ -208,6 +236,14 @@ router.post('/', auth, async (req, res) => {
       if (!isStripeIdLike(pid, 'price_')) return res.status(400).send({ error: 'Invalid stripePriceId' })
       incoming.stripePriceId = pid
     }
+
+    // Initialize plan tier/features so the UI has deterministic gating on first render.
+    // Stripe subscription linking (and future plan changes) are handled elsewhere.
+    try {
+      const { tier, features } = resolvePlanDefaultsForProject({ stripePriceId: incoming.stripePriceId, subscriptionTier: incoming.subscriptionTier })
+      if (tier) incoming.subscriptionTier = tier
+      if (features && typeof features === 'object') incoming.subscriptionFeatures = features
+    } catch (e) { /* best-effort */ }
 
     // Sanitize free-form text fields to reduce risk of storing HTML.
     if (typeof incoming.description === 'string') {
@@ -261,6 +297,7 @@ router.get('/', auth, async (req, res) => {
     const perPage = Math.max(1, Math.min(200, Number(req.query.perPage || req.query.limit) || 10));
     const status = req.query.status !== undefined ? normalizeOptionalFilterString(req.query.status, { maxLen: 64 }) : null
     if (status === undefined) return res.status(400).send({ error: 'Invalid status' })
+    const includeArchived = String(req.query.includeArchived || '').toLowerCase() === 'true' || String(req.query.includeArchived || '') === '1'
     const search = req.query.search ? String(req.query.search).trim() : null;
     const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, null);
     const sortDir = normalizeSortDir(req.query.sortDir);
@@ -268,6 +305,12 @@ router.get('/', auth, async (req, res) => {
     const filter = {};
     // Status filter
     if (status) filter.status = status;
+    // Default: hide archived projects unless explicitly requested via `includeArchived` or a status filter.
+    if (!status && !includeArchived) {
+      filter.status = { $ne: 'Archived' }
+    }
+    // Always hide hard-deleted projects from the list.
+    filter.deleted = { $ne: true }
 
     // Search across name and client and description
     if (search) {
@@ -1534,10 +1577,153 @@ router.delete('/:id', auth, requireObjectIdParam('id'), requirePermission('proje
 
     const deleted = await Project.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).send({ error: 'Project not found' });
+
+    // Remove the deleted project from every user's `projects` list (best-effort).
+    // This prevents stale membership entries from lingering after project deletion.
+    try {
+      const projectId = String(req.params.id);
+      const pidObj = mongoose.Types.ObjectId.isValid(projectId) ? new mongoose.Types.ObjectId(projectId) : null;
+
+      // Track users whose default project was deleted so we can promote a new default.
+      const defaultUsers = pidObj
+        ? await User.find({ projects: { $elemMatch: { _id: pidObj, default: true } } }).select('_id').lean()
+        : [];
+
+      if (pidObj) {
+        await User.updateMany({ 'projects._id': pidObj }, { $pull: { projects: { _id: pidObj } } });
+      }
+      // Legacy shapes (array of ids) — keep for safety. Use the raw collection to avoid schema casting.
+      try {
+        if (pidObj) await User.collection.updateMany({ projects: pidObj }, { $pull: { projects: pidObj } });
+        await User.collection.updateMany({ projects: projectId }, { $pull: { projects: projectId } });
+      } catch (e) { /* ignore legacy cleanup errors */ }
+
+      // Ensure affected users still have a default project if they have any remaining.
+      for (const u of (defaultUsers || [])) {
+        // eslint-disable-next-line no-await-in-loop
+        const doc = await User.findById(u._id);
+        if (!doc || !Array.isArray(doc.projects) || doc.projects.length === 0) continue;
+        const hasDefault = doc.projects.some((p) => p && typeof p === 'object' && p.default === true);
+        if (hasDefault) continue;
+        // Clear any stray defaults then set the first remaining entry as default.
+        for (const p of doc.projects) {
+          if (p && typeof p === 'object') p.default = false;
+        }
+        const first = doc.projects.find((p) => p && typeof p === 'object');
+        if (first) first.default = true;
+        // eslint-disable-next-line no-await-in-loop
+        await doc.save();
+      }
+    } catch (cleanupErr) {
+      console.warn('[projects.delete] failed to remove project from users', cleanupErr && cleanupErr.message ? cleanupErr.message : cleanupErr);
+    }
+
     return res.status(200).send(deleted);
   } catch (error) {
     console.error('delete project error', error);
     return res.status(500).send({ error: 'Failed to delete project' });
+  }
+});
+
+// Archive a project (soft delete) with a retention window. Project-scoped data is preserved for restore.
+// POST /api/projects/:id/archive
+router.post('/:id/archive', auth, requireObjectIdParam('id'), requirePermission('projects.delete', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    const userId = req.user && (req.user._id || req.user.id);
+    const userEmail = req.user && req.user.email ? String(req.user.email).toLowerCase() : null;
+    const userRoles = Array.isArray(req.user && req.user.roles) ? req.user.roles : [];
+
+    // If not a globaladmin, ensure the user is a project admin
+    if (!userRoles.includes('globaladmin')) {
+      const team = Array.isArray(project.team) ? project.team : [];
+      const member = team.find((t) => {
+        try {
+          if (!t) return false;
+          if (t._id && String(t._id) === String(userId)) return true;
+          if (t.email && userEmail && String(t.email).toLowerCase() === userEmail) return true;
+          return false;
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (!member || !(member.role === 'admin' || member.role === 'globaladmin')) {
+        return res.status(403).send({ error: 'Not authorized to archive this project' });
+      }
+    }
+
+    const now = new Date()
+    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000
+    project.status = 'Archived'
+    project.isActive = false
+    if (!project.archivedAt) project.archivedAt = now
+    project.archivedBy = userId || project.archivedBy || null
+    project.purgeAt = new Date(now.getTime() + NINETY_DAYS_MS)
+    // Enforce "no trial on restore": mark the trial as used/consumed so checkout can't grant a trial later.
+    try {
+      project.trialStarted = true
+    } catch (e) { /* ignore */ }
+
+    // Best-effort: cancel subscription at period end to avoid future charges while archived.
+    // (If Stripe isn't configured or project isn't linked, this is a no-op.)
+    try {
+      if (stripe && project.stripeSubscriptionId) {
+        const sub = await stripe.subscriptions.update(String(project.stripeSubscriptionId), { cancel_at_period_end: true })
+        project.stripeSubscriptionStatus = sub && sub.status ? sub.status : project.stripeSubscriptionStatus
+        project.stripeCancelAtPeriodEnd = true
+        project.stripeCurrentPeriodEnd = sub && sub.current_period_end ? new Date(sub.current_period_end * 1000) : project.stripeCurrentPeriodEnd
+      }
+    } catch (e) {
+      console.warn('[projects.archive] stripe cancel_at_period_end failed', e && e.message ? e.message : e)
+    }
+
+    await project.save()
+    return res.status(200).send(project)
+  } catch (error) {
+    console.error('archive project error', error);
+    return res.status(500).send({ error: 'Failed to archive project' });
+  }
+});
+
+// Restore an archived project. Requires an active paid subscription (no trial).
+// POST /api/projects/:id/restore
+router.post('/:id/restore', auth, requireObjectIdParam('id'), requirePermission('projects.update', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).send({ error: 'Project not found' });
+
+    if (String(project.status || '').toLowerCase() !== 'archived' && project.deleted !== true) {
+      return res.status(400).send({ error: 'Project is not archived' })
+    }
+
+    // Require an active paid subscription (no trial). Treat past_due as active for grace period.
+    const subStatus = String(project.stripeSubscriptionStatus || '').toLowerCase()
+    const hasPaidSubscription = Boolean(project.stripeSubscriptionId) && ['active', 'past_due'].includes(subStatus)
+    if (!hasPaidSubscription) {
+      return res.status(402).send({
+        error: 'Subscription required to restore project (no trial)',
+        code: 'SUBSCRIPTION_REQUIRED',
+        subscriptionStatus: project.stripeSubscriptionStatus || null,
+        hasStripe: Boolean(stripe),
+      })
+    }
+
+    const now = new Date()
+    project.status = 'Active'
+    project.deleted = false
+    project.isActive = true
+    project.purgeAt = null
+    project.restoredAt = now
+    project.restoredBy = req.user && (req.user._id || req.user.id) || null
+    await project.save()
+
+    return res.status(200).send(project)
+  } catch (error) {
+    console.error('restore project error', error);
+    return res.status(500).send({ error: 'Failed to restore project' });
   }
 });
 

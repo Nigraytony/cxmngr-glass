@@ -14,12 +14,19 @@ const Project = require('../models/project');
 const WebhookEvent = require('../models/webhookEvent');
 const Invoice = require('../models/invoice');
 const Charge = require('../models/charge');
+const plans = require('../config/plans');
 const { isObjectId } = require('../middleware/validate');
 
 function getValidProjectId(value) {
   if (!value) return null;
   const s = String(value);
   return isObjectId(s) ? s : null;
+}
+
+function getPlanByPriceId(priceId) {
+  if (!priceId) return null;
+  const list = Array.isArray(plans) ? plans : [];
+  return list.find(p => p && p.priceId && String(p.priceId) === String(priceId)) || null;
 }
 
 async function markEventStatus(eventId, status, extra = {}) {
@@ -89,6 +96,8 @@ router.post('/webhook', async (req, res) => {
           const projectId = getValidProjectId((session.metadata && session.metadata.projectId) || (sub.metadata && sub.metadata.projectId) || session.client_reference_id);
           if (projectId) {
             const proj = await Project.findById(projectId);
+            const priceId = sub.items && sub.items.data[0] && sub.items.data[0].price ? sub.items.data[0].price.id : null;
+            const plan = getPlanByPriceId(priceId);
             const incomingTrialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
             let nextTrialEnd = proj && proj.trialEnd ? proj.trialEnd : null;
             if (incomingTrialEnd) {
@@ -96,12 +105,14 @@ router.post('/webhook', async (req, res) => {
             }
             await Project.findByIdAndUpdate(projectId, {
               stripeSubscriptionId: sub.id,
-              stripePriceId: sub.items && sub.items.data[0] && sub.items.data[0].price ? sub.items.data[0].price.id : null,
+              stripePriceId: priceId,
               stripeSubscriptionStatus: sub.status,
               stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
               trialEnd: nextTrialEnd || (proj ? proj.trialEnd : null),
               trialStarted: (proj && (proj.trialStarted || Boolean(sub.trial_end))) ? true : (proj ? proj.trialStarted : false),
               isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
+              ...(plan && plan.key ? { subscriptionTier: String(plan.key) } : {}),
+              ...(plan && plan.features ? { subscriptionFeatures: plan.features } : {}),
             });
           }
         }
@@ -113,6 +124,8 @@ router.post('/webhook', async (req, res) => {
         const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
         if (projectId) {
           const proj = await Project.findById(projectId);
+          const priceId = sub.items && sub.items.data[0] && sub.items.data[0].price ? sub.items.data[0].price.id : null;
+          const plan = getPlanByPriceId(priceId);
           const incomingTrialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : null;
           let nextTrialEnd = proj && proj.trialEnd ? proj.trialEnd : null;
           if (incomingTrialEnd) {
@@ -120,12 +133,14 @@ router.post('/webhook', async (req, res) => {
           }
           await Project.findByIdAndUpdate(projectId, {
             stripeSubscriptionId: sub.id,
-            stripePriceId: sub.items && sub.items.data[0] && sub.items.data[0].price ? sub.items.data[0].price.id : null,
+            stripePriceId: priceId,
             stripeSubscriptionStatus: sub.status,
             stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
             trialEnd: nextTrialEnd || (proj ? proj.trialEnd : null),
             trialStarted: (proj && (proj.trialStarted || Boolean(sub.trial_end))) ? true : (proj ? proj.trialStarted : false),
             isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
+            ...(plan && plan.key ? { subscriptionTier: String(plan.key) } : {}),
+            ...(plan && plan.features ? { subscriptionFeatures: plan.features } : {}),
           });
         }
         break;
@@ -169,7 +184,11 @@ router.post('/webhook', async (req, res) => {
               const sub = await stripe.subscriptions.retrieve(String(subId));
               const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
               if (projectId) {
+                const priceId = sub.items && sub.items.data[0] && sub.items.data[0].price ? sub.items.data[0].price.id : null;
+                const plan = getPlanByPriceId(priceId);
                 await Project.findByIdAndUpdate(projectId, {
+                  stripeSubscriptionId: sub.id,
+                  stripePriceId: priceId,
                   stripeSubscriptionStatus: sub.status,
                   stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
                   stripeIsPastDue: false,
@@ -177,6 +196,8 @@ router.post('/webhook', async (req, res) => {
                   stripeLastInvoiceId: invoice.id,
                   stripeLastInvoiceStatus: invoice.status || null,
                   isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
+                  ...(plan && plan.key ? { subscriptionTier: String(plan.key) } : {}),
+                  ...(plan && plan.features ? { subscriptionFeatures: plan.features } : {}),
                 });
               }
             } catch (e) {
@@ -191,7 +212,11 @@ router.post('/webhook', async (req, res) => {
               const sub = await stripe.subscriptions.retrieve(String(subId));
               const projectId = getValidProjectId(sub.metadata && sub.metadata.projectId);
               if (projectId) {
+                const priceId = sub.items && sub.items.data[0] && sub.items.data[0].price ? sub.items.data[0].price.id : null;
+                const plan = getPlanByPriceId(priceId);
                 await Project.findByIdAndUpdate(projectId, {
+                  stripeSubscriptionId: sub.id,
+                  stripePriceId: priceId,
                   stripeSubscriptionStatus: sub.status,
                   stripeCurrentPeriodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
                   stripeIsPastDue: true,
@@ -199,6 +224,8 @@ router.post('/webhook', async (req, res) => {
                   stripeLastInvoiceId: invoice.id,
                   stripeLastInvoiceStatus: invoice.status || null,
                   isActive: ['active', 'trialing', 'past_due'].includes(sub.status),
+                  ...(plan && plan.key ? { subscriptionTier: String(plan.key) } : {}),
+                  ...(plan && plan.features ? { subscriptionFeatures: plan.features } : {}),
                 });
               }
             } catch (e) {

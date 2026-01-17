@@ -37,6 +37,15 @@
 
         <div class="flex items-center gap-3">
           <label class="text-white/70 text-sm">Filter</label>
+          <button
+            type="button"
+            :aria-pressed="includeArchived"
+            :class="['px-3 py-1 rounded-full text-sm flex items-center gap-2', includeArchived ? 'bg-white/10 ring-2 ring-white/20' : 'bg-white/6']"
+            title="Toggle archived projects"
+            @click="toggleIncludeArchived"
+          >
+            <span class="text-white">Include archived</span>
+          </button>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="opt in statusOptions"
@@ -265,11 +274,11 @@
                 </button>
                 <!-- Delete icon button (only show when user may delete) -->
                 <button
-                  v-if="canDelete(project)"
-                  class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-400/40"
-                  aria-label="Delete project"
-                  :title="`Delete ${project.name || 'project'}`"
-                  @click="confirmDelete(project)"
+                  v-if="canDelete(project) && String(project.status || '').toLowerCase() !== 'archived'"
+                  class="w-8 h-8 grid place-items-center rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-400/40"
+                  aria-label="Archive project"
+                  :title="`Archive ${project.name || 'project'}`"
+                  @click="confirmArchive(project)"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -300,6 +309,25 @@
                       stroke-width="1.5"
                       stroke-linecap="round"
                     />
+                  </svg>
+                </button>
+                <!-- Restore icon button (archived only) -->
+                <button
+                  v-if="canDelete(project) && String(project.status || '').toLowerCase() === 'archived'"
+                  class="w-8 h-8 grid place-items-center rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-400/40"
+                  aria-label="Restore project"
+                  :title="`Restore ${project.name || 'project'}`"
+                  @click="confirmRestore(project)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path d="M3 12a9 9 0 1 0 3-6.7" stroke-width="1.5" stroke-linecap="round" />
+                    <path d="M3 4v4h4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                   </svg>
                 </button>
                 <!-- Make default: icon button with custom tooltip -->
@@ -647,6 +675,7 @@ async function fetchProjectsPage() {
       params.sortBy = sortKey.value
       params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
     }
+    if (includeArchived.value) params.includeArchived = true
     // Prefer server-side filtering by membership when possible
     lastFetchFilteredByMember.value = false
     try {
@@ -773,6 +802,7 @@ watch(() => auth.user && auth.user.contact && auth.user.contact.perPage, (v) => 
 watch(pageSize, () => persistPageSizePref())
 
 const statusFilter = ref('All')
+const includeArchived = ref(false)
 const searchQuery = ref('')
 
 function debounce(fn, wait = 200) {
@@ -805,6 +835,14 @@ const statusOptions = computed(() => {
 // Client-side filtering/sorting was removed in favor of server-driven queries.
 
 function toggleStatus(name) { statusFilter.value = (statusFilter.value === name) ? 'All' : name }
+function toggleIncludeArchived() {
+  includeArchived.value = !includeArchived.value
+  // If archived are excluded, clear any archived status filter to avoid empty results.
+  if (!includeArchived.value && String(statusFilter.value).toLowerCase() === 'archived') {
+    statusFilter.value = 'All'
+  }
+  page.value = 1
+}
 
 function clearSearch() { searchQuery.value = ''; effectiveSearch.value = '' }
 
@@ -813,7 +851,7 @@ const sortKey = ref('')
 const sortDir = ref(1) // 1 = asc, -1 = desc
 
 // Attach debounced fetch watcher after sort refs to ensure they exist
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value], () => debouncedFetch(), { immediate: true })
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => includeArchived.value], () => debouncedFetch(), { immediate: true })
 
 // sortedProjects/client-side sorting removed; server returns sorted results when requested.
 
@@ -964,19 +1002,45 @@ async function addProject() {
 
 function cancelEdit() { showViewModal.value = false; editProject.value = null }
 
-async function confirmDelete(p) {
+async function confirmArchive(p) {
   const confirmed = await inlineConfirm({
-    title: 'Delete project',
-    message: `Delete project "${p?.name || p?.id || ''}"? This cannot be undone.`,
-    confirmText: 'Delete',
+    title: 'Archive project',
+    message: `Archive project "${p?.name || p?.id || ''}"? You can restore it later if billing is active.`,
+    confirmText: 'Archive',
     cancelText: 'Cancel',
     variant: 'danger'
   })
   if (!confirmed) return
-  projectStore
-    .deleteProject(p.id)
-    .then(() => ui.showSuccess('Project deleted'))
-    .catch(() => ui.showError('Failed to delete'))
+  try {
+    await projectStore.archiveProject(p.id)
+    ui.showSuccess('Project archived')
+    await fetchProjectsPage()
+  } catch (e) {
+    ui.showError(e?.response?.data?.error || 'Failed to archive')
+  }
+}
+
+async function confirmRestore(p) {
+  const confirmed = await inlineConfirm({
+    title: 'Restore project',
+    message: `Restore project "${p?.name || p?.id || ''}"? This requires an active paid subscription (no trial).`,
+    confirmText: 'Restore',
+    cancelText: 'Cancel',
+    variant: 'default'
+  })
+  if (!confirmed) return
+  try {
+    await projectStore.restoreProject(p.id)
+    ui.showSuccess('Project restored')
+    await fetchProjectsPage()
+  } catch (e) {
+    const code = e?.response?.data?.code
+    if (code === 'SUBSCRIPTION_REQUIRED') {
+      ui.showError('Subscription required to restore. Go to Project Settings → Subscription to re-subscribe.')
+    } else {
+      ui.showError(e?.response?.data?.error || 'Failed to restore')
+    }
+  }
 }
 
 async function makeDefault(project) {
@@ -1032,6 +1096,11 @@ async function createAndMaybeCheckout() {
     const payload = { ...newProject.value }
     payload.startDate = normalizeToISODate(payload.startDate)
     payload.endDate = normalizeToISODate(payload.endDate)
+    // Persist selected plan on the project so feature gating is correct immediately,
+    // even before Stripe has linked an active subscription.
+    if (chosenPriceId.value) {
+      payload.stripePriceId = chosenPriceId.value
+    }
 
     // Create the project
     const created = await projectStore.addProject(payload)

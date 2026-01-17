@@ -217,6 +217,14 @@ export const useProjectStore = defineStore('project', () => {
     const res = await http.post(API_BASE, project, { headers: getAuthHeaders() })
     const newProject = { ...res.data, id: res.data._id };
     projects.value.push(newProject);
+    // Set as current so the sidebar/features reflect the new project's plan immediately.
+    try {
+      currentProjectId.value = String(newProject.id || (newProject as any)._id || '')
+      if (currentProjectId.value) {
+        if (typeof window !== 'undefined') localStorage.setItem('selectedProjectId', currentProjectId.value)
+        currentProject.value = newProject as any
+      }
+    } catch (e) { /* ignore */ }
     try {
       await appendProjectLog(String(newProject.id || (newProject as any)._id), { type: 'create', message: `Project created: ${newProject.name || ''}`, details: newProject })
     } catch (e) { /* non-blocking */ }
@@ -270,6 +278,25 @@ export const useProjectStore = defineStore('project', () => {
     try {
       await appendProjectLog(String(id), { type: 'delete', message: `Project deleted: ${id}` })
     } catch (e) { /* non-blocking */ }
+  }
+
+  async function archiveProject(id: string) {
+    if (!id) throw new Error('Missing project id')
+    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    await http.post(`${API_BASE}/${id}/archive`, {}, { headers: getAuthHeaders() });
+    try {
+      await appendProjectLog(String(id), { type: 'archive', message: `Project archived: ${id}` })
+    } catch (e) { /* non-blocking */ }
+  }
+
+  async function restoreProject(id: string) {
+    if (!id) throw new Error('Missing project id')
+    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    const res = await http.post(`${API_BASE}/${id}/restore`, {}, { headers: getAuthHeaders() });
+    try {
+      await appendProjectLog(String(id), { type: 'restore', message: `Project restored: ${id}` })
+    } catch (e) { /* non-blocking */ }
+    return res.data
   }
 
   // Project logs API
@@ -339,11 +366,13 @@ export const useProjectStore = defineStore('project', () => {
     const auth = useAuthStore();
     watch(() => auth.user && auth.user.projects, (projectsVal) => {
       if (!projectsVal) return
+      // Do not override an explicit user selection (localStorage/currentProjectId).
+      if (currentProjectId.value) return
       const dp = Array.isArray(projectsVal) ? projectsVal.find((p: any) => p && p.default) : null
       if (dp) {
         const dd: any = dp
         const id = typeof dp === 'string' ? dp : (dd._id || dd.id || null)
-        if (id) currentProjectId.value = id
+        if (id) setCurrentProject(String(id))
       }
     }, { immediate: true })
   } catch (e) {
@@ -360,6 +389,8 @@ export const useProjectStore = defineStore('project', () => {
     addProject,
     updateProject,
     deleteProject,
+    archiveProject,
+    restoreProject,
     // Logs
     appendProjectLog,
     fetchProjectLogs,

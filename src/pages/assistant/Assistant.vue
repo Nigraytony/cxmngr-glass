@@ -33,12 +33,12 @@
       </div>
     </div>
 
-	    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0 h-full">
-	      <div class="lg:col-span-2 h-full rounded-xl border border-white/10 bg-white/5 p-4 min-h-0 overflow-y-auto pr-1">
-	        <div class="flex items-start justify-between gap-3">
-	          <div>
-	            <div class="text-sm font-semibold text-white/90">
-	              Compliance checklist
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0 h-full">
+        <div class="lg:col-span-2 h-full rounded-xl border border-white/10 bg-white/5 p-4 min-h-0 overflow-y-auto pr-1">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold text-white/90">
+                Compliance checklist
             </div>
             <div class="mt-1 text-xs text-white/50">
               Project type: {{ projectType || '—' }}
@@ -133,550 +133,550 @@
           </div>
         </div>
 
-	        <div class="mt-3">
-	          <div
-	            v-if="!projectId"
-	            class="text-sm text-white/70"
-	          >
-	            Select a project to view its compliance checklist.
-	          </div>
-	
-	          <div
-	            v-else-if="checklistStore.loading"
-	            class="text-sm text-white/70"
-	          >
-	            Loading checklist…
-	          </div>
-	
-	          <div
-	            v-else-if="checklistStore.error"
-	            class="text-sm text-red-300"
-	          >
-	            {{ checklistStore.error }}
-	          </div>
-	
-	          <div v-else-if="checklist && checklist.items && checklist.items.length">
-	            <div class="flex items-center justify-between text-xs text-white/70">
-	              <span>{{ checklist.progress.completed }} / {{ checklist.progress.total }} complete</span>
-	              <span>{{ checklist.progress.percent }}%</span>
-	            </div>
-	            <div class="mt-2 h-2 rounded-full bg-white/10 overflow-hidden">
-	              <div
-	                class="h-2 rounded-full bg-emerald-500/60"
-	                :style="{ width: `${checklist.progress.percent}%` }"
-	              />
-	            </div>
-	
-	            <div class="mt-4 space-y-2">
-	              <div
-	                v-for="item in checklist.items"
-	                :key="item.id"
-	                class="rounded-lg border border-white/10 bg-black/20 p-2 cursor-pointer hover:bg-black/30"
-	                :class="selectedItemId === item.id ? 'ring-1 ring-emerald-400/40' : ''"
-	                @click="selectItem(item.id)"
-	              >
-	                <div class="flex items-start justify-between gap-2">
-	                  <input
-	                    type="checkbox"
-	                    class="mt-0.5 form-checkbox h-6 w-6 rounded bg-white/10 border-white/30 text-emerald-400 cursor-pointer"
-	                    :aria-label="`Mark complete: ${item.title}`"
-	                    :checked="item.completed === true"
-	                    :disabled="checklistStore.loading"
-	                    @click.stop
-	                    @change="(e) => onToggleItem(item, (e.target as HTMLInputElement).checked)"
-	                  >
-	                  <div class="min-w-0">
-	                    <div
-	                      class="text-sm text-white/90"
-	                      :class="item.completed ? 'line-through text-white/60' : ''"
-	                    >
-	                      <span
-	                        v-if="item.category"
-	                        class="mr-2 text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/70"
-	                      >{{ item.category }}</span>
-	                      {{ item.title }}
-	                    </div>
-	                    <div
-	                      v-if="item.description"
-	                      class="mt-1 text-xs text-white/60"
-	                    >
-	                      {{ item.description }}
-	                    </div>
-	                  </div>
-	                  <button
-	                    class="shrink-0 rounded-md p-1.5 text-white/50 hover:text-white/80 hover:bg-white/10"
-	                    type="button"
-	                    aria-label="Delete checklist item"
-	                    @click.stop.prevent="deleteChecklistItem(item)"
-	                  >
-	                    🗑
-	                  </button>
-	                </div>
-	              </div>
-	            </div>
-	          </div>
-	
-	          <div
-	            v-else
-	            class="text-sm text-white/70"
-	          >
-	            No checklist items yet for this project.
-	          </div>
-	        </div>
-	      </div>
+          <div class="mt-3">
+            <div
+              v-if="!projectId"
+              class="text-sm text-white/70"
+            >
+              Select a project to view its compliance checklist.
+            </div>
+  
+            <div
+              v-else-if="checklistStore.loading"
+              class="text-sm text-white/70"
+            >
+              Loading checklist…
+            </div>
+  
+            <div
+              v-else-if="checklistStore.error"
+              class="text-sm text-red-300"
+            >
+              {{ checklistStore.error }}
+            </div>
+  
+            <div v-else-if="checklist && checklist.items && checklist.items.length">
+              <div class="flex items-center justify-between text-xs text-white/70">
+                <span>{{ checklist.progress.completed }} / {{ checklist.progress.total }} complete</span>
+                <span>{{ checklist.progress.percent }}%</span>
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  class="h-2 rounded-full bg-emerald-500/60"
+                  :style="{ width: `${checklist.progress.percent}%` }"
+                />
+              </div>
+  
+              <div class="mt-4 space-y-2">
+                <div
+                  v-for="item in checklist.items"
+                  :key="item.id"
+                  class="rounded-lg border border-white/10 bg-black/20 p-2 cursor-pointer hover:bg-black/30"
+                  :class="selectedItemId === item.id ? 'ring-1 ring-emerald-400/40' : ''"
+                  @click="selectItem(item.id)"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <input
+                      type="checkbox"
+                      class="mt-0.5 form-checkbox h-6 w-6 rounded bg-white/10 border-white/30 text-emerald-400 cursor-pointer"
+                      :aria-label="`Mark complete: ${item.title}`"
+                      :checked="item.completed === true"
+                      :disabled="checklistStore.loading"
+                      @click.stop
+                      @change="(e) => onToggleItem(item, (e.target as HTMLInputElement).checked)"
+                    >
+                    <div class="min-w-0">
+                      <div
+                        class="text-sm text-white/90"
+                        :class="item.completed ? 'line-through text-white/60' : ''"
+                      >
+                        <span
+                          v-if="item.category"
+                          class="mr-2 text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                        >{{ item.category }}</span>
+                        {{ item.title }}
+                      </div>
+                      <div
+                        v-if="item.description"
+                        class="mt-1 text-xs text-white/60"
+                      >
+                        {{ item.description }}
+                      </div>
+                    </div>
+                    <button
+                      class="shrink-0 rounded-md p-1.5 text-white/50 hover:text-white/80 hover:bg-white/10"
+                      type="button"
+                      aria-label="Delete checklist item"
+                      @click.stop.prevent="deleteChecklistItem(item)"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <div
+              v-else
+              class="text-sm text-white/70"
+            >
+              No checklist items yet for this project.
+            </div>
+          </div>
+        </div>
 
-	      <div class="lg:col-span-3 h-full rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col min-h-0">
-	        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-	          <div class="text-sm font-semibold text-white/90">
-	            Documentation
-	          </div>
-	          <div
-	            class="inline-flex rounded-lg border border-white/10 bg-black/20 p-1"
-	            role="tablist"
-	            aria-label="Assistant documentation tabs"
-	          >
-	            <button
-	              type="button"
-	              role="tab"
-	              :aria-selected="docsTab === 'Articles'"
-	              class="px-3 py-1.5 rounded-md text-xs transition-colors"
-	              :class="docsTab === 'Articles' ? 'bg-emerald-500/15 text-emerald-100' : 'text-white/70 hover:text-white/90 hover:bg-white/5'"
-	              @click="setDocsTab('Articles')"
-	            >
-	              Articles
-	            </button>
-	            <button
-	              type="button"
-	              role="tab"
-	              :aria-selected="docsTab === 'Chat'"
-	              class="px-3 py-1.5 rounded-md text-xs transition-colors"
-	              :class="docsTab === 'Chat' ? 'bg-emerald-500/15 text-emerald-100' : 'text-white/70 hover:text-white/90 hover:bg-white/5'"
-	              @click="setDocsTab('Chat')"
-	            >
-	              Chat
-	            </button>
-	            <button
-	              type="button"
-	              role="tab"
-	              :aria-selected="docsTab === 'Explanation'"
-	              class="px-3 py-1.5 rounded-md text-xs transition-colors"
-	              :class="docsTab === 'Explanation' ? 'bg-emerald-500/15 text-emerald-100' : 'text-white/70 hover:text-white/90 hover:bg-white/5'"
-	              @click="setDocsTab('Explanation')"
-	            >
-	              Explanation
-	            </button>
-	          </div>
-	        </div>
+        <div class="lg:col-span-3 h-full rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col min-h-0">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="text-sm font-semibold text-white/90">
+              Documentation
+            </div>
+            <div
+              class="inline-flex rounded-lg border border-white/10 bg-black/20 p-1"
+              role="tablist"
+              aria-label="Assistant documentation tabs"
+            >
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="docsTab === 'Articles'"
+                class="px-3 py-1.5 rounded-md text-xs transition-colors"
+                :class="docsTab === 'Articles' ? 'bg-emerald-500/15 text-emerald-100' : 'text-white/70 hover:text-white/90 hover:bg-white/5'"
+                @click="setDocsTab('Articles')"
+              >
+                Articles
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="docsTab === 'Chat'"
+                class="px-3 py-1.5 rounded-md text-xs transition-colors"
+                :class="docsTab === 'Chat' ? 'bg-emerald-500/15 text-emerald-100' : 'text-white/70 hover:text-white/90 hover:bg-white/5'"
+                @click="setDocsTab('Chat')"
+              >
+                Chat
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="docsTab === 'Explanation'"
+                class="px-3 py-1.5 rounded-md text-xs transition-colors"
+                :class="docsTab === 'Explanation' ? 'bg-emerald-500/15 text-emerald-100' : 'text-white/70 hover:text-white/90 hover:bg-white/5'"
+                @click="setDocsTab('Explanation')"
+              >
+                Explanation
+              </button>
+            </div>
+          </div>
 
-	        <div class="flex-1 min-h-0 overflow-hidden pr-1">
-	          <div
-	            v-if="docsTab === 'Explanation'"
-	            class="h-full min-h-0 overflow-y-auto overflow-x-auto"
-	          >
-	            <div
-	              v-if="selectedItem"
-	              class="rounded-xl border border-white/10 bg-black/20 p-3"
-	            >
-	              <div class="flex items-start justify-between gap-3">
-	                <div class="min-w-0">
-	                  <div class="text-sm text-white/90">
-	                    <span
-	                      v-if="selectedItem.category"
-	                      class="mr-2 text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/70"
-	                    >{{ selectedItem.category }}</span>
-	                    {{ selectedItem.title }}
-	                  </div>
-	                  <div
-	                    v-if="selectedItem.description"
-	                    class="mt-2 text-sm text-white/70"
-	                  >
-	                    {{ selectedItem.description }}
-	                  </div>
-	                  <div
-	                    v-if="selectedItem.guidance"
-	                    class="mt-3 text-sm text-white/70 whitespace-pre-line"
-	                  >
-	                    {{ selectedItem.guidance }}
-	                  </div>
+          <div class="flex-1 min-h-0 overflow-hidden pr-1">
+            <div
+              v-if="docsTab === 'Explanation'"
+              class="h-full min-h-0 overflow-y-auto overflow-x-auto"
+            >
+              <div
+                v-if="selectedItem"
+                class="rounded-xl border border-white/10 bg-black/20 p-3"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-sm text-white/90">
+                      <span
+                        v-if="selectedItem.category"
+                        class="mr-2 text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/70"
+                      >{{ selectedItem.category }}</span>
+                      {{ selectedItem.title }}
+                    </div>
+                    <div
+                      v-if="selectedItem.description"
+                      class="mt-2 text-sm text-white/70"
+                    >
+                      {{ selectedItem.description }}
+                    </div>
+                    <div
+                      v-if="selectedItem.guidance"
+                      class="mt-3 text-sm text-white/70 whitespace-pre-line"
+                    >
+                      {{ selectedItem.guidance }}
+                    </div>
 
-	                  <div
-	                    v-if="selectedItem.platformGuidance || platformLinks.length"
-	                    class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3"
-	                  >
-	                    <div class="text-xs font-semibold text-white/80">
-	                      In CXMA
-	                    </div>
-	                    <div
-	                      v-if="selectedItem.platformGuidance"
-	                      class="mt-2 text-sm text-white/70 whitespace-pre-line"
-	                    >
-	                      {{ selectedItem.platformGuidance }}
-	                    </div>
-	                    <div
-	                      v-if="resolvedPlatformLinks.length"
-	                      class="mt-3 flex flex-wrap gap-2"
-	                    >
-	                      <RouterLink
-	                        v-for="l in resolvedPlatformLinks"
-	                        :key="l.title"
-	                        class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
-	                        :to="l.to"
-	                      >
-	                        {{ l.title }}
-	                      </RouterLink>
-	                    </div>
-	                    <div
-	                      v-if="resolvedPlatformLinks.some((l) => l.note)"
-	                      class="mt-2 space-y-1 text-[11px] text-white/50"
-	                    >
-	                      <div
-	                        v-for="(l, idx) in resolvedPlatformLinks.filter((x) => x.note)"
-	                        :key="`note-${idx}`"
-	                      >
-	                        <span class="text-white/40">{{ l.title }}:</span> {{ l.note }}
-	                      </div>
-	                    </div>
-	                  </div>
+                    <div
+                      v-if="selectedItem.platformGuidance || platformLinks.length"
+                      class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3"
+                    >
+                      <div class="text-xs font-semibold text-white/80">
+                        In CXMA
+                      </div>
+                      <div
+                        v-if="selectedItem.platformGuidance"
+                        class="mt-2 text-sm text-white/70 whitespace-pre-line"
+                      >
+                        {{ selectedItem.platformGuidance }}
+                      </div>
+                      <div
+                        v-if="resolvedPlatformLinks.length"
+                        class="mt-3 flex flex-wrap gap-2"
+                      >
+                        <RouterLink
+                          v-for="l in resolvedPlatformLinks"
+                          :key="l.title"
+                          class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
+                          :to="l.to"
+                        >
+                          {{ l.title }}
+                        </RouterLink>
+                      </div>
+                      <div
+                        v-if="resolvedPlatformLinks.some((l) => l.note)"
+                        class="mt-2 space-y-1 text-[11px] text-white/50"
+                      >
+                        <div
+                          v-for="(l, idx) in resolvedPlatformLinks.filter((x) => x.note)"
+                          :key="`note-${idx}`"
+                        >
+                          <span class="text-white/40">{{ l.title }}:</span> {{ l.note }}
+                        </div>
+                      </div>
+                    </div>
 
-	                  <div
-	                    v-if="selectedItem.sourceTitle || selectedItem.sourceUrl"
-	                    class="mt-3 text-xs text-white/50"
-	                  >
-	                    <span class="text-white/40">Source:</span>
-	                    <a
-	                      v-if="selectedItem.sourceUrl"
-	                      class="ml-1 underline hover:text-white/70"
-	                      :href="selectedItem.sourceUrl"
-	                      target="_blank"
-	                      rel="noreferrer"
-	                    >{{ selectedItem.sourceTitle || selectedItem.sourceUrl }}</a>
-	                    <span
-	                      v-else
-	                      class="ml-1"
-	                    >{{ selectedItem.sourceTitle }}</span>
-	                  </div>
-	                </div>
-	                <button
-	                  class="shrink-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
-	                  @click="clearSelection"
-	                >
-	                  Clear
-	                </button>
-	              </div>
-	              <div class="mt-3 text-xs text-white/40">
-	                Guidance is informational; confirm requirements against the official standards and project contract documents.
-	              </div>
+                    <div
+                      v-if="selectedItem.sourceTitle || selectedItem.sourceUrl"
+                      class="mt-3 text-xs text-white/50"
+                    >
+                      <span class="text-white/40">Source:</span>
+                      <a
+                        v-if="selectedItem.sourceUrl"
+                        class="ml-1 underline hover:text-white/70"
+                        :href="selectedItem.sourceUrl"
+                        target="_blank"
+                        rel="noreferrer"
+                      >{{ selectedItem.sourceTitle || selectedItem.sourceUrl }}</a>
+                      <span
+                        v-else
+                        class="ml-1"
+                      >{{ selectedItem.sourceTitle }}</span>
+                    </div>
+                  </div>
+                  <button
+                    class="shrink-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
+                    @click="clearSelection"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div class="mt-3 text-xs text-white/40">
+                  Guidance is informational; confirm requirements against the official standards and project contract documents.
+                </div>
 
-		              <div class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3">
-		                <div class="flex items-center justify-between gap-3">
-		                  <div class="text-xs font-semibold text-white/80">
-		                    Trusted links
-		                  </div>
-		                  <div class="relative inline-block group">
-		                    <div
-		                      role="tooltip"
-		                      class="pointer-events-none absolute right-0 -top-1 translate-y-[-100%] w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
-		                    >
-		                      Links only; CXMA does not store or reproduce copyrighted standards text.
-		                    </div>
-		                  </div>
-		                </div>
-		                <div
-		                  v-if="docsStore.loading"
-		                  class="mt-2 text-xs text-white/60"
-		                >
-	                  Loading links…
-	                </div>
-	                <div
-	                  v-else-if="docsStore.error"
-	                  class="mt-2 text-xs text-red-300"
-	                >
-	                  {{ docsStore.error }}
-	                </div>
-	                <div
-	                  v-else-if="docsLinks.length === 0 && generalLinks.length === 0"
-	                  class="mt-2 text-xs text-white/60"
-	                >
-	                  No trusted links available yet for this item.
-	                </div>
-		                <div
-		                  v-else
-		                  class="mt-2 flex flex-wrap items-center gap-2"
-		                >
-		                  <a
-		                    v-for="(l, idx) in docsLinks"
-		                    :key="`doc-${idx}`"
-		                    class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/80"
-		                    :href="l.url"
-		                    target="_blank"
-		                    rel="noreferrer"
-		                    :title="l.note || ''"
-		                  >{{ formatSourceTitle(l.title) }}</a>
-		                  <span
-		                    v-if="docsLinks.length && generalLinks.length"
-		                    class="mx-1 h-3 w-px bg-white/10"
-		                  />
-		                  <a
-		                    v-for="(l, idx) in generalLinks"
-		                    :key="`general-${idx}`"
-		                    class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
-		                    :href="l.url"
-		                    target="_blank"
-		                    rel="noreferrer"
-		                    :title="l.note || ''"
-		                  >{{ formatSourceTitle(l.title) }}</a>
-		                </div>
-		              </div>
-	            </div>
+                  <div class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="text-xs font-semibold text-white/80">
+                        Trusted links
+                      </div>
+                      <div class="relative inline-block group">
+                        <div
+                          role="tooltip"
+                          class="pointer-events-none absolute right-0 -top-1 translate-y-[-100%] w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
+                        >
+                          Links only; CXMA does not store or reproduce copyrighted standards text.
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      v-if="docsStore.loading"
+                      class="mt-2 text-xs text-white/60"
+                    >
+                    Loading links…
+                  </div>
+                  <div
+                    v-else-if="docsStore.error"
+                    class="mt-2 text-xs text-red-300"
+                  >
+                    {{ docsStore.error }}
+                  </div>
+                  <div
+                    v-else-if="docsLinks.length === 0 && generalLinks.length === 0"
+                    class="mt-2 text-xs text-white/60"
+                  >
+                    No trusted links available yet for this item.
+                  </div>
+                    <div
+                      v-else
+                      class="mt-2 flex flex-wrap items-center gap-2"
+                    >
+                      <a
+                        v-for="(l, idx) in docsLinks"
+                        :key="`doc-${idx}`"
+                        class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/80"
+                        :href="l.url"
+                        target="_blank"
+                        rel="noreferrer"
+                        :title="l.note || ''"
+                      >{{ formatSourceTitle(l.title) }}</a>
+                      <span
+                        v-if="docsLinks.length && generalLinks.length"
+                        class="mx-1 h-3 w-px bg-white/10"
+                      />
+                      <a
+                        v-for="(l, idx) in generalLinks"
+                        :key="`general-${idx}`"
+                        class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/70"
+                        :href="l.url"
+                        target="_blank"
+                        rel="noreferrer"
+                        :title="l.note || ''"
+                      >{{ formatSourceTitle(l.title) }}</a>
+                    </div>
+                  </div>
+              </div>
 
-	            <div
-	              v-else
-	              class="text-sm text-white/70"
-	            >
-	              Select an item from the compliance checklist to see item-specific guidance and trusted links.
-	            </div>
-	          </div>
+              <div
+                v-else
+                class="text-sm text-white/70"
+              >
+                Select an item from the compliance checklist to see item-specific guidance and trusted links.
+              </div>
+            </div>
 
-	          <div
-	            v-else-if="docsTab === 'Articles'"
-	            class="h-full min-h-0 overflow-y-auto overflow-x-auto text-sm text-white/70"
-	          >
-	            <div class="text-sm text-white/70">
-	              Browse trusted articles, or select a checklist item to see item-specific guidance.
-	            </div>
+            <div
+              v-else-if="docsTab === 'Articles'"
+              class="h-full min-h-0 overflow-y-auto overflow-x-auto text-sm text-white/70"
+            >
+              <div class="text-sm text-white/70">
+                Browse trusted articles, or select a checklist item to see item-specific guidance.
+              </div>
 
-	            <div class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3">
-	              <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-	                <div class="text-xs font-semibold text-white/80">
-	                  Articles
-	                </div>
-	                <div class="flex items-center gap-2">
-	                  <input
-	                    v-model="articleQuery"
-	                    type="text"
-	                    placeholder="Search articles…"
-	                    class="w-64 max-w-full px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs text-white/80 placeholder:text-white/40"
-	                  >
-	                  <button
-	                    class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
-	                    :disabled="articlesStore.loadingList || !projectId"
-	                    @click="refreshArticles"
-	                  >
-	                    Refresh
-	                  </button>
-	                </div>
-	              </div>
+              <div class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="text-xs font-semibold text-white/80">
+                    Articles
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model="articleQuery"
+                      type="text"
+                      placeholder="Search articles…"
+                      class="w-64 max-w-full px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs text-white/80 placeholder:text-white/40"
+                    >
+                    <button
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
+                      :disabled="articlesStore.loadingList || !projectId"
+                      @click="refreshArticles"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
 
-	              <div class="mt-3 flex flex-wrap gap-2">
-	                <button
-	                  v-for="c in articleCategories"
-	                  :key="c"
-	                  class="px-2 py-1 rounded-full text-[11px] border"
-	                  :class="selectedArticleCategory === c ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200' : 'bg-white/5 border-white/15 text-white/70 hover:bg-white/10'"
-	                  @click="setArticleCategory(c)"
-	                >
-	                  {{ c }}
-	                </button>
-	              </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    v-for="c in articleCategories"
+                    :key="c"
+                    class="px-2 py-1 rounded-full text-[11px] border"
+                    :class="selectedArticleCategory === c ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200' : 'bg-white/5 border-white/15 text-white/70 hover:bg-white/10'"
+                    @click="setArticleCategory(c)"
+                  >
+                    {{ c }}
+                  </button>
+                </div>
 
-	              <div
-	                v-if="articlesStore.loadingList"
-	                class="mt-3 text-xs text-white/60"
-	              >
-	                Loading articles…
-	              </div>
-	              <div
-	                v-else-if="articlesStore.error"
-	                class="mt-3 text-xs text-red-300"
-	              >
-	                {{ articlesStore.error }}
-	              </div>
+                <div
+                  v-if="articlesStore.loadingList"
+                  class="mt-3 text-xs text-white/60"
+                >
+                  Loading articles…
+                </div>
+                <div
+                  v-else-if="articlesStore.error"
+                  class="mt-3 text-xs text-red-300"
+                >
+                  {{ articlesStore.error }}
+                </div>
 
-	              <div
-	                v-else-if="selectedArticle"
-	                class="mt-4"
-	              >
-	                <div class="flex items-start justify-between gap-3">
-	                  <div class="min-w-0">
-	                    <div class="text-sm text-white/90">
-	                      {{ selectedArticle.title }}
-	                    </div>
-	                    <div
-	                      v-if="selectedArticle.author"
-	                      class="mt-1 text-xs text-white/60"
-	                    >
-	                      By {{ selectedArticle.author }}
-	                    </div>
-	                    <div class="mt-1 text-xs text-white/50">
-	                      {{ selectedArticle.category }} • Updated {{ formatDate(selectedArticle.updatedAt) }}
-	                    </div>
-	                  </div>
-	                  <button
-	                    class="shrink-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
-	                    @click="clearArticleSelection"
-	                  >
-	                    Back
-	                  </button>
-	                </div>
+                <div
+                  v-else-if="selectedArticle"
+                  class="mt-4"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-sm text-white/90">
+                        {{ selectedArticle.title }}
+                      </div>
+                      <div
+                        v-if="selectedArticle.author"
+                        class="mt-1 text-xs text-white/60"
+                      >
+                        By {{ selectedArticle.author }}
+                      </div>
+                      <div class="mt-1 text-xs text-white/50">
+                        {{ selectedArticle.category }} • Updated {{ formatDate(selectedArticle.updatedAt) }}
+                      </div>
+                    </div>
+                    <button
+                      class="shrink-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80"
+                      @click="clearArticleSelection"
+                    >
+                      Back
+                    </button>
+                  </div>
 
-	                <div class="mt-3">
-	                  <div class="flex items-center gap-2">
-	                    <div class="text-xs text-white/60">
-	                      Search in article:
-	                    </div>
-	                    <input
-	                      v-model="articleBodyQuery"
-	                      type="text"
-	                      placeholder="Find…"
-	                      class="w-56 max-w-full px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs text-white/80 placeholder:text-white/40"
-	                    >
-	                  </div>
-	                  <div class="mt-3 text-sm text-white/80 whitespace-pre-wrap leading-6">
-	                    <template
-	                      v-for="(seg, idx) in highlightedArticleBody"
-	                      :key="`seg-${idx}`"
-	                    >
-	                      <mark
-	                        v-if="seg.match"
-	                        class="bg-emerald-500/20 text-emerald-100 px-0.5 rounded"
-	                      >{{ seg.text }}</mark>
-	                      <span v-else>{{ seg.text }}</span>
-	                    </template>
-	                  </div>
-	                </div>
-	              </div>
+                  <div class="mt-3">
+                    <div class="flex items-center gap-2">
+                      <div class="text-xs text-white/60">
+                        Search in article:
+                      </div>
+                      <input
+                        v-model="articleBodyQuery"
+                        type="text"
+                        placeholder="Find…"
+                        class="w-56 max-w-full px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs text-white/80 placeholder:text-white/40"
+                      >
+                    </div>
+                    <div class="mt-3 text-sm text-white/80 whitespace-pre-wrap leading-6">
+                      <template
+                        v-for="(seg, idx) in highlightedArticleBody"
+                        :key="`seg-${idx}`"
+                      >
+                        <mark
+                          v-if="seg.match"
+                          class="bg-emerald-500/20 text-emerald-100 px-0.5 rounded"
+                        >{{ seg.text }}</mark>
+                        <span v-else>{{ seg.text }}</span>
+                      </template>
+                    </div>
+                  </div>
+                </div>
 
-	              <div
-	                v-else-if="articlesStore.articles.length"
-	                class="mt-4 space-y-2"
-	              >
-	                <button
-	                  v-for="a in articlesStore.articles"
-	                  :key="a.slug"
-	                  class="w-full text-left rounded-lg border border-white/10 bg-black/20 p-3 hover:bg-black/30"
-	                  @click="openArticle(a.slug)"
-	                >
-	                  <div class="flex items-start justify-between gap-3">
-	                    <div class="min-w-0">
-	                      <div class="text-sm text-white/90">
-	                        {{ a.title }}
-	                      </div>
-	                      <div class="mt-1 text-xs text-white/50">
-	                        {{ a.category }}
-	                        <span
-	                          v-if="a.author"
-	                          class="ml-2 text-white/60"
-	                        >By {{ a.author }}</span>
-	                      </div>
-	                      <div
-	                        v-if="a.summary"
-	                        class="mt-2 text-xs text-white/70 line-clamp-2"
-	                      >
-	                        {{ a.summary }}
-	                      </div>
-	                    </div>
-	                    <div class="shrink-0 text-xs text-white/40">
-	                      {{ formatDate(a.updatedAt) }}
-	                    </div>
-	                  </div>
-	                </button>
-	              </div>
+                <div
+                  v-else-if="articlesStore.articles.length"
+                  class="mt-4 space-y-2"
+                >
+                  <button
+                    v-for="a in articlesStore.articles"
+                    :key="a.slug"
+                    class="w-full text-left rounded-lg border border-white/10 bg-black/20 p-3 hover:bg-black/30"
+                    @click="openArticle(a.slug)"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="text-sm text-white/90">
+                          {{ a.title }}
+                        </div>
+                        <div class="mt-1 text-xs text-white/50">
+                          {{ a.category }}
+                          <span
+                            v-if="a.author"
+                            class="ml-2 text-white/60"
+                          >By {{ a.author }}</span>
+                        </div>
+                        <div
+                          v-if="a.summary"
+                          class="mt-2 text-xs text-white/70 line-clamp-2"
+                        >
+                          {{ a.summary }}
+                        </div>
+                      </div>
+                      <div class="shrink-0 text-xs text-white/40">
+                        {{ formatDate(a.updatedAt) }}
+                      </div>
+                    </div>
+                  </button>
+                </div>
 
-	              <div
-	                v-else
-	                class="mt-4 text-xs text-white/60"
-	              >
-	                No articles found.
-	              </div>
-	            </div>
+                <div
+                  v-else
+                  class="mt-4 text-xs text-white/60"
+                >
+                  No articles found.
+                </div>
+              </div>
 
-	            <div
-	              v-if="docsStore.loading"
-	              class="mt-4 text-xs text-white/50"
-	            >
-	              Loading trusted links…
-	            </div>
-	            <div
-	              v-else-if="docsStore.error"
-	              class="mt-4 text-xs text-red-300"
-	            >
-	              {{ docsStore.error }}
-	            </div>
-		            <div
-		              v-else-if="generalLinks.length"
-		              class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3"
-		            >
-		              <div class="flex items-center justify-between gap-3">
-		                <div class="text-xs font-semibold text-white/80">
-		                  Trusted sources
-		                </div>
-		                <div class="relative inline-block group">
-		                  <div
-		                    role="tooltip"
-		                    class="pointer-events-none absolute right-0 -top-1 translate-y-[-100%] w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
-		                  >
-		                    Hover a source to see details
-		                  </div>
-		                </div>
-		              </div>
-		              <div class="mt-2 flex flex-wrap items-center gap-2">
-		                <a
-		                  v-for="(l, idx) in generalLinks"
-		                  :key="`general-empty-${idx}`"
-		                  class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/80"
-		                  :href="l.url"
-		                  target="_blank"
-		                  rel="noreferrer"
-		                  :title="l.note || ''"
-		                >{{ formatSourceTitle(l.title) }}</a>
-		              </div>
-		            </div>
-	            <div
-	              v-else-if="docs && docs.docsAvailable === false"
-	              class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-white/60"
-	            >
-	              {{ docs.message || 'No documentation is available for this project type yet.' }}
-	            </div>
-	          </div>
+              <div
+                v-if="docsStore.loading"
+                class="mt-4 text-xs text-white/50"
+              >
+                Loading trusted links…
+              </div>
+              <div
+                v-else-if="docsStore.error"
+                class="mt-4 text-xs text-red-300"
+              >
+                {{ docsStore.error }}
+              </div>
+                <div
+                  v-else-if="generalLinks.length"
+                  class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3"
+                >
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="text-xs font-semibold text-white/80">
+                      Trusted sources
+                    </div>
+                    <div class="relative inline-block group">
+                      <div
+                        role="tooltip"
+                        class="pointer-events-none absolute right-0 -top-1 translate-y-[-100%] w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
+                      >
+                        Hover a source to see details
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <a
+                      v-for="(l, idx) in generalLinks"
+                      :key="`general-empty-${idx}`"
+                      class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/80"
+                      :href="l.url"
+                      target="_blank"
+                      rel="noreferrer"
+                      :title="l.note || ''"
+                    >{{ formatSourceTitle(l.title) }}</a>
+                  </div>
+                </div>
+              <div
+                v-else-if="docs && docs.docsAvailable === false"
+                class="mt-4 rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-white/60"
+              >
+                {{ docs.message || 'No documentation is available for this project type yet.' }}
+              </div>
+            </div>
 
-	          <div
-	            v-else-if="docsTab === 'Chat'"
-	            class="h-full min-h-0 flex flex-col"
-	          >
-	            <div
-	              v-if="aiStatusLoading"
-	              class="text-xs text-white/60"
-	            >
-	              Loading AI status…
-	            </div>
-	            <div
-	              v-else-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === false"
-	              class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-50"
-	            >
-	              <div class="font-semibold">
-	                AI is not ready for this project
-	              </div>
-	              <div class="mt-1 text-sm text-amber-100/90">
-	                <span v-if="aiStatus.ai.reason === 'FEATURE_NOT_IN_PLAN'">Upgrade to the Premium plan to enable AI.</span>
-	                <span v-else-if="aiStatus.ai.reason === 'AI_DISABLED'">AI is disabled for this project.</span>
-	                <span v-else>AI needs an API key (project key or server key fallback) to operate.</span>
-	              </div>
-	            </div>
-	            <div
-	              v-else-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === true"
-	              class="rounded-xl border border-white/10 bg-black/30 overflow-hidden h-full min-h-0"
-	            >
-	              <AssistantChat class="h-full min-h-0" />
-	            </div>
-	            <div v-else>
-	              <AssistantHelper />
-	            </div>
-	          </div>
-	        </div>
-	      </div>
-	    </div>
-	  </section>
-	</template>
+            <div
+              v-else-if="docsTab === 'Chat'"
+              class="h-full min-h-0 flex flex-col"
+            >
+              <div
+                v-if="aiStatusLoading"
+                class="text-xs text-white/60"
+              >
+                Loading AI status…
+              </div>
+              <div
+                v-else-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === false"
+                class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-50"
+              >
+                <div class="font-semibold">
+                  AI is not ready for this project
+                </div>
+                <div class="mt-1 text-sm text-amber-100/90">
+                  <span v-if="aiStatus.ai.reason === 'FEATURE_NOT_IN_PLAN'">Upgrade to the Premium plan to enable AI.</span>
+                  <span v-else-if="aiStatus.ai.reason === 'AI_DISABLED'">AI is disabled for this project.</span>
+                  <span v-else>AI needs an API key (project key or server key fallback) to operate.</span>
+                </div>
+              </div>
+              <div
+                v-else-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === true"
+                class="rounded-xl border border-white/10 bg-black/30 overflow-hidden h-full min-h-0"
+              >
+                <AssistantChat class="h-full min-h-0" />
+              </div>
+              <div v-else>
+                <AssistantHelper />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
@@ -725,14 +725,14 @@ async function fetchAiStatus() {
   }
 }
 
-	const checklist = computed(() => checklistStore.checklist)
-	const selectedItemId = ref<string>('')
-	type DocsTab = 'Articles' | 'Chat' | 'Explanation'
-	const docsTab = ref<DocsTab>('Articles')
-	const showAddItem = ref(false)
-	const newItemTitle = ref('')
-	const newItemCategory = ref('')
-	const newItemDescription = ref('')
+  const checklist = computed(() => checklistStore.checklist)
+  const selectedItemId = ref<string>('')
+  type DocsTab = 'Articles' | 'Chat' | 'Explanation'
+  const docsTab = ref<DocsTab>('Articles')
+  const showAddItem = ref(false)
+  const newItemTitle = ref('')
+  const newItemCategory = ref('')
+  const newItemDescription = ref('')
 
 function toggleAddItem() {
   showAddItem.value = !showAddItem.value
@@ -874,45 +874,45 @@ const highlightedArticleBody = computed(() => {
   return out.length ? out : [{ text: body, match: false }]
 })
 
-	function formatDate(iso: string) {
-	  try {
-	    const d = new Date(iso)
-	    if (Number.isNaN(d.getTime())) return ''
-	    return d.toLocaleDateString()
-	  } catch (_) {
-	    return ''
-	  }
-	}
+  function formatDate(iso: string) {
+    try {
+      const d = new Date(iso)
+      if (Number.isNaN(d.getTime())) return ''
+      return d.toLocaleDateString()
+    } catch (_) {
+      return ''
+    }
+  }
 
-	function formatSourceTitle(title: string) {
-	  return String(title || '').replace(/\bLEED\b/g, 'LEED©')
-	}
+  function formatSourceTitle(title: string) {
+    return String(title || '').replace(/\bLEED\b/g, 'LEED©')
+  }
 
-	function onToggleItem(item: AssistantChecklistItem, checked: boolean) {
-	  checklistStore.setItemCompleted(item.id, Boolean(checked))
-	}
+  function onToggleItem(item: AssistantChecklistItem, checked: boolean) {
+    checklistStore.setItemCompleted(item.id, Boolean(checked))
+  }
 
-	function setDocsTab(tab: DocsTab) {
-	  docsTab.value = tab
-	}
+  function setDocsTab(tab: DocsTab) {
+    docsTab.value = tab
+  }
 
-	function selectItem(id: string) {
-	  selectedItemId.value = String(id || '').trim()
-	  if (selectedItemId.value) docsTab.value = 'Explanation'
-	  selectedArticleSlug.value = ''
-	  articlesStore.clearArticle()
-	  assistantStore.setContext({ entityType: 'assistantChecklistItem', entityId: selectedItemId.value || null })
-	  docsStore.fetchDocs({ projectId: projectId.value, itemId: selectedItemId.value }).catch(() => {})
-	}
+  function selectItem(id: string) {
+    selectedItemId.value = String(id || '').trim()
+    if (selectedItemId.value) docsTab.value = 'Explanation'
+    selectedArticleSlug.value = ''
+    articlesStore.clearArticle()
+    assistantStore.setContext({ entityType: 'assistantChecklistItem', entityId: selectedItemId.value || null })
+    docsStore.fetchDocs({ projectId: projectId.value, itemId: selectedItemId.value }).catch(() => {})
+  }
 
-	function clearSelection() {
-	  selectedItemId.value = ''
-	  docsTab.value = 'Articles'
-	  selectedArticleSlug.value = ''
-	  articlesStore.clearArticle()
-	  assistantStore.setContext({ entityType: null, entityId: null })
-	  docsStore.fetchDocs({ projectId: projectId.value }).catch(() => {})
-	}
+  function clearSelection() {
+    selectedItemId.value = ''
+    docsTab.value = 'Articles'
+    selectedArticleSlug.value = ''
+    articlesStore.clearArticle()
+    assistantStore.setContext({ entityType: null, entityId: null })
+    docsStore.fetchDocs({ projectId: projectId.value }).catch(() => {})
+  }
 
 async function ensureLoaded() {
   if (!projectId.value) return
@@ -934,16 +934,16 @@ onMounted(() => {
   }
 })
 
-	watch(projectId, () => {
-	  ensureLoaded().catch(() => {})
-	  fetchAiStatus().catch(() => {})
-	  selectedItemId.value = ''
-	  docsTab.value = 'Articles'
-	  selectedArticleSlug.value = ''
-	  articleQuery.value = ''
-	  articleBodyQuery.value = ''
-	  assistantStore.setContext({ entityType: null, entityId: null })
-	})
+  watch(projectId, () => {
+    ensureLoaded().catch(() => {})
+    fetchAiStatus().catch(() => {})
+    selectedItemId.value = ''
+    docsTab.value = 'Articles'
+    selectedArticleSlug.value = ''
+    articleQuery.value = ''
+    articleBodyQuery.value = ''
+    assistantStore.setContext({ entityType: null, entityId: null })
+  })
 
 let articleSearchTimer: any = null
 watch(articleQuery, () => {

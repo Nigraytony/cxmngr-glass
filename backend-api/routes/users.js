@@ -63,6 +63,11 @@ async function hydrateUserProjects(userObj) {
         project_type: proj ? proj.project_type : (typeof p === 'object' && p ? p.project_type : undefined),
         status: proj ? proj.status : (typeof p === 'object' && p ? p.status : undefined),
         description: proj ? proj.description : (typeof p === 'object' && p ? p.description : undefined),
+        subscriptionTier: proj ? proj.subscriptionTier : (typeof p === 'object' && p ? p.subscriptionTier : undefined),
+        subscriptionFeatures: proj ? proj.subscriptionFeatures : (typeof p === 'object' && p ? p.subscriptionFeatures : undefined),
+        stripePriceId: proj ? proj.stripePriceId : (typeof p === 'object' && p ? p.stripePriceId : undefined),
+        // Expose only non-secret AI flags used for gating UI
+        ai: proj && proj.ai ? { enabled: !!proj.ai.enabled, provider: proj.ai.provider, model: proj.ai.model, hasKey: !!proj.ai.hasKey } : (typeof p === 'object' && p ? p.ai : undefined),
         role: role || 'user',
         default: isDefault,
       }

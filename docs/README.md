@@ -32,11 +32,34 @@ Downloads:
 - Client calls `GET /api/projects/:projectId/docs/files/:fileId/download-url`
 - API returns a short-lived **read SAS** URL (10 min) for `status=ready` files only.
 
+Previews:
+- Client calls `GET /api/projects/:projectId/docs/files/:fileId/preview-url`
+- PDFs/images return a read SAS for the original blob.
+- DOCX/XLSX attempt server-side conversion to PDF (see “Office previews” below).
+
 ### Blob naming convention
 
 Blobs are server-named (never client-provided) as:
 
 `docs/<projectId>/<uuid>`
+
+Office previews (derived PDFs) are stored as:
+
+`docs/<projectId>/previews/<fileId>.pdf`
+
+### Office previews (DOCX/XLSX → PDF)
+
+For DOCX/XLSX previews, the backend converts Office docs to HTML and then renders a PDF using Puppeteer:
+
+- DOCX → HTML via `mammoth`
+- XLSX → HTML via `xlsx` (first sheet only, limited rows/cols)
+- HTML → PDF via `puppeteer`
+
+Notes:
+- If `mammoth`/`xlsx` are missing, the API returns `503` with `code=PREVIEW_DEP_MISSING`.
+- If `puppeteer` is missing/unavailable, the API returns `503` with `code=PREVIEW_CONVERTER_UNAVAILABLE`.
+- The derived PDF is cached per file (`DocFile.previewBlobName`) to avoid re-converting on every preview.
+- Office previews are intended for quick review and may not perfectly match native Office rendering.
 
 ### Security assumptions
 
@@ -100,5 +123,12 @@ curl -sS -X POST "$API_BASE/api/projects/$PROJECT_ID/docs/files/<fileId>/complet
 
 ```bash
 curl -sS "$API_BASE/api/projects/$PROJECT_ID/docs/files/<fileId>/download-url" \
+  -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+- Get preview URL:
+
+```bash
+curl -sS "$API_BASE/api/projects/$PROJECT_ID/docs/files/<fileId>/preview-url" \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```

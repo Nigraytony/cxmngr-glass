@@ -443,13 +443,13 @@
           class="flex-1 min-h-0 overflow-hidden rounded-lg border border-white/10 bg-black/20"
         >
           <iframe
-            v-if="isPreviewPdf(previewFile.contentType)"
+            v-if="isPreviewPdf(previewContentType || previewFile.contentType)"
             :src="previewUrl"
             class="w-full h-full"
             title="PDF preview"
           />
           <div
-            v-else-if="isPreviewImage(previewFile.contentType)"
+            v-else-if="isPreviewImage(previewContentType || previewFile.contentType)"
             class="w-full h-full overflow-auto p-3"
           >
             <img
@@ -703,11 +703,13 @@ const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewFile = ref<DocFile | null>(null)
 const previewUrl = ref<string>('')
+const previewContentType = ref<string>('')
 
 watch(previewOpen, (open) => {
   if (!open) {
     previewFile.value = null
     previewUrl.value = ''
+    previewContentType.value = ''
     previewLoading.value = false
   }
 })
@@ -718,11 +720,16 @@ async function openPreview(file: DocFile) {
   previewOpen.value = true
   previewLoading.value = true
   previewUrl.value = ''
+  previewContentType.value = ''
   try {
-    const { downloadUrl } = await documents.getDownloadUrl(projectId.value, file.id)
-    previewUrl.value = downloadUrl
+    const { previewUrl: url, contentType } = await documents.getPreviewUrl(projectId.value, file.id)
+    previewUrl.value = url
+    previewContentType.value = contentType || 'application/pdf'
   } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to load preview')
+    const data = e?.response?.data
+    const msg = data?.error || e?.message || 'Failed to load preview'
+    const hint = data?.hint ? String(data.hint) : ''
+    ui.showError(hint ? `${msg} — ${hint}` : msg)
     previewOpen.value = false
   } finally {
     previewLoading.value = false

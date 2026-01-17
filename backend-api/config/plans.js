@@ -50,7 +50,7 @@ module.exports = [
       team: 25,
       issues: 1000,
       equipment: 500,
-      spaces: 1000,
+      spaces: 100,
       templates: 0,
       activities: 500,
       tasks: 0,

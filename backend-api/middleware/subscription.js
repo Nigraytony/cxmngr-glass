@@ -29,6 +29,15 @@ async function requireActiveProject(req, res, next) {
     const project = await Project.findById(projectId);
     if (!project) return res.status(404).send({ error: 'Project not found' });
 
+    // Archived/deleted projects are not considered "active" regardless of billing.
+    // Allow read-only endpoints to bypass this middleware when needed.
+    try {
+      const status = String(project.status || '').toLowerCase()
+      if (project.deleted || status === 'deleted' || status === 'archived') {
+        return res.status(423).send({ error: 'Project is archived', code: 'PROJECT_ARCHIVED' });
+      }
+    } catch (e) { /* ignore */ }
+
     // Primary flag can be an explicit isActive boolean.
     if (project.isActive === true) return next();
 

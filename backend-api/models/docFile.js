@@ -8,6 +8,12 @@ const docFileSchema = new mongoose.Schema(
     originalName: { type: String, required: true },
     // Server-generated UUID name; never accept from client.
     blobName: { type: String, required: true, index: true },
+    // Optional derived preview (e.g., converted PDF for Office docs).
+    previewBlobName: { type: String, required: false, index: true },
+    previewContentType: { type: String, required: false },
+    previewStatus: { type: String, enum: ['none', 'pending', 'ready', 'error'], default: 'none', index: true },
+    previewError: { type: String, required: false },
+    previewUpdatedAt: { type: Date, required: false },
     contentType: { type: String, required: true },
     sizeBytes: { type: Number, required: true },
     status: { type: String, enum: ['pending', 'ready', 'deleted'], default: 'pending', index: true },

@@ -110,6 +110,19 @@ export DOWNLOAD_URL="PASTE_downloadUrl_HERE"
 curl -L "$DOWNLOAD_URL" -o downloaded.bin
 ```
 
+### Get preview URL (PDF/images return original; DOCX/XLSX attempt conversion to PDF)
+
+```sh
+curl -sS "$API_BASE/api/projects/$PROJECT_ID/docs/files/$FILE_ID/preview-url" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Notes:
+- DOCX previews use `mammoth` (DOCX → HTML) and XLSX previews use `xlsx` (XLSX → HTML), then `puppeteer` renders the HTML to a PDF.
+- If `mammoth`/`xlsx` are missing, the API returns `503` with `code=PREVIEW_DEP_MISSING`.
+- If `puppeteer` is unavailable, the API returns `503` with `code=PREVIEW_CONVERTER_UNAVAILABLE`.
+- Converted previews are cached as `docs/<projectId>/previews/<fileId>.pdf`.
+
 ### Rename/move file (metadata only)
 
 ```sh

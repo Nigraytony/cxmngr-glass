@@ -126,6 +126,11 @@ export const useDocumentsStore = defineStore('documents', () => {
     return data as { downloadUrl: string; expiresAt: string }
   }
 
+  async function getPreviewUrl(projectId: string, fileId: string) {
+    const { data } = await axios.get(`${API_BASE}/${projectId}/docs/files/${fileId}/preview-url`, { headers: getAuthHeaders() })
+    return data as { previewUrl: string; contentType: string; source: 'original' | 'converted'; expiresAt: string }
+  }
+
   async function updateFile(projectId: string, fileId: string, payload: { filename?: string; folderId?: string }) {
     const { data } = await axios.patch(
       `${API_BASE}/${projectId}/docs/files/${fileId}`,
@@ -155,6 +160,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     requestUpload,
     completeUpload,
     getDownloadUrl,
+    getPreviewUrl,
     updateFile,
     deleteFile,
   }

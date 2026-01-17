@@ -72,6 +72,13 @@ const projectSchema = new mongoose.Schema({
   // Support soft-delete and a simple status enum for frontend display
   deleted: { type: Boolean, default: false },
   status: { type: String, enum: ['Active', 'Deleted', 'Inactive', 'Archived', 'Pending'], default: 'Active' },
+  // Archive/restore lifecycle for admin-friendly retention + recovery
+  archivedAt: { type: Date, default: null },
+  archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  restoredAt: { type: Date, default: null },
+  restoredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // When set, the project (and project-scoped data) may be purged after this timestamp.
+  purgeAt: { type: Date, default: null },
   // Stripe billing fields (per-project subscription)
   // Billing admin controls subscription for this project; defaults to project owner/admin.
   billingAdminUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
