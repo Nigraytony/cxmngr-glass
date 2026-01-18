@@ -68,6 +68,15 @@ export interface Project {
   // Subscription/feature gating
   subscriptionTier?: 'basic' | 'standard' | 'premium';
   subscriptionFeatures?: any;
+  // One-time paid add-ons
+  addons?: {
+    oprWorkshop?: {
+      enabled?: boolean;
+      purchasedAt?: string | null;
+      stripeCheckoutSessionId?: string | null;
+      stripePaymentIntentId?: string | null;
+    };
+  };
   // Optional per-project AI config (no secrets client-side)
   ai?: {
     enabled?: boolean;

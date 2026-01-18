@@ -11,6 +11,7 @@ if (process.env.STRIPE_SECRET_KEY) {
   console.warn('[startup] STRIPE_SECRET_KEY not set; webhook processing disabled.');
 }
 const Project = require('../models/project');
+const ProjectAddOnPurchase = require('../models/projectAddOnPurchase');
 const WebhookEvent = require('../models/webhookEvent');
 const Invoice = require('../models/invoice');
 const Charge = require('../models/charge');
@@ -114,6 +115,51 @@ router.post('/webhook', async (req, res) => {
               ...(plan && plan.key ? { subscriptionTier: String(plan.key) } : {}),
               ...(plan && plan.features ? { subscriptionFeatures: plan.features } : {}),
             });
+          }
+        } else {
+          // One-time payments for add-ons (no subscription).
+          const meta = (session && session.metadata) ? session.metadata : {}
+          const addonKey = meta && meta.addonKey ? String(meta.addonKey) : null
+          const projectId = getValidProjectId(meta && meta.projectId)
+          const userId = getValidProjectId(meta && meta.userId)
+
+          if (projectId && addonKey === 'oprWorkshop' && String(session.payment_status || '').toLowerCase() === 'paid') {
+            try {
+              // Record purchase (idempotent upserts via sparse unique indexes).
+              const purchase = {
+                projectId,
+                addonKey,
+                stripeCheckoutSessionId: session.id || null,
+                stripePaymentIntentId: session.payment_intent || null,
+                amount: session.amount_total || null,
+                currency: session.currency || null,
+                status: 'paid',
+                purchasedBy: userId || null,
+                purchasedAt: session.created ? new Date(session.created * 1000) : new Date(),
+                raw: session,
+              }
+              await ProjectAddOnPurchase.findOneAndUpdate(
+                {
+                  projectId,
+                  addonKey,
+                  ...(purchase.stripePaymentIntentId ? { stripePaymentIntentId: purchase.stripePaymentIntentId } : { stripeCheckoutSessionId: purchase.stripeCheckoutSessionId }),
+                },
+                { $set: purchase },
+                { upsert: true, new: true }
+              )
+
+              // Enable add-on on project.
+              await Project.findByIdAndUpdate(projectId, {
+                $set: {
+                  'addons.oprWorkshop.enabled': true,
+                  'addons.oprWorkshop.purchasedAt': purchase.purchasedAt,
+                  'addons.oprWorkshop.stripeCheckoutSessionId': purchase.stripeCheckoutSessionId,
+                  'addons.oprWorkshop.stripePaymentIntentId': purchase.stripePaymentIntentId,
+                },
+              })
+            } catch (e) {
+              console.error(JSON.stringify({ ctx: 'webhook.addon.opr', ok: false, eventId, projectId, message: e && e.message }))
+            }
           }
         }
         break;

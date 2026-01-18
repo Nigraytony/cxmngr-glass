@@ -115,6 +115,15 @@ const projectSchema = new mongoose.Schema({
   // Plan/tier metadata to drive feature gating
   subscriptionTier: { type: String, default: 'basic', enum: ['basic', 'standard', 'premium'] },
   subscriptionFeatures: { type: mongoose.Schema.Types.Mixed, default: null },
+  // One-time paid add-ons (project-scoped)
+  addons: {
+    oprWorkshop: {
+      enabled: { type: Boolean, default: false },
+      purchasedAt: { type: Date, default: null },
+      stripeCheckoutSessionId: { type: String, default: null },
+      stripePaymentIntentId: { type: String, default: null },
+    },
+  },
   // Optional per-project AI configuration (Bring-your-own key).
   // Secrets are stored encrypted and excluded from default query projections.
   ai: {

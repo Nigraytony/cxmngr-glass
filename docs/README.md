@@ -132,3 +132,28 @@ curl -sS "$API_BASE/api/projects/$PROJECT_ID/docs/files/<fileId>/download-url" \
 curl -sS "$API_BASE/api/projects/$PROJECT_ID/docs/files/<fileId>/preview-url" \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
+
+## OPR Workshop add-on
+
+The OPR Workshop module is a **one-time paid add-on** (per project). It runs a structured session:
+
+`draft → open (answering) → closed (review) → voting → finalized`
+
+Only **one question can be active per project** at a time (`open` or `voting`).
+
+### Required env vars (backend)
+
+- `STRIPE_OPR_WORKSHOP_PRICE_ID` — Stripe price id for the one-time add-on checkout (`price_...`).
+
+Optional:
+- `OPR_ACTIVE_WINDOW_MINUTES` — “actively in session” window for voting eligibility (default: `15`)
+- `OPR_MAX_ANSWERS_PER_USER` — max answers per user per question (default: `10`)
+- `OPR_DEFAULT_ANSWER_WINDOW_MINUTES` — default answer window for opening a question (default: `10`)
+- `OPR_DEFAULT_VOTING_WINDOW_MINUTES` — default voting window (default: `10`)
+- `OPR_TOP_N` — number of top answers to persist as OPR items on finalize (default: `10`)
+- `DISABLE_OPR=true` — kill-switch (returns `503 FEATURE_DISABLED`)
+
+### Notes
+
+- Voting eligibility requires the user to have joined the session recently (`lastSeenAt` within `OPR_ACTIVE_WINDOW_MINUTES`).
+- Score is computed with rank points: `1=5 pts … 5=1 pt`, tie-breakers by count of #1 votes, then #2, etc.

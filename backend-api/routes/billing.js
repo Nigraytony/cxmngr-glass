@@ -914,6 +914,58 @@ router.post('/create-checkout-session', auth, requireBodyField('projectId'), req
   }
 });
 
+// Create Checkout Session for one-time paid add-ons (e.g., OPR Workshop)
+router.post('/project/:id/addons/opr/checkout', auth, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' })
+
+    const projectId = String(req.params.id)
+    const project = await Project.findById(projectId)
+    if (!project) return res.status(404).json({ error: 'Project not found' })
+    if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized to manage billing for this project' })
+
+    const priceId = String(process.env.STRIPE_OPR_WORKSHOP_PRICE_ID || '').trim()
+    if (!priceId) return res.status(503).json({ error: 'OPR price is not configured', code: 'OPR_PRICE_NOT_CONFIGURED' })
+    if (!isStripeIdLike(priceId, 'price_')) return res.status(500).json({ error: 'Invalid OPR price configuration', code: 'OPR_PRICE_INVALID' })
+
+    const customerId = await resolveBillingCustomerId(project, req.user)
+    if (!customerId) return res.status(500).json({ error: 'Failed to resolve billing customer' })
+
+    const baseUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'
+    const successUrl = `${baseUrl}/app/projects/edit/${project._id}?tab=subscription&addon=opr&checkout=success`
+    const cancelUrl = `${baseUrl}/app/projects/edit/${project._id}?tab=subscription&addon=opr&checkout=cancel`
+
+    const sessionParams = {
+      mode: 'payment',
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: String(project._id),
+      metadata: {
+        projectId: String(project._id),
+        userId: String(req.user._id),
+        addonKey: 'oprWorkshop',
+      },
+    }
+
+    let idempotencyKey
+    try {
+      const hash = crypto.createHash('sha256').update(JSON.stringify(sessionParams)).digest('hex')
+      idempotencyKey = `proj_${project._id}_addon_opr_${hash}`
+    } catch (e) {
+      idempotencyKey = `proj_${project._id}_addon_opr_${Date.now()}`
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams, { idempotencyKey })
+    return res.json({ url: session.url })
+  } catch (err) {
+    console.error('[stripe] add-on checkout session error', err && err.raw ? err.raw : err)
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message })
+    return res.status(500).json({ error: 'Stripe session error' })
+  }
+})
+
 // Create Billing Portal Session
 router.post('/portal-session', auth, requireBodyField('projectId'), requireObjectIdBody('projectId'), async (req, res) => {
   try {

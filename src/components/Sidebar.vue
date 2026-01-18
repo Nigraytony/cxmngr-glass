@@ -69,6 +69,27 @@
         <span class="i">🤖</span>
         <span v-if="open">Assistant</span>
       </RouterLink>
+      <!-- OPR Workshop (paid add-on; visible to all projects) -->
+      <RouterLink
+        v-if="currentProjectId"
+        to="/app/opr"
+        :class="[
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+          isActive('/app/opr') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+        ]"
+        :aria-current="isActive('/app/opr') ? 'page' : null"
+      >
+        <span class="i">🗳️</span>
+        <span
+          v-if="open"
+          class="flex items-center justify-between gap-2 w-full min-w-0"
+        >
+          <span class="truncate">OPR Workshop</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0">
+            Add-on
+          </span>
+        </span>
+      </RouterLink>
       <!-- Tasks -->
       <RouterLink
         v-if="featureEnabled('tasks')"

@@ -32,6 +32,7 @@ const plansRoutes = require('./routes/plans');
 const aiRoutes = require('./routes/ai');
 const assistantRoutes = require('./routes/assistant');
 const projectDocsRoutes = require('./routes/projectDocs');
+const oprRoutes = require('./routes/opr');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -188,6 +189,8 @@ app.use('/api/projects',
 );
 // Project-scoped documents (folders/files; blob bytes live in Azure storage)
 app.use('/api/projects/:projectId/docs', projectDocsRoutes);
+// Project-scoped OPR Workshop (paid add-on)
+app.use('/api/projects/:projectId/opr', oprRoutes);
 app.use('/api/issues', 
   issueRoutes
 );

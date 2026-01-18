@@ -155,7 +155,7 @@ Notes
 78. In the EquipmentEdit.vue New Checklist Modal all the input field texts need to be text-gray-300 color.
 79. In the EquipmentEdit.vue New FPT Modal all the input field texts and labels need to be text-gray-300 color.
 80. In the ProjectEdit.vue Edit Member Modal all the input field texts and placeholders need to be text-gray-300 color. The Cancel button as text as well.
-
+81. OPR module to use in issues. If the activity is OPR let's add a tab for OPR items. This is a list that can be added/tagged to issues.
 
 
 Please remember that:
