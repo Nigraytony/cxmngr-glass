@@ -146,6 +146,11 @@ export const useOprStore = defineStore('opr', () => {
     return data as { url: string }
   }
 
+  async function reconcileOprPurchase(projectId: string) {
+    const { data } = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/addons/opr/reconcile`, {}, { headers: getAuthHeaders() })
+    return data as { ok: boolean; enabled: boolean }
+  }
+
   return {
     categories,
     active,
@@ -168,6 +173,6 @@ export const useOprStore = defineStore('opr', () => {
     fetchResults,
     refreshSession,
     startOprCheckout,
+    reconcileOprPurchase,
   }
 })
-

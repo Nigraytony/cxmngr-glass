@@ -466,6 +466,19 @@ async function refresh() {
 async function refreshProject() {
   if (!projectId.value) return
   try {
+    if (!addonEnabled.value) {
+      try {
+        await opr.reconcileOprPurchase(projectId.value)
+      } catch (e: any) {
+        const code = e?.response?.data?.code
+        const msg = e?.response?.data?.error || e?.message
+        if (code === 'OPR_ADDON_NOT_FOUND') {
+          ui.showError('No OPR add-on purchase found for this project yet.', { duration: 5000 })
+        } else if (msg) {
+          ui.showError(msg, { duration: 5000 })
+        }
+      }
+    }
     await projectStore.fetchProject(projectId.value)
     await refresh()
   } catch (e: any) {

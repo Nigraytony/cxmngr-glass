@@ -13,6 +13,7 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 const crypto = require('crypto');
 const Project = require('../models/project');
+const ProjectAddOnPurchase = require('../models/projectAddOnPurchase');
 const User = require('../models/user');
 const plans = require('../config/plans');
 const { auth } = require('../middleware/auth');
@@ -963,6 +964,85 @@ router.post('/project/:id/addons/opr/checkout', auth, async (req, res) => {
     console.error('[stripe] add-on checkout session error', err && err.raw ? err.raw : err)
     if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message })
     return res.status(500).json({ error: 'Stripe session error' })
+  }
+})
+
+// Reconcile one-time add-on purchase (e.g., if webhook was delayed/missed)
+router.post('/project/:id/addons/opr/reconcile', auth, async (req, res) => {
+  try {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured' })
+
+    const projectId = String(req.params.id)
+    const project = await Project.findById(projectId)
+    if (!project) return res.status(404).json({ error: 'Project not found' })
+    if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized to manage billing for this project' })
+
+    const customerId = await resolveBillingCustomerId(project, req.user)
+    if (!customerId) return res.status(500).json({ error: 'Failed to resolve billing customer' })
+
+    // Find the most recent completed Checkout Session that matches this add-on.
+    const sessions = await stripe.checkout.sessions.list({ customer: customerId, limit: 50 })
+    const data = Array.isArray(sessions?.data) ? sessions.data : []
+    const candidates = data.filter((s) => {
+      const mode = String(s.mode || '').toLowerCase()
+      const status = String(s.status || '').toLowerCase()
+      const paymentStatus = String(s.payment_status || '').toLowerCase()
+      const meta = s.metadata || {}
+      const addonKey = String(meta.addonKey || '')
+      const metaProjectId = String(meta.projectId || '')
+      const refProjectId = String(s.client_reference_id || '')
+      if (mode !== 'payment') return false
+      if (status !== 'complete') return false
+      if (!(paymentStatus === 'paid' || paymentStatus === 'no_payment_required')) return false
+      if (addonKey !== 'oprWorkshop') return false
+      return metaProjectId === projectId || refProjectId === projectId
+    })
+
+    if (candidates.length === 0) {
+      return res.status(404).json({ error: 'No OPR add-on purchase found for this project', code: 'OPR_ADDON_NOT_FOUND' })
+    }
+
+    candidates.sort((a, b) => (Number(b.created || 0) - Number(a.created || 0)))
+    const session = candidates[0]
+    const meta = session.metadata || {}
+    const purchasedAt = session.created ? new Date(session.created * 1000) : new Date()
+    const purchase = {
+      projectId,
+      addonKey: 'oprWorkshop',
+      stripeCheckoutSessionId: session.id || null,
+      stripePaymentIntentId: session.payment_intent || null,
+      amount: session.amount_total || null,
+      currency: session.currency || null,
+      status: 'paid',
+      purchasedBy: meta.userId ? String(meta.userId) : (req.user && req.user._id ? String(req.user._id) : null),
+      purchasedAt,
+      raw: session,
+    }
+
+    await ProjectAddOnPurchase.findOneAndUpdate(
+      {
+        projectId,
+        addonKey: 'oprWorkshop',
+        ...(purchase.stripePaymentIntentId ? { stripePaymentIntentId: purchase.stripePaymentIntentId } : { stripeCheckoutSessionId: purchase.stripeCheckoutSessionId }),
+      },
+      { $set: purchase },
+      { upsert: true, new: true }
+    )
+
+    await Project.findByIdAndUpdate(projectId, {
+      $set: {
+        'addons.oprWorkshop.enabled': true,
+        'addons.oprWorkshop.purchasedAt': purchase.purchasedAt,
+        'addons.oprWorkshop.stripeCheckoutSessionId': purchase.stripeCheckoutSessionId,
+        'addons.oprWorkshop.stripePaymentIntentId': purchase.stripePaymentIntentId,
+      },
+    })
+
+    return res.json({ ok: true, enabled: true, stripeCheckoutSessionId: purchase.stripeCheckoutSessionId })
+  } catch (err) {
+    console.error('[stripe] add-on reconcile error', err && err.raw ? err.raw : err)
+    if (err && err.raw && err.raw.message) return res.status(400).json({ error: err.raw.message })
+    return res.status(500).json({ error: 'Failed to reconcile add-on purchase' })
   }
 })
 
