@@ -3291,6 +3291,61 @@ function mimeToFormat(mime?: string | null): ImageFormat | undefined {
   if (m.includes('webp')) return 'WEBP'
   return undefined
 }
+async function maybeReinkSignatureForPdf(dataUrl: string): Promise<string> {
+  try {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return dataUrl
+    // Signatures are captured with white ink for the dark UI; that becomes invisible on PDF (white page).
+    // If the signature appears mostly "light/white", re-ink non-transparent pixels to black for PDF rendering only.
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error('image load failed'))
+      img.src = dataUrl
+    })
+    const w = img.naturalWidth || img.width
+    const h = img.naturalHeight || img.height
+    if (!w || !h) return dataUrl
+
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return dataUrl
+    ctx.clearRect(0, 0, w, h)
+    ctx.drawImage(img, 0, 0)
+
+    const imageData = ctx.getImageData(0, 0, w, h)
+    const d = imageData.data
+
+    let count = 0
+    let sum = 0
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3]
+      if (a < 8) continue
+      const r = d[i]
+      const g = d[i + 1]
+      const b = d[i + 2]
+      sum += (0.2126 * r + 0.7152 * g + 0.0722 * b)
+      count++
+    }
+    if (count < 25) return dataUrl
+    const avg = sum / count
+    if (avg < 200) return dataUrl
+
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3]
+      if (a < 8) continue
+      d[i] = 0
+      d[i + 1] = 0
+      d[i + 2] = 0
+    }
+    ctx.putImageData(imageData, 0, 0)
+    return canvas.toDataURL('image/png')
+  } catch (e) {
+    return dataUrl
+  }
+}
 async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<string | null> {
   try {
     const img = new Image()
@@ -3922,7 +3977,8 @@ async function downloadEquipmentPdf() {
         const imgSrc = sig?.block
         if (imgSrc) {
           try {
-            const img = await loadImage(imgSrc)
+            const printable = await maybeReinkSignatureForPdf(String(imgSrc))
+            const img = await loadImage(printable)
             if (img.dataUrl) {
               const sigW = Math.min(colW - 8, 140)
               const sigH = 28

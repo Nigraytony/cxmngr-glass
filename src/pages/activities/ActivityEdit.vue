@@ -3457,7 +3457,10 @@ async function downloadActivityPdf() {
             try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm); markBodyContent() } catch (e) { /* ignore */ }
             y += segmentTargetHeightMm
             offsetPx += segmentSrcPx
-            if (offsetPx < contentHeightPx - 1) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader() }
+            // Do not force a page break here. In cases where `findWhitespaceCut` returns a shorter
+            // slice (to avoid splitting a line), we may still have plenty of space on the current
+            // page for the remaining lines. The `availableMm` check at the top of the loop will
+            // advance to the next page only when needed.
           }
           y += 2
         } catch (e) {
@@ -3901,17 +3904,11 @@ async function downloadActivityPdf() {
           drawEqHeader();
           drawTableHeader();
 
-          // Draw rows
+          // Draw rows (dynamic height for wrapped cells)
+          const rowLineH = 5
+          const rowPadBottom = 3
           let colX = tableX;
           for (const eq of selectedEquipSnapshot) {
-            if (eqY + 8 > eqBottom) {
-              drawEqFooter();
-              eqDoc.addPage();
-              eqPageNo++;
-              drawEqHeader();
-              drawTableHeader();
-            }
-            colX = tableX;
             // attributes may be an array of {key, value} objects
             let manufacturer = '—';
             let condition = '—';
@@ -3934,11 +3931,30 @@ async function downloadActivityPdf() {
               manufacturer,
               condition,
             ];
+            const cellLines = rowVals.map((v, i) => {
+              try { return eqDoc.splitTextToSize(String(v || '—'), columns[i].width - 4) as string[] } catch (e) { return [String(v || '—')] }
+            })
+            const maxLines = cellLines.reduce((m, arr) => Math.max(m, Array.isArray(arr) ? arr.length : 1), 1)
+            const rowH = Math.max(8, maxLines * rowLineH + rowPadBottom)
+
+            if (eqY + rowH > eqBottom) {
+              drawEqFooter();
+              eqDoc.addPage();
+              eqPageNo++;
+              drawEqHeader();
+              drawTableHeader();
+            }
+            colX = tableX;
             for (let i = 0; i < columns.length; i++) {
-              eqDoc.text(rowVals[i], colX + 2, eqY + 5, { maxWidth: columns[i].width - 4 });
+              const x = colX + 2
+              const baseY = eqY + 5
+              const lines = cellLines[i] || ['—']
+              for (let k = 0; k < lines.length; k++) {
+                eqDoc.text(String(lines[k] || ''), x, baseY + k * rowLineH)
+              }
               colX += columns[i].width;
             }
-            eqY += 8;
+            eqY += rowH;
           }
           // Footer on last page
           drawEqFooter();
@@ -3973,7 +3989,7 @@ async function downloadActivityPdf() {
             const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
             const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
             // Ensure issues are included in each equipment report (user requirement)
-            const includeSettings = { ...baseInclude, issues: true }
+            const includeSettings = { ...baseInclude, issues: true, signatures: true }
             // Use equipment's own photoLimit if available, else fall back to activity photoLimit or 6
             const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
             const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, { include: includeSettings, photoLimit })
@@ -4085,14 +4101,9 @@ async function downloadActivityPdf() {
 
         drawEqHeader()
         drawTableHeader()
+        const rowLineH = 5
+        const rowPadBottom = 3
         for (const eq of selectedEquip.value) {
-          if (eqY + 8 > eqBottom) {
-            drawEqFooter()
-            eqDoc.addPage()
-            eqPageNo++
-            drawEqHeader()
-            drawTableHeader()
-          }
           let manufacturer = '—'
           let condition = '—'
           if (Array.isArray(eq.attributes)) {
@@ -4113,12 +4124,30 @@ async function downloadActivityPdf() {
             manufacturer,
             condition,
           ]
+          const cellLines = rowVals.map((v, i) => {
+            try { return eqDoc.splitTextToSize(String(v || '—'), columns[i].width - 4) as string[] } catch (e) { return [String(v || '—')] }
+          })
+          const maxLines = cellLines.reduce((m, arr) => Math.max(m, Array.isArray(arr) ? arr.length : 1), 1)
+          const rowH = Math.max(8, maxLines * rowLineH + rowPadBottom)
+
+          if (eqY + rowH > eqBottom) {
+            drawEqFooter()
+            eqDoc.addPage()
+            eqPageNo++
+            drawEqHeader()
+            drawTableHeader()
+          }
           let colX = tableX
           for (let i = 0; i < columns.length; i++) {
-            eqDoc.text(rowVals[i], colX + 2, eqY + 5, { maxWidth: columns[i].width - 4 })
+            const x = colX + 2
+            const baseY = eqY + 5
+            const lines = cellLines[i] || ['—']
+            for (let k = 0; k < lines.length; k++) {
+              eqDoc.text(String(lines[k] || ''), x, baseY + k * rowLineH)
+            }
             colX += columns[i].width
           }
-          eqY += 8
+          eqY += rowH
         }
         drawEqFooter()
 

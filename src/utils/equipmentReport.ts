@@ -32,6 +32,56 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
   } catch (e) { return null }
 }
 
+async function maybeReinkSignatureForPdf(dataUrl: string): Promise<string> {
+  try {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return dataUrl
+    // Signatures are captured with white ink for the dark UI; on a white PDF page they can appear blank.
+    // If the signature pixels are mostly light, re-ink non-transparent pixels to black for PDF rendering only.
+    const img = new Image(); img.crossOrigin = 'anonymous'
+    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('img load fail')); img.src = dataUrl })
+    const w = img.naturalWidth || img.width
+    const h = img.naturalHeight || img.height
+    if (!w || !h) return dataUrl
+
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return dataUrl
+    ctx.clearRect(0, 0, w, h)
+    ctx.drawImage(img, 0, 0)
+
+    const imageData = ctx.getImageData(0, 0, w, h)
+    const d = imageData.data
+    let count = 0
+    let sum = 0
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3]
+      if (a < 8) continue
+      const r = d[i]
+      const g = d[i + 1]
+      const b = d[i + 2]
+      sum += (0.2126 * r + 0.7152 * g + 0.0722 * b)
+      count++
+    }
+    if (count < 25) return dataUrl
+    const avg = sum / count
+    if (avg < 200) return dataUrl
+
+    for (let i = 0; i < d.length; i += 4) {
+      const a = d[i + 3]
+      if (a < 8) continue
+      d[i] = 0
+      d[i + 1] = 0
+      d[i + 2] = 0
+    }
+    ctx.putImageData(imageData, 0, 0)
+    return canvas.toDataURL('image/png')
+  } catch (e) {
+    return dataUrl
+  }
+}
+
 async function loadImage(src?: string): Promise<LoadedImage> {
   try {
     if (!src) return {}
@@ -122,12 +172,12 @@ function passCellState(v: any): 'none' | 'pass' | 'fail' {
 function passLabel(state: 'none' | 'pass' | 'fail') { return state === 'pass' ? 'PASS' : state === 'fail' ? 'FAIL' : '—' }
 
 export interface GenerateEquipmentPdfOptions {
-  include?: Partial<Record<'info'|'attributes'|'components'|'photos'|'attachments'|'checklists'|'fpt'|'issues', boolean>>
+  include?: Partial<Record<'info'|'attributes'|'components'|'photos'|'attachments'|'checklists'|'fpt'|'signatures'|'issues', boolean>>
   photoLimit?: number
 }
 
 export async function generateEquipmentPdf(eq: any, project: any, issuesById: Record<string, any>, spacesById: Record<string, any>, opts?: GenerateEquipmentPdfOptions): Promise<ArrayBuffer> {
-  const include = { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true, ...(opts?.include || {}) }
+  const include = { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, signatures: false, issues: true, ...(opts?.include || {}) }
   const photoLimit = typeof opts?.photoLimit === 'number' ? opts.photoLimit : 6
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const margin = 12
@@ -409,6 +459,67 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         }
         if (!tableRendered) y += 2
       }
+    }
+  }
+
+  // Signatures (FPT sign-offs). Rendered after Functional Tests.
+  if (include.signatures) {
+    const raw = (eq as any).fptSignatures
+    const sigs: any[] = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : [])
+    if (sigs.length) {
+      sectionGap()
+      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Signatures', margin, y); y += 6
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+
+      const colW = Math.floor((pageWidth - margin * 2 - 4) / 2)
+      const boxH = 44
+      const drawSignatureBlock = async (sx: number, sig: any) => {
+        const name = String(sig?.person || sig?.name || '').trim() || 'Name'
+        const role = String(sig?.role || '').trim()
+        const title = String(sig?.title || '').trim()
+        const date = String(sig?.date || sig?.signedAt || '').trim()
+
+        ensureSpace(boxH + 2)
+        doc.rect(sx, y, colW, boxH)
+
+        const imgSrc = sig?.block
+        if (imgSrc) {
+          try {
+            const printable = await maybeReinkSignatureForPdf(String(imgSrc))
+            const img = await loadImage(printable)
+            if (img.dataUrl) {
+              const sigW = Math.min(colW - 8, 140)
+              const sigH = 28
+              const imgX = sx + 4
+              const imgY = y + 6
+              try { doc.addImage(img.dataUrl, img.format || 'PNG', imgX, imgY, sigW, sigH) } catch (_) { /* ignore */ }
+            }
+          } catch (_) { /* ignore */ }
+        }
+
+        const baseY = y + boxH - 6
+        if (date) doc.text(date, sx + 4, baseY)
+        if (role) {
+          const roleLabel = role + ':'
+          doc.setFont('helvetica', 'bold')
+          doc.text(roleLabel, sx + 4, baseY - 5)
+          const roleW = doc.getTextWidth(roleLabel)
+          doc.setFont('helvetica', 'normal')
+          doc.text(' ' + name, sx + 4 + roleW, baseY - 5)
+        } else {
+          doc.text(name, sx + 4, baseY - 5)
+        }
+        if (title) doc.text(title, sx + 4, baseY - 10)
+      }
+
+      for (let i = 0; i < sigs.length; i += 2) {
+        const left = sigs[i]
+        const right = sigs[i + 1]
+        await drawSignatureBlock(margin, left)
+        if (right) await drawSignatureBlock(margin + colW + 4, right)
+        y += 46
+      }
+      sectionGap(6)
     }
   }
 
