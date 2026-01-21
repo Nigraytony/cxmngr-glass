@@ -3,6 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
+const OprItem = require('../models/oprItem')
 const Space = require('../models/space');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
@@ -50,6 +51,36 @@ function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } =
   if (allowAll && s.toLowerCase() === 'all') return null
   if (s.length > maxLen) return undefined
   return s
+}
+
+function normalizeObjectIdList(value, { max = 50 } = {}) {
+  if (value === undefined) return undefined
+  const list = Array.isArray(value) ? value : [value]
+  const out = []
+  const seen = new Set()
+  for (const v of list) {
+    const s = String(v || '').trim()
+    if (!s) continue
+    if (!mongoose.Types.ObjectId.isValid(s)) return null
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+    if (out.length > max) return null
+  }
+  return out
+}
+
+async function validateOprItemIds({ projectId, oprItemIds }) {
+  const ids = normalizeObjectIdList(oprItemIds, { max: 100 })
+  if (ids === undefined) return { ids: undefined }
+  if (ids === null) return { error: 'Invalid oprItemIds' }
+  if (ids.length === 0) return { ids: [] }
+  const orgId = String(projectId)
+  const rows = await OprItem.find({ _id: { $in: ids }, orgId, projectId, status: 'active' }).select('_id').lean()
+  const ok = new Set(rows.map((r) => String(r._id)))
+  if (ok.size !== ids.length) return { error: 'Invalid oprItemIds (must belong to this project)' }
+  return { ids }
 }
 
 const LIST_SORT_FIELDS = new Set([
@@ -993,6 +1024,23 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, r
 
     await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
     await runMiddleware(req, res, requireActiveProject);
+
+    // Validate OPR item links within functional tests (optional)
+    if (incoming && Array.isArray(incoming.functionalTests)) {
+      const all = new Set()
+      for (const t of incoming.functionalTests) {
+        if (!t || typeof t !== 'object') continue
+        const normalized = normalizeObjectIdList(t.oprItemIds, { max: 25 })
+        if (normalized === null) return res.status(400).send({ error: 'Invalid oprItemIds in functional tests' })
+        if (normalized === undefined) continue
+        t.oprItemIds = normalized
+        for (const id of normalized) all.add(id)
+      }
+      if (all.size) {
+        const oprValidation = await validateOprItemIds({ projectId: equipment.projectId, oprItemIds: Array.from(all) })
+        if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
+      }
+    }
 
     // Server-side validation: ensure fptSignatures does not contain duplicate createdBy entries
     if (incoming && Array.isArray(incoming.fptSignatures)) {

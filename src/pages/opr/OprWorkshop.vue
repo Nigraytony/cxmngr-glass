@@ -659,8 +659,8 @@
                       v-model="registerCategoryId"
                       class="min-w-[240px] rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
                     >
-                      <option value="" disabled>
-                        Select category…
+                      <option :value="ALL_CATEGORIES">
+                        All Categories
                       </option>
                       <option
                         v-for="c in opr.categories"
@@ -697,17 +697,15 @@
                 </div>
 
                 <div
-                  v-if="!registerCategoryId"
+                  v-if="filteredOprItems.length === 0"
                   class="text-white/70 text-sm"
                 >
-                  Select a category to view its OPR items.
-                </div>
-
-                <div
-                  v-else-if="filteredOprItems.length === 0"
-                  class="text-white/70 text-sm"
-                >
-                  No OPR items yet for this category. Close voting on a question to publish the top {{ topN }} items.
+                  <template v-if="registerCategoryId === ALL_CATEGORIES">
+                    No OPR items yet. Close voting on questions to publish the top {{ topN }} items per category.
+                  </template>
+                  <template v-else>
+                    No OPR items yet for this category. Close voting on a question to publish the top {{ topN }} items.
+                  </template>
                 </div>
 
                 <div
@@ -723,6 +721,13 @@
                       <div class="flex items-center gap-2 min-w-0">
                         <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 shrink-0">
                           #{{ item.rank }}
+                        </span>
+                        <span
+                          v-if="registerCategoryId === ALL_CATEGORIES"
+                          class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0"
+                          :title="String(categoryNameById[item.categoryId || ''] || 'Category')"
+                        >
+                          {{ categoryNameById[item.categoryId || ''] || 'Category' }}
                         </span>
                         <span
                           v-if="item.questionId && questionTagMap[item.questionId]"
@@ -1191,15 +1196,15 @@ const voteableAnswers = computed(() => visibleAnswers.value)
 
 const rightTab = ref<'responses' | 'register'>('responses')
 const topN = 10
+const ALL_CATEGORIES = '__all__'
 const registerCategoryId = ref<string>('')
 const registerIncludeArchived = ref(false)
 const registerSearch = ref('')
 
 function ensureRegisterCategory() {
   if (registerCategoryId.value) return
-  const fromSelected = String(selectedQuestion.value?.categoryId || '').trim()
-  const fromCategories = String((Array.isArray(opr.categories) ? opr.categories[0]?.id : '') || '').trim()
-  registerCategoryId.value = fromSelected || fromCategories || ''
+  // Default to "All Categories" so users can browse the full register.
+  registerCategoryId.value = ALL_CATEGORIES
 }
 
 const filteredOprItems = computed<OprItem[]>(() => {
@@ -1207,11 +1212,28 @@ const filteredOprItems = computed<OprItem[]>(() => {
   const list = Array.isArray(opr.items) ? (opr.items as any as OprItem[]) : []
   const filtered = q ? list.filter((i) => String(i.text || '').toLowerCase().includes(q)) : list
   return filtered.slice().sort((a, b) => {
+    if (registerCategoryId.value === ALL_CATEGORIES) {
+      const an = String(categoryNameById.value[a.categoryId || ''] || '').toLowerCase()
+      const bn = String(categoryNameById.value[b.categoryId || ''] || '').toLowerCase()
+      const byCat = an.localeCompare(bn)
+      if (byCat) return byCat
+    }
     const ar = Number(a.rank || 0)
     const br = Number(b.rank || 0)
     if (ar !== br) return ar - br
     return String(a.id).localeCompare(String(b.id))
   })
+})
+
+const categoryNameById = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  const list = Array.isArray(opr.categories) ? opr.categories : []
+  for (const c of list) {
+    const id = String((c as any).id || '').trim()
+    if (!id) continue
+    map[id] = String((c as any).name || '').trim() || id
+  }
+  return map
 })
 
 async function refreshItems() {
@@ -1220,15 +1242,16 @@ async function refreshItems() {
     return
   }
   ensureRegisterCategory()
-  if (!registerCategoryId.value) {
-    opr.items = []
-    return
-  }
   try {
-    await opr.fetchItems(projectId.value, {
-      categoryId: registerCategoryId.value,
-      includeArchived: Boolean(isAdmin.value && registerIncludeArchived.value),
-    })
+    const includeArchived = Boolean(isAdmin.value && registerIncludeArchived.value)
+    if (registerCategoryId.value === ALL_CATEGORIES) {
+      await opr.fetchItems(projectId.value, { includeArchived })
+    } else if (registerCategoryId.value) {
+      await opr.fetchItems(projectId.value, { categoryId: registerCategoryId.value, includeArchived })
+    } else {
+      opr.items = []
+      return
+    }
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'Failed to load OPR items'
     ui.showError(msg, { duration: 6000 })

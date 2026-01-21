@@ -999,8 +999,19 @@ router.get('/items', async (req, res) => {
     const projectId = asString(req.params.projectId).trim()
     const categoryId = req.query.categoryId ? String(req.query.categoryId) : null
     if (categoryId && !mongoose.Types.ObjectId.isValid(categoryId)) return res.status(400).json({ error: 'Invalid categoryId' })
+    const idsRaw = req.query.ids
+    const idsList = idsRaw
+      ? String(idsRaw)
+        .split(',')
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+      : []
+    if (idsList.length && idsList.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+      return res.status(400).json({ error: 'Invalid ids' })
+    }
     const includeArchived = isTruthy(req.query.includeArchived)
     const filter = { orgId, projectId }
+    if (idsList.length) filter._id = { $in: idsList }
     if (categoryId) filter.categoryId = categoryId
     if (!includeArchived) filter.status = 'active'
     const rows = await OprItem.find(filter)

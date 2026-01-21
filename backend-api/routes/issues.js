@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Issue = require('../models/issue');
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
+const OprItem = require('../models/oprItem')
 const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature, enforceLimit } = require('../middleware/planGuard');
 const { auth } = require('../middleware/auth');
@@ -78,6 +79,37 @@ function safeErrorMessage(err, fallback) {
 
 function sendServerError(res, err, fallback) {
   return res.status(500).send({ error: safeErrorMessage(err, fallback) })
+}
+
+function normalizeObjectIdList(value, { max = 50 } = {}) {
+  if (value === undefined) return undefined
+  const list = Array.isArray(value) ? value : [value]
+  const out = []
+  const seen = new Set()
+  for (const v of list) {
+    const s = String(v || '').trim()
+    if (!s) continue
+    if (!mongoose.Types.ObjectId.isValid(s)) return null
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+    if (out.length > max) return null
+  }
+  return out
+}
+
+async function validateOprItemIds({ projectId, oprItemIds }) {
+  const ids = normalizeObjectIdList(oprItemIds, { max: 100 })
+  if (ids === undefined) return { ids: undefined }
+  if (ids === null) return { error: 'Invalid oprItemIds' }
+  if (ids.length === 0) return { ids: [] }
+
+  const orgId = String(projectId)
+  const rows = await OprItem.find({ _id: { $in: ids }, orgId, projectId, status: 'active' }).select('_id').lean()
+  const ok = new Set(rows.map((r) => String(r._id)))
+  if (ok.size !== ids.length) return { error: 'Invalid oprItemIds (must belong to this project)' }
+  return { ids }
 }
 
 // multer memory storage for small images
@@ -166,8 +198,13 @@ router.post(
 
     const assignedNumber = updatedProject.lastIssueNumber || 0;
 
+    // Validate OPR item links (optional)
+    const oprValidation = await validateOprItemIds({ projectId, oprItemIds: (req.body || {}).oprItemIds })
+    if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
+
     // Compose the issue with the assigned number to ensure atomic assignment
     const issueData = { ...req.body, number: assignedNumber };
+    if (oprValidation.ids !== undefined) issueData.oprItemIds = oprValidation.ids
     const issue = new Issue(issueData);
     await issue.save();
 
@@ -538,6 +575,11 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requi
         incoming.closedDate = '';
         incoming.closedBy = '';
       }
+
+      // Validate OPR item links (optional)
+      const oprValidation = await validateOprItemIds({ projectId: issue.projectId, oprItemIds: incoming.oprItemIds })
+      if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
+      if (oprValidation.ids !== undefined) incoming.oprItemIds = oprValidation.ids
 
       const updated = await Issue.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
       if (!updated) return res.status(404).send();

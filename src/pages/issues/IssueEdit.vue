@@ -491,6 +491,15 @@
               </div>
             </div>
 
+            <div class="md:col-span-2 mt-2">
+              <OprItemPicker
+                v-model="form.oprItemIds"
+                :project-id="projectId"
+                :disabled="isClosed"
+                label="OPR items"
+              />
+            </div>
+
             <div class="md:col-span-2">
               <div class="flex items-center gap-3 mt-2 justify-end md:justify-start">
                 <!-- Prev/Next navigation -->
@@ -1536,6 +1545,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import PhotoUploader from '../../components/PhotoUploader.vue'
 import DocumentUploader from '../../components/DocumentUploader.vue'
+import OprItemPicker from '../../components/OprItemPicker.vue'
 import Comments from '../../components/Comments.vue'
 import Modal from '../../components/Modal.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -1656,6 +1666,7 @@ const form = reactive<any>({
   closedDate: '',
   projectId: '',
   labels: [] as string[],
+  oprItemIds: [] as string[],
   comments: [] as any[],
   attachments: [] as any[],
   photos: [] as any[],
@@ -1682,6 +1693,21 @@ function normalizeLabels(labels: any): string[] {
     if (seen.has(key)) continue
     seen.add(key)
     out.push(t)
+  }
+  return out
+}
+
+function normalizeOprItemIds(value: any): string[] {
+  const arr = Array.isArray(value) ? value : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const s = String(raw || '').trim()
+    if (!s) continue
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
   }
   return out
 }
@@ -2155,6 +2181,7 @@ onMounted(async () => {
         closedDate: i?.closedDate || '',
         projectId: i?.projectId ? String(i.projectId) : form.projectId,
         labels: normalizeLabels((i as any)?.labels),
+        oprItemIds: normalizeOprItemIds((i as any)?.oprItemIds),
         comments: Array.isArray(i?.comments) ? normalizeComments(i?.comments) : [],
         // Prefer attachments from backend; fall back to legacy documents field if present
         attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
@@ -2185,7 +2212,7 @@ watch(id, async (nv, ov) => {
       title: '', description: '', type: null, priority: 'medium', status: 'open',
       number: null, foundBy: '', dateFound: '', dueDate: '', assignedTo: '', location: '', system: '', recommendation: '', resolution: '',
       closedBy: '', closedDate: '',
-      projectId: chooseProjectId(), labels: [], comments: [], attachments: [], photos: []
+      projectId: chooseProjectId(), labels: [], oprItemIds: [], comments: [], attachments: [], photos: []
     })
     return
   }
@@ -2210,6 +2237,7 @@ watch(id, async (nv, ov) => {
       closedDate: i?.closedDate || '',
       projectId: i?.projectId ? String(i.projectId) : form.projectId,
       labels: normalizeLabels((i as any)?.labels),
+      oprItemIds: normalizeOprItemIds((i as any)?.oprItemIds),
       comments: Array.isArray(i?.comments) ? normalizeComments(i?.comments) : [],
       attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
       photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
@@ -2265,6 +2293,7 @@ async function save() {
     recommendation: form.recommendation || undefined,
     resolution: form.resolution || undefined,
     labels: normalizeLabels(form.labels),
+    oprItemIds: normalizeOprItemIds(form.oprItemIds),
     comments: form.comments,
     documents: form.attachments,
     photos: form.photos,
@@ -2323,6 +2352,7 @@ async function saveAndGetId(): Promise<string> {
     recommendation: form.recommendation || undefined,
     resolution: form.resolution || undefined,
     labels: normalizeLabels(form.labels),
+    oprItemIds: normalizeOprItemIds(form.oprItemIds),
     comments: form.comments || [],
     documents: form.attachments || [],
     photos: form.photos || [],

@@ -23,6 +23,8 @@ const issueSchema = new mongoose.Schema({
   resolution: { type: String, required: false },
   // Free-form tags for filtering/grouping
   labels: { type: [String], default: [] },
+  // OPR Items linked for traceability (OPR Workshop add-on)
+  oprItemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'OprItem' }],
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: false }, // Reference to an asset if applicable
   activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Activity', required: false }, // Reference to an activity if applicable
   // photos stored in DB as base64 strings (note: keep sizes small)
@@ -45,6 +47,7 @@ issueSchema.pre('save', function (next) {
 
 issueSchema.index({ projectId: 1 })
 issueSchema.index({ projectId: 1, tag: 1 })
+issueSchema.index({ projectId: 1, oprItemIds: 1 })
 
 const Issue = mongoose.model('Issue', issueSchema);
 

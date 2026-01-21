@@ -320,6 +320,17 @@
                 />
               </div>
             </div>
+
+            <div class="md:col-span-2">
+              <OprItemPicker
+                v-model="(local[i] as any).oprItemIds"
+                :project-id="String(props.projectId || '')"
+                :disabled="!props.projectId"
+                label="OPR items"
+                @update:modelValue="notifyChange"
+              />
+            </div>
+
             <template v-if="!(local[i] as any).kind || (local[i] as any).kind === 'standard'">
               <div class="md:col-span-2 space-y-2">
                 <div class="flex items-center justify-between">
@@ -1242,6 +1253,7 @@ import { reactive, ref, computed, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import Modal from './Modal.vue'
 import IssueForm from './IssueForm.vue'
+import OprItemPicker from './OprItemPicker.vue'
 import { useUiStore } from '../stores/ui'
 import { useProjectStore } from '../stores/project'
 import { useIssuesStore } from '../stores/issues'
@@ -1259,6 +1271,7 @@ export interface FunctionalTestItem {
   notes?: string | null
   pass?: boolean | null
   issues?: Array<any>
+  oprItemIds?: string[]
   // New optional fields for typed tests
   kind?: 'standard' | 'sheet' | 'table'
   rows?: Array<{ step: string; expected: string; actual: string }>

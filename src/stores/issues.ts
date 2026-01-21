@@ -18,6 +18,7 @@ export interface Issue {
   dueDate?: string
   assignedTo?: string
   labels?: string[]
+  oprItemIds?: string[]
   severity?: 'Low' | 'Medium' | 'High'
   status?: 'Open' | 'In Progress' | 'Closed'
   closedDate?: string
