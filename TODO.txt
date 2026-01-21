@@ -302,3 +302,6 @@ Chat storage
 Polish (button overlap fixes)
 - [x] Avoid "Ask Assistant" covering key bottom action bars (TaskEdit/EquipmentEdit/TemplateEditor).
 - [x] Avoid "Ask Assistant" covering pagination controls (SpacesList/EquipmentList/IssuesList).
+
+OPR Workshop / OPR Register
+- [ ] Add OPR item linking to Issues + FPT (traceability + reporting).

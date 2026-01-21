@@ -2613,7 +2613,7 @@ onMounted(async () => {
         if (endDate && isDate(endDate)) form.endDate = endDate
       } catch (_) { /* ignore prefill errors */ }
     }
-    if (!isNew.value) {
+      if (!isNew.value) {
       let activityData: any = null
       // Prefer project-scoped list lookup to avoid 404 noise
       try {
@@ -2623,6 +2623,14 @@ onMounted(async () => {
           activityData = (list || []).find((a: any) => String(a?.id || a?._id) === String(id.value)) || null
         }
       } catch (_) { /* ignore */ }
+      // The lightweight list endpoint intentionally omits some fields (e.g. `issues`).
+      // For edit views, ensure we hydrate from the single-activity endpoint so linked
+      // issues persist across refreshes.
+      if (activityData && !Object.prototype.hasOwnProperty.call(activityData, 'issues')) {
+        try {
+          activityData = await store.fetchActivity(id.value, { light: true })
+        } catch (_) { /* ignore */ }
+      }
       // Fallback to direct fetch by id only if not found via list
       if (!activityData) {
         try {

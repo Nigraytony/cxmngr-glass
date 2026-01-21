@@ -173,18 +173,36 @@ async function maybeAutoExpireQuestion({ orgId, projectId, question }) {
   if (!question) return question
   const now = new Date()
   if (question.status === 'open' && question.closesAt && now > new Date(question.closesAt)) {
-    await OprQuestion.updateOne(
+    const updated = await OprQuestion.findOneAndUpdate(
       { _id: question._id, orgId, projectId, status: 'open' },
-      { $set: { status: 'closed', closedAt: now, updatedAt: now } }
-    )
-    return { ...question, status: 'closed', closedAt: now }
+      { $set: { status: 'closed', closedAt: now, updatedAt: now } },
+      { new: true }
+    ).lean()
+    return updated || { ...question, status: 'closed', closedAt: now }
   }
   if (question.status === 'voting' && question.votingClosesAt && now > new Date(question.votingClosesAt)) {
-    await OprQuestion.updateOne(
-      { _id: question._id, orgId, projectId, status: 'voting' },
-      { $set: { status: 'closed', votingClosedAt: now, updatedAt: now } }
-    )
-    return { ...question, status: 'closed', votingClosedAt: now }
+    // Auto-close voting window by transitioning to finalized so results are visible.
+    // We intentionally do NOT persist OPR items here (admin "Close Voting & Finalize" does that).
+    const updated = await OprQuestion.findOneAndUpdate(
+      {
+        _id: question._id,
+        orgId,
+        projectId,
+        status: 'voting',
+        votingClosedAt: null,
+      },
+      {
+        $set: {
+          status: 'finalized',
+          votingClosedAt: now,
+          finalizedAt: now,
+          updatedAt: now,
+          updatedBy: question.updatedBy || question.createdBy || null,
+        },
+      },
+      { new: true }
+    ).lean()
+    return updated || { ...question, status: 'finalized', votingClosedAt: now, finalizedAt: now }
   }
   return question
 }
@@ -193,6 +211,13 @@ function validateDurationMinutes(value, fallback) {
   const n = Number.parseInt(String(value), 10)
   if (!Number.isFinite(n)) return fallback
   return Math.max(1, Math.min(240, n))
+}
+
+function parseDurationMinutesStrict(value) {
+  const n = Number.parseInt(String(value), 10)
+  if (!Number.isFinite(n)) return null
+  if (n < 1 || n > 240) return null
+  return n
 }
 
 function computeVoteScore(rank) {
@@ -270,11 +295,42 @@ router.get('/categories', async (req, res) => {
   }
 })
 
+// List questions for this project (stable ordering by createdAt asc).
+router.get('/questions', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const rows = await OprQuestion.find({ orgId, projectId })
+      .select('_id categoryId prompt answerWindowMinutes status openedAt closesAt closedAt votingOpenedAt votingClosesAt votingClosedAt finalizedAt createdAt updatedAt')
+      .sort({ createdAt: 1, _id: 1 })
+      .lean()
+    return res.json(rows.map((q) => ({
+      id: String(q._id),
+      categoryId: q.categoryId ? String(q.categoryId) : null,
+      prompt: q.prompt,
+      answerWindowMinutes: typeof q.answerWindowMinutes === 'number' ? q.answerWindowMinutes : null,
+      status: q.status,
+      openedAt: q.openedAt || null,
+      closesAt: q.closesAt || null,
+      closedAt: q.closedAt || null,
+      votingOpenedAt: q.votingOpenedAt || null,
+      votingClosesAt: q.votingClosesAt || null,
+      votingClosedAt: q.votingClosedAt || null,
+      finalizedAt: q.finalizedAt || null,
+      createdAt: q.createdAt || null,
+      updatedAt: q.updatedAt || null,
+    })))
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load questions' })
+  }
+})
+
 router.get('/active', async (req, res) => {
   try {
     const orgId = req.oprOrgId
     const projectId = asString(req.params.projectId).trim()
-    const q = await OprQuestion.findOne({ orgId, projectId, status: { $in: ['open', 'voting'] } })
+    // Return the current (most recently updated) session. Closed/finalized sessions remain visible.
+    const q = await OprQuestion.findOne({ orgId, projectId, status: { $in: ['open', 'closed', 'voting', 'finalized'] } })
       .sort({ updatedAt: -1 })
       .lean()
     if (!q) return res.json({ active: null })
@@ -292,16 +348,25 @@ router.post('/questions', requireObjectIdBody('categoryId'), async (req, res) =>
     const projectId = asString(req.params.projectId).trim()
     const categoryId = String(req.body.categoryId)
     const prompt = asString(req.body.prompt).trim()
+    const answerWindowMinutesRaw = req.body.answerWindowMinutes
     if (!prompt) return res.status(400).json({ error: 'prompt is required' })
     if (prompt.length > 2000) return res.status(400).json({ error: 'prompt is too long' })
     const cat = await OprCategory.findOne({ _id: categoryId, orgId, projectId, active: true }).select('_id').lean()
     if (!cat) return res.status(404).json({ error: 'Category not found' })
+
+    let answerWindowMinutes = getOprDefaultAnswerWindowMinutes()
+    if (typeof answerWindowMinutesRaw !== 'undefined') {
+      const parsed = parseDurationMinutesStrict(answerWindowMinutesRaw)
+      if (parsed === null) return res.status(400).json({ error: 'Invalid answerWindowMinutes' })
+      answerWindowMinutes = parsed
+    }
 
     const doc = await OprQuestion.create({
       orgId,
       projectId,
       categoryId,
       prompt,
+      answerWindowMinutes,
       status: 'draft',
       createdBy: req.user._id,
       updatedBy: req.user._id,
@@ -309,6 +374,93 @@ router.post('/questions', requireObjectIdBody('categoryId'), async (req, res) =>
     return res.status(201).json({ id: String(doc._id) })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to create question' })
+  }
+})
+
+router.patch('/questions/:questionId', requireObjectIdParam('questionId'), loadQuestion, requireOprAdmin, async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const q = req.oprQuestion
+    const now = new Date()
+
+    const updates = {}
+
+    if (typeof req.body.prompt !== 'undefined') {
+      const prompt = asString(req.body.prompt).trim()
+      if (!prompt) return res.status(400).json({ error: 'prompt is required' })
+      if (prompt.length > 2000) return res.status(400).json({ error: 'prompt is too long' })
+      updates.prompt = prompt
+    }
+
+    if (typeof req.body.categoryId !== 'undefined') {
+      const categoryId = String(req.body.categoryId || '')
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) return res.status(400).json({ error: 'Invalid categoryId' })
+      const cat = await OprCategory.findOne({ _id: categoryId, orgId, projectId, active: true }).select('_id').lean()
+      if (!cat) return res.status(404).json({ error: 'Category not found' })
+      updates.categoryId = categoryId
+    }
+
+    if (typeof req.body.answerWindowMinutes !== 'undefined') {
+      const parsed = parseDurationMinutesStrict(req.body.answerWindowMinutes)
+      if (parsed === null) return res.status(400).json({ error: 'Invalid answerWindowMinutes' })
+      updates.answerWindowMinutes = parsed
+    }
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ error: 'No changes provided' })
+    }
+
+    const updated = await OprQuestion.findOneAndUpdate(
+      { _id: q._id, orgId, projectId },
+      { $set: { ...updates, updatedBy: req.user._id, updatedAt: now } },
+      { new: true }
+    ).lean()
+
+    if (!updated) return res.status(404).json({ error: 'Question not found' })
+    return res.json({
+      ok: true,
+      question: {
+        id: String(updated._id),
+        categoryId: updated.categoryId ? String(updated.categoryId) : null,
+        prompt: updated.prompt,
+        answerWindowMinutes: typeof updated.answerWindowMinutes === 'number' ? updated.answerWindowMinutes : null,
+        status: updated.status,
+        openedAt: updated.openedAt || null,
+        closesAt: updated.closesAt || null,
+        closedAt: updated.closedAt || null,
+        votingOpenedAt: updated.votingOpenedAt || null,
+        votingClosesAt: updated.votingClosesAt || null,
+        votingClosedAt: updated.votingClosedAt || null,
+        finalizedAt: updated.finalizedAt || null,
+        createdAt: updated.createdAt || null,
+        updatedAt: updated.updatedAt || null,
+      },
+    })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to update question' })
+  }
+})
+
+router.delete('/questions/:questionId', requireObjectIdParam('questionId'), loadQuestion, requireOprAdmin, async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const q = req.oprQuestion
+    const questionId = q._id
+
+    // Delete dependents first to avoid orphan data.
+    await Promise.all([
+      OprAnswer.deleteMany({ orgId, projectId, questionId }),
+      OprVote.deleteMany({ orgId, projectId, questionId }),
+      OprParticipant.deleteMany({ orgId, projectId, questionId }),
+      OprItem.deleteMany({ orgId, projectId, questionId }),
+    ])
+
+    await OprQuestion.deleteOne({ _id: questionId, orgId, projectId })
+    return res.json({ ok: true })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to delete question' })
   }
 })
 
@@ -320,7 +472,8 @@ router.post('/questions/:questionId/open', requireObjectIdParam('questionId'), l
     if (q.status !== 'draft' && q.status !== 'closed') {
       return res.status(409).json({ error: 'Question cannot be opened from this state', code: 'OPR_INVALID_STATE' })
     }
-    const durationMinutes = validateDurationMinutes(req.body.durationMinutes, getOprDefaultAnswerWindowMinutes())
+    const defaultMinutes = typeof q.answerWindowMinutes === 'number' ? validateDurationMinutes(q.answerWindowMinutes, getOprDefaultAnswerWindowMinutes()) : getOprDefaultAnswerWindowMinutes()
+    const durationMinutes = validateDurationMinutes(req.body.durationMinutes, defaultMinutes)
     const now = new Date()
     const closesAt = new Date(now.getTime() + durationMinutes * 60_000)
 
@@ -523,7 +676,18 @@ router.post(
         return res.status(429).json({ error: `You have reached the max of ${max} answers for this question`, code: 'OPR_MAX_ANSWERS_REACHED' })
       }
 
-      const doc = await OprAnswer.create({ orgId, projectId, questionId: q._id, authorUserId: req.user._id, text })
+      // Allocate a stable sequence number for this question (used for tags).
+      const seqDoc = await OprQuestion.findOneAndUpdate(
+        { _id: q._id, orgId, projectId },
+        { $inc: { lastAnswerSeq: 1 }, $set: { updatedAt: now } },
+        { new: true }
+      ).select('lastAnswerSeq').lean()
+      const seq = seqDoc && Number.isFinite(seqDoc.lastAnswerSeq) ? Number(seqDoc.lastAnswerSeq) : null
+
+      const payload = { orgId, projectId, questionId: q._id, authorUserId: req.user._id, text }
+      if (Number.isFinite(seq) && seq > 0) payload.seq = seq
+
+      const doc = await OprAnswer.create(payload)
       return res.status(201).json({ id: String(doc._id) })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to submit answer' })
@@ -543,14 +707,77 @@ router.get('/questions/:questionId/answers', requireObjectIdParam('questionId'),
       return res.status(403).json({ error: 'Answers are not visible yet', code: 'OPR_ANSWERS_HIDDEN' })
     }
 
-    const rows = await OprAnswer.find({ orgId, projectId, questionId: q._id })
-      .select('_id text authorUserId createdAt updatedAt')
-      .sort({ createdAt: 1 })
+    const includeMerged = admin && isTruthy(req.query.includeMerged)
+
+    // Backfill missing seq values (older data) using createdAt ordering, then ensure question counter stays at max seq.
+    // Note: after introducing seq, older docs may have seq missing (no field) rather than seq:null.
+    const anyMissingSeq = await OprAnswer.exists({
+      orgId,
+      projectId,
+      questionId: q._id,
+      $or: [{ seq: { $exists: false } }, { seq: null }],
+    })
+    if (anyMissingSeq) {
+      const all = await OprAnswer.find({ orgId, projectId, questionId: q._id })
+        .select('_id seq createdAt')
+        .sort({ createdAt: 1, _id: 1 })
+        .lean()
+      const used = new Set()
+      let next = 1
+      const ops = []
+      let maxSeq = 0
+      for (const a of all) {
+        const has = Number.isFinite(a.seq) && a.seq > 0 && !used.has(String(a.seq))
+        let seq = has ? Number(a.seq) : null
+        if (!seq) {
+          while (used.has(String(next))) next += 1
+          seq = next
+          next += 1
+          ops.push({
+            updateOne: {
+              filter: {
+                _id: a._id,
+                orgId,
+                projectId,
+                questionId: q._id,
+                $or: [{ seq: { $exists: false } }, { seq: null }],
+              },
+              update: { $set: { seq } },
+            },
+          })
+        }
+        used.add(String(seq))
+        if (seq > maxSeq) maxSeq = seq
+      }
+      if (ops.length) {
+        try {
+          await OprAnswer.bulkWrite(ops, { ordered: false })
+        } catch (_) {
+          // tolerate parallel backfills
+        }
+      }
+      if (maxSeq > 0) {
+        await OprQuestion.updateOne(
+          { _id: q._id, orgId, projectId, lastAnswerSeq: { $lt: maxSeq } },
+          { $set: { lastAnswerSeq: maxSeq } }
+        )
+      }
+    }
+
+    const query = { orgId, projectId, questionId: q._id }
+    if (!includeMerged) query.mergedIntoAnswerId = null
+
+    const rows = await OprAnswer.find(query)
+      .select('_id text authorUserId seq mergedIntoAnswerId mergedFromAnswerIds createdAt updatedAt')
+      .sort({ seq: 1, createdAt: 1, _id: 1 })
       .lean()
     return res.json(rows.map((a) => ({
       id: String(a._id),
       text: a.text,
       authorUserId: a.authorUserId ? String(a.authorUserId) : null,
+      seq: Number.isFinite(a.seq) ? Number(a.seq) : null,
+      mergedIntoAnswerId: a.mergedIntoAnswerId ? String(a.mergedIntoAnswerId) : null,
+      mergedFromAnswerIds: Array.isArray(a.mergedFromAnswerIds) ? a.mergedFromAnswerIds.map((x) => String(x)) : [],
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
     })))
@@ -558,6 +785,126 @@ router.get('/questions/:questionId/answers', requireObjectIdParam('questionId'),
     return res.status(500).json({ error: 'Failed to load answers' })
   }
 })
+
+router.post(
+  '/questions/:questionId/answers/merge',
+  requireObjectIdParam('questionId'),
+  loadQuestion,
+  requireOprAdmin,
+  async (req, res) => {
+    try {
+      const orgId = req.oprOrgId
+      const projectId = asString(req.params.projectId).trim()
+      const q = req.oprQuestion
+      if (q.status !== 'closed') {
+        return res.status(409).json({ error: 'Answers can only be merged after responses are closed', code: 'OPR_INVALID_STATE' })
+      }
+
+      const hasVotes = await OprVote.exists({ orgId, projectId, questionId: q._id })
+      if (hasVotes) {
+        return res.status(409).json({ error: 'Cannot merge answers after voting has started', code: 'OPR_VOTES_EXIST' })
+      }
+
+      const answerIds = Array.isArray(req.body.answerIds) ? req.body.answerIds.map((x) => String(x)) : []
+      const mergedText = asString(req.body.mergedText).trim()
+      if (answerIds.length < 2) return res.status(400).json({ error: 'Must select at least 2 answers to merge' })
+      const uniqueIds = Array.from(new Set(answerIds)).filter((id) => mongoose.Types.ObjectId.isValid(id))
+      if (uniqueIds.length < 2) return res.status(400).json({ error: 'Invalid answerIds' })
+      if (!mergedText) return res.status(400).json({ error: 'mergedText is required' })
+      if (mergedText.length > 8000) return res.status(400).json({ error: 'mergedText is too long' })
+
+      const answers = await OprAnswer.find({
+        orgId,
+        projectId,
+        questionId: q._id,
+        _id: { $in: uniqueIds },
+        mergedIntoAnswerId: null,
+      })
+        .select('_id seq createdAt text mergeOriginalText mergedFromAnswerIds')
+        .sort({ seq: 1, createdAt: 1, _id: 1 })
+        .lean()
+      if (!answers || answers.length !== uniqueIds.length) {
+        return res.status(400).json({ error: 'All answers must belong to this question and not already be merged', code: 'OPR_MERGE_INVALID' })
+      }
+
+      // Canonical answer is the earliest by seq (stable tag order).
+      const canonical = answers[0]
+      const canonicalId = String(canonical._id)
+      const mergedIds = answers.slice(1).map((a) => String(a._id))
+      const now = new Date()
+
+      const nextMergedFrom = Array.from(
+        new Set([...(canonical.mergedFromAnswerIds || []).map((x) => String(x)), ...mergedIds])
+      ).filter((id) => id !== canonicalId)
+
+      const canonicalUpdate = {
+        text: mergedText,
+        mergedFromAnswerIds: nextMergedFrom,
+        mergedAt: now,
+        mergedBy: req.user._id,
+        updatedAt: now,
+      }
+      if (!canonical.mergeOriginalText) canonicalUpdate.mergeOriginalText = canonical.text
+
+      await OprAnswer.updateOne({ _id: canonical._id, orgId, projectId, questionId: q._id }, { $set: canonicalUpdate })
+      await OprAnswer.updateMany(
+        { orgId, projectId, questionId: q._id, _id: { $in: mergedIds } },
+        { $set: { mergedIntoAnswerId: canonical._id, mergedAt: now, mergedBy: req.user._id, updatedAt: now } }
+      )
+
+      return res.json({ ok: true, canonicalId })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to merge answers' })
+    }
+  }
+)
+
+router.post(
+  '/questions/:questionId/answers/:answerId/unmerge',
+  requireObjectIdParam('questionId'),
+  requireObjectIdParam('answerId'),
+  loadQuestion,
+  requireOprAdmin,
+  async (req, res) => {
+    try {
+      const orgId = req.oprOrgId
+      const projectId = asString(req.params.projectId).trim()
+      const q = req.oprQuestion
+      if (q.status !== 'closed') {
+        return res.status(409).json({ error: 'Answers can only be unmerged while responses are closed', code: 'OPR_INVALID_STATE' })
+      }
+
+      const hasVotes = await OprVote.exists({ orgId, projectId, questionId: q._id })
+      if (hasVotes) {
+        return res.status(409).json({ error: 'Cannot unmerge answers after voting has started', code: 'OPR_VOTES_EXIST' })
+      }
+
+      const canonicalId = asString(req.params.answerId).trim()
+      const canonical = await OprAnswer.findOne({ _id: canonicalId, orgId, projectId, questionId: q._id, mergedIntoAnswerId: null })
+        .select('_id mergeOriginalText mergedFromAnswerIds')
+        .lean()
+      if (!canonical) return res.status(404).json({ error: 'Answer not found' })
+      const mergedFrom = Array.isArray(canonical.mergedFromAnswerIds) ? canonical.mergedFromAnswerIds.map((x) => String(x)) : []
+      if (!mergedFrom.length) return res.status(409).json({ error: 'Answer is not merged', code: 'OPR_NOT_MERGED' })
+      if (!canonical.mergeOriginalText) return res.status(409).json({ error: 'Cannot unmerge: original text is missing', code: 'OPR_UNMERGE_FAILED' })
+
+      const now = new Date()
+      await OprAnswer.updateOne(
+        { _id: canonical._id, orgId, projectId, questionId: q._id },
+        { $set: { text: canonical.mergeOriginalText, mergedFromAnswerIds: [], updatedAt: now }, $unset: { mergeOriginalText: 1, mergedAt: 1, mergedBy: 1 } }
+      )
+
+      await OprAnswer.updateMany(
+        { orgId, projectId, questionId: q._id, _id: { $in: mergedFrom }, mergedIntoAnswerId: canonical._id },
+        { $set: { mergedIntoAnswerId: null, updatedAt: now }, $unset: { mergedAt: 1, mergedBy: 1 } }
+      )
+
+      return res.json({ ok: true })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to unmerge answers' })
+    }
+  }
+)
 
 // Voting: must be an active participant (lastSeenAt within ACTIVE_WINDOW_MINUTES).
 router.post(
@@ -603,8 +950,14 @@ router.post(
         normalized.push({ answerId, rank })
       }
 
-      // Ensure all answers belong to this question.
-      const answerDocs = await OprAnswer.find({ orgId, projectId, questionId: q._id, _id: { $in: Array.from(seenAnswerIds) } })
+      // Ensure all answers belong to this question and are not merged away.
+      const answerDocs = await OprAnswer.find({
+        orgId,
+        projectId,
+        questionId: q._id,
+        _id: { $in: Array.from(seenAnswerIds) },
+        mergedIntoAnswerId: null,
+      })
         .select('_id')
         .lean()
       if (!answerDocs || answerDocs.length !== 5) {
@@ -650,11 +1003,15 @@ router.get('/items', async (req, res) => {
     const filter = { orgId, projectId }
     if (categoryId) filter.categoryId = categoryId
     if (!includeArchived) filter.status = 'active'
-    const rows = await OprItem.find(filter).select('_id categoryId questionId text score rank status createdAt updatedAt').sort({ categoryId: 1, rank: 1 }).lean()
+    const rows = await OprItem.find(filter)
+      .select('_id categoryId questionId sourceAnswerId text score rank status createdAt updatedAt')
+      .sort({ categoryId: 1, rank: 1 })
+      .lean()
     return res.json(rows.map((i) => ({
       id: String(i._id),
       categoryId: i.categoryId ? String(i.categoryId) : null,
       questionId: i.questionId ? String(i.questionId) : null,
+      sourceAnswerId: i.sourceAnswerId ? String(i.sourceAnswerId) : null,
       text: i.text,
       score: i.score,
       rank: i.rank,

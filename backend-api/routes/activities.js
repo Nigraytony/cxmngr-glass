@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
+const Issue = require('../models/issue');
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
@@ -106,6 +107,22 @@ function normalizeActivityStatus(value) {
   const allowed = new Set(['draft', 'published', 'completed'])
   if (!allowed.has(s)) throw new Error(`Invalid status: ${s}`)
   return s
+}
+
+function normalizeIssueIds(input) {
+  if (input === null || typeof input === 'undefined') return null
+  if (!Array.isArray(input)) throw new Error('issues must be an array')
+  const out = []
+  const seen = new Set()
+  for (const raw of input) {
+    const id = String((raw && (raw.id || raw._id)) || raw || '').trim()
+    if (!id) continue
+    if (!mongoose.Types.ObjectId.isValid(id)) throw new Error(`Invalid issue id: ${id}`)
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
 }
 
 // Create a new activity
@@ -324,7 +341,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
-    const lightFields = 'name type status startDate endDate projectId location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml'
+    const lightFields = 'name type status startDate endDate projectId location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos
@@ -598,11 +615,11 @@ router.patch('/:id/photos/:index', auth, requireNotDisabled('uploads'), requireO
 router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), async (req, res) => {
   try {
     const incoming = pickActivityPayload(req.body)
+    const issuesInput = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'issues')) ? req.body.issues : undefined
     // Never allow changing ownership or heavy arrays via generic patch
     delete incoming.projectId
     delete incoming.photos
     delete incoming.attachments
-    delete incoming.issues
     delete incoming.comments
     delete incoming.logs
 
@@ -629,6 +646,22 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, re
 
     await runMiddleware(req, res, requirePermission('activities.update', { projectParam: 'projectId' }));
     await runMiddleware(req, res, requireActiveProject);
+
+    // Allow updating linked issues via PATCH for ActivityEdit Issues tab.
+    if (typeof issuesInput !== 'undefined') {
+      const ids = normalizeIssueIds(issuesInput)
+      const limit = 2000
+      if (ids && ids.length > limit) {
+        return res.status(400).send({ error: `Too many issues (max ${limit})` })
+      }
+      if (ids) {
+        const count = await Issue.countDocuments({ _id: { $in: ids }, projectId: activity.projectId })
+        if (count !== ids.length) {
+          return res.status(400).send({ error: 'One or more issues are invalid for this project' })
+        }
+      }
+      incoming.issues = ids || []
+    }
 
     const updated = await Activity.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
     if (!updated) return res.status(404).send();

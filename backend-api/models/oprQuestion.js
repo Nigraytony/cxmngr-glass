@@ -6,6 +6,8 @@ const oprQuestionSchema = new mongoose.Schema(
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprCategory', required: true, index: true },
     prompt: { type: String, required: true },
+    // Default answer window for this question when opened (in minutes).
+    answerWindowMinutes: { type: Number, default: 10 },
     status: { type: String, enum: ['draft', 'open', 'closed', 'voting', 'finalized'], default: 'draft', index: true },
     openedAt: { type: Date, default: null },
     closesAt: { type: Date, default: null },
@@ -14,19 +16,21 @@ const oprQuestionSchema = new mongoose.Schema(
     votingClosesAt: { type: Date, default: null },
     votingClosedAt: { type: Date, default: null },
     finalizedAt: { type: Date, default: null },
+    // Stable per-question counter to assign OprAnswer.seq.
+    lastAnswerSeq: { type: Number, default: 0 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
   },
   { timestamps: true }
 )
 
-// Ensure at most one active question per project (status=open|voting).
+// Ensure at most one active question per project.
 oprQuestionSchema.index(
-  { projectId: 1, status: 1 },
+  { projectId: 1 },
   {
     unique: true,
     partialFilterExpression: {
-      status: { $in: ['open', 'voting'] },
+      status: { $in: ['open', 'closed', 'voting'] },
     },
   }
 )
