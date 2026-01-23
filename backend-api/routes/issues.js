@@ -53,6 +53,11 @@ function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } =
   return s
 }
 
+function normalizeBoolFlag(value) {
+  const s = String(value ?? '').trim().toLowerCase()
+  return s === '1' || s === 'true' || s === 'yes' || s === 'y' || s === 'on'
+}
+
 const LIST_SORT_FIELDS = new Set([
   'updatedAt',
   'createdAt',
@@ -150,7 +155,7 @@ function getBackendBaseUrl(req) {
 }
 
 // Light projection for list responses to avoid pulling large blobs
-const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location createdAt updatedAt dueDate closedBy closedDate labels recommendation';
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location createdAt updatedAt dueDate closedBy closedDate labels recommendation oprItemIds';
 
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
@@ -242,6 +247,7 @@ router.get(
     }
 
     const filter = { projectId }
+    const and = []
     if (req.query.search) {
       const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
       if (rx) filter.$or = [
@@ -267,6 +273,34 @@ router.get(
 	      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
 	      if (v) filter.status = v
 	    }
+
+    // OPR filters
+    if (normalizeBoolFlag(req.query.hasOpr)) {
+      and.push({ oprItemIds: { $exists: true, $ne: [] } })
+    }
+    if (req.query.oprItemId !== undefined) {
+      const s = normalizeOptionalFilterString(req.query.oprItemId, { maxLen: 64, allowAll: true })
+      if (s === undefined) return res.status(400).send({ error: 'Invalid oprItemId' })
+      if (s) {
+        if (!mongoose.Types.ObjectId.isValid(String(s))) return res.status(400).send({ error: 'Invalid oprItemId' })
+        and.push({ oprItemIds: String(s) })
+      }
+    }
+    if (req.query.oprCategoryId !== undefined) {
+      const s = normalizeOptionalFilterString(req.query.oprCategoryId, { maxLen: 64, allowAll: true })
+      if (s === undefined) return res.status(400).send({ error: 'Invalid oprCategoryId' })
+      if (s) {
+        if (!mongoose.Types.ObjectId.isValid(String(s))) return res.status(400).send({ error: 'Invalid oprCategoryId' })
+        const orgId = String(projectId)
+        const rows = await OprItem.find({ orgId, projectId, categoryId: String(s) }).select('_id').lean()
+        const ids = Array.isArray(rows) ? rows.map((r) => String(r._id)).filter(Boolean) : []
+        // If no items exist in this category, no issues can match.
+        if (ids.length === 0) and.push({ _id: { $in: [] } })
+        else and.push({ oprItemIds: { $in: ids } })
+      }
+    }
+
+    if (and.length) filter.$and = and
 
     const totalAll = await Issue.countDocuments({ projectId })
     const total = await Issue.countDocuments(filter)

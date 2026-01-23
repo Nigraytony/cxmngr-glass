@@ -16,6 +16,8 @@ const OprAnswer = require('../models/oprAnswer')
 const OprParticipant = require('../models/oprParticipant')
 const OprVote = require('../models/oprVote')
 const OprItem = require('../models/oprItem')
+const OprWorkshop = require('../models/oprWorkshop')
+const OprWorkshopAttendee = require('../models/oprWorkshopAttendee')
 
 const {
   getOprActiveWindowMinutes,
@@ -110,6 +112,30 @@ function requireOprEnabled(req, res, next) {
 function requireOprAdmin(req, res, next) {
   if (isProjectAdmin(req.oprProject, req.user)) return next()
   return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+}
+
+function userProjectRole(user, projectId) {
+  try {
+    const projects = Array.isArray(user?.projects) ? user.projects : []
+    const pid = String(projectId || '')
+    const match = projects.find((p) => String((p && (p._id || p.id)) || p || '') === pid)
+    if (match && match.role) return String(match.role)
+  } catch (_) {
+    // ignore
+  }
+  return ''
+}
+
+function requireProfileComplete(user) {
+  const u = user || {}
+  const firstName = asString(u.firstName).trim()
+  const lastName = asString(u.lastName).trim()
+  const email = asString(u.email).trim()
+  const company = asString(u.contact && u.contact.company).trim()
+  if (!firstName || !lastName || !email || !company) {
+    return { ok: false, error: 'Complete your profile (name, email, company) before checking in.' }
+  }
+  return { ok: true }
 }
 
 function oprRateKey(req) {
@@ -278,6 +304,259 @@ async function computeResults({ orgId, projectId, questionId }) {
 
 // Base middleware: auth + kill switch + subscription active + project access + add-on gate
 router.use(auth, requireNotDisabled('opr'), requireActiveProject, requireOprProjectAccess, requireOprEnabled)
+
+function workshopToApi(doc) {
+  if (!doc) return null
+  return {
+    id: String(doc._id),
+    name: asString(doc.name).trim(),
+    date: asString(doc.date).trim(),
+    location: asString(doc.location).trim(),
+    startTime: asString(doc.startTime).trim(),
+    endTime: asString(doc.endTime).trim(),
+    description: asString(doc.description).trim(),
+    tags: Array.isArray(doc.tags) ? doc.tags.map((t) => asString(t).trim()).filter(Boolean) : [],
+    startedAt: doc.startedAt || null,
+    endedAt: doc.endedAt || null,
+    updatedAt: doc.updatedAt || null,
+  }
+}
+
+function attendeeToApi(doc) {
+  if (!doc) return null
+  return {
+    id: String(doc._id),
+    userId: doc.userId ? String(doc.userId) : null,
+    status: doc.status,
+    checkedInAt: doc.checkedInAt || null,
+    lastSeenAt: doc.lastSeenAt || null,
+    approvedAt: doc.approvedAt || null,
+    deniedAt: doc.deniedAt || null,
+    snapshot: {
+      name: asString(doc.snapshot && doc.snapshot.name).trim(),
+      email: asString(doc.snapshot && doc.snapshot.email).trim(),
+      company: asString(doc.snapshot && doc.snapshot.company).trim(),
+      role: asString(doc.snapshot && doc.snapshot.role).trim(),
+    },
+  }
+}
+
+async function requireWorkshopAdmitted(req, res, next) {
+  try {
+    if (isProjectAdmin(req.oprProject, req.user)) return next()
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const ok = await OprWorkshopAttendee.exists({ orgId, projectId, userId: req.user._id, status: 'approved' })
+    if (!ok) {
+      return res.status(403).json({
+        error: 'Check in and wait for admin approval to access the workshop Q&A.',
+        code: 'OPR_NOT_ADMITTED',
+      })
+    }
+    return next()
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to authorize workshop access' })
+  }
+}
+
+// Workshop info + attendees (check-in / admit)
+router.get('/workshop', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const workshop = await OprWorkshop.findOne({ orgId, projectId }).lean()
+    const attendee = await OprWorkshopAttendee.findOne({ orgId, projectId, userId: req.user._id }).lean()
+    return res.json({ workshop: workshopToApi(workshop), attendee: attendeeToApi(attendee) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load workshop info' })
+  }
+})
+
+router.patch('/workshop', async (req, res) => {
+  try {
+    if (!isProjectAdmin(req.oprProject, req.user)) return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const userId = req.user?._id || req.user?.id || null
+    const projectObjectId = new mongoose.Types.ObjectId(projectId)
+
+    const payload = {
+      name: asString(req.body?.name).trim(),
+      date: asString(req.body?.date).trim(),
+      location: asString(req.body?.location).trim(),
+      startTime: asString(req.body?.startTime).trim(),
+      endTime: asString(req.body?.endTime).trim(),
+      description: asString(req.body?.description).trim(),
+      tags: Array.isArray(req.body?.tags) ? req.body.tags : (req.body?.tagsCsv ? String(req.body.tagsCsv).split(',') : []),
+      updatedBy: userId,
+    }
+
+    const doc = await OprWorkshop.findOneAndUpdate(
+      { orgId, projectId: projectObjectId },
+      { $set: payload, $setOnInsert: { orgId, projectId: projectObjectId, ...(userId ? { createdBy: userId } : {}) } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean()
+    return res.json({ ok: true, workshop: workshopToApi(doc) })
+  } catch (e) {
+    try { console.error('OPR workshop update failed', e) } catch (_) { /* ignore */ }
+    const details = (e && typeof e === 'object' && e.message) ? String(e.message) : ''
+    return res.status(500).json({
+      error: 'Failed to update workshop info',
+      ...(process.env.NODE_ENV !== 'production' && details ? { details } : {}),
+    })
+  }
+})
+
+router.post('/workshop/start', async (req, res) => {
+  try {
+    if (!isProjectAdmin(req.oprProject, req.user)) return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const userId = req.user?._id || req.user?.id || null
+    const projectObjectId = new mongoose.Types.ObjectId(projectId)
+    const now = new Date()
+
+    const doc = await OprWorkshop.findOneAndUpdate(
+      { orgId, projectId: projectObjectId },
+      {
+        $set: { startedAt: now, endedAt: null, updatedBy: userId },
+        $setOnInsert: { orgId, projectId: projectObjectId, ...(userId ? { createdBy: userId } : {}) },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).lean()
+    return res.json({ ok: true, workshop: workshopToApi(doc) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to start workshop' })
+  }
+})
+
+router.post('/workshop/end', async (req, res) => {
+  try {
+    if (!isProjectAdmin(req.oprProject, req.user)) return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const userId = req.user?._id || req.user?.id || null
+    const projectObjectId = new mongoose.Types.ObjectId(projectId)
+    const now = new Date()
+
+    const doc = await OprWorkshop.findOneAndUpdate(
+      { orgId, projectId: projectObjectId },
+      { $set: { endedAt: now, updatedBy: userId } },
+      { new: true }
+    ).lean()
+    if (!doc) return res.status(404).json({ error: 'Workshop not found' })
+    return res.json({ ok: true, workshop: workshopToApi(doc) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to end workshop' })
+  }
+})
+
+router.post('/workshop/checkin', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    // Workshop must be started by an admin before participants can check in.
+    if (!isProjectAdmin(req.oprProject, req.user)) {
+      const ws = await OprWorkshop.findOne({ orgId, projectId }).select('startedAt endedAt').lean()
+      const started = Boolean(ws && ws.startedAt && !ws.endedAt)
+      if (!started) {
+        return res.status(400).json({
+          error: 'Workshop has not started yet. Please wait for an admin to start the session.',
+          code: 'WORKSHOP_NOT_STARTED',
+        })
+      }
+    }
+
+    const profile = requireProfileComplete(req.user)
+    if (!profile.ok) return res.status(400).json({ error: profile.error, code: 'PROFILE_INCOMPLETE' })
+
+    const role = userProjectRole(req.user, projectId) || (isProjectAdmin(req.oprProject, req.user) ? 'admin' : '')
+    const name = [asString(req.user.firstName).trim(), asString(req.user.lastName).trim()].filter(Boolean).join(' ').trim()
+    const email = asString(req.user.email).trim().toLowerCase()
+    const company = asString(req.user.contact && req.user.contact.company).trim()
+
+    const now = new Date()
+    const existing = await OprWorkshopAttendee.findOne({ orgId, projectId, userId: req.user._id }).lean()
+    const nextStatus = existing && existing.status === 'approved' ? 'approved' : (existing && existing.status === 'denied' ? 'pending' : 'pending')
+
+    const updated = await OprWorkshopAttendee.findOneAndUpdate(
+      { orgId, projectId, userId: req.user._id },
+      {
+        $set: {
+          status: nextStatus,
+          lastSeenAt: now,
+          snapshot: { name, email, company, role: String(role || '') },
+          ...(nextStatus === 'pending' ? { deniedAt: null, deniedBy: null } : {}),
+          updatedAt: now,
+        },
+        $setOnInsert: { checkedInAt: now, createdAt: now },
+      },
+      { upsert: true, new: true }
+    ).lean()
+    return res.json({ ok: true, attendee: attendeeToApi(updated) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to check in' })
+  }
+})
+
+router.get('/workshop/attendees', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const admin = isProjectAdmin(req.oprProject, req.user)
+    if (!admin) {
+      const own = await OprWorkshopAttendee.findOne({ orgId, projectId, userId: req.user._id }).lean()
+      return res.json({ items: own ? [attendeeToApi(own)] : [] })
+    }
+    const rows = await OprWorkshopAttendee.find({ orgId, projectId })
+      .sort({ status: 1, lastSeenAt: -1, checkedInAt: -1 })
+      .lean()
+    return res.json({ items: rows.map(attendeeToApi).filter(Boolean) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load attendees' })
+  }
+})
+
+router.post('/workshop/attendees/:userId/approve', requireObjectIdParam('userId'), async (req, res) => {
+  try {
+    if (!isProjectAdmin(req.oprProject, req.user)) return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const userId = asString(req.params.userId).trim()
+    const now = new Date()
+    const updated = await OprWorkshopAttendee.findOneAndUpdate(
+      { orgId, projectId, userId },
+      { $set: { status: 'approved', approvedAt: now, approvedBy: req.user._id, deniedAt: null, deniedBy: null, updatedAt: now } },
+      { new: true }
+    ).lean()
+    if (!updated) return res.status(404).json({ error: 'Attendee not found' })
+    return res.json({ ok: true, attendee: attendeeToApi(updated) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to approve attendee' })
+  }
+})
+
+router.post('/workshop/attendees/:userId/deny', requireObjectIdParam('userId'), async (req, res) => {
+  try {
+    if (!isProjectAdmin(req.oprProject, req.user)) return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const userId = asString(req.params.userId).trim()
+    const now = new Date()
+    const updated = await OprWorkshopAttendee.findOneAndUpdate(
+      { orgId, projectId, userId },
+      { $set: { status: 'denied', deniedAt: now, deniedBy: req.user._id, updatedAt: now } },
+      { new: true }
+    ).lean()
+    if (!updated) return res.status(404).json({ error: 'Attendee not found' })
+    return res.json({ ok: true, attendee: attendeeToApi(updated) })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to deny attendee' })
+  }
+})
+
+// Require admission (or admin) for the main OPR workshop content (categories, questions, answers, votes, items, results).
+router.use(requireWorkshopAdmitted)
 
 // Stable ordering: sortOrder then name
 router.get('/categories', async (req, res) => {
@@ -993,6 +1272,51 @@ router.get('/questions/:questionId/results', requireObjectIdParam('questionId'),
   }
 })
 
+// Results across all questions (comprehensive)
+router.get('/results/all', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const admin = isProjectAdmin(req.oprProject, req.user)
+
+    const cats = await OprCategory.find({ orgId, projectId }).select('_id name sortOrder active').lean()
+    const catById = new Map(cats.map((c) => [String(c._id), c]))
+    const qFilter = admin ? { orgId, projectId } : { orgId, projectId, status: 'finalized' }
+    const questions = await OprQuestion.find(qFilter)
+      .select('_id categoryId prompt status createdAt updatedAt')
+      .sort({ createdAt: 1, _id: 1 })
+      .lean()
+
+    const items = []
+    for (const q of questions) {
+      // Respect visibility: non-admin should not see results until finalized.
+      if (!admin && q.status !== 'finalized') continue
+      const results = await computeResults({ orgId, projectId, questionId: q._id })
+      const catId = q.categoryId ? String(q.categoryId) : ''
+      const cat = catId ? catById.get(catId) : null
+      for (const r of results) {
+        items.push({
+          questionId: String(q._id),
+          questionPrompt: q.prompt,
+          questionStatus: q.status,
+          categoryId: catId || null,
+          categoryName: cat ? cat.name : '',
+          answerId: r.answerId,
+          text: r.text,
+          authorUserId: r.authorUserId,
+          score: r.score,
+          rank: r.rank,
+          voteCount: r.voteCount,
+          rankCounts: r.rankCounts,
+        })
+      }
+    }
+    return res.json({ items })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load results' })
+  }
+})
+
 router.get('/items', async (req, res) => {
   try {
     const orgId = req.oprOrgId
@@ -1032,6 +1356,78 @@ router.get('/items', async (req, res) => {
     })))
   } catch (e) {
     return res.status(500).json({ error: 'Failed to load OPR items' })
+  }
+})
+
+// Admin: create/import OPR items without a source question/answer (for workshops run outside cxma).
+router.post('/items', requireOprAdmin, async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const userId = req.user?._id || req.user?.id
+
+    const rawItems = (req.body && (req.body.items || req.body)) || []
+    const list = Array.isArray(rawItems) ? rawItems : []
+    if (!list.length) return res.status(400).json({ error: 'items is required' })
+    if (list.length > 500) return res.status(400).json({ error: 'Too many items (max 500)' })
+
+    const normalized = []
+    const categoryIds = new Set()
+    for (const row of list) {
+      const categoryId = String(row?.categoryId || '').trim()
+      const text = asString(row?.text).trim()
+      const score = (row?.score === undefined || row?.score === null || row?.score === '') ? undefined : Number(row.score)
+      const rank = (row?.rank === undefined || row?.rank === null || row?.rank === '') ? undefined : Number(row.rank)
+      if (!categoryId || !mongoose.Types.ObjectId.isValid(categoryId)) return res.status(400).json({ error: 'Invalid categoryId' })
+      if (!text) return res.status(400).json({ error: 'text is required' })
+      if (text.length > 4000) return res.status(400).json({ error: 'text is too long (max 4000)' })
+      if (score !== undefined && !Number.isFinite(score)) return res.status(400).json({ error: 'Invalid score' })
+      if (rank !== undefined && (!Number.isFinite(rank) || rank <= 0)) return res.status(400).json({ error: 'Invalid rank' })
+      categoryIds.add(categoryId)
+      normalized.push({ categoryId, text, score, rank })
+    }
+
+    // Validate categories belong to this project and are active.
+    const cats = await OprCategory.find({ _id: { $in: Array.from(categoryIds) }, orgId, projectId, active: true }).select('_id').lean()
+    const okCats = new Set(cats.map((c) => String(c._id)))
+    if (okCats.size !== categoryIds.size) return res.status(400).json({ error: 'Invalid categoryId (must belong to this project)' })
+
+    // Compute next ranks for categories for items that don't specify rank.
+    const maxRankByCategory = {}
+    for (const cid of categoryIds) {
+      const top = await OprItem.findOne({ orgId, projectId, categoryId: cid, status: 'active' }).sort({ rank: -1 }).select('rank').lean()
+      maxRankByCategory[cid] = top && typeof top.rank === 'number' ? top.rank : 0
+    }
+
+    const docs = normalized.map((it) => {
+      const cid = it.categoryId
+      let rank = it.rank
+      if (!rank) {
+        maxRankByCategory[cid] = (maxRankByCategory[cid] || 0) + 1
+        rank = maxRankByCategory[cid]
+      }
+      return {
+        orgId,
+        projectId,
+        categoryId: cid,
+        questionId: null,
+        sourceAnswerId: null,
+        text: it.text,
+        score: (it.score !== undefined ? it.score : 0),
+        rank,
+        status: 'active',
+        createdBy: userId,
+        updatedBy: userId,
+      }
+    })
+
+    const inserted = await OprItem.insertMany(docs, { ordered: true })
+    return res.status(201).json({ ok: true, count: inserted.length, items: inserted.map((i) => ({ id: String(i._id) })) })
+  } catch (e) {
+    if (e && (e.code === 11000 || /E11000/.test(String(e.message || '')))) {
+      return res.status(409).json({ error: 'Rank conflict in category (duplicate active rank). Adjust ranks and retry.', code: 'OPR_RANK_CONFLICT' })
+    }
+    return res.status(500).json({ error: 'Failed to create OPR items' })
   }
 })
 

@@ -19,10 +19,430 @@
 
     <div
       v-else
-      class="grid grid-cols-12 gap-4 h-[calc(100vh-10rem)] min-h-0"
+      class="flex flex-col gap-4 h-[calc(100vh-14rem)] min-h-0"
     >
-      <!-- Left: session / controls -->
-      <div class="col-span-12 lg:col-span-5 h-full min-h-0">
+      <!-- Tabs -->
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="mainTab === 'info' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+            @click="tryGoTab('info')"
+          >
+            Info
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="mainTab === 'qa' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+            :disabled="!canEnterQa"
+            :title="canEnterQa ? 'Questions & Answers' : 'Check in and wait for admin approval to enter Q&A'"
+            @click="tryGoTab('qa')"
+          >
+            Q&amp;A
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="mainTab === 'results' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+            :disabled="!canEnterResults"
+            :title="canEnterResults ? 'Results' : 'Check in and wait for admin approval to view Results'"
+            @click="tryGoTab('results')"
+          >
+            Results
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="mainTab === 'import' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+            :disabled="!canEnterImport"
+            :title="canEnterImport ? 'Import OPR items' : 'Admin only'"
+            @click="tryGoTab('import')"
+          >
+            Import
+          </button>
+          <span
+            v-if="!isAdmin && attendeeStatusLabel"
+            class="ml-2 text-xs px-2 py-0.5 rounded-full border"
+            :class="attendeeStatusClass"
+          >{{ attendeeStatusLabel }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="isAdmin && addonEnabled"
+            type="button"
+            class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm disabled:opacity-50"
+            :disabled="generatingWorkshopReport"
+            @click="openWorkshopReportSettings"
+          >
+            Print/PDF
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+            :disabled="opr.loading || workshopLoading || attendeesLoading || resultsLoading"
+            @click="refreshAll"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Info Tab -->
+      <div
+        v-if="mainTab === 'info'"
+        class="grid grid-cols-12 gap-4 flex-1 min-h-0"
+      >
+        <div class="col-span-12 lg:col-span-6 h-full min-h-0">
+          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-white font-semibold">
+                Workshop info
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="isAdmin && addonEnabled"
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                  :disabled="workshopSaving"
+                  @click="saveWorkshopInfo"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                  :disabled="workshopLoading"
+                  @click="refreshWorkshopOnly"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-if="!addonEnabled"
+              class="mt-3 rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+            >
+              <div class="font-semibold text-white">
+                OPR Workshop is a paid add-on
+              </div>
+              <div class="text-sm text-white/70 mt-1">
+                One-time purchase: $24.99 per project.
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm"
+                  @click="purchaseAddon"
+                >
+                  Purchase
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
+                  @click="refreshProject"
+                >
+                  I already purchased
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-else
+              class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1"
+            >
+              <div class="grid grid-cols-12 gap-3">
+                <label class="col-span-12 md:col-span-7 space-y-1">
+                  <div class="text-white/70 text-sm">Name</div>
+                  <input
+                    v-model="workshopDraft.name"
+                    type="text"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white disabled:opacity-60"
+                    :disabled="!isAdmin"
+                    placeholder="OPR Workshop"
+                  >
+                </label>
+                <label class="col-span-12 md:col-span-5 space-y-1">
+                  <div class="text-white/70 text-sm">Date</div>
+                  <input
+                    v-model="workshopDraft.date"
+                    type="date"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white disabled:opacity-60"
+                    :disabled="!isAdmin"
+                  >
+                </label>
+                <label class="col-span-12 space-y-1">
+                  <div class="text-white/70 text-sm">Location</div>
+                  <input
+                    v-model="workshopDraft.location"
+                    type="text"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white disabled:opacity-60"
+                    :disabled="!isAdmin"
+                    placeholder="e.g. Site trailer"
+                  >
+                </label>
+                <label class="col-span-12 md:col-span-6 space-y-1">
+                  <div class="text-white/70 text-sm">Start time</div>
+                  <input
+                    v-model="workshopDraft.startTime"
+                    type="time"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white disabled:opacity-60"
+                    :disabled="!isAdmin"
+                  >
+                </label>
+                <label class="col-span-12 md:col-span-6 space-y-1">
+                  <div class="text-white/70 text-sm">End time</div>
+                  <input
+                    v-model="workshopDraft.endTime"
+                    type="time"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white disabled:opacity-60"
+                    :disabled="!isAdmin"
+                  >
+                </label>
+                <label class="col-span-12 space-y-1">
+                  <div class="text-white/70 text-sm">Description</div>
+                  <textarea
+                    v-model="workshopDraft.description"
+                    rows="4"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white disabled:opacity-60"
+                    :disabled="!isAdmin"
+                    placeholder="Purpose, agenda, notes…"
+                  />
+                </label>
+              </div>
+
+              <div>
+                <div class="flex items-center gap-3">
+                  <div class="text-sm text-white/70 shrink-0">
+                    Tags
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="t in workshopDraft.tags"
+                      :key="t"
+                      class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                    >
+                      <span>{{ t }}</span>
+                      <button
+                        v-if="isAdmin"
+                        type="button"
+                        class="text-white/60 hover:text-white"
+                        aria-label="Remove tag"
+                        @click="removeWorkshopTag(t)"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
+                </div>
+                <div
+                  v-if="isAdmin"
+                  class="flex items-center gap-2 mt-2"
+                >
+                  <input
+                    v-model="workshopTagsInput"
+                    type="text"
+                    placeholder="Add a tag and press Enter…"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    @keydown.enter.prevent="addWorkshopTagsFromInput"
+                    @keydown.,.prevent="addWorkshopTagsFromInput"
+                  >
+                  <button
+                    type="button"
+                    class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                    @click="addWorkshopTagsFromInput"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div
+                  v-if="isAdmin"
+                  class="text-xs text-white/60 mt-1"
+                >
+                  Tip: use commas or Enter to add multiple tags.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-span-12 lg:col-span-6 h-full min-h-0">
+          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-white font-semibold">
+                Participants
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="addonEnabled"
+                  class="text-[11px] px-2 py-0.5 rounded-full border"
+                  :class="workshopStarted ? 'bg-emerald-500/15 border-emerald-400/25 text-emerald-200' : 'bg-white/10 border-white/20 text-white/80'"
+                >
+                  {{ workshopStarted ? 'Session live' : 'Session not started' }}
+                </span>
+                <button
+                  v-if="isAdmin && addonEnabled && !workshopStarted"
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                  :disabled="startingWorkshop || workshopLoading"
+                  @click="startWorkshopSession"
+                >
+                  {{ startingWorkshop ? 'Starting…' : 'Start session' }}
+                </button>
+                <button
+                  v-if="isAdmin && addonEnabled && workshopStarted"
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-red-500/15 border border-red-500/25 hover:bg-red-500/20 text-red-200 text-sm disabled:opacity-50"
+                  :disabled="endingWorkshop || workshopLoading"
+                  @click="endWorkshopSession"
+                >
+                  {{ endingWorkshop ? 'Ending…' : 'End session' }}
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                  :disabled="attendeesLoading || workshopLoading"
+                  @click="refreshAttendees"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-if="addonEnabled"
+              class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1"
+            >
+              <div
+                v-if="!isAdmin"
+                class="rounded-xl bg-white/5 border border-white/10 p-3"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-white font-semibold">
+                      Check-in
+                    </div>
+                    <div class="text-sm text-white/70 mt-1">
+                      <template v-if="!workshopStarted">
+                        Check-in is not available yet. Please wait for the CxA/Admin to start the session.
+                      </template>
+                      <template v-else>
+                        Check in to join this workshop. A CxA/Admin must admit you before you can access Q&amp;A and Results.
+                      </template>
+                    </div>
+                    <div
+                      v-if="attendeeStatusLabel"
+                      class="mt-2 text-xs"
+                    >
+                      Status:
+                      <span class="px-2 py-0.5 rounded-full border ml-1" :class="attendeeStatusClass">{{ attendeeStatusLabel }}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                    :disabled="checkingIn || !workshopStarted || attendeeStatus === 'approved'"
+                    @click="checkInToWorkshop"
+                  >
+                    {{ !workshopStarted ? 'Not started' : attendeeStatus === 'approved' ? 'Admitted' : checkingIn ? 'Checking in…' : 'Check in' }}
+                  </button>
+                </div>
+                <div
+                  v-if="profileIncompleteMessage"
+                  class="text-xs text-amber-200 mt-2"
+                >
+                  {{ profileIncompleteMessage }}
+                </div>
+              </div>
+
+              <div
+                v-if="attendeeRows.length === 0"
+                class="text-white/70 text-sm"
+              >
+                No participants yet.
+              </div>
+              <div
+                v-else
+                class="rounded-xl border border-white/10 overflow-hidden"
+              >
+                <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
+                  <div class="col-span-4">
+                    Name
+                  </div>
+                  <div class="col-span-4">
+                    Email
+                  </div>
+                  <div class="col-span-2">
+                    Company
+                  </div>
+                  <div class="col-span-1">
+                    Role
+                  </div>
+                  <div class="col-span-1 text-right">
+                    Status
+                  </div>
+                </div>
+                <div
+                  v-for="p in attendeeRows"
+                  :key="p.id"
+                  class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-center"
+                >
+                  <div class="col-span-4 truncate text-white/85">
+                    {{ p.snapshot?.name || '—' }}
+                  </div>
+                  <div class="col-span-4 truncate text-white/70">
+                    {{ p.snapshot?.email || '—' }}
+                  </div>
+                  <div class="col-span-2 truncate text-white/70">
+                    {{ p.snapshot?.company || '—' }}
+                  </div>
+                  <div class="col-span-1 truncate text-white/70">
+                    {{ p.snapshot?.role || '—' }}
+                  </div>
+                  <div class="col-span-1 flex items-center justify-end gap-2">
+                    <span class="text-[11px] px-2 py-0.5 rounded-full border" :class="attendeeStatusPillClass(p.status)">{{ p.status }}</span>
+                    <template v-if="isAdmin && p.userId">
+                      <button
+                        v-if="p.status !== 'approved'"
+                        type="button"
+                        class="text-[11px] px-2 py-1 rounded-md bg-emerald-500/15 border border-emerald-400/25 text-emerald-100 hover:bg-emerald-500/20"
+                        @click="approveParticipant(p.userId)"
+                      >
+                        Admit
+                      </button>
+                      <button
+                        v-if="p.status !== 'denied'"
+                        type="button"
+                        class="text-[11px] px-2 py-1 rounded-md bg-red-500/15 border border-red-500/25 text-red-200 hover:bg-red-500/20"
+                        @click="denyParticipant(p.userId)"
+                      >
+                        Deny
+                      </button>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-else
+              class="mt-3 rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+            >
+              Enable the OPR Workshop add-on to use participants and check-in.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="mainTab === 'qa'"
+        class="grid grid-cols-12 gap-4 flex-1 min-h-0"
+      >
+        <!-- Q&A Tab -->
+        <!-- Left: session / controls -->
+        <div class="col-span-12 lg:col-span-5 h-full min-h-0">
         <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
           <div class="flex items-center justify-between gap-3">
             <div class="text-white font-semibold">
@@ -715,7 +1135,9 @@
                   <div
                     v-for="item in filteredOprItems"
                     :key="item.id"
+                    :id="oprItemDomId(item.id)"
                     class="rounded-lg bg-white/5 border border-white/10 p-3"
+                    :class="deepLinkItemId && item.id === deepLinkItemId ? 'ring-2 ring-indigo-400/40 border-indigo-400/30 bg-indigo-500/10' : ''"
                   >
                     <div class="flex items-start justify-between gap-3">
                       <div class="flex items-center gap-2 min-w-0">
@@ -775,11 +1197,527 @@
                   </div>
                 </div>
               </div>
-            </template>
+	            </template>
+	          </div>
+	        </div>
+	      </div>
+	    </div>
+	      <div
+	        v-else-if="mainTab === 'results' || mainTab === 'import'"
+	        class="flex-1 min-h-0"
+	      >
+        <!-- Results Tab -->
+        <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-white font-semibold">
+              {{ mainTab === 'import' ? 'Import OPR items' : 'Results' }}
+            </div>
+            <div
+              v-if="mainTab === 'results'"
+              class="flex items-center gap-2"
+            >
+              <input
+                v-model="resultsSearch"
+                type="text"
+                placeholder="Search results…"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-64"
+              >
+              <button
+                type="button"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                :disabled="resultsLoading"
+                @click="refreshResults"
+              >
+                Refresh
+              </button>
+	        </div>
+	      </div>
+
+      <div
+        v-if="mainTab === 'import'"
+        class="grid grid-cols-12 gap-4 flex-1 min-h-0"
+      >
+        <div class="col-span-12 lg:col-span-6 h-full min-h-0">
+          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-white font-semibold">
+                Add items (manual)
+              </div>
+              <button
+                type="button"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                :disabled="importSubmitting"
+                @click="resetImportDraft"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
+              <div
+                v-if="!isAdmin"
+                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+              >
+                Only the CxA/Admin can import OPR items.
+              </div>
+              <div
+                v-else-if="!addonEnabled"
+                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+              >
+                Enable the OPR Workshop add-on to import items.
+              </div>
+              <template v-else>
+                <label class="block">
+                  <div class="text-white/70 text-sm mb-1">Category</div>
+                  <select
+                    v-model="importDefaultCategoryId"
+                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                  >
+                    <option value="" disabled>
+                      Select category…
+                    </option>
+                    <option
+                      v-for="c in opr.categories"
+                      :key="c.id"
+                      :value="c.id"
+                    >
+                      {{ c.name }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="block">
+                  <div class="text-white/70 text-sm mb-1">Items (one per line)</div>
+                  <textarea
+                    v-model="importLines"
+                    rows="10"
+                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                    placeholder="Enter one OPR item per line…"
+                  />
+                </label>
+
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs text-white/60">
+                    {{ manualLineCount }} items ready
+                  </div>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                    :disabled="importSubmitting || !importDefaultCategoryId || manualLineCount === 0"
+                    @click="submitManualImport"
+                  >
+                    {{ importSubmitting ? 'Saving…' : 'Add items' }}
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-span-12 lg:col-span-6 h-full min-h-0">
+          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-white font-semibold">
+                Upload (CSV/XLSX)
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm cursor-pointer">
+                  <input
+                    type="file"
+                    class="hidden"
+                    accept=".csv,.xlsx,.xls"
+                    :disabled="!isAdmin || importSubmitting"
+                    @change="onImportFileSelected"
+                  >
+                  Choose file
+                </label>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                  :disabled="importSubmitting || importRows.length === 0"
+                  @click="clearImportRows"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
+              <div class="text-xs text-white/60">
+                Expected columns: <span class="text-white/80">category</span>, <span class="text-white/80">text</span> (required). Optional: <span class="text-white/80">rank</span>, <span class="text-white/80">score</span>.
+              </div>
+
+              <div
+                v-if="importRows.length === 0"
+                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/70 text-sm"
+              >
+                Upload a CSV/XLSX file to preview and import OPR items.
+              </div>
+
+              <template v-else>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-xs text-white/60">
+                    {{ importRowsValidCount }} / {{ importRows.length }} valid
+                  </div>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                    :disabled="importSubmitting || importRowsValidCount === 0"
+                    @click="submitFileImport"
+                  >
+                    {{ importSubmitting ? 'Importing…' : `Import ${importRowsValidCount}` }}
+                  </button>
+                </div>
+
+                <div class="rounded-xl border border-white/10 overflow-hidden">
+                  <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
+                    <div class="col-span-4">Category</div>
+                    <div class="col-span-6">Text</div>
+                    <div class="col-span-1 text-right">Rank</div>
+                    <div class="col-span-1 text-right">Score</div>
+                  </div>
+                  <div
+                    v-for="(r, idx) in importRows"
+                    :key="r._key"
+                    class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-start"
+                    :class="rowError(r) ? 'bg-red-500/5' : ''"
+                  >
+                    <div class="col-span-4">
+                      <select
+                        v-model="importRows[idx].categoryId"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm"
+                      >
+                        <option value="">
+                          Select…
+                        </option>
+                        <option
+                          v-for="c in opr.categories"
+                          :key="c.id"
+                          :value="c.id"
+                        >
+                          {{ c.name }}
+                        </option>
+                      </select>
+                      <div
+                        v-if="rowError(r)"
+                        class="text-[11px] text-red-200 mt-1"
+                      >
+                        {{ rowError(r) }}
+                      </div>
+                    </div>
+                    <div class="col-span-6">
+                      <textarea
+                        v-model="importRows[idx].text"
+                        rows="2"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div class="col-span-1 text-right">
+                      <input
+                        v-model.number="importRows[idx].rank"
+                        type="number"
+                        min="1"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm text-right"
+                      >
+                    </div>
+                    <div class="col-span-1 text-right">
+                      <input
+                        v-model.number="importRows[idx].score"
+                        type="number"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm text-right"
+                      >
+                      <button
+                        type="button"
+                        class="mt-2 text-[11px] text-white/70 hover:text-white underline underline-offset-2"
+                        @click="removeImportRow(idx)"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </div>
+
+          <template v-else>
+          <div
+            v-if="!addonEnabled"
+            class="mt-3 rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+          >
+            Enable the OPR Workshop add-on to view results.
+          </div>
+
+          <div
+            v-else
+            class="mt-3 overflow-auto pr-1 min-h-0 flex-1"
+          >
+            <div
+              v-if="resultsLoading"
+              class="text-white/70 text-sm"
+            >
+              Loading…
+            </div>
+            <div
+              v-else-if="resultsRows.length === 0"
+              class="text-white/70 text-sm"
+            >
+              No results yet. Finalize voting on questions to generate ranked results.
+            </div>
+            <div
+              v-else
+              class="rounded-xl border border-white/10 overflow-hidden"
+            >
+              <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
+                <div class="col-span-2">
+                  Category
+                </div>
+                <div class="col-span-1">
+                  Q
+                </div>
+                <div class="col-span-1 text-right">
+                  Rank
+                </div>
+                <div class="col-span-1 text-right">
+                  Score
+                </div>
+                <div class="col-span-1 text-right">
+                  Votes
+                </div>
+                <div class="col-span-2">
+                  Vote breakdown
+                </div>
+                <div class="col-span-4">
+                  Response
+                </div>
+              </div>
+              <div
+                v-for="r in resultsRows"
+                :key="r.questionId + ':' + r.answerId"
+                class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-start"
+              >
+                <div class="col-span-2 text-white/85">
+                  {{ r.categoryName || '—' }}
+                </div>
+                <div class="col-span-1">
+                  <span
+                    v-if="questionTagMap[r.questionId]"
+                    class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80"
+                    :title="r.questionPrompt"
+                  >{{ questionTagMap[r.questionId] }}</span>
+                  <span
+                    v-else
+                    class="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60"
+                    :title="r.questionPrompt"
+                  >Q</span>
+                </div>
+                <div class="col-span-1 text-right text-white/85">
+                  {{ r.rank }}
+                </div>
+                <div class="col-span-1 text-right text-white/85">
+                  {{ r.score }}
+                </div>
+                <div class="col-span-1 text-right text-white/85">
+                  {{ r.voteCount }}
+                </div>
+                <div class="col-span-2 text-xs text-white/70 leading-5">
+                  <div>#1: {{ r.rankCounts?.['1'] || 0 }} · #2: {{ r.rankCounts?.['2'] || 0 }}</div>
+                  <div>#3: {{ r.rankCounts?.['3'] || 0 }} · #4: {{ r.rankCounts?.['4'] || 0 }} · #5: {{ r.rankCounts?.['5'] || 0 }}</div>
+                </div>
+                <div class="col-span-4 text-white/85 whitespace-pre-wrap">
+                  {{ r.text }}
+                </div>
+              </div>
+            </div>
+          </div>
+          </template>
+        </div>
+      </div>
     </div>
+    <!-- OPR Workshop Report Settings Modal -->
+    <Modal
+      v-model="showWorkshopReportDialog"
+      panel-class="max-w-3xl"
+    >
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <div class="text-lg">
+            OPR Workshop Report Settings
+          </div>
+        </div>
+      </template>
+
+      <div class="space-y-4 text-sm">
+        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="workshopReportTab === 'general' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="workshopReportTab = 'general'"
+          >
+            General Settings
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="workshopReportTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="workshopReportTab = 'cover'"
+          >
+            Cover Page
+          </button>
+        </div>
+
+        <div
+          v-if="workshopReportTab === 'general'"
+          class="space-y-4"
+        >
+          <div class="grid grid-cols-2 gap-3">
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="workshopReport.include.coverPage"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Cover Page</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="workshopReport.include.toc"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Table of Contents</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="workshopReport.include.info"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Workshop Info</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="workshopReport.include.participants"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Participants</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="workshopReport.include.qa"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Q&amp;A (Questions + Responses + Votes)</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="workshopReport.include.results"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Comprehensive Results</span>
+            </label>
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="space-y-4"
+        >
+          <label class="block">
+            <div class="text-white/70 mb-1">Cover title</div>
+            <input
+              v-model="workshopReport.coverTitle"
+              type="text"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+              placeholder="OPR Workshop Report"
+            >
+          </label>
+          <label class="block">
+            <div class="text-white/70 mb-1">Cover subtitle</div>
+            <input
+              v-model="workshopReport.coverSubtitle"
+              type="text"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+              placeholder="Project name, workshop name, or date"
+            >
+          </label>
+          <label class="block">
+            <div class="text-white/70 mb-1">Cover by-line</div>
+            <input
+              v-model="workshopReport.coverByLine"
+              type="text"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+              placeholder="Prepared by…"
+            >
+          </label>
+          <div class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                class="block text-sm text-white/70"
+                @change="onWorkshopCoverImageSelected"
+              >
+            </label>
+            <button
+              v-if="workshopReport.coverJumbotronDataUrl"
+              type="button"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm"
+              @click="clearWorkshopCoverImage"
+            >
+              Clear image
+            </button>
+          </div>
+          <div
+            v-if="workshopReport.coverJumbotronDataUrl"
+            class="rounded-xl border border-white/10 bg-black/10 p-2"
+          >
+            <img
+              :src="workshopReport.coverJumbotronDataUrl"
+              alt="Cover preview"
+              class="w-full max-h-[240px] object-contain rounded-lg"
+            >
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-between gap-2 w-full">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
+            :disabled="generatingWorkshopReport"
+            @click="resetWorkshopReportSettings"
+          >
+            Reset
+          </button>
+          <div class="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
+              :disabled="generatingWorkshopReport"
+              @click="showWorkshopReportDialog = false"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 disabled:opacity-50"
+              :disabled="generatingWorkshopReport"
+              @click="generateWorkshopReportPdf"
+            >
+              {{ generatingWorkshopReport ? 'Generating…' : 'Generate PDF' }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </Modal>
 	    <Modal
 	      v-model="questionModalOpen"
 	      panel-class="max-w-2xl"
@@ -1077,23 +2015,33 @@
 
 <script setup lang="ts">
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+  import axios from 'axios'
+  import { useRoute } from 'vue-router'
+  import * as XLSX from 'xlsx'
   import BreadCrumbs from '../../components/BreadCrumbs.vue'
   import Modal from '../../components/Modal.vue'
   import { useAuthStore } from '../../stores/auth'
   import { useProjectStore } from '../../stores/project'
   import { useUiStore } from '../../stores/ui'
   import { useOprStore } from '../../stores/opr'
-  import type { OprAnswer, OprItem, OprQuestion } from '../../stores/opr'
+  import type { OprAnswer, OprCategory, OprItem, OprQuestion, OprResult, OprResultsRow, OprWorkshopAttendee, OprWorkshopInfo } from '../../stores/opr'
   import { confirm } from '../../utils/confirm'
+  import { getApiBase } from '../../utils/api'
+  import { getAuthHeaders } from '../../utils/auth'
 
 const auth = useAuthStore()
 const projectStore = useProjectStore()
 const ui = useUiStore()
 const opr = useOprStore()
+const route = useRoute()
+
+const OPR_API_BASE = `${getApiBase()}/api/projects`
 
 const projectId = computed(() => projectStore.currentProjectId)
 const project = computed(() => projectStore.currentProject as any)
 const addonEnabled = computed(() => Boolean(project.value?.addons?.oprWorkshop?.enabled))
+
+const mainTab = ref<'info' | 'qa' | 'results' | 'import'>('info')
 
 const isAdmin = computed(() => {
   const role = String(auth.user?.role || '').toLowerCase()
@@ -1113,6 +2061,745 @@ const isAdmin = computed(() => {
 const active = computed(() => opr.active)
 const selectedQuestionId = ref<string | null>(null)
 const currentUserId = computed(() => String(auth.user?._id || auth.user?.id || ''))
+
+const workshopLoading = ref(false)
+const workshopSaving = ref(false)
+const attendeesLoading = ref(false)
+const checkingIn = ref(false)
+const resultsLoading = ref(false)
+const resultsSearch = ref('')
+const generatingWorkshopReport = ref(false)
+
+// -----------------------------
+// OPR Workshop Report Settings
+// -----------------------------
+const OPR_WORKSHOP_REPORT_SESSION_KEY = 'oprWorkshopReportSettings'
+type WorkshopReportTab = 'general' | 'cover'
+interface OprWorkshopReportSettings {
+  include: {
+    coverPage: boolean
+    toc: boolean
+    info: boolean
+    participants: boolean
+    qa: boolean
+    results: boolean
+  }
+  coverTitle: string
+  coverSubtitle: string
+  coverByLine: string
+  coverJumbotronDataUrl: string
+}
+const workshopReport = ref<OprWorkshopReportSettings>({
+  include: { coverPage: true, toc: true, info: true, participants: true, qa: true, results: true },
+  coverTitle: 'OPR Workshop Report',
+  coverSubtitle: '',
+  coverByLine: '',
+  coverJumbotronDataUrl: '',
+})
+const showWorkshopReportDialog = ref(false)
+const workshopReportTab = ref<WorkshopReportTab>('general')
+async function openWorkshopReportSettings() {
+  workshopReportTab.value = 'general'
+  showWorkshopReportDialog.value = true
+  try {
+    if (projectId.value) await opr.fetchWorkshop(projectId.value)
+  } catch (e) { /* ignore */ }
+  if (!workshopReport.value.coverSubtitle) {
+    const bits = [
+      String(project.value?.name || '').trim(),
+      String(opr.workshop?.name || '').trim(),
+      opr.workshop?.date ? String(opr.workshop.date) : '',
+    ].filter(Boolean)
+    workshopReport.value.coverSubtitle = bits.join(' — ')
+  }
+  if (!workshopReport.value.coverByLine) {
+    const first = String(auth.user?.firstName || '').trim()
+    const last = String(auth.user?.lastName || '').trim()
+    const full = `${first} ${last}`.trim()
+    workshopReport.value.coverByLine = full ? `Prepared by ${full}` : ''
+  }
+}
+function resetWorkshopReportSettings() {
+  workshopReport.value = {
+    include: { coverPage: true, toc: true, info: true, participants: true, qa: true, results: true },
+    coverTitle: 'OPR Workshop Report',
+    coverSubtitle: '',
+    coverByLine: '',
+    coverJumbotronDataUrl: '',
+  }
+}
+function loadWorkshopReportSettingsFromSession() {
+  try {
+    const raw = sessionStorage.getItem(OPR_WORKSHOP_REPORT_SESSION_KEY)
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') {
+      workshopReport.value = {
+        include: { ...workshopReport.value.include, ...(parsed.include || {}) },
+        coverTitle: typeof parsed.coverTitle === 'string' ? parsed.coverTitle : workshopReport.value.coverTitle,
+        coverSubtitle: typeof parsed.coverSubtitle === 'string' ? parsed.coverSubtitle : workshopReport.value.coverSubtitle,
+        coverByLine: typeof parsed.coverByLine === 'string' ? parsed.coverByLine : workshopReport.value.coverByLine,
+        coverJumbotronDataUrl: typeof parsed.coverJumbotronDataUrl === 'string' ? parsed.coverJumbotronDataUrl : workshopReport.value.coverJumbotronDataUrl,
+      }
+      return true
+    }
+  } catch (e) { /* ignore */ }
+  return false
+}
+watch(workshopReport, () => {
+  try { sessionStorage.setItem(OPR_WORKSHOP_REPORT_SESSION_KEY, JSON.stringify(workshopReport.value)) } catch (e) { /* ignore */ }
+}, { deep: true })
+
+async function onWorkshopCoverImageSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) return
+  try {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+    workshopReport.value.coverJumbotronDataUrl = dataUrl
+  } catch (err: any) {
+    ui.showError(err?.message || 'Failed to load image')
+  } finally {
+    try { input.value = '' } catch (_) { /* ignore */ }
+  }
+}
+function clearWorkshopCoverImage() {
+  workshopReport.value.coverJumbotronDataUrl = ''
+}
+
+async function generateWorkshopReportPdf() {
+  if (!projectId.value) return
+  if (!addonEnabled.value) {
+    ui.showWarning('OPR Workshop is a paid add-on for this project.', { duration: 5000 })
+    return
+  }
+  if (!isAdmin.value) {
+    ui.showWarning('Only admins can generate the workshop report.', { duration: 5000 })
+    return
+  }
+
+  generatingWorkshopReport.value = true
+  try {
+    // Ensure base data is loaded.
+    await Promise.all([
+      opr.fetchWorkshop(projectId.value),
+      opr.fetchCategories(projectId.value),
+      opr.fetchQuestions(projectId.value),
+    ])
+
+    const questions: OprQuestion[] = Array.isArray(opr.questions) ? (opr.questions as OprQuestion[]) : []
+    const categories: OprCategory[] = Array.isArray(opr.categories) ? (opr.categories as OprCategory[]) : []
+
+    // Best-effort loads that may be admin-only.
+    let attendees: OprWorkshopAttendee[] = []
+    try {
+      const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/workshop/attendees`, { headers: getAuthHeaders() })
+      attendees = Array.isArray(data?.items) ? data.items : []
+    } catch (e) { /* ignore */ }
+
+    const answersByQuestionId: Record<string, OprAnswer[]> = {}
+    const resultsByQuestionId: Record<string, OprResult[]> = {}
+    for (const q of questions) {
+      const qid = String(q?.id || '')
+      if (!qid) continue
+      try {
+        const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/questions/${qid}/answers`, {
+          headers: getAuthHeaders(),
+          params: isAdmin.value ? { includeMerged: 1 } : undefined,
+        })
+        answersByQuestionId[qid] = Array.isArray(data) ? data : []
+      } catch (e) {
+        answersByQuestionId[qid] = []
+      }
+      try {
+        const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/questions/${qid}/results`, { headers: getAuthHeaders() })
+        resultsByQuestionId[qid] = Array.isArray(data?.results) ? data.results : []
+      } catch (e) {
+        resultsByQuestionId[qid] = []
+      }
+    }
+
+    let allResults: OprResultsRow[] = []
+    try {
+      const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/results/all`, { headers: getAuthHeaders() })
+      allResults = Array.isArray(data?.items) ? data.items : []
+    } catch (e) { /* ignore */ }
+
+    const { generateOprWorkshopPdf } = await import('../../utils/oprWorkshopReport')
+    const bytes = await generateOprWorkshopPdf({
+      project: project.value,
+      workshop: opr.workshop || null,
+      attendees,
+      categories,
+      questions,
+      answersByQuestionId,
+      resultsByQuestionId,
+      allResults,
+    }, workshopReport.value as any)
+
+    const toSlug = (s: string) => String(s || 'opr-workshop')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 64)
+    const date = String(opr.workshop?.date || new Date().toISOString().slice(0, 10))
+    const base = toSlug(opr.workshop?.name || 'opr-workshop') || 'opr-workshop'
+    const fname = `${base}-${date}.pdf`
+
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fname
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+    showWorkshopReportDialog.value = false
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate workshop report')
+  } finally {
+    generatingWorkshopReport.value = false
+  }
+}
+
+const workshopDraft = reactive<OprWorkshopInfo>({
+  id: '',
+  name: '',
+  date: '',
+  location: '',
+  startTime: '',
+  endTime: '',
+  description: '',
+  tags: [],
+  updatedAt: null,
+})
+const workshopTagsInput = ref('')
+
+function profileIncompleteReason() {
+  const u: any = auth.user || {}
+  const first = String(u.firstName || '').trim()
+  const last = String(u.lastName || '').trim()
+  const email = String(u.email || '').trim()
+  const company = String(u?.contact?.company || '').trim()
+  if (!first || !last) return 'Missing name on your profile.'
+  if (!email) return 'Missing email on your profile.'
+  if (!company) return 'Missing company on your profile.'
+  return ''
+}
+
+const profileIncompleteMessage = computed(() => {
+  const reason = profileIncompleteReason()
+  return reason ? `Profile incomplete: ${reason} Update your profile to check in.` : ''
+})
+
+const attendeeStatus = computed<'pending' | 'approved' | 'denied' | ''>(() => {
+  const s = String((opr.attendee as any)?.status || '').trim().toLowerCase()
+  if (s === 'pending' || s === 'approved' || s === 'denied') return s
+  return ''
+})
+const attendeeStatusLabel = computed(() => {
+  const s = attendeeStatus.value
+  if (!s) return ''
+  if (s === 'pending') return 'Pending approval'
+  if (s === 'approved') return 'Admitted'
+  if (s === 'denied') return 'Denied'
+  return ''
+})
+function attendeeStatusPillClass(status: any) {
+  const s = String(status || '').trim().toLowerCase()
+  if (s === 'approved') return 'bg-emerald-500/15 border-emerald-400/25 text-emerald-200'
+  if (s === 'denied') return 'bg-red-500/15 border-red-500/25 text-red-200'
+  return 'bg-white/10 border-white/20 text-white/80'
+}
+const attendeeStatusClass = computed(() => attendeeStatusPillClass(attendeeStatus.value))
+
+const workshopStarted = computed(() => {
+  const ws: any = opr.workshop || null
+  return Boolean(ws && ws.startedAt && !ws.endedAt)
+})
+
+const canEnterQa = computed(() => {
+  if (!projectId.value || !addonEnabled.value) return false
+  if (isAdmin.value) return true
+  return attendeeStatus.value === 'approved'
+})
+const canEnterResults = computed(() => {
+  if (!projectId.value || !addonEnabled.value) return false
+  if (isAdmin.value) return true
+  return attendeeStatus.value === 'approved'
+})
+
+const canEnterImport = computed(() => Boolean(projectId.value && isAdmin.value))
+
+function tryGoTab(tab: 'info' | 'qa' | 'results' | 'import') {
+  if (tab === 'info') {
+    mainTab.value = 'info'
+    refreshWorkshopOnly().catch(() => {})
+    return
+  }
+  if (tab === 'import' && !canEnterImport.value) {
+    mainTab.value = 'info'
+    ui.showWarning('Only the CxA/Admin can import OPR items.', { duration: 5000 })
+    return
+  }
+  if (tab === 'qa' && !canEnterQa.value) {
+    mainTab.value = 'info'
+    ui.showWarning('Check in and wait for admin approval to enter Q&A.', { duration: 5000 })
+    return
+  }
+  if (tab === 'results' && !canEnterResults.value) {
+    mainTab.value = 'info'
+    ui.showWarning('Check in and wait for admin approval to view Results.', { duration: 5000 })
+    return
+  }
+  mainTab.value = tab
+}
+
+// -----------------------------
+// Import OPR items (manual + file)
+// -----------------------------
+type ImportRow = { _key: string; categoryId: string; text: string; rank: number | null; score: number | null }
+
+const importSubmitting = ref(false)
+const importDefaultCategoryId = ref('')
+const importLines = ref('')
+const importRows = ref<ImportRow[]>([])
+
+const manualLineCount = computed(() => {
+  const lines = String(importLines.value || '').split(/\r?\n/g).map((s) => s.trim()).filter(Boolean)
+  return lines.length
+})
+
+function resetImportDraft() {
+  importDefaultCategoryId.value = ''
+  importLines.value = ''
+  importRows.value = []
+}
+
+function clearImportRows() {
+  importRows.value = []
+}
+
+function removeImportRow(idx: number) {
+  const next = importRows.value.slice()
+  next.splice(idx, 1)
+  importRows.value = next
+}
+
+function rowError(r: ImportRow) {
+  if (!r?.categoryId) return 'Category required'
+  const txt = String(r?.text || '').trim()
+  if (!txt) return 'Text required'
+  return ''
+}
+
+const importRowsValidCount = computed(() => importRows.value.filter((r) => !rowError(r)).length)
+
+async function postImportedItems(items: Array<{ categoryId: string; text: string; rank?: number | null; score?: number | null }>) {
+  if (!projectId.value) return
+  if (!items.length) return
+  importSubmitting.value = true
+  try {
+    await axios.post(`${OPR_API_BASE}/${projectId.value}/opr/items`, { items }, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    })
+    ui.showSuccess(`Imported ${items.length} OPR item${items.length === 1 ? '' : 's'}`, { duration: 3000 })
+    // Best-effort refresh so the Register tab immediately shows the new items.
+    try { await opr.fetchItems(projectId.value, { includeArchived: true }) } catch (e) { /* ignore */ }
+  } catch (e: any) {
+    const code = e?.response?.data?.code
+    const msg = e?.response?.data?.error || e?.message || 'Failed to import OPR items'
+    if (code === 'OPR_ADDON_REQUIRED' || e?.response?.status === 402) {
+      ui.showWarning(msg, { duration: 6000 })
+    } else {
+      ui.showError(msg, { duration: 6000 })
+    }
+  } finally {
+    importSubmitting.value = false
+  }
+}
+
+async function submitManualImport() {
+  if (!importDefaultCategoryId.value) return
+  const lines = String(importLines.value || '').split(/\r?\n/g).map((s) => s.trim()).filter(Boolean)
+  if (!lines.length) return
+  const items = lines.map((t) => ({ categoryId: importDefaultCategoryId.value, text: t }))
+  await postImportedItems(items)
+  importLines.value = ''
+}
+
+function normalizeHeaderKey(v: any) {
+  return String(v || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function mapCategoryToId(raw: any) {
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  const cats: any[] = Array.isArray(opr.categories) ? opr.categories : []
+  // Direct id match
+  const byId = cats.find((c) => String(c?.id || '') === s)
+  if (byId) return String(byId.id)
+  const norm = s.toLowerCase()
+  const byName = cats.find((c) => String(c?.name || '').trim().toLowerCase() === norm)
+  return byName ? String(byName.id) : ''
+}
+
+function parseMaybeNumber(v: any): number | null {
+  if (v === undefined || v === null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function readColumnValue(row: any, candidates: string[]) {
+  const keys = Object.keys(row || {})
+  const map: Record<string, string> = {}
+  for (const k of keys) map[normalizeHeaderKey(k)] = k
+  for (const c of candidates) {
+    const key = map[normalizeHeaderKey(c)]
+    if (key) return row[key]
+  }
+  return undefined
+}
+
+async function onImportFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) return
+  try {
+    if (projectId.value && addonEnabled.value) await opr.fetchCategories(projectId.value)
+  } catch (err) { /* ignore */ }
+
+  try {
+    const isCsv = /\.csv$/i.test(file.name) || String(file.type || '').toLowerCase().includes('csv')
+    const wb = isCsv
+      ? XLSX.read(await file.text(), { type: 'string' })
+      : XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    const sheetName = wb.SheetNames?.[0]
+    if (!sheetName) throw new Error('No sheets found')
+    const sheet = wb.Sheets[sheetName]
+    if (!sheet) throw new Error('Failed to read sheet')
+
+    const objRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false }) as any[]
+    let next: ImportRow[] = []
+    if (Array.isArray(objRows) && objRows.length && typeof objRows[0] === 'object' && !Array.isArray(objRows[0])) {
+      next = objRows.map((r, idx) => {
+        const categoryRaw = readColumnValue(r, ['category', 'categoryId', 'oprCategory', 'opr category'])
+        const textRaw = readColumnValue(r, ['text', 'item', 'oprItem', 'opr item', 'description', 'title'])
+        const rankRaw = readColumnValue(r, ['rank', '#', 'number'])
+        const scoreRaw = readColumnValue(r, ['score', 'points', 'pts'])
+        const text = String(textRaw || '').trim()
+        return {
+          _key: `${Date.now()}-${idx}-${Math.random()}`,
+          categoryId: mapCategoryToId(categoryRaw),
+          text,
+          rank: parseMaybeNumber(rankRaw),
+          score: parseMaybeNumber(scoreRaw),
+        }
+      }).filter((r) => String(r.text || '').trim())
+    } else {
+      const arrRows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false }) as any[]
+      const dataRows = Array.isArray(arrRows) ? arrRows : []
+      // Attempt to detect header row
+      const header = (dataRows[0] || []).map((c: any) => normalizeHeaderKey(c))
+      const hasHeader = header.includes('category') || header.includes('text') || header.includes('item')
+      const startIdx = hasHeader ? 1 : 0
+      let categoryIdx = 0
+      let textIdx = 1
+      let rankIdx = 2
+      let scoreIdx = 3
+      if (hasHeader) {
+        categoryIdx = header.findIndex((h) => h === 'category' || h === 'categoryid' || h === 'oprcategory')
+        textIdx = header.findIndex((h) => h === 'text' || h === 'item' || h === 'opritem' || h === 'description' || h === 'title')
+        rankIdx = header.findIndex((h) => h === 'rank' || h === 'number')
+        scoreIdx = header.findIndex((h) => h === 'score' || h === 'points' || h === 'pts')
+      }
+      next = dataRows.slice(startIdx).map((r, idx) => {
+        const row = Array.isArray(r) ? r : []
+        const catRaw = categoryIdx >= 0 ? row[categoryIdx] : ''
+        const textRaw = textIdx >= 0 ? row[textIdx] : row[0]
+        const text = String(textRaw || '').trim()
+        return {
+          _key: `${Date.now()}-${idx}-${Math.random()}`,
+          categoryId: mapCategoryToId(catRaw),
+          text,
+          rank: rankIdx >= 0 ? parseMaybeNumber(row[rankIdx]) : null,
+          score: scoreIdx >= 0 ? parseMaybeNumber(row[scoreIdx]) : null,
+        }
+      }).filter((r) => String(r.text || '').trim())
+    }
+
+    importRows.value = next.slice(0, 500)
+    if (next.length > 500) {
+      ui.showWarning('Imported preview limited to 500 rows', { duration: 5000 })
+    }
+  } catch (err: any) {
+    ui.showError(err?.message || 'Failed to parse file', { duration: 6000 })
+  } finally {
+    try { input.value = '' } catch (_) { /* ignore */ }
+  }
+}
+
+async function submitFileImport() {
+  const valid = importRows.value.filter((r) => !rowError(r))
+  const items = valid.map((r) => ({
+    categoryId: r.categoryId,
+    text: String(r.text || '').trim(),
+    rank: r.rank,
+    score: r.score,
+  }))
+  await postImportedItems(items)
+}
+
+function applyWorkshopToDraft(ws: any) {
+  workshopDraft.id = String(ws?.id || '')
+  workshopDraft.name = String(ws?.name || '')
+  workshopDraft.date = String(ws?.date || '')
+  workshopDraft.location = String(ws?.location || '')
+  workshopDraft.startTime = String(ws?.startTime || '')
+  workshopDraft.endTime = String(ws?.endTime || '')
+  workshopDraft.description = String(ws?.description || '')
+  workshopDraft.tags = Array.isArray(ws?.tags) ? ws.tags.slice() : []
+  ;(workshopDraft as any).updatedAt = ws?.updatedAt || null
+}
+
+function addWorkshopTag(tag: string) {
+  const t = String(tag || '').trim()
+  if (!t) return
+  const set = new Set(Array.isArray(workshopDraft.tags) ? workshopDraft.tags : [])
+  set.add(t)
+  workshopDraft.tags = Array.from(set).slice(0, 50)
+}
+function addWorkshopTagsFromInput() {
+  const raw = String(workshopTagsInput.value || '')
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean)
+  for (const p of parts) addWorkshopTag(p)
+  workshopTagsInput.value = ''
+}
+function removeWorkshopTag(tag: string) {
+  const t = String(tag || '').trim()
+  if (!t) return
+  workshopDraft.tags = (Array.isArray(workshopDraft.tags) ? workshopDraft.tags : []).filter((x) => String(x) !== t)
+}
+
+async function refreshAttendees() {
+  if (!projectId.value || !addonEnabled.value) return
+  attendeesLoading.value = true
+  try {
+    await opr.fetchAttendees(projectId.value)
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || 'Failed to load participants'
+    ui.showError(msg, { duration: 6000 })
+  } finally {
+    attendeesLoading.value = false
+  }
+}
+
+const attendeeRows = computed(() => {
+  if (isAdmin.value) return Array.isArray(opr.attendees) ? opr.attendees : []
+  return opr.attendee ? [opr.attendee] : (Array.isArray(opr.attendees) ? opr.attendees : [])
+})
+
+const startingWorkshop = ref(false)
+const endingWorkshop = ref(false)
+
+async function startWorkshopSession() {
+  if (!projectId.value || !addonEnabled.value) return
+  if (!isAdmin.value) return
+  startingWorkshop.value = true
+  try {
+    await opr.startWorkshop(projectId.value)
+    await opr.fetchWorkshop(projectId.value)
+    applyWorkshopToDraft(opr.workshop)
+    ui.showSuccess('Workshop session started', { duration: 2500 })
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to start workshop', { duration: 6000 })
+  } finally {
+    startingWorkshop.value = false
+  }
+}
+
+async function endWorkshopSession() {
+  if (!projectId.value || !addonEnabled.value) return
+  if (!isAdmin.value) return
+  const ok = await confirm({
+    title: 'End workshop session',
+    message: 'End the session now? Participants will no longer be able to check in.',
+    confirmText: 'End session',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
+  endingWorkshop.value = true
+  try {
+    await opr.endWorkshop(projectId.value)
+    await opr.fetchWorkshop(projectId.value)
+    applyWorkshopToDraft(opr.workshop)
+    ui.showSuccess('Workshop session ended', { duration: 2500 })
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to end workshop', { duration: 6000 })
+  } finally {
+    endingWorkshop.value = false
+  }
+}
+
+async function refreshWorkshopOnly() {
+  if (!projectId.value) return
+  if (!addonEnabled.value) {
+    opr.workshop = null
+    opr.attendee = null
+    opr.attendees = []
+    applyWorkshopToDraft(null)
+    return
+  }
+  workshopLoading.value = true
+  try {
+    await opr.fetchWorkshop(projectId.value)
+    applyWorkshopToDraft(opr.workshop)
+    await refreshAttendees()
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || 'Failed to load workshop info'
+    ui.showError(msg, { duration: 6000 })
+  } finally {
+    workshopLoading.value = false
+  }
+}
+
+async function approveParticipant(userId: string) {
+  if (!projectId.value) return
+  try {
+    await opr.approveAttendee(projectId.value, userId)
+    await refreshAttendees()
+    ui.showSuccess('Participant admitted', { duration: 2500 })
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || 'Failed to admit participant'
+    ui.showError(msg, { duration: 6000 })
+  }
+}
+
+async function denyParticipant(userId: string) {
+  if (!projectId.value) return
+  try {
+    const ok = await confirm({
+      title: 'Deny participant',
+      message: 'Deny this participant? They will need to check in again to request access.',
+      confirmText: 'Deny',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    })
+    if (!ok) return
+    await opr.denyAttendee(projectId.value, userId)
+    await refreshAttendees()
+    ui.showSuccess('Participant denied', { duration: 2500 })
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || 'Failed to deny participant'
+    ui.showError(msg, { duration: 6000 })
+  }
+}
+
+async function checkInToWorkshop() {
+  if (!projectId.value) return
+  if (profileIncompleteReason()) {
+    ui.showWarning('Complete your profile (name, email, company) before checking in.', { duration: 7000 })
+    return
+  }
+  if (!workshopStarted.value) {
+    ui.showWarning('Workshop has not started yet. Please wait for an admin to start the session.', { duration: 7000 })
+    return
+  }
+  checkingIn.value = true
+  try {
+    await opr.checkIn(projectId.value)
+    await opr.fetchWorkshop(projectId.value)
+    await refreshAttendees()
+    ui.showSuccess('Checked in', { duration: 2500 })
+  } catch (e: any) {
+    const code = e?.response?.data?.code
+    const msg = e?.response?.data?.error || e?.message || 'Failed to check in'
+    if (code === 'WORKSHOP_NOT_STARTED') ui.showWarning(msg, { duration: 7000 })
+    if (code === 'PROFILE_INCOMPLETE') ui.showWarning(msg, { duration: 7000 })
+    else ui.showError(msg, { duration: 6000 })
+  } finally {
+    checkingIn.value = false
+  }
+}
+
+async function saveWorkshopInfo() {
+  if (!projectId.value || !addonEnabled.value) return
+  if (!isAdmin.value) return
+  workshopSaving.value = true
+  try {
+    await opr.updateWorkshop(projectId.value, {
+      name: workshopDraft.name,
+      date: workshopDraft.date,
+      location: workshopDraft.location,
+      startTime: workshopDraft.startTime,
+      endTime: workshopDraft.endTime,
+      description: workshopDraft.description,
+      tags: Array.isArray(workshopDraft.tags) ? workshopDraft.tags : [],
+    })
+    await opr.fetchWorkshop(projectId.value)
+    applyWorkshopToDraft(opr.workshop)
+    ui.showSuccess('Workshop info saved', { duration: 2500 })
+  } catch (e: any) {
+    const base = e?.response?.data?.error || e?.message || 'Failed to save workshop info'
+    const details = e?.response?.data?.details
+    const msg = details ? `${base} (${details})` : base
+    ui.showError(msg, { duration: 6000 })
+  } finally {
+    workshopSaving.value = false
+  }
+}
+
+const resultsRows = computed<OprResultsRow[]>(() => {
+  const q = String(resultsSearch.value || '').trim().toLowerCase()
+  const list = Array.isArray(opr.allResults) ? (opr.allResults as any as OprResultsRow[]) : []
+  if (!q) return list
+  return list.filter((r) => {
+    const fields = [
+      r.categoryName || '',
+      r.questionPrompt || '',
+      r.text || '',
+    ].map((s) => String(s).toLowerCase())
+    return fields.some((s) => s.includes(q))
+  })
+})
+
+async function refreshResults() {
+  if (!projectId.value) return
+  if (!addonEnabled.value) { opr.allResults = []; return }
+  resultsLoading.value = true
+  try {
+    await opr.fetchAllResults(projectId.value)
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || 'Failed to load results'
+    ui.showError(msg, { duration: 6000 })
+  } finally {
+    resultsLoading.value = false
+  }
+}
+
+async function refreshAll() {
+  await refreshWorkshopOnly()
+  if (canEnterQa.value) await refresh()
+  if (mainTab.value === 'results') await refreshResults()
+  if (mainTab.value === 'import') {
+    try { if (projectId.value && addonEnabled.value) await opr.fetchCategories(projectId.value) } catch (e) { /* ignore */ }
+  }
+}
+
+watch(mainTab, async (tab) => {
+  if (tab === 'qa' && canEnterQa.value) await refresh()
+  if (tab === 'results') await refreshResults()
+  if (tab === 'import') {
+    try { if (projectId.value && addonEnabled.value) await opr.fetchCategories(projectId.value) } catch (e) { /* ignore */ }
+  }
+})
+
 const teamMemberNameById = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
   const team = Array.isArray(project.value?.team) ? project.value.team : []
@@ -1200,6 +2887,12 @@ const ALL_CATEGORIES = '__all__'
 const registerCategoryId = ref<string>('')
 const registerIncludeArchived = ref(false)
 const registerSearch = ref('')
+const deepLinkItemId = ref<string>('')
+
+function oprItemDomId(id: string) {
+  const s = String(id || '').trim()
+  return s ? `opr-item-${s}` : ''
+}
 
 function ensureRegisterCategory() {
   if (registerCategoryId.value) return
@@ -1255,6 +2948,59 @@ async function refreshItems() {
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'Failed to load OPR items'
     ui.showError(msg, { duration: 6000 })
+  }
+}
+
+const deepLinkKey = ref('')
+async function applyDeepLinkFromRoute() {
+  const q: any = route.query || {}
+  const nextKey = JSON.stringify({
+    tab: q.tab,
+    rightTab: q.rightTab,
+    categoryId: q.categoryId,
+    itemId: q.itemId,
+  })
+  if (nextKey === deepLinkKey.value) return
+  deepLinkKey.value = nextKey
+
+  const tab = String(q.tab || '').trim().toLowerCase()
+  const rt = String(q.rightTab || '').trim().toLowerCase()
+  const categoryId = String(q.categoryId || '').trim()
+  const itemId = String(q.itemId || '').trim()
+
+  deepLinkItemId.value = itemId || ''
+
+  if (tab === 'info') {
+    tryGoTab('info')
+    return
+  }
+  if (tab === 'results') {
+    tryGoTab('results')
+    return
+  }
+  if (tab === 'qa') {
+    tryGoTab('qa')
+    if (!canEnterQa.value) return
+
+    if (rt === 'register') {
+      rightTab.value = 'register'
+      if (!categoryId || categoryId.toLowerCase() === 'all' || categoryId === ALL_CATEGORIES) {
+        registerCategoryId.value = ALL_CATEGORIES
+      } else {
+        registerCategoryId.value = categoryId
+      }
+
+      await nextTick()
+      await refreshItems()
+      await nextTick()
+      if (deepLinkItemId.value) {
+        const el = document.getElementById(oprItemDomId(deepLinkItemId.value))
+        try { el?.scrollIntoView({ block: 'center', behavior: 'smooth' }) } catch (e) { /* ignore */ }
+      }
+      return
+    }
+
+    rightTab.value = 'responses'
   }
 }
 
@@ -1788,6 +3534,7 @@ let tickTimer: any = null
 
 async function onActiveChanged() {
   if (!projectId.value) return
+  if (!canEnterQa.value) return
   if (!active.value) return
   try {
     await opr.join(projectId.value, active.value.id)
@@ -1812,12 +3559,17 @@ watch(projectId, async (pid) => {
   opr.items = []
   if (!pid) return
   await projectStore.fetchProject(pid)
-  await refresh()
+  mainTab.value = 'info'
+  await refreshAll()
+
+  // Only start the Q&A heartbeat/poll timers for admitted users (or admins).
+  if (!canEnterQa.value) return
 
   heartbeatTimer = setInterval(async () => {
     try {
       const q = active.value
       if (!q || !projectId.value) return
+      if (!canEnterQa.value) return
       await opr.heartbeat(projectId.value, q.id)
     } catch (_) {
       // ignore
@@ -1827,6 +3579,7 @@ watch(projectId, async (pid) => {
   pollTimer = setInterval(async () => {
     try {
       if (!projectId.value) return
+      if (!canEnterQa.value) return
       await opr.fetchActive(projectId.value)
       await loadSelectedQuestionData({ silent: true })
     } catch (_) {
@@ -1867,10 +3620,16 @@ watch([registerCategoryId, registerIncludeArchived], async () => {
 })
 
 onMounted(async () => {
-  await refresh()
+  loadWorkshopReportSettingsFromSession()
+  applyDeepLinkFromRoute().catch(() => {})
+  // Other initialization handled by the projectId watcher.
 })
 
 onBeforeUnmount(() => {
   clearTimers()
+})
+
+watch(() => route.query, () => {
+  applyDeepLinkFromRoute().catch(() => {})
 })
 </script>

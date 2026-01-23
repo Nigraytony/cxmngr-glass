@@ -1,5 +1,5 @@
 <template>
-  <section class="h-full min-h-0 flex flex-col gap-6 overflow-hidden">
+  <section class="h-[calc(100vh-9rem)] min-h-0 flex flex-col gap-6 overflow-hidden">
     <BreadCrumbs
       :items="[
         { text: 'Dashboard', to: '/' },
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0 h-full">
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
         <div class="lg:col-span-2 h-full rounded-xl border border-white/10 bg-white/5 p-4 min-h-0 overflow-y-auto pr-1">
           <div class="flex items-start justify-between gap-3">
             <div>

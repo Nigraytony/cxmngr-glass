@@ -30,6 +30,7 @@
                 </template>
               </Suspense>
             </div>
+            <AppFooter class="mt-8" />
           </template>
           <template v-else>
             <div class="min-h-full flex flex-col">

@@ -63,6 +63,46 @@ export type OprItem = {
   updatedAt?: string | null
 }
 
+export type OprWorkshopInfo = {
+  id: string
+  name: string
+  date: string
+  location: string
+  startTime: string
+  endTime: string
+  description: string
+  tags: string[]
+  startedAt?: string | null
+  endedAt?: string | null
+  updatedAt?: string | null
+}
+
+export type OprWorkshopAttendee = {
+  id: string
+  userId: string | null
+  status: 'pending' | 'approved' | 'denied'
+  checkedInAt?: string | null
+  lastSeenAt?: string | null
+  approvedAt?: string | null
+  deniedAt?: string | null
+  snapshot: { name: string; email: string; company: string; role: string }
+}
+
+export type OprResultsRow = {
+  questionId: string
+  questionPrompt: string
+  questionStatus: string
+  categoryId: string | null
+  categoryName: string
+  answerId: string
+  text: string
+  authorUserId: string | null
+  score: number
+  rank: number
+  voteCount: number
+  rankCounts: Record<string, number>
+}
+
 export const useOprStore = defineStore('opr', () => {
   const categories = ref<OprCategory[]>([])
   const questions = ref<OprQuestion[]>([])
@@ -71,6 +111,10 @@ export const useOprStore = defineStore('opr', () => {
   const results = ref<OprResult[]>([])
   const items = ref<OprItem[]>([])
   const loading = ref(false)
+  const workshop = ref<OprWorkshopInfo | null>(null)
+  const attendee = ref<OprWorkshopAttendee | null>(null)
+  const attendees = ref<OprWorkshopAttendee[]>([])
+  const allResults = ref<OprResultsRow[]>([])
 
   const activeId = computed(() => active.value?.id || null)
 
@@ -184,6 +228,61 @@ export const useOprStore = defineStore('opr', () => {
     items.value = Array.isArray(data) ? data : []
   }
 
+  async function fetchWorkshop(projectId: string) {
+    if (!projectId) { workshop.value = null; attendee.value = null; return }
+    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/workshop`, { headers: getAuthHeaders() })
+    workshop.value = (data && data.workshop) ? data.workshop : null
+    attendee.value = (data && data.attendee) ? data.attendee : null
+  }
+
+  async function updateWorkshop(projectId: string, payload: Partial<OprWorkshopInfo> & { tags?: string[] }) {
+    const { data } = await axios.patch(`${API_BASE}/${projectId}/opr/workshop`, payload, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    })
+    workshop.value = data?.workshop || workshop.value
+    return data
+  }
+
+  async function startWorkshop(projectId: string) {
+    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/start`, {}, { headers: getAuthHeaders() })
+    workshop.value = data?.workshop || workshop.value
+    return data
+  }
+
+  async function endWorkshop(projectId: string) {
+    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/end`, {}, { headers: getAuthHeaders() })
+    workshop.value = data?.workshop || workshop.value
+    return data
+  }
+
+  async function checkIn(projectId: string) {
+    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/checkin`, {}, { headers: getAuthHeaders() })
+    attendee.value = data?.attendee || attendee.value
+    return data
+  }
+
+  async function fetchAttendees(projectId: string) {
+    if (!projectId) { attendees.value = []; return }
+    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/workshop/attendees`, { headers: getAuthHeaders() })
+    attendees.value = Array.isArray(data?.items) ? data.items : []
+  }
+
+  async function approveAttendee(projectId: string, userId: string) {
+    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/attendees/${userId}/approve`, {}, { headers: getAuthHeaders() })
+    return data
+  }
+
+  async function denyAttendee(projectId: string, userId: string) {
+    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/attendees/${userId}/deny`, {}, { headers: getAuthHeaders() })
+    return data
+  }
+
+  async function fetchAllResults(projectId: string) {
+    if (!projectId) { allResults.value = []; return }
+    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/results/all`, { headers: getAuthHeaders() })
+    allResults.value = Array.isArray(data?.items) ? data.items : []
+  }
+
   async function refreshSession(projectId: string) {
     loading.value = true
     try {
@@ -225,6 +324,10 @@ export const useOprStore = defineStore('opr', () => {
     results,
     items,
     loading,
+    workshop,
+    attendee,
+    attendees,
+    allResults,
     activeId,
     fetchCategories,
     fetchQuestions,
@@ -243,6 +346,15 @@ export const useOprStore = defineStore('opr', () => {
     submitVote,
     fetchResults,
     fetchItems,
+    fetchWorkshop,
+    updateWorkshop,
+    startWorkshop,
+    endWorkshop,
+    checkIn,
+    fetchAttendees,
+    approveAttendee,
+    denyAttendee,
+    fetchAllResults,
     refreshSession,
     startOprCheckout,
     reconcileOprPurchase,

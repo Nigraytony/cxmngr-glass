@@ -5,8 +5,10 @@ const oprItemSchema = new mongoose.Schema(
     orgId: { type: String, required: true, index: true },
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprCategory', required: true, index: true },
-    questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprQuestion', required: true, index: true },
-    sourceAnswerId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprAnswer', required: true, index: true },
+    // For items produced from the workshop, these are populated.
+    // For items imported/added manually, these may be null.
+    questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprQuestion', required: false, index: true, default: null },
+    sourceAnswerId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprAnswer', required: false, index: true, default: null },
     text: { type: String, required: true },
     score: { type: Number, required: true, default: 0 },
     rank: { type: Number, required: true },

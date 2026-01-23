@@ -224,6 +224,57 @@
               </div>
             </div>
           </div>
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">OPR Category</label>
+            <select
+              v-model="oprCategoryFilter"
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 min-w-[14rem]"
+              :disabled="oprAddonRequired || !preferredProjectId"
+            >
+              <option value="All">
+                All
+              </option>
+              <option
+                v-for="c in oprCategories"
+                :key="c.id"
+                :value="c.id"
+              >
+                {{ c.name }}
+              </option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">OPR Item</label>
+            <select
+              v-model="oprItemFilter"
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 min-w-[16rem]"
+              :disabled="oprAddonRequired || !preferredProjectId || oprCategoryFilter === 'All'"
+            >
+              <option value="All">
+                All
+              </option>
+              <option
+                v-for="it in oprItemsForFilter"
+                :key="it.id"
+                :value="it.id"
+              >
+                #{{ it.rank }} {{ it.text }}
+              </option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              id="hasOprChk"
+              v-model="hasOprFilter"
+              type="checkbox"
+              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+              :disabled="oprAddonRequired || !preferredProjectId"
+            >
+            <label
+              for="hasOprChk"
+              class="text-white/70 text-sm select-none"
+            >Has OPR link</label>
+          </div>
         </div>
       </div>
 
@@ -782,6 +833,38 @@
                         Found on <span class="text-white/80">{{ formatDate(issue.dateFound) }}</span>
                       </template>
                     </span>
+                  </div>
+                  <div
+                    v-if="Array.isArray(issue.oprItemIds) && issue.oprItemIds.length"
+                    class="flex flex-wrap items-center gap-2 mb-1"
+                  >
+                    <span class="text-xs text-white/60">OPR:</span>
+                    <template v-if="issueOprItems(issue).length">
+                      <button
+                        v-for="it in issueOprItems(issue)"
+                        :key="it.id"
+                        type="button"
+                        class="inline-flex items-center gap-2 px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-xs text-white/85 max-w-[18rem] hover:bg-white/15 hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-white/30"
+                        :title="`Open OPR item: #${it.rank} ${it.text}`"
+                        @click.stop.prevent="openOprItemFromChip(it)"
+                      >
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 shrink-0">
+                          #{{ it.rank }}
+                        </span>
+                        <span
+                          v-if="it.status === 'archived'"
+                          class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/60 shrink-0"
+                        >
+                          Archived
+                        </span>
+                        <span class="truncate min-w-0">{{ truncate(it.text, 60) }}</span>
+                      </button>
+                    </template>
+                    <template v-else>
+                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                        {{ issue.oprItemIds.length }} linked
+                      </span>
+                    </template>
                   </div>
                   <div class="w-full border-t border-dashed border-white/30 my-1" />
                   <div class="mb-1">
@@ -1724,6 +1807,9 @@ const _issuesSource = computed(() => serverIssues.value)
 const priorityFilter = ref('All')
 const typeFilter = ref('All')
 const statusFilter = ref('All')
+const oprCategoryFilter = ref('All')
+const oprItemFilter = ref('All')
+const hasOprFilter = ref(false)
 const searchQuery = ref('')
 const searchMode = computed(() => {
   try {
@@ -1765,6 +1851,9 @@ function loadListState() {
       if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
       if (typeof data.priorityFilter === 'string') priorityFilter.value = data.priorityFilter
       if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
+      if (typeof data.oprCategoryFilter === 'string') oprCategoryFilter.value = data.oprCategoryFilter
+      if (typeof data.oprItemFilter === 'string') oprItemFilter.value = data.oprItemFilter
+      if (typeof data.hasOprFilter === 'boolean') hasOprFilter.value = data.hasOprFilter
       if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
       if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
       if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
@@ -1779,6 +1868,9 @@ function persistListState() {
       typeFilter: typeFilter.value,
       priorityFilter: priorityFilter.value,
       statusFilter: statusFilter.value,
+      oprCategoryFilter: oprCategoryFilter.value,
+      oprItemFilter: oprItemFilter.value,
+      hasOprFilter: hasOprFilter.value,
       hideClosed: hideClosed.value,
       sortKey: sortKey.value,
       sortDir: sortDir.value
@@ -1795,13 +1887,185 @@ function debounce(fn, wait = 200) {
   }
 }
 
+type OprItemMeta = { id: string; categoryId: string | null; text: string; score: number; rank: number; status: 'active' | 'archived' }
+type OprCategoryMeta = { id: string; name: string; sortOrder?: number }
+
+const oprAddonRequired = ref(false)
+const oprMetaLoading = ref(false)
+const oprItemMetaById = ref<Record<string, OprItemMeta>>({})
+const oprCategories = ref<OprCategoryMeta[]>([])
+const oprItemsForFilter = ref<OprItemMeta[]>([])
+const oprFiltersLoading = ref(false)
+const oprItemsLoading = ref(false)
+
+function normalizeOprCategoryRow(row: any): OprCategoryMeta | null {
+  if (!row) return null
+  const id = String(row.id || row._id || '').trim()
+  if (!id) return null
+  return {
+    id,
+    name: String(row.name || '').trim() || 'Unnamed',
+    sortOrder: typeof row.sortOrder === 'number' ? row.sortOrder : undefined,
+  }
+}
+
+function normalizeOprMetaRow(row: any): OprItemMeta | null {
+  if (!row) return null
+  const id = String(row.id || row._id || '').trim()
+  if (!id) return null
+  const rank = Number(row.rank || 0)
+  const status = String(row.status || '').toLowerCase() === 'archived' ? 'archived' : 'active'
+  return {
+    id,
+    categoryId: row.categoryId ? String(row.categoryId) : null,
+    text: String(row.text || '').trim(),
+    score: Number(row.score || 0),
+    rank: Number.isFinite(rank) ? rank : 0,
+    status,
+  }
+}
+
+async function hydrateOprFilters(projectId: string) {
+  const pid = String(projectId || '').trim()
+  if (!pid) { oprCategories.value = []; oprItemsForFilter.value = []; return }
+  oprAddonRequired.value = false
+  oprFiltersLoading.value = true
+  try {
+    const { data } = await http.get(`/api/projects/${pid}/opr/categories`, { headers: getAuthHeaders() })
+    const list = Array.isArray(data) ? data.map(normalizeOprCategoryRow).filter(Boolean) as OprCategoryMeta[] : []
+    list.sort((a, b) => (Number(a.sortOrder ?? 9999) - Number(b.sortOrder ?? 9999)) || a.name.localeCompare(b.name))
+    oprCategories.value = list
+
+    const validCategoryIds = new Set(list.map((c) => c.id))
+    if (oprCategoryFilter.value !== 'All' && !validCategoryIds.has(oprCategoryFilter.value)) {
+      oprCategoryFilter.value = 'All'
+      oprItemFilter.value = 'All'
+      oprItemsForFilter.value = []
+    }
+  } catch (e: any) {
+    const code = e?.response?.data?.code
+    if (code === 'OPR_ADDON_REQUIRED' || e?.response?.status === 402) {
+      oprAddonRequired.value = true
+      oprCategories.value = []
+      oprItemsForFilter.value = []
+      oprCategoryFilter.value = 'All'
+      oprItemFilter.value = 'All'
+      hasOprFilter.value = false
+      return
+    }
+    oprCategories.value = []
+    oprItemsForFilter.value = []
+  } finally {
+    oprFiltersLoading.value = false
+  }
+}
+
+async function hydrateOprItemsForCategory(projectId: string, categoryId: string) {
+  const pid = String(projectId || '').trim()
+  const cid = String(categoryId || '').trim()
+  if (!pid || !cid || cid === 'All') { oprItemsForFilter.value = []; return }
+  if (oprAddonRequired.value) { oprItemsForFilter.value = []; return }
+  oprItemsLoading.value = true
+  try {
+    const { data } = await http.get(`/api/projects/${pid}/opr/items`, {
+      headers: getAuthHeaders(),
+      params: { categoryId: cid, includeArchived: 1 },
+    })
+    const list = Array.isArray(data) ? data.map(normalizeOprMetaRow).filter(Boolean) as OprItemMeta[] : []
+    list.sort((a, b) => (Number(a.rank || 0) - Number(b.rank || 0)) || String(a.id).localeCompare(String(b.id)))
+    oprItemsForFilter.value = list
+
+    const validItemIds = new Set(list.map((i) => i.id))
+    if (oprItemFilter.value !== 'All' && !validItemIds.has(oprItemFilter.value)) {
+      oprItemFilter.value = 'All'
+    }
+  } catch (e: any) {
+    const code = e?.response?.data?.code
+    if (code === 'OPR_ADDON_REQUIRED' || e?.response?.status === 402) {
+      oprAddonRequired.value = true
+      oprItemsForFilter.value = []
+      oprCategoryFilter.value = 'All'
+      oprItemFilter.value = 'All'
+      hasOprFilter.value = false
+      return
+    }
+    oprItemsForFilter.value = []
+  } finally {
+    oprItemsLoading.value = false
+  }
+}
+
+async function hydrateOprItemMeta(projectId: string, ids: string[]) {
+  const pid = String(projectId || '').trim()
+  if (!pid || !Array.isArray(ids) || ids.length === 0) { oprItemMetaById.value = {}; return }
+  oprAddonRequired.value = false
+  oprMetaLoading.value = true
+  try {
+    const { data } = await http.get(`/api/projects/${pid}/opr/items`, {
+      headers: getAuthHeaders(),
+      params: { ids: ids.slice(0, 150).join(','), includeArchived: 1 },
+    })
+    const map: Record<string, OprItemMeta> = {}
+    if (Array.isArray(data)) {
+      for (const row of data) {
+        const meta = normalizeOprMetaRow(row)
+        if (meta) map[meta.id] = meta
+      }
+    }
+    oprItemMetaById.value = map
+  } catch (e: any) {
+    const code = e?.response?.data?.code
+    if (code === 'OPR_ADDON_REQUIRED' || e?.response?.status === 402) {
+      oprAddonRequired.value = true
+      oprItemMetaById.value = {}
+      hasOprFilter.value = false
+      return
+    }
+    // non-blocking; chips will fall back to count
+    oprItemMetaById.value = {}
+  } finally {
+    oprMetaLoading.value = false
+  }
+}
+
+function issueOprItems(issue: any): OprItemMeta[] {
+  const ids = Array.isArray(issue?.oprItemIds) ? issue.oprItemIds : []
+  if (!ids.length) return []
+  const meta = oprItemMetaById.value || {}
+  const list = ids.map((id: any) => meta[String(id)]).filter(Boolean) as OprItemMeta[]
+  return list.sort((a, b) => (Number(a.rank || 0) - Number(b.rank || 0)) || String(a.id).localeCompare(String(b.id)))
+}
+
+function openOprItemFromChip(it: OprItemMeta) {
+  try {
+    const pid = preferredProjectId.value ? String(preferredProjectId.value) : ''
+    if (pid && projectStore.currentProjectId !== pid) {
+      projectStore.setCurrentProject(pid)
+    }
+    const categoryId = it?.categoryId ? String(it.categoryId) : 'all'
+    const itemId = String(it?.id || '').trim()
+    if (!itemId) return
+    router.push({
+      path: '/app/opr',
+      query: {
+        tab: 'qa',
+        rightTab: 'register',
+        categoryId,
+        itemId,
+      },
+    })
+  } catch (e) {
+    // Non-blocking: if routing fails, fall back to normal click behavior.
+  }
+}
+
 const effectiveSearch = ref('')
 const updateEffective = debounce((val) => { effectiveSearch.value = val }, 200)
 
 watch(() => searchQuery.value, (v) => updateEffective(v))
 // Now that search/effective/search watchers exist, wire up persistence
 watch(listStateKey, () => loadListState(), { immediate: true })
-watch([searchQuery, typeFilter, priorityFilter, statusFilter, hideClosed, sortKey, sortDir], () => persistListState())
+watch([searchQuery, typeFilter, priorityFilter, statusFilter, oprCategoryFilter, oprItemFilter, hasOprFilter, hideClosed, sortKey, sortDir], () => persistListState())
 const priorityCounts = computed(() => {
   const map = {}
   const serverCounts = serverPriorityCounts.value || {}
@@ -1933,7 +2197,24 @@ const filteredIssues = computed(() => {
   const withStatus = (!statusFilter.value || statusFilter.value === 'All')
     ? withType
     : withType.filter(i => String(i.status || '').toLowerCase() === statusFilter.value.toLowerCase())
-  const base = hideClosed.value ? withStatus.filter(i => !isClosedRow(i)) : withStatus
+  const withHasOpr = hasOprFilter.value
+    ? withStatus.filter(i => Array.isArray((i as any)?.oprItemIds) && (i as any).oprItemIds.length > 0)
+    : withStatus
+  const withOprCategory = (!oprCategoryFilter.value || oprCategoryFilter.value === 'All')
+    ? withHasOpr
+    : withHasOpr.filter((i: any) => {
+      const ids = Array.isArray(i?.oprItemIds) ? i.oprItemIds : []
+      if (!ids.length) return false
+      const meta = oprItemMetaById.value || {}
+      return ids.some((id: any) => meta[String(id)]?.categoryId === oprCategoryFilter.value)
+    })
+  const withOprItem = (!oprItemFilter.value || oprItemFilter.value === 'All')
+    ? withOprCategory
+    : withOprCategory.filter((i: any) => {
+      const ids = Array.isArray(i?.oprItemIds) ? i.oprItemIds.map((x: any) => String(x)) : []
+      return ids.includes(String(oprItemFilter.value))
+    })
+  const base = hideClosed.value ? withOprItem.filter(i => !isClosedRow(i)) : withOprItem
 
   if (!q) return base
   return base.filter(i => {
@@ -2048,6 +2329,9 @@ function fetchIssuesPage(projectId) {
       if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
       if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
       if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
+      if (hasOprFilter.value) params.hasOpr = 1
+      if (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') params.oprCategoryId = oprCategoryFilter.value
+      if (oprItemFilter.value && oprItemFilter.value !== 'All') params.oprItemId = oprItemFilter.value
       params.includeFacets = true
 
       const res = await http.get('/api/issues', { params, headers: getAuthHeaders() })
@@ -2158,7 +2442,53 @@ function fetchIssuesPage(projectId) {
 }
 
 const debouncedFetch = debounce(() => { fetchIssuesPage().catch(() => {}) }, 150)
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => typeFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
+watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => typeFilter.value, () => oprCategoryFilter.value, () => oprItemFilter.value, () => hasOprFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
+
+const oprIdsForMetaKey = computed(() => {
+  const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
+  const baseAll = useServer ? serverIssues.value : (Array.isArray(issuesStore.issues) ? issuesStore.issues : [])
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const issue of baseAll) {
+    const ids = Array.isArray((issue as any)?.oprItemIds) ? (issue as any).oprItemIds : []
+    for (const id of ids) {
+      const s = String(id || '').trim()
+      if (!s) continue
+      if (seen.has(s)) continue
+      seen.add(s)
+      out.push(s)
+      if (out.length >= 150) break
+    }
+    if (out.length >= 150) break
+  }
+  out.sort()
+  return out.join(',')
+})
+
+const debouncedHydrateOprMeta = debounce(async () => {
+  const pid = preferredProjectId.value ? String(preferredProjectId.value) : ''
+  const ids = oprIdsForMetaKey.value ? oprIdsForMetaKey.value.split(',').filter(Boolean) : []
+  await hydrateOprItemMeta(pid, ids)
+}, 200)
+
+watch([preferredProjectId, oprIdsForMetaKey], () => { debouncedHydrateOprMeta() }, { immediate: true })
+
+watch(preferredProjectId, async (pid) => {
+  const projectId = pid ? String(pid) : ''
+  await hydrateOprFilters(projectId)
+  if (oprCategoryFilter.value !== 'All') {
+    await hydrateOprItemsForCategory(projectId, oprCategoryFilter.value)
+  } else {
+    oprItemsForFilter.value = []
+  }
+}, { immediate: true })
+
+watch(oprCategoryFilter, async (next) => {
+  oprItemFilter.value = 'All'
+  const pid = preferredProjectId.value ? String(preferredProjectId.value) : ''
+  if (!pid || !next || next === 'All') { oprItemsForFilter.value = []; return }
+  await hydrateOprItemsForCategory(pid, String(next))
+})
 
 
 // Pagination totals should reflect filtered count when filters/search are applied
@@ -2168,6 +2498,9 @@ const isFiltered = computed(() => {
     (priorityFilter.value && priorityFilter.value !== 'All') ||
     (typeFilter.value && typeFilter.value !== 'All') ||
     (statusFilter.value && statusFilter.value !== 'All') ||
+    (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') ||
+    (oprItemFilter.value && oprItemFilter.value !== 'All') ||
+    hasOprFilter.value ||
     (effectiveSearch.value && effectiveSearch.value.trim() !== '') ||
     hideClosed.value
   )

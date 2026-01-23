@@ -180,6 +180,10 @@
               v-else-if="getStatus(t) === 'na'"
               class="text-[10px] px-1.5 py-0.5 rounded border text-indigo-200 border-indigo-400/60"
             >N/A</span>
+            <span
+              v-if="oprItemCount(t) > 0"
+              class="text-[10px] px-1.5 py-0.5 rounded border bg-white/10 border-white/20 text-white/80"
+            >OPR: {{ oprItemCount(t) }}</span>
             <button
               v-if="!dragEnabled"
               :disabled="i===0"
@@ -327,7 +331,7 @@
                 :project-id="String(props.projectId || '')"
                 :disabled="!props.projectId"
                 label="OPR items"
-                @update:modelValue="notifyChange"
+                @update:model-value="notifyChange"
               />
             </div>
 
@@ -1298,6 +1302,16 @@ const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
 const authStore = useAuthStore()
 
+function oprItemCount(t: FunctionalTestItem): number {
+  const ids = Array.isArray((t as any)?.oprItemIds) ? (t as any).oprItemIds : []
+  const set = new Set<string>()
+  for (const raw of ids) {
+    const id = String(raw || '').trim()
+    if (id) set.add(id)
+  }
+  return set.size
+}
+
 function normalizeId(value: unknown): string | undefined {
   if (typeof value === 'string') {
     const trimmed = value.trim()
@@ -1417,6 +1431,7 @@ function normalize(v: any): FunctionalTestItem[] {
     notes: t?.notes == null ? '' : String(t?.notes),
     pass: (t?.pass === true || t?.pass === false) ? t.pass : null,
     issues: Array.isArray(t?.issues) ? t.issues : [],
+    oprItemIds: Array.isArray(t?.oprItemIds) ? t.oprItemIds.map((id: any) => String(id || '').trim()).filter(Boolean) : [],
       kind,
     rows: Array.isArray(t?.rows) ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? '') })) : [],
       table: useTable || (Array.isArray((t as any).columns) || Array.isArray((t as any).rows)) ? (

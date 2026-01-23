@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-col gap-6 h-[calc(100vh-10rem)] min-h-0">
+  <section class="flex flex-col gap-6 h-[calc(100vh-12rem)] min-h-0">
     <div>
       <BreadCrumbs
         :items="[
