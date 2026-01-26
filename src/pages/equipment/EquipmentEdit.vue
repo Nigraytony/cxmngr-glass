@@ -1133,15 +1133,16 @@
               Save Checklists
             </button>
           </div>
-          <ChecklistPanel
-            v-model="checklists"
-            :project-id="String(form.projectId || projectStore.currentProjectId || '')"
-            :equipment-id="String(form.id || (form as any)._id || id)"
-            :equipment-tag="String(form.tag || '')"
-            :equipment-space="equipmentSpaceName"
-            @change="onChecklistsChange"
-          />
-        </div>
+	          <ChecklistPanel
+	            v-model="checklists"
+	            :project-id="String(form.projectId || projectStore.currentProjectId || '')"
+	            :equipment-id="String(form.id || (form as any)._id || id)"
+	            :equipment-tag="String(form.tag || '')"
+	            :equipment-space="equipmentSpaceName"
+	            @change="onChecklistsChange"
+	            @persist="persistChecklists"
+	          />
+	        </div>
 
         <!-- FPT Tab -->
         <div
@@ -3140,6 +3141,7 @@ async function persistChecklists(sections: any[]) {
     const f: any = form.value
     f.checklists = Array.isArray(sections) ? sections : []
     appendLog('checklist.save', 'Checklist saved', { sections: Array.isArray(sections) ? sections.length : undefined })
+    ui.showSuccess('Checklists saved')
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save checklist')
   }

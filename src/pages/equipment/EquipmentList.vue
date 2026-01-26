@@ -21,8 +21,8 @@
       </BreadCrumbs>
     </div>
 
-    <!-- toolbar -->
-    <div class="flex items-center gap-2 gap-y-2 flex-wrap w-full max-w-full">
+	    <!-- toolbar -->
+	    <div class="flex items-center gap-2 gap-y-2 flex-wrap w-full max-w-full relative z-30">
       <div class="relative inline-block group shrink-0">
         <button
           :disabled="!projectStore.currentProjectId"
@@ -132,12 +132,15 @@
           Download filtered equipment as CSV
         </div>
       </div>
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Toggle analytics"
+	      <div class="relative inline-block group shrink-0">
+	        <button
+	          :disabled="!projectStore.currentProjectId"
+	          aria-label="Toggle analytics"
           :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+          :class="[
+            'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
+            showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+          ]"
           @click="toggleAnalytics"
         >
           <svg
@@ -179,8 +182,49 @@
           class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
         >
           {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
-        </div>
-      </div>
+	        </div>
+	      </div>
+	      <div class="relative inline-block group shrink-0">
+	        <button
+	          :disabled="!resolvedProjectId"
+	          type="button"
+	          aria-label="Filters"
+	          :title="resolvedProjectId ? 'Filters' : 'Select a project'"
+	          :class="[
+	            'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
+	            (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+	          ]"
+	          @click="openFilters"
+	        >
+	          <svg
+	            xmlns="http://www.w3.org/2000/svg"
+	            viewBox="0 0 24 24"
+	            fill="none"
+	            stroke="currentColor"
+	            class="w-5 h-5"
+	            aria-hidden="true"
+	          >
+	            <path
+	              d="M3 5h18M6 12h12M10 19h4"
+	              stroke-width="1.5"
+	              stroke-linecap="round"
+	              stroke-linejoin="round"
+	            />
+	          </svg>
+	          <span
+	            :class="[
+	              'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
+	              advancedFiltersActiveCount > 0 ? '' : 'invisible'
+	            ]"
+	          >{{ advancedFiltersActiveCount }}</span>
+	        </button>
+	        <div
+	          role="tooltip"
+	          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+	        >
+	          Filters
+	        </div>
+	      </div>
       <div class="relative inline-block group shrink-0">
         <button
           :disabled="!canAutoTagEquipmentPage"
@@ -211,8 +255,8 @@
           Auto-tag this page
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">Type</label>
+	      <div class="flex items-center gap-2">
+	        <label class="text-white/70 text-sm">Type</label>
         <div
           ref="typeMenuRef"
           class="relative"
@@ -255,55 +299,7 @@
                 <span>{{ opt.name }}</span>
                 <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">System</label>
-        <div
-          ref="systemMenuRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showSystemMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
-            @click="toggleSystemMenu"
-          >
-            <span class="flex items-center gap-2">
-              <span>{{ systemFilterLabel }}</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ systemCount(systemFilter || 'All') }}</span>
-            </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-          </button>
-          <div
-            v-if="showSystemMenu"
-            class="absolute left-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
-          >
-            <div class="py-1">
-              <button
-                v-for="opt in systemOptions"
-                :key="opt.value || opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
-              >
-                <span>{{ opt.name }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-              </button>
-            </div>
+	      </div>
           </div>
         </div>
       </div>
@@ -361,26 +357,36 @@
           </div>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">Has</label>
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded-lg border text-sm"
-          :class="onlyWithChecklists ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-          @click="toggleOnlyWithChecklists"
-        >
-          <span class="inline-flex items-center gap-2">
-            <span>Checklists</span>
-            <span
-              v-if="checklistsTotalCount > 0"
-              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
-            >{{ checklistsTotalCount }}</span>
-          </span>
-        </button>
-        <div
-          v-if="onlyWithChecklists"
-          class="flex items-center gap-2"
-        >
+	      <div class="flex items-center gap-2">
+	        <label class="text-white/70 text-sm">Has</label>
+	        <button
+	          type="button"
+	          class="px-3 py-1.5 rounded-lg border text-sm"
+	          :class="onlyWithChecklists ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+	          @click="toggleOnlyWithChecklists"
+	        >
+	          <span class="inline-flex items-center gap-2">
+	            <span>Checklists</span>
+	            <span
+	              v-if="checklistsTotalCount > 0"
+	              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+	            >{{ checklistsTotalCount }}</span>
+	          </span>
+	        </button>
+	        <button
+	          type="button"
+	          :disabled="!currentProjectRole"
+	          class="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-40"
+	          :title="currentProjectRole ? `My checklists (${currentProjectRole})` : 'No project role found'"
+	          :class="myChecklistsOnly ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+	          @click="toggleMyChecklists"
+	        >
+	          My Checklists
+	        </button>
+	        <div
+	          v-if="onlyWithChecklists"
+	          class="flex items-center gap-2"
+	        >
           <label class="text-white/60 text-sm">Checklist system</label>
           <div
             ref="checklistSystemMenuRef"
@@ -437,41 +443,312 @@
             </div>
           </div>
         </div>
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded-lg border text-sm"
-          :class="onlyWithFpt ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-          @click="toggleOnlyWithFpt"
-        >
-          <span class="inline-flex items-center gap-2">
-            <span>FPT</span>
-            <span
-              v-if="fptTotalCount > 0"
-              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
-            >{{ fptTotalCount }}</span>
-          </span>
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded-lg border text-sm"
-          :class="onlyWithIssues ? 'bg-amber-500/20 border-amber-400/60 text-amber-100 hover:bg-amber-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-          @click="toggleOnlyWithIssues"
-        >
-          <span class="inline-flex items-center gap-2">
-            <span>Issues</span>
-            <span
-              v-if="issuesTotalCount > 0"
-              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
-            >{{ issuesTotalCount }}</span>
-          </span>
-        </button>
       </div>
-    </div>
 
-    <!-- analytics -->
-    <div
-      v-if="showAnalytics"
-      class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded-lg border text-sm"
+        :class="onlyWithFpt ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+        @click="toggleOnlyWithFpt"
+      >
+        <span class="inline-flex items-center gap-2">
+          <span>FPT</span>
+          <span
+            v-if="fptTotalCount > 0"
+            class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+          >{{ fptTotalCount }}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        class="px-3 py-1.5 rounded-lg border text-sm"
+        :class="onlyWithIssues ? 'bg-amber-500/20 border-amber-400/60 text-amber-100 hover:bg-amber-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+        @click="toggleOnlyWithIssues"
+      >
+        <span class="inline-flex items-center gap-2">
+          <span>Issues</span>
+          <span
+            v-if="issuesTotalCount > 0"
+            class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+          >{{ issuesTotalCount }}</span>
+        </span>
+      </button>
+
+	      <!-- Advanced filters (md+). For mobile, use the modal. -->
+	      <div
+	        v-if="showAdvancedFilters"
+	        class="w-full hidden md:block mt-3 pt-3 border-t border-white/10"
+	      >
+	        <div class="space-y-3">
+	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Location</label>
+	              <input
+	                v-model="locationFilter"
+	                type="text"
+	                placeholder="space tag or name"
+	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              >
+	            </div>
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Responsible</label>
+	              <input
+	                v-model="responsibleFilter"
+	                type="text"
+	                placeholder="name or email"
+	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              >
+	            </div>
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Tags</label>
+	              <input
+	                v-model="tagsFilter"
+	                type="text"
+	                placeholder="comma-separated"
+	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              >
+	            </div>
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Installation Date</label>
+	              <div class="grid grid-cols-2 gap-2">
+	                <input
+	                  v-model="installationDateFrom"
+	                  type="date"
+	                  placeholder="From"
+	                  :class="[
+	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                    installationDateFrom ? 'text-white' : 'text-white/60',
+	                  ]"
+	                >
+	                <input
+	                  v-model="installationDateTo"
+	                  type="date"
+	                  placeholder="To"
+	                  :class="[
+	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                    installationDateTo ? 'text-white' : 'text-white/60',
+	                  ]"
+	                >
+	              </div>
+	            </div>
+	          </div>
+	
+	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Test Date</label>
+	              <div class="grid grid-cols-2 gap-2">
+	                <input
+	                  v-model="testDateFrom"
+	                  type="date"
+	                  placeholder="From"
+	                  :class="[
+	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                    testDateFrom ? 'text-white' : 'text-white/60',
+	                  ]"
+	                >
+	                <input
+	                  v-model="testDateTo"
+	                  type="date"
+	                  placeholder="To"
+	                  :class="[
+	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                    testDateTo ? 'text-white' : 'text-white/60',
+	                  ]"
+	                >
+	              </div>
+	            </div>
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">System</label>
+	              <div
+	                ref="systemMenuRef"
+	                class="relative"
+	              >
+	                <button
+	                  :aria-expanded="showSystemMenu ? 'true' : 'false'"
+	                  class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
+	                  @click="toggleSystemMenu"
+	                >
+	                  <span class="flex items-center gap-2 min-w-0">
+	                    <span class="truncate">{{ systemFilterLabel }}</span>
+	                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0">{{ systemCount(systemFilter || 'All') }}</span>
+	                  </span>
+	                  <svg
+	                    xmlns="http://www.w3.org/2000/svg"
+	                    viewBox="0 0 24 24"
+	                    fill="none"
+	                    stroke="currentColor"
+	                    class="w-3 h-3 ml-1 shrink-0"
+	                  ><path
+	                    d="M6 9l6 6 6-6"
+	                    stroke-width="1.5"
+	                    stroke-linecap="round"
+	                    stroke-linejoin="round"
+	                  /></svg>
+	                </button>
+	                <div
+	                  v-if="showSystemMenu"
+	                  class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+	                  role="menu"
+	                >
+	                  <div class="py-1">
+	                    <button
+	                      v-for="opt in systemOptions"
+	                      :key="opt.value || opt.name"
+	                      role="menuitem"
+	                      :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+	                      @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
+	                    >
+	                      <span>{{ opt.name }}</span>
+	                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+	                    </button>
+	                  </div>
+	                </div>
+	              </div>
+	            </div>
+	          </div>
+	        </div>
+	
+	        <div class="mt-3 flex items-center justify-between gap-3">
+	          <button
+	            type="button"
+	            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+	            @click="clearAdvancedFilters"
+	          >
+	            Clear advanced filters
+	          </button>
+	          <div class="text-xs text-white/50">
+	            Advanced filters show on desktop; mobile uses the Filters panel.
+	          </div>
+	        </div>
+	      </div>
+	    </div>
+
+	    <!-- Mobile Filters Modal -->
+	    <Modal v-model="showFiltersModal">
+	      <template #header>
+	        <h3 class="text-lg font-semibold">
+	          Filters
+	        </h3>
+	      </template>
+	      <div class="space-y-4">
+	        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Location</label>
+	            <input
+	              v-model="locationFilter"
+	              type="text"
+	              placeholder="space tag or name"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	            >
+	          </div>
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Responsible</label>
+	            <input
+	              v-model="responsibleFilter"
+	              type="text"
+	              placeholder="name or email"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	            >
+	          </div>
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Tags</label>
+	            <input
+	              v-model="tagsFilter"
+	              type="text"
+	              placeholder="comma-separated"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	            >
+	          </div>
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">System</label>
+	            <select
+	              v-model="systemFilter"
+	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+	            >
+	              <option value="">
+	                All ({{ systemCount('All') }})
+	              </option>
+	              <option
+	                v-for="opt in systemOptions.filter(o => o.name !== 'All')"
+	                :key="opt.value || opt.name"
+	                :value="String(opt.value || '')"
+	              >
+	                {{ opt.name }} ({{ opt.count }})
+	              </option>
+	            </select>
+	          </div>
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Installation Date</label>
+	            <div class="grid grid-cols-2 gap-2">
+	              <input
+	                v-model="installationDateFrom"
+	                type="date"
+	                placeholder="From"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  installationDateFrom ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	              <input
+	                v-model="installationDateTo"
+	                type="date"
+	                placeholder="To"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  installationDateTo ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	            </div>
+	          </div>
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Test Date</label>
+	            <div class="grid grid-cols-2 gap-2">
+	              <input
+	                v-model="testDateFrom"
+	                type="date"
+	                placeholder="From"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  testDateFrom ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	              <input
+	                v-model="testDateTo"
+	                type="date"
+	                placeholder="To"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  testDateTo ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	            </div>
+	          </div>
+	        </div>
+	      </div>
+	      <template #footer>
+	        <div class="flex items-center justify-between gap-2 w-full">
+	          <button
+	            type="button"
+	            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+	            @click="clearAdvancedFilters"
+	          >
+	            Clear
+	          </button>
+	          <button
+	            type="button"
+	            class="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/20"
+	            @click="showFiltersModal = false"
+	          >
+	            Done
+	          </button>
+	        </div>
+	      </template>
+	    </Modal>
+
+	    <!-- analytics -->
+	    <div
+	      v-if="showAnalytics"
+	      class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
     >
       <div class="flex items-center justify-between mb-4">
         <div class="text-white font-semibold">
@@ -1425,20 +1702,30 @@ const canAutoTagEquipmentPage = computed(() => {
   const p: any = projectStore.currentProject || {}
   if (p.ai && p.ai.enabled === false) return false
   const tier = String(p.subscriptionTier || '').toLowerCase()
-  const hasFeature = p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true)
+  const hasFeature = Boolean(p.subscriptionFeatures && (p.subscriptionFeatures.ai === true || p.subscriptionFeatures.AI === true))
   return tier === 'premium' || hasFeature
 })
 
 const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Started']
 
-const search = ref('')
-const typeFilter = ref('')
-const statusFilter = ref('')
-const systemFilter = ref('')
-const onlyWithChecklists = ref(false)
-const onlyWithFpt = ref(false)
-const onlyWithIssues = ref(false)
-const checklistSystemFilter = ref('')
+	const search = ref('')
+	const typeFilter = ref('')
+	const statusFilter = ref('')
+		const systemFilter = ref('')
+		const onlyWithChecklists = ref(false)
+		const myChecklistsOnly = ref(false)
+		const onlyWithFpt = ref(false)
+		const onlyWithIssues = ref(false)
+		const checklistSystemFilter = ref('')
+	const locationFilter = ref('')
+	const responsibleFilter = ref('')
+	const tagsFilter = ref('')
+	const installationDateFrom = ref('')
+	const installationDateTo = ref('')
+	const testDateFrom = ref('')
+	const testDateTo = ref('')
+	const showAdvancedFilters = ref(false)
+	const showFiltersModal = ref(false)
 const serverTypes = ref<string[]>([])
 const serverStatuses = ref<string[]>([])
 const serverSystems = ref<string[]>([])
@@ -1480,9 +1767,49 @@ function countNum(n: any): number {
   return Number.isFinite(v) && v >= 0 ? v : 0
 }
 
-function normalizeKey(s: any): string {
-  return String(s || '').trim().toLowerCase()
-}
+	function normalizeKey(s: any): string {
+	  return String(s || '').trim().toLowerCase()
+	}
+
+	const currentProjectRole = computed(() => {
+	  const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+	  const candidates: any[] = []
+	  if ((auth as any)?.user) candidates.push((auth as any).user)
+	  try {
+	    const raw = localStorage.getItem('user')
+	    if (raw) candidates.push(JSON.parse(raw))
+	  } catch (e) { /* ignore */ }
+
+	  for (const u of candidates) {
+	    const direct = String(u?.project?.role || '').trim()
+	    if (direct) return direct
+	    const list = Array.isArray(u?.projects) ? u.projects : []
+	    if (!pid || !list.length) continue
+	    const found = list.find((p: any) => {
+	      if (!p) return false
+	      if (typeof p === 'string') return String(p) === pid
+	      return String(p._id || p.id || '') === pid
+	    })
+	    const role = String(found?.role || '').trim()
+	    if (role) return role
+	  }
+	  return ''
+	})
+
+	function toggleMyChecklists() {
+	  const role = String(currentProjectRole.value || '').trim()
+	  if (!myChecklistsOnly.value) {
+	    if (!role) {
+	      ui.showError('No project role found for this user')
+	      return
+	    }
+	    myChecklistsOnly.value = true
+	    onlyWithChecklists.value = true
+	  } else {
+	    myChecklistsOnly.value = false
+	  }
+	  page.value = 1
+	}
 
 function hasChecklistSystem(e: any, sys: string): boolean {
   const want = normalizeKey(sys)
@@ -1598,25 +1925,84 @@ function spaceParentChainLabelById(spaceId?: string | null) {
   }
 }
 
+function isoDateOnly(value: any): string {
+  if (!value) return ''
+  try {
+    if (value instanceof Date) return value.toISOString().slice(0, 10)
+    const s = String(value).trim()
+    if (!s) return ''
+    // if it's an ISO string, keep YYYY-MM-DD
+    const d = s.length >= 10 ? s.slice(0, 10) : ''
+    return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''
+  } catch (e) {
+    return ''
+  }
+}
+
 // Use server-provided page when available; otherwise fall back to full store list
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  const t = typeFilter.value
-  const s = statusFilter.value
-  const sys = systemFilter.value
-  const reqChecklists = onlyWithChecklists.value
-  const reqFpt = onlyWithFpt.value
-  const reqIssues = onlyWithIssues.value
-  const checklistSys = checklistSystemFilter.value
-  const baseList = (Array.isArray(serverEquipment.value) && serverEquipment.value.length > 0) ? listEquipment.value : equipment.value
-  return (baseList || []).filter(e => {
-    if (t && e.type !== t) return false
-    if (s && e.status !== s) return false
-    if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
-    if (reqChecklists && countNum((e as any).checklistsCount) <= 0) return false
-    if (reqChecklists && checklistSys && !hasChecklistSystem(e, checklistSys)) return false
-    if (reqFpt && countNum((e as any).fptCount) <= 0) return false
-    if (reqIssues && countNum((e as any).issuesCount) <= 0) return false
+	const filtered = computed(() => {
+	  const q = search.value.trim().toLowerCase()
+	  const t = typeFilter.value
+	  const s = statusFilter.value
+	  const sys = systemFilter.value
+	  const reqChecklists = onlyWithChecklists.value
+	  const myRole = String(currentProjectRole.value || '').trim()
+	  const requireMyChecklists = myChecklistsOnly.value && !!myRole
+	  const reqFpt = onlyWithFpt.value
+	  const reqIssues = onlyWithIssues.value
+	  const checklistSys = checklistSystemFilter.value
+	  const loc = String(locationFilter.value || '').trim().toLowerCase()
+	  const resp = String(responsibleFilter.value || '').trim().toLowerCase()
+  const wantTags = String(tagsFilter.value || '')
+    .split(',')
+    .map(s => String(s || '').trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 30)
+  const instFrom = isoDateOnly(installationDateFrom.value)
+  const instTo = isoDateOnly(installationDateTo.value)
+  const testFrom = isoDateOnly(testDateFrom.value)
+  const testTo = isoDateOnly(testDateTo.value)
+
+	  const baseList = serverFetchedOnce.value ? listEquipment.value : equipment.value
+	  return (baseList || []).filter(e => {
+	    if (t && e.type !== t) return false
+	    if (s && e.status !== s) return false
+	    if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
+	    if (reqChecklists && countNum((e as any).checklistsCount) <= 0) return false
+	    if (reqChecklists && checklistSys && !hasChecklistSystem(e, checklistSys)) return false
+	    // Only enforce locally before the first server fetch; once server paging is active, rely on server-side filtering.
+	    if (!serverFetchedOnce.value && requireMyChecklists) {
+	      const sections: any[] = Array.isArray((e as any)?.checklists) ? (e as any).checklists : []
+	      const ok = sections.some((sec: any) => String(sec?.responsible || '').trim() === myRole)
+	      if (!ok) return false
+	    }
+	    if (reqFpt && countNum((e as any).fptCount) <= 0) return false
+	    if (reqIssues && countNum((e as any).issuesCount) <= 0) return false
+	    if (loc) {
+	      const chain = String(equipmentSpaceChain(e) || '').toLowerCase()
+	      if (!chain.includes(loc)) return false
+    }
+    if (resp) {
+      const v = String((e as any)?.responsible || '').toLowerCase()
+      if (!v.includes(resp)) return false
+    }
+    if (wantTags.length) {
+      const tagsArr: any[] = Array.isArray((e as any)?.tags) ? (e as any).tags : []
+      const tagSet = new Set(tagsArr.map(t => String(t || '').trim().toLowerCase()).filter(Boolean))
+      if (!wantTags.some(t => tagSet.has(t))) return false
+    }
+    if (instFrom || instTo) {
+      const d = isoDateOnly((e as any)?.installationDate)
+      if (!d) return false
+      if (instFrom && d < instFrom) return false
+      if (instTo && d > instTo) return false
+    }
+    if (testFrom || testTo) {
+      const d = isoDateOnly((e as any)?.testDate)
+      if (!d) return false
+      if (testFrom && d < testFrom) return false
+      if (testTo && d > testTo) return false
+    }
     if (!q) return true
     const fields = [e.tag || '', e.title || '', e.type || '', e.system || ''].map(f => f.toLowerCase())
     return fields.some(f => f.includes(q))
@@ -1665,10 +2051,18 @@ function loadListState() {
       if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
       if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
       if (typeof data.systemFilter === 'string') systemFilter.value = data.systemFilter
-      if (typeof data.onlyWithChecklists === 'boolean') onlyWithChecklists.value = data.onlyWithChecklists
-      if (typeof data.onlyWithFpt === 'boolean') onlyWithFpt.value = data.onlyWithFpt
-      if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
+	      if (typeof data.onlyWithChecklists === 'boolean') onlyWithChecklists.value = data.onlyWithChecklists
+	      if (typeof data.myChecklistsOnly === 'boolean') myChecklistsOnly.value = data.myChecklistsOnly
+	      if (typeof data.onlyWithFpt === 'boolean') onlyWithFpt.value = data.onlyWithFpt
+	      if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
       if (typeof data.checklistSystemFilter === 'string') checklistSystemFilter.value = data.checklistSystemFilter
+      if (typeof data.locationFilter === 'string') locationFilter.value = data.locationFilter
+      if (typeof data.responsibleFilter === 'string') responsibleFilter.value = data.responsibleFilter
+      if (typeof data.tagsFilter === 'string') tagsFilter.value = data.tagsFilter
+      if (typeof data.installationDateFrom === 'string') installationDateFrom.value = data.installationDateFrom
+      if (typeof data.installationDateTo === 'string') installationDateTo.value = data.installationDateTo
+      if (typeof data.testDateFrom === 'string') testDateFrom.value = data.testDateFrom
+      if (typeof data.testDateTo === 'string') testDateTo.value = data.testDateTo
       if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
       if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
     }
@@ -1680,19 +2074,74 @@ function persistListState() {
       search: search.value,
       typeFilter: typeFilter.value,
       statusFilter: statusFilter.value,
-      systemFilter: systemFilter.value,
-      onlyWithChecklists: onlyWithChecklists.value,
-      onlyWithFpt: onlyWithFpt.value,
-      onlyWithIssues: onlyWithIssues.value,
+	      systemFilter: systemFilter.value,
+	      onlyWithChecklists: onlyWithChecklists.value,
+	      myChecklistsOnly: myChecklistsOnly.value,
+	      onlyWithFpt: onlyWithFpt.value,
+	      onlyWithIssues: onlyWithIssues.value,
       checklistSystemFilter: checklistSystemFilter.value,
+      locationFilter: locationFilter.value,
+      responsibleFilter: responsibleFilter.value,
+      tagsFilter: tagsFilter.value,
+      installationDateFrom: installationDateFrom.value,
+      installationDateTo: installationDateTo.value,
+      testDateFrom: testDateFrom.value,
+      testDateTo: testDateTo.value,
       sortKey: sortKey.value,
       sortDir: sortDir.value
     }
     sessionStorage.setItem(stateStorageKey.value, JSON.stringify(payload))
   } catch (e) { /* ignore storage errors */ }
 }
-watch(stateStorageKey, () => loadListState(), { immediate: true })
-watch([search, typeFilter, statusFilter, systemFilter, onlyWithChecklists, onlyWithFpt, onlyWithIssues, checklistSystemFilter, sortKey, sortDir], () => persistListState())
+	watch(stateStorageKey, () => loadListState(), { immediate: true })
+	watch([search, typeFilter, statusFilter, systemFilter, onlyWithChecklists, myChecklistsOnly, onlyWithFpt, onlyWithIssues, checklistSystemFilter, locationFilter, responsibleFilter, tagsFilter, installationDateFrom, installationDateTo, testDateFrom, testDateTo, sortKey, sortDir], () => persistListState())
+	// Keep My Checklists consistent with the user's role and “Has Checklists”
+	watch([myChecklistsOnly, currentProjectRole], () => {
+	  if (myChecklistsOnly.value && !String(currentProjectRole.value || '').trim()) {
+	    myChecklistsOnly.value = false
+	    return
+	  }
+	  if (myChecklistsOnly.value && !onlyWithChecklists.value) {
+	    onlyWithChecklists.value = true
+	  }
+	})
+
+const advancedFiltersActiveCount = computed(() => {
+  let n = 0
+  if (String(locationFilter.value || '').trim()) n += 1
+  if (String(responsibleFilter.value || '').trim()) n += 1
+  if (String(tagsFilter.value || '').trim()) n += 1
+  if (String(installationDateFrom.value || '').trim()) n += 1
+  if (String(installationDateTo.value || '').trim()) n += 1
+  if (String(testDateFrom.value || '').trim()) n += 1
+  if (String(testDateTo.value || '').trim()) n += 1
+  if (String(systemFilter.value || '').trim()) n += 1
+  return n
+})
+
+function openFilters() {
+  try {
+    const desktop = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : false
+    if (desktop) showAdvancedFilters.value = !showAdvancedFilters.value
+    else showFiltersModal.value = true
+  } catch (e) {
+    showFiltersModal.value = true
+  }
+}
+
+function clearAdvancedFilters() {
+  locationFilter.value = ''
+  responsibleFilter.value = ''
+  tagsFilter.value = ''
+  installationDateFrom.value = ''
+  installationDateTo.value = ''
+  testDateFrom.value = ''
+  testDateTo.value = ''
+  systemFilter.value = ''
+  try { closeSystemMenu() } catch (e) { /* ignore */ }
+}
 
 const parentOptions = computed(() => spacesStore.items)
 
@@ -1726,6 +2175,7 @@ const modalSystemOptions = computed(() => {
 // system filter options with counts based on current search/type/status filters
 // server-driven page for equipment list
 const serverEquipment = ref([])
+const serverFetchedOnce = ref(false)
 const serverTotal = ref(0)
 const serverTotalAll = ref(0)
 const serverChecklistsTotalCount = ref(0)
@@ -1854,6 +2304,7 @@ function toggleOnlyWithChecklists() {
   onlyWithChecklists.value = !onlyWithChecklists.value
   if (!onlyWithChecklists.value) {
     checklistSystemFilter.value = ''
+    myChecklistsOnly.value = false
     closeChecklistSystemMenu()
   }
   page.value = 1
@@ -2380,6 +2831,7 @@ watch(() => projectStore.currentProjectId, async (id) => {
   // Clear stale lists when switching projects
   serverEquipment.value = []
   serverTotal.value = 0
+  serverFetchedOnce.value = false
   equipmentStore.items = []
   // Clear analytics so it refreshes per-project
   equipmentAnalytics.value = null
@@ -2573,8 +3025,10 @@ async function fetchEquipmentPage(projectId?: string) {
     if (!pid) {
       serverEquipment.value = []
       serverTotal.value = 0
+      serverFetchedOnce.value = false
       return
     }
+    serverFetchedOnce.value = true
 
     const params: any = { page: page.value, perPage: pageSize.value, includeFacets: true }
     params.projectId = pid
@@ -2582,12 +3036,24 @@ async function fetchEquipmentPage(projectId?: string) {
     if (typeFilter.value) params.type = typeFilter.value
     if (systemFilter.value) params.system = systemFilter.value
     if (statusFilter.value) params.status = statusFilter.value
-    if (onlyWithChecklists.value) params.hasChecklists = '1'
-    if (onlyWithFpt.value) params.hasFpt = '1'
-    if (onlyWithIssues.value) params.hasIssues = '1'
-    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
-    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
-    const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
+    if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value || '').trim()
+    if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value || '').trim()
+    if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value || '').trim()
+    const instFrom = isoDateOnly(installationDateFrom.value)
+    const instTo = isoDateOnly(installationDateTo.value)
+    const testFrom = isoDateOnly(testDateFrom.value)
+    const testTo = isoDateOnly(testDateTo.value)
+    if (instFrom) params.installationDateFrom = instFrom
+    if (instTo) params.installationDateTo = instTo
+    if (testFrom) params.testDateFrom = testFrom
+    if (testTo) params.testDateTo = testTo
+	    if (onlyWithChecklists.value) params.hasChecklists = '1'
+	    if (onlyWithFpt.value) params.hasFpt = '1'
+	    if (onlyWithIssues.value) params.hasIssues = '1'
+	    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
+	    if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
+	    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+	    const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
     const data = res && res.data ? res.data : {}
     const normalizeItem = (it: any) => {
       const obj: any = { ...(it || {}) }
@@ -2676,7 +3142,28 @@ function debounce(fn: (...args: any[]) => any, wait = 200) {
 }
 
 const debouncedFetch = debounce(() => { fetchEquipmentPage().catch(() => {}) }, 150)
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => search.value, () => typeFilter.value, () => systemFilter.value, () => statusFilter.value, () => onlyWithChecklists.value, () => onlyWithFpt.value, () => onlyWithIssues.value, () => checklistSystemFilter.value], () => debouncedFetch(), { immediate: false })
+	watch([
+	  () => page.value,
+	  () => pageSize.value,
+	  () => sortKey.value,
+	  () => sortDir.value,
+	  () => search.value,
+	  () => typeFilter.value,
+	  () => systemFilter.value,
+	  () => statusFilter.value,
+	  () => locationFilter.value,
+	  () => responsibleFilter.value,
+	  () => tagsFilter.value,
+	  () => installationDateFrom.value,
+	  () => installationDateTo.value,
+	  () => testDateFrom.value,
+	  () => testDateTo.value,
+	  () => onlyWithChecklists.value,
+	  () => myChecklistsOnly.value,
+	  () => onlyWithFpt.value,
+	  () => onlyWithIssues.value,
+	  () => checklistSystemFilter.value,
+	], () => debouncedFetch(), { immediate: false })
 const validUploadRows = computed(() => (uploadRows.value || []).filter(r => r.tag && r.type && r.title))
 const uploadInvalidRowsCount = computed(() => (uploadRows.value || []).length - validUploadRows.value.length)
 const uploadDuplicateTags = computed<string[]>(() => {
@@ -2937,14 +3424,26 @@ async function downloadEquipmentList() {
     status: statusFilter.value || '',
     system: systemFilter.value || '',
   }
-  if (onlyWithChecklists.value) params.hasChecklists = '1'
-  if (onlyWithFpt.value) params.hasFpt = '1'
-  if (onlyWithIssues.value) params.hasIssues = '1'
-  if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
-  try {
-    const res = await http.get('/api/equipment/export', {
-      params,
-      headers: getAuthHeaders(),
+  if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value || '').trim()
+  if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value || '').trim()
+  if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value || '').trim()
+  const instFrom = isoDateOnly(installationDateFrom.value)
+  const instTo = isoDateOnly(installationDateTo.value)
+  const testFrom = isoDateOnly(testDateFrom.value)
+  const testTo = isoDateOnly(testDateTo.value)
+  if (instFrom) params.installationDateFrom = instFrom
+  if (instTo) params.installationDateTo = instTo
+  if (testFrom) params.testDateFrom = testFrom
+  if (testTo) params.testDateTo = testTo
+	  if (onlyWithChecklists.value) params.hasChecklists = '1'
+	  if (onlyWithFpt.value) params.hasFpt = '1'
+	  if (onlyWithIssues.value) params.hasIssues = '1'
+	  if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
+	  if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
+	  try {
+	    const res = await http.get('/api/equipment/export', {
+	      params,
+	      headers: getAuthHeaders(),
       responseType: 'blob'
     })
     const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'text/csv;charset=utf-8;' })

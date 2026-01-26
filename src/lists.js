@@ -230,9 +230,9 @@ export default {
 
   checklistTypes: [
     { value: null, text: "Please select an option" },
-    { value: "functional test", text: "Functional Test" },
-    { value: "pre-functional", text: "Pre-functional" },
-    { value: "QC", text: "QC" },
+    { value: "Functional Test", text: "Functional Test" },
+    { value: "Pre-functional Checklist", text: "Pre-functional Checklist" },
+    { value: "QA/QC", text: "QA/QC" },
   ],
 
   fptTypes: [

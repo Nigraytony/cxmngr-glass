@@ -548,7 +548,7 @@
             :value="nextNumber"
             type="text"
             disabled
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/80"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
           >
         </div>
         <div>
@@ -557,52 +557,82 @@
             v-model="draft.title"
             type="text"
             placeholder="Section title"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
           >
         </div>
-        <div>
-          <label class="block text-sm text-white/70">Type</label>
-          <input
-            v-model="draft.type"
-            type="text"
-            placeholder="pre-functional"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-          >
-        </div>
+	        <div>
+	          <label class="block text-sm text-white/70">Type</label>
+	          <select
+	            v-model="draft.type"
+	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+	          >
+	            <option
+	              v-for="opt in checklistTypeOptions"
+	              :key="String(opt.value ?? opt.text)"
+	              :value="opt.value ?? ''"
+	              class="bg-slate-950 text-gray-300"
+	            >
+	              {{ opt.text }}
+	            </option>
+	          </select>
+	        </div>
         <div>
           <label class="block text-sm text-white/70">System</label>
-          <input
+          <select
             v-model="draft.system"
-            type="text"
-            placeholder="mechanical"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
           >
+            <option
+              v-for="opt in systemSelectOptions"
+              :key="String(opt.value ?? opt.text)"
+              :value="opt.value ?? ''"
+              class="bg-slate-950 text-gray-300"
+            >
+              {{ opt.text }}
+            </option>
+          </select>
         </div>
         <div>
           <label class="block text-sm text-white/70">Status</label>
           <select
             v-model="draft.status"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
           >
-            <option value="not started">
+            <option
+              value="not started"
+              class="bg-slate-950 text-gray-300"
+            >
               not started
             </option>
-            <option value="in progress">
+            <option
+              value="in progress"
+              class="bg-slate-950 text-gray-300"
+            >
               in progress
             </option>
-            <option value="complete">
+            <option
+              value="complete"
+              class="bg-slate-950 text-gray-300"
+            >
               complete
             </option>
           </select>
         </div>
-        <div class="flex items-center gap-2 mt-6">
-          <label class="inline-flex items-center gap-2 text-sm text-white/80">
-            <input
-              v-model="draft.is_complete"
-              type="checkbox"
+        <div>
+          <label class="block text-sm text-white/70">Responsible</label>
+          <select
+            v-model="draft.responsible"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+          >
+            <option
+              v-for="opt in roleOptions"
+              :key="String(opt.value ?? opt.text)"
+              :value="opt.value ?? ''"
+              class="bg-slate-950 text-gray-300"
             >
-            <span>Mark complete</span>
-          </label>
+              {{ opt.text }}
+            </option>
+          </select>
         </div>
       </div>
       <div>
@@ -611,18 +641,18 @@
           v-model="draft.notes"
           type="text"
           placeholder="Optional notes"
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
         >
       </div>
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="text-sm text-white/70">Questions</label>
-          <button
-            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
-            @click="addDraftQuestion"
-          >
-            Add Question
-          </button>
+	          <button
+	            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-gray-300"
+	            @click="addDraftQuestion"
+	          >
+	            Add Question
+	          </button>
         </div>
         <div
           v-if="!draft.questions.length"
@@ -644,7 +674,7 @@
               v-model="q.question_text"
               type="text"
               placeholder="Question text"
-              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             >
             <button
               class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
@@ -738,133 +768,163 @@
       </div>
     </template>
   </Modal>
-  <!-- Edit Checklist Modal -->
-  <Modal v-model="editOpen">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="font-medium">
-          Edit Checklist
-        </div>
-        <div class="text-white/70 text-sm">
-          Update details and questions
-        </div>
-      </div>
-    </template>
-    <div class="space-y-3">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm text-white/70">Number</label>
-          <input
-            v-model="editDraft.number"
-            type="number"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-          >
-        </div>
-        <div>
-          <label class="block text-sm text-white/70">Title</label>
-          <input
-            v-model="editDraft.title"
-            type="text"
-            placeholder="Section title"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-          >
-        </div>
-        <div>
-          <label class="block text-sm text-white/70">Type</label>
-          <input
-            v-model="editDraft.type"
-            type="text"
-            placeholder="pre-functional"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-          >
-        </div>
-        <div>
-          <label class="block text-sm text-white/70">System</label>
-          <input
-            v-model="editDraft.system"
-            type="text"
-            placeholder="mechanical"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-          >
-        </div>
+	  <!-- Edit Checklist Modal -->
+	  <Modal v-model="editOpen">
+	    <template #header>
+	      <div class="flex items-center justify-between">
+	        <div class="font-medium">
+	          Edit Checklist
+	        </div>
+	        <div class="text-white/70 text-sm">
+	          Update details and questions
+	        </div>
+	      </div>
+	    </template>
+	    <div class="space-y-3">
+	      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+	        <div>
+	          <label class="block text-sm text-white/70">Number</label>
+	          <input
+	            v-model="editDraft.number"
+	            type="number"
+	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+	          >
+	        </div>
+	        <div>
+	          <label class="block text-sm text-white/70">Title</label>
+	          <input
+	            v-model="editDraft.title"
+	            type="text"
+	            placeholder="Section title"
+	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+	          >
+	        </div>
+	        <div>
+	          <label class="block text-sm text-white/70">Type</label>
+	          <select
+	            v-model="editDraft.type"
+	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+	          >
+	            <option
+	              v-for="opt in checklistTypeOptions"
+	              :key="String(opt.value ?? opt.text)"
+	              :value="opt.value ?? ''"
+	              class="bg-slate-950 text-gray-300"
+	            >
+	              {{ opt.text }}
+	            </option>
+	          </select>
+	        </div>
+	        <div>
+	          <label class="block text-sm text-white/70">System</label>
+	          <select
+	            v-model="editDraft.system"
+	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+	          >
+	            <option
+	              v-for="opt in systemSelectOptions"
+	              :key="String(opt.value ?? opt.text)"
+	              :value="opt.value ?? ''"
+	              class="bg-slate-950 text-gray-300"
+	            >
+	              {{ opt.text }}
+	            </option>
+	          </select>
+	        </div>
         <div>
           <label class="block text-sm text-white/70">Status</label>
           <select
             v-model="editDraft.status"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
           >
-            <option value="not started">
+            <option
+              value="not started"
+              class="bg-slate-900 text-gray-300"
+            >
               not started
             </option>
-            <option value="in progress">
+            <option
+              value="in progress"
+              class="bg-slate-900 text-gray-300"
+            >
               in progress
             </option>
-            <option value="complete">
+            <option
+              value="complete"
+              class="bg-slate-900 text-gray-300"
+            >
               complete
             </option>
           </select>
         </div>
-        <div class="flex items-center gap-2 mt-6">
-          <label class="inline-flex items-center gap-2 text-sm text-white/80">
-            <input
-              v-model="editDraft.is_complete"
-              type="checkbox"
+        <div>
+          <label class="block text-sm text-white/70">Responsible</label>
+          <select
+            v-model="editDraft.responsible"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+          >
+            <option
+              v-for="opt in roleOptions"
+              :key="String(opt.value ?? opt.text)"
+              :value="opt.value ?? ''"
+              class="bg-slate-950 text-gray-300"
             >
-            <span>Mark complete</span>
-          </label>
+              {{ opt.text }}
+            </option>
+          </select>
         </div>
       </div>
       <div>
         <label class="block text-sm text-white/70">Notes</label>
         <input
-          v-model="editDraft.notes"
-          type="text"
-          placeholder="Optional notes"
-          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-        >
-      </div>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <label class="text-sm text-white/70">Questions</label>
-          <button
-            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
-            @click="addEditQuestion"
-          >
-            Add Question
-          </button>
-        </div>
-        <div
-          v-if="!editDraft.questions.length"
-          class="text-white/60 text-sm"
-        >
-          No questions yet.
-        </div>
-        <ul
-          v-else
-          class="space-y-2"
-        >
-          <li
-            v-for="(q, i) in editDraft.questions"
-            :key="i"
-            class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2"
-          >
-            <input
-              v-model="q.number"
-              type="number"
-              class="w-20 px-2 py-1 rounded-md bg-white/10 border border-white/20"
-            >
-            <input
-              v-model="q.question_text"
-              type="text"
-              placeholder="Question text"
-              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-            >
-            <button
-              class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
-              title="Remove question"
-              aria-label="Remove question"
-              @click="removeEditQuestion(i)"
-            >
+	          v-model="editDraft.notes"
+	          type="text"
+	          placeholder="Optional notes"
+	          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+	        >
+	      </div>
+	      <div class="space-y-2">
+	        <div class="flex items-center justify-between">
+	          <label class="text-sm text-white/70">Questions</label>
+		          <button
+		            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-gray-300"
+		            @click="addEditQuestion"
+		          >
+		            Add Question
+		          </button>
+	        </div>
+	        <div
+	          v-if="!editDraft.questions.length"
+	          class="text-white/60 text-sm"
+	        >
+	          No questions yet.
+	        </div>
+	        <ul
+	          v-else
+	          class="space-y-2"
+	        >
+	          <li
+	            v-for="(q, i) in editDraft.questions"
+	            :key="i"
+	            class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2"
+	          >
+	            <input
+	              v-model="q.number"
+	              type="number"
+	              class="w-20 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300"
+	            >
+	            <input
+	              v-model="q.question_text"
+	              type="text"
+	              placeholder="Question text"
+	              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+	            >
+	            <button
+	              class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+	              title="Remove question"
+	              aria-label="Remove question"
+	              @click="removeEditQuestion(i)"
+	            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -918,14 +978,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch, ref, onMounted } from 'vue'
-import Modal from './Modal.vue'
-import IssueForm from './IssueForm.vue'
-import { confirm as inlineConfirm } from '../utils/confirm'
-import { useAuthStore } from '../stores/auth'
-import { useProjectStore } from '../stores/project'
-import { useIssuesStore } from '../stores/issues'
-import { useRouter } from 'vue-router'
+	import { computed, reactive, watch, ref, onMounted } from 'vue'
+	import Modal from './Modal.vue'
+	import IssueForm from './IssueForm.vue'
+	import { confirm as inlineConfirm } from '../utils/confirm'
+	import lists from '../lists'
+	import { useAuthStore } from '../stores/auth'
+	import { useProjectStore } from '../stores/project'
+	import { useIssuesStore } from '../stores/issues'
+	import { useRouter } from 'vue-router'
+
+	type SelectOption = { value: any; text: string }
+	const roleOptions = ((lists as any)?.roleOptions as SelectOption[]) || []
+	const checklistTypeOptions = ((lists as any)?.checklistTypes as SelectOption[]) || []
+	const systemSelectOptions = ((lists as any)?.systemOptions as SelectOption[]) || []
 
 export interface ChecklistQuestion {
   number?: number
@@ -947,6 +1013,7 @@ export interface ChecklistSection {
   system?: string
   status?: string
   is_complete?: boolean
+  responsible?: string | null
   notes?: string | null
   questions: ChecklistQuestion[]
   documents?: any[]
@@ -966,6 +1033,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', v: ChecklistSection[]): void
   (e: 'change', v: ChecklistSection[]): void
+  (e: 'persist', v: ChecklistSection[]): void
 }>()
 
 const local = reactive<ChecklistSection[]>(normalize(props.modelValue))
@@ -980,13 +1048,14 @@ function normalize(v: any): ChecklistSection[] {
     number: s?.number ?? null,
     title: s?.title ?? '',
     type: s?.type ?? '',
-    system: s?.system ?? '',
-    status: s?.status ?? 'not started',
-    is_complete: !!s?.is_complete,
-    notes: s?.notes ?? '',
-    questions: Array.isArray(s?.questions) ? s.questions.map((q: any) => ({
-      number: q?.number ?? null,
-      question_text: String(q?.question_text || ''),
+	    system: s?.system ?? '',
+	    status: s?.status ?? 'not started',
+	    is_complete: !!s?.is_complete,
+	    responsible: s?.responsible ?? '',
+	    notes: s?.notes ?? '',
+	    questions: Array.isArray(s?.questions) ? s.questions.map((q: any) => ({
+	      number: q?.number ?? null,
+	      question_text: String(q?.question_text || ''),
       answer: q?.answer ?? null,
       cx_answer: q?.cx_answer ?? null,
       cx_answered_by: q?.cx_answered_by ?? null,
@@ -1436,8 +1505,11 @@ function onSectionCompleteToggle(si: number) {
 }
 
 let changeTimer: any = null
+function snapshotPayload() {
+  return local.map(s => ({ ...s, questions: s.questions.map(q => ({ ...q })) }))
+}
 function notifyChange() {
-  const payload = local.map(s => ({ ...s, questions: s.questions.map(q => ({ ...q })) }))
+  const payload = snapshotPayload()
   emit('update:modelValue', payload)
   if (changeTimer) clearTimeout(changeTimer)
   changeTimer = setTimeout(() => emit('change', payload), 600)
@@ -1474,8 +1546,8 @@ function formatDateTime(d?: any) {
 
 // New checklist flow
 const newOpen = ref(false)
-const draft = reactive<{ title: string; type: string; system: string; status: string; is_complete: boolean; notes: string; questions: Array<{ question_text: string }> }>({
-  title: '', type: '', system: '', status: 'not started', is_complete: false, notes: '', questions: []
+const draft = reactive<{ title: string; type: string; system: string; status: string; responsible: string; notes: string; questions: Array<{ question_text: string }> }>({
+  title: '', type: '', system: '', status: 'not started', responsible: '', notes: '', questions: []
 })
 const nextNumber = computed(() => {
   const nums = local.map(s => Number(s.number || 0)).filter(n => Number.isFinite(n))
@@ -1483,7 +1555,7 @@ const nextNumber = computed(() => {
   return max + 1
 })
 function openNew() { resetDraft(); newOpen.value = true }
-function resetDraft() { draft.title = ''; draft.type = ''; draft.system = ''; draft.status = 'not started'; draft.is_complete = false; draft.notes = ''; draft.questions = [] }
+function resetDraft() { draft.title = ''; draft.type = ''; draft.system = ''; draft.status = 'not started'; draft.responsible = ''; draft.notes = ''; draft.questions = [] }
 function cancelNew() { newOpen.value = false }
 function addDraftQuestion() { draft.questions.push({ question_text: '' }) }
 function removeDraftQuestion(i: number) { draft.questions.splice(i, 1) }
@@ -1509,7 +1581,8 @@ function saveNew() {
     type: draft.type.trim(),
     system: draft.system.trim(),
     status: draft.status || 'not started',
-    is_complete: !!draft.is_complete,
+    is_complete: draft.status === 'complete',
+    responsible: draft.responsible || '',
     notes: draft.notes || '',
     questions,
     documents: [], photos: [], issues: [], settings: [], meta: [],
@@ -1523,6 +1596,7 @@ function saveNew() {
   // normalize numbering immediately
   renumberSections()
   notifyChange()
+  emit('persist', snapshotPayload())
   newOpen.value = false
 }
 
@@ -1539,25 +1613,25 @@ function moveSection(si: number, delta: -1 | 1) {
   notifyChange()
 }
 
-// Edit / Delete section
-const editOpen = ref(false)
-const editIndex = ref<number | null>(null)
-const editDraft = reactive<{ number: number | null; title: string; type: string; system: string; status: string; is_complete: boolean; notes: string; questions: Array<{ number?: number; question_text: string }> }>({
-  number: null, title: '', type: '', system: '', status: 'not started', is_complete: false, notes: '', questions: []
-})
-function startEdit(si: number) {
-  const s = local[si]
-  editIndex.value = si
-  editDraft.number = (s.number as any) ?? (si + 1)
-  editDraft.title = s.title || ''
-  editDraft.type = s.type || ''
-  editDraft.system = s.system || ''
-  editDraft.status = s.status || 'not started'
-  editDraft.is_complete = !!s.is_complete
-  editDraft.notes = s.notes || ''
-  editDraft.questions = (s.questions || []).map((q: any) => ({ number: q?.number, question_text: q?.question_text || '' }))
-  editOpen.value = true
-}
+	// Edit / Delete section
+	const editOpen = ref(false)
+	const editIndex = ref<number | null>(null)
+	const editDraft = reactive<{ number: number | null; title: string; type: string; system: string; status: string; responsible: string; notes: string; questions: Array<{ number?: number; question_text: string }> }>({
+	  number: null, title: '', type: '', system: '', status: 'not started', responsible: '', notes: '', questions: []
+	})
+	function startEdit(si: number) {
+	  const s = local[si]
+	  editIndex.value = si
+	  editDraft.number = (s.number as any) ?? (si + 1)
+	  editDraft.title = s.title || ''
+	  editDraft.type = s.type || ''
+	  editDraft.system = s.system || ''
+	  editDraft.status = s.status || 'not started'
+	  editDraft.responsible = (s as any)?.responsible ?? ''
+	  editDraft.notes = s.notes || ''
+	  editDraft.questions = (s.questions || []).map((q: any) => ({ number: q?.number, question_text: q?.question_text || '' }))
+	  editOpen.value = true
+	}
 function cancelEdit() { editOpen.value = false; editIndex.value = null }
 function addEditQuestion() { editDraft.questions.push({ question_text: '' }) }
 function removeEditQuestion(i: number) { editDraft.questions.splice(i, 1) }
@@ -1579,27 +1653,29 @@ function saveEditSection() {
     is_complete: local[si].questions?.[idx]?.is_complete ?? null,
     notes: local[si].questions?.[idx]?.notes ?? null,
   }))
-  local[si] = {
-    ...local[si],
-    number: (editDraft.number as any) ?? local[si].number,
-    title: editDraft.title.trim(),
-    type: editDraft.type.trim(),
-    system: editDraft.system.trim(),
-    status: editDraft.status || 'not started',
-    is_complete: !!editDraft.is_complete,
-    notes: editDraft.notes || '',
-    questions,
-  }
+	  local[si] = {
+	    ...local[si],
+	    number: (editDraft.number as any) ?? local[si].number,
+	    title: editDraft.title.trim(),
+	    type: editDraft.type.trim(),
+	    system: editDraft.system.trim(),
+	    status: editDraft.status || 'not started',
+	    is_complete: editDraft.status === 'complete',
+	    responsible: editDraft.responsible || '',
+	    notes: editDraft.notes || '',
+	    questions,
+	  }
   // Log key field edits (minimal)
   const after = local[si]
   const changed: Record<string, { from: any; to: any }> = {}
-  ;(['number','title','type','system','status','is_complete','notes'] as const).forEach((k) => {
-    const fromV = (before as any)?.[k]
-    const toV = (after as any)?.[k]
-    if (JSON.stringify(fromV) !== JSON.stringify(toV)) changed[k] = { from: fromV ?? null, to: toV ?? null }
-  })
+	  ;(['number','title','type','system','status','is_complete','responsible','notes'] as const).forEach((k) => {
+	    const fromV = (before as any)?.[k]
+	    const toV = (after as any)?.[k]
+	    if (JSON.stringify(fromV) !== JSON.stringify(toV)) changed[k] = { from: fromV ?? null, to: toV ?? null }
+	  })
   logEvent(si, 'section_edited', { changed, questionsCount: questions.length })
   notifyChange()
+  emit('persist', snapshotPayload())
   editOpen.value = false
   editIndex.value = null
 }

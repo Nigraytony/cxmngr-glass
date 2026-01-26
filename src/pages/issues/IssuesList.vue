@@ -228,7 +228,7 @@
             :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
             :class="[
               'h-10 px-3 inline-flex items-center gap-2 rounded-full text-white border disabled:opacity-40',
-              showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/10 border-white/15 hover:bg-white/15'
+              showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/15 hover:bg-white/15'
             ]"
             @click="toggleAnalytics"
           >
@@ -274,34 +274,47 @@
           </div>
         </div>
 
-	        <button
-	          type="button"
-	          aria-label="Filters"
-	          class="h-10 px-3 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white/90 inline-flex items-center gap-2"
-	          @click="openFilters"
-	        >
-	          <svg
-	            xmlns="http://www.w3.org/2000/svg"
-	            viewBox="0 0 24 24"
-	            fill="none"
-	            stroke="currentColor"
-	            class="w-5 h-5"
-	            aria-hidden="true"
-	          >
-	            <path
-	              d="M3 5h18M6 12h12M10 19h4"
-	              stroke-width="1.5"
-	              stroke-linecap="round"
-	              stroke-linejoin="round"
-	            />
-	          </svg>
-	          <span
+	        <div class="relative inline-block group shrink-0">
+	          <button
+	            :disabled="!projectStore.currentProjectId"
+	            type="button"
+	            aria-label="Filters"
+	            :title="projectStore.currentProjectId ? 'Filters' : 'Select a project'"
 	            :class="[
-	              'text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white/80 inline-flex items-center justify-center w-8',
-	              advancedFiltersActiveCount > 0 ? '' : 'invisible'
+	              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
+	              (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
 	            ]"
-	          >{{ advancedFiltersActiveCount }}</span>
-	        </button>
+	            @click="openFilters"
+	          >
+	            <svg
+	              xmlns="http://www.w3.org/2000/svg"
+	              viewBox="0 0 24 24"
+	              fill="none"
+	              stroke="currentColor"
+	              class="w-5 h-5"
+	              aria-hidden="true"
+	            >
+	              <path
+	                d="M3 5h18M6 12h12M10 19h4"
+	                stroke-width="1.5"
+	                stroke-linecap="round"
+	                stroke-linejoin="round"
+	              />
+	            </svg>
+	            <span
+	              :class="[
+	                'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
+	                advancedFiltersActiveCount > 0 ? '' : 'invisible'
+	              ]"
+	            >{{ advancedFiltersActiveCount }}</span>
+	          </button>
+	          <div
+	            role="tooltip"
+	            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+	          >
+	            Filters
+	          </div>
+	        </div>
 
         <div class="relative inline-block group shrink-0">
           <button

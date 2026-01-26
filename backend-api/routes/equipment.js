@@ -53,6 +53,14 @@ function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } =
   return s
 }
 
+function normalizeIsoDateOnly(value) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
+  return s
+}
+
 function normalizeObjectIdList(value, { max = 50 } = {}) {
   if (value === undefined) return undefined
   const list = Array.isArray(value) ? value : [value]
@@ -107,6 +115,145 @@ function safeErrorMessage(err, fallback) {
 
 function sendServerError(res, err, fallback) {
   return res.status(500).send({ error: safeErrorMessage(err, fallback) })
+}
+
+function isoDateOnlyStartUtc(iso) {
+  return new Date(`${iso}T00:00:00.000Z`)
+}
+
+function isoDateOnlyNextDayStartUtc(iso) {
+  const d = isoDateOnlyStartUtc(iso)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d
+}
+
+function mergeAnd(filter, clauses) {
+  if (!Array.isArray(clauses) || clauses.length === 0) return
+  if (Array.isArray(filter.$and)) filter.$and.push(...clauses)
+  else filter.$and = clauses
+}
+
+function buildExactRegex(raw, { maxLen = 128 } = {}) {
+  const base = buildSafeRegex(raw, { maxLen, flags: 'i' })
+  if (!base) return null
+  return new RegExp(`^${base.source}$`, 'i')
+}
+
+function parseTagsFilter(raw) {
+  const s = String(raw || '').trim()
+  if (!s) return []
+  if (s.length > 512) return null
+  const parts = s.split(',').map((x) => String(x || '').trim()).filter(Boolean).slice(0, 30)
+  const rxs = []
+  for (const t of parts) {
+    const rx = buildExactRegex(t, { maxLen: 64 })
+    if (rx) rxs.push(rx)
+  }
+  return rxs
+}
+
+async function applyEquipmentListFilters({ filter, query, projectObjectId }) {
+  const and = []
+
+  if (query.search) {
+    const rx = buildSafeRegex(query.search, { maxLen: 128 })
+    if (rx) filter.$or = [
+      { tag: { $regex: rx } },
+      { title: { $regex: rx } },
+      { type: { $regex: rx } },
+      { system: { $regex: rx } },
+    ]
+  }
+
+  if (query.type !== undefined) {
+    const v = normalizeOptionalFilterString(query.type)
+    if (v === undefined) return 'Invalid type'
+    if (v) filter.type = v
+  }
+  if (query.system !== undefined) {
+    const v = normalizeOptionalFilterString(query.system)
+    if (v === undefined) return 'Invalid system'
+    if (v) {
+      const rx = buildExactRegex(v, { maxLen: 128 })
+      if (rx) and.push({ system: { $regex: rx } })
+    }
+  }
+  if (query.status !== undefined) {
+    const v = normalizeOptionalFilterString(query.status)
+    if (v === undefined) return 'Invalid status'
+    if (v) filter.status = v
+  }
+
+  if (query.location !== undefined) {
+    const v = normalizeOptionalFilterString(query.location, { maxLen: 128, allowAll: false })
+    if (v === undefined) return 'Invalid location'
+    if (v) {
+      const rx = buildSafeRegex(v, { maxLen: 128 })
+      if (rx) {
+        const spaces = await Space.find({
+          project: projectObjectId,
+          $or: [{ title: { $regex: rx } }, { tag: { $regex: rx } }],
+        }).select('_id').limit(500).lean()
+        const ids = Array.isArray(spaces) ? spaces.map((s) => s && s._id).filter(Boolean) : []
+        if (ids.length === 0) and.push({ _id: { $in: [] } })
+        else {
+          and.push({
+            $or: [
+              { spaceId: { $in: ids } },
+              { space: { $in: ids } },
+            ],
+          })
+        }
+      }
+    }
+  }
+
+  if (query.responsible !== undefined) {
+    const v = normalizeOptionalFilterString(query.responsible, { maxLen: 128, allowAll: false })
+    if (v === undefined) return 'Invalid responsible'
+    if (v) {
+      const rx = buildSafeRegex(v, { maxLen: 128 })
+      if (rx) and.push({ responsible: { $regex: rx } })
+    }
+  }
+
+  if (query.checklistResponsible !== undefined) {
+    const v = normalizeOptionalFilterString(query.checklistResponsible, { maxLen: 128, allowAll: false })
+    if (v === undefined) return 'Invalid checklistResponsible'
+    if (v) {
+      const rx = buildExactRegex(v, { maxLen: 128 })
+      if (rx) and.push({ 'checklists.responsible': { $regex: rx } })
+    }
+  }
+
+  if (query.tags !== undefined) {
+    const rxs = parseTagsFilter(query.tags)
+    if (rxs === null) return 'Invalid tags'
+    if (rxs.length) and.push({ tags: { $in: rxs } })
+  }
+
+  if (query.installationDateFrom !== undefined || query.installationDateTo !== undefined) {
+    const from = normalizeIsoDateOnly(query.installationDateFrom)
+    const to = normalizeIsoDateOnly(query.installationDateTo)
+    if (from === undefined || to === undefined) return 'Invalid installationDate range'
+    const cond = {}
+    if (from) cond.$gte = isoDateOnlyStartUtc(from)
+    if (to) cond.$lt = isoDateOnlyNextDayStartUtc(to)
+    if (Object.keys(cond).length) and.push({ installationDate: cond })
+  }
+
+  if (query.testDateFrom !== undefined || query.testDateTo !== undefined) {
+    const from = normalizeIsoDateOnly(query.testDateFrom)
+    const to = normalizeIsoDateOnly(query.testDateTo)
+    if (from === undefined || to === undefined) return 'Invalid testDate range'
+    const cond = {}
+    if (from) cond.$gte = isoDateOnlyStartUtc(from)
+    if (to) cond.$lt = isoDateOnlyNextDayStartUtc(to)
+    if (Object.keys(cond).length) and.push({ testDate: cond })
+  }
+
+  if (and.length) mergeAnd(filter, and)
+  return null
 }
 
 // multer memory storage for small images
@@ -671,30 +818,8 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
     const filter = { projectId: projectObjectId }
     const hasErr = applyHasFilters(filter, req.query)
     if (hasErr) return res.status(400).send({ error: hasErr })
-	    if (req.query.search) {
-	      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
-	      if (rx) filter.$or = [
-	        { tag: { $regex: rx } },
-	        { title: { $regex: rx } },
-	        { type: { $regex: rx } },
-	        { system: { $regex: rx } },
-	      ]
-	    }
-		    if (req.query.type !== undefined) {
-		      const v = normalizeOptionalFilterString(req.query.type)
-		      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
-		      if (v) filter.type = v
-		    }
-		    if (req.query.system !== undefined) {
-		      const v = normalizeOptionalFilterString(req.query.system)
-		      if (v === undefined) return res.status(400).send({ error: 'Invalid system' })
-		      if (v) filter.system = v
-		    }
-		    if (req.query.status !== undefined) {
-		      const v = normalizeOptionalFilterString(req.query.status)
-		      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
-		      if (v) filter.status = v
-		    }
+    const filtersErr = await applyEquipmentListFilters({ filter, query: req.query, projectObjectId })
+    if (filtersErr) return res.status(400).send({ error: filtersErr })
 
     const totalAll = await Equipment.countDocuments({ projectId: projectObjectId })
     const total = await Equipment.countDocuments(filter)
@@ -852,21 +977,12 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
     const projectId = req.query.projectId
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
-    const filter = { projectId }
+    const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
+    const filter = { projectId: projectObjectId }
     const hasErr = applyHasFilters(filter, req.query)
     if (hasErr) return res.status(400).send({ error: hasErr })
-    if (req.query.type) filter.type = req.query.type
-    if (req.query.system) filter.system = req.query.system
-    if (req.query.status) filter.status = req.query.status
-    if (req.query.search) {
-      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
-      if (rx) filter.$or = [
-        { tag: { $regex: rx } },
-        { title: { $regex: rx } },
-        { type: { $regex: rx } },
-        { system: { $regex: rx } },
-      ]
-    }
+    const filtersErr = await applyEquipmentListFilters({ filter, query: req.query, projectObjectId })
+    if (filtersErr) return res.status(400).send({ error: filtersErr })
     const items = await Equipment.find(filter).lean()
     const records = items.map(toPlainEquipment)
     const headers = ['id','tag','type','title','system','status','spaceId','description','attributes','components','checklists','functionalTests','template','images','attachments','projectId']
