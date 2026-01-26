@@ -1,14 +1,24 @@
 <template>
-  <div class="flex items-center justify-between gap-4 flex-wrap min-w-0">
-    <!-- Page title on the left -->
+  <div class="relative flex items-center justify-between gap-4 flex-wrap min-w-0">
+    <!-- Left: page title -->
     <div class="min-w-0">
       <h1 class="text-2xl font-semibold text-white truncate">
         {{ pageTitle }}
       </h1>
     </div>
 
-    <!-- Breadcrumbs and actions on the right -->
-    <div class="flex items-center gap-4 flex-wrap min-w-0">
+    <!-- Middle: optional slot (centered horizontally in the full row) -->
+    <div
+      v-if="$slots.middle"
+      class="w-full md:w-full md:max-w-xl md:px-4 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-none"
+    >
+      <div class="md:pointer-events-auto">
+        <slot name="middle" />
+      </div>
+    </div>
+
+    <!-- Right: breadcrumbs + actions -->
+    <div class="flex items-center gap-4 flex-wrap min-w-0 shrink-0">
       <nav
         class="text-sm text-white/80 min-w-0"
         aria-label="Breadcrumb"

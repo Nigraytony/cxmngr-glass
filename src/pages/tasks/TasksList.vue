@@ -1,6 +1,13 @@
 <template>
   <div class="space-y-4">
-    <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }]" />
+    <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }]" >
+      <template #middle>
+        <SearchPill
+          v-model="q"
+          placeholder="Search by name"
+        />
+      </template>
+    </BreadCrumbs>
 
     <div class="flex items-center gap-3">
       <div class="relative inline-block group">
@@ -43,14 +50,6 @@
 
           <!-- Gantt view removed for now -->
         </div>
-      </div>
-      <div>
-        <input
-          v-model="q"
-          type="text"
-          placeholder="Search by name"
-          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-64"
-        >
       </div>
       <button
         class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
@@ -902,6 +901,7 @@ import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useActivitiesStore } from '../../stores/activities'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'

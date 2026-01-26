@@ -11,7 +11,14 @@
           { text: 'Equipment', to: '/equipment' }
         ]"
         title="Equipment"
-      />
+      >
+        <template #middle>
+          <SearchPill
+            v-model="search"
+            placeholder="Search by tag, title or type"
+          />
+        </template>
+      </BreadCrumbs>
     </div>
 
     <!-- toolbar -->
@@ -204,12 +211,6 @@
           Auto-tag this page
         </div>
       </div>
-      <input
-        v-model="search"
-        type="text"
-        placeholder="Search by tag, title or type"
-        class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-full sm:w-64 flex-1 min-w-0"
-      >
       <div class="flex items-center gap-2">
         <label class="text-white/70 text-sm">Type</label>
         <div
@@ -1391,6 +1392,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'

@@ -11,7 +11,14 @@
           { text: 'Templates', to: '/templates' }
         ]"
         title="Templates"
-      />
+      >
+        <template #middle>
+          <SearchPill
+            v-model="search"
+            placeholder="Search by tag, title or type"
+          />
+        </template>
+      </BreadCrumbs>
     </div>
 
     <!-- toolbar -->
@@ -66,12 +73,6 @@
           {{ projectStore.currentProjectId ? 'Add template' : 'Select a project to add templates' }}
         </div>
       </div>
-      <input
-        v-model="search"
-        type="text"
-        placeholder="Search by tag, title or type"
-        class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-64"
-      >
       <div class="flex items-center gap-2">
         <label class="text-white/70 text-sm">Type</label>
         <div
@@ -722,6 +723,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import http from '../../utils/http'

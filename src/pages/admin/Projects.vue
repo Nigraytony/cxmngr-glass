@@ -1,6 +1,15 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Projects' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Projects' }]" >
+      <template #middle>
+        <SearchPill
+          v-model="q"
+          placeholder="Search projects (name, client, or id)"
+          @enter="load"
+          @clear="clearAndReload"
+        />
+      </template>
+    </BreadCrumbs>
     <!-- Title removed: breadcrumbs provide the page title -->
 
     <div class="mt-6 mb-4 flex gap-2 items-center">
@@ -27,19 +36,6 @@
           />
         </svg>
       </router-link>
-
-      <input
-        v-model="q"
-        placeholder="Search projects (name, client, or id)"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1 placeholder:text-gray-400"
-        @keyup.enter="load"
-      >
-      <button
-        class="px-3 py-1 rounded bg-indigo-600"
-        @click="load"
-      >
-        Search
-      </button>
     </div>
     
     <div class="mb-4 flex items-center justify-between gap-4">
@@ -423,6 +419,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 
 const projects = ref([])
 const q = ref('')
@@ -503,6 +500,12 @@ async function load() {
     error.value = err?.message || String(err)
     projects.value = []
   }
+}
+
+function clearAndReload() {
+  q.value = ''
+  skip.value = 0
+  load()
 }
 
 function goToPage(n) {

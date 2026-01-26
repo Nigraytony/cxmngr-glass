@@ -1,6 +1,15 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Task Templates' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Task Templates' }]" >
+      <template #middle>
+        <SearchPill
+          v-model="q"
+          placeholder="Search task templates"
+          @enter="load"
+          @clear="clearAndReload"
+        />
+      </template>
+    </BreadCrumbs>
     <div class="mt-4 mb-4 flex flex-wrap gap-2 items-center">
       <router-link
         v-if="isAdmin()"
@@ -19,12 +28,6 @@
           <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
         </svg>
       </router-link>
-      <input
-        v-model="q"
-        placeholder="Search task templates"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white w-full md:w-96 placeholder:text-gray-400"
-        @keyup.enter="load"
-      >
       <select
         v-model="activeFilter"
         class="p-2 rounded bg-white/5 border border-white/10 text-white"
@@ -217,6 +220,7 @@ import http from '../../utils/http'
 import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 
 const templates = ref([])
@@ -255,6 +259,12 @@ async function load() {
     templates.value = []
     total.value = 0
   }
+}
+
+function clearAndReload() {
+  q.value = ''
+  skip.value = 0
+  load()
 }
 
 function prev() { skip.value = Math.max(0, skip.value - limit.value); load() }

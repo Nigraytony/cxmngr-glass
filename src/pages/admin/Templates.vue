@@ -1,6 +1,15 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Templates' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Templates' }]" >
+      <template #middle>
+        <SearchPill
+          v-model="q"
+          placeholder="Search templates"
+          @enter="load"
+          @clear="clearAndReload"
+        />
+      </template>
+    </BreadCrumbs>
 
     <div class="mt-4 mb-4 flex gap-2 items-center">
       <router-link
@@ -26,19 +35,6 @@
           />
         </svg>
       </router-link>
-
-      <input
-        v-model="q"
-        placeholder="Search templates"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1 placeholder:text-gray-400"
-        @keyup.enter="load"
-      >
-      <button
-        class="px-3 py-1 rounded bg-indigo-600"
-        @click="load"
-      >
-        Search
-      </button>
     </div>
 
     <div
@@ -192,6 +188,7 @@ import http from '../../utils/http'
 import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 
 const templates = ref([])
@@ -222,6 +219,12 @@ async function load() {
     error.value = err?.message || String(err)
     templates.value = []
   }
+}
+
+function clearAndReload() {
+  q.value = ''
+  skip.value = 0
+  load()
 }
 
 function prev() { skip.value = Math.max(0, skip.value - limit.value); load() }

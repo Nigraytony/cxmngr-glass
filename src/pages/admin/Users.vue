@@ -1,6 +1,15 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Users' }]" />
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Users' }]" >
+      <template #middle>
+        <SearchPill
+          v-model="q"
+          placeholder="Search email or name"
+          @enter="load"
+          @clear="clearAndReload"
+        />
+      </template>
+    </BreadCrumbs>
 
     <div class="mt-4 mb-4 flex gap-2 items-center">
       <router-link
@@ -26,20 +35,6 @@
           />
         </svg>
       </router-link>
-
-      <input
-        v-model="q"
-        placeholder="Search email or name"
-        class="p-2 rounded bg-white/5 border border-white/10 text-white flex-1 placeholder:text-gray-400"
-        @keyup.enter="load"
-      >
-
-      <button
-        class="px-3 py-1 rounded bg-indigo-600"
-        @click="load"
-      >
-        Search
-      </button>
     </div>
 
     <div class="mb-4 flex items-center justify-between gap-4">
@@ -416,6 +411,7 @@ import { ref, computed } from 'vue'
 import http from '../../utils/http'
 import { useAuthStore } from '../../stores/auth'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import { useUiStore } from '../../stores/ui'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 
@@ -502,6 +498,12 @@ async function load() {
     error.value = err?.message || String(err)
     users.value = []
   }
+}
+
+function clearAndReload() {
+  q.value = ''
+  skip.value = 0
+  load()
 }
 
 function prev() { goToPage(currentPage.value - 1) }

@@ -4,7 +4,17 @@
     class="space-y-6 relative"
   >
     <div>
-      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Projects', to: '/app/projects' }]" />
+      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Projects', to: '/app/projects' }]" >
+        <template #middle>
+          <div class="hidden sm:block">
+            <SearchPill
+              v-model="searchQuery"
+              placeholder="Search projects..."
+              @clear="clearSearch"
+            />
+          </div>
+        </template>
+      </BreadCrumbs>
     </div>
 
     <div class="flex items-center justify-between gap-3">
@@ -16,22 +26,6 @@
         >
           +
         </button>
-
-        <div class="relative">
-          <input
-            ref="searchInput"
-            v-model="searchQuery"
-            placeholder="Search projects..."
-            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 hidden sm:inline-block w-64 pr-8"
-          >
-          <button
-            v-if="searchQuery"
-            class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded"
-            @click="clearSearch"
-          >
-            ✕
-          </button>
-        </div>
 
         <!-- Search mode is now a project-level setting (Project Settings) -->
 
@@ -623,6 +617,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Modal from '../../components/Modal.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import Spinner from '../../components/Spinner.vue'

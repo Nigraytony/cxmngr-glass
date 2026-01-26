@@ -53,6 +53,14 @@ function normalizeOptionalFilterString(value, { maxLen = 64, allowAll = true } =
   return s
 }
 
+function normalizeIsoDateOnly(value) {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  if (!s) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
+  return s
+}
+
 function normalizeBoolFlag(value) {
   const s = String(value ?? '').trim().toLowerCase()
   return s === '1' || s === 'true' || s === 'yes' || s === 'y' || s === 'on'
@@ -273,6 +281,105 @@ router.get(
 	      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
 	      if (v) filter.status = v
 	    }
+
+    // Hide closed/canceled issues
+    if (normalizeBoolFlag(req.query.hideClosed)) {
+      and.push({ status: { $nin: ['Closed', 'closed', 'Canceled', 'Cancelled', 'canceled', 'cancelled'] } })
+    }
+
+    // My Issues (responsible == current user)
+    if (normalizeBoolFlag(req.query.mine)) {
+      const u = req.user || {}
+      const email = String(u.email || '').trim()
+      const name = String([u.firstName, u.lastName].filter(Boolean).join(' ')).trim()
+      const rxs = []
+      if (email) {
+        const base = buildSafeRegex(email, { maxLen: 128, flags: 'i' })
+        if (base) rxs.push(new RegExp(`^${base.source}$`, 'i'))
+      }
+      if (name) {
+        const base = buildSafeRegex(name, { maxLen: 128, flags: 'i' })
+        if (base) rxs.push(new RegExp(`^${base.source}$`, 'i'))
+      }
+      if (!rxs.length) {
+        and.push({ _id: { $in: [] } })
+      } else {
+        and.push({
+          $or: rxs.flatMap((rx) => ([
+            { assignedTo: { $regex: rx } },
+            { responsible_person: { $regex: rx } },
+          ])),
+        })
+      }
+    }
+
+    // Text filters (substring)
+    if (req.query.location !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.location, { maxLen: 128, allowAll: false })
+      if (v === undefined) return res.status(400).send({ error: 'Invalid location' })
+      if (v) {
+        const rx = buildSafeRegex(v, { maxLen: 128 })
+        if (rx) and.push({ location: { $regex: rx } })
+      }
+    }
+    if (req.query.system !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.system, { maxLen: 128, allowAll: false })
+      if (v === undefined) return res.status(400).send({ error: 'Invalid system' })
+      if (v) {
+        const rx = buildSafeRegex(v, { maxLen: 128 })
+        if (rx) and.push({ system: { $regex: rx } })
+      }
+    }
+    if (req.query.responsible !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.responsible, { maxLen: 128, allowAll: false })
+      if (v === undefined) return res.status(400).send({ error: 'Invalid responsible' })
+      if (v) {
+        const rx = buildSafeRegex(v, { maxLen: 128 })
+        if (rx) {
+          and.push({
+            $or: [
+              { assignedTo: { $regex: rx } },
+              { responsible_person: { $regex: rx } },
+            ],
+          })
+        }
+      }
+    }
+
+    // Date range filters (YYYY-MM-DD)
+    if (req.query.dateFoundFrom !== undefined || req.query.dateFoundTo !== undefined) {
+      const from = normalizeIsoDateOnly(req.query.dateFoundFrom)
+      const to = normalizeIsoDateOnly(req.query.dateFoundTo)
+      if (from === undefined || to === undefined) return res.status(400).send({ error: 'Invalid dateFound range' })
+      const cond = {}
+      if (from) cond.$gte = from
+      if (to) cond.$lte = to
+      if (Object.keys(cond).length) and.push({ dateFound: cond })
+    }
+    if (req.query.dueDateFrom !== undefined || req.query.dueDateTo !== undefined) {
+      const from = normalizeIsoDateOnly(req.query.dueDateFrom)
+      const to = normalizeIsoDateOnly(req.query.dueDateTo)
+      if (from === undefined || to === undefined) return res.status(400).send({ error: 'Invalid dueDate range' })
+      const cond = {}
+      if (from) cond.$gte = from
+      if (to) cond.$lte = to
+      if (Object.keys(cond).length) and.push({ dueDate: cond })
+    }
+
+    // Tags filter (labels[] match any; case-insensitive exact)
+    if (req.query.tags !== undefined) {
+      const raw = String(req.query.tags || '').trim()
+      if (raw.length > 512) return res.status(400).send({ error: 'Invalid tags' })
+      const parts = raw
+        ? raw.split(',').map(s => s.trim()).filter(Boolean).slice(0, 30)
+        : []
+      const rxs = []
+      for (const t of parts) {
+        const base = buildSafeRegex(t, { maxLen: 64, flags: 'i' })
+        if (base) rxs.push(new RegExp(`^${base.source}$`, 'i'))
+      }
+      if (rxs.length) and.push({ labels: { $in: rxs } })
+    }
 
     // OPR filters
     if (normalizeBoolFlag(req.query.hasOpr)) {

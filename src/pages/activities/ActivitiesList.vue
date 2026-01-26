@@ -7,7 +7,14 @@
           { text: 'Dashboard', to: '/app' },
           { text: 'Activities', to: '/app/activities' }
         ]"
-      />
+      >
+        <template #middle>
+          <SearchPill
+            v-model="q"
+            placeholder="Search by name or type"
+          />
+        </template>
+      </BreadCrumbs>
     </div>
 
     <div class="flex flex-wrap gap-3 items-end">
@@ -53,15 +60,6 @@
           />
         </svg>
       </RouterLink>
-      <div>
-        <label class="block text-white/70 text-sm">Search</label>
-        <input
-          v-model="q"
-          type="text"
-          placeholder="Search by name or type"
-          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 w-64"
-        >
-      </div>
       <div>
         <label class="block text-white/70 text-sm">Type</label>
         <div
@@ -743,6 +741,7 @@ import { onMounted, onBeforeUnmount, computed, ref, watch } from 'vue'
 	import { useSpacesStore } from '../../stores/spaces'
 import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'

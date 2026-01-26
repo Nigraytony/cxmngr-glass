@@ -10,24 +10,34 @@
           { text: 'Dashboard', to: '/' },
           { text: 'Issues', to: '/issues' }
         ]"
-      />
+      >
+        <template #middle>
+          <div class="hidden sm:block">
+            <SearchPill
+              v-model="searchQuery"
+              placeholder="Search issues..."
+              @clear="clearSearch"
+            />
+          </div>
+        </template>
+      </BreadCrumbs>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0 relative z-30">
       <!-- Left group: add, search, filters -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 min-w-0">
         <div class="relative inline-block group">
           <button
             :disabled="!projectStore.currentProjectId"
             aria-label="Add issue"
             aria-describedby="add-issue-tooltip"
             :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'"
-            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            class="h-10 px-3 flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 disabled:opacity-40"
             @click="openAddModal"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-5 h-5"
+	          >
+	            <svg
+	              xmlns="http://www.w3.org/2000/svg"
+	              class="w-5 h-5"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -35,12 +45,12 @@
               <path
                 fill-rule="evenodd"
                 d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </button>
-          <div
-            id="add-issue-tooltip"
+	                clip-rule="evenodd"
+	              />
+	            </svg>
+	          </button>
+	          <div
+	            id="add-issue-tooltip"
             role="tooltip"
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
@@ -48,42 +58,24 @@
           </div>
         </div>
 
-        <!-- Search input -->
-        <div class="relative">
-          <input
-            ref="searchInput"
-            v-model="searchQuery"
-            placeholder="Search issues..."
-            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/50 hidden sm:inline-block w-64 pr-8"
-          >
-          <button
-            v-if="searchQuery"
-            class="absolute right-1 top-1/2 -translate-y-1/2 text-white/60 px-2 py-1 rounded"
-            @click="clearSearch"
-          >
-            ✕
-          </button>
-        </div>
-
-        <!-- Filters -->
-        <div class="flex flex-wrap items-center gap-3 gap-y-2">
-          <label class="text-white/70 text-sm">Filter</label>
-          <div class="flex items-center gap-2">
-            <label class="text-white/70 text-sm">Type</label>
+	        <!-- Primary filters (Type + Status) -->
+	        <div class="hidden md:flex flex-wrap items-center gap-3 gap-y-2">
+	          <div class="flex items-center gap-2">
+	            <label class="text-white/70 text-sm">Type</label>
             <div
               ref="typeMenuRef"
               class="relative"
             >
-              <button
-                :aria-expanded="showTypeMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-                @click="toggleTypeMenu"
-              >
-                <span class="flex items-center gap-2">
-                  <span>{{ typeFilter }}</span>
-                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter) }}</span>
-                </span>
-                <svg
+	              <button
+	                :aria-expanded="showTypeMenu ? 'true' : 'false'"
+	                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-40 justify-between"
+	                @click="toggleTypeMenu"
+	              >
+	                <span class="flex items-center gap-2 min-w-0">
+	                  <span class="truncate">{{ typeFilter }}</span>
+	                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter) }}</span>
+	                </span>
+	                <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -98,7 +90,7 @@
               </button>
               <div
                 v-if="showTypeMenu"
-                class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
                 role="menu"
               >
                 <div class="py-1">
@@ -116,76 +108,22 @@
               </div>
             </div>
           </div>
-          <div class="flex items-center gap-2">
-            <label class="text-white/70 text-sm">Priority</label>
-            <div
-              ref="priorityMenuRef"
-              class="relative"
-            >
-              <button
-                :aria-expanded="showPriorityMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-                @click="togglePriorityMenu"
-              >
-                <span class="flex items-center gap-2">
-                  <span>{{ priorityFilter }}</span>
-                  <span :class="priorityBadgeClass(priorityFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ priorityCount(priorityFilter) }}</span>
-                </span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-3 h-3 ml-1"
-                ><path
-                  d="M6 9l6 6 6-6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                /></svg>
-              </button>
-              <div
-                v-if="showPriorityMenu"
-                class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-                role="menu"
-              >
-                <div class="py-1">
-                  <button
-                    v-for="opt in priorityOptions"
-                    :key="opt.name"
-                    role="menuitem"
-                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', priorityFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                    @click="priorityFilter = opt.name; closePriorityMenu()"
-                  >
-                    <span class="inline-flex items-center gap-2">
-                      <span
-                        class="inline-block w-2.5 h-2.5 rounded-full"
-                        :class="priorityBgClass(opt.name)"
-                      />
-                      <span>{{ opt.name }}</span>
-                    </span>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-white/70 text-sm">Status</label>
+	          <div class="flex items-center gap-2">
+	            <label class="text-white/70 text-sm">Status</label>
             <div
               ref="statusMenuRef"
               class="relative"
             >
-              <button
-                :aria-expanded="showStatusMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-                @click="toggleStatusMenu"
-              >
-                <span class="flex items-center gap-2">
-                  <span>{{ statusFilter }}</span>
-                  <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
-                </span>
-                <svg
+	              <button
+	                :aria-expanded="showStatusMenu ? 'true' : 'false'"
+	                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-40 justify-between"
+	                @click="toggleStatusMenu"
+	              >
+	                <span class="flex items-center gap-2 min-w-0">
+	                  <span class="truncate">{{ statusFilter }}</span>
+	                  <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
+	                </span>
+	                <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -200,7 +138,7 @@
               </button>
               <div
                 v-if="showStatusMenu"
-                class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
                 role="menu"
               >
                 <div class="py-1">
@@ -220,119 +158,78 @@
                     </span>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
                   </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-white/70 text-sm">OPR</label>
-            <div
-              ref="oprMenuRef"
-              class="relative"
-            >
-              <button
-                :aria-expanded="showOprMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[18rem] justify-between disabled:opacity-40 disabled:cursor-not-allowed"
-                :disabled="oprAddonRequired || !preferredProjectId"
-                @click="toggleOprMenu"
-              >
-                <span class="flex items-center gap-2 min-w-0">
-                  <span class="truncate">{{ oprFilterLabel }}</span>
-                  <span
-                    v-if="oprFiltersLoading || oprItemsLoading"
-                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0"
-                  >
-                    Loading…
-                  </span>
-                </span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-3 h-3 ml-1 shrink-0"
-                ><path
-                  d="M6 9l6 6 6-6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                /></svg>
-              </button>
-
-              <div
-                v-if="showOprMenu"
-                class="absolute left-0 mt-2 w-[28rem] max-w-[85vw] max-h-96 overflow-auto rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-                role="menu"
-              >
-                <div class="py-1">
-                  <button
-                    role="menuitem"
-                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', oprCategoryFilter === 'All' && oprItemFilter === 'All' ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                    @click="selectOprFilter({ kind: 'all' })"
-                  >
-                    <span>All</span>
-                  </button>
-                  <div class="my-1 h-px bg-white/10" />
-                  <button
-                    v-for="opt in oprFilterOptions"
-                    :key="opt.key"
-                    role="menuitem"
-                    :class="[
-                      'w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2',
-                      opt.kind === 'category' ? 'text-white/80 font-semibold' : 'text-white/90',
-                      isOprFilterSelected(opt) ? 'bg-white/10 text-white' : (opt.kind === 'category' ? 'hover:bg-white/10' : 'hover:bg-white/10')
-                    ]"
-                    @click="selectOprFilter(opt)"
-                  >
-                    <span class="min-w-0 truncate">{{ opt.label }}</span>
-                    <span
-                      v-if="opt.kind === 'item' && opt.status === 'archived'"
-                      class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
-                    >
-                      Archived
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <input
-              id="hasOprChk"
-              v-model="hasOprFilter"
-              type="checkbox"
-              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
-              :disabled="oprAddonRequired || !preferredProjectId"
-            >
-            <label
-              for="hasOprChk"
-              class="text-white/70 text-sm select-none"
-            >Has OPR link</label>
-          </div>
+	            </div>
+	          </div>
+	        </div>
+	      </div>
         </div>
       </div>
 
-      <!-- Right group: hide closed + downloads -->
-      <div class="flex items-center gap-3 flex-wrap">
-        <div class="flex items-center gap-2">
-          <input
+	      <!-- Right group: hide closed + downloads -->
+	      <div class="flex items-center gap-3 flex-wrap">
+	        <div class="flex items-center gap-2">
+	          <input
             id="hideClosedChk"
             v-model="hideClosed"
             type="checkbox"
-            class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+	            class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
           >
-          <label
-            for="hideClosedChk"
-            class="text-white/70 text-sm select-none"
-          >Hide closed</label>
-        </div>
+	          <label
+	            for="hideClosedChk"
+	            class="text-white/70 text-sm select-none"
+	          >Hide closed</label>
+	        </div>
 
-        <div class="relative inline-block group shrink-0">
-          <button
-            :disabled="!projectStore.currentProjectId"
-            aria-label="Toggle analytics"
+	        <div class="relative inline-block group shrink-0">
+	          <button
+	            :disabled="!projectStore.currentProjectId"
+	            aria-label="Toggle My Issues"
+	            :title="projectStore.currentProjectId ? 'Toggle My Issues' : 'Select a project'"
+	            :aria-pressed="myIssuesOnly ? 'true' : 'false'"
+	            :class="[
+	              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
+	              myIssuesOnly ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10'
+	            ]"
+	            @click="myIssuesOnly = !myIssuesOnly"
+	          >
+	            <svg
+	              xmlns="http://www.w3.org/2000/svg"
+	              viewBox="0 0 24 24"
+	              fill="none"
+	              stroke="currentColor"
+	              class="w-5 h-5"
+	              aria-hidden="true"
+	            >
+	              <path
+	                d="M20 21a8 8 0 10-16 0"
+	                stroke-width="1.5"
+	                stroke-linecap="round"
+	              />
+	              <path
+	                d="M12 11a4 4 0 100-8 4 4 0 000 8z"
+	                stroke-width="1.5"
+	                stroke-linecap="round"
+	                stroke-linejoin="round"
+	              />
+	            </svg>
+	          </button>
+	          <div
+	            role="tooltip"
+	            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+	          >
+	            {{ myIssuesOnly ? 'Showing My Issues' : 'My Issues' }}
+	          </div>
+	        </div>
+
+	        <div class="relative inline-block group shrink-0">
+	          <button
+	            :disabled="!projectStore.currentProjectId"
+	            aria-label="Toggle analytics"
             :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
-            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            :class="[
+              'h-10 px-3 inline-flex items-center gap-2 rounded-full text-white border disabled:opacity-40',
+              showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/10 border-white/15 hover:bg-white/15'
+            ]"
             @click="toggleAnalytics"
           >
             <svg
@@ -367,15 +264,44 @@
                 stroke-width="1.5"
                 stroke-linecap="round"
               />
-            </svg>
-          </button>
-          <div
-            role="tooltip"
+	            </svg>
+	          </button>
+	          <div
+	            role="tooltip"
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
             {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
           </div>
         </div>
+
+	        <button
+	          type="button"
+	          aria-label="Filters"
+	          class="h-10 px-3 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-white/90 inline-flex items-center gap-2"
+	          @click="openFilters"
+	        >
+	          <svg
+	            xmlns="http://www.w3.org/2000/svg"
+	            viewBox="0 0 24 24"
+	            fill="none"
+	            stroke="currentColor"
+	            class="w-5 h-5"
+	            aria-hidden="true"
+	          >
+	            <path
+	              d="M3 5h18M6 12h12M10 19h4"
+	              stroke-width="1.5"
+	              stroke-linecap="round"
+	              stroke-linejoin="round"
+	            />
+	          </svg>
+	          <span
+	            :class="[
+	              'text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white/80 inline-flex items-center justify-center w-8',
+	              advancedFiltersActiveCount > 0 ? '' : 'invisible'
+	            ]"
+	          >{{ advancedFiltersActiveCount }}</span>
+	        </button>
 
         <div class="relative inline-block group shrink-0">
           <button
@@ -453,7 +379,7 @@
           </button>
           <div
             v-if="showDownloadsMenu"
-            class="absolute right-0 mt-2 w-64 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+            class="absolute right-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
           >
             <div
               class="py-1"
@@ -627,6 +553,266 @@
                 <span>List PDF (table)</span>
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced filters (md+). For mobile, use the modal. -->
+      <div
+        v-if="showAdvancedFilters"
+        class="w-full hidden md:block mt-3 pt-3 border-t border-white/10"
+	      >
+	        <div class="space-y-3">
+	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[2.25fr_0.9fr_2.25fr_2fr_2fr] gap-3 items-end">
+	            <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Priority</label>
+	            <div
+	              ref="priorityMenuRef"
+	              class="relative"
+	            >
+              <button
+                :aria-expanded="showPriorityMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
+                @click="togglePriorityMenu"
+              >
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ priorityFilter }}</span>
+                  <span :class="priorityBadgeClass(priorityFilter) + ' text-xs px-2 py-0.5 rounded-full shrink-0'">{{ priorityCount(priorityFilter) }}</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1 shrink-0"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+              <div
+                v-if="showPriorityMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1">
+                  <button
+                    v-for="opt in priorityOptions"
+                    :key="opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', priorityFilter === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="priorityFilter = opt.name; closePriorityMenu()"
+                  >
+                    <span class="inline-flex items-center gap-2">
+                      <span
+                        class="inline-block w-2.5 h-2.5 rounded-full"
+                        :class="priorityBgClass(opt.name)"
+                      />
+                      <span>{{ opt.name }}</span>
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
+                </div>
+	              </div>
+	            </div>
+	            </div>
+	
+	            <div class="flex flex-col gap-1">
+	              <label
+	                for="hasOprChk"
+	                class="text-white/70 text-sm whitespace-nowrap text-center"
+	              >Has OPR</label>
+	              <label
+	                for="hasOprChk"
+	                class="w-full h-8 rounded-lg bg-white/6 flex items-center justify-center cursor-pointer"
+	              >
+	                <input
+	                  id="hasOprChk"
+	                  v-model="hasOprFilter"
+	                  type="checkbox"
+		                  class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
+	                  :disabled="oprAddonRequired || !preferredProjectId"
+	                >
+	              </label>
+	            </div>
+	
+	            <div class="flex flex-col gap-1">
+		            <label class="text-white/70 text-sm">OPR</label>
+		            <div
+		              ref="oprMenuRef"
+		              class="relative"
+		            >
+              <button
+                :aria-expanded="showOprMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="oprAddonRequired || !preferredProjectId"
+                @click="toggleOprMenu"
+              >
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ oprFilterLabel }}</span>
+                  <span
+                    v-if="oprFiltersLoading || oprItemsLoading"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0"
+                  >
+                    Loading…
+                  </span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1 shrink-0"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+
+              <div
+                v-if="showOprMenu"
+                class="absolute left-0 mt-2 w-[28rem] max-w-[85vw] max-h-96 overflow-auto rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1">
+                  <button
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', oprCategoryFilter === 'All' && oprItemFilter === 'All' ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="selectOprFilter({ kind: 'all' })"
+                  >
+                    <span>All</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <button
+                    v-for="opt in oprFilterOptions"
+                    :key="opt.key"
+                    role="menuitem"
+                    :class="[
+                      'w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2',
+                      opt.kind === 'category' ? 'text-white/80 font-semibold' : 'text-white/90',
+                      isOprFilterSelected(opt) ? 'bg-white/10 text-white' : (opt.kind === 'category' ? 'hover:bg-white/10' : 'hover:bg-white/10')
+                    ]"
+                    @click="selectOprFilter(opt)"
+                  >
+                    <span class="min-w-0 truncate">{{ opt.label }}</span>
+                    <span
+                      v-if="opt.kind === 'item' && opt.status === 'archived'"
+                      class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
+                    >
+                      Archived
+	            </span>
+	          </button>
+		              </div>
+		            </div>
+	            </div>
+	            </div>
+		
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Location</label>
+	              <input
+	                v-model="locationFilter"
+	                type="text"
+	                placeholder="e.g. Mezzanine"
+	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              >
+	            </div>
+	
+	            <div class="flex flex-col gap-1">
+	              <label class="text-white/70 text-sm">Responsible</label>
+	              <input
+	                v-model="responsibleFilter"
+	                type="text"
+	                placeholder="name or email"
+	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              >
+	            </div>
+	          </div>
+	
+	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+	            <div class="flex flex-col gap-1">
+		            <label class="text-white/70 text-sm">System</label>
+		            <input
+		              v-model="systemFilter"
+		              type="text"
+	              placeholder="e.g. HVAC"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	            >
+	            </div>
+	
+	            <div class="flex flex-col gap-1">
+		            <label class="text-white/70 text-sm">Date Found</label>
+		            <div class="grid grid-cols-2 gap-2">
+		              <input
+		                v-model="dateFoundFrom"
+	                type="date"
+	                placeholder="From"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dateFoundFrom ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	              <input
+	                v-model="dateFoundTo"
+	                type="date"
+	                placeholder="To"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dateFoundTo ? 'text-white' : 'text-white/60',
+	                ]"
+		              >
+		            </div>
+	            </div>
+	
+	            <div class="flex flex-col gap-1">
+		            <label class="text-white/70 text-sm">Due Date</label>
+		            <div class="grid grid-cols-2 gap-2">
+		              <input
+		                v-model="dueDateFrom"
+	                type="date"
+	                placeholder="From"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dueDateFrom ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	              <input
+	                v-model="dueDateTo"
+	                type="date"
+	                placeholder="To"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dueDateTo ? 'text-white' : 'text-white/60',
+	                ]"
+		              >
+		            </div>
+	            </div>
+	
+	            <div class="flex flex-col gap-1">
+		            <label class="text-white/70 text-sm">Tags</label>
+		            <input
+		              v-model="tagsFilter"
+		              type="text"
+		              placeholder="comma-separated"
+		              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+		            >
+	            </div>
+	          </div>
+	        </div>
+
+        <div class="mt-3 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            @click="clearAdvancedFilters"
+          >
+            Clear advanced filters
+          </button>
+          <div class="text-xs text-white/50">
+            Advanced filters show on desktop; mobile uses the Filters panel.
           </div>
         </div>
       </div>
@@ -1266,6 +1452,277 @@
       </template>
     </Modal>
 
+    <!-- Mobile Filters Modal -->
+    <Modal v-model="showFiltersModal">
+      <template #header>
+        <h3 class="text-lg font-semibold">
+          Filters
+        </h3>
+      </template>
+      <div class="space-y-4">
+	        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Type</label>
+            <select
+              v-model="typeFilter"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            >
+              <option
+                v-for="opt in typeOptions"
+                :key="opt.name"
+                :value="opt.name"
+              >
+                {{ opt.name }} ({{ opt.count }})
+              </option>
+            </select>
+          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Status</label>
+            <select
+              v-model="statusFilter"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            >
+              <option
+                v-for="opt in statusOptions"
+                :key="opt.name"
+                :value="opt.name"
+              >
+                {{ opt.name }} ({{ opt.count }})
+              </option>
+            </select>
+          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Priority</label>
+		            <select
+		              v-model="priorityFilter"
+	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+	            >
+              <option
+                v-for="opt in priorityOptions"
+                :key="opt.name"
+                :value="opt.name"
+              >
+                {{ opt.name }} ({{ opt.count }})
+              </option>
+		            </select>
+		          </div>
+	
+		          <div class="flex flex-col gap-1">
+		            <label
+		              for="hasOprChkMobile"
+		              class="text-white/70 text-sm text-center"
+		            >Has OPR</label>
+		            <label
+		              for="hasOprChkMobile"
+		              class="w-full h-8 rounded-lg bg-white/6 flex items-center justify-center cursor-pointer"
+		            >
+		              <input
+		                id="hasOprChkMobile"
+		                v-model="hasOprFilter"
+		                type="checkbox"
+			                class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
+		                :disabled="oprAddonRequired || !preferredProjectId"
+		              >
+		            </label>
+		          </div>
+	
+	          <div class="flex flex-col gap-1 items-start">
+	            <label
+	              for="myIssuesChkMobile"
+	              class="text-white/70 text-sm"
+	            >My Issues</label>
+	            <input
+	              id="myIssuesChkMobile"
+	              v-model="myIssuesOnly"
+	              type="checkbox"
+	              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30 mt-1"
+	            >
+	          </div>
+	
+			          <div class="flex flex-col gap-1">
+			            <label class="text-white/70 text-sm">OPR</label>
+			            <div
+			              ref="oprMenuRef"
+	              class="relative"
+	            >
+	              <button
+	                :aria-expanded="showOprMenu ? 'true' : 'false'"
+	                class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between disabled:opacity-40 disabled:cursor-not-allowed"
+	                :disabled="oprAddonRequired || !preferredProjectId"
+	                @click="toggleOprMenu"
+	              >
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ oprFilterLabel }}</span>
+                  <span
+                    v-if="oprFiltersLoading || oprItemsLoading"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0"
+                  >
+                    Loading…
+                  </span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1 shrink-0"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+
+              <div
+                v-if="showOprMenu"
+                class="absolute left-0 mt-2 w-[28rem] max-w-[85vw] max-h-96 overflow-auto rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1">
+                  <button
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', oprCategoryFilter === 'All' && oprItemFilter === 'All' ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="selectOprFilter({ kind: 'all' })"
+                  >
+                    <span>All</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <button
+                    v-for="opt in oprFilterOptions"
+                    :key="opt.key"
+                    role="menuitem"
+                    :class="[
+                      'w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2',
+                      opt.kind === 'category' ? 'text-white/80 font-semibold' : 'text-white/90',
+                      isOprFilterSelected(opt) ? 'bg-white/10 text-white' : (opt.kind === 'category' ? 'hover:bg-white/10' : 'hover:bg-white/10')
+                    ]"
+                    @click="selectOprFilter(opt)"
+                  >
+                    <span class="min-w-0 truncate">{{ opt.label }}</span>
+                    <span
+                      v-if="opt.kind === 'item' && opt.status === 'archived'"
+                      class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
+                    >
+                      Archived
+                    </span>
+                  </button>
+			                </div>
+			              </div>
+			            </div>
+			          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Location</label>
+	            <input
+	              v-model="locationFilter"
+	              type="text"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              placeholder="e.g. Mezzanine"
+	            >
+	          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Responsible</label>
+	            <input
+	              v-model="responsibleFilter"
+	              type="text"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              placeholder="name or email"
+	            >
+	          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">System</label>
+	            <input
+	              v-model="systemFilter"
+	              type="text"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              placeholder="e.g. HVAC"
+	            >
+	          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Date Found</label>
+	            <div class="grid grid-cols-2 gap-2">
+	              <input
+	                v-model="dateFoundFrom"
+	                type="date"
+	                placeholder="From"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dateFoundFrom ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	              <input
+	                v-model="dateFoundTo"
+	                type="date"
+	                placeholder="To"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dateFoundTo ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	            </div>
+	          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Due Date</label>
+	            <div class="grid grid-cols-2 gap-2">
+	              <input
+	                v-model="dueDateFrom"
+	                type="date"
+	                placeholder="From"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dueDateFrom ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	              <input
+	                v-model="dueDateTo"
+	                type="date"
+	                placeholder="To"
+	                :class="[
+	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+	                  dueDateTo ? 'text-white' : 'text-white/60',
+	                ]"
+	              >
+	            </div>
+	          </div>
+
+	          <div class="flex flex-col gap-1">
+	            <label class="text-white/70 text-sm">Tags</label>
+	            <input
+	              v-model="tagsFilter"
+	              type="text"
+	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+	              placeholder="comma-separated"
+	            >
+	          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex items-center justify-between gap-2 w-full">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="clearAllFilters"
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white"
+            @click="showFiltersModal = false"
+          >
+            Done
+          </button>
+        </div>
+      </template>
+    </Modal>
+
     <!-- Hidden report generator component -->
     <IssuePdfReport ref="reportRef" />
   </section>
@@ -1282,6 +1739,7 @@ function formatDate(date) {
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Modal from '../../components/Modal.vue'
 import IssueForm from '../../components/IssueForm.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -1397,6 +1855,7 @@ async function fetchIssuesAnalytics(projectId?: string) {
 const serverIssues = ref([])
 const serverTotal = ref(0)
 const serverTotalAll = ref(0)
+const listMode = ref<'api' | 'store'>('api')
 const serverTypes = ref([])
 const serverPriorities = ref([])
 const serverStatuses = ref([])
@@ -1851,21 +2310,32 @@ const _issuesSource = computed(() => serverIssues.value)
 const priorityFilter = ref('All')
 const typeFilter = ref('All')
 const statusFilter = ref('All')
-const oprCategoryFilter = ref('All')
-const oprItemFilter = ref('All')
-const hasOprFilter = ref(false)
-const searchQuery = ref('')
+	const oprCategoryFilter = ref('All')
+	const oprItemFilter = ref('All')
+	const hasOprFilter = ref(false)
+	const locationFilter = ref('')
+	const responsibleFilter = ref('')
+	const systemFilter = ref('')
+	const dateFoundFrom = ref('')
+	const dateFoundTo = ref('')
+	const dueDateFrom = ref('')
+	const dueDateTo = ref('')
+	const tagsFilter = ref('')
+	const showAdvancedFilters = ref(false)
+	const showFiltersModal = ref(false)
+	const searchQuery = ref('')
 const searchMode = computed(() => {
   try {
     const p = projectStore.currentProject && projectStore.currentProject.value ? projectStore.currentProject.value : null
     const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
     return m || 'substring'
   } catch (e) { return 'substring' }
-})
-const hideClosed = ref(false)
-// Sorting state (used in persistence below; defined here to avoid temporal use)
-const sortKey = ref('')
-const sortDir = ref(1) // 1 = asc, -1 = desc
+	})
+	const hideClosed = ref(false)
+	const myIssuesOnly = ref(false)
+	// Sorting state (used in persistence below; defined here to avoid temporal use)
+	const sortKey = ref('')
+	const sortDir = ref(1) // 1 = asc, -1 = desc
 
 function setSort(key: string) {
   const k = String(key || '').trim()
@@ -1884,11 +2354,11 @@ const listStateKey = computed(() => `issuesListState:${projectStore.currentProje
 function hasSessionStorage() {
   try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
 }
-function loadListState() {
-  if (!hasSessionStorage()) return
-  try {
-    const raw = sessionStorage.getItem(listStateKey.value)
-    if (!raw) return
+	function loadListState() {
+	  if (!hasSessionStorage()) return
+	  try {
+	    const raw = sessionStorage.getItem(listStateKey.value)
+	    if (!raw) return
     const data = JSON.parse(raw)
     if (data && typeof data === 'object') {
       if (typeof data.searchQuery === 'string') searchQuery.value = data.searchQuery
@@ -1898,12 +2368,21 @@ function loadListState() {
       if (typeof data.oprCategoryFilter === 'string') oprCategoryFilter.value = data.oprCategoryFilter
       if (typeof data.oprItemFilter === 'string') oprItemFilter.value = data.oprItemFilter
       if (typeof data.hasOprFilter === 'boolean') hasOprFilter.value = data.hasOprFilter
-      if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
-      if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
-      if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
-    }
-  } catch (e) { /* ignore */ }
-}
+      if (typeof data.locationFilter === 'string') locationFilter.value = data.locationFilter
+      if (typeof data.responsibleFilter === 'string') responsibleFilter.value = data.responsibleFilter
+      if (typeof data.systemFilter === 'string') systemFilter.value = data.systemFilter
+      if (typeof data.dateFoundFrom === 'string') dateFoundFrom.value = data.dateFoundFrom
+      if (typeof data.dateFoundTo === 'string') dateFoundTo.value = data.dateFoundTo
+      if (typeof data.dueDateFrom === 'string') dueDateFrom.value = data.dueDateFrom
+      if (typeof data.dueDateTo === 'string') dueDateTo.value = data.dueDateTo
+	      if (typeof data.tagsFilter === 'string') tagsFilter.value = data.tagsFilter
+	      if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
+	      if (typeof data.myIssuesOnly === 'boolean') myIssuesOnly.value = data.myIssuesOnly
+	      if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
+	      if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
+	    }
+	  } catch (e) { /* ignore */ }
+	}
 function persistListState() {
   if (!hasSessionStorage()) return
   try {
@@ -1915,12 +2394,21 @@ function persistListState() {
       oprCategoryFilter: oprCategoryFilter.value,
       oprItemFilter: oprItemFilter.value,
       hasOprFilter: hasOprFilter.value,
-      hideClosed: hideClosed.value,
-      sortKey: sortKey.value,
-      sortDir: sortDir.value
-    }))
-  } catch (e) { /* ignore */ }
-}
+      locationFilter: locationFilter.value,
+      responsibleFilter: responsibleFilter.value,
+      systemFilter: systemFilter.value,
+	      dateFoundFrom: dateFoundFrom.value,
+	      dateFoundTo: dateFoundTo.value,
+	      dueDateFrom: dueDateFrom.value,
+	      dueDateTo: dueDateTo.value,
+	      tagsFilter: tagsFilter.value,
+	      hideClosed: hideClosed.value,
+	      myIssuesOnly: myIssuesOnly.value,
+	      sortKey: sortKey.value,
+	      sortDir: sortDir.value
+	    }))
+	  } catch (e) { /* ignore */ }
+	}
 
 // Debounce helper (small local utility)
 function debounce(fn, wait = 200) {
@@ -1929,6 +2417,62 @@ function debounce(fn, wait = 200) {
     clearTimeout(t)
     t = setTimeout(() => fn(...args), wait)
   }
+}
+
+const advancedFiltersActiveCount = computed(() => {
+  let n = 0
+  if (priorityFilter.value && priorityFilter.value !== 'All') n += 1
+  if (oprItemFilter.value && oprItemFilter.value !== 'All') n += 1
+  else if (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') n += 1
+  if (hasOprFilter.value) n += 1
+  if (String(locationFilter.value || '').trim()) n += 1
+  if (String(responsibleFilter.value || '').trim()) n += 1
+  if (String(systemFilter.value || '').trim()) n += 1
+  if (String(dateFoundFrom.value || '').trim()) n += 1
+  if (String(dateFoundTo.value || '').trim()) n += 1
+  if (String(dueDateFrom.value || '').trim()) n += 1
+  if (String(dueDateTo.value || '').trim()) n += 1
+  if (String(tagsFilter.value || '').trim()) n += 1
+  return n
+})
+
+function openFilters() {
+  try {
+    const desktop = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : false
+    if (desktop) showAdvancedFilters.value = !showAdvancedFilters.value
+    else showFiltersModal.value = true
+  } catch (e) {
+    showFiltersModal.value = true
+  }
+}
+
+function clearAdvancedFilters() {
+  priorityFilter.value = 'All'
+  oprCategoryFilter.value = 'All'
+  oprItemFilter.value = 'All'
+  hasOprFilter.value = false
+  locationFilter.value = ''
+  responsibleFilter.value = ''
+  systemFilter.value = ''
+  dateFoundFrom.value = ''
+  dateFoundTo.value = ''
+  dueDateFrom.value = ''
+  dueDateTo.value = ''
+  tagsFilter.value = ''
+  closePriorityMenu()
+  closeOprMenu()
+}
+
+function clearAllFilters() {
+  typeFilter.value = 'All'
+  statusFilter.value = 'All'
+  hideClosed.value = false
+  myIssuesOnly.value = false
+  clearAdvancedFilters()
+  closeTypeMenu()
+  closeStatusMenu()
 }
 
 type OprItemMeta = { id: string; categoryId: string | null; text: string; score: number; rank: number; status: 'active' | 'archived' }
@@ -2253,7 +2797,7 @@ const updateEffective = debounce((val) => { effectiveSearch.value = val }, 200)
 watch(() => searchQuery.value, (v) => updateEffective(v))
 // Now that search/effective/search watchers exist, wire up persistence
 watch(listStateKey, () => loadListState(), { immediate: true })
-watch([searchQuery, typeFilter, priorityFilter, statusFilter, oprCategoryFilter, oprItemFilter, hasOprFilter, hideClosed, sortKey, sortDir], () => persistListState())
+watch([searchQuery, typeFilter, priorityFilter, statusFilter, oprCategoryFilter, oprItemFilter, hasOprFilter, locationFilter, responsibleFilter, systemFilter, dateFoundFrom, dateFoundTo, dueDateFrom, dueDateTo, tagsFilter, hideClosed, myIssuesOnly, sortKey, sortDir], () => persistListState())
 const priorityCounts = computed(() => {
   const map = {}
   const serverCounts = serverPriorityCounts.value || {}
@@ -2370,6 +2914,27 @@ const statusOptions = computed(() => {
   return [{ name: 'All', count: statusCounts.value['All'] || issuesStore.issues.length }, ...entries]
 })
 
+const myIdentity = computed(() => {
+  const email = String(authStore.user?.email || '').trim().toLowerCase()
+  const first = String(authStore.user?.firstName || '').trim()
+  const last = String(authStore.user?.lastName || '').trim()
+  const name = String([first, last].filter(Boolean).join(' ')).trim().toLowerCase()
+  return { email, name }
+})
+
+function isMyIssueRow(i: any) {
+  const { email, name } = myIdentity.value || { email: '', name: '' }
+  if (!email && !name) return false
+  const fields = [i?.responsible_person, i?.assignedTo, i?.responsible]
+    .map(v => String(v || '').trim().toLowerCase())
+    .filter(Boolean)
+  for (const f of fields) {
+    if (email && f.includes(email)) return true
+    if (name && f === name) return true
+  }
+  return false
+}
+
 // Apply client-side filter over the server-returned page so exports and UI behave
 const filteredIssues = computed(() => {
   const q = (effectiveSearch.value || '').trim().toLowerCase()
@@ -2402,7 +2967,60 @@ const filteredIssues = computed(() => {
       const ids = Array.isArray(i?.oprItemIds) ? i.oprItemIds.map((x: any) => String(x)) : []
       return ids.includes(String(oprItemFilter.value))
     })
-  const base = hideClosed.value ? withOprItem.filter(i => !isClosedRow(i)) : withOprItem
+  const locQ = String(locationFilter.value || '').trim().toLowerCase()
+  const sysQ = String(systemFilter.value || '').trim().toLowerCase()
+  const respQ = String(responsibleFilter.value || '').trim().toLowerCase()
+  const tagsQ = String(tagsFilter.value || '').trim()
+  const tags = tagsQ
+    ? tagsQ.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+    : []
+
+  const withLocation = locQ
+    ? withOprItem.filter((i: any) => String(i.location || '').toLowerCase().includes(locQ))
+    : withOprItem
+  const withSystem = sysQ
+    ? withLocation.filter((i: any) => String(i.system || '').toLowerCase().includes(sysQ))
+    : withLocation
+  const withResponsible = respQ
+    ? withSystem.filter((i: any) => {
+      const fields = [i.responsible_person, i.assignedTo, i.responsible]
+        .map(v => String(v || '').toLowerCase())
+      return fields.some(v => v.includes(respQ))
+    })
+    : withSystem
+  const withTags = tags.length
+    ? withResponsible.filter((i: any) => {
+      const labels = Array.isArray(i.labels) ? i.labels : []
+      const hay = labels.map((t: any) => String(t || '').toLowerCase())
+      return tags.some(t => hay.includes(t))
+    })
+    : withResponsible
+  const withMine = myIssuesOnly.value ? withTags.filter((i: any) => isMyIssueRow(i)) : withTags
+
+  const dfFrom = String(dateFoundFrom.value || '').trim()
+  const dfTo = String(dateFoundTo.value || '').trim()
+  const dueFrom = String(dueDateFrom.value || '').trim()
+  const dueTo = String(dueDateTo.value || '').trim()
+  const withDateFound = (dfFrom || dfTo)
+    ? withMine.filter((i: any) => {
+      const v = String(i.dateFound || '').slice(0, 10)
+      if (!v) return false
+      if (dfFrom && v < dfFrom) return false
+      if (dfTo && v > dfTo) return false
+      return true
+    })
+    : withMine
+  const withDueDate = (dueFrom || dueTo)
+    ? withDateFound.filter((i: any) => {
+      const v = String(i.dueDate || '').slice(0, 10)
+      if (!v) return false
+      if (dueFrom && v < dueFrom) return false
+      if (dueTo && v > dueTo) return false
+      return true
+    })
+    : withDateFound
+
+  const base = hideClosed.value ? withDueDate.filter(i => !isClosedRow(i)) : withDueDate
 
   if (!q) return base
   return base.filter(i => {
@@ -2493,6 +3111,7 @@ function fetchIssuesPage(projectId) {
               serverTotal.value = 0
               serverTotalAll.value = 0
             }
+            listMode.value = 'store'
             loading.value = false
             return
           }
@@ -2514,12 +3133,22 @@ function fetchIssuesPage(projectId) {
         params.sortBy = sortKey.value
         params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
       }
-      if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
-      if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
-      if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
+	      if (hideClosed.value) params.hideClosed = 1
+	      if (myIssuesOnly.value) params.mine = 1
+	      if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
+	      if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
+	      if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
       if (hasOprFilter.value) params.hasOpr = 1
       if (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') params.oprCategoryId = oprCategoryFilter.value
       if (oprItemFilter.value && oprItemFilter.value !== 'All') params.oprItemId = oprItemFilter.value
+      if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value).trim()
+      if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value).trim()
+      if (String(systemFilter.value || '').trim()) params.system = String(systemFilter.value).trim()
+      if (String(dateFoundFrom.value || '').trim()) params.dateFoundFrom = String(dateFoundFrom.value).trim()
+      if (String(dateFoundTo.value || '').trim()) params.dateFoundTo = String(dateFoundTo.value).trim()
+      if (String(dueDateFrom.value || '').trim()) params.dueDateFrom = String(dueDateFrom.value).trim()
+      if (String(dueDateTo.value || '').trim()) params.dueDateTo = String(dueDateTo.value).trim()
+      if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value).trim()
       params.includeFacets = true
 
       const res = await http.get('/api/issues', { params, headers: getAuthHeaders() })
@@ -2538,6 +3167,7 @@ function fetchIssuesPage(projectId) {
       } else {
         serverIssues.value = []
       }
+      listMode.value = 'api'
       serverTotal.value = Number(data.total ?? data.count ?? serverIssues.value.length)
       serverTotalAll.value = Number(data.totalAll || serverTotal.value || serverIssues.value.length)
       // facets
@@ -2598,10 +3228,12 @@ function fetchIssuesPage(projectId) {
             if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
             else await issuesStore.fetchIssues()
             const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
-            const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
-            serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
-            serverTotal.value = serverIssues.value.length
-            serverTotalAll.value = serverTotal.value
+	              const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
+	              const mapped = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
+	              const mineFiltered = myIssuesOnly.value ? mapped.filter((i) => isMyIssueRow(i)) : mapped
+	              serverIssues.value = mineFiltered
+	              serverTotal.value = mineFiltered.length
+	              serverTotalAll.value = serverTotal.value
             serverTypes.value = []
             serverTypeCounts.value = {}
             serverPriorities.value = []
@@ -2613,15 +3245,18 @@ function fetchIssuesPage(projectId) {
             serverTotal.value = 0
             serverTotalAll.value = 0
           }
+          listMode.value = 'store'
         } catch (inner) {
           serverIssues.value = []
           serverTotal.value = 0
           serverTotalAll.value = 0
+          listMode.value = 'store'
         }
       } else {
         serverIssues.value = []
         serverTotal.value = 0
         serverTotalAll.value = 0
+        listMode.value = 'api'
       }
     } finally {
       loading.value = false
@@ -2630,7 +3265,29 @@ function fetchIssuesPage(projectId) {
 }
 
 const debouncedFetch = debounce(() => { fetchIssuesPage().catch(() => {}) }, 150)
-watch([() => page.value, () => pageSize.value, () => sortKey.value, () => sortDir.value, () => effectiveSearch.value, () => statusFilter.value, () => priorityFilter.value, () => typeFilter.value, () => oprCategoryFilter.value, () => oprItemFilter.value, () => hasOprFilter.value, () => hideClosed.value], () => debouncedFetch(), { immediate: false })
+watch([
+  () => page.value,
+  () => pageSize.value,
+  () => sortKey.value,
+  () => sortDir.value,
+  () => effectiveSearch.value,
+  () => statusFilter.value,
+  () => priorityFilter.value,
+  () => typeFilter.value,
+  () => oprCategoryFilter.value,
+  () => oprItemFilter.value,
+  () => hasOprFilter.value,
+  () => locationFilter.value,
+  () => responsibleFilter.value,
+  () => systemFilter.value,
+  () => dateFoundFrom.value,
+  () => dateFoundTo.value,
+  () => dueDateFrom.value,
+  () => dueDateTo.value,
+  () => tagsFilter.value,
+  () => hideClosed.value,
+  () => myIssuesOnly.value
+], () => debouncedFetch(), { immediate: false })
 
 const oprIdsForMetaKey = computed(() => {
   const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
@@ -2678,19 +3335,27 @@ const isFiltered = computed(() => {
     (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') ||
     (oprItemFilter.value && oprItemFilter.value !== 'All') ||
     hasOprFilter.value ||
+    (locationFilter.value && String(locationFilter.value).trim() !== '') ||
+    (responsibleFilter.value && String(responsibleFilter.value).trim() !== '') ||
+    (systemFilter.value && String(systemFilter.value).trim() !== '') ||
+    (dateFoundFrom.value && String(dateFoundFrom.value).trim() !== '') ||
+    (dateFoundTo.value && String(dateFoundTo.value).trim() !== '') ||
+    (dueDateFrom.value && String(dueDateFrom.value).trim() !== '') ||
+    (dueDateTo.value && String(dueDateTo.value).trim() !== '') ||
+    (tagsFilter.value && String(tagsFilter.value).trim() !== '') ||
     (effectiveSearch.value && effectiveSearch.value.trim() !== '') ||
     hideClosed.value
   )
 })
 
-const totalItems = computed(() => isFiltered.value
-  ? filteredIssues.value.length
-  : Number(serverTotal.value || filteredIssues.value.length || 0)
-)
-const displayTotal = computed(() => isFiltered.value
-  ? filteredIssues.value.length
-  : Number(serverTotalAll.value || serverTotal.value || filteredIssues.value.length || 0)
-)
+const totalItems = computed(() => {
+  if (listMode.value === 'api') return Number(serverTotal.value || 0)
+  return Number(filteredIssues.value.length || 0)
+})
+const displayTotal = computed(() => {
+  if (listMode.value === 'api') return Number(serverTotalAll.value || serverTotal.value || 0)
+  return Number(filteredIssues.value.length || 0)
+})
 
 // Client-side sorting fallback over current page
 const sortedIssues = computed(() => {
@@ -2720,18 +3385,9 @@ const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pageS
 const startItem = computed(() => totalItems.value === 0 ? 0 : ((page.value - 1) * pageSize.value) + 1)
 const endItem = computed(() => Math.min(totalItems.value, page.value * pageSize.value))
 
-// Use filtered and sorted issues for pagination when filtered, otherwise use server-driven page
 const pagedIssues = computed(() => {
   const list = sortedIssues.value || []
-  if (isFiltered.value) {
-    const start = (page.value - 1) * pageSize.value
-    const end = start + pageSize.value
-    return list.slice(start, end)
-  }
-  // Unfiltered: use server-driven page if available
-  const total = Number(serverTotal.value || 0)
-  const pageLen = Array.isArray(serverIssues.value) ? serverIssues.value.length : 0
-  if (total > pageLen) return list
+  if (listMode.value === 'api') return list
   const start = (page.value - 1) * pageSize.value
   const end = start + pageSize.value
   return list.slice(start, end)
