@@ -1120,6 +1120,7 @@ async function toggleComplete(t, checked) {
   try {
     // Update server-side subtree in one request to avoid partial failures.
     await http.patch(`/api/tasks/subtree/${t._id}`, { projectId: projectStore.currentProjectId, status: checked ? 'Completed' : 'Not Started', percentComplete: checked ? 100 : 0 })
+    notifyTasksUpdated()
   } catch (err) {
     const status = err?.response?.status
     const detail = err?.response?.data?.error || err?.message || String(err)
@@ -1149,6 +1150,7 @@ async function toggleComplete(t, checked) {
           const msg = failed[0]?.err?.response?.data?.error || failed[0]?.err?.message
           try { ui.showError(`Failed to update ${failed.length} task(s)${msg ? `: ${msg}` : ''}`) } catch (e) { /* ignore */ }
         }
+        notifyTasksUpdated()
         return
       } catch (e) {
         // fall through to full rollback below
@@ -1259,6 +1261,7 @@ async function applyTaskTags(id, tags) {
     const current = tasks.value[idx] || {}
     tasks.value[idx] = { ...current, tags: Array.isArray(tags) ? tags : [] }
   }
+  notifyTasksUpdated()
 }
 
 const xmlFileInput = ref(null)
@@ -1872,6 +1875,7 @@ async function onDrop(e, idx) {
     // ignore for now; could re-fetch
   }
 
+  notifyTasksUpdated()
   onDragLeave()
 }
 
@@ -2016,12 +2020,29 @@ async function uploadFile(file, format) {
   }
 }
 
+const TASKS_UPDATED_EVENT = 'cxma:tasks-updated'
+let tasksUpdatedTimer = null
+function notifyTasksUpdated() {
+  try {
+    const pid = String(projectStore.currentProjectId || '').trim()
+    if (!pid) return
+    if (typeof window === 'undefined') return
+    if (tasksUpdatedTimer) clearTimeout(tasksUpdatedTimer)
+    tasksUpdatedTimer = setTimeout(() => {
+      try {
+        window.dispatchEvent(new CustomEvent(TASKS_UPDATED_EVENT, { detail: { projectId: pid, at: Date.now() } }))
+      } catch (e) { /* ignore */ }
+    }, 150)
+  } catch (e) { /* ignore */ }
+}
+
 async function fetch() {
   if (!projectStore.currentProjectId) return
   loading.value = true
   try {
     const resp = await http.get('/api/tasks', { params: { projectId: projectStore.currentProjectId, limit: 200 } })
     tasks.value = resp.data.tasks || []
+    notifyTasksUpdated()
     try { await activitiesStore.fetchActivities(projectStore.currentProjectId) } catch (e) { /* ignore */ }
     if (showAnalytics.value) fetchTasksAnalytics(projectStore.currentProjectId).catch(() => {})
   } catch (e) {

@@ -95,22 +95,22 @@
             </option>
           </select>
         </div>
-        <div>
-          <label class="block text-white/70 text-sm">Start</label>
-          <input
-            v-model="task.start"
-            type="datetime-local"
-            class="w-full px-3 py-2 rounded bg-white/10"
-          >
-        </div>
-        <div>
-          <label class="block text-white/70 text-sm">End</label>
-          <input
-            v-model="task.end"
-            type="datetime-local"
-            class="w-full px-3 py-2 rounded bg-white/10"
-          >
-        </div>
+	        <div>
+	          <label class="block text-white/70 text-sm">Start</label>
+	          <input
+	            v-model="startLocal"
+	            type="datetime-local"
+	            class="w-full px-3 py-2 rounded bg-white/10"
+	          >
+	        </div>
+	        <div>
+	          <label class="block text-white/70 text-sm">End</label>
+	          <input
+	            v-model="endLocal"
+	            type="datetime-local"
+	            class="w-full px-3 py-2 rounded bg-white/10"
+	          >
+	        </div>
         <div class="col-span-2">
           <label class="block text-white/70 text-sm">Notes</label>
           <textarea
@@ -423,7 +423,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { http } from '../../utils/http'
@@ -443,24 +443,28 @@ const ai = useAiStore()
 const auth = useAuthStore()
 const id = computed(() => String(route.params.id || ''))
 const modeLabel = computed(() => (id.value === 'new' ? 'New Task' : 'Edit Task'))
-const task = ref({
-  name: '',
-  wbs: '',
-  description: '',
-  notes: '',
-  start: '',
-  end: '',
-  projectId: projectStore.currentProjectId,
-  activityId: null,
-  assignee: '',
-  percentComplete: 0,
-  status: 'Not Started',
-  cost: 0,
-  duration: undefined,
-  autoCost: true,
-  expenses: { airfare: 0, hotel: 0, rentalCar: 0, food: 0, mileage: 0, labor: 0, other1: 0, other2: 0 },
-  tags: []
-})
+function makeBlankTask() {
+  return {
+    name: '',
+    wbs: '',
+    description: '',
+    notes: '',
+    start: '',
+    end: '',
+    projectId: projectStore.currentProjectId,
+    activityId: null,
+    assignee: '',
+    percentComplete: 0,
+    status: 'Not Started',
+    cost: 0,
+    duration: undefined,
+    autoCost: true,
+    expenses: { airfare: 0, hotel: 0, rentalCar: 0, food: 0, mileage: 0, labor: 0, other1: 0, other2: 0 },
+    tags: []
+  }
+}
+
+const task = ref(makeBlankTask())
 const saving = ref(false)
 const linkedActivityName = ref('')
 const activeTab = ref('info') // info | expenses | settings
@@ -468,6 +472,53 @@ const billRateInput = ref(ui.tasksBillRate || 0)
 const tagInput = ref('')
 const suggestingTaskTags = ref(false)
 const suggestedTaskTags = ref([])
+const loading = ref(false)
+
+function toDatetimeLocalValue(raw) {
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  // Already in datetime-local format (no timezone suffix). Keep minutes.
+  if (/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}/.test(s) && !/[zZ]|[+-]\\d{2}:?\\d{2}$/.test(s)) {
+    return s.slice(0, 16)
+  }
+  const d = new Date(s)
+  if (!Number.isFinite(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  const mm = pad(d.getMonth() + 1)
+  const dd = pad(d.getDate())
+  const hh = pad(d.getHours())
+  const mi = pad(d.getMinutes())
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+}
+
+function fromDatetimeLocalValue(raw) {
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  // Interpret as local time.
+  const m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})(?::(\\d{2})(?:\\.(\\d{1,3}))?)?$/)
+  if (!m) return s
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  const hour = Number(m[4])
+  const minute = Number(m[5])
+  const second = m[6] ? Number(m[6]) : 0
+  const ms = m[7] ? Number(String(m[7]).padEnd(3, '0')) : 0
+  const d = new Date(year, month - 1, day, hour, minute, second, ms)
+  if (!Number.isFinite(d.getTime())) return s
+  return d.toISOString()
+}
+
+const startLocal = computed({
+  get: () => toDatetimeLocalValue(task.value.start),
+  set: (v) => { task.value.start = fromDatetimeLocalValue(v) }
+})
+
+const endLocal = computed({
+  get: () => toDatetimeLocalValue(task.value.end),
+  set: (v) => { task.value.end = fromDatetimeLocalValue(v) }
+})
 
 const canSuggestTaskTags = computed(() => {
   const pid = String(task.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
@@ -671,10 +722,13 @@ async function suggestTaskTags() {
   }
 }
 
-async function load() {
-  if (!id.value || id.value === 'new') return
+async function load(taskId) {
+  const requestedId = String(taskId || '').trim()
+  if (!requestedId || requestedId === 'new') return
   try {
-    const r = await http.get(`/api/tasks/${id.value}`)
+    const r = await http.get(`/api/tasks/${requestedId}`)
+    // If the route changed while we were loading, ignore stale results.
+    if (requestedId !== String(id.value || '').trim()) return
     Object.assign(task.value, r.data)
     if (typeof task.value.autoCost !== 'boolean') task.value.autoCost = true
     task.value.expenses = normalizeExpenses(task.value.expenses || defaultExpenses)
@@ -724,14 +778,38 @@ async function save() {
       if (updated && typeof updated === 'object') Object.assign(task.value, updated)
       ui.showSuccess('Saved')
     }
+    try {
+      const pid = String(task.value.projectId || projectStore.currentProjectId || '').trim()
+      if (pid && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cxma:tasks-updated', { detail: { projectId: pid, at: Date.now() } }))
+      }
+    } catch (e) { /* ignore */ }
   } catch (e) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save task')
   } finally { saving.value = false }
 }
 
-onMounted(async () => {
-  await load()
+watch(id, async (nextId) => {
+  activeTab.value = 'info'
+  linkedActivityName.value = ''
+  dismissSuggestedTaskTags()
 
+  if (!nextId || nextId === 'new') {
+    task.value = makeBlankTask()
+    return
+  }
+
+  // Reset form quickly so switching tasks doesn't leave stale details visible.
+  task.value = makeBlankTask()
+  loading.value = true
+  try {
+    await load(nextId)
+  } finally {
+    loading.value = false
+  }
+}, { immediate: true })
+
+onMounted(async () => {
   const pid = String(task.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
   const uid = auth.user?._id ? String(auth.user._id) : null
   if (!pid) return

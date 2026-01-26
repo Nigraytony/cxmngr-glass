@@ -717,6 +717,7 @@
               <Comments
                 :model-value="form.comments"
                 :on-add="isClosed ? undefined : onAddComment"
+                :on-edit="isClosed ? undefined : onEditComment"
                 :on-delete="isClosed ? undefined : onDeleteComment"
                 @update:model-value="(v:any) => { if (!isClosed) form.comments = v }"
               />
@@ -2443,6 +2444,27 @@ async function onAddComment(text: string) {
     ui.showSuccess('Comment added')
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to add comment')
+    throw e
+  }
+}
+
+async function onEditComment(comment: any, index?: number, nextText?: string) {
+  const t = String(nextText ?? comment?.text ?? '').trim()
+  if (!t) return
+  // Ensure issue exists
+  const iid = isNew.value ? await saveAndGetId() : id.value
+  const next = [ ...(form.comments || []) ]
+  let idx = typeof index === 'number' ? index : next.findIndex((c: any) => c === comment || (c.createdAt === comment?.createdAt && c.text === comment?.text))
+  if (idx < 0) idx = next.length - 1
+  if (idx < 0) return
+  next[idx] = { ...(next[idx] || {}), text: t }
+  try {
+    const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
+    await issues.updateIssue(String(iid), { projectId: pid, comments: commentsForSave(next) })
+    form.comments = next
+    ui.showSuccess('Comment updated')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to update comment')
     throw e
   }
 }

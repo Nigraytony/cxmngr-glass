@@ -933,6 +933,7 @@
             <Comments
               :model-value="form.comments"
               :on-add="onAddComment"
+              :on-edit="onEditComment"
               :on-delete="onDeleteComment"
               @update:model-value="(v:any) => form.comments = v"
             />
@@ -4268,6 +4269,26 @@ function prettyJson(v: any) {
     return JSON.stringify(v, null, 2)
   } catch (e) {
     try { return String(v) } catch (ee) { return '' }
+  }
+}
+
+async function onEditComment(comment: any, index?: number, nextText?: string) {
+  const t = String(nextText ?? comment?.text ?? '').trim()
+  if (!t) return
+  // Ensure activity exists
+  const aid = isNew.value ? await saveAndGetId() : id.value
+  const next = [ ...(form.comments || []) ]
+  let idx = typeof index === 'number' ? index : next.findIndex((c: any) => c === comment || (c.createdAt === comment?.createdAt && c.text === comment?.text))
+  if (idx < 0) idx = next.length - 1
+  if (idx < 0) return
+  next[idx] = { ...(next[idx] || {}), text: t }
+  try {
+    await store.updateActivity(String(aid), { comments: next })
+    form.comments = next
+    ui.showSuccess('Comment updated')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to update comment')
+    throw e
   }
 }
 

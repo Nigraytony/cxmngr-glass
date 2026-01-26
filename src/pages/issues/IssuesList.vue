@@ -225,42 +225,76 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <label class="text-white/70 text-sm">OPR Category</label>
-            <select
-              v-model="oprCategoryFilter"
-              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 min-w-[14rem]"
-              :disabled="oprAddonRequired || !preferredProjectId"
+            <label class="text-white/70 text-sm">OPR</label>
+            <div
+              ref="oprMenuRef"
+              class="relative"
             >
-              <option value="All">
-                All
-              </option>
-              <option
-                v-for="c in oprCategories"
-                :key="c.id"
-                :value="c.id"
+              <button
+                :aria-expanded="showOprMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[18rem] justify-between disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="oprAddonRequired || !preferredProjectId"
+                @click="toggleOprMenu"
               >
-                {{ c.name }}
-              </option>
-            </select>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-white/70 text-sm">OPR Item</label>
-            <select
-              v-model="oprItemFilter"
-              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 min-w-[16rem]"
-              :disabled="oprAddonRequired || !preferredProjectId || oprCategoryFilter === 'All'"
-            >
-              <option value="All">
-                All
-              </option>
-              <option
-                v-for="it in oprItemsForFilter"
-                :key="it.id"
-                :value="it.id"
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ oprFilterLabel }}</span>
+                  <span
+                    v-if="oprFiltersLoading || oprItemsLoading"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0"
+                  >
+                    Loading…
+                  </span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1 shrink-0"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+
+              <div
+                v-if="showOprMenu"
+                class="absolute left-0 mt-2 w-[28rem] max-w-[85vw] max-h-96 overflow-auto rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+                role="menu"
               >
-                #{{ it.rank }} {{ it.text }}
-              </option>
-            </select>
+                <div class="py-1">
+                  <button
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', oprCategoryFilter === 'All' && oprItemFilter === 'All' ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="selectOprFilter({ kind: 'all' })"
+                  >
+                    <span>All</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <button
+                    v-for="opt in oprFilterOptions"
+                    :key="opt.key"
+                    role="menuitem"
+                    :class="[
+                      'w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2',
+                      opt.kind === 'category' ? 'text-white/80 font-semibold' : 'text-white/90',
+                      isOprFilterSelected(opt) ? 'bg-white/10 text-white' : (opt.kind === 'category' ? 'hover:bg-white/10' : 'hover:bg-white/10')
+                    ]"
+                    @click="selectOprFilter(opt)"
+                  >
+                    <span class="min-w-0 truncate">{{ opt.label }}</span>
+                    <span
+                      v-if="opt.kind === 'item' && opt.status === 'archived'"
+                      class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
+                    >
+                      Archived
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <input
@@ -1532,6 +1566,8 @@ const showPriorityMenu = ref(false)
 const priorityMenuRef = ref(null)
 const showStatusMenu = ref(false)
 const statusMenuRef = ref(null)
+const showOprMenu = ref(false)
+const oprMenuRef = ref(null)
 
 const availableColumns = computed(() => {
   const colSet = new Set()
@@ -1648,6 +1684,12 @@ function toggleStatusMenu() {
 function closeStatusMenu() {
   showStatusMenu.value = false
 }
+function toggleOprMenu() {
+  showOprMenu.value = !showOprMenu.value
+}
+function closeOprMenu() {
+  showOprMenu.value = false
+}
 function onChooseColumnsClick() {
   closeDownloadsMenu()
   openColumnsModal()
@@ -1666,10 +1708,12 @@ function handleClickOutside(e) {
   const tEl = typeMenuRef.value
   const pEl = priorityMenuRef.value
   const sEl = statusMenuRef.value
+  const oEl = oprMenuRef.value
   if (dEl && !dEl.contains(e.target)) closeDownloadsMenu()
   if (tEl && !tEl.contains(e.target)) closeTypeMenu()
   if (pEl && !pEl.contains(e.target)) closePriorityMenu()
   if (sEl && !sEl.contains(e.target)) closeStatusMenu()
+  if (oEl && !oEl.contains(e.target)) closeOprMenu()
 }
 onMounted(() => document.addEventListener('click', handleClickOutside))
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
@@ -1898,6 +1942,142 @@ const oprItemsForFilter = ref<OprItemMeta[]>([])
 const oprFiltersLoading = ref(false)
 const oprItemsLoading = ref(false)
 
+type OprFilterOption = {
+  key: string;
+  kind: 'all' | 'category' | 'item';
+  label: string;
+  categoryId?: string;
+  itemId?: string;
+  status?: 'active' | 'archived';
+}
+
+const oprCategoryNameById = computed(() => {
+  const map: Record<string, string> = {}
+  for (const c of (oprCategories.value || [])) map[String(c.id)] = String(c.name || '').trim() || 'Unnamed'
+  return map
+})
+
+function findOprItemById(id: string) {
+  const sid = String(id || '').trim()
+  if (!sid) return null
+  const list = Array.isArray(oprItemsForFilter.value) ? oprItemsForFilter.value : []
+  return list.find((it) => String(it?.id || '') === sid) || null
+}
+
+const oprFilterLabel = computed(() => {
+  if (oprAddonRequired.value) return 'OPR add-on required'
+  if (!preferredProjectId.value) return 'All'
+
+  const itemId = String(oprItemFilter.value || '').trim()
+  if (itemId && itemId !== 'All') {
+    const it = findOprItemById(itemId)
+    const catName = it?.categoryId ? (oprCategoryNameById.value[String(it.categoryId)] || 'Uncategorized') : 'Uncategorized'
+    const text = String(it?.text || '').trim()
+    const rank = Number(it?.rank || 0)
+    return `${catName} — #${rank || 0} ${text || 'Item'}`
+  }
+
+  const catId = String(oprCategoryFilter.value || '').trim()
+  if (catId && catId !== 'All') {
+    return oprCategoryNameById.value[catId] || 'Category'
+  }
+
+  return 'All'
+})
+
+const oprFilterOptions = computed<OprFilterOption[]>(() => {
+  const cats = Array.isArray(oprCategories.value) ? oprCategories.value : []
+  const items = Array.isArray(oprItemsForFilter.value) ? oprItemsForFilter.value : []
+
+  const itemsByCat: Record<string, OprItemMeta[]> = {}
+  for (const it of items) {
+    const cid = it?.categoryId ? String(it.categoryId) : ''
+    if (!itemsByCat[cid]) itemsByCat[cid] = []
+    itemsByCat[cid].push(it)
+  }
+  for (const k of Object.keys(itemsByCat)) {
+    itemsByCat[k].sort((a, b) => (Number(a.rank || 0) - Number(b.rank || 0)) || String(a.id).localeCompare(String(b.id)))
+  }
+
+  const out: OprFilterOption[] = []
+  for (const c of cats) {
+    out.push({ key: `cat:${c.id}`, kind: 'category', label: `Category: ${c.name}`, categoryId: c.id })
+    const list = itemsByCat[String(c.id)] || []
+    for (const it of list) {
+      const rank = Number(it.rank || 0)
+      const text = String(it.text || '').trim()
+      out.push({
+        key: `item:${it.id}`,
+        kind: 'item',
+        label: `${c.name} — #${rank || 0} ${text || 'Item'}`,
+        categoryId: c.id,
+        itemId: it.id,
+        status: it.status,
+      })
+    }
+  }
+
+  // Items with missing/unknown category
+  const orphan = itemsByCat[''] || []
+  if (orphan.length) {
+    for (const it of orphan) {
+      const rank = Number(it.rank || 0)
+      const text = String(it.text || '').trim()
+      out.push({
+        key: `item:${it.id}`,
+        kind: 'item',
+        label: `Uncategorized — #${rank || 0} ${text || 'Item'}`,
+        categoryId: 'All',
+        itemId: it.id,
+        status: it.status,
+      })
+    }
+  }
+
+  return out
+})
+
+function isOprFilterSelected(opt: any) {
+  if (!opt || typeof opt !== 'object') return false
+  if (opt.kind === 'category') {
+    const cid = String(opt.categoryId || '').trim()
+    return cid && cid !== 'All' && oprCategoryFilter.value === cid && oprItemFilter.value === 'All'
+  }
+  if (opt.kind === 'item') {
+    const iid = String(opt.itemId || '').trim()
+    return iid && oprItemFilter.value === iid
+  }
+  return oprCategoryFilter.value === 'All' && oprItemFilter.value === 'All'
+}
+
+function selectOprFilter(opt: any) {
+  try {
+    const kind = String(opt?.kind || '').trim()
+    if (kind === 'all') {
+      oprCategoryFilter.value = 'All'
+      oprItemFilter.value = 'All'
+      closeOprMenu()
+      return
+    }
+    if (kind === 'category') {
+      const cid = String(opt?.categoryId || '').trim()
+      oprCategoryFilter.value = cid || 'All'
+      oprItemFilter.value = 'All'
+      closeOprMenu()
+      return
+    }
+    if (kind === 'item') {
+      const iid = String(opt?.itemId || '').trim()
+      const it = iid ? findOprItemById(iid) : null
+      oprItemFilter.value = iid || 'All'
+      oprCategoryFilter.value = it?.categoryId ? String(it.categoryId) : (String(opt?.categoryId || '').trim() || 'All')
+      closeOprMenu()
+      return
+    }
+  } catch (e) { /* ignore */ }
+  closeOprMenu()
+}
+
 function normalizeOprCategoryRow(row: any): OprCategoryMeta | null {
   if (!row) return null
   const id = String(row.id || row._id || '').trim()
@@ -1960,24 +2140,32 @@ async function hydrateOprFilters(projectId: string) {
   }
 }
 
-async function hydrateOprItemsForCategory(projectId: string, categoryId: string) {
+async function hydrateOprItemsForProject(projectId: string) {
   const pid = String(projectId || '').trim()
-  const cid = String(categoryId || '').trim()
-  if (!pid || !cid || cid === 'All') { oprItemsForFilter.value = []; return }
+  if (!pid) { oprItemsForFilter.value = []; return }
   if (oprAddonRequired.value) { oprItemsForFilter.value = []; return }
   oprItemsLoading.value = true
   try {
     const { data } = await http.get(`/api/projects/${pid}/opr/items`, {
       headers: getAuthHeaders(),
-      params: { categoryId: cid, includeArchived: 1 },
+      params: { includeArchived: 1 },
     })
     const list = Array.isArray(data) ? data.map(normalizeOprMetaRow).filter(Boolean) as OprItemMeta[] : []
-    list.sort((a, b) => (Number(a.rank || 0) - Number(b.rank || 0)) || String(a.id).localeCompare(String(b.id)))
+    list.sort((a, b) => {
+      const ca = a.categoryId ? String(a.categoryId) : ''
+      const cb = b.categoryId ? String(b.categoryId) : ''
+      if (ca !== cb) return ca.localeCompare(cb)
+      return (Number(a.rank || 0) - Number(b.rank || 0)) || String(a.id).localeCompare(String(b.id))
+    })
     oprItemsForFilter.value = list
 
     const validItemIds = new Set(list.map((i) => i.id))
     if (oprItemFilter.value !== 'All' && !validItemIds.has(oprItemFilter.value)) {
       oprItemFilter.value = 'All'
+    }
+    if (oprItemFilter.value !== 'All') {
+      const it = findOprItemById(oprItemFilter.value)
+      if (it && it.categoryId) oprCategoryFilter.value = String(it.categoryId)
     }
   } catch (e: any) {
     const code = e?.response?.data?.code
@@ -2476,19 +2664,8 @@ watch([preferredProjectId, oprIdsForMetaKey], () => { debouncedHydrateOprMeta() 
 watch(preferredProjectId, async (pid) => {
   const projectId = pid ? String(pid) : ''
   await hydrateOprFilters(projectId)
-  if (oprCategoryFilter.value !== 'All') {
-    await hydrateOprItemsForCategory(projectId, oprCategoryFilter.value)
-  } else {
-    oprItemsForFilter.value = []
-  }
+  await hydrateOprItemsForProject(projectId)
 }, { immediate: true })
-
-watch(oprCategoryFilter, async (next) => {
-  oprItemFilter.value = 'All'
-  const pid = preferredProjectId.value ? String(preferredProjectId.value) : ''
-  if (!pid || !next || next === 'All') { oprItemsForFilter.value = []; return }
-  await hydrateOprItemsForCategory(pid, String(next))
-})
 
 
 // Pagination totals should reflect filtered count when filters/search are applied

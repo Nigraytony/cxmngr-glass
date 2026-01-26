@@ -6,7 +6,8 @@
            overflow-hidden"
     :class="[ open ? 'w-64' : 'w-16' ]"
   >
-    <div class="relative h-16 flex items-center gap-2 px-3">
+    <div class="flex flex-col h-full">
+      <div class="relative h-16 flex items-center gap-2 px-3">
       <!-- Show brand mark + word when sidebar is open -->
       <div
         v-if="open"
@@ -42,9 +43,10 @@
           >
         </picture>
       </div>
-    </div>
+      </div>
 
-    <nav class="px-2 space-y-1">
+      <div class="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
+        <nav class="space-y-1">
       <!-- Dashboard -->
       <RouterLink
         to="/app"
@@ -71,7 +73,7 @@
       </RouterLink>
       <!-- OPR Workshop (paid add-on; visible to all projects) -->
       <RouterLink
-        v-if="currentProjectId"
+        v-if="showStandaloneOprWorkshopLink"
         to="/app/opr"
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -90,53 +92,181 @@
           </span>
         </span>
       </RouterLink>
-      <!-- Tasks -->
-      <RouterLink
-        v-if="featureEnabled('tasks')"
-        to="/app/tasks"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/tasks') ? 'page' : null"
-      >
-        <span class="i">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            aria-hidden="true"
+      <!-- Tasks + Process tree (split action: click label to open list page; click caret to expand tree) -->
+      <div v-if="featureEnabled('tasks')">
+        <div class="flex items-stretch">
+          <RouterLink
+            to="/app/tasks"
+            :class="[
+              'flex-1 flex items-center gap-3 px-3 py-2 rounded-l-lg text-white/90 border border-white/10 border-r-0 min-w-0',
+              isActive('/app/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isRouteName('tasks') ? 'page' : null"
           >
-            <path
-              d="M9 11l2 2 4-4"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M21 6H7"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M21 12H7"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M21 18H7"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </span>
-        <span v-if="open">Tasks</span>
-      </RouterLink>
+            <span class="i shrink-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M9 11l2 2 4-4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M21 6H7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M21 12H7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M21 18H7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+            <span
+              v-if="open"
+              class="truncate"
+            >Tasks</span>
+          </RouterLink>
+
+          <button
+            v-if="open"
+            type="button"
+            class="px-2 rounded-r-lg border border-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="processOpen ? 'bg-white/15 border-white/20' : 'bg-white/5'"
+            :disabled="!currentProjectId"
+            :title="currentProjectId ? (processOpen ? 'Hide process tree' : 'Show process tree') : 'Select a project to view the process tree'"
+            @click="toggleProcessOpen"
+          >
+            <span class="inline-flex items-center gap-2">
+              <span
+                v-if="processLoading"
+                class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70"
+              >
+                Loading…
+              </span>
+              <svg
+                class="w-4 h-4 text-white/70 transition-transform"
+                :class="processOpen ? 'rotate-180' : ''"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+          </button>
+        </div>
+
+        <div
+          v-if="currentProjectId && open && processOpen"
+          class="mt-1 ml-[-0.75rem] pl-3 border-l border-white/10 space-y-1 pr-1"
+        >
+          <div
+            v-if="processError"
+            class="text-xs text-red-200 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
+          >
+            {{ processError }}
+          </div>
+          <div
+            v-else-if="!processLoading && processVisibleNodes.length === 0"
+            class="text-xs text-white/60 px-3 py-2 rounded-lg bg-white/5 border border-white/10"
+          >
+            No tasks found for this project.
+          </div>
+
+          <div
+            v-for="n in processVisibleNodes"
+            :key="n.key"
+            class="flex items-start gap-1 px-2 py-0.5 rounded-md hover:bg-white/10"
+            :class="n.active ? 'bg-white/15 border border-white/15' : 'border border-transparent'"
+            :style="processRowStyle(n)"
+          >
+            <button
+              v-if="n.hasChildren"
+              type="button"
+              class="mt-0 w-4 h-4 grid place-items-center rounded hover:bg-white/10 text-white/70 shrink-0"
+	              :title="processExpanded[n.key] ? 'Collapse' : 'Expand'"
+	              @click.stop="toggleProcessNode(n.key)"
+	            >
+	              <svg
+	                class="w-3 h-3 transition-transform"
+	                :class="processExpanded[n.key] ? 'rotate-90' : ''"
+	                xmlns="http://www.w3.org/2000/svg"
+	                viewBox="0 0 24 24"
+	                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M9 6l6 6-6 6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+	            </button>
+	            <span
+	              v-else
+	              class="mt-0 w-4 h-4"
+	            />
+
+            <div
+              v-if="n.taskId"
+              class="min-w-0 flex-1 flex items-center gap-2"
+            >
+              <RouterLink
+                :to="{ name: 'task-edit', params: { id: n.taskId } }"
+                class="min-w-0 flex-1 text-xs text-white/85 hover:text-white truncate"
+                :title="`${n.wbs} ${n.name}`"
+              >
+                <span class="text-white/60 mr-1">{{ n.wbs }}</span>
+                <span class="truncate">{{ n.name }}</span>
+              </RouterLink>
+
+              <RouterLink
+                v-if="isOprWorkshopTaskNode(n)"
+                to="/app/opr"
+                class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 hover:bg-white/20 hover:text-white shrink-0 ml-auto"
+                title="Open OPR Workshop"
+                @click.stop
+              >
+                workshop
+              </RouterLink>
+            </div>
+            <button
+              v-else
+              type="button"
+              class="min-w-0 flex-1 text-left text-xs text-white/70 hover:text-white"
+              :title="n.wbs"
+              @click="n.hasChildren ? toggleProcessNode(n.key) : null"
+            >
+              <span class="text-white/60 mr-1">{{ n.wbs }}</span>
+              <span class="truncate">{{ n.name }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
       <!-- Activities -->
       <RouterLink
         v-if="featureEnabled('activities')"
@@ -219,38 +349,40 @@
         v-if="currentProjectId && featureEnabled('ai')"
         type="button"
         class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10 hover:bg-white/20"
-        @click="openAiChat"
-      >
-        <span class="i">✨</span>
-        <span v-if="open">AI</span>
-      </button>
-    </nav>
+	        @click="openAiChat"
+	      >
+	        <span class="i">✨</span>
+	        <span v-if="open">AI</span>
+	      </button>
+        </nav>
+      </div>
 
-    <div class="absolute bottom-16 w-full px-2">
-      <RouterLink
-        v-if="currentProjectId"
-        :to="{ name: 'project-settings', params: { id: currentProjectId } }"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isRouteName('project-settings') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isRouteName('project-settings') ? 'page' : null"
-      >
-        <span class="i">⚙️</span>
-        <span v-if="open">Project Settings</span>
-      </RouterLink>
-      <RouterLink
-        v-if="isGlobalAdmin"
-        to="/app/admin"
-        :class="[
-          'mt-2 flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/admin') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/admin') ? 'page' : null"
-      >
-        <span class="i">🛠️</span>
-        <span v-if="open">Admin</span>
-      </RouterLink>
+      <div class="px-2 pt-2 pb-3 border-t border-white/10">
+        <RouterLink
+          v-if="currentProjectId"
+          :to="{ name: 'project-settings', params: { id: currentProjectId } }"
+          :class="[
+            'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+            isRouteName('project-settings') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          ]"
+          :aria-current="isRouteName('project-settings') ? 'page' : null"
+        >
+          <span class="i">⚙️</span>
+          <span v-if="open">Project Settings</span>
+        </RouterLink>
+        <RouterLink
+          v-if="isGlobalAdmin"
+          to="/app/admin"
+          :class="[
+            'mt-2 flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+            isActive('/app/admin') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+          ]"
+          :aria-current="isActive('/app/admin') ? 'page' : null"
+        >
+          <span class="i">🛠️</span>
+          <span v-if="open">Admin</span>
+        </RouterLink>
+      </div>
     </div>
 
     <!-- Expand affordance -->
@@ -278,11 +410,12 @@
 const props = defineProps({ open: { type: Boolean, default: true } })
 const emit = defineEmits(['toggle'])
 import { useRoute } from 'vue-router'
-import { computed } from 'vue'
+  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/project'
 import { useAuthStore } from '../stores/auth'
 import { useAiStore } from '../stores/ai'
 import AiChatSidebar from './AiChatSidebar.vue'
+import http from '../utils/http'
 
 const route = useRoute()
 const projectStore = useProjectStore()
@@ -381,9 +514,281 @@ const isGlobalAdmin = computed(() => {
   return role === 'globaladmin' || role === 'superadmin'
 })
 
+const hasOprTaskForProject = computed(() => {
+  const pid = String(currentProjectId.value || '').trim()
+  if (!pid) return false
+  if (String(processLoadedProjectId.value || '').trim() !== pid) return false
+  const list = Array.isArray(processTasks.value) ? processTasks.value : []
+  return list.some((t) => String(t?.name || t?.title || '').trim().toLowerCase() === 'opr')
+})
+
+const showStandaloneOprWorkshopLink = computed(() => {
+  if (!currentProjectId.value) return false
+  // If tasks aren't enabled, there is no task tree entry to host the Workshop link.
+  if (!featureEnabled('tasks')) return true
+  return !hasOprTaskForProject.value
+})
+
 function openAiChat() {
   if (!props.open) emit('toggle')
   ai.toggleOpen(true)
 }
+
+// -----------------------------
+// Process nav (Tasks WBS tree)
+// -----------------------------
+const processOpen = ref(false)
+const processLoading = ref(false)
+const processError = ref('')
+const processTasks = ref([])
+const processLoadedProjectId = ref('')
+const processExpanded = ref({})
+const TASKS_UPDATED_EVENT = 'cxma:tasks-updated'
+let tasksUpdatedTimer = null
+
+function compareWbs(a, b) {
+  const A = String(a || '').split('.').map((p) => (Number.isFinite(Number(p)) ? Number(p) : String(p)))
+  const B = String(b || '').split('.').map((p) => (Number.isFinite(Number(p)) ? Number(p) : String(p)))
+  const max = Math.max(A.length, B.length)
+  for (let i = 0; i < max; i += 1) {
+    const av = A[i]
+    const bv = B[i]
+    if (av === undefined) return -1
+    if (bv === undefined) return 1
+    if (typeof av === 'number' && typeof bv === 'number') {
+      if (av !== bv) return av - bv
+    } else {
+      const as = String(av)
+      const bs = String(bv)
+      if (as !== bs) return as.localeCompare(bs)
+    }
+  }
+  return 0
+}
+
+function buildProcessTree(tasks) {
+  const nodes = {}
+  nodes.__root = { key: '__root', wbs: '', name: '', taskId: null, percentComplete: null, rollupPercentComplete: null, children: [] }
+
+  const list = Array.isArray(tasks) ? tasks : []
+  for (const t of list) {
+    const wbs = t && t.wbs ? String(t.wbs).trim() : ''
+    if (!wbs) continue
+    const parts = wbs.split('.').map((p) => String(p).trim()).filter(Boolean)
+    if (!parts.length) continue
+
+	    let prefix = ''
+	    for (let i = 0; i < parts.length; i += 1) {
+	      prefix = prefix ? `${prefix}.${parts[i]}` : parts[i]
+      if (!nodes[prefix]) nodes[prefix] = { key: prefix, wbs: prefix, name: `WBS ${prefix}`, taskId: null, percentComplete: null, rollupPercentComplete: null, children: [] }
+	      const parent = prefix.includes('.') ? prefix.slice(0, prefix.lastIndexOf('.')) : '__root'
+	      const parentNode = nodes[parent] || nodes.__root
+	      if (!parentNode.children.includes(prefix)) parentNode.children.push(prefix)
+	    }
+
+    const id = String(t._id || t.id || '').trim()
+    const name = String(t.name || t.title || '').trim()
+    const pcRaw = Number(t.percentComplete)
+    const percentComplete = Number.isFinite(pcRaw) ? Math.max(0, Math.min(100, pcRaw)) : null
+    if (nodes[wbs]) {
+      nodes[wbs].taskId = id || nodes[wbs].taskId
+      if (name) nodes[wbs].name = name
+      if (percentComplete !== null) nodes[wbs].percentComplete = percentComplete
+    }
+  }
+
+	  for (const k of Object.keys(nodes)) {
+	    nodes[k].children = (nodes[k].children || []).slice().sort(compareWbs)
+	  }
+
+  // Roll up progress for parent nodes so the tree shows completion at every level.
+  const rollupMemo = {}
+  function computeRollup(key) {
+    if (Object.prototype.hasOwnProperty.call(rollupMemo, key)) return rollupMemo[key]
+    const node = nodes[key]
+    if (!node) { rollupMemo[key] = null; return null }
+    const children = Array.isArray(node.children) ? node.children : []
+    if (!children.length) {
+      const pc = typeof node.percentComplete === 'number' ? node.percentComplete : null
+      rollupMemo[key] = pc
+      node.rollupPercentComplete = pc
+      return pc
+    }
+    const vals = []
+    for (const ck of children) {
+      const v = computeRollup(ck)
+      if (typeof v === 'number') vals.push(v)
+    }
+    // If we have any descendant progress, use the average; otherwise fall back to this task's own percentComplete.
+    const own = typeof node.percentComplete === 'number' ? node.percentComplete : null
+    const out = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : own
+    const clamped = (typeof out === 'number' && Number.isFinite(out)) ? Math.max(0, Math.min(100, out)) : null
+    rollupMemo[key] = clamped
+    node.rollupPercentComplete = clamped
+    return clamped
+  }
+  computeRollup('__root')
+
+  return nodes
+}
+
+function defaultExpandedFromTree(tree) {
+  // Default to fully collapsed (shows first-level tasks only).
+  return {}
+}
+
+const activeTaskId = computed(() => {
+  if (route.name !== 'task-edit') return ''
+  return String(route.params?.id || '').trim()
+})
+
+function isOprWorkshopTaskNode(n) {
+  return String(n?.name || '').trim().toLowerCase() === 'opr'
+}
+
+const processTree = computed(() => buildProcessTree(processTasks.value))
+const processVisibleNodes = computed(() => {
+  const tree = processTree.value
+  const expanded = processExpanded.value || {}
+  const out = []
+
+  function walk(parentKey, depth) {
+    const parent = tree[parentKey]
+    const children = parent && Array.isArray(parent.children) ? parent.children : []
+    for (const key of children) {
+      const n = tree[key]
+      if (!n) continue
+      const hasChildren = Array.isArray(n.children) && n.children.length > 0
+      const tid = n.taskId ? String(n.taskId) : ''
+      out.push({
+        key,
+        wbs: n.wbs,
+        name: n.name || `WBS ${n.wbs}`,
+        taskId: tid || null,
+        percentComplete: (typeof n.rollupPercentComplete === 'number' ? n.rollupPercentComplete : (typeof n.percentComplete === 'number' ? n.percentComplete : null)),
+        depth,
+        hasChildren,
+        active: Boolean(tid && activeTaskId.value && tid === activeTaskId.value),
+      })
+      if (hasChildren && expanded[key]) walk(key, depth + 1)
+    }
+  }
+
+  walk('__root', 0)
+  return out
+})
+
+function toggleProcessOpen() {
+  processOpen.value = !processOpen.value
+}
+
+function toggleProcessNode(key) {
+  const next = { ...(processExpanded.value || {}) }
+  next[key] = !next[key]
+  processExpanded.value = next
+}
+
+function processRowStyle(n) {
+  const depth = n && typeof n.depth === 'number' ? n.depth : 0
+  const paddingLeft = `calc(${Math.min(depth, 6) * 0.75}rem)`
+
+  const pc = n && typeof n.percentComplete === 'number' ? n.percentComplete : 0
+  const pct = Math.max(0, Math.min(100, pc))
+  if (!pct) return { paddingLeft }
+
+  // Very faint progress fill (keeps hover background visible).
+  const color = 'rgba(255,255,255,0.06)'
+  return {
+    paddingLeft,
+    backgroundImage: `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, transparent ${pct}%, transparent 100%)`
+  }
+}
+
+async function fetchProcessTasks(projectId, { force = false } = {}) {
+  const pid = String(projectId || '').trim()
+  if (!pid) return
+  if (processLoading.value) return
+  if (!force && processLoadedProjectId.value === pid) return
+
+  processLoading.value = true
+  processError.value = ''
+  try {
+    const resp = await http.get('/api/tasks', { params: { projectId: pid, limit: 1000 } })
+    const tasks = resp?.data?.tasks || []
+    processTasks.value = (Array.isArray(tasks) ? tasks : []).filter((t) => {
+      if (!t) return false
+      if (t.deleted === true) return false
+      if (String(t.status || '').toLowerCase() === 'deleted') return false
+      return Boolean(String(t.wbs || '').trim())
+    })
+    processLoadedProjectId.value = pid
+    const tree = buildProcessTree(processTasks.value)
+    const defaults = defaultExpandedFromTree(tree)
+    const prev = processExpanded.value && typeof processExpanded.value === 'object' ? processExpanded.value : {}
+    const hasPrev = Object.keys(prev).length > 0
+    processExpanded.value = hasPrev ? { ...defaults, ...prev } : defaults
+  } catch (e) {
+    processTasks.value = []
+    processError.value = 'Unable to load tasks for Process navigation.'
+  } finally {
+    processLoading.value = false
+  }
+}
+
+function scheduleProcessRefresh() {
+  try {
+    const pid = String(currentProjectId.value || '').trim()
+    if (!pid) return
+    if (!props.open) return
+    if (tasksUpdatedTimer) clearTimeout(tasksUpdatedTimer)
+    tasksUpdatedTimer = setTimeout(() => {
+      fetchProcessTasks(pid, { force: true }).catch(() => {})
+    }, 300)
+  } catch (e) { /* ignore */ }
+}
+
+function onTasksUpdated(e) {
+  try {
+    const pid = String(e?.detail?.projectId || '').trim()
+    if (!pid) return
+    if (pid !== String(currentProjectId.value || '').trim()) return
+    scheduleProcessRefresh()
+  } catch (err) { /* ignore */ }
+}
+
+watch([currentProjectId, () => props.open, processOpen], async ([pid, sidebarOpen, procOpen]) => {
+  if (!pid) {
+    processTasks.value = []
+    processLoadedProjectId.value = ''
+    processError.value = ''
+    processExpanded.value = {}
+    return
+  }
+  if (!sidebarOpen) return
+  // Prefetch tasks even when the tree is closed so other UI (e.g., OPR Workshop link)
+  // can react to task presence without requiring the user to open the tree.
+  if (!featureEnabled('tasks')) return
+  await fetchProcessTasks(pid)
+}, { immediate: true })
+
+onMounted(() => {
+  try {
+    if (typeof window !== 'undefined') window.addEventListener(TASKS_UPDATED_EVENT, onTasksUpdated)
+  } catch (e) { /* ignore */ }
+})
+
+onBeforeUnmount(() => {
+  try {
+    if (tasksUpdatedTimer) clearTimeout(tasksUpdatedTimer)
+  } catch (e) { /* ignore */ }
+  try {
+    if (typeof window !== 'undefined') window.removeEventListener(TASKS_UPDATED_EVENT, onTasksUpdated)
+  } catch (e) { /* ignore */ }
+})
+
+watch(() => route.name, () => {
+  // Auto-open the process tree when deep-linking into a specific task.
+  if (route.name === 'task-edit') processOpen.value = true
+}, { immediate: true })
 
 </script>
