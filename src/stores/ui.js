@@ -74,7 +74,12 @@ export const useUiStore = defineStore('ui', {
       message: '',
       variant: 'white',
       duration: 2500,
-      top: '4rem'
+      top: '4rem',
+      actionLabel: '',
+      actionTo: '',
+      // Optional key used to persist a "dismissed" decision in sessionStorage.
+      // If present, the toast will only be marked dismissed for non-timeout closes.
+      dismissKey: ''
     }
   }),
   actions: {
@@ -83,11 +88,14 @@ export const useUiStore = defineStore('ui', {
     closeSidebar() { this.sidebarOpen = false }
     ,
     // Toast helpers
-    showToast({ message, variant = 'white', duration = 2500, top = '4rem' }) {
+    showToast({ message, variant = 'white', duration = 2500, top = '4rem', actionLabel = '', actionTo = '', dismissKey = '' }) {
       this.toast.message = message
       this.toast.variant = variant
       this.toast.duration = duration
       this.toast.top = top
+      this.toast.actionLabel = actionLabel || ''
+      this.toast.actionTo = actionTo || ''
+      this.toast.dismissKey = dismissKey || ''
       this.toast.show = true
     },
     setShowCostColumn(val) {
@@ -131,8 +139,16 @@ export const useUiStore = defineStore('ui', {
     showWarning(message, opts = {}) {
       this.showToast({ message, variant: 'warning', duration: opts.duration || 3000, top: opts.top || '4rem' })
     },
-    hideToast() {
+    hideToast(payload) {
+      const reason = payload && typeof payload === 'object' && payload.reason ? String(payload.reason) : 'dismiss'
+      const dismissKey = this.toast && this.toast.dismissKey ? String(this.toast.dismissKey) : ''
+      if (dismissKey && reason !== 'timeout') {
+        try { sessionStorage.setItem(dismissKey, '1') } catch (e) { /* ignore */ }
+      }
       this.toast.show = false
+      this.toast.actionLabel = ''
+      this.toast.actionTo = ''
+      this.toast.dismissKey = ''
     }
     ,
     setShowSignatures(val) {

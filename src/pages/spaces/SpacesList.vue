@@ -22,7 +22,7 @@
     </div>
 
     <!-- toolbar below breadcrumbs (search first) -->
-    <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30">
       <!-- Error banner for plan guard or missing project -->
       <div
         v-if="spacesStore.errorCode"
@@ -44,281 +44,444 @@
           <span v-else>{{ spacesStore.error || 'Unable to load spaces.' }}</span>
         </div>
       </div>
-      <!-- Add Space round button with hover tooltip, left of search -->
-      <div class="relative inline-block group">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Add space"
-          :title="projectStore.currentProjectId ? 'Add space' : 'Select a project to add spaces'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="openCreate()"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          {{ projectStore.currentProjectId ? 'Add space' : 'Select a project to add spaces' }}
+      <div class="flex flex-wrap items-end justify-between gap-3 gap-y-2 min-w-0">
+        <div class="flex flex-wrap items-end gap-3 gap-y-2 min-w-0">
+          <!-- Add Space round button with hover tooltip -->
+          <div class="relative inline-block group">
+            <button
+              :disabled="!projectStore.currentProjectId"
+              aria-label="Add space"
+              :title="projectStore.currentProjectId ? 'Add space' : 'Select a project to add spaces'"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+              @click="openCreate()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              {{ projectStore.currentProjectId ? 'Add space' : 'Select a project to add spaces' }}
+            </div>
+          </div>
+
+          <!-- Types filter styled like Issues status filter -->
+          <div>
+            <label class="block text-white/70 text-sm">Type</label>
+            <div
+              ref="typeMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showTypeMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="toggleTypeMenu"
+              >
+                <span class="flex items-center gap-2">
+                  <span>{{ typeFilterLabel }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilterLabel) }}</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+              <div
+                v-if="showTypeMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1 max-h-96 overflow-auto">
+                  <button
+                    v-for="opt in typeOptions"
+                    :key="opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="applyTypeFilter(opt.name)"
+                  >
+                    <span>{{ opt.name }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <!-- Types filter styled like Issues status filter -->
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">Type</label>
-        <div
-          ref="typeMenuRef"
-          class="relative"
-        >
+
+        <div class="flex flex-wrap items-center gap-2 gap-y-2">
           <button
-            :aria-expanded="showTypeMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-            @click="toggleTypeMenu"
+            class="px-3 py-2 rounded bg-white/10 hover:bg-white/15 text-white border border-white/20 min-w-[120px]"
+            @click="toggleView"
           >
-            <span class="flex items-center gap-2">
-              <span>{{ typeFilterLabel }}</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilterLabel) }}</span>
+            <span
+              v-if="viewMode === 'list'"
+              class="inline-flex items-center gap-2"
+            >
+              <!-- hierarchy/tree icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <!-- top node -->
+                <circle
+                  cx="12"
+                  cy="5"
+                  r="2.25"
+                />
+                <!-- bottom left node -->
+                <circle
+                  cx="7"
+                  cy="19"
+                  r="2.25"
+                />
+                <!-- bottom right node -->
+                <circle
+                  cx="17"
+                  cy="19"
+                  r="2.25"
+                />
+                <!-- connectors -->
+                <path
+                  d="M12 7.5v5.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M12 13h-3"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M12 13h3"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Tree View</span>
             </span>
+            <span
+              v-else
+              class="inline-flex items-center gap-2"
+            >
+              <!-- list icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M5 7h14"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M5 12h14"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M5 17h14"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>List View</span>
+            </span>
+          </button>
+
+          <div class="relative inline-block group">
+            <button
+              :disabled="!canAutoTagSpacesPage"
+              aria-label="Auto-tag this page"
+              :title="canAutoTagSpacesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+              @click="showAutoTagModal = true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Auto-tag this page
+            </div>
+          </div>
+
+          <!-- Download Excel button -->
+          <button
+            :disabled="!filtered.length"
+            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+            @click="downloadSpacesXlsx"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
+              class="w-4 h-4"
+            >
+              <rect
+                x="3"
+                y="3"
+                width="18"
+                height="18"
+                rx="2"
+                ry="2"
+                stroke-width="1.5"
+              />
+              <path
+                d="M8 3v18M16 3v18M3 8h18M3 16h18"
+                stroke-width="1.5"
+              />
+            </svg>
+            <span>Download Excel</span>
           </button>
+
+          <!-- Upload Excel button + hidden input -->
           <div
-            v-if="showTypeMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
+            ref="uploadRef"
+            class="relative inline-block group"
           >
-            <div class="py-1">
-              <button
-                v-for="opt in typeOptions"
-                :key="opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="applyTypeFilter(opt.name)"
+            <button
+              :disabled="!projectStore.currentProjectId || uploading"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+              @click="triggerUpload"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
               >
-                <span>{{ opt.name }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-              </button>
+                <path
+                  d="M12 3v11"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M8 7l4-4 4 4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M5 20h14"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>{{ uploading ? 'Uploading…' : 'Upload Excel' }}</span>
+            </button>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              class="hidden"
+              @change="onFileChange"
+            >
+            <!-- Tooltip with import guidance -->
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-[320px] opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-3 py-2 border border-white/10 shadow backdrop-blur transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100 z-40"
+            >
+              <div class="text-white/90 font-medium mb-1">
+                Import columns
+              </div>
+              <div><span class="text-white/70">Required:</span> title</div>
+              <div><span class="text-white/70">Optional:</span> id, tag, type, description, parent id, parent tag, parent title</div>
+              <div class="mt-1 text-white/60">
+                Upsert: id › tag › title · Parent: parent id › parent tag › parent title
+              </div>
+            </div>
+          </div>
+
+          <!-- More tools (collapsible filters) -->
+          <div class="relative inline-block group">
+            <button
+              type="button"
+              aria-label="More tools"
+              :class="['w-10 h-10 flex items-center justify-center rounded-full text-white border', showAdvancedFilters ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10']"
+              @click="showAdvancedFilters = !showAdvancedFilters"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <circle
+                  cx="5"
+                  cy="12"
+                  r="1.5"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="1.5"
+                />
+                <circle
+                  cx="19"
+                  cy="12"
+                  r="1.5"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              More tools
             </div>
           </div>
         </div>
       </div>
-      <button
-        class="px-3 py-2 rounded bg-white/10 hover:bg-white/15 text-white border border-white/20 min-w-[120px]"
-        @click="toggleView"
-      >
-        <span
-          v-if="viewMode === 'list'"
-          class="inline-flex items-center gap-2"
-        >
-          <!-- hierarchy/tree icon -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            aria-hidden="true"
-          >
-            <!-- top node -->
-            <circle
-              cx="12"
-              cy="5"
-              r="2.25"
-            />
-            <!-- bottom left node -->
-            <circle
-              cx="7"
-              cy="19"
-              r="2.25"
-            />
-            <!-- bottom right node -->
-            <circle
-              cx="17"
-              cy="19"
-              r="2.25"
-            />
-            <!-- connectors -->
-            <path
-              d="M12 7.5v5.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M12 13h-3"
-              stroke-linecap="round"
-            />
-            <path
-              d="M12 13h3"
-              stroke-linecap="round"
-            />
-          </svg>
-          <span>Tree View</span>
-        </span>
-        <span
-          v-else
-          class="inline-flex items-center gap-2"
-        >
-          <!-- list icon -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            aria-hidden="true"
-          >
-            <path
-              d="M5 7h14"
-              stroke-linecap="round"
-            />
-            <path
-              d="M5 12h14"
-              stroke-linecap="round"
-            />
-            <path
-              d="M5 17h14"
-              stroke-linecap="round"
-            />
-          </svg>
-          <span>List View</span>
-        </span>
-      </button>
-      <div class="relative inline-block group">
-        <button
-          :disabled="!canAutoTagSpacesPage"
-          aria-label="Auto-tag this page"
-          :title="canAutoTagSpacesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="showAutoTagModal = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          Auto-tag this page
-        </div>
-      </div>
-      <!-- Download Excel button -->
-      <button
-        :disabled="!filtered.length"
-        class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-        @click="downloadSpacesXlsx"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          class="w-4 h-4"
-        >
-          <rect
-            x="3"
-            y="3"
-            width="18"
-            height="18"
-            rx="2"
-            ry="2"
-            stroke-width="1.5"
-          />
-          <path
-            d="M8 3v18M16 3v18M3 8h18M3 16h18"
-            stroke-width="1.5"
-          />
-        </svg>
-        <span>Download Excel</span>
-      </button>
-      <!-- Upload Excel button + hidden input -->
+
+      <!-- advanced filters -->
       <div
-        ref="uploadRef"
-        class="relative inline-block group"
+        v-if="showAdvancedFilters"
+        class="mt-3 pt-3 border-t border-white/10"
       >
-        <button
-          :disabled="!projectStore.currentProjectId || uploading"
-          class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-          @click="triggerUpload"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-4 h-4"
-          >
-            <path
-              d="M12 3v11"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M8 7l4-4 4 4"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M5 20h14"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-          <span>{{ uploading ? 'Uploading…' : 'Upload Excel' }}</span>
-        </button>
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          class="hidden"
-          @change="onFileChange"
-        >
-        <!-- Tooltip with import guidance -->
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-[320px] opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-3 py-2 border border-white/10 shadow backdrop-blur transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100 z-40"
-        >
-          <div class="text-white/90 font-medium mb-1">
-            Import columns
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Status</label>
+            <select
+              v-model="statusFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in spaceStatusOptions"
+                :key="`s-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
           </div>
-          <div><span class="text-white/70">Required:</span> title</div>
-          <div><span class="text-white/70">Optional:</span> id, tag, type, description, parent id, parent tag, parent title</div>
-          <div class="mt-1 text-white/60">
-            Upsert: id › tag › title · Parent: parent id › parent tag › parent title
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Responsible</label>
+            <select
+              v-model="responsibleFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in spaceResponsibleOptions"
+                :key="`r-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Location</label>
+            <select
+              v-model="locationFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in spaceLocationOptions"
+                :key="`l-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">System</label>
+            <select
+              v-model="systemFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in spaceSystemOptions"
+                :key="`sys-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">From</label>
+            <input
+              v-model="dateFrom"
+              type="date"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">To</label>
+            <input
+              v-model="dateTo"
+              type="date"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+          </div>
+
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-white/70 text-sm">Tags</label>
+            <input
+              v-model="tagsFilter"
+              type="text"
+              placeholder="e.g. commissioning, urgent"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm placeholder:text-white/50"
+            >
           </div>
         </div>
       </div>
@@ -893,6 +1056,7 @@ import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
+import lists from '../../lists.js'
 	import { useAuthStore } from '../../stores/auth'
 	import { confirm as inlineConfirm } from '../../utils/confirm'
 	import { runCoachmarkOnce } from '../../utils/coachmarks'
@@ -909,6 +1073,14 @@ const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'R
 
 const search = ref('')
 const typeFilter = ref('')
+const showAdvancedFilters = ref(false)
+const statusFilter = ref('')
+const responsibleFilter = ref('')
+const locationFilter = ref('')
+const systemFilter = ref('')
+const dateFrom = ref('')
+const dateTo = ref('')
+const tagsFilter = ref('')
 const modalOpen = ref(false)
 const editing = ref(false)
 const form = ref<Space>({ title: '', type: 'Room', project: '', tag: '', parentSpace: '' })
@@ -983,6 +1155,94 @@ function debounce(fn: (...args: any[]) => void, wait = 200) {
   }
 }
 
+function norm(v: any) {
+  return String(v || '').trim()
+}
+
+function normLower(v: any) {
+  return norm(v).toLowerCase()
+}
+
+function dateInputToMs(v: any, endOfDay = false) {
+  const s = String(v || '').trim()
+  if (!s) return null
+  const iso = endOfDay ? `${s}T23:59:59.999` : `${s}T00:00:00.000`
+  const t = new Date(iso).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+function spaceResponsibleValue(s: any) {
+  return norm(
+    s?.responsible ||
+      s?.responsibleRole ||
+      s?.assignedRole ||
+      s?.assigneeRole ||
+      s?.role ||
+      s?.assignee ||
+      s?.assignedTo ||
+      ''
+  )
+}
+
+function spaceLocationValue(s: any) {
+  return norm(s?.location || s?.site || s?.building || '')
+}
+
+function spaceSystemValues(s: any) {
+  const systems = Array.isArray(s?.systems) ? s.systems : []
+  const primary = norm(s?.system || '')
+  const out = new Set<string>()
+  if (primary) out.add(primary)
+  for (const v of systems) {
+    const x = norm(v)
+    if (x) out.add(x)
+  }
+  return Array.from(out)
+}
+
+const spaceStatusOptions = computed(() => {
+  const set = new Set<string>()
+  for (const s of (spaces.value as any[])) {
+    const v = norm(s?.status)
+    if (v) set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const spaceResponsibleOptions = computed(() => {
+  const set = new Set<string>()
+  for (const s of (spaces.value as any[])) {
+    const r = spaceResponsibleValue(s)
+    if (r) set.add(r)
+  }
+  for (const r of (lists.roleOptions || [])) {
+    const v = norm((r as any)?.value || r)
+    if (v) set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const spaceLocationOptions = computed(() => {
+  const set = new Set<string>()
+  for (const s of (spaces.value as any[])) {
+    const l = spaceLocationValue(s)
+    if (l) set.add(l)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const spaceSystemOptions = computed(() => {
+  const set = new Set<string>()
+  for (const s of (spaces.value as any[])) {
+    for (const v of spaceSystemValues(s)) set.add(v)
+  }
+  for (const v of (lists.systemOptions || [])) {
+    const x = norm((v as any)?.value || v)
+    if (x) set.add(x)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
 // Filter over server-provided page so list view and downloads reflect current page
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -990,8 +1250,43 @@ const filtered = computed(() => {
   const list = listSpaces.value || []
   return list.filter(s => {
     if (t && s.type !== t) return false
+    const statusNeedle = normLower(statusFilter.value)
+    if (statusNeedle && normLower((s as any)?.status) !== statusNeedle) return false
+    const responsibleNeedle = normLower(responsibleFilter.value)
+    if (responsibleNeedle && normLower(spaceResponsibleValue(s)) !== responsibleNeedle) return false
+    const locationNeedle = normLower(locationFilter.value)
+    if (locationNeedle && normLower(spaceLocationValue(s)) !== locationNeedle) return false
+    const systemNeedle = normLower(systemFilter.value)
+    if (systemNeedle) {
+      const primary = normLower((s as any)?.system)
+      const systems = Array.isArray((s as any)?.systems) ? (s as any).systems : []
+      const has = (primary && primary === systemNeedle) || systems.some((v: any) => normLower(v) === systemNeedle)
+      if (!has) return false
+    }
+
+    const fromMs = dateInputToMs(dateFrom.value, false)
+    const toMs = dateInputToMs(dateTo.value, true)
+    if (fromMs !== null || toMs !== null) {
+      const raw = (s as any)?.updatedAt || (s as any)?.createdAt || null
+      const ms = raw ? new Date(raw).getTime() : NaN
+      if (!Number.isFinite(ms)) return false
+      if (fromMs !== null && ms < fromMs) return false
+      if (toMs !== null && ms > toMs) return false
+    }
+
+    const tagTerms = (tagsFilter.value || '')
+      .split(/[,\s]+/)
+      .map(v => normLower(v))
+      .filter(Boolean)
+    if (tagTerms.length) {
+      const tags = Array.isArray((s as any)?.tags) ? (s as any).tags : []
+      const hay = tags.map((t: any) => normLower(t)).filter(Boolean)
+      if (!hay.length) return false
+      if (!tagTerms.every(term => hay.some(tag => tag.includes(term)))) return false
+    }
+
     if (!q) return true
-    const fields = [`${s.tag || ''}`, `${s.title || ''}`].map(f => f.toLowerCase())
+    const fields = [`${(s as any).tag || ''}`, `${(s as any).title || ''}`].map(f => f.toLowerCase())
     return fields.some(f => f.includes(q))
   })
 })

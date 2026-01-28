@@ -944,19 +944,15 @@
             v-else-if="currentTab === 'Attachments'"
             class="space-y-4"
           >
-            <div>
-              <label class="block text-sm text-white/70">Upload files</label>
-              <DocumentUploader
-                button-label="Upload Files"
-                :upload="uploadDocument"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*"
-                :multiple="true"
-                :concurrency="3"
-                @done="finalizeNewActivityIfNeeded"
-              />
-              <div class="mt-2 text-xs text-white/60">
-                Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, and images (JPG/PNG). Max ~10MB per file.
-              </div>
+            <AzureAttachmentsPanel
+              :project-id="azureProjectId"
+              entity-type="Activity"
+              :entity-id="id"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
+              @update:count="azureAttachmentsCount = $event"
+            />
+            <div class="text-xs text-white/60">
+              Links below are legacy URL attachments (not stored in Azure).
             </div>
             <!-- Manual link add (optional) -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -2061,7 +2057,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
 import PhotoUploader from '../../components/PhotoUploader.vue'
-import DocumentUploader from '../../components/DocumentUploader.vue'
+import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import Comments from '../../components/Comments.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -2088,6 +2084,9 @@ const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
 const ai = useAiStore()
+
+const azureAttachmentsCount = ref(0)
+const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const id = computed(() => String(props.id || route.params.id || ''))
 const isNew = computed(() => id.value === 'new')
@@ -4407,19 +4406,6 @@ function addAttachment() {
   newAttachment.url = ''
   newAttachment.type = ''
 }
-async function uploadDocument(file: File, onProgress: (pct: number) => void) {
-  // Ensure activity exists
-  const aid = isNew.value ? await saveAndGetId() : id.value
-  const fd = new FormData()
-  fd.append('attachments', file)
-  const res = await http.post(`/api/activities/${aid}/attachments`, fd, {
-    headers: { ...getAuthHeaders() },
-    onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) },
-  })
-  const a = await store.fetchActivity(String(aid))
-  if (a) form.attachments = a.attachments || []
-  return res.data
-}
 async function removeAttachment(i: number) {
   const att = (form.attachments || [])[i]
   const label = String(att?.filename || att?.name || att?.url || '').trim() || `Attachment #${i + 1}`
@@ -4758,7 +4744,7 @@ function countForTab(t: string): number {
   if (t === 'Photos') return (current.value?.photos || []).length
   if (t === 'Issues') return issuesForActivity.value.length
   if (t === 'Comments') return (form.comments || []).length
-  if (t === 'Attachments') return (form.attachments || []).length
+  if (t === 'Attachments') return azureAttachmentsCount.value + (form.attachments || []).length
   if (t === 'Equipment' || t === 'Equipment Reviewed') return (form.systems || []).length
   return 0
 }

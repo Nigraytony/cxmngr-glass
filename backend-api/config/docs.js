@@ -11,8 +11,15 @@ function getDocsAllowedContentTypes() {
     'image/heic',
     'image/heif',
     'application/pdf',
+    'application/zip',
+    'text/plain',
+    'text/csv',
+    'application/msword',
+    'application/vnd.ms-excel',
+    'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   ]
 }
 
@@ -25,4 +32,3 @@ module.exports = {
   getDocsAllowedContentTypes,
   getDocsMaxSizeBytes,
 }
-

@@ -72,26 +72,35 @@
         <span v-if="open">Assistant</span>
       </RouterLink>
       <!-- OPR Workshop (paid add-on; visible to all projects) -->
-      <RouterLink
-        v-if="showStandaloneOprWorkshopLink"
-        to="/app/opr"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/opr') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/opr') ? 'page' : null"
-      >
-        <span class="i">🗳️</span>
-        <span
-          v-if="open"
-          class="flex items-center justify-between gap-2 w-full min-w-0"
-        >
-          <span class="truncate">OPR Workshop</span>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0">
-            Add-on
-          </span>
-        </span>
-      </RouterLink>
+	      <RouterLink
+	        v-if="showStandaloneOprWorkshopLink"
+	        to="/app/opr"
+	        :class="[
+	          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+	          isActive('/app/opr') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+	        ]"
+	        :aria-current="isActive('/app/opr') ? 'page' : null"
+	      >
+	        <span class="i">🗳️</span>
+	        <span
+	          v-if="open"
+	          class="flex items-center justify-between gap-2 w-full min-w-0"
+	        >
+	          <span class="truncate">OPR Workshop</span>
+	          <span
+	            v-if="opr.workshopIsActive"
+	            class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100 shrink-0"
+	          >
+	            Live
+	          </span>
+	          <span
+	            v-else
+	            class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
+	          >
+	            Add-on
+	          </span>
+	        </span>
+	      </RouterLink>
       <!-- Tasks + Process tree (split action: click label to open list page; click caret to expand tree) -->
       <div v-if="featureEnabled('tasks')">
         <div class="flex items-stretch">
@@ -411,16 +420,18 @@ const props = defineProps({ open: { type: Boolean, default: true } })
 const emit = defineEmits(['toggle'])
 import { useRoute } from 'vue-router'
   import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useProjectStore } from '../stores/project'
-import { useAuthStore } from '../stores/auth'
-import { useAiStore } from '../stores/ai'
+	import { useProjectStore } from '../stores/project'
+	import { useAuthStore } from '../stores/auth'
+	import { useAiStore } from '../stores/ai'
+	import { useOprStore } from '../stores/opr'
 import AiChatSidebar from './AiChatSidebar.vue'
 import http from '../utils/http'
 
 const route = useRoute()
-const projectStore = useProjectStore()
-const authStore = useAuthStore()
-const ai = useAiStore()
+	const projectStore = useProjectStore()
+	const authStore = useAuthStore()
+	const ai = useAiStore()
+	const opr = useOprStore()
 const currentProject = computed(() =>
   projectStore.currentProject ||
   (projectStore.projects || []).find(p => String(p.id || p._id) === currentProjectId.value) ||
@@ -522,12 +533,13 @@ const hasOprTaskForProject = computed(() => {
   return list.some((t) => String(t?.name || t?.title || '').trim().toLowerCase() === 'opr')
 })
 
-const showStandaloneOprWorkshopLink = computed(() => {
-  if (!currentProjectId.value) return false
-  // If tasks aren't enabled, there is no task tree entry to host the Workshop link.
-  if (!featureEnabled('tasks')) return true
-  return !hasOprTaskForProject.value
-})
+	const showStandaloneOprWorkshopLink = computed(() => {
+	  if (!currentProjectId.value) return false
+	  if (opr.workshopIsActive) return true
+	  // If tasks aren't enabled, there is no task tree entry to host the Workshop link.
+	  if (!featureEnabled('tasks')) return true
+	  return !hasOprTaskForProject.value
+	})
 
 function openAiChat() {
   if (!props.open) emit('toggle')

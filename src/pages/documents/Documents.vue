@@ -7,7 +7,204 @@
           { text: 'Documents', to: '/app/documents' }
         ]"
         title="Documents"
-      />
+      >
+        <template #middle>
+          <SearchPill
+            v-model="q"
+            placeholder="Search folders & files"
+          />
+        </template>
+      </BreadCrumbs>
+    </div>
+
+    <!-- unified toolbar -->
+    <div
+      v-if="projectId"
+      class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0">
+        <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
+          <div class="relative inline-block group shrink-0">
+            <button
+              type="button"
+              aria-label="New folder"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-transparent hover:bg-white/10 text-white border border-white/10"
+              @click="openCreateFolder(null)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M3 7a2 2 0 0 1 2-2h5l2 2h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M12 11v6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 14h6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              New folder
+            </div>
+          </div>
+
+          <div class="min-w-[220px] text-white/60 text-xs truncate">
+            <span v-if="selectedFolder">Folder: {{ selectedFolder.path || selectedFolder.name }}</span>
+            <span v-else>Select a folder to upload files</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 gap-y-2">
+          <div class="relative inline-block group shrink-0">
+            <button
+              type="button"
+              aria-label="Refresh"
+              :disabled="documents.loadingTree"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-transparent hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+              @click="refreshAll"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M20 12a8 8 0 1 1-2.34-5.66"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 4v6h-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Refresh
+            </div>
+          </div>
+
+          <DocumentUploader
+            v-if="selectedFolder && projectId"
+            :upload="uploadOne"
+            button-label="Upload"
+            :multiple="true"
+            :disabled="!selectedFolder || documents.loadingFiles"
+            :enable-retry="true"
+            accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.heic,.heif"
+            @file-done="scheduleRefreshFiles"
+            @done="refreshFiles"
+            @error="onUploadError"
+          >
+            <template #button="{ open, disabled }">
+              <div class="relative inline-block group shrink-0">
+                <button
+                  type="button"
+                  aria-label="Upload"
+                  :disabled="disabled"
+                  class="w-10 h-10 flex items-center justify-center rounded-full bg-transparent hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+                  @click="open()"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-5 h-5"
+                  >
+                    <path
+                      d="M12 16V4"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M8 8l4-4 4 4"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M4 20h16"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+                <div
+                  role="tooltip"
+                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                >
+                  Upload
+                </div>
+              </div>
+            </template>
+          </DocumentUploader>
+          <div
+            v-else
+            class="relative inline-block group shrink-0"
+          >
+            <button
+              type="button"
+              aria-label="Upload"
+              disabled
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-transparent text-white/60 border border-white/10 disabled:opacity-40"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M12 16V4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M8 8l4-4 4 4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M4 20h16"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Select a folder to upload
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div
@@ -24,27 +221,8 @@
       <!-- Left: folders -->
       <div class="col-span-12 lg:col-span-4">
         <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 px-3 py-4 h-full flex flex-col min-h-0">
-          <div class="flex items-center justify-between gap-2">
-            <div class="text-white font-semibold">
-              Folders
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm disabled:opacity-50"
-                :disabled="documents.loadingTree"
-                @click="refreshAll"
-              >
-                Refresh
-              </button>
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm"
-                @click="openCreateFolder(null)"
-              >
-                New
-              </button>
-            </div>
+          <div class="text-white font-semibold">
+            Folders
           </div>
 
           <div class="mt-3 flex-1 min-h-0 overflow-auto pr-1">
@@ -58,7 +236,8 @@
               v-else-if="folderChildren.length === 0"
               class="text-white/70 text-sm"
             >
-              No folders yet. Create one to upload files.
+              <span v-if="qTrimmed">No matching folders.</span>
+              <span v-else>No folders yet. Create one to upload files.</span>
             </div>
             <ul
               v-else
@@ -96,18 +275,6 @@
                 <span v-else>Select a folder to view files</span>
               </div>
             </div>
-            <DocumentUploader
-              v-if="selectedFolder && projectId"
-              :upload="uploadOne"
-              button-label="Upload"
-              :multiple="true"
-              :disabled="!selectedFolder || documents.loadingFiles"
-              :enable-retry="true"
-              accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.heic,.heif"
-              @file-done="scheduleRefreshFiles"
-              @done="refreshFiles"
-              @error="onUploadError"
-            />
           </div>
 
           <div class="mt-4 flex-1 min-h-0">
@@ -148,18 +315,19 @@
                     </td>
                   </tr>
                   <tr
-                    v-else-if="documents.files.length === 0"
+                    v-else-if="filteredFiles.length === 0"
                     class="border-t border-white/10"
                   >
                     <td
                       colspan="3"
                       class="px-3 py-3 text-white/70"
                     >
-                      No files in this folder.
+                      <span v-if="qTrimmed">No matching files.</span>
+                      <span v-else>No files in this folder.</span>
                     </td>
                   </tr>
                   <tr
-                    v-for="f in documents.files"
+                    v-for="f in filteredFiles"
                     :key="f.id"
                     class="border-t border-white/10 hover:bg-white/5"
                   >
@@ -499,6 +667,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import SearchPill from '../../components/SearchPill.vue'
 import Modal from '../../components/Modal.vue'
 import DocumentUploader from '../../components/DocumentUploader.vue'
 import FolderNodeRow from '../../components/documents/FolderNodeRow.vue'
@@ -515,6 +684,8 @@ const projectStore = useProjectStore()
 const documents = useDocumentsStore()
 
 const projectId = computed(() => projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+const q = ref('')
+const qTrimmed = computed(() => q.value.trim().toLowerCase())
 
 // Use a dedicated client for Azure Blob PUTs so we don't accidentally send app auth headers to Azure.
 const blobHttp = axios.create()
@@ -524,17 +695,48 @@ try {
 } catch { /* ignore */ }
 
 const expanded = reactive<Record<string, boolean>>({})
+const expandedSnapshot = ref<Record<string, boolean> | null>(null)
 
 const folderChildren = computed(() => {
   const root = documents.foldersRoot
   const kids = (root && Array.isArray(root.children)) ? root.children : []
-  return kids.filter((n: any) => n && n.id)
+  const needle = qTrimmed.value
+  const base = kids.filter((n: any) => n && n.id)
+  if (!needle) return base
+
+  function matches(node: any) {
+    const name = String(node?.name || '').toLowerCase()
+    const path = String(node?.path || '').toLowerCase()
+    return name.includes(needle) || path.includes(needle)
+  }
+
+  function filterTree(nodes: any[]): any[] {
+    const out: any[] = []
+    for (const n of nodes) {
+      if (!n || !n.id) continue
+      const rawKids = Array.isArray(n.children) ? n.children : []
+      const kidsFiltered = filterTree(rawKids)
+      if (matches(n) || kidsFiltered.length) {
+        out.push({ ...n, children: kidsFiltered })
+      }
+    }
+    return out
+  }
+
+  return filterTree(base)
 })
 
 const selectedFolder = computed(() => {
   const id = documents.selectedFolderId
   if (!id) return null
   return documents.flatFolders.find((f) => f.id === id) || null
+})
+
+const filteredFiles = computed(() => {
+  const list = Array.isArray(documents.files) ? documents.files : []
+  const needle = qTrimmed.value
+  if (!needle) return list
+  return list.filter((f: any) => String(f?.originalName || '').toLowerCase().includes(needle))
 })
 
 function toggleExpanded(id: string) {
@@ -592,6 +794,28 @@ watch(projectId, async (pid) => {
 watch(() => documents.selectedFolderId, async (fid) => {
   if (!projectId.value || !fid) { documents.files = []; return }
   await documents.fetchFiles(projectId.value, fid)
+})
+
+watch(qTrimmed, (now, prev) => {
+  const entering = !prev && !!now
+  const leaving = !!prev && !now
+  if (entering) {
+    expandedSnapshot.value = { ...expanded }
+    const root = documents.foldersRoot
+    const kids = (root && Array.isArray(root.children)) ? root.children : []
+    const stack: any[] = [...kids]
+    while (stack.length) {
+      const n = stack.pop()
+      if (!n || !n.id) continue
+      expanded[String(n.id)] = true
+      const c = Array.isArray(n.children) ? n.children : []
+      for (const k of c) stack.push(k)
+    }
+  } else if (leaving && expandedSnapshot.value) {
+    for (const k of Object.keys(expanded)) delete expanded[k]
+    Object.assign(expanded, expandedSnapshot.value)
+    expandedSnapshot.value = null
+  }
 })
 
 onMounted(() => { /* no-op */ })

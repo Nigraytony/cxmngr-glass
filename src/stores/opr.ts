@@ -117,6 +117,7 @@ export const useOprStore = defineStore('opr', () => {
   const allResults = ref<OprResultsRow[]>([])
 
   const activeId = computed(() => active.value?.id || null)
+  const workshopIsActive = computed(() => Boolean(workshop.value && workshop.value.startedAt && !workshop.value.endedAt))
 
   async function fetchCategories(projectId: string) {
     if (!projectId) { categories.value = []; return }
@@ -325,6 +326,7 @@ export const useOprStore = defineStore('opr', () => {
     items,
     loading,
     workshop,
+    workshopIsActive,
     attendee,
     attendees,
     allResults,

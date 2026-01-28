@@ -698,15 +698,15 @@
           v-else-if="currentTab === 'Attachments'"
           class="space-y-3"
         >
-          <div class="flex items-center justify-between">
-            <div class="text-white/80">
-              Attachments
-            </div>
-            <DocumentUploader
-              :upload="uploadAttachment"
-              :concurrency="2"
-              @done="refreshAfterUpload('attachments')"
-            />
+          <AzureAttachmentsPanel
+            :project-id="azureProjectId"
+            entity-type="Template"
+            :entity-id="String((form as any).id || (form as any)._id || id || '')"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
+            @update:count="azureAttachmentsCount = $event"
+          />
+          <div class="text-xs text-white/60">
+            List below is legacy URL attachments (not stored in Azure).
           </div>
           <div
             v-if="!(form as any).attachments || !(form as any).attachments.length"
@@ -1284,7 +1284,7 @@ import { useUiStore } from '../../stores/ui'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import lists from '../../lists.js'
 import PhotoUploader from '../../components/PhotoUploader.vue'
-import DocumentUploader from '../../components/DocumentUploader.vue'
+import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
@@ -1312,6 +1312,9 @@ const saving = ref(false)
 const templateTagsInput = ref('')
 const suggestingTemplateTags = ref(false)
 const suggestedTemplateTags = ref<SuggestedTag[]>([])
+
+const azureAttachmentsCount = ref(0)
+const azureProjectId = computed(() => String((form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const canSuggestTemplateTags = computed(() => {
   const pid = String((form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
@@ -1619,7 +1622,7 @@ function onChecklistsChange(sections: any[]) {
 function countForTab(t: string) {
   if (t === 'Components') return Array.isArray((form.value as any).components) ? (form.value as any).components.length : 0
   if (t === 'Photos') return Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0
-  if (t === 'Attachments') return Array.isArray((form.value as any).attachments) ? (form.value as any).attachments.length : 0
+  if (t === 'Attachments') return azureAttachmentsCount.value + (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments.length : 0)
   if (t === 'Checklists') return checklists.value.length
   if (t === 'FPT') return functionalTests.value.length
   if (t === 'Instances') return instancesForTemplate.value.length
@@ -1766,19 +1769,6 @@ async function refreshAfterUpload(kind: 'photos' | 'attachments') {
 }
 
 // Attachments helpers
-async function uploadAttachment(file: File, onProgress: (pct: number) => void) {
-  const tid = String(form.value.id || (form.value as any)._id || id.value || '')
-  if (!tid) throw new Error('Missing template id')
-  const fd = new FormData()
-  fd.append('attachments', file)
-  const res = await http.post(`/api/templates/${tid}/attachments`, fd, {
-    headers: { ...getAuthHeaders() },
-    onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) }
-  })
-  const fresh = await templatesStore.fetchOne(tid)
-  if (fresh) form.value = { ...fresh } as any
-  return res.data
-}
 async function removeAttachment(index: number) {
   const att = (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments : [])[index]
   const label = String(att?.filename || att?.name || att?.url || '').trim() || `Attachment #${index + 1}`

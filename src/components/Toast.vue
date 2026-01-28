@@ -18,6 +18,14 @@
         >
           {{ message }}
         </div>
+        <RouterLink
+          v-if="actionLabel && actionTo"
+          :to="actionTo"
+          class="px-3 py-1.5 rounded-md bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-medium"
+          @click="onAction"
+        >
+          {{ actionLabel }}
+        </RouterLink>
         <button
           :aria-label="closeLabel"
           :class="closeClass"
@@ -39,6 +47,8 @@ const props = defineProps({
   top: { type: String, default: '4rem' },
   variant: { type: String, default: 'white' }, // 'white'|'yellow'|'success'|'error'
   duration: { type: Number, default: 2500 },
+  actionLabel: { type: String, default: '' },
+  actionTo: { type: String, default: '' },
 })
 const emit = defineEmits(['update:show', 'close'])
 
@@ -49,7 +59,7 @@ watch(() => props.show, (v) => {
     if (timeoutId) clearTimeout(timeoutId)
     timeoutId = setTimeout(() => {
       emit('update:show', false)
-      emit('close')
+      emit('close', { reason: 'timeout' })
     }, props.duration)
   } else {
     if (timeoutId) { clearTimeout(timeoutId); timeoutId = null }
@@ -60,7 +70,12 @@ onBeforeUnmount(() => { if (timeoutId) clearTimeout(timeoutId) })
 
 function close() {
   emit('update:show', false)
-  emit('close')
+  emit('close', { reason: 'dismiss' })
+}
+
+function onAction() {
+  emit('update:show', false)
+  emit('close', { reason: 'action' })
 }
 
 const cardClasses = computed(() => {

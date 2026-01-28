@@ -17,7 +17,7 @@
       </BreadCrumbs>
     </div>
 
-    <div class="flex flex-wrap gap-3 items-end">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30">
       <!-- Error banner for plan guard or missing project -->
       <div
         v-if="store && (store as any).errorCode"
@@ -39,204 +39,403 @@
           <span v-else>{{ (store as any).error || 'Unable to load activities.' }}</span>
         </div>
       </div>
-      <!-- New Activity round button placed left of Search -->
-      <RouterLink
-        :to="{ name: 'activity-edit', params: { id: 'new' } }"
-        class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
-        aria-label="Add activity"
-        title="Add activity"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-            clip-rule="evenodd"
-          />
-        </svg>
-      </RouterLink>
-      <div>
-        <label class="block text-white/70 text-sm">Type</label>
-        <div
-          ref="typeMenuRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showTypeMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[16rem] justify-between"
-            @click="toggleTypeMenu"
+
+      <div class="flex flex-wrap items-end justify-between gap-3 gap-y-2 min-w-0">
+        <div class="flex flex-wrap items-end gap-3 gap-y-2 min-w-0">
+          <!-- New Activity round button -->
+          <RouterLink
+            :to="{ name: 'activity-edit', params: { id: 'new' } }"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+            aria-label="Add activity"
+            title="Add activity"
           >
-            <span class="flex items-center gap-2">
-              <span>{{ typeFilterLabel }}</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilterLabel) }}</span>
-            </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-          </button>
-          <div
-            v-if="showTypeMenu"
-            class="absolute left-0 mt-2 w-80 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
-          >
-            <div class="py-1">
+              class="w-5 h-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </RouterLink>
+
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Type</label>
+            <div
+              ref="typeMenuRef"
+              class="relative"
+            >
               <button
-                v-for="opt in typeOptions"
-                :key="opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2 whitespace-nowrap', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="applyTypeFilter(opt.name)"
+                :aria-expanded="showTypeMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[16rem] justify-between"
+                @click="toggleTypeMenu"
               >
-                <span>{{ opt.name }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                <span class="flex items-center gap-2">
+                  <span>{{ typeFilterLabel }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilterLabel) }}</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
               </button>
+              <div
+                v-if="showTypeMenu"
+                class="absolute left-0 mt-2 w-80 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1 max-h-96 overflow-auto">
+                  <button
+                    v-for="opt in typeOptions"
+                    :key="opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2 whitespace-nowrap', (typeFilterLabel === opt.name) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="applyTypeFilter(opt.name)"
+                  >
+                    <span>{{ opt.name }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 gap-y-2">
+          <div class="relative inline-block group shrink-0">
+            <button
+              aria-label="Refresh"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-transparent hover:bg-white/10 text-white border border-white/10"
+              @click="refresh()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M20 12a8 8 0 1 1-2.34-5.66"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 4v6h-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Refresh
+            </div>
+          </div>
+
+          <div class="relative inline-block group shrink-0">
+            <button
+              :disabled="!projectStore.currentProjectId"
+              aria-label="Toggle analytics"
+              :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
+              :class="['w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40', showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10']"
+              @click="toggleAnalytics"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M4 19V5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M8 19v-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M12 19V9"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M16 19v-3"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 19V7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
+            </div>
+          </div>
+
+          <div class="relative inline-block group shrink-0">
+            <button
+              :disabled="!canAutoTagActivitiesPage"
+              aria-label="Auto-tag this page"
+              :title="canAutoTagActivitiesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+              @click="showAutoTagModal = true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Auto-tag this page
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
+              :class="viewMode === 'cards' ? 'bg-white/12 text-white' : 'bg-white/6 hover:bg-white/10 text-white/80'"
+              aria-label="Card view"
+              title="Card view"
+              @click="setViewMode('cards')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
+              :class="viewMode === 'list' ? 'bg-white/12 text-white' : 'bg-white/6 hover:bg-white/10 text-white/80'"
+              aria-label="List view"
+              title="List view"
+              @click="setViewMode('list')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  d="M6 7h14M6 12h14M6 17h14M4 7h.01M4 12h.01M4 17h.01"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- More tools (collapsible filters) -->
+          <div class="relative inline-block group">
+            <button
+              type="button"
+              aria-label="More tools"
+              :class="['w-10 h-10 flex items-center justify-center rounded-full text-white border', showAdvancedFilters ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10']"
+              @click="showAdvancedFilters = !showAdvancedFilters"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <circle
+                  cx="5"
+                  cy="12"
+                  r="1.5"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="1.5"
+                />
+                <circle
+                  cx="19"
+                  cy="12"
+                  r="1.5"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              More tools
             </div>
           </div>
         </div>
       </div>
-      <button
-        class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
-        @click="refresh()"
+
+      <!-- advanced filters -->
+      <div
+        v-if="showAdvancedFilters"
+        class="mt-3 pt-3 border-t border-white/10"
       >
-        Refresh
-      </button>
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Toggle analytics"
-          :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="toggleAnalytics"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M4 19V5"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M8 19v-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M12 19V9"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M16 19v-3"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M20 19V7"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Status</label>
+            <select
+              v-model="statusFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              <option value="">
+                All
+              </option>
+              <option value="draft">
+                Draft
+              </option>
+              <option value="published">
+                Published
+              </option>
+              <option value="completed">
+                Completed
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Responsible</label>
+            <select
+              v-model="responsibleFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in responsibleOptions"
+                :key="`r-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Location</label>
+            <select
+              v-model="locationFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in locationOptions"
+                :key="`l-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">System</label>
+            <select
+              v-model="systemFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in systemOptions"
+                :key="`sys-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">From</label>
+            <input
+              v-model="dateFrom"
+              type="date"
+              :class="[
+                'w-full px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                dateFrom ? 'text-white' : 'text-white/60',
+              ]"
+            >
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">To</label>
+            <input
+              v-model="dateTo"
+              type="date"
+              :class="[
+                'w-full px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                dateTo ? 'text-white' : 'text-white/60',
+              ]"
+            >
+          </div>
+
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-white/70 text-sm">Tags</label>
+            <input
+              v-model="tagsFilter"
+              type="text"
+              placeholder="e.g. commissioning, urgent"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
         </div>
-      </div>
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!canAutoTagActivitiesPage"
-          aria-label="Auto-tag this page"
-          :title="canAutoTagActivitiesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="showAutoTagModal = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          Auto-tag this page
-        </div>
-      </div>
-      <div class="ml-auto flex items-center gap-2">
-        <button
-          class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
-          :class="viewMode === 'cards' ? 'bg-white/12 text-white' : 'bg-white/6 hover:bg-white/10 text-white/80'"
-          aria-label="Card view"
-          title="Card view"
-          @click="setViewMode('cards')"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
-        <button
-          class="h-10 w-10 inline-grid place-items-center rounded-lg border border-white/10"
-          :class="viewMode === 'list' ? 'bg-white/12 text-white' : 'bg-white/6 hover:bg-white/10 text-white/80'"
-          aria-label="List view"
-          title="List view"
-          @click="setViewMode('list')"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M6 7h14M6 12h14M6 17h14M4 7h.01M4 12h.01M4 17h.01"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
       </div>
     </div>
 
@@ -751,12 +950,20 @@ import type { ActivitiesAnalytics } from '../../components/charts/ActivitiesList
 	import { getAuthHeaders } from '../../utils/auth'
 	import { runCoachmarkOnce } from '../../utils/coachmarks'
 
-	const store = useActivitiesStore()
-	const projectStore = useProjectStore()
-	const spacesStore = useSpacesStore()
-	const auth = useAuthStore()
+const store = useActivitiesStore()
+const projectStore = useProjectStore()
+const spacesStore = useSpacesStore()
+const auth = useAuthStore()
 const q = ref('')
 const typeFilter = ref<string>('')
+const showAdvancedFilters = ref(false)
+const statusFilter = ref<'draft' | 'published' | 'completed' | ''>('')
+const responsibleFilter = ref<string>('')
+const locationFilter = ref<string>('')
+const systemFilter = ref<string>('')
+const dateFrom = ref<string>('')
+const dateTo = ref<string>('')
+const tagsFilter = ref<string>('')
 const showDeleteModal = ref(false)
 const deletingActivity = ref<string | null>(null)
 const deletingName = ref<string>('')
@@ -979,15 +1186,142 @@ function fuzzyMatch(text: string, pattern: string) {
   return pi === pattern.length
 }
 
+function norm(v: any) {
+  return String(v || '').trim()
+}
+
+function normLower(v: any) {
+  return norm(v).toLowerCase()
+}
+
+function dateInputToMs(v: any, endOfDay = false) {
+  const s = String(v || '').trim()
+  if (!s) return null
+  const iso = endOfDay ? `${s}T23:59:59.999` : `${s}T00:00:00.000`
+  const t = new Date(iso).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+function activityResponsibleValue(a: any) {
+  return norm(
+    a?.responsible ||
+      a?.responsibleRole ||
+      a?.assignedRole ||
+      a?.assigneeRole ||
+      a?.role ||
+      a?.assignee ||
+      a?.assignedTo ||
+      ''
+  )
+}
+
+const responsibleOptions = computed(() => {
+  const set = new Set<string>()
+  for (const a of (store.activities as any[])) {
+    const r = activityResponsibleValue(a)
+    if (r) set.add(r)
+  }
+  for (const r of (lists.roleOptions || [])) {
+    const v = norm((r as any)?.value || r)
+    if (v) set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const locationOptions = computed(() => {
+  const set = new Set<string>()
+  for (const a of (store.activities as any[])) {
+    const l = norm(a?.location)
+    if (l) set.add(l)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const systemOptions = computed(() => {
+  const set = new Set<string>()
+  for (const a of (store.activities as any[])) {
+    const systems = Array.isArray(a?.systems) ? a.systems : []
+    const primary = norm(a?.system)
+    if (primary) set.add(primary)
+    for (const s of systems) {
+      const v = norm(s)
+      if (v) set.add(v)
+    }
+  }
+  for (const s of (lists.systemOptions || [])) {
+    const v = norm((s as any)?.value || s)
+    if (v) set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
 const filtered = computed(() => {
-  let list = store.activities
+  let list = store.activities as any[]
   // activities in store are already filtered by current project in fetchActivities()
-  if (!q.value) return list
-  const s = q.value.toLowerCase()
+
+  const typeNeedle = normLower(typeFilter.value)
+  if (typeNeedle) list = list.filter((a: any) => normLower(a?.type) === typeNeedle)
+
+  const statusNeedle = normLower(statusFilter.value)
+  if (statusNeedle) list = list.filter((a: any) => statusValue(a) === statusNeedle)
+
+  const responsibleNeedle = normLower(responsibleFilter.value)
+  if (responsibleNeedle) list = list.filter((a: any) => normLower(activityResponsibleValue(a)) === responsibleNeedle)
+
+  const locationNeedle = normLower(locationFilter.value)
+  if (locationNeedle) list = list.filter((a: any) => normLower(a?.location) === locationNeedle)
+
+  const systemNeedle = normLower(systemFilter.value)
+  if (systemNeedle) {
+    list = list.filter((a: any) => {
+      const primary = normLower(a?.system)
+      if (primary && primary === systemNeedle) return true
+      const systems = Array.isArray(a?.systems) ? a.systems : []
+      return systems.some((s: any) => normLower(s) === systemNeedle)
+    })
+  }
+
+  const fromMs = dateInputToMs(dateFrom.value, false)
+  const toMs = dateInputToMs(dateTo.value, true)
+  if (fromMs !== null || toMs !== null) {
+    list = list.filter((a: any) => {
+      const startRaw = a?.startDate || a?.start || null
+      const endRaw = a?.endDate || a?.end || null
+      const startMs = startRaw ? new Date(startRaw).getTime() : NaN
+      const endMs = endRaw ? new Date(endRaw).getTime() : NaN
+      const hasStart = Number.isFinite(startMs)
+      const hasEnd = Number.isFinite(endMs)
+      if (fromMs !== null) {
+        if (!hasStart) return false
+        if (startMs < fromMs) return false
+      }
+      if (toMs !== null) {
+        const cmp = hasEnd ? endMs : (hasStart ? startMs : NaN)
+        if (!Number.isFinite(cmp)) return false
+        if (cmp > toMs) return false
+      }
+      return true
+    })
+  }
+
+  const tagTerms = (tagsFilter.value || '')
+    .split(/[,\s]+/)
+    .map(v => normLower(v))
+    .filter(Boolean)
+  if (tagTerms.length) {
+    list = list.filter((a: any) => {
+      const tags = Array.isArray(a?.labels) ? a.labels : (Array.isArray(a?.tags) ? a.tags : [])
+      const hay = tags.map((t: any) => normLower(t)).filter(Boolean)
+      if (!hay.length) return false
+      return tagTerms.every(term => hay.some(tag => tag.includes(term)))
+    })
+  }
+
+  const s = q.value.trim().toLowerCase()
+  if (!s) return list as any
   const mode = searchMode.value
-  const base = typeFilter.value ? list.filter((a: any) => String(a.type || '').toLowerCase() === String(typeFilter.value).toLowerCase()) : list
-  return base.filter((a: any) => {
-    const fields = [(a.name || ''), (a.type || '')].map(f => f.toLowerCase())
+  return list.filter((a: any) => {
+    const fields = [(a.name || ''), (a.type || ''), (a.location || '')].map(f => String(f || '').toLowerCase())
     if (mode === 'exact') return fields.some(f => f === s)
     if (mode === 'fuzzy') return fields.some(f => fuzzyMatch(f, s))
     return fields.some(f => f.includes(s))

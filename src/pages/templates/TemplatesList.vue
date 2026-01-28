@@ -22,7 +22,7 @@
     </div>
 
     <!-- toolbar -->
-    <div class="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30">
       <!-- Error banner for plan guard or missing project -->
       <div
         v-if="templatesStore.errorCode"
@@ -44,217 +44,225 @@
           <span v-else>{{ templatesStore.error || 'Unable to load templates.' }}</span>
         </div>
       </div>
-      <div class="relative inline-block group">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Add template"
-          :title="projectStore.currentProjectId ? 'Add template' : 'Select a project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="openCreate()"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          {{ projectStore.currentProjectId ? 'Add template' : 'Select a project to add templates' }}
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">Type</label>
-        <div
-          ref="typeMenuRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showTypeMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-            @click="toggleTypeMenu"
-          >
-            <span class="flex items-center gap-2">
-              <span>{{ typeFilter || 'All' }}</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter || 'All') }}</span>
-            </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-          </button>
-          <div
-            v-if="showTypeMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
-          >
-            <div class="py-1">
-              <button
-                v-for="opt in typeOptions"
-                :key="opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="typeFilter = (opt.name === 'All' ? '' : opt.name); closeTypeMenu()"
+      <div class="flex flex-wrap items-end justify-between gap-3 gap-y-2 min-w-0">
+        <div class="flex flex-wrap items-end gap-3 gap-y-2 min-w-0">
+          <div class="relative inline-block group">
+            <button
+              :disabled="!projectStore.currentProjectId"
+              aria-label="Add template"
+              :title="projectStore.currentProjectId ? 'Add template' : 'Select a project'"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+              @click="openCreate()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
               >
-                <span>{{ opt.name }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-              </button>
+                <path
+                  fill-rule="evenodd"
+                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              {{ projectStore.currentProjectId ? 'Add template' : 'Select a project to add templates' }}
             </div>
           </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">System</label>
-        <div
-          ref="systemMenuRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showSystemMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-            @click="toggleSystemMenu"
-          >
-            <span class="flex items-center gap-2">
-              <span>{{ systemFilterLabel }}</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ systemCount(systemFilter || 'All') }}</span>
-            </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-          </button>
-          <div
-            v-if="showSystemMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
-          >
-            <div class="py-1">
+
+          <div>
+            <label class="block text-white/70 text-sm">Type</label>
+            <div
+              ref="typeMenuRef"
+              class="relative"
+            >
               <button
-                v-for="opt in systemOptions"
-                :key="opt.value || opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
+                :aria-expanded="showTypeMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="toggleTypeMenu"
               >
-                <span>{{ opt.name }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">Status</label>
-        <div
-          ref="statusMenuRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showStatusMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
-            @click="toggleStatusMenu"
-          >
-            <span class="flex items-center gap-2">
-              <span>{{ statusFilter || 'All' }}</span>
-              <span :class="statusBadgeClass(statusFilter || 'All') + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter || 'All') }}</span>
-            </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-          </button>
-          <div
-            v-if="showStatusMenu"
-            class="absolute left-0 mt-2 w-56 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
-          >
-            <div class="py-1">
-              <button
-                v-for="opt in statusOptions"
-                :key="opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (statusFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="statusFilter = (opt.name === 'All' ? '' : opt.name); closeStatusMenu()"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <span
-                    class="inline-block w-2.5 h-2.5 rounded-full"
-                    :class="statusDotClass(opt.name)"
-                  />
-                  <span>{{ opt.name }}</span>
+                <span class="flex items-center gap-2">
+                  <span>{{ typeFilter || 'All' }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter || 'All') }}</span>
                 </span>
-                <span :class="statusBadgeClass(opt.name) + ' text-xs px-2 py-0.5 rounded-full'">{{ opt.count }}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
               </button>
+              <div
+                v-if="showTypeMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1 max-h-96 overflow-auto">
+                  <button
+                    v-for="opt in typeOptions"
+                    :key="opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="typeFilter = (opt.name === 'All' ? '' : opt.name); closeTypeMenu()"
+                  >
+                    <span>{{ opt.name }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-white/70 text-sm">System</label>
+            <div
+              ref="systemMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showSystemMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="toggleSystemMenu"
+              >
+                <span class="flex items-center gap-2">
+                  <span>{{ systemFilterLabel }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ systemCount(systemFilter || 'All') }}</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+              <div
+                v-if="showSystemMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1 max-h-96 overflow-auto">
+                  <button
+                    v-for="opt in systemOptions"
+                    :key="opt.value || opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
+                  >
+                    <span>{{ opt.name }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-white/70 text-sm">Status</label>
+            <div
+              ref="statusMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showStatusMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                @click="toggleStatusMenu"
+              >
+                <span class="flex items-center gap-2">
+                  <span>{{ statusFilter || 'All' }}</span>
+                  <span :class="statusBadgeClass(statusFilter || 'All') + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter || 'All') }}</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+              <div
+                v-if="showStatusMenu"
+                class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1 max-h-96 overflow-auto">
+                  <button
+                    v-for="opt in statusOptions"
+                    :key="opt.name"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (statusFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="statusFilter = (opt.name === 'All' ? '' : opt.name); closeStatusMenu()"
+                  >
+                    <span class="inline-flex items-center gap-2">
+                      <span
+                        class="inline-block w-2.5 h-2.5 rounded-full"
+                        :class="statusDotClass(opt.name)"
+                      />
+                      <span>{{ opt.name }}</span>
+                    </span>
+                    <span :class="statusBadgeClass(opt.name) + ' text-xs px-2 py-0.5 rounded-full'">{{ opt.count }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="flex items-center gap-2 ml-auto">
-        <button
-          :disabled="exporting || !projectStore.currentProjectId"
-          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
-          @click="downloadTemplates('xlsx')"
-        >
-          <span v-if="exporting">Exporting…</span>
-          <span v-else>Download XLSX</span>
-        </button>
-        <button
-          :disabled="exportingCsv || !projectStore.currentProjectId"
-          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
-          @click="downloadTemplates('csv')"
-        >
-          <span v-if="exportingCsv">Exporting…</span>
-          <span v-else>Download CSV</span>
-        </button>
-        <button
-          :disabled="importing || !projectStore.currentProjectId"
-          class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
-          @click="triggerImport()"
-        >
-          <span v-if="importing">Importing…</span>
-          <span v-else>Upload CSV/XLSX</span>
-        </button>
-        <input
-          ref="fileInputRef"
-          type="file"
-          class="hidden"
-          accept=".csv,.xlsx,.xls"
-          @change="handleImportFile"
-        >
+
+        <div class="flex flex-wrap items-center gap-2 gap-y-2">
+          <button
+            :disabled="exporting || !projectStore.currentProjectId"
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
+            @click="downloadTemplates('xlsx')"
+          >
+            <span v-if="exporting">Exporting…</span>
+            <span v-else>Download XLSX</span>
+          </button>
+          <button
+            :disabled="exportingCsv || !projectStore.currentProjectId"
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
+            @click="downloadTemplates('csv')"
+          >
+            <span v-if="exportingCsv">Exporting…</span>
+            <span v-else>Download CSV</span>
+          </button>
+          <button
+            :disabled="importing || !projectStore.currentProjectId"
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
+            @click="triggerImport()"
+          >
+            <span v-if="importing">Importing…</span>
+            <span v-else>Upload CSV/XLSX</span>
+          </button>
+          <input
+            ref="fileInputRef"
+            type="file"
+            class="hidden"
+            accept=".csv,.xlsx,.xls"
+            @change="handleImportFile"
+          >
+        </div>
       </div>
     </div>
 

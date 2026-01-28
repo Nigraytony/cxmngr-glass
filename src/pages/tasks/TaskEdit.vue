@@ -3,32 +3,39 @@
     <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }, { text: modeLabel } ]" />
 
     <div class="p-4 rounded bg-white/6 border border-white/10 text-white">
-      <div class="flex items-center gap-2 mb-4">
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded-lg border text-sm"
-          :class="activeTab === 'info' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
-          @click="activeTab = 'info'"
-        >
-          Info
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded-lg border text-sm"
-          :class="activeTab === 'expenses' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
-          @click="activeTab = 'expenses'"
-        >
-          Expenses
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded-lg border text-sm"
-          :class="activeTab === 'settings' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
-          @click="activeTab = 'settings'"
-        >
-          Settings
-        </button>
-      </div>
+	      <div class="flex items-center gap-2 mb-4">
+	        <button
+	          type="button"
+	          class="px-3 py-1.5 rounded-lg border text-sm"
+	          :class="activeTab === 'info' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+	          @click="activeTab = 'info'"
+	        >
+	          Info
+	        </button>
+	        <button
+	          type="button"
+	          class="px-3 py-1.5 rounded-lg border text-sm"
+	          :class="activeTab === 'expenses' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+	          @click="activeTab = 'expenses'"
+	        >
+	          Expenses
+	        </button>
+	        <button
+	          type="button"
+	          class="px-3 py-1.5 rounded-lg border text-sm"
+	          :class="activeTab === 'settings' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+	          @click="activeTab = 'settings'"
+	        >
+	          Settings
+	        </button>
+	        <RouterLink
+	          v-if="isOprTask"
+	          to="/app/opr"
+	          class="px-3 py-1.5 rounded-lg border text-sm bg-indigo-500/15 border-indigo-400/40 text-indigo-100 hover:bg-indigo-500/25"
+	        >
+	          OPR Workshop
+	        </RouterLink>
+	      </div>
 
       <div
         v-if="activeTab === 'info'"
@@ -464,15 +471,16 @@ function makeBlankTask() {
   }
 }
 
-const task = ref(makeBlankTask())
-const saving = ref(false)
-const linkedActivityName = ref('')
-const activeTab = ref('info') // info | expenses | settings
+	const task = ref(makeBlankTask())
+	const saving = ref(false)
+	const linkedActivityName = ref('')
+	const activeTab = ref('info') // info | expenses | settings
 const billRateInput = ref(ui.tasksBillRate || 0)
 const tagInput = ref('')
 const suggestingTaskTags = ref(false)
-const suggestedTaskTags = ref([])
-const loading = ref(false)
+	const suggestedTaskTags = ref([])
+	const loading = ref(false)
+	const isOprTask = computed(() => String(task.value?.name || '').trim().toLowerCase() === 'opr')
 
 function toDatetimeLocalValue(raw) {
   const s = String(raw || '').trim()

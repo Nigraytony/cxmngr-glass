@@ -23,17 +23,17 @@
       </BreadCrumbs>
     </div>
 
-    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0 relative z-30">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0 relative z-30">
       <!-- Left group: add, search, filters -->
       <div class="flex items-center gap-3 min-w-0">
         <div class="relative inline-block group">
-          <button
-            :disabled="!projectStore.currentProjectId"
-            aria-label="Add issue"
-            aria-describedby="add-issue-tooltip"
-            :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'"
-            class="h-10 px-3 flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 text-white border border-white/15 disabled:opacity-40"
-            @click="openAddModal"
+	          <button
+	            :disabled="!projectStore.currentProjectId"
+	            aria-label="Add issue"
+	            aria-describedby="add-issue-tooltip"
+	            :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'"
+	            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+	            @click="openAddModal"
 	          >
 	            <svg
 	              xmlns="http://www.w3.org/2000/svg"
@@ -276,49 +276,7 @@
 
 	        <div class="relative inline-block group shrink-0">
 	          <button
-	            :disabled="!projectStore.currentProjectId"
-	            type="button"
-	            aria-label="Filters"
-	            :title="projectStore.currentProjectId ? 'Filters' : 'Select a project'"
-	            :class="[
-	              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
-	              (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
-	            ]"
-	            @click="openFilters"
-	          >
-	            <svg
-	              xmlns="http://www.w3.org/2000/svg"
-	              viewBox="0 0 24 24"
-	              fill="none"
-	              stroke="currentColor"
-	              class="w-5 h-5"
-	              aria-hidden="true"
-	            >
-	              <path
-	                d="M3 5h18M6 12h12M10 19h4"
-	                stroke-width="1.5"
-	                stroke-linecap="round"
-	                stroke-linejoin="round"
-	              />
-	            </svg>
-	            <span
-	              :class="[
-	                'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
-	                advancedFiltersActiveCount > 0 ? '' : 'invisible'
-	              ]"
-	            >{{ advancedFiltersActiveCount }}</span>
-	          </button>
-	          <div
-	            role="tooltip"
-	            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-	          >
-	            Filters
-	          </div>
-	        </div>
-
-        <div class="relative inline-block group shrink-0">
-          <button
-            :disabled="!canAutoTagIssuesPage"
+	            :disabled="!canAutoTagIssuesPage"
             aria-label="Auto-tag this page"
             :title="canAutoTagIssuesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
             class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
@@ -349,231 +307,57 @@
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
             Auto-tag this page
-          </div>
-        </div>
+	          </div>
+	        </div>
 
-        <div
-          ref="downloadsRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
-            @click="toggleDownloadsMenu"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                d="M4 7h16M4 12h16M4 17h16"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span>Downloads</span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            >
-              <path
-                d="M6 9l6 6 6-6"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <div
-            v-if="showDownloadsMenu"
-            class="absolute right-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
-          >
-            <div
-              class="py-1"
-              role="menu"
-            >
-              <button
-                role="menuitem"
-                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
-                @click="onChooseColumnsClick"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
-                    stroke-width="1.5"
-                  />
-                </svg>
-                <span>Choose columns</span>
-              </button>
-              <div class="my-1 h-px bg-white/10" />
-              <button
-                :disabled="!filteredIssues.length"
-                role="menuitem"
-                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                @click="onDownloadCsvClick"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    d="M12 3v11"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                  <path
-                    d="M8 11l4 4 4-4"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M5 20h14"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                <span>Download CSV</span>
-              </button>
-              <button
-                :disabled="!filteredIssues.length"
-                role="menuitem"
-                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                @click="onDownloadXlsxClick"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <rect
-                    x="3"
-                    y="3"
-                    width="18"
-                    height="18"
-                    rx="2"
-                    ry="2"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M8 3v18M16 3v18M3 8h18M3 16h18"
-                    stroke-width="1.5"
-                  />
-                </svg>
-                <span>Download Excel</span>
-              </button>
-              <div class="my-1 h-px bg-white/10" />
-              <div class="px-3 py-1 text-xs text-white/60">
-                Reports
-              </div>
-              <button
-                :disabled="!filteredIssues.length"
-                role="menuitem"
-                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                @click="onDownloadDetailedReport"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M14 2v6h6"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M9 15h3a2 2 0 1 0 0-4H9v6z"
-                    stroke-width="1.5"
-                  />
-                </svg>
-                <span>Detailed PDF (one per issue)</span>
-              </button>
-              <button
-                :disabled="!filteredIssues.length"
-                role="menuitem"
-                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                @click="onDownloadCompactReport"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    d="M4 7h16M4 12h16M4 17h16"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                <span>Compact PDF (continuous)</span>
-              </button>
-              <button
-                :disabled="!filteredIssues.length"
-                role="menuitem"
-                class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                @click="onDownloadListReport"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <rect
-                    x="3"
-                    y="4"
-                    width="18"
-                    height="16"
-                    rx="2"
-                    ry="2"
-                    stroke-width="1.5"
-                  />
-                  <path
-                    d="M3 9h18M9 4v16M15 4v16"
-                    stroke-width="1.5"
-                  />
-                </svg>
-                <span>List PDF (table)</span>
-              </button>
-            </div>
-          </div>
-        </div>
+	        <div class="relative inline-block group shrink-0">
+	          <button
+	            :disabled="!projectStore.currentProjectId"
+	            type="button"
+	            aria-label="More tools"
+	            :title="projectStore.currentProjectId ? 'More tools' : 'Select a project'"
+	            :class="[
+	              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
+	              (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+	            ]"
+	            @click="openFilters"
+	          >
+	            <svg
+	              xmlns="http://www.w3.org/2000/svg"
+	              viewBox="0 0 24 24"
+	              fill="none"
+	              stroke="currentColor"
+	              class="w-5 h-5"
+	              aria-hidden="true"
+	            >
+	              <path
+	                d="M6 12h.01M12 12h.01M18 12h.01"
+	                stroke-width="2.5"
+	                stroke-linecap="round"
+	                stroke-linejoin="round"
+	              />
+	            </svg>
+	            <span
+	              :class="[
+	                'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
+	                advancedFiltersActiveCount > 0 ? '' : 'invisible'
+	              ]"
+	            >{{ advancedFiltersActiveCount }}</span>
+	          </button>
+	          <div
+	            role="tooltip"
+	            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+	          >
+	            More tools
+	          </div>
+	        </div>
+	      </div>
       </div>
 
       <!-- Advanced filters (md+). For mobile, use the modal. -->
       <div
-        v-if="showAdvancedFilters"
-        class="w-full hidden md:block mt-3 pt-3 border-t border-white/10"
+        v-if="showAdvancedFilters && isDesktop"
+        class="w-full mt-3 pt-3 border-t border-white/10"
 	      >
 	        <div class="space-y-3">
 	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[2.25fr_0.9fr_2.25fr_2fr_2fr] gap-3 items-end">
@@ -814,20 +598,237 @@
 		            >
 	            </div>
 	          </div>
-	        </div>
 
-        <div class="mt-3 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-            @click="clearAdvancedFilters"
-          >
-            Clear advanced filters
-          </button>
-          <div class="text-xs text-white/50">
-            Advanced filters show on desktop; mobile uses the Filters panel.
-          </div>
-        </div>
+	        <div class="mt-3 flex items-center justify-between gap-3">
+	          <div class="flex flex-wrap items-center gap-2">
+	            <div
+	              ref="downloadsRef"
+	              class="relative"
+	            >
+	              <button
+	                :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
+	                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
+	                @click="toggleDownloadsMenu"
+	              >
+	                <svg
+	                  xmlns="http://www.w3.org/2000/svg"
+	                  viewBox="0 0 24 24"
+	                  fill="none"
+	                  stroke="currentColor"
+	                  class="w-4 h-4"
+	                >
+	                  <path
+	                    d="M4 7h16M4 12h16M4 17h16"
+	                    stroke-width="1.5"
+	                    stroke-linecap="round"
+	                  />
+	                </svg>
+	                <span>Downloads</span>
+	                <svg
+	                  xmlns="http://www.w3.org/2000/svg"
+	                  viewBox="0 0 24 24"
+	                  fill="none"
+	                  stroke="currentColor"
+	                  class="w-3 h-3 ml-1"
+	                >
+	                  <path
+	                    d="M6 9l6 6 6-6"
+	                    stroke-width="1.5"
+	                    stroke-linecap="round"
+	                    stroke-linejoin="round"
+	                  />
+	                </svg>
+	              </button>
+	              <div
+	                v-if="showDownloadsMenu"
+	                class="absolute left-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+	              >
+	                <div
+	                  class="py-1"
+	                  role="menu"
+	                >
+	                  <button
+	                    role="menuitem"
+	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
+	                    @click="onChooseColumnsClick"
+	                  >
+	                    <svg
+	                      xmlns="http://www.w3.org/2000/svg"
+	                      viewBox="0 0 24 24"
+	                      fill="none"
+	                      stroke="currentColor"
+	                      class="w-4 h-4"
+	                    >
+	                      <path
+	                        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+	                        stroke-width="1.5"
+	                      />
+	                      <path
+	                        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
+	                        stroke-width="1.5"
+	                      />
+	                    </svg>
+	                    <span>Choose columns</span>
+	                  </button>
+	                  <div class="my-1 h-px bg-white/10" />
+	                  <button
+	                    :disabled="!filteredIssues.length"
+	                    role="menuitem"
+	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+	                    @click="onDownloadCsvClick"
+	                  >
+	                    <svg
+	                      xmlns="http://www.w3.org/2000/svg"
+	                      viewBox="0 0 24 24"
+	                      fill="none"
+	                      stroke="currentColor"
+	                      class="w-4 h-4"
+	                    >
+	                      <path
+	                        d="M12 3v11"
+	                        stroke-width="1.5"
+	                        stroke-linecap="round"
+	                      />
+	                      <path
+	                        d="M8 11l4 4 4-4"
+	                        stroke-width="1.5"
+	                        stroke-linecap="round"
+	                        stroke-linejoin="round"
+	                      />
+	                      <path
+	                        d="M5 20h14"
+	                        stroke-width="1.5"
+	                        stroke-linecap="round"
+	                      />
+	                    </svg>
+	                    <span>Download CSV</span>
+	                  </button>
+	                  <button
+	                    :disabled="!filteredIssues.length"
+	                    role="menuitem"
+	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+	                    @click="onDownloadXlsxClick"
+	                  >
+	                    <svg
+	                      xmlns="http://www.w3.org/2000/svg"
+	                      viewBox="0 0 24 24"
+	                      fill="none"
+	                      stroke="currentColor"
+	                      class="w-4 h-4"
+	                    >
+	                      <rect
+	                        x="3"
+	                        y="3"
+	                        width="18"
+	                        height="18"
+	                        rx="2"
+	                        ry="2"
+	                        stroke-width="1.5"
+	                      />
+	                      <path
+	                        d="M8 3v18M16 3v18M3 8h18M3 16h18"
+	                        stroke-width="1.5"
+	                      />
+	                    </svg>
+	                    <span>Download Excel</span>
+	                  </button>
+	                  <div class="my-1 h-px bg-white/10" />
+	                  <div class="px-3 py-1 text-xs text-white/60">
+	                    Reports
+	                  </div>
+	                  <button
+	                    :disabled="!filteredIssues.length"
+	                    role="menuitem"
+	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+	                    @click="onDownloadDetailedReport"
+	                  >
+	                    <svg
+	                      xmlns="http://www.w3.org/2000/svg"
+	                      viewBox="0 0 24 24"
+	                      fill="none"
+	                      stroke="currentColor"
+	                      class="w-4 h-4"
+	                    >
+	                      <path
+	                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+	                        stroke-width="1.5"
+	                      />
+	                      <path
+	                        d="M14 2v6h6"
+	                        stroke-width="1.5"
+	                      />
+	                      <path
+	                        d="M9 15h3a2 2 0 1 0 0-4H9v6z"
+	                        stroke-width="1.5"
+	                      />
+	                    </svg>
+	                    <span>Detailed PDF (one per issue)</span>
+	                  </button>
+	                  <button
+	                    :disabled="!filteredIssues.length"
+	                    role="menuitem"
+	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+	                    @click="onDownloadCompactReport"
+	                  >
+	                    <svg
+	                      xmlns="http://www.w3.org/2000/svg"
+	                      viewBox="0 0 24 24"
+	                      fill="none"
+	                      stroke="currentColor"
+	                      class="w-4 h-4"
+	                    >
+	                      <path
+	                        d="M4 7h16M4 12h16M4 17h16"
+	                        stroke-width="1.5"
+	                        stroke-linecap="round"
+	                      />
+	                    </svg>
+	                    <span>Compact PDF (continuous)</span>
+	                  </button>
+	                  <button
+	                    :disabled="!filteredIssues.length"
+	                    role="menuitem"
+	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+	                    @click="onDownloadListReport"
+	                  >
+	                    <svg
+	                      xmlns="http://www.w3.org/2000/svg"
+	                      viewBox="0 0 24 24"
+	                      fill="none"
+	                      stroke="currentColor"
+	                      class="w-4 h-4"
+	                    >
+	                      <rect
+	                        x="3"
+	                        y="4"
+	                        width="18"
+	                        height="16"
+	                        rx="2"
+	                        ry="2"
+	                        stroke-width="1.5"
+	                      />
+	                      <path
+	                        d="M3 9h18M9 4v16M15 4v16"
+	                        stroke-width="1.5"
+	                      />
+	                    </svg>
+	                    <span>List PDF (table)</span>
+	                  </button>
+	                </div>
+	              </div>
+	            </div>
+	            <button
+	              type="button"
+	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+	              @click="clearAdvancedFilters"
+	            >
+	              Clear advanced filters
+	            </button>
+	          </div>
+	          <div class="text-xs text-white/50">
+	            Advanced filters show on desktop; mobile uses the Filters panel.
+	          </div>
+	        </div>
       </div>
     </div>
 
@@ -855,7 +856,7 @@
 
     <div
       v-if="loading"
-      class="rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/8 min-w-0 flex flex-col items-center justify-center text-white/70"
+      class="rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 flex flex-col items-center justify-center text-white/70"
     >
       <Spinner />
       <p class="mt-3 text-sm uppercase tracking-wide">
@@ -1718,13 +1719,231 @@
       </div>
       <template #footer>
         <div class="flex items-center justify-between gap-2 w-full">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
-            @click="clearAllFilters"
-          >
-            Clear all
-          </button>
+          <div class="flex flex-wrap items-center gap-2">
+            <div
+              ref="downloadsRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
+                @click="toggleDownloadsMenu"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M4 7h16M4 12h16M4 17h16"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span>Downloads</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <div
+                v-if="showDownloadsMenu"
+                class="absolute left-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+              >
+                <div
+                  class="py-1"
+                  role="menu"
+                >
+                  <button
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
+                    @click="onChooseColumnsClick"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>Choose columns</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadCsvClick"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M12 3v11"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M8 11l4 4 4-4"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M5 20h14"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <span>Download CSV</span>
+                  </button>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadXlsxClick"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <rect
+                        x="3"
+                        y="3"
+                        width="18"
+                        height="18"
+                        rx="2"
+                        ry="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M8 3v18M16 3v18M3 8h18M3 16h18"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>Download Excel</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <div class="px-3 py-1 text-xs text-white/60">
+                    Reports
+                  </div>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadDetailedReport"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M14 2v6h6"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M9 15h3a2 2 0 1 0 0-4H9v6z"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>Detailed PDF (one per issue)</span>
+                  </button>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadCompactReport"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M4 7h16M4 12h16M4 17h16"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <span>Compact PDF (continuous)</span>
+                  </button>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadListReport"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <rect
+                        x="3"
+                        y="4"
+                        width="18"
+                        height="16"
+                        rx="2"
+                        ry="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M3 9h18M9 4v16M15 4v16"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>List PDF (table)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+              @click="clearAllFilters"
+            >
+              Clear all
+            </button>
+          </div>
           <button
             type="button"
             class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white"
@@ -2331,12 +2550,13 @@ const statusFilter = ref('All')
 	const systemFilter = ref('')
 	const dateFoundFrom = ref('')
 	const dateFoundTo = ref('')
-	const dueDateFrom = ref('')
-	const dueDateTo = ref('')
-	const tagsFilter = ref('')
-	const showAdvancedFilters = ref(false)
-	const showFiltersModal = ref(false)
-	const searchQuery = ref('')
+		const dueDateFrom = ref('')
+		const dueDateTo = ref('')
+		const tagsFilter = ref('')
+		const showAdvancedFilters = ref(false)
+		const showFiltersModal = ref(false)
+		const isDesktop = ref(false)
+		const searchQuery = ref('')
 const searchMode = computed(() => {
   try {
     const p = projectStore.currentProject && projectStore.currentProject.value ? projectStore.currentProject.value : null
@@ -2346,9 +2566,27 @@ const searchMode = computed(() => {
 	})
 	const hideClosed = ref(false)
 	const myIssuesOnly = ref(false)
-	// Sorting state (used in persistence below; defined here to avoid temporal use)
-	const sortKey = ref('')
-	const sortDir = ref(1) // 1 = asc, -1 = desc
+		// Sorting state (used in persistence below; defined here to avoid temporal use)
+		const sortKey = ref('')
+		const sortDir = ref(1) // 1 = asc, -1 = desc
+
+function updateIsDesktop() {
+  try {
+    isDesktop.value = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 768px)').matches
+      : false
+  } catch (e) {
+    isDesktop.value = false
+  }
+}
+
+onMounted(() => {
+  updateIsDesktop()
+  try { window.addEventListener('resize', updateIsDesktop) } catch (e) { /* ignore */ }
+})
+onBeforeUnmount(() => {
+  try { window.removeEventListener('resize', updateIsDesktop) } catch (e) { /* ignore */ }
+})
 
 function setSort(key: string) {
   const k = String(key || '').trim()
@@ -2450,13 +2688,11 @@ const advancedFiltersActiveCount = computed(() => {
 })
 
 function openFilters() {
-  try {
-    const desktop = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(min-width: 768px)').matches
-      : false
-    if (desktop) showAdvancedFilters.value = !showAdvancedFilters.value
-    else showFiltersModal.value = true
-  } catch (e) {
+  if (isDesktop.value) {
+    showFiltersModal.value = false
+    showAdvancedFilters.value = !showAdvancedFilters.value
+  } else {
+    showAdvancedFilters.value = false
     showFiltersModal.value = true
   }
 }

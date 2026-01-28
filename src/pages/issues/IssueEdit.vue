@@ -729,19 +729,16 @@
             v-else-if="currentTab === 'Attachments'"
             class="space-y-4"
           >
-            <div>
-              <label class="block text-sm text-white/70">Upload files</label>
-              <DocumentUploader
-                button-label="Upload Files"
-                :upload="uploadDocument"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
-                :multiple="true"
-                :concurrency="3"
-                :disabled="isClosed"
-              />
-              <div class="mt-2 text-xs text-white/60">
-                Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, images, and ZIP. Max ~10MB per file.
-              </div>
+            <AzureAttachmentsPanel
+              :project-id="azureProjectId"
+              entity-type="Issue"
+              :entity-id="id"
+              :disabled="isClosed"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
+              @update:count="azureAttachmentsCount = $event"
+            />
+            <div class="text-xs text-white/60">
+              Links below are legacy URL attachments (not stored in Azure).
             </div>
             <!-- Manual link add (optional) -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -1545,11 +1542,11 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import PhotoUploader from '../../components/PhotoUploader.vue'
-import DocumentUploader from '../../components/DocumentUploader.vue'
 import OprItemPicker from '../../components/OprItemPicker.vue'
 import Comments from '../../components/Comments.vue'
 import Modal from '../../components/Modal.vue'
 import Spinner from '../../components/Spinner.vue'
+import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { getAuthHeaders } from '../../utils/auth'
 import lists from '../../lists.js'
@@ -1567,6 +1564,9 @@ const projectStore = useProjectStore()
 const ui = useUiStore()
 const auth = useAuthStore()
 const ai = useAiStore()
+
+const azureAttachmentsCount = ref(0)
+const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const id = computed(() => String(route.params.id))
 const isNew = computed(() => id.value === 'new')
@@ -2615,27 +2615,11 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   form.photos = Array.isArray(updated?.photos) ? updated.photos : form.photos
   return updated
 }
-async function uploadDocument(file: File, onProgress: (pct: number) => void) {
-  // Ensure issue exists
-  const iid = isNew.value ? await saveAndGetId() : id.value
-  const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
-  const fd = new FormData()
-  fd.append('projectId', pid)
-  fd.append('attachments', file)
-  const res = await axios.post(`${getApiBase()}/api/issues/${iid}/attachments`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() },
-    onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) },
-  })
-  const updated = await issues.fetchIssue(String(iid)).catch(() => null)
-  if (updated) form.attachments = Array.isArray((updated as any).attachments) ? (updated as any).attachments : (updated as any).documents || []
-  return res.data
-}
-
 // Counts per tab for badges
 function countForTab(t: string): number {
   if (t === 'Photos') return (photos?.value || []).length
   if (t === 'Comments') return (form.comments || []).length
-  if (t === 'Attachments') return (form.attachments || []).length
+  if (t === 'Attachments') return azureAttachmentsCount.value + (form.attachments || []).length
   return 0
 }
 

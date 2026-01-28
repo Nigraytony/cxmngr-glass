@@ -798,18 +798,15 @@
           v-else-if="currentTab === 'Attachments'"
           class="space-y-4"
         >
-          <div>
-            <label class="block text-sm text-white/70">Upload files</label>
-            <DocumentUploader
-              button-label="Upload Files"
-              :upload="uploadDocument"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
-              :multiple="true"
-              :concurrency="3"
-            />
-            <div class="mt-2 text-xs text-white/60">
-              Accepted: PDF, Word, Excel, PowerPoint, CSV, TXT, images, and ZIP. Max ~10MB per file.
-            </div>
+          <AzureAttachmentsPanel
+            :project-id="azureProjectId"
+            entity-type="Equipment"
+            :entity-id="String((form as any).id || (form as any)._id || id || '')"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
+            @update:count="azureAttachmentsCount = $event"
+          />
+          <div class="text-xs text-white/60">
+            Links below are legacy URL attachments (not stored in Azure).
           </div>
           <!-- Manual link add (optional) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -1697,7 +1694,7 @@ import Modal from '../../components/Modal.vue'
 import PhotoUploader from '../../components/PhotoUploader.vue'
 import ChecklistPanel from '../../components/ChecklistPanel.vue'
 import FunctionalTestsPanel from '../../components/FunctionalTestsPanel.vue'
-import DocumentUploader from '../../components/DocumentUploader.vue'
+import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import IssuesTable from '../../components/IssuesTable.vue'
 import LogsPanel from '../../components/LogsPanel.vue'
@@ -1732,6 +1729,9 @@ const loading = ref(true)
 const tagsInput = ref('')
 const suggestingEquipmentTags = ref(false)
 const suggestedEquipmentTags = ref<SuggestedTag[]>([])
+
+const azureAttachmentsCount = ref(0)
+const azureProjectId = computed(() => String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const canSuggestEquipmentTags = computed(() => {
   const pid = String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
@@ -2261,20 +2261,6 @@ function addAttachment() {
   arr.push({ filename: fn, url, type: newAttachment.value.type || 'link' })
   ;(form.value as any).attachments = arr
   newAttachment.value = { filename: '', url: '' }
-}
-async function uploadDocument(file: File, onProgress: (pct: number) => void) {
-  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
-  if (!eid) throw new Error('Missing equipment id')
-  const fd = new FormData()
-  fd.append('attachments', file)
-  const res = await http.post(`/api/equipment/${eid}/attachments`, fd, {
-    headers: { ...getAuthHeaders() },
-    onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) }
-  })
-  const fresh = await equipmentStore.fetchOne(eid)
-  if (fresh) form.value = { ...fresh }
-  appendLog('attachment.upload', 'Uploaded attachment', { filename: file?.name || null })
-  return res.data
 }
 async function removeAttachment(i: number) {
   const att = (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments : [])[i]
@@ -3018,7 +3004,7 @@ watch([() => currentTab.value, linkedIssueIdsKey], ([tab]) => {
 })
 function countForTab(t: string) {
   if (t === 'Photos') return (Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0)
-  if (t === 'Attachments') return Array.isArray((form.value as any).attachments) ? (form.value as any).attachments.length : 0
+  if (t === 'Attachments') return azureAttachmentsCount.value + (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments.length : 0)
   if (t === 'Components') return Array.isArray((form.value as any).components) ? (form.value as any).components.length : 0
   if (t === 'Checklists') return checklists.value.length
   if (t === 'FPT') return functionalTests.value.length

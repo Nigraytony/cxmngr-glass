@@ -8,7 +8,15 @@
       @drop.prevent="onDrop"
     >
       <div class="flex items-center gap-2">
+        <slot
+          v-if="$slots.button"
+          name="button"
+          :open="openPicker"
+          :disabled="uploadingNow || disabled"
+          :uploading="uploadingNow"
+        />
         <label
+          v-else
           :for="inputId"
           class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 cursor-pointer select-none"
           :class="(uploadingNow || disabled) ? 'opacity-60 cursor-not-allowed' : ''"
@@ -17,6 +25,7 @@
         </label>
         <input
           :id="inputId"
+          ref="fileInputRef"
           type="file"
           :accept="accept"
           :multiple="multiple"
@@ -104,6 +113,7 @@ const uploadingNow = ref(false)
 const dragActive = ref(false)
 const notice = ref('')
 let removalTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}` }
 const inputId = `doc-uploader-${Math.random().toString(36).slice(2, 8)}`
@@ -155,6 +165,11 @@ async function onFiles(ev: Event) {
   if (!input.files || !input.files.length || uploadingNow.value || disabled.value) return
   await processFiles(Array.from(input.files))
   input.value = ''
+}
+
+function openPicker() {
+  if (disabled.value || uploadingNow.value) return
+  try { fileInputRef.value?.click() } catch { /* ignore */ }
 }
 
 function isAcceptableFile(f: File): boolean {

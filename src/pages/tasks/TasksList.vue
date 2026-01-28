@@ -9,233 +9,388 @@
       </template>
     </BreadCrumbs>
 
-    <div class="flex items-center gap-3">
-      <div class="relative inline-block group">
-        <button
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
-          @click="editingId = 'new'; showEditModal = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          New task
-        </div>
-      </div>
-      <div class="ml-2">
-        <div class="inline-flex items-center gap-2">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30">
+      <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2 min-w-0">
+        <div class="flex flex-wrap items-center gap-3 gap-y-2 min-w-0">
           <div class="relative inline-block group">
             <button
-              :class="['px-3 py-1 rounded', viewMode === 'list' ? 'bg-white/10' : 'bg-transparent']"
-              @click="viewMode = 'list'"
+              class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+              @click="editingId = 'new'; showEditModal = true"
             >
-              List
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-5 h-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+              </svg>
             </button>
             <div
               role="tooltip"
               class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
             >
-              List view
+              New task
             </div>
           </div>
 
-          <!-- Gantt view removed for now -->
-        </div>
-      </div>
-      <button
-        class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
-        @click="fetch()"
-      >
-        Refresh
-      </button>
-      <div class="ml-2">
-        <div class="relative inline-block group">
-          <button
-            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
-            aria-label="Settings"
-            @click="showSettingsModal = true"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            ><path
-              d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"
-              stroke-width="1.5"
-            /><path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.35 17.3l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.67 0 1.26-.39 1.51-1a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.2.69 1.82.33.4-.2.8-.3 1.24-.3H12a1.65 1.65 0 0 0 1.24.3c.62.36 1.32.17 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.2.4-.3.8-.3 1.24V9c.3.7.96 1.2 1.66 1.2h.09a2 2 0 1 1 0 4h-.09c-.7 0-1.36.5-1.66 1.2v.3c.02.41.14.81.34 1.2z"
-              stroke-width="1"
-            /></svg>
-          </button>
-          <div
-            role="tooltip"
-            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-          >
-            Settings
-          </div>
-        </div>
-      </div>
-      <div class="ml-2">
-        <div class="relative inline-block group">
-          <button
-            class="px-3 py-2 rounded bg-white/6 text-white border border-white/10 hover:bg-white/10"
-            @click="openImportModal"
-          >
-            Import
-          </button>
-          <div
-            role="tooltip"
-            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-          >
-            Import tasks from a template or XML
-          </div>
-        </div>
-      </div>
-      <div class="ml-2">
-        <div class="relative inline-block group">
-          <button
-            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
-            aria-label="Toggle analytics"
-            @click="toggleAnalytics"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                d="M4 19V5"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-              <path
-                d="M4 19h16"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-              <path
-                d="M7 16l3-4 3 2 4-6"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M17 8h2v2"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <div
-            role="tooltip"
-            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-          >
-            Analytics
-          </div>
-        </div>
-      </div>
-      <div class="ml-2">
-        <div class="relative inline-block group">
-          <button
-            :disabled="!canAutoTagTasksPage"
-            aria-label="Auto-tag this page"
-            :title="canAutoTagTasksPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
-            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-40"
-            @click="showAutoTagModal = true"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-4 h-4"
-            >
-              <path
-                d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <div
-            role="tooltip"
-            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-          >
-            Auto-tag this page
-          </div>
-        </div>
-      </div>
-      <div class="ml-2 flex items-end gap-2">
-        <div class="relative inline-block group">
-          <button
-            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
-            aria-label="Collapse all"
-            @click="collapseAll"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                d="M7 14l5-5 5 5"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <div
-            role="tooltip"
-            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-          >
-            Collapse all
+          <div class="inline-flex items-center gap-2">
+            <div class="relative inline-block group">
+              <button
+                :class="['px-3 py-1 rounded', viewMode === 'list' ? 'bg-white/10' : 'bg-transparent']"
+                @click="viewMode = 'list'"
+              >
+                List
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                List view
+              </div>
+            </div>
+
+            <!-- Gantt view removed for now -->
           </div>
         </div>
 
-        <div class="relative inline-block group">
+        <div class="flex flex-wrap items-center gap-2 gap-y-2">
           <button
-            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
-            aria-label="Expand all"
-            @click="expandAll"
+            class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
+            @click="fetch()"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-            >
-              <path
-                d="M7 10l5 5 5-5"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            Refresh
           </button>
-          <div
-            role="tooltip"
-            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-          >
-            Expand all
+
+          <div class="relative inline-block group">
+            <button
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+              aria-label="Settings"
+              @click="showSettingsModal = true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              ><path
+                d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7z"
+                stroke-width="1.5"
+              /><path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.35 17.3l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.67 0 1.26-.39 1.51-1a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.2.69 1.82.33.4-.2.8-.3 1.24-.3H12a1.65 1.65 0 0 0 1.24.3c.62.36 1.32.17 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.2.4-.3.8-.3 1.24V9c.3.7.96 1.2 1.66 1.2h.09a2 2 0 1 1 0 4h-.09c-.7 0-1.36.5-1.66 1.2v.3c.02.41.14.81.34 1.2z"
+                stroke-width="1"
+              /></svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Settings
+            </div>
+          </div>
+
+          <div class="relative inline-block group">
+            <button
+              class="px-3 py-2 rounded bg-white/6 text-white border border-white/10 hover:bg-white/10"
+              @click="openImportModal"
+            >
+              Import
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Import tasks from a template or XML
+            </div>
+          </div>
+
+          <div class="relative inline-block group">
+            <button
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+              aria-label="Toggle analytics"
+              @click="toggleAnalytics"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M4 19V5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M4 19h16"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M7 16l3-4 3 2 4-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M17 8h2v2"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Analytics
+            </div>
+          </div>
+
+          <div class="relative inline-block group">
+            <button
+              :disabled="!canAutoTagTasksPage"
+              aria-label="Auto-tag this page"
+              :title="canAutoTagTasksPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-40"
+              @click="showAutoTagModal = true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Auto-tag this page
+            </div>
+          </div>
+
+          <div class="flex items-end gap-2">
+            <div class="relative inline-block group">
+              <button
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+                aria-label="Collapse all"
+                @click="collapseAll"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <path
+                    d="M7 14l5-5 5 5"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Collapse all
+              </div>
+            </div>
+
+            <div class="relative inline-block group">
+              <button
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+                aria-label="Expand all"
+                @click="expandAll"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <path
+                    d="M7 10l5 5 5-5"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Expand all
+              </div>
+            </div>
+          </div>
+
+          <!-- More tools (collapsible filters) -->
+          <div class="relative inline-block group">
+            <button
+              type="button"
+              aria-label="More tools"
+              :class="['w-10 h-10 flex items-center justify-center rounded-full text-white border', showAdvancedFilters ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10']"
+              @click="showAdvancedFilters = !showAdvancedFilters"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+              >
+                <circle
+                  cx="5"
+                  cy="12"
+                  r="1.5"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="1.5"
+                />
+                <circle
+                  cx="19"
+                  cy="12"
+                  r="1.5"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              More tools
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- advanced filters -->
+      <div
+        v-if="showAdvancedFilters"
+        class="mt-3 pt-3 border-t border-white/10"
+      >
+        <div class="grid grid-cols-12 gap-3">
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Status</label>
+            <select
+              v-model="statusFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in taskStatusOptions"
+                :key="`s-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Responsible</label>
+            <select
+              v-model="responsibleFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in taskResponsibleOptions"
+                :key="`r-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">Location</label>
+            <select
+              v-model="locationFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in taskLocationOptions"
+                :key="`l-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">System</label>
+            <select
+              v-model="systemFilter"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+              <option value="">
+                All
+              </option>
+              <option
+                v-for="opt in taskSystemOptions"
+                :key="`sys-${opt}`"
+                :value="opt"
+              >
+                {{ opt }}
+              </option>
+            </select>
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">From</label>
+            <input
+              v-model="dateFrom"
+              type="date"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+          </div>
+
+          <div class="col-span-12 sm:col-span-3">
+            <label class="block text-white/70 text-sm">To</label>
+            <input
+              v-model="dateTo"
+              type="date"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+            >
+          </div>
+
+          <div class="col-span-12 sm:col-span-6">
+            <label class="block text-white/70 text-sm">Tags</label>
+            <input
+              v-model="tagsFilter"
+              type="text"
+              placeholder="e.g. commissioning, urgent"
+              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm placeholder:text-white/50"
+            >
           </div>
         </div>
       </div>
@@ -906,6 +1061,7 @@ import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import TasksListCharts from '../../components/charts/TasksListCharts.vue'
+import lists from '../../lists.js'
   import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
   import { http } from '../../utils/http'
   import { runCoachmarkOnce } from '../../utils/coachmarks'
@@ -933,10 +1089,109 @@ const showSettingsModal = ref(false)
 const billRateInput = ref(ui.tasksBillRate || 0)
 const showAutoTagModal = ref(false)
 
+const showAdvancedFilters = ref(false)
+const statusFilter = ref('')
+const responsibleFilter = ref('')
+const locationFilter = ref('')
+const systemFilter = ref('')
+const dateFrom = ref('')
+const dateTo = ref('')
+const tagsFilter = ref('')
+
 const projectAllowedTags = computed(() => {
   const p = projectStore.currentProject || {}
   const tags = p && Array.isArray(p.tags) ? p.tags : []
   return tags.map(t => String(t).trim()).filter(Boolean)
+})
+
+function norm(v) {
+  return String(v || '').trim()
+}
+
+function normLower(v) {
+  return norm(v).toLowerCase()
+}
+
+function dateInputToMs(v, endOfDay = false) {
+  const s = String(v || '').trim()
+  if (!s) return null
+  const iso = endOfDay ? `${s}T23:59:59.999` : `${s}T00:00:00.000`
+  const t = new Date(iso).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+function taskResponsibleValue(t) {
+  return norm(
+    t?.responsible ||
+      t?.responsibleRole ||
+      t?.assignedRole ||
+      t?.assigneeRole ||
+      t?.role ||
+      t?.assignee ||
+      t?.assignedTo ||
+      ''
+  )
+}
+
+function taskLocationValue(t) {
+  return norm(t?.location || t?.spaceName || t?.space || '')
+}
+
+function taskSystemValues(t) {
+  const systems = Array.isArray(t?.systems) ? t.systems : []
+  const primary = norm(t?.system || '')
+  const out = new Set()
+  if (primary) out.add(primary)
+  for (const s of systems) {
+    const v = norm(s)
+    if (v) out.add(v)
+  }
+  return Array.from(out)
+}
+
+const taskStatusOptions = computed(() => {
+  const set = new Set()
+  for (const t of (tasks.value || [])) {
+    const s = norm(t?.status)
+    if (!s) continue
+    if (normLower(s) === 'deleted') continue
+    set.add(s)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const taskResponsibleOptions = computed(() => {
+  const set = new Set()
+  for (const t of (tasks.value || [])) {
+    const r = taskResponsibleValue(t)
+    if (r) set.add(r)
+  }
+  for (const r of (lists.roleOptions || [])) {
+    const v = norm(r?.value || r)
+    if (v) set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const taskLocationOptions = computed(() => {
+  const set = new Set()
+  for (const t of (tasks.value || [])) {
+    const l = taskLocationValue(t)
+    if (l) set.add(l)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
+})
+
+const taskSystemOptions = computed(() => {
+  const set = new Set()
+  for (const t of (tasks.value || [])) {
+    for (const s of taskSystemValues(t)) set.add(s)
+  }
+  for (const s of (lists.systemOptions || [])) {
+    const v = norm(s?.value || s)
+    if (v) set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b))
 })
 
 const canAutoTagTasksPage = computed(() => {
@@ -1189,6 +1444,61 @@ const filtered = computed(() => {
   let list = tasks.value || []
   // Exclude soft-deleted tasks (server may mark records with `deleted: true` or status 'Deleted')
   list = list.filter(t => !(t && (t.deleted === true || String(t.status || '').toLowerCase() === 'deleted')))
+
+  const statusNeedle = normLower(statusFilter.value)
+  if (statusNeedle) list = list.filter(t => normLower(t?.status) === statusNeedle)
+
+  const responsibleNeedle = normLower(responsibleFilter.value)
+  if (responsibleNeedle) list = list.filter(t => normLower(taskResponsibleValue(t)) === responsibleNeedle)
+
+  const locationNeedle = normLower(locationFilter.value)
+  if (locationNeedle) list = list.filter(t => normLower(taskLocationValue(t)) === locationNeedle)
+
+  const systemNeedle = normLower(systemFilter.value)
+  if (systemNeedle) {
+    list = list.filter(t => {
+      const primary = normLower(t?.system)
+      if (primary && primary === systemNeedle) return true
+      return taskSystemValues(t).some(s => normLower(s) === systemNeedle)
+    })
+  }
+
+  const fromMs = dateInputToMs(dateFrom.value, false)
+  const toMs = dateInputToMs(dateTo.value, true)
+  if (fromMs !== null || toMs !== null) {
+    list = list.filter(t => {
+      const startRaw = t?.start || t?.startDate || t?.start_date || null
+      const finishRaw = t?.finish || t?.end || t?.endDate || t?.finish_date || null
+      const startMs = startRaw ? new Date(startRaw).getTime() : NaN
+      const finishMs = finishRaw ? new Date(finishRaw).getTime() : NaN
+      const hasStart = Number.isFinite(startMs)
+      const hasFinish = Number.isFinite(finishMs)
+      if (fromMs !== null) {
+        if (!hasStart) return false
+        if (startMs < fromMs) return false
+      }
+      if (toMs !== null) {
+        const cmp = hasFinish ? finishMs : (hasStart ? startMs : NaN)
+        if (!Number.isFinite(cmp)) return false
+        if (cmp > toMs) return false
+      }
+      return true
+    })
+  }
+
+  const tagTerms = (tagsFilter.value || '')
+    .split(/[,\s]+/)
+    .map(v => normLower(v))
+    .filter(Boolean)
+  if (tagTerms.length) {
+    list = list.filter(t => {
+      const tags = Array.isArray(t?.tags) ? t.tags : []
+      const hay = tags.map(v => normLower(v)).filter(Boolean)
+      if (!hay.length) return false
+      return tagTerms.every(term => hay.some(tag => tag.includes(term)))
+    })
+  }
+
   if (terms.length) {
     list = list.filter(t => {
       const haystack = [
@@ -1211,11 +1521,13 @@ const filtered = computed(() => {
 
   // apply collapsed filtering: remove any task that is a descendant of a collapsed parent (collapsed stored by _id)
   const taskById = Object.fromEntries((tasks.value || []).map(x => [String(x._id), x]))
+  const visibleParentIds = new Set(sorted.map(t => String(t?._id || '')))
   const visible = sorted.filter(t => {
     if (!t || !t.wbs) return true
     const taskId = t && t._id ? String(t._id) : null
     for (const pId of collapsed.value) {
       if (!pId) continue
+      if (!visibleParentIds.has(String(pId))) continue
       const parent = taskById[String(pId)]
       if (!parent || !parent.wbs) continue
       if (taskId && taskId === String(pId)) continue

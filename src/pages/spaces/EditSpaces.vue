@@ -648,15 +648,15 @@
           v-else-if="currentTab === 'Attachments'"
           class="space-y-4"
         >
-          <div>
-            <DocumentUploader
-              :upload="uploadDocument"
-              button-label="Upload Documents"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*"
-              :multiple="true"
-              :disabled="false"
-              @done="refreshAfterUpload"
-            />
+          <AzureAttachmentsPanel
+            :project-id="azureProjectId"
+            entity-type="Space"
+            :entity-id="id"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
+            @update:count="azureAttachmentsCount = $event"
+          />
+          <div class="text-xs text-white/60">
+            List below is legacy URL attachments (not stored in Azure).
           </div>
           <div>
             <label class="block text-sm text-white/70 mb-1">Attachments</label>
@@ -890,8 +890,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
-import DocumentUploader from '../../components/DocumentUploader.vue'
 import Spinner from '../../components/Spinner.vue'
+import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
@@ -967,6 +967,9 @@ const saving = ref(false)
 const tagsInput = ref('')
 const suggestingSpaceTags = ref(false)
 const suggestedSpaceTags = ref<SuggestedTag[]>([])
+
+const azureAttachmentsCount = ref(0)
+const azureProjectId = computed(() => String((form.value as any).project || (form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const canSuggestSpaceTags = computed(() => {
   const pid = String((form.value as any).project || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
@@ -1236,7 +1239,7 @@ function countForTab(t: string) {
   if (t === 'SubSpaces') return children.value.length
   if (t === 'Equipment') return equipmentInSpace.value.length
   if (t === 'Issues') return issuesForSpace.value.length
-  if (t === 'Attachments') return attachmentsList.value.length
+  if (t === 'Attachments') return azureAttachmentsCount.value + attachmentsList.value.length
   if (t === 'Attributes') return attributesDisplayCount.value
   return 0
 }
@@ -1360,21 +1363,6 @@ async function refreshAfterUpload() {
       : []
     ;(form.value as any).attachments = normAtt
   }
-}
-
-async function uploadDocument(file: File, onProgress: (pct: number) => void) {
-  // Ensure space exists (should already exist since we are in edit route)
-  const sid = id.value
-  if (!sid) throw new Error('Space id missing')
-  const fd = new FormData()
-  fd.append('attachments', file)
-  const res = await axios.post(`${getApiBase()}/api/spaces/${sid}/attachments`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() },
-    onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) },
-  })
-  await refreshAfterUpload()
-  await appendSpaceLog({ type: 'attachment.add', message: 'Attachment added', details: { filename: file.name } })
-  return res.data
 }
 
 async function deleteAttachment(i: number) {

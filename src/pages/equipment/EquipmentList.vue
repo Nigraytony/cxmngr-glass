@@ -21,383 +21,55 @@
       </BreadCrumbs>
     </div>
 
-	    <!-- toolbar -->
-	    <div class="flex items-center gap-2 gap-y-2 flex-wrap w-full max-w-full relative z-30">
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Add equipment"
-          :title="projectStore.currentProjectId ? 'Add equipment' : 'Select a project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="openCreate()"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-5 h-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          {{ projectStore.currentProjectId ? 'Add equipment' : 'Select a project to add equipment' }}
-        </div>
-      </div>
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Upload equipment"
-          :title="projectStore.currentProjectId ? 'Upload equipment from CSV/XLSX' : 'Select a project'"
-          class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
-          @click="showUploadDialog = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-4 h-4"
-          ><path
-            d="M12 3v12"
-            stroke-width="1.5"
-            stroke-linecap="round"
-          /><path
-            d="M7 8l5-5 5 5"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          /><rect
-            x="4"
-            y="15"
-            width="16"
-            height="6"
-            rx="1.5"
-            stroke-width="1.5"
-          /></svg>
-          <span class="text-sm">Upload</span>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          Upload equipment from CSV/XLSX
-        </div>
-      </div>
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!projectStore.currentProjectId"
-          aria-label="Download equipment"
-          :title="projectStore.currentProjectId ? 'Download visible equipment as CSV' : 'Select a project'"
-          class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
-          @click="downloadEquipmentList"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-4 h-4"
-          ><path
-            d="M12 3v12"
-            stroke-width="1.5"
-            stroke-linecap="round"
-          /><path
-            d="M7 10l5 5 5-5"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          /><rect
-            x="4"
-            y="17"
-            width="16"
-            height="4"
-            rx="1.5"
-            stroke-width="1.5"
-          /></svg>
-          <span class="text-sm">Download</span>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          Download filtered equipment as CSV
-        </div>
-      </div>
-	      <div class="relative inline-block group shrink-0">
-	        <button
-	          :disabled="!projectStore.currentProjectId"
-	          aria-label="Toggle analytics"
-          :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
-          :class="[
-            'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
-            showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
-          ]"
-          @click="toggleAnalytics"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M4 19V5"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M8 19v-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M12 19V9"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M16 19v-3"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-            <path
-              d="M20 19V7"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
-	        </div>
-	      </div>
-	      <div class="relative inline-block group shrink-0">
-	        <button
-	          :disabled="!resolvedProjectId"
-	          type="button"
-	          aria-label="Filters"
-	          :title="resolvedProjectId ? 'Filters' : 'Select a project'"
-	          :class="[
-	            'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
-	            (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
-	          ]"
-	          @click="openFilters"
-	        >
-	          <svg
-	            xmlns="http://www.w3.org/2000/svg"
-	            viewBox="0 0 24 24"
-	            fill="none"
-	            stroke="currentColor"
-	            class="w-5 h-5"
-	            aria-hidden="true"
-	          >
-	            <path
-	              d="M3 5h18M6 12h12M10 19h4"
-	              stroke-width="1.5"
-	              stroke-linecap="round"
-	              stroke-linejoin="round"
-	            />
-	          </svg>
-	          <span
-	            :class="[
-	              'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
-	              advancedFiltersActiveCount > 0 ? '' : 'invisible'
-	            ]"
-	          >{{ advancedFiltersActiveCount }}</span>
-	        </button>
-	        <div
-	          role="tooltip"
-	          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-	        >
-	          Filters
-	        </div>
-	      </div>
-      <div class="relative inline-block group shrink-0">
-        <button
-          :disabled="!canAutoTagEquipmentPage"
-          aria-label="Auto-tag this page"
-          :title="canAutoTagEquipmentPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
-          class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-          @click="showAutoTagModal = true"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            class="w-5 h-5"
-          >
-            <path
-              d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
-        <div
-          role="tooltip"
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-        >
-          Auto-tag this page
-        </div>
-      </div>
-	      <div class="flex items-center gap-2">
-	        <label class="text-white/70 text-sm">Type</label>
-        <div
-          ref="typeMenuRef"
-          class="relative"
-        >
+    <!-- toolbar -->
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 flex flex-wrap items-center justify-between gap-3 gap-y-2 w-full max-w-full min-w-0 relative z-30">
+      <!-- Left group: add + primary filters -->
+      <div class="flex items-center gap-3 min-w-0 flex-wrap">
+        <div class="relative inline-block group shrink-0">
           <button
-            :aria-expanded="showTypeMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
-            @click="toggleTypeMenu"
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Add equipment"
+            :title="projectStore.currentProjectId ? 'Add equipment' : 'Select a project'"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="openCreate()"
           >
-            <span class="flex items-center gap-2">
-              <span>{{ typeFilter || 'All' }}</span>
-              <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter || 'All') }}</span>
-            </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
+              class="w-5 h-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
           </button>
           <div
-            v-if="showTypeMenu"
-            class="absolute left-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
-            <div class="py-1">
-              <button
-                v-for="opt in typeOptions"
-                :key="opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="typeFilter = (opt.name === 'All' ? '' : opt.name); closeTypeMenu()"
-              >
-                <span>{{ opt.name }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-              </button>
-	      </div>
+            {{ projectStore.currentProjectId ? 'Add equipment' : 'Select a project to add equipment' }}
           </div>
         </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="text-white/70 text-sm">Status</label>
-        <div
-          ref="statusMenuRef"
-          class="relative"
-        >
-          <button
-            :aria-expanded="showStatusMenu ? 'true' : 'false'"
-            class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
-            @click="toggleStatusMenu"
-          >
-            <span class="flex items-center gap-2">
-              <span>{{ statusFilter || 'All' }}</span>
-              <span :class="statusBadgeClassEquipment(statusFilter || 'All') + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter || 'All') }}</span>
-            </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-3 h-3 ml-1"
-            ><path
-              d="M6 9l6 6 6-6"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            /></svg>
-          </button>
+
+        <div class="flex items-center gap-2">
+          <label class="text-white/70 text-sm">Type</label>
           <div
-            v-if="showStatusMenu"
-            class="absolute right-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
-            role="menu"
-          >
-            <div class="py-1">
-              <button
-                v-for="opt in statusOptions"
-                :key="opt.name"
-                role="menuitem"
-                :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (statusFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                @click="statusFilter = (opt.name === 'All' ? '' : opt.name); closeStatusMenu()"
-              >
-                <span class="inline-flex items-center gap-2">
-                  <span
-                    class="inline-block w-2.5 h-2.5 rounded-full"
-                    :class="statusDotClassEquipment(opt.name)"
-                  />
-                  <span>{{ opt.name }}</span>
-                </span>
-                <span :class="statusBadgeClassEquipment(opt.name) + ' text-xs px-2 py-0.5 rounded-full'">{{ opt.count }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-	      <div class="flex items-center gap-2">
-	        <label class="text-white/70 text-sm">Has</label>
-	        <button
-	          type="button"
-	          class="px-3 py-1.5 rounded-lg border text-sm"
-	          :class="onlyWithChecklists ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-	          @click="toggleOnlyWithChecklists"
-	        >
-	          <span class="inline-flex items-center gap-2">
-	            <span>Checklists</span>
-	            <span
-	              v-if="checklistsTotalCount > 0"
-	              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
-	            >{{ checklistsTotalCount }}</span>
-	          </span>
-	        </button>
-	        <button
-	          type="button"
-	          :disabled="!currentProjectRole"
-	          class="px-3 py-1.5 rounded-lg border text-sm disabled:opacity-40"
-	          :title="currentProjectRole ? `My checklists (${currentProjectRole})` : 'No project role found'"
-	          :class="myChecklistsOnly ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-	          @click="toggleMyChecklists"
-	        >
-	          My Checklists
-	        </button>
-	        <div
-	          v-if="onlyWithChecklists"
-	          class="flex items-center gap-2"
-	        >
-          <label class="text-white/60 text-sm">Checklist system</label>
-          <div
-            ref="checklistSystemMenuRef"
+            ref="typeMenuRef"
             class="relative"
           >
             <button
-              :aria-expanded="showChecklistSystemMenu ? 'true' : 'false'"
+              :aria-expanded="showTypeMenu ? 'true' : 'false'"
               class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
-              @click="toggleChecklistSystemMenu"
+              @click="toggleTypeMenu"
             >
-              <span>{{ checklistSystemFilterLabel }}</span>
+              <span class="flex items-center gap-2">
+                <span>{{ typeFilter || 'All' }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter || 'All') }}</span>
+              </span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -412,32 +84,75 @@
               /></svg>
             </button>
             <div
-              v-if="showChecklistSystemMenu"
-              class="absolute left-0 mt-2 w-44 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 shadow-lg ring-1 ring-white/10 z-20"
+              v-if="showTypeMenu"
+              class="absolute left-0 mt-2 w-44 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
               role="menu"
             >
               <div class="py-1">
                 <button
+                  v-for="opt in typeOptions"
+                  :key="opt.name"
                   role="menuitem"
-                  :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', !checklistSystemFilter ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                  @click="setChecklistSystemFilter('')"
+                  :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (typeFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                  @click="typeFilter = (opt.name === 'All' ? '' : opt.name); closeTypeMenu()"
                 >
-                  <span>Any</span>
+                  <span>{{ opt.name }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="text-white/70 text-sm">Status</label>
+          <div
+            ref="statusMenuRef"
+            class="relative"
+          >
+            <button
+              :aria-expanded="showStatusMenu ? 'true' : 'false'"
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
+              @click="toggleStatusMenu"
+            >
+              <span class="flex items-center gap-2">
+                <span>{{ statusFilter || 'All' }}</span>
+                <span :class="statusBadgeClassEquipment(statusFilter || 'All') + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter || 'All') }}</span>
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-3 h-3 ml-1"
+              ><path
+                d="M6 9l6 6 6-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg>
+            </button>
+            <div
+              v-if="showStatusMenu"
+              class="absolute right-0 mt-2 w-44 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+              role="menu"
+            >
+              <div class="py-1">
                 <button
-                  v-for="opt in checklistSystemOptions"
-                  :key="opt.value"
+                  v-for="opt in statusOptions"
+                  :key="opt.name"
                   role="menuitem"
-                  :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', checklistSystemFilterKey === normalizeKey(opt.value) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-                  @click="setChecklistSystemFilter(opt.value)"
+                  :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', (statusFilter || 'All') === opt.name ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                  @click="statusFilter = (opt.name === 'All' ? '' : opt.name); closeStatusMenu()"
                 >
-                  <span class="inline-flex items-center justify-between gap-2 w-full">
-                    <span>{{ opt.text }}</span>
+                  <span class="inline-flex items-center gap-2">
                     <span
-                      v-if="checklistSystemCountFor(opt.value) > 0"
-                      class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90 shrink-0"
-                    >{{ checklistSystemCountFor(opt.value) }}</span>
+                      class="inline-block w-2.5 h-2.5 rounded-full"
+                      :class="statusDotClassEquipment(opt.name)"
+                    />
+                    <span>{{ opt.name }}</span>
                   </span>
+                  <span :class="statusBadgeClassEquipment(opt.name) + ' text-xs px-2 py-0.5 rounded-full'">{{ opt.count }}</span>
                 </button>
               </div>
             </div>
@@ -445,34 +160,282 @@
         </div>
       </div>
 
-      <button
-        type="button"
-        class="px-3 py-1.5 rounded-lg border text-sm"
-        :class="onlyWithFpt ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-        @click="toggleOnlyWithFpt"
-      >
-        <span class="inline-flex items-center gap-2">
-          <span>FPT</span>
-          <span
-            v-if="fptTotalCount > 0"
-            class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
-          >{{ fptTotalCount }}</span>
-        </span>
-      </button>
-      <button
-        type="button"
-        class="px-3 py-1.5 rounded-lg border text-sm"
-        :class="onlyWithIssues ? 'bg-amber-500/20 border-amber-400/60 text-amber-100 hover:bg-amber-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
-        @click="toggleOnlyWithIssues"
-      >
-        <span class="inline-flex items-center gap-2">
-          <span>Issues</span>
-          <span
-            v-if="issuesTotalCount > 0"
-            class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
-          >{{ issuesTotalCount }}</span>
-        </span>
-      </button>
+      <!-- Right group: utilities + secondary filters -->
+      <div class="flex items-center gap-2 flex-wrap justify-end">
+        <div class="flex items-center gap-2">
+          <label class="text-white/70 text-sm">Has</label>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg border text-sm"
+            :class="onlyWithChecklists ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+            @click="toggleOnlyWithChecklists"
+          >
+            <span class="inline-flex items-center gap-2">
+              <span>Checklists</span>
+              <span
+                v-if="checklistsTotalCount > 0"
+                class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+              >{{ checklistsTotalCount }}</span>
+            </span>
+          </button>
+          <div class="relative inline-block group shrink-0">
+            <button
+              type="button"
+              :disabled="!currentProjectRole"
+              aria-label="Toggle My Equipment/Checklists"
+              :title="currentProjectRole ? 'My Equipment/Checklists' : 'No project role found'"
+              :aria-pressed="myChecklistsOnly ? 'true' : 'false'"
+              :class="[
+                'w-10 h-10 flex items-center justify-center rounded-full border disabled:opacity-40',
+                myChecklistsOnly ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'
+              ]"
+              @click="toggleMyChecklists"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-5 h-5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20 21a8 8 0 10-16 0"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M12 11a4 4 0 100-8 4 4 0 000 8z"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              My Equipment/Checklists
+            </div>
+          </div>
+          <div
+            v-if="onlyWithChecklists"
+            class="flex items-center gap-2"
+          >
+            <label class="text-white/60 text-sm">Checklist system</label>
+            <div
+              ref="checklistSystemMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showChecklistSystemMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
+                @click="toggleChecklistSystemMenu"
+              >
+                <span>{{ checklistSystemFilterLabel }}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                ><path
+                  d="M6 9l6 6 6-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /></svg>
+              </button>
+              <div
+                v-if="showChecklistSystemMenu"
+                class="absolute left-0 mt-2 w-44 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                role="menu"
+              >
+                <div class="py-1">
+                  <button
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', !checklistSystemFilter ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="setChecklistSystemFilter('')"
+                  >
+                    <span>Any</span>
+                  </button>
+                  <button
+                    v-for="opt in checklistSystemOptions"
+                    :key="opt.value"
+                    role="menuitem"
+                    :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', checklistSystemFilterKey === normalizeKey(opt.value) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                    @click="setChecklistSystemFilter(opt.value)"
+                  >
+                    <span class="inline-flex items-center justify-between gap-2 w-full">
+                      <span>{{ opt.text }}</span>
+                      <span
+                        v-if="checklistSystemCountFor(opt.value) > 0"
+                        class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90 shrink-0"
+                      >{{ checklistSystemCountFor(opt.value) }}</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="onlyWithFpt ? 'bg-indigo-500/20 border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+          @click="toggleOnlyWithFpt"
+        >
+          <span class="inline-flex items-center gap-2">
+            <span>FPT</span>
+            <span
+              v-if="fptTotalCount > 0"
+              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+            >{{ fptTotalCount }}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="onlyWithIssues ? 'bg-amber-500/20 border-amber-400/60 text-amber-100 hover:bg-amber-500/30' : 'bg-white/6 hover:bg-white/10 border-white/10 text-white'"
+          @click="toggleOnlyWithIssues"
+        >
+          <span class="inline-flex items-center gap-2">
+            <span>Issues</span>
+            <span
+              v-if="issuesTotalCount > 0"
+              class="text-[11px] px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/90"
+            >{{ issuesTotalCount }}</span>
+          </span>
+        </button>
+
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Toggle analytics"
+            :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
+              showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+            ]"
+            @click="toggleAnalytics"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                d="M4 19V5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M8 19v-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 19V9"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M16 19v-3"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M20 19V7"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
+          </div>
+        </div>
+
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!canAutoTagEquipmentPage"
+            aria-label="Auto-tag this page"
+            :title="canAutoTagEquipmentPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="showAutoTagModal = true"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                d="M4 7h9a3 3 0 0 1 0 6H9a3 3 0 1 0 0 6h11"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Auto-tag this page
+          </div>
+        </div>
+
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!resolvedProjectId"
+            type="button"
+            aria-label="More tools"
+            :title="resolvedProjectId ? 'More tools' : 'Select a project'"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
+              (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+            ]"
+            @click="openFilters"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 12h.01M12 12h.01M18 12h.01"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span
+              :class="[
+                'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
+                advancedFiltersActiveCount > 0 ? '' : 'invisible'
+              ]"
+            >{{ advancedFiltersActiveCount }}</span>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            More tools
+          </div>
+        </div>
+      </div>
 
 	      <!-- Advanced filters (md+). For mobile, use the modal. -->
 	      <div
@@ -609,13 +572,95 @@
 	        </div>
 	
 	        <div class="mt-3 flex items-center justify-between gap-3">
-	          <button
-	            type="button"
-	            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-	            @click="clearAdvancedFilters"
-	          >
-	            Clear advanced filters
-	          </button>
+	          <div class="flex flex-wrap items-center gap-2">
+	            <div class="relative inline-block group shrink-0">
+	              <button
+	                :disabled="!projectStore.currentProjectId"
+	                aria-label="Upload equipment"
+	                :title="projectStore.currentProjectId ? 'Upload equipment from CSV/XLSX' : 'Select a project'"
+	                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+	                @click="showUploadDialog = true"
+	              >
+	                <svg
+	                  xmlns="http://www.w3.org/2000/svg"
+	                  viewBox="0 0 24 24"
+	                  fill="none"
+	                  stroke="currentColor"
+	                  class="w-4 h-4"
+	                ><path
+	                  d="M12 3v12"
+	                  stroke-width="1.5"
+	                  stroke-linecap="round"
+	                /><path
+	                  d="M7 8l5-5 5 5"
+	                  stroke-width="1.5"
+	                  stroke-linecap="round"
+	                  stroke-linejoin="round"
+	                /><rect
+	                  x="4"
+	                  y="15"
+	                  width="16"
+	                  height="6"
+	                  rx="1.5"
+	                  stroke-width="1.5"
+	                /></svg>
+	                <span class="text-sm">Upload</span>
+	              </button>
+	              <div
+	                role="tooltip"
+	                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+	              >
+	                Upload equipment from CSV/XLSX
+	              </div>
+	            </div>
+	            <div class="relative inline-block group shrink-0">
+	              <button
+	                :disabled="!projectStore.currentProjectId"
+	                aria-label="Download equipment"
+	                :title="projectStore.currentProjectId ? 'Download visible equipment as CSV' : 'Select a project'"
+	                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+	                @click="downloadEquipmentList"
+	              >
+	                <svg
+	                  xmlns="http://www.w3.org/2000/svg"
+	                  viewBox="0 0 24 24"
+	                  fill="none"
+	                  stroke="currentColor"
+	                  class="w-4 h-4"
+	                ><path
+	                  d="M12 3v12"
+	                  stroke-width="1.5"
+	                  stroke-linecap="round"
+	                /><path
+	                  d="M7 10l5 5 5-5"
+	                  stroke-width="1.5"
+	                  stroke-linecap="round"
+	                  stroke-linejoin="round"
+	                /><rect
+	                  x="4"
+	                  y="17"
+	                  width="16"
+	                  height="4"
+	                  rx="1.5"
+	                  stroke-width="1.5"
+	                /></svg>
+	                <span class="text-sm">Download</span>
+	              </button>
+	              <div
+	                role="tooltip"
+	                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+	              >
+	                Download filtered equipment as CSV
+	              </div>
+	            </div>
+	            <button
+	              type="button"
+	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+	              @click="clearAdvancedFilters"
+	            >
+	              Clear advanced filters
+	            </button>
+	          </div>
 	          <div class="text-xs text-white/50">
 	            Advanced filters show on desktop; mobile uses the Filters panel.
 	          </div>
