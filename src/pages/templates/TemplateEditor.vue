@@ -705,40 +705,6 @@
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
             @update:count="azureAttachmentsCount = $event"
           />
-          <div class="text-xs text-white/60">
-            List below is legacy URL attachments (not stored in Azure).
-          </div>
-          <div
-            v-if="!(form as any).attachments || !(form as any).attachments.length"
-            class="text-white/60 text-sm"
-          >
-            No attachments yet.
-          </div>
-          <div
-            v-else
-            class="space-y-2"
-          >
-            <div
-              v-for="(a, idx) in (form as any).attachments"
-              :key="idx"
-              class="flex items-center justify-between gap-3 p-2 rounded-md bg-white/5 border border-white/10"
-            >
-              <div class="truncate">
-                <a
-                  :href="a.url || a.data"
-                  target="_blank"
-                  rel="noopener"
-                  class="text-white/90 hover:underline"
-                >{{ a.filename || a.url }}</a>
-              </div>
-              <button
-                class="px-2 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30 text-sm"
-                @click="removeAttachment(idx)"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- Checklists Tab -->
@@ -1622,7 +1588,7 @@ function onChecklistsChange(sections: any[]) {
 function countForTab(t: string) {
   if (t === 'Components') return Array.isArray((form.value as any).components) ? (form.value as any).components.length : 0
   if (t === 'Photos') return Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0
-  if (t === 'Attachments') return azureAttachmentsCount.value + (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments.length : 0)
+  if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Checklists') return checklists.value.length
   if (t === 'FPT') return functionalTests.value.length
   if (t === 'Instances') return instancesForTemplate.value.length

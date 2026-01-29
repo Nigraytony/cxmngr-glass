@@ -805,9 +805,10 @@
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
             @update:count="azureAttachmentsCount = $event"
           />
-          <div class="text-xs text-white/60">
-            Links below are legacy URL attachments (not stored in Azure).
-          </div>
+          <template v-if="false">
+            <div class="text-xs text-white/60">
+              Links below are legacy URL attachments (not stored in Azure).
+            </div>
           <!-- Manual link add (optional) -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <div>
@@ -1095,6 +1096,7 @@
               </li>
             </ul>
           </div>
+          </template>
         </div>
 
         <!-- Components Tab -->
@@ -3004,7 +3006,7 @@ watch([() => currentTab.value, linkedIssueIdsKey], ([tab]) => {
 })
 function countForTab(t: string) {
   if (t === 'Photos') return (Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0)
-  if (t === 'Attachments') return azureAttachmentsCount.value + (Array.isArray((form.value as any).attachments) ? (form.value as any).attachments.length : 0)
+  if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Components') return Array.isArray((form.value as any).components) ? (form.value as any).components.length : 0
   if (t === 'Checklists') return checklists.value.length
   if (t === 'FPT') return functionalTests.value.length

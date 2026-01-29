@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between gap-3 flex-wrap">
       <div class="min-w-0">
         <div class="text-white/80 font-medium">
-          Files (Azure)
+          Files
         </div>
         <div class="text-white/60 text-xs truncate">
           Stored in project documents: Attachments / {{ entityType }} / {{ safeEntityId || '—' }}

@@ -655,77 +655,6 @@
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
             @update:count="azureAttachmentsCount = $event"
           />
-          <div class="text-xs text-white/60">
-            List below is legacy URL attachments (not stored in Azure).
-          </div>
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Attachments</label>
-            <div
-              v-if="!attachmentsList.length"
-              class="text-white/60"
-            >
-              No attachments.
-            </div>
-            <ul
-              v-else
-              class="space-y-2"
-            >
-              <li
-                v-for="(a, i) in attachmentsList"
-                :key="i"
-                class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3"
-              >
-                <div class="min-w-0">
-                  <div class="truncate text-sm">
-                    {{ a.filename }}
-                  </div>
-                  <div class="text-xs text-white/60 truncate">
-                    {{ a.url }}
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <a
-                    :href="a.url"
-                    target="_blank"
-                    class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
-                  >Open</a>
-                  <button
-                    class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
-                    title="Remove"
-                    aria-label="Remove"
-                    @click="deleteAttachment(i)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    ><path
-                      d="M3 6h18"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    /><path
-                      d="M8 6l1-2h6l1 2"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    /><rect
-                      x="6"
-                      y="6"
-                      width="12"
-                      height="14"
-                      rx="1.5"
-                      stroke-width="1.5"
-                    /><path
-                      d="M10 10v6M14 10v6"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    /></svg>
-                  </button>
-                </div>
-              </li>
-            </ul>
-          </div>
         </div>
 
         <!-- Attributes Tab -->
@@ -1239,7 +1168,7 @@ function countForTab(t: string) {
   if (t === 'SubSpaces') return children.value.length
   if (t === 'Equipment') return equipmentInSpace.value.length
   if (t === 'Issues') return issuesForSpace.value.length
-  if (t === 'Attachments') return azureAttachmentsCount.value + attachmentsList.value.length
+  if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Attributes') return attributesDisplayCount.value
   return 0
 }

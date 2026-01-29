@@ -951,9 +951,10 @@
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
               @update:count="azureAttachmentsCount = $event"
             />
-            <div class="text-xs text-white/60">
-              Links below are legacy URL attachments (not stored in Azure).
-            </div>
+            <template v-if="false">
+              <div class="text-xs text-white/60">
+                Links below are legacy URL attachments (not stored in Azure).
+              </div>
             <!-- Manual link add (optional) -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
               <div>
@@ -1268,6 +1269,7 @@
                 </li>
               </ul>
             </div>
+            </template>
           </div>
 
           <!-- Equipment Tab -->
@@ -4744,7 +4746,7 @@ function countForTab(t: string): number {
   if (t === 'Photos') return (current.value?.photos || []).length
   if (t === 'Issues') return issuesForActivity.value.length
   if (t === 'Comments') return (form.comments || []).length
-  if (t === 'Attachments') return azureAttachmentsCount.value + (form.attachments || []).length
+  if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Equipment' || t === 'Equipment Reviewed') return (form.systems || []).length
   return 0
 }
