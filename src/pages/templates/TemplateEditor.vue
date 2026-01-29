@@ -643,54 +643,15 @@
           v-else-if="currentTab === 'Photos'"
           class="space-y-3"
         >
-          <div class="flex items-center justify-between">
-            <div class="text-white/80">
-              Photos
-            </div>
-            <PhotoUploader
-              :upload="uploadPhoto"
-              :existing-count="(form as any).photos ? (form as any).photos.length : 0"
-              :max-count="16"
-              :concurrency="1"
-              @done="refreshAfterUpload('photos')"
-            />
-          </div>
-          <div
-            v-if="!(form as any).photos || !(form as any).photos.length"
-            class="text-white/60 text-sm"
-          >
-            No photos yet.
-          </div>
-          <div
-            v-else
-            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
-          >
-            <div
-              v-for="(p, idx) in (form as any).photos"
-              :key="idx"
-              class="rounded-md overflow-hidden border border-white/10 bg-white/5"
-            >
-              <img
-                :src="p.data"
-                :alt="p.filename"
-                class="w-full h-40 object-cover"
-              >
-              <div class="p-2 text-xs text-white/70 flex items-center justify-between gap-2">
-                <input
-                  v-model="p.caption"
-                  placeholder="Caption"
-                  class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
-                  @change="updatePhotoMeta(idx, p.caption)"
-                >
-                <button
-                  class="ml-2 px-2 py-1 rounded bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30"
-                  @click="removePhoto(idx)"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
+          <AzurePhotosPanel
+            :project-id="azureProjectId"
+            entity-type="Template"
+            :entity-id="String((form as any).id || (form as any)._id || id || '')"
+            :max-count="16"
+            :max-bytes="256 * 1024"
+            :concurrency="3"
+            @update:count="azurePhotosCount = $event"
+          />
         </div>
 
         <!-- Attachments Tab -->
@@ -1249,7 +1210,7 @@ import { useEquipmentStore } from '../../stores/equipment'
 import { useUiStore } from '../../stores/ui'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import lists from '../../lists.js'
-import PhotoUploader from '../../components/PhotoUploader.vue'
+import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -1280,6 +1241,7 @@ const suggestingTemplateTags = ref(false)
 const suggestedTemplateTags = ref<SuggestedTag[]>([])
 
 const azureAttachmentsCount = ref(0)
+const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String((form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const canSuggestTemplateTags = computed(() => {
@@ -1587,7 +1549,7 @@ function onChecklistsChange(sections: any[]) {
 
 function countForTab(t: string) {
   if (t === 'Components') return Array.isArray((form.value as any).components) ? (form.value as any).components.length : 0
-  if (t === 'Photos') return Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0
+  if (t === 'Photos') return azurePhotosCount.value
   if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Checklists') return checklists.value.length
   if (t === 'FPT') return functionalTests.value.length

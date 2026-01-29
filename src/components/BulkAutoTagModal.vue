@@ -230,16 +230,18 @@ export type BulkAutoTagItem = {
   entity: any
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: boolean
   title?: string
   projectId: string
   entityType: string
   allowedTags: string[]
   items: BulkAutoTagItem[]
-  canSuggest: boolean
+  canSuggest?: boolean
   applyTags: (id: string, tags: string[]) => Promise<void>
-}>()
+}>(), {
+  canSuggest: false,
+})
 
 const emit = defineEmits<{(e: 'update:modelValue', v: boolean): void}>()
 

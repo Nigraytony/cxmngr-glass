@@ -583,75 +583,15 @@
 
           <!-- Photos Tab -->
           <div v-else-if="currentTab === 'Photos'">
-            <div>
-              <label class="block text-sm text-white/70">Photos</label>
-              <PhotoUploader
-                :max-count="16"
-                :existing-count="(current?.photos || []).length"
-                button-label="Upload Photos"
-                :upload="uploadPhoto"
-                :concurrency="4"
-                @done="finalizeNewActivityIfNeeded"
-              />
-              <div class="mt-2 flex flex-wrap gap-2">
-                <div
-                  v-for="(p,idx) in (current?.photos || [])"
-                  :key="idx"
-                  class="relative group w-20 h-20 rounded-md overflow-hidden border border-white/20"
-                >
-                  <!-- gradient overlay at bottom for contrast -->
-                  <div class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <button
-                    class="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 focus:outline-none focus:ring-2 focus:ring-white/40"
-                    title="Delete photo"
-                    aria-label="Delete photo"
-                    @click.stop="confirmRemove(idx)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M3 6h18"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                      <path
-                        d="M8 6l1-2h6l1 2"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                      <rect
-                        x="6"
-                        y="6"
-                        width="12"
-                        height="14"
-                        rx="1.5"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M10 10v6M14 10v6"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40"
-                    @click="openViewer(idx)"
-                  >
-                    <img
-                      :src="p.data || p.url"
-                      class="w-full h-full object-cover"
-                    >
-                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            <AzurePhotosPanel
+              :project-id="azureProjectId"
+              entity-type="Activity"
+              :entity-id="id"
+              :max-count="16"
+              :max-bytes="256 * 1024"
+              :concurrency="3"
+              @update:count="azurePhotosCount = $event"
+            />
           </div>
 
           <!-- Issues Tab -->
@@ -2055,11 +1995,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
 import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
+  import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
-import PhotoUploader from '../../components/PhotoUploader.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
+import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import Comments from '../../components/Comments.vue'
 import { useAuthStore } from '../../stores/auth'
@@ -2088,6 +2028,7 @@ const spacesStore = useSpacesStore()
 const ai = useAiStore()
 
 const azureAttachmentsCount = ref(0)
+const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const id = computed(() => String(props.id || route.params.id || ''))
@@ -4743,7 +4684,7 @@ async function createActivityIssue() {
 
 // Counts per tab for badges
 function countForTab(t: string): number {
-  if (t === 'Photos') return (current.value?.photos || []).length
+  if (t === 'Photos') return azurePhotosCount.value
   if (t === 'Issues') return issuesForActivity.value.length
   if (t === 'Comments') return (form.comments || []).length
   if (t === 'Attachments') return azureAttachmentsCount.value

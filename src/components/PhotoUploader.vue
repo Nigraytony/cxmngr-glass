@@ -93,7 +93,7 @@ const multiple = computed(() => props.multiple ?? true)
 const maxCount = computed(() => props.maxCount ?? 16)
 const existingCount = computed(() => props.existingCount ?? 0)
 const disabled = computed(() => props.disabled ?? false)
-const compressTargetBytes = computed(() => props.compressTargetBytes ?? 240 * 1024)
+const compressTargetBytes = computed(() => props.compressTargetBytes ?? 256 * 1024)
 const concurrency = computed(() => Math.max(1, Math.floor(props.concurrency ?? 1)))
 
 const uploads = ref<UploadItem[]>([])
@@ -238,7 +238,7 @@ function isAcceptableFile(f: File): boolean {
 }
 
 // Compression helpers
-async function compressImageIfNeeded(file: File, maxBytes = 240 * 1024, onCompressed?: (from: number, to: number) => void): Promise<File> {
+async function compressImageIfNeeded(file: File, maxBytes = 256 * 1024, onCompressed?: (from: number, to: number) => void): Promise<File> {
   if (file.size <= maxBytes) return file
   const img = await loadImageFromFile(file)
   let quality = 0.9
@@ -247,11 +247,11 @@ async function compressImageIfNeeded(file: File, maxBytes = 240 * 1024, onCompre
   const [startW, startH] = fitWithin(img.width, img.height, MAX_DIM, MAX_DIM)
   let w = startW, h = startH
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 14; i++) {
     const blob = await drawToBlob(img, w, h, quality)
     if (blob.size <= maxBytes) {
       onCompressed?.(file.size, blob.size)
-      return new File([blob], file.name.replace(/\.(png|webp|gif|jpg|jpeg)$/i, '.jpg'), { type: 'image/jpeg' })
+      return new File([blob], ensureJpegFilename(file.name), { type: 'image/jpeg' })
     }
     if (quality > 0.5) {
       quality -= 0.1
@@ -263,7 +263,17 @@ async function compressImageIfNeeded(file: File, maxBytes = 240 * 1024, onCompre
   }
   const lastBlob = await drawToBlob(img, w, h, 0.4)
   onCompressed?.(file.size, lastBlob.size)
-  return new File([lastBlob], file.name.replace(/\.(png|webp|gif|jpg|jpeg)$/i, '.jpg'), { type: 'image/jpeg' })
+  if (lastBlob.size > maxBytes) {
+    throw new Error(`Unable to compress photo below ${Math.round(maxBytes / 1024)}KB`)
+  }
+  return new File([lastBlob], ensureJpegFilename(file.name), { type: 'image/jpeg' })
+}
+
+function ensureJpegFilename(name: string) {
+  const base = String(name || '').trim() || 'photo'
+  // Replace known image extensions; otherwise append.
+  const replaced = base.replace(/\.(png|webp|gif|jpg|jpeg|heic|heif|bmp|tif|tiff)$/i, '.jpg')
+  return replaced.toLowerCase().endsWith('.jpg') ? replaced : `${replaced}.jpg`
 }
 
 function fitWithin(w: number, h: number, maxW: number, maxH: number): [number, number] {

@@ -535,7 +535,7 @@ router.post(
       const folderId = String(req.body.folderId)
 
       // projectId is the tenant boundary; allow request even if legacy orgId differs.
-      const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).select('_id').lean()
+      const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).select('_id path').lean()
       if (!folder) return res.status(404).json({ error: 'Folder not found' })
 
       const filenameV = validateFilename(req.body && req.body.filename)
@@ -550,6 +550,27 @@ router.post(
       if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return res.status(400).json({ error: 'sizeBytes must be a positive number' })
       const maxSizeBytes = getDocsMaxSizeBytes()
       if (sizeBytes > maxSizeBytes) return res.status(400).json({ error: `File is too large (max ${maxSizeBytes} bytes)` })
+
+      // Special constraints for photos stored under the "Photos" root.
+      const folderPath = asString(folder.path).trim()
+      const pathParts = folderPath.split('/').map((p) => p.trim()).filter(Boolean)
+      const isPhotosRoot = pathParts.length > 0 && pathParts[0].toLowerCase() === 'photos'
+      const isPhotosLeaf = isPhotosRoot && pathParts.length >= 3
+      if (isPhotosRoot) {
+        if (!contentType.startsWith('image/')) {
+          return res.status(400).json({ error: 'Photos must be images', code: 'PHOTOS_IMAGE_REQUIRED' })
+        }
+        const maxPhotoBytes = 256 * 1024
+        if (sizeBytes > maxPhotoBytes) {
+          return res.status(400).json({ error: `Photo is too large (max ${maxPhotoBytes} bytes)`, code: 'PHOTO_TOO_LARGE' })
+        }
+        if (isPhotosLeaf) {
+          const currentCount = await DocFile.countDocuments({ projectId, folderId, status: { $ne: 'deleted' } })
+          if (currentCount >= 16) {
+            return res.status(409).json({ error: 'Maximum number of photos reached (16)', code: 'MAX_PHOTOS_REACHED' })
+          }
+        }
+      }
 
       const pairV = validateFilenameContentTypePair({ filename: filenameV.value, contentType })
       if (!pairV.ok) {

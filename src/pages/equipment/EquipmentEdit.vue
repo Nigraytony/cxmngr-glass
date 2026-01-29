@@ -724,73 +724,15 @@
 
         <!-- Photos Tab -->
         <div v-else-if="currentTab === 'Photos'">
-          <div>
-            <label class="block text-sm text-white/70">Photos</label>
-            <PhotoUploader
-              :max-count="16"
-              :existing-count="photos.length"
-              button-label="Upload Photos"
-              :upload="uploadPhoto"
-              :concurrency="4"
-            />
-            <div class="mt-2 flex flex-wrap gap-2">
-              <div
-                v-for="(p,idx) in photos"
-                :key="idx"
-                class="relative group w-20 h-20 rounded-md overflow-hidden border border-white/20"
-              >
-                <div class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <button
-                  class="absolute bottom-1.5 right-1.5 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 focus:outline-none focus:ring-2 focus:ring-white/40"
-                  title="Delete photo"
-                  aria-label="Delete photo"
-                  @click.stop="confirmRemove(idx)"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    class="w-4 h-4"
-                  >
-                    <path
-                      d="M3 6h18"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    />
-                    <path
-                      d="M8 6l1-2h6l1 2"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    />
-                    <rect
-                      x="6"
-                      y="6"
-                      width="12"
-                      height="14"
-                      rx="1.5"
-                      stroke-width="1.5"
-                    />
-                    <path
-                      d="M10 10v6M14 10v6"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    />
-                  </svg>
-                </button>
-                <button
-                  class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40"
-                  @click="openViewer(idx)"
-                >
-                  <img
-                    :src="p.data"
-                    class="w-full h-full object-cover"
-                  >
-                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <AzurePhotosPanel
+            :project-id="azureProjectId"
+            entity-type="Equipment"
+            :entity-id="String((form as any).id || (form as any)._id || id || '')"
+            :max-count="16"
+            :max-bytes="256 * 1024"
+            :concurrency="3"
+            @update:count="azurePhotosCount = $event"
+          />
         </div>
 
         <!-- Attachments Tab -->
@@ -1693,10 +1635,10 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
-import PhotoUploader from '../../components/PhotoUploader.vue'
 import ChecklistPanel from '../../components/ChecklistPanel.vue'
 import FunctionalTestsPanel from '../../components/FunctionalTestsPanel.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
+import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import IssuesTable from '../../components/IssuesTable.vue'
 import LogsPanel from '../../components/LogsPanel.vue'
@@ -1733,6 +1675,7 @@ const suggestingEquipmentTags = ref(false)
 const suggestedEquipmentTags = ref<SuggestedTag[]>([])
 
 const azureAttachmentsCount = ref(0)
+const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const canSuggestEquipmentTags = computed(() => {
@@ -3005,7 +2948,7 @@ watch([() => currentTab.value, linkedIssueIdsKey], ([tab]) => {
   }
 })
 function countForTab(t: string) {
-  if (t === 'Photos') return (Array.isArray((form.value as any).photos) ? (form.value as any).photos.length : 0)
+  if (t === 'Photos') return azurePhotosCount.value
   if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Components') return Array.isArray((form.value as any).components) ? (form.value as any).components.length : 0
   if (t === 'Checklists') return checklists.value.length
