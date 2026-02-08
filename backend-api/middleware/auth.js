@@ -25,6 +25,16 @@ const auth = async (req, res, next) => {
       return res.status(401).send({ error: 'Please authenticate.' });
     }
 
+    // Optional server-side invalidation: if token includes tv claim, require it to match user.tokenVersion.
+    // This allows invalidating outstanding tokens (e.g., logout everywhere) while keeping the API backward compatible.
+    if (decoded && Object.prototype.hasOwnProperty.call(decoded, 'tv')) {
+      const userTv = Number(user.tokenVersion || 0)
+      const tokenTv = Number(decoded.tv || 0)
+      if (userTv !== tokenTv) {
+        return res.status(401).send({ error: 'Please authenticate.' });
+      }
+    }
+
     req.token = token;
     req.user = user;
     next();

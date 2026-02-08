@@ -62,6 +62,48 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(null);
   const error = ref<string | null>(null);
 
+  // Rotate JWT before the 15-minute expiry (best-effort; logs out on persistent failures)
+  const TOKEN_ROTATE_EVERY_MS = 12 * 60 * 1000
+  let rotateTimer: any = null
+
+  function stopTokenRotation() {
+    if (rotateTimer) {
+      try { clearInterval(rotateTimer) } catch (e) { /* ignore */ }
+      rotateTimer = null
+    }
+  }
+
+  async function rotateTokenOnce() {
+    const current = token.value || localStorage.getItem('token')
+    if (!current) return
+    try {
+      const r = await http.post('/api/users/refresh')
+      const data = r.data || {}
+      if (!data.token) return
+      token.value = data.token
+      if (user.value) user.value.token = data.token
+      try { localStorage.setItem('token', data.token) } catch (e) { /* ignore */ }
+      if (data.user) {
+        try {
+          // Keep the stored user in sync if server sends it
+          const nextUser = { ...data.user, token: data.token }
+          user.value = nextUser
+          localStorage.setItem('user', JSON.stringify(nextUser))
+        } catch (e) { /* ignore */ }
+      }
+    } catch (e: any) {
+      // If refresh fails (expired token / revoked), fall back to logout
+      logout()
+    }
+  }
+
+  function startTokenRotation() {
+    stopTokenRotation()
+    // Kick once shortly after login/load, then periodically
+    setTimeout(() => { rotateTokenOnce() }, 2_000)
+    rotateTimer = setInterval(() => { rotateTokenOnce() }, TOKEN_ROTATE_EVERY_MS)
+  }
+
    async function login(email: string, password: string) {
     error.value = null;
     try {
@@ -83,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = data.token;
       localStorage.setItem('user', JSON.stringify(user.value));
       localStorage.setItem('token', data.token);
+      startTokenRotation()
       // If user has a default project, set it in the project store
       try {
         const projectStore = useProjectStore()
@@ -122,6 +165,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    // Best-effort server-side invalidation (logout everywhere)
+    try { http.post('/api/users/logout') } catch (e) { /* ignore */ }
+    stopTokenRotation()
     user.value = null;
     token.value = null;
     localStorage.removeItem('user');
@@ -178,6 +224,9 @@ export const useAuthStore = defineStore('auth', () => {
 
         // mark authReady regardless of refresh outcome so router can proceed
         authReady.value = true;
+
+        // Start token rotation for existing sessions
+        try { startTokenRotation() } catch (e) { /* ignore */ }
 
         // sync default project into project store after refresh
         try {

@@ -401,6 +401,158 @@ function toPlainEquipment(doc) {
   return e
 }
 
+function normalizeMixedJsonArray(value) {
+  if (value === undefined) return undefined
+  let v = value
+  if (typeof v === 'string') {
+    try { v = JSON.parse(v) } catch { return null }
+  }
+  if (!Array.isArray(v)) return null
+  return v
+}
+
+function answersEqual(a, b) {
+  if (a === b) return true
+  if (a === null || a === undefined) return (b === null || b === undefined)
+  if (b === null || b === undefined) return false
+  const ta = typeof a
+  const tb = typeof b
+  if ((ta !== 'object' && ta !== 'function') && (tb !== 'object' && tb !== 'function')) return false
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
+  }
+}
+
+function checklistKey(section) {
+  if (!section || typeof section !== 'object') return ''
+  const id = section._id || section.id
+  if (id) return `id:${String(id)}`
+  const num = section.number != null ? String(section.number) : ''
+  const title = section.title != null ? String(section.title) : ''
+  const discipline = section.discipline != null ? String(section.discipline) : ''
+  const system = section.system != null ? String(section.system) : ''
+  return `k:${num}|${title}|${discipline}|${system}`.toLowerCase()
+}
+
+function questionKey(q, idx) {
+  if (!q || typeof q !== 'object') return `i:${idx}`
+  if (q._id || q.id) return `id:${String(q._id || q.id)}`
+  if (q.number != null) return `n:${String(q.number)}`
+  if (q.question != null) return `q:${String(q.question)}`
+  return `i:${idx}`
+}
+
+function findChangedChecklistAnswerSections(existingChecklists, incomingChecklists) {
+  const existing = Array.isArray(existingChecklists) ? existingChecklists : []
+  const incoming = Array.isArray(incomingChecklists) ? incomingChecklists : []
+
+  const existingByKey = new Map()
+  for (const sec of existing) {
+    const k = checklistKey(sec)
+    if (k) existingByKey.set(k, sec)
+  }
+
+  const changed = []
+  for (const sec of incoming) {
+    const k = checklistKey(sec)
+    const prev = (k && existingByKey.has(k)) ? existingByKey.get(k) : null
+    const prevQs = prev && Array.isArray(prev.questions) ? prev.questions : []
+    const nextQs = sec && Array.isArray(sec.questions) ? sec.questions : []
+
+    if (!nextQs.length) continue
+
+    const prevByKey = new Map()
+    for (let i = 0; i < prevQs.length; i++) {
+      prevByKey.set(questionKey(prevQs[i], i), prevQs[i])
+    }
+
+    let count = 0
+    for (let i = 0; i < nextQs.length; i++) {
+      const nk = questionKey(nextQs[i], i)
+      const oldQ = prevByKey.get(nk)
+      const oldA = oldQ ? oldQ.answer : undefined
+      const newA = nextQs[i] ? nextQs[i].answer : undefined
+      if (!answersEqual(oldA, newA)) count++
+    }
+
+    if (count > 0) {
+      const prevResp = prev && prev.responsible != null ? String(prev.responsible).trim() : ''
+      const nextResp = sec && sec.responsible != null ? String(sec.responsible).trim() : ''
+      changed.push({
+        key: k,
+        responsible: prevResp || nextResp,
+        changedAnswers: count,
+      })
+    }
+  }
+  return changed
+}
+
+async function enforceChecklistAnswerWriteAccess({ req, projectId, existingChecklists, incomingChecklists }) {
+  // Global admins bypass.
+  const gr = String((req.user && req.user.role) || '').trim().toLowerCase()
+  if (['globaladmin', 'superadmin'].includes(gr)) return
+
+  const changed = findChangedChecklistAnswerSections(existingChecklists, incomingChecklists)
+  if (!changed.length) return
+
+  const Project = require('../models/project')
+  const project = await Project.findById(projectId).select('team').lean()
+  if (!project || !Array.isArray(project.team)) {
+    const err = new Error('Forbidden')
+    err.status = 403
+    throw err
+  }
+
+  const userId = String(req.user && (req.user._id || req.user.id) || '')
+  const userEmail = String(req.user && req.user.email || '').toLowerCase()
+  const member = project.team.find((t) => String(t && (t._id || t.id) || '') === userId || String((t && t.email) || '').toLowerCase() === userEmail) || null
+  if (!member) {
+    const err = new Error('Forbidden')
+    err.status = 403
+    throw err
+  }
+
+  const mr = String(member.role || '').trim().toLowerCase()
+  if (mr === 'admin' || mr === 'cxa') return
+
+  // Only project admin/CxA can change a checklist's `responsible` field.
+  // This prevents users from reassigning ownership to bypass answer-write restrictions.
+  {
+    const existing = Array.isArray(existingChecklists) ? existingChecklists : []
+    const incoming = Array.isArray(incomingChecklists) ? incomingChecklists : []
+    const existingByKey = new Map()
+    for (const sec of existing) {
+      const k = checklistKey(sec)
+      if (k) existingByKey.set(k, sec)
+    }
+    for (const sec of incoming) {
+      const k = checklistKey(sec)
+      if (!k) continue
+      const prev = existingByKey.get(k) || null
+      const prevResp = prev && prev.responsible != null ? String(prev.responsible).trim() : ''
+      const nextResp = sec && sec.responsible != null ? String(sec.responsible).trim() : ''
+      if (prevResp.toLowerCase() !== nextResp.toLowerCase()) {
+        const err = new Error('Only project admins/CxA can change checklist responsible')
+        err.status = 403
+        throw err
+      }
+    }
+  }
+
+  for (const c of changed) {
+    const resp = String(c.responsible || '').trim()
+    if (!resp) continue
+    const rl = resp.toLowerCase()
+    if (rl === mr) continue
+    const err = new Error(`Only users with the "${resp}" role (or project admin/CxA) can update answers for this checklist.`)
+    err.status = 403
+    throw err
+  }
+}
+
 // Equipment logs: append and read
 // GET /api/equipment/:id/logs?limit=200&type=section_created
 router.get('/:id/logs', auth, requireObjectIdParam('id'), loadEquipmentProjectId, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
@@ -1138,8 +1290,73 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, r
     req.body = req.body || {};
     req.body.projectId = equipment.projectId;
 
-    await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }));
-    await runMiddleware(req, res, requireActiveProject);
+    // Permission model:
+    // - Updating equipment metadata requires `equipment.update`
+    // - Updating embedded checklists requires `equipment.checklists.update`
+    // - Updating embedded functional tests/signatures requires `equipment.functionalTests.update`
+    const wantsChecklists = Object.prototype.hasOwnProperty.call(incoming, 'checklists')
+    const wantsFunctionalTests = Object.prototype.hasOwnProperty.call(incoming, 'functionalTests')
+    const wantsFptSignatures = Object.prototype.hasOwnProperty.call(incoming, 'fptSignatures')
+    const wantsFpt = wantsFunctionalTests || wantsFptSignatures
+
+    const otherKeys = Object.keys(incoming || {}).filter((k) => !['checklists', 'functionalTests', 'fptSignatures'].includes(k))
+    if (!wantsChecklists && otherKeys.length === 0) {
+      return res.status(400).send({ error: 'No fields to update' })
+    }
+
+    if (wantsChecklists) {
+      await runMiddleware(req, res, requirePermission('equipment.checklists.update', { projectParam: 'projectId' }))
+    }
+    if (wantsFpt) {
+      await runMiddleware(req, res, requirePermission('equipment.functionalTests.update', { projectParam: 'projectId' }))
+    }
+    if (otherKeys.length) {
+      await runMiddleware(req, res, requirePermission('equipment.update', { projectParam: 'projectId' }))
+    }
+    await runMiddleware(req, res, requireActiveProject)
+
+    // Normalize checklists payload and enforce responsible-role rules for answer changes.
+    if (wantsChecklists) {
+      const normalized = normalizeMixedJsonArray(incoming.checklists)
+      if (normalized === null) return res.status(400).send({ error: 'Invalid checklists' })
+      incoming.checklists = normalized
+
+      // Validate OPR item links within checklist questions (optional)
+      try {
+        const all = new Set()
+        for (const sec of incoming.checklists) {
+          if (!sec || typeof sec !== 'object') continue
+          const questions = Array.isArray(sec.questions) ? sec.questions : []
+          for (const q of questions) {
+            if (!q || typeof q !== 'object') continue
+            const normalizedIds = normalizeObjectIdList(q.oprItemIds, { max: 25 })
+            if (normalizedIds === null) return res.status(400).send({ error: 'Invalid oprItemIds in checklists' })
+            if (normalizedIds === undefined) continue
+            q.oprItemIds = normalizedIds
+            for (const id of normalizedIds) all.add(id)
+          }
+        }
+        if (all.size) {
+          const oprValidation = await validateOprItemIds({ projectId: equipment.projectId, oprItemIds: Array.from(all) })
+          if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
+        }
+      } catch (e) {
+        return res.status(400).send({ error: 'Invalid oprItemIds in checklists' })
+      }
+
+      const existingPlain = toPlainEquipment(equipment)
+      try {
+        await enforceChecklistAnswerWriteAccess({
+          req,
+          projectId: equipment.projectId,
+          existingChecklists: existingPlain && existingPlain.checklists,
+          incomingChecklists: incoming.checklists,
+        })
+      } catch (e) {
+        const status = e && e.status ? Number(e.status) : 403
+        return res.status(status).send({ error: e && e.message ? String(e.message) : 'Forbidden' })
+      }
+    }
 
     // Validate OPR item links within functional tests (optional)
     if (incoming && Array.isArray(incoming.functionalTests)) {

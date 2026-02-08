@@ -241,14 +241,14 @@ const filteredItems = computed(() => {
 
 async function fetchCategories() {
   if (!props.projectId) return
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/categories`, { headers: getAuthHeaders() })
+  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/categories`, { headers: getAuthHeaders() })
   categories.value = Array.isArray(data) ? data : []
   if (!categoryId.value) categoryId.value = String(categories.value[0]?.id || '')
 }
 
 async function fetchItems(category: string) {
   if (!props.projectId || !category) { items.value = []; return }
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/items`, {
+  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/items`, {
     headers: getAuthHeaders(),
     params: { categoryId: category },
   })
@@ -258,7 +258,7 @@ async function fetchItems(category: string) {
 async function fetchSelectedMeta() {
   const ids = Array.isArray(props.modelValue) ? props.modelValue : []
   if (!props.projectId || ids.length === 0) { selectedMeta.value = {}; return }
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/items`, {
+  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/items`, {
     headers: getAuthHeaders(),
     params: { ids: ids.join(','), includeArchived: 1 },
   })
@@ -272,6 +272,10 @@ async function fetchSelectedMeta() {
 }
 
 async function hydrate() {
+  return hydrateWith({ userInitiated: false })
+}
+
+async function hydrateWith(opts: { userInitiated: boolean }) {
   oprAddonRequired.value = false
   loading.value = true
   try {
@@ -287,7 +291,11 @@ async function hydrate() {
       selectedMeta.value = {}
       return
     }
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to load OPR items', { duration: 6000 })
+    // Avoid noisy toasts when this component mounts inside other UIs (e.g. checklists).
+    // Only show errors when the user explicitly opens the picker.
+    if (opts && opts.userInitiated) {
+      ui.showError(e?.response?.data?.error || e?.message || 'Failed to load OPR items', { duration: 6000 })
+    }
   } finally {
     loading.value = false
   }
@@ -296,7 +304,7 @@ async function hydrate() {
 function openPicker() {
   workingSelectedIds.value = Array.isArray(props.modelValue) ? props.modelValue.slice() : []
   pickerOpen.value = true
-  if (!categories.value.length) hydrate()
+  if (!categories.value.length) hydrateWith({ userInitiated: true })
 }
 
 function toggle(id: string) {
@@ -318,7 +326,20 @@ function removeOne(id: string) {
 }
 
 watch(() => props.projectId, async () => {
-  await hydrate()
+  // Reset cached OPR data when switching projects.
+  categories.value = []
+  items.value = []
+  selectedMeta.value = {}
+  oprAddonRequired.value = false
+
+  // If the picker is open, refresh (user is actively interacting).
+  if (pickerOpen.value) await hydrateWith({ userInitiated: true })
+
+  // If there are already-linked ids, best-effort hydrate their meta silently.
+  const ids = Array.isArray(props.modelValue) ? props.modelValue : []
+  if (props.projectId && ids.length) {
+    try { await fetchSelectedMeta() } catch (e) { /* silent */ }
+  }
 }, { immediate: true })
 
 watch(categoryId, async (c) => {
@@ -332,11 +353,16 @@ watch(categoryId, async (c) => {
 })
 
 watch(() => props.modelValue, async () => {
-  await fetchSelectedMeta()
-})
-
-onMounted(async () => {
-  await hydrate()
+  const ids = Array.isArray(props.modelValue) ? props.modelValue : []
+  if (!props.projectId || ids.length === 0) {
+    selectedMeta.value = {}
+    return
+  }
+  try {
+    await fetchSelectedMeta()
+  } catch (e) {
+    // Silent: linking metadata isn't user-initiated; avoid toasts.
+  }
 })
 </script>
 

@@ -555,6 +555,69 @@ router.post('/workshop/attendees/:userId/deny', requireObjectIdParam('userId'), 
   }
 })
 
+// Linking support: allow project members to browse OPR categories/items for cross-feature linking
+// (e.g. equipment checklists) without requiring workshop check-in/admission.
+// These endpoints are still protected by: auth + active subscription + project access + add-on enabled.
+router.get('/link/categories', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    await ensureDefaultCategories({ orgId, projectId, userId: req.user._id })
+    const rows = await OprCategory.find({ orgId, projectId, active: true })
+      .select('_id name sortOrder active')
+      .sort({ sortOrder: 1, name: 1 })
+      .lean()
+    return res.json(rows.map((c) => ({ id: String(c._id), name: c.name, sortOrder: c.sortOrder, active: Boolean(c.active) })))
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load categories' })
+  }
+})
+
+router.get('/link/items', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+    const categoryId = req.query.categoryId ? String(req.query.categoryId) : null
+    if (categoryId && !mongoose.Types.ObjectId.isValid(categoryId)) return res.status(400).json({ error: 'Invalid categoryId' })
+
+    const idsRaw = req.query.ids
+    const idsList = idsRaw
+      ? String(idsRaw)
+        .split(',')
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+      : []
+    if (idsList.length && idsList.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+      return res.status(400).json({ error: 'Invalid ids' })
+    }
+
+    const includeArchived = isTruthy(req.query.includeArchived)
+    const filter = { orgId, projectId }
+    if (idsList.length) filter._id = { $in: idsList }
+    if (categoryId) filter.categoryId = categoryId
+    if (!includeArchived) filter.status = 'active'
+
+    const rows = await OprItem.find(filter)
+      .select('_id categoryId questionId sourceAnswerId text score rank status createdAt updatedAt')
+      .sort({ categoryId: 1, rank: 1 })
+      .lean()
+    return res.json(rows.map((i) => ({
+      id: String(i._id),
+      categoryId: i.categoryId ? String(i.categoryId) : null,
+      questionId: i.questionId ? String(i.questionId) : null,
+      sourceAnswerId: i.sourceAnswerId ? String(i.sourceAnswerId) : null,
+      text: i.text,
+      score: i.score,
+      rank: i.rank,
+      status: i.status,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+    })))
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load OPR items' })
+  }
+})
+
 // Require admission (or admin) for the main OPR workshop content (categories, questions, answers, votes, items, results).
 router.use(requireWorkshopAdmitted)
 

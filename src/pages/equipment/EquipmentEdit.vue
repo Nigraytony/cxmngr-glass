@@ -1090,6 +1090,12 @@
           v-else-if="currentTab === 'FPT'"
           class="space-y-3"
         >
+          <div
+            v-if="!canEditFpt"
+            class="rounded-md border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+          >
+            Read-only: you don't have permission to edit FPT. Ask a project admin/CxA to grant <span class="font-mono text-amber-100/90">equipment.functionalTests.update</span>.
+          </div>
           <FunctionalTestsPanel
             v-model="functionalTests"
             :project-id="String(form.projectId || projectStore.currentProjectId || '')"
@@ -1097,6 +1103,7 @@
             :equipment-tag="String(form.tag || '')"
             :equipment-space="equipmentSpaceName"
             :signatures="fptSignatures"
+            :read-only="!canEditFpt"
             @update:signatures="persistFptSignatures"
             @change="onFunctionalTestsChange"
             @save="onFunctionalTestsSave"
@@ -1649,6 +1656,7 @@ import { useEquipmentStore, type Equipment } from '../../stores/equipment'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
+import { useAuthStore } from '../../stores/auth'
 import lists from '../../lists.js'
 import http from '../../utils/http'
 import { getAuthHeaders } from '../../utils/auth'
@@ -1665,6 +1673,7 @@ const spacesStore = useSpacesStore()
 const equipmentStore = useEquipmentStore()
 const ui = useUiStore()
 const ai = useAiStore()
+const authStore = useAuthStore()
 
 const statuses = ['Not Started', 'Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Working','Has Issues','Decommissioned']
 
@@ -2957,6 +2966,43 @@ function countForTab(t: string) {
   return 0
 }
 
+// Permission gating (mirrors backend RBAC as closely as possible)
+const isGlobalAdmin = computed(() => {
+  const r = String((authStore.user as any)?.role || '').toLowerCase()
+  return r === 'globaladmin' || r === 'superadmin'
+})
+
+const currentProjectMember = computed<any | null>(() => {
+  const project: any = projectStore.currentProject || null
+  const team: any[] = Array.isArray(project?.team) ? project.team : []
+  const user: any = authStore.user || null
+  if (!user) return null
+  const uid = String(user._id || user.id || '').trim()
+  const email = String(user.email || '').trim().toLowerCase()
+  if (!uid && !email) return null
+  return team.find((m: any) => {
+    const mid = String(m?._id || m?.id || '').trim()
+    const memail = String(m?.email || '').trim().toLowerCase()
+    return (uid && mid && uid === mid) || (email && memail && email === memail)
+  }) || null
+})
+
+const isProjectAdminOrCxA = computed(() => {
+  const role = String(currentProjectMember.value?.role || '').trim().toLowerCase()
+  return role === 'admin' || role === 'cxa'
+})
+
+const memberPermissions = computed<string[]>(() => {
+  const perms = (currentProjectMember.value as any)?.permissions
+  return Array.isArray(perms) ? perms.map((p: any) => String(p || '').trim()).filter(Boolean) : []
+})
+
+const canEditFpt = computed(() => {
+  if (isGlobalAdmin.value) return true
+  if (isProjectAdminOrCxA.value) return true
+  return memberPermissions.value.includes('equipment.functionalTests.update')
+})
+
 // Checklists and FPT lists
 const checklists = computed<any[]>({
   get() {
@@ -2980,10 +3026,13 @@ const functionalTests = computed<any[]>({
     (form.value as any).functionalTests = Array.isArray(v) ? v : []
   }
 })
-// Persist functional tests when they change (debounced)
-let fptSaveTimer: any = null
+
 async function persistFunctionalTests(tests: any[]) {
   try {
+    if (!canEditFpt.value) {
+      ui.showError('You do not have permission to edit functional tests')
+      return
+    }
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     if (!eid) return
     await equipmentStore.updateFields(eid, { functionalTests: tests } as any)
@@ -2995,21 +3044,19 @@ async function persistFunctionalTests(tests: any[]) {
   }
 }
 function onFunctionalTestsChange(tests: any[]) {
-  if (fptSaveTimer) clearTimeout(fptSaveTimer)
-  fptSaveTimer = setTimeout(async () => {
-    await persistFunctionalTests(tests)
-    ui.showSuccess('Functional tests saved')
-    fptSaveTimer = null
-  }, 700)
+  // Keep changes local while the user is editing; do not auto-save.
+  // (Auto-save caused disruptive resets while typing.)
+  ;(form.value as any).functionalTests = Array.isArray(tests) ? tests : []
 }
 
 // Immediate save handler for explicit Save button in FunctionalTestsPanel
 function onFunctionalTestsSave(tests: any[]) {
-  if (fptSaveTimer) clearTimeout(fptSaveTimer)
-  // Persist immediately and show success
-  persistFunctionalTests(tests).then(() => {
-    ui.showSuccess('Functional tests saved')
-  })
+  if (!canEditFpt.value) {
+    ui.showError('You do not have permission to edit functional tests')
+    return
+  }
+  // Persist only on explicit save
+  persistFunctionalTests(tests).then(() => { ui.showSuccess('Functional tests saved') })
 }
 
 // Signatures for FPT (stored on equipment as `fptSignatures`)
@@ -3045,6 +3092,10 @@ async function refreshComponentsFromServer() {
 
 async function persistFptSignatures(sigs: any[]) {
   try {
+    if (!canEditFpt.value) {
+      ui.showError('You do not have permission to edit functional test signatures')
+      return
+    }
     // Debug: log incoming signatures payload to help diagnose persistence issues
     // (This will appear in the browser console when saving signatures)
     console.debug('persistFptSignatures - payload:', sigs)
@@ -3105,6 +3156,7 @@ async function load() {
       if (!form.value.projectId) form.value.projectId = (eq as any).projectId || projectStore.currentProjectId || ''
       const pid = form.value.projectId || projectStore.currentProjectId || ''
       if (pid) {
+        try { await projectStore.fetchProject(String(pid)) } catch (e) { /* ignore optional project fetch */ }
         await spacesStore.fetchByProject(String(pid))
         // ensure equipment list is loaded for navigation
         if (!equipmentStore.items.length) await equipmentStore.fetchByProject(String(pid))

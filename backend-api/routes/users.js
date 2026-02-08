@@ -6,13 +6,13 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
 const Project = require('../models/project');
-const jwt = require('jsonwebtoken');
 const { auth } = require('../middleware/auth');
 const crypto = require('crypto');
 const PasswordReset = require('../models/passwordReset');
 const { sendResetEmail } = require('../utils/mailer');
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireObjectIdParam } = require('../middleware/validate');
+const { signAccessToken } = require('../utils/jwt');
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
 const loginLimiter = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'login' })
@@ -156,7 +156,7 @@ async function hydrateUserProjects(userObj) {
       console.error('[users.register] JWT_SECRET is not set');
       return res.status(500).send({ error: 'Server configuration error' });
     }
-    const token = jwt.sign({ _id: user._id }, jwtSecret);
+    const token = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
     // Remove password from response
   const userObj = user.toObject();
     delete userObj.password;
@@ -188,7 +188,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       console.error('[users.login] JWT_SECRET is not set');
       return res.status(500).send({ error: 'Server configuration error' });
     }
-    const token = jwt.sign({ _id: user._id }, jwtSecret);
+    const token = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
     delete userDoc.password; // Remove password from response
     const hydrated = await hydrateUserProjects(userDoc)
     res.send({ user: hydrated, token });
@@ -197,6 +197,37 @@ router.post('/login', loginLimiter, async (req, res) => {
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Login failed' });
   }
 });
+
+// Rotate/refresh access token (requires a still-valid access token)
+router.post('/refresh', auth, async (req, res) => {
+  try {
+    const u = req.user
+    if (!u) return res.status(401).send({ error: 'Please authenticate.' })
+
+    const nextToken = signAccessToken({ userId: u._id, tokenVersion: u.tokenVersion || 0 })
+    const userObj = u.toObject ? u.toObject({ getters: true }) : JSON.parse(JSON.stringify(u))
+    if (userObj.password) delete userObj.password
+    const hydrated = await hydrateUserProjects(userObj)
+    return res.status(200).send({ user: hydrated, token: nextToken })
+  } catch (e) {
+    console.error('[users.refresh] error', e && (e.stack || e.message || e))
+    return res.status(400).send({ error: 'Refresh failed' })
+  }
+})
+
+// Logout everywhere for this user by invalidating outstanding JWTs
+router.post('/logout', auth, async (req, res) => {
+  try {
+    const u = req.user
+    if (!u) return res.status(401).send({ error: 'Please authenticate.' })
+    u.tokenVersion = Number(u.tokenVersion || 0) + 1
+    await u.save()
+    return res.status(204).send()
+  } catch (e) {
+    console.error('[users.logout] error', e && (e.stack || e.message || e))
+    return res.status(400).send({ error: 'Logout failed' })
+  }
+})
 
 // Return the currently authenticated, hydrated user
 router.get('/me', auth, async (req, res) => {

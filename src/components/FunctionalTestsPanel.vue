@@ -1,5 +1,8 @@
 <template>
-  <div class="space-y-4">
+  <div
+    class="space-y-4"
+    :class="{ 'fpt-readonly': !!props.readOnly }"
+  >
     <!-- Header: add, progress, bulk actions -->
     <div
       class="flex flex-col md:flex-row md:items-center md:justify-between gap-3"
@@ -29,7 +32,7 @@
           v-model="search"
           type="text"
           placeholder="Search tests…"
-          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-56 fpt-allow"
         >
       </div>
       <div class="flex items-center gap-2">
@@ -64,12 +67,14 @@
         </button>
         <button
           class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          :disabled="!!readOnly"
           @click="expandAll"
         >
           Expand All
         </button>
         <button
           class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+          :disabled="!!readOnly"
           @click="collapseAll"
         >
           Collapse All
@@ -128,7 +133,7 @@
         :key="t.number || i"
         class="rounded-md border border-white/10 bg-white/5"
         :class="isOpen(t) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
-        :draggable="dragEnabled"
+        :draggable="dragEnabled && !readOnly"
         @dragstart="onDragStart(t, $event)"
         @dragover.prevent="onDragOver(t, $event)"
         @drop.prevent="onDrop(t, $event)"
@@ -1288,7 +1293,8 @@ const props = defineProps<{
   equipmentId?: string,
   equipmentTag?: string,
   equipmentSpace?: string,
-  signatures?: any[]
+  signatures?: any[],
+  readOnly?: boolean
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', v: FunctionalTestItem[]): void
@@ -1504,6 +1510,7 @@ const dragEnabled = computed(() => !search.value.trim())
 // Drag-and-drop state and handlers
 const draggingTest = ref<FunctionalTestItem | null>(null)
 function onDragStart(t: FunctionalTestItem, e: DragEvent) {
+  if (props.readOnly) return
   if (!dragEnabled.value) return
   draggingTest.value = t
   if (e && e.dataTransfer) {
@@ -1514,11 +1521,13 @@ function onDragStart(t: FunctionalTestItem, e: DragEvent) {
   }
 }
 function onDragOver(_t: FunctionalTestItem, e: DragEvent) {
+  if (props.readOnly) return
   if (!dragEnabled.value) return
   e.preventDefault()
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
 }
 function onDrop(target: FunctionalTestItem, e: DragEvent) {
+  if (props.readOnly) return
   if (!dragEnabled.value) return
   e.preventDefault()
   const src = draggingTest.value
@@ -1535,11 +1544,13 @@ function onDrop(target: FunctionalTestItem, e: DragEvent) {
 }
 
 function notifyChange() {
+  if (props.readOnly) return
   emit('update:modelValue', local)
   emit('change', local)
 }
 
 function saveNow() {
+  if (props.readOnly) return
   // ensure v-model is updated and notify parent to persist immediately
   emit('update:modelValue', local)
   emit('save', local)
@@ -2146,3 +2157,15 @@ async function createIssueFromTest() {
 // Keep DnD helpers in a separate (merged) script block for clarity
 export default {}
 </script>
+
+<style scoped>
+.fpt-readonly :is(input, textarea, select, button) {
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.fpt-readonly :is(input.fpt-allow, textarea.fpt-allow, select.fpt-allow, button.fpt-allow) {
+  pointer-events: auto;
+  opacity: 1;
+}
+</style>

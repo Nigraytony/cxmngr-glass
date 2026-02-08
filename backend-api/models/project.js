@@ -65,6 +65,9 @@ const projectSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   }],
+  // Per-project list of allowed team roles (labels) for member assignment/invites.
+  // If unset, the UI falls back to the global default list in src/lists.js.
+  teamRoleOptions: [{ type: String }],
   // Project-level audit logs (flexible schema)
   logs: [{ type: mongoose.Schema.Types.Mixed, default: [] }],
   // Active flag for project (soft delete / enable/disable)

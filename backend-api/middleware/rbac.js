@@ -37,8 +37,12 @@ const requirePermission = (permission, opts = {}) => {
             if (member) {
               // If the member document contains an explicit permissions array, respect it first
               if (Array.isArray(member.permissions) && member.permissions.includes(permission)) return next();
-              // project admin short-circuit: a team member with role 'admin' is a project admin
-              if (String(member.role || '').trim().toLowerCase() === 'admin') return next();
+              // project admin short-circuit: a team member with role 'admin' or 'CxA' is a project admin
+              // (CxA = commissioning agent / project-level administrator)
+              {
+                const mr = String(member.role || '').trim().toLowerCase()
+                if (mr === 'admin' || mr === 'cxa') return next();
+              }
               // try to find a project-scoped Role with this name
               if (member.role) {
                 const roleDoc = await Role.findOne({ name: member.role, scope: 'project', projectId: project._id });

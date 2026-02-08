@@ -22,6 +22,8 @@ const sanitizeHtml = require('sanitize-html')
 const { buildSafeRegex } = require('../utils/search')
 const { normalizeLogEvent } = require('../utils/logEvent')
 const plans = require('../config/plans')
+const standardTeamRoles = require('../config/standardTeamRoles')
+const { ensureDefaultProjectRoleTemplates } = require('../utils/defaultProjectRoleTemplates')
 
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
 router.param('id', (req, res, next, value) => {
@@ -183,6 +185,7 @@ function pickProjectPayload(source) {
     'startDate',
     'endDate',
     'commissioning_agent',
+    'teamRoleOptions',
   ]
   for (const k of allowed) {
     if (body[k] !== undefined) out[k] = body[k]
@@ -256,8 +259,32 @@ router.post('/', auth, async (req, res) => {
     // Start the trial at project creation time if not explicitly set.
     if (!incoming.trialStartedAt) incoming.trialStartedAt = new Date();
 
+    // Default per-project team role list (used by UI for role dropdowns).
+    if (!Array.isArray(incoming.teamRoleOptions) || incoming.teamRoleOptions.length === 0) {
+      incoming.teamRoleOptions = standardTeamRoles.slice()
+    }
+    // Sanitize/dedupe role names (best-effort).
+    if (incoming.teamRoleOptions !== undefined) {
+      const arr = Array.isArray(incoming.teamRoleOptions) ? incoming.teamRoleOptions : []
+      const out = []
+      const seen = new Set()
+      for (const r of arr) {
+        const s = sanitizeHtml(String(r || ''), { allowedTags: [], allowedAttributes: {} }).trim()
+        if (!s) continue
+        const key = s.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(s)
+        if (out.length >= 60) break
+      }
+      incoming.teamRoleOptions = out
+    }
+
     // Create a new project with the new schema fields
     const project = new Project(incoming);
+
+    // Seed default project role templates (admin + all standard roles) so every role has editable permissions.
+    try { ensureDefaultProjectRoleTemplates(project, { standardRoles: standardTeamRoles }) } catch (e) { /* best-effort */ }
     await project.save();
 
     // Add project to user's projects array (store minimally to avoid duplication)
@@ -284,6 +311,21 @@ router.post('/', auth, async (req, res) => {
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to create project' });
   }
 });
+
+// Seed missing standard role templates into an existing project.
+// Adds templates by name only (does not overwrite existing).
+router.post('/:id/roles/seed-defaults', auth, requireObjectIdParam('id'), requirePermission('projects.roles.manage', { projectParam: 'id' }), requireActiveProject, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id)
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+    const { added } = ensureDefaultProjectRoleTemplates(project, { standardRoles: standardTeamRoles })
+    if (added > 0) await project.save()
+    return res.status(200).send({ added, roleTemplates: project.roleTemplates || [] })
+  } catch (err) {
+    console.error('seed default role templates error', err)
+    return res.status(500).send({ error: 'Failed to seed default role templates' })
+  }
+})
 
 // Read projects (supports pagination, filtering, search, memberId)
 router.get('/', auth, async (req, res) => {
@@ -547,6 +589,22 @@ router.put('/:id', auth, requireObjectIdParam('id'), requirePermission('projects
     if (incoming.documents !== undefined) {
       const arr = Array.isArray(incoming.documents) ? incoming.documents : []
       incoming.documents = arr.map(u => String(u).trim()).filter(Boolean).slice(0, 50)
+    }
+
+    if (incoming.teamRoleOptions !== undefined) {
+      const arr = Array.isArray(incoming.teamRoleOptions) ? incoming.teamRoleOptions : []
+      const out = []
+      const seen = new Set()
+      for (const r of arr) {
+        const s = sanitizeHtml(String(r || ''), { allowedTags: [], allowedAttributes: {} }).trim()
+        if (!s) continue
+        const key = s.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(s)
+        if (out.length >= 60) break
+      }
+      incoming.teamRoleOptions = out
     }
 
     const project = await Project.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });

@@ -55,6 +55,8 @@ const userSchema = new mongoose.Schema({
   },
   // Stripe customer id for billing
   stripeCustomerId: { type: String, default: null },
+  // Increment to invalidate all previously issued JWTs for the user (e.g., logout everywhere)
+  tokenVersion: { type: Number, default: 0 },
   // Support soft-delete and a simple status enum for frontend display
   deleted: { type: Boolean, default: false },
   status: { type: String, enum: ['Active', 'Deleted', 'Inactive', 'Invited', 'Pending'], default: 'Active' },

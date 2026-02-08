@@ -365,65 +365,13 @@
                     v-model="newMember.role"
                     class="rounded p-2 bg-white/5 w-full"
                   >
-                    <template v-if="roleTemplates && roleTemplates.length">
-                      <option
-                        v-for="rt in roleTemplates"
-                        :key="rt._id || rt.id || rt.name"
-                        :disabled="planPreviewLoading || !selectedPrice || billingSummary?.hasStripe === false"
-                        :title="!selectedPrice
-                          ? 'Select a plan to preview proration'
-                          : (billingSummary?.hasStripe === false
-                            ? 'Stripe not configured on server'
-                            : (planPreviewLoading ? 'Loading preview…' : ''))"
-                        :value="rt.name"
-                      >
-                        {{ rt.name }}
-                      </option>
-                    </template>
-                    <template v-else>
-                      <option value="admin">
-                        admin
-                      </option>
-                      <option value="CxA">
-                        CxA
-                      </option>
-                      <option value="GC">
-                        GC
-                      </option>
-                      <option value="CM">
-                        CM
-                      </option>
-                      <option value="Architect">
-                        Architect
-                      </option>
-                      <option value="Designer">
-                        Designer
-                      </option>
-                      <option value="Mechanical Contractor">
-                        Mechanical Contractor
-                      </option>
-                      <option value="Electrical Contractor">
-                        Electrical Contractor
-                      </option>
-                      <option value="Plumbing Contractor">
-                        Plumbing Contractor
-                      </option>
-                      <option value="Controls Contractor">
-                        Controls Contractor
-                      </option>
-                      <option value="Life Safety Contractor">
-                        Life Safety Contractor
-                      </option>
-                      <option value="Other Contractor">
-                        Other Contractor
-                      </option>
-                      <option value="Client">
-                        Client
-                      </option>
-                      <option value="User">
-                        User
-                      </option>
-                    </template>
+                    <option
+                      v-for="opt in assignableRoleOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                    >
+                      {{ opt.text }}
+                    </option>
                   </select>
                   <div
                     v-if="billingSummary && billingSummary.hasStripe === false"
@@ -1251,287 +1199,260 @@
             Project-specific settings and flags.
           </p>
           <div class="rounded p-3">
-            <div class="mb-6">
-              <div class="flex items-center gap-3">
-                <label class="block text-white/80 mb-1">Project tags (tag library)</label>
-              </div>
-              <div class="flex flex-wrap gap-2 mt-2">
-                <span
-                  v-for="t in (project?.tags || [])"
-                  :key="t"
-                  class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
-                >
-                  <span>{{ t }}</span>
+            <div class="mb-6 rounded p-3 bg-white/5 border border-white/10">
+              <div class="flex items-start justify-between">
+                <div class="flex items-start gap-3">
                   <button
-                    v-if="isProjectAdmin"
-                    type="button"
-                    class="text-white/60 hover:text-white"
-                    aria-label="Remove tag"
-                    @click="removeProjectTag(t)"
+                    aria-label="Toggle project tags"
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 transform transition-transform"
+                    @click="toggleProjectTagsOpen"
                   >
-                    ×
-                  </button>
-                </span>
-              </div>
-              <div class="flex items-center gap-2 mt-2 max-w-xl">
-                <input
-                  v-model="projectTagInput"
-                  :disabled="!isProjectAdmin"
-                  placeholder="Add a tag and press Enter…"
-                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/15 text-white placeholder-white/50 disabled:opacity-60"
-                  @keydown.enter.prevent="addProjectTagFromInput"
-                  @keydown.,.prevent="addProjectTagFromInput"
-                >
-                <button
-                  type="button"
-                  class="h-10 px-3 rounded bg-white/6 hover:bg-white/10 border border-white/15 text-white/80 text-sm disabled:opacity-60"
-                  :disabled="!isProjectAdmin"
-                  @click="addProjectTagFromInput"
-                >
-                  Add
-                </button>
-              </div>
-              <p class="text-xs text-white/60 mt-1 max-w-2xl">
-                Used as the project’s tag library for “Suggest tags” and bulk auto‑tagging. Tip: use commas or Enter to add multiple tags.
-              </p>
-            </div>
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-white/80 mb-1">Search mode</label>
-                <div class="relative inline-block w-full max-w-sm">
-                  <select
-                    v-model="project.searchMode"
-                    class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                  >
-                    <option value="substring">
-                      Substring
-                    </option>
-                    <option value="exact">
-                      Exact
-                    </option>
-                    <option value="fuzzy">
-                      Fuzzy
-                    </option>
-                  </select>
-                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
                     <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 20 20"
+                      :class="['w-4 h-4 transform transition-transform', projectTagsOpen ? '' : 'rotate-180']"
+                      viewBox="0 0 24 24"
                       fill="none"
+                      stroke="currentColor"
                       xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden
                     >
                       <path
-                        d="M6 8l4 4 4-4"
-                        stroke="currentColor"
-                        stroke-width="1.75"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p class="text-xs text-white/60 mt-1">
-                  This setting controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
-                </p>
-              </div>
-
-              <div>
-                <label class="block text-white/80 mb-1">Issues per page</label>
-                <div class="relative inline-block w-full max-w-sm">
-                  <select
-                    v-model.number="issuesPageSizeLocal"
-                    class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
-                    @change="persistIssuesPageSize()"
-                  >
-                    <option :value="5">
-                      5
-                    </option>
-                    <option :value="10">
-                      10
-                    </option>
-                    <option :value="25">
-                      25
-                    </option>
-                    <option :value="50">
-                      50
-                    </option>
-                    <option :value="100">
-                      100
-                    </option>
-                  </select>
-                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden
-                    >
-                      <path
-                        d="M6 8l4 4 4-4"
-                        stroke="currentColor"
-                        stroke-width="1.75"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p class="text-xs text-white/60 mt-1">
-                  Applies to the Issues list for this project. Saved locally.
-                </p>
-              </div>
-            </div>
-
-            <!-- AI configuration (Premium only) -->
-            <div class="mt-6 rounded p-3 bg-white/5 border border-white/10">
-              <div class="font-medium mb-1">
-                AI (Bring your own OpenAI key)
-              </div>
-              <div class="text-sm text-white/70 mb-3">
-                Store a project-scoped OpenAI API key (encrypted on the server). The key is never exposed back to the browser.
-              </div>
-
-              <div
-                v-if="!isProjectAdmin"
-                class="text-sm text-white/70"
-              >
-                Only project admins can manage AI settings.
-              </div>
-
-              <div
-                v-else-if="aiNotInPlan"
-                class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-100"
-              >
-                <div class="font-semibold">
-                  Upgrade required
-                </div>
-                <div class="text-sm mt-1">
-                  AI is available on the Premium plan.
-                </div>
-                <div class="mt-3">
-                  <button
-                    class="px-4 py-2 rounded bg-blue-600 text-white"
-                    @click="goToSubscriptionForUpgrade('ai')"
-                  >
-                    View plans
-                  </button>
-                </div>
-              </div>
-
-              <div v-else>
-                <div
-                  v-if="aiError"
-                  class="text-sm text-red-300 mb-2"
-                >
-                  {{ aiError }}
-                </div>
-
-                <label class="flex items-center gap-2 text-sm text-white/80">
-                  <input
-                    v-model="aiEnabled"
-                    type="checkbox"
-                    class="rounded border-white/20 bg-white/10"
-                  >
-                  Enable AI for this project
-                </label>
-
-                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-sm text-white/70">Provider</label>
-                    <div class="relative">
-                      <select
-                        v-model="aiProvider"
-                        class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
-                      >
-                        <option value="openai">
-                          OpenAI
-                        </option>
-                        <option value="gemini">
-                          Google Gemini
-                        </option>
-                        <option value="claude">
-                          Anthropic Claude
-                        </option>
-                      </select>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70"
-                      ><path
                         d="M6 9l6 6 6-6"
                         stroke-width="1.5"
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                      /></svg>
+                      />
+                    </svg>
+                  </button>
+                  <div>
+                    <div class="font-medium text-white/90">
+                      Project tags (tag library)
+                    </div>
+                    <div class="text-xs text-white/60">
+                      Used for tag suggestions and bulk auto-tagging.
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div v-show="projectTagsOpen" class="mt-3">
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <span
+                    v-for="t in (project?.tags || [])"
+                    :key="t"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                  >
+                    <span>{{ t }}</span>
+                    <button
+                      v-if="isProjectAdmin"
+                      type="button"
+                      class="text-white/60 hover:text-white"
+                      aria-label="Remove tag"
+                      @click="removeProjectTag(t)"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 mt-2 max-w-xl">
+                  <input
+                    v-model="projectTagInput"
+                    :disabled="!isProjectAdmin"
+                    placeholder="Add a tag and press Enter…"
+                    class="w-full px-3 py-2 rounded bg-white/10 border border-white/15 text-white placeholder-white/50 disabled:opacity-60"
+                    @keydown.enter.prevent="addProjectTagFromInput"
+                    @keydown.,.prevent="addProjectTagFromInput"
+                  >
+                  <button
+                    type="button"
+                    class="h-10 px-3 rounded bg-white/6 hover:bg-white/10 border border-white/15 text-white/80 text-sm disabled:opacity-60"
+                    :disabled="!isProjectAdmin"
+                    @click="addProjectTagFromInput"
+                  >
+                    Add
+                  </button>
+                </div>
+                <p class="text-xs text-white/60 mt-1 max-w-2xl">
+                  Tip: use commas or Enter to add multiple tags.
+                </p>
+              </div>
+            </div>
+            <!-- AI configuration (Premium only) -->
+            <div class="mt-6 rounded p-3 bg-white/5 border border-white/10">
+              <div class="flex items-start justify-between">
+                <div class="flex items-start gap-3">
+                  <button
+                    aria-label="Toggle AI"
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 transform transition-transform"
+                    @click="toggleAiOpen"
+                  >
+                    <svg
+                      :class="['w-4 h-4 transform transition-transform', aiOpen ? '' : 'rotate-180']"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
                   <div>
-                    <label class="block text-sm text-white/70">Model</label>
+                    <div class="font-medium">
+                      AI (Bring your own OpenAI key)
+                    </div>
+                    <div class="text-xs text-white/60">
+                      Project-scoped API key stored encrypted server-side.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-show="aiOpen" class="mt-3">
+                <div class="text-sm text-white/70 mb-3">
+                  Store a project-scoped OpenAI API key (encrypted on the server). The key is never exposed back to the browser.
+                </div>
+
+                <div
+                  v-if="!isProjectAdmin"
+                  class="text-sm text-white/70"
+                >
+                  Only project admins can manage AI settings.
+                </div>
+
+                <div
+                  v-else-if="aiNotInPlan"
+                  class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-100"
+                >
+                  <div class="font-semibold">
+                    Upgrade required
+                  </div>
+                  <div class="text-sm mt-1">
+                    AI is available on the Premium plan.
+                  </div>
+                  <div class="mt-3">
+                    <button
+                      class="px-4 py-2 rounded bg-blue-600 text-white"
+                      @click="goToSubscriptionForUpgrade('ai')"
+                    >
+                      View plans
+                    </button>
+                  </div>
+                </div>
+
+                <div v-else>
+                  <div
+                    v-if="aiError"
+                    class="text-sm text-red-300 mb-2"
+                  >
+                    {{ aiError }}
+                  </div>
+
+                  <label class="flex items-center gap-2 text-sm text-white/80">
                     <input
-                      v-model="aiModel"
-                      type="text"
-                      placeholder="gpt-4o-mini"
+                      v-model="aiEnabled"
+                      type="checkbox"
+                      class="rounded border-white/20 bg-white/10"
+                    >
+                    Enable AI for this project
+                  </label>
+
+                  <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-sm text-white/70">Provider</label>
+                      <div class="relative">
+                        <select
+                          v-model="aiProvider"
+                          class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                        >
+                          <option value="openai">
+                            OpenAI
+                          </option>
+                          <option value="gemini">
+                            Google Gemini
+                          </option>
+                          <option value="claude">
+                            Anthropic Claude
+                          </option>
+                        </select>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70"
+                        ><path
+                          d="M6 9l6 6 6-6"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        /></svg>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm text-white/70">Model</label>
+                      <input
+                        v-model="aiModel"
+                        type="text"
+                        placeholder="gpt-4o-mini"
+                        class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-white/40"
+                      >
+                    </div>
+                  </div>
+
+                  <div class="mt-3">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-sm text-white/70">OpenAI API key</label>
+                      <span
+                        class="text-xs px-2 py-0.5 rounded-full border"
+                        :class="aiHasKey ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-100' : 'bg-white/5 border-white/10 text-white/60'"
+                      >
+                        {{ aiHasKey ? 'Saved' : 'Not set' }}
+                      </span>
+                    </div>
+                    <input
+                      v-model="aiKeyDraft"
+                      type="password"
+                      autocomplete="off"
+                      :placeholder="aiProvider === 'gemini' ? 'AIza…' : (aiProvider === 'claude' ? 'sk-ant-…' : 'sk-...')"
                       class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-white/40"
                     >
+                    <div class="mt-1 text-xs text-white/60">
+                      Leave blank to keep the existing key. Use “Clear key” to remove it.
+                    </div>
                   </div>
-                </div>
 
-                <div class="mt-3">
-                  <div class="flex items-center justify-between">
-                    <label class="block text-sm text-white/70">OpenAI API key</label>
-                    <span
-                      class="text-xs px-2 py-0.5 rounded-full border"
-                      :class="aiHasKey ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-100' : 'bg-white/5 border-white/10 text-white/60'"
+                  <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      class="px-4 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30 text-white disabled:opacity-60"
+                      :disabled="aiSaving"
+                      @click="saveAiSettings"
                     >
-                      {{ aiHasKey ? 'Saved' : 'Not set' }}
+                      {{ aiSaving ? 'Saving…' : 'Save AI settings' }}
+                    </button>
+                    <button
+                      class="px-4 py-2 rounded border border-white/20 hover:bg-white/10 text-white disabled:opacity-60"
+                      :disabled="aiSaving || aiTesting"
+                      @click="testAiSettings"
+                    >
+                      {{ aiTesting ? 'Testing…' : 'Test key' }}
+                    </button>
+                    <button
+                      class="px-4 py-2 rounded bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-60"
+                      :disabled="aiSaving || !aiHasKey"
+                      @click="clearAiKey"
+                    >
+                      Clear key
+                    </button>
+                    <span
+                      v-if="aiLastVerifiedAt"
+                      class="text-xs text-white/60"
+                    >
+                      Last verified: {{ new Date(aiLastVerifiedAt).toLocaleString() }}
                     </span>
                   </div>
-                  <input
-                    v-model="aiKeyDraft"
-                    type="password"
-                    autocomplete="off"
-                    :placeholder="aiProvider === 'gemini' ? 'AIza…' : (aiProvider === 'claude' ? 'sk-ant-…' : 'sk-...')"
-                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-white/40"
-                  >
-                  <div class="mt-1 text-xs text-white/60">
-                    Leave blank to keep the existing key. Use “Clear key” to remove it.
-                  </div>
-                </div>
-
-                <div class="mt-4 flex flex-wrap items-center gap-3">
-                  <button
-                    class="px-4 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30 text-white disabled:opacity-60"
-                    :disabled="aiSaving"
-                    @click="saveAiSettings"
-                  >
-                    {{ aiSaving ? 'Saving…' : 'Save AI settings' }}
-                  </button>
-                  <button
-                    class="px-4 py-2 rounded border border-white/20 hover:bg-white/10 text-white disabled:opacity-60"
-                    :disabled="aiSaving || aiTesting"
-                    @click="testAiSettings"
-                  >
-                    {{ aiTesting ? 'Testing…' : 'Test key' }}
-                  </button>
-                  <button
-                    class="px-4 py-2 rounded bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-60"
-                    :disabled="aiSaving || !aiHasKey"
-                    @click="clearAiKey"
-                  >
-                    Clear key
-                  </button>
-                  <span
-                    v-if="aiLastVerifiedAt"
-                    class="text-xs text-white/60"
-                  >
-                    Last verified: {{ new Date(aiLastVerifiedAt).toLocaleString() }}
-                  </span>
                 </div>
               </div>
             </div>
@@ -1568,7 +1489,7 @@
                 </div>
                 <div>
                   <div
-                    v-if="isProjectAdmin"
+                    v-if="canManageTeamRoles"
                     class="relative inline-block group"
                   >
                     <button
@@ -1601,6 +1522,29 @@
                 </div>
               </div>
               <div v-show="rolesOpen">
+                <div
+                  v-if="canManageTeamRoles && missingStandardRoleTemplates.length"
+                  class="mb-3 p-3 rounded bg-amber-500/10 border border-amber-400/20 text-sm text-amber-100"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div class="font-medium">
+                        Standard role templates missing
+                      </div>
+                      <div class="text-xs text-amber-100/80">
+                        Add default permission templates for: {{ missingStandardRoleTemplates.join(', ') }}
+                      </div>
+                    </div>
+                    <button
+                      class="px-3 py-1 rounded bg-amber-500/20 border border-amber-400/30 hover:bg-amber-500/25 text-amber-50 disabled:opacity-60"
+                      :disabled="seedRoleTemplatesBusy"
+                      @click="seedMissingStandardRoleTemplates"
+                    >
+                      {{ seedRoleTemplatesBusy ? 'Adding…' : 'Add templates' }}
+                    </button>
+                  </div>
+                </div>
+
                 <div
                   v-if="!displayedRoleTemplates.length"
                   class="text-sm text-white/70"
@@ -1636,7 +1580,7 @@
                           </div>
                           <div class="flex gap-2">
                             <div
-                              v-if="isProjectAdmin"
+                              v-if="canManageTeamRoles"
                               class="relative inline-block group"
                             >
                               <button
@@ -1668,7 +1612,7 @@
                             </div>
 
                             <div
-                              v-if="isProjectAdmin"
+                              v-if="canManageTeamRoles"
                               class="relative inline-block group"
                             >
                               <button
@@ -1735,14 +1679,14 @@
 
                       <div class="mt-3 text-right">
                         <button
-                          v-if="isProjectAdmin"
+                          v-if="canManageTeamRoles"
                           class="px-3 py-1 rounded bg-white/6 mr-2"
                           @click="cancelRoleEdits(rt._id || rt.id, rt)"
                         >
                           Cancel
                         </button>
                         <button
-                          v-if="isProjectAdmin"
+                          v-if="canManageTeamRoles"
                           class="px-3 py-1 rounded bg-emerald-500 text-white"
                           :disabled="!hasRoleChanges(rt._id || rt.id, rt)"
                           @click="saveRoleInline(rt)"
@@ -1751,6 +1695,135 @@
                         </button>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Search mode + Issues per page (collapsed by default) -->
+            <div class="mt-6 rounded p-3 bg-white/5 border border-white/10">
+              <div class="flex items-start justify-between">
+                <div class="flex items-start gap-3">
+                  <button
+                    aria-label="Toggle search and issues settings"
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10 transform transition-transform"
+                    @click="toggleSearchIssuesOpen"
+                  >
+                    <svg
+                      :class="['w-4 h-4 transform transition-transform', searchIssuesOpen ? '' : 'rotate-180']"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <div>
+                    <div class="font-medium text-white/90">
+                      Search & Issues
+                    </div>
+                    <div class="text-xs text-white/60">
+                      Search behavior and Issues list pagination.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-show="searchIssuesOpen" class="mt-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-white/80 mb-1">Search mode</label>
+                    <div class="relative inline-block w-full max-w-sm">
+                      <select
+                        v-model="project.searchMode"
+                        class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                      >
+                        <option value="substring">
+                          Substring
+                        </option>
+                        <option value="exact">
+                          Exact
+                        </option>
+                        <option value="fuzzy">
+                          Fuzzy
+                        </option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden
+                        >
+                          <path
+                            d="M6 8l4 4 4-4"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <p class="text-xs text-white/60 mt-1">
+                      Controls how search filters work across list pages (Issues, Projects, Spaces, Activities).
+                    </p>
+                  </div>
+
+                  <div>
+                    <label class="block text-white/80 mb-1">Issues per page</label>
+                    <div class="relative inline-block w-full max-w-sm">
+                      <select
+                        v-model.number="issuesPageSizeLocal"
+                        class="w-full appearance-none rounded-lg p-2 bg-white/5 border border-white/10 text-white backdrop-blur-md focus:ring-0 focus:border-white/20"
+                        @change="persistIssuesPageSize()"
+                      >
+                        <option :value="5">
+                          5
+                        </option>
+                        <option :value="10">
+                          10
+                        </option>
+                        <option :value="25">
+                          25
+                        </option>
+                        <option :value="50">
+                          50
+                        </option>
+                        <option :value="100">
+                          100
+                        </option>
+                      </select>
+                      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-white/70">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          aria-hidden
+                        >
+                          <path
+                            d="M6 8l4 4 4-4"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                    <p class="text-xs text-white/60 mt-1">
+                      Applies to the Issues list for this project. Saved locally.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -2029,51 +2102,34 @@
           <input
             v-model="editMemberForm.firstName"
             placeholder="First name"
-            class="rounded p-2 bg-white/5 w-full"
+            class="rounded p-2 bg-white/5 w-full text-white/90 placeholder-white/50"
           >
           <input
             v-model="editMemberForm.lastName"
             placeholder="Last name"
-            class="rounded p-2 bg-white/5 w-full"
+            class="rounded p-2 bg-white/5 w-full text-white/90 placeholder-white/50"
           >
         </div>
         <input
           v-model="editMemberForm.email"
           placeholder="Email"
-          class="rounded p-2 bg-white/5 w-full"
+          class="rounded p-2 bg-white/5 w-full text-white/90 placeholder-white/50"
         >
         <input
           v-model="editMemberForm.company"
           placeholder="Company"
-          class="rounded p-2 bg-white/5 w-full"
+          class="rounded p-2 bg-white/5 w-full text-white/90 placeholder-white/50"
         >
         <select
           v-model="editMemberForm.role"
-          class="rounded p-2 bg-white/5 w-full"
+          class="rounded p-2 bg-white/5 w-full text-white/90"
         >
-          <option value="admin">
-            admin
-          </option>
-          <option value="CxA">
-            CxA
-          </option>
-          <option value="GC">
-            GC
-          </option>
-          <option value="CM">
-            CM
-          </option>
-          <option value="Architect">
-            Architect
-          </option>
-          <option value="Designer">
-            Designer
-          </option>
-          <option value="Client">
-            Client
-          </option>
-          <option value="User">
-            User
+          <option
+            v-for="opt in assignableRoleOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.text }}
           </option>
         </select>
       </div>
@@ -2081,7 +2137,7 @@
       <template #footer>
         <div class="mt-3 text-right w-full">
           <button
-            class="px-3 py-1 rounded bg-white/6 mr-2"
+            class="px-3 py-1 rounded bg-white/6 mr-2 text-white/80 hover:text-white/90"
             @click="closeEditMember"
           >
             Cancel
@@ -2110,6 +2166,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import Modal from '../../components/Modal.vue'
@@ -2150,6 +2207,8 @@ const loadingInviteIds = ref([])
 const roleTemplates = ref([])
 // Dedicated UI list that always preserves all visible roles
 const roleTemplatesView = ref([])
+
+const seedRoleTemplatesBusy = ref(false)
 
 // Transactions (invoices/charges) UI state
 const transactions = ref<any[]>([])
@@ -2687,16 +2746,41 @@ const permMatrix = {
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],
+  'equipment.checklists': ['create', 'read', 'update', 'delete'],
+  'equipment.functionalTests': ['create', 'read', 'update', 'delete'],
   templates: ['create', 'read', 'update', 'delete'],
   spaces: ['create', 'read', 'update', 'delete'],
-  projects: ['create', 'read', 'update', 'delete']
+  projects: ['update', 'delete'],
+  'projects.users': ['manage'],
+  'projects.roles': ['manage'],
 }
 
 // Accordion state for role templates in the Settings card
 const openRoles = ref(new Set())
 
 // Collapsible state for the Roles card
-const rolesOpen = ref(true)
+const rolesOpen = ref(false)
+
+// Collapsible state for the AI card
+const aiOpen = ref(false)
+
+// Collapsible state for the Project Tags section
+const projectTagsOpen = ref(false)
+
+// Collapsible state for Search mode + Issues per page
+const searchIssuesOpen = ref(false)
+
+function toggleAiOpen() {
+  aiOpen.value = !aiOpen.value
+}
+
+function toggleProjectTagsOpen() {
+  projectTagsOpen.value = !projectTagsOpen.value
+}
+
+function toggleSearchIssuesOpen() {
+  searchIssuesOpen.value = !searchIssuesOpen.value
+}
 
 function toggleRolesOpen() {
   rolesOpen.value = !rolesOpen.value
@@ -3050,7 +3134,7 @@ async function fetchRoleTemplates() {
 
 const selectedRoleTemplate = computed(() => {
   try {
-    const rv = roleTemplates.value || []
+    const rv = displayedRoleTemplates.value || []
     return rv.find(r => r && (r.name === (newMember.value.role || '')) ) || null
   } catch (e) { return null }
 })
@@ -3084,6 +3168,86 @@ const isProjectAdmin = computed(() => {
   const r = String(m.role || '').toLowerCase()
   return r === 'admin' || r === 'cxa' || r === 'cxa' || r === 'cxa'
 })
+
+const isGlobalAdmin = computed(() => {
+  const role = String(authStore.user?.role || '').toLowerCase()
+  return role === 'globaladmin' || role === 'superadmin'
+})
+
+const canManageTeamRoles = computed(() => isProjectAdmin.value || isGlobalAdmin.value)
+
+const defaultTeamRoleNames = computed(() => {
+  const opts: any[] = (lists as any)?.roleOptions || []
+  return opts
+    .map(o => (o && o.value != null ? String(o.value).trim() : ''))
+    .filter(Boolean)
+})
+
+const assignableRoleOptions = computed(() => {
+  const templates = (displayedRoleTemplates.value || []) as any[]
+
+  // Collect unique (case-insensitive) template names.
+  const seen = new Set<string>()
+  const templateNames: string[] = []
+  for (const t of templates) {
+    const name = String((t && t.name) || '').trim()
+    if (!name) continue
+    const key = name.toLowerCase()
+    if (key === 'admin') continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    templateNames.push(name)
+  }
+
+  // Preserve ordering from lists.js for standard roles, then append any custom templates.
+  const defaults = defaultTeamRoleNames.value
+  const orderedDefaults = defaults.slice()
+  const custom = templateNames.filter(n => !defaults.some(d => d.toLowerCase() === n.toLowerCase()))
+  custom.sort((a, b) => a.localeCompare(b))
+
+  const opts = [...orderedDefaults, ...custom].map(r => ({ value: r, text: r }))
+  if (canManageTeamRoles.value) return [{ value: 'admin', text: 'admin' }, ...opts]
+  return opts
+})
+
+watch(
+  () => assignableRoleOptions.value,
+  (opts) => {
+    if (!opts || !opts.length) return
+    const current = String(newMember.value.role || '').trim().toLowerCase()
+    const values = opts.map(o => String(o.value || '').trim().toLowerCase())
+    if (current && values.includes(current)) return
+    const userOpt = opts.find(o => String(o.value) === 'User')
+    newMember.value.role = userOpt ? String(userOpt.value) : String(opts[0].value)
+  },
+  { immediate: true, deep: true }
+)
+
+const missingStandardRoleTemplates = computed(() => {
+  const desired = ['admin', ...defaultTeamRoleNames.value]
+  const existing = (displayedRoleTemplates.value || []).map((t: any) => String(t && t.name || '').trim().toLowerCase()).filter(Boolean)
+  const set = new Set(existing)
+  return desired.filter(n => !set.has(String(n).trim().toLowerCase()))
+})
+
+async function seedMissingStandardRoleTemplates() {
+  if (!canManageTeamRoles.value) return
+  if (!project.value) return
+  const pid = projectId || (project.value && (project.value._id || project.value.id))
+  if (!pid) return
+  seedRoleTemplatesBusy.value = true
+  try {
+    const { data } = await http.post(`/api/projects/${pid}/roles/seed-defaults`, {}, { headers: getAuthHeaders() })
+    const list = data && data.roleTemplates ? data.roleTemplates : null
+    if (list && project.value) project.value = { ...project.value, roleTemplates: list }
+    ui.showSuccess(`Added ${data && typeof data.added === 'number' ? data.added : 0} role templates`)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || 'Failed to seed role templates')
+  } finally {
+    seedRoleTemplatesBusy.value = false
+  }
+}
+
 const projectTagInput = ref('')
 function normalizeProjectTags(tags: any) {
   const arr = Array.isArray(tags) ? tags : []

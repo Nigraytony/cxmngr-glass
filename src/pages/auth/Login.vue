@@ -45,7 +45,7 @@
             type="password"
             required
             class="w-full rounded-lg bg-white/20 text-white placeholder-white/70 border-white/30"
-            placeholder="••••••••"
+            placeholder=""
           >
         </div>
         <button
@@ -84,15 +84,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useUiStore } from '../../stores/ui'
 
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const authStore = useAuthStore()
 const router = useRouter()
+const ui = useUiStore()
+
+onMounted(() => {
+  try {
+    const flagged = sessionStorage.getItem('auth.sessionExpired')
+    if (flagged) {
+      sessionStorage.removeItem('auth.sessionExpired')
+      ui.showToast({
+        message: 'Session expired, please log in again',
+        variant: 'warning',
+        duration: 7000,
+        actionLabel: 'Log in again',
+        actionTo: '/login',
+      })
+    }
+  } catch (e) {
+    // ignore
+  }
+})
 
 const submit = async () => {
   if (!email.value || !password.value) return

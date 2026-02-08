@@ -375,6 +375,13 @@
                   </svg>
                   <span class="absolute text-[11px] leading-none font-semibold text-white">{{ issuesCount(si, qi) }}</span>
                 </span>
+                <span
+                  v-if="oprItemCount(local[si].questions[qi]) > 0"
+                  class="text-[10px] px-1.5 py-0.5 rounded border bg-white/10 border-white/20 text-white/80"
+                  :title="oprItemCount(local[si].questions[qi]) + ' OPR item' + (oprItemCount(local[si].questions[qi]) > 1 ? 's' : '') + ' linked'"
+                >
+                  OPR: {{ oprItemCount(local[si].questions[qi]) }}
+                </span>
                 <button
                   class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
                   title="Show details"
@@ -481,6 +488,16 @@
                 <div class="text-sm text-white/70 flex items-center justify-start shrink-0">
                   <span class="truncate max-w-[12rem]">{{ formatDateTime(local[si].questions[qi].cx_answered_at) || '—' }}</span>
                 </div>
+              </div>
+
+              <div class="pt-1">
+                <OprItemPicker
+                  v-model="(local[si].questions[qi] as any).oprItemIds"
+                  :project-id="String(props.projectId || '')"
+                  :disabled="!props.projectId"
+                  label="OPR items"
+                  @update:model-value="notifyChange"
+                />
               </div>
               <!-- Actions: Attach issue -->
               <div class="pt-1">
@@ -981,6 +998,7 @@
 	import { computed, reactive, watch, ref, onMounted } from 'vue'
 	import Modal from './Modal.vue'
 	import IssueForm from './IssueForm.vue'
+  import OprItemPicker from './OprItemPicker.vue'
 	import { confirm as inlineConfirm } from '../utils/confirm'
 	import lists from '../lists'
 	import { useAuthStore } from '../stores/auth'
@@ -997,6 +1015,7 @@ export interface ChecklistQuestion {
   number?: number
   question_text: string
   answer?: 'yes' | 'no' | 'na' | null | string
+  oprItemIds?: string[]
   cx_answer?: string | null
   cx_answered_by?: string | null
   cx_answered_at?: string | null
@@ -1057,6 +1076,7 @@ function normalize(v: any): ChecklistSection[] {
 	      number: q?.number ?? null,
 	      question_text: String(q?.question_text || ''),
       answer: q?.answer ?? null,
+	      oprItemIds: Array.isArray(q?.oprItemIds) ? q.oprItemIds.map((id: any) => String(id || '').trim()).filter(Boolean) : [],
       cx_answer: q?.cx_answer ?? null,
       cx_answered_by: q?.cx_answered_by ?? null,
       cx_answered_at: q?.cx_answered_at ?? null,
@@ -1430,6 +1450,16 @@ function issuesCount(si: number, qi: number) {
   if (!sec) return 0
   const arr = (sec.issues || []) as any[]
   return arr.filter((it: any) => it && it.questionIndex === qi).length
+}
+
+function oprItemCount(q: any): number {
+  const ids = Array.isArray(q?.oprItemIds) ? q.oprItemIds : []
+  const set = new Set<string>()
+  for (const raw of ids) {
+    const id = String(raw || '').trim()
+    if (id) set.add(id)
+  }
+  return set.size
 }
 
 // Per-question advanced details toggle (notes, answered_by)
