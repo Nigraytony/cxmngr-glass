@@ -18,6 +18,7 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const sanitizeHtml = require('sanitize-html');
+const XLSX = require('xlsx')
 const { buildSafeRegex } = require('../utils/search')
 const { normalizeLogEvent } = require('../utils/logEvent')
 
@@ -1123,12 +1124,14 @@ router.get('/', auth, requireFeature('equipment'), requirePermission('equipment.
   }
 });
 
-// Export equipment as CSV (all records matching filters for a project)
+// Export equipment as XLSX (all records matching filters for a project)
 router.get('/export', auth, requireFeature('equipment'), requirePermission('equipment.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
     const projectId = req.query.projectId
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
+    const format = String(req.query.format || 'xlsx').toLowerCase()
+    if (format && format !== 'xlsx') return res.status(400).send({ error: 'Only XLSX export is supported' })
     const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
     const filter = { projectId: projectObjectId }
     const hasErr = applyHasFilters(filter, req.query)
@@ -1137,56 +1140,195 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
     if (filtersErr) return res.status(400).send({ error: filtersErr })
     const items = await Equipment.find(filter).lean()
     const records = items.map(toPlainEquipment)
-    const headers = ['id','tag','type','title','system','status','spaceId','description','attributes','components','checklists','functionalTests','template','images','attachments','projectId']
-    const sanitizeMedia = (arr) => {
-      if (!Array.isArray(arr)) return []
-      return arr.map(m => {
-        const out = {}
-        if (m && m.filename) out.filename = m.filename
-        if (m && m.url) out.url = m.url
-        if (m && m.caption) out.caption = m.caption
-        return out
-      })
+
+    // XLSX is the only supported export format.
+    {
+      const wb = XLSX.utils.book_new()
+
+      const toIsoDateOnly = (v) => {
+        if (!v) return ''
+        try {
+          const d = v instanceof Date ? v : new Date(v)
+          if (!d || isNaN(d.getTime())) return ''
+          return d.toISOString().slice(0, 10)
+        } catch (_) {
+          return ''
+        }
+      }
+
+      const asStr = (v) => (v === undefined || v === null) ? '' : String(v)
+
+      const normalizeKv = (arrOrObj) => {
+        if (!arrOrObj) return []
+        if (Array.isArray(arrOrObj)) {
+          return arrOrObj
+            .map((x) => ({ key: asStr(x && (x.key ?? x.title)).trim(), value: asStr(x && x.value) }))
+            .filter((x) => x.key)
+        }
+        if (typeof arrOrObj === 'object') {
+          return Object.keys(arrOrObj).map((k) => ({ key: asStr(k).trim(), value: asStr(arrOrObj[k]) }))
+            .filter((x) => x.key)
+        }
+        return []
+      }
+
+      const equipmentRows = records.map((r) => ({
+        id: asStr(r._id || r.id || ''),
+        tag: asStr(r.tag || ''),
+        type: asStr(r.type || ''),
+        title: asStr(r.title || ''),
+        system: asStr(r.system || ''),
+        status: asStr(r.status || ''),
+        spaceId: asStr(r.spaceId || r.space || ''),
+        responsible: asStr(r.responsible || ''),
+        orderDate: toIsoDateOnly(r.orderDate),
+        installationDate: toIsoDateOnly(r.installationDate),
+        balanceDate: toIsoDateOnly(r.balanceDate),
+        testDate: toIsoDateOnly(r.testDate),
+        tags: Array.isArray(r.tags) ? r.tags.map((t) => asStr(t).trim()).filter(Boolean).join(', ') : '',
+        description: asStr(r.description || ''),
+        template: asStr(r.template || ''),
+        projectId: asStr(r.projectId || ''),
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(equipmentRows), 'Equipment')
+
+      const attrRows = []
+      const compRows = []
+      const checklistQuestionRows = []
+      const fptRows = []
+
+      for (const r of records) {
+        const tag = asStr(r.tag || '').trim()
+        if (!tag) continue
+
+        const attrs = normalizeKv(r.attributes || (r.metadata && r.metadata.attributes))
+        for (const a of attrs) {
+          attrRows.push({ equipmentTag: tag, key: a.key, value: asStr(a.value) })
+        }
+
+        const comps = Array.isArray(r.components) ? r.components : []
+        for (let ci = 0; ci < comps.length; ci++) {
+          const c = comps[ci] || {}
+          const cattrs = normalizeKv(c.attributes)
+          const attrsText = cattrs.length
+            ? cattrs
+              .map((ca) => {
+                const k = asStr(ca.key || '').trim()
+                const v = asStr(ca.value)
+                return k ? `${k}: ${v}` : ''
+              })
+              .filter(Boolean)
+              .join('\n')
+            : ''
+          compRows.push({
+            equipmentTag: tag,
+            componentIndex: ci,
+            componentTag: asStr(c.tag || ''),
+            type: asStr(c.type || ''),
+            title: asStr(c.title || ''),
+            status: asStr(c.status || ''),
+            notes: asStr(c.notes || ''),
+            Attributes: attrsText,
+          })
+        }
+
+        const sections = Array.isArray(r.checklists) ? r.checklists : []
+        for (let si = 0; si < sections.length; si++) {
+          const sec = sections[si] || {}
+          const questions = Array.isArray(sec.questions) ? sec.questions : []
+          for (let qi = 0; qi < questions.length; qi++) {
+            const q = questions[qi] || {}
+            const oprIds = Array.isArray(q.oprItemIds) ? q.oprItemIds.map((x) => asStr(x).trim()).filter(Boolean) : []
+            checklistQuestionRows.push({
+              equipmentTag: tag,
+              checklistIndex: si,
+              checklistNumber: sec.number ?? '',
+              checklistTitle: asStr(sec.title || ''),
+              checklistType: asStr(sec.type || ''),
+              checklistSystem: asStr(sec.system || ''),
+              checklistResponsible: asStr(sec.responsible || ''),
+              questionIndex: qi,
+              questionNumber: q.number ?? '',
+              questionText: asStr(q.question_text || ''),
+              answer: asStr(q.answer || ''),
+              notes: asStr(q.notes || ''),
+              cx_answer: asStr(q.cx_answer || ''),
+              oprItemIds: oprIds.join(', '),
+            })
+          }
+        }
+
+        const tests = Array.isArray(r.functionalTests) ? r.functionalTests : []
+        for (let ti = 0; ti < tests.length; ti++) {
+          const t = tests[ti] || {}
+          const oprIds = Array.isArray(t.oprItemIds) ? t.oprItemIds.map((x) => asStr(x).trim()).filter(Boolean) : []
+          const base = {
+            equipmentTag: tag,
+            functionalTestIndex: ti,
+            functionalTestNumber: t.number ?? '',
+            name: asStr(t.name || ''),
+            pass: t.pass === true ? 'pass' : (t.pass === false ? 'fail' : (asStr(t.pass || '') || '')),
+            notes: asStr(t.notes || ''),
+            description: asStr(t.description || ''),
+            oprItemIds: oprIds.join(', '),
+          }
+
+          const table = (t && typeof t === 'object') ? t.table : null
+          const cols = Array.isArray(table && table.columns) ? table.columns : []
+          const rows = Array.isArray(table && table.rows) ? table.rows : []
+          const resultsLines = []
+          for (let ri = 0; ri < rows.length; ri++) {
+            const row = rows[ri] || {}
+            for (let ci = 0; ci < cols.length; ci++) {
+              const col = cols[ci] || {}
+              const columnKey = asStr(col && col.key).trim()
+              if (!columnKey) continue
+              const columnName = asStr(col && col.name)
+              const rawVal = row[columnKey]
+              const valueText = (rawVal === undefined || rawVal === null) ? '' : asStr(rawVal)
+              const safeValue = valueText.replace(/\r?\n/g, '\\n').replace(/\|/g, '¦')
+              const safeColumnName = asStr(columnName).replace(/\r?\n/g, ' ').replace(/\|/g, '¦')
+              resultsLines.push(`rowIndex: ${ri} | columnIndex: ${ci} | columnKey: ${columnKey} | columnName: ${safeColumnName} | value: ${safeValue}`)
+            }
+          }
+
+          const steps = Array.isArray(t.rows) ? t.rows : []
+          if (steps.length) {
+            for (let si = 0; si < steps.length; si++) {
+              const s = steps[si] || {}
+              fptRows.push({
+                ...base,
+                stepIndex: si,
+                step: asStr(s.step || ''),
+                expected: asStr(s.expected || ''),
+                actual: asStr(s.actual || ''),
+                results: si === 0 ? resultsLines.join('\n') : '',
+              })
+            }
+          } else {
+            // Emit at least one row per functional test so metadata is still editable.
+            fptRows.push({
+              ...base,
+              stepIndex: '',
+              step: '',
+              expected: '',
+              actual: '',
+              results: resultsLines.join('\n'),
+            })
+          }
+        }
+      }
+
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attrRows), 'Attributes')
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compRows), 'Components')
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(checklistQuestionRows), 'Checklists')
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fptRows), 'FunctionalTests')
+
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      res.setHeader('Content-Disposition', 'attachment; filename="equipment-export.xlsx"')
+      return res.status(200).send(buf)
     }
-    const esc = (val) => {
-      const s = String(val ?? '')
-      const needsQuotes = /[",\n\r]/.test(s) || s.includes(',')
-      const doubled = s.replace(/"/g, '""')
-      return needsQuotes ? `"${doubled}"` : doubled
-    }
-    const rows = []
-    rows.push(headers.join(','))
-    for (const r of records) {
-      const attrsJson = JSON.stringify(r.attributes || r.metadata?.attributes || {})
-      const compsJson = JSON.stringify(r.components || [])
-      const checksJson = JSON.stringify(r.checklists || [])
-      const fptJson = JSON.stringify(r.functionalTests || [])
-      const imgsJson = JSON.stringify(sanitizeMedia(r.images || r.photos || []))
-      const attsJson = JSON.stringify(sanitizeMedia(r.attachments || []))
-      const row = [
-        String(r._id || r.id || ''),
-        String(r.tag || ''),
-        String(r.type || ''),
-        String(r.title || ''),
-        String(r.system || ''),
-        String(r.status || ''),
-        String(r.spaceId || r.space || ''),
-        String(r.description || ''),
-        attrsJson || '',
-        compsJson || '',
-        checksJson || '',
-        fptJson || '',
-        String(r.template || ''),
-        imgsJson || '',
-        attsJson || '',
-        String(r.projectId || ''),
-      ]
-      rows.push(row.map(esc).join(','))
-    }
-    const csv = '\ufeff' + rows.join('\r\n')
-    res.setHeader('Content-Type', 'text/csv;charset=utf-8')
-    res.setHeader('Content-Disposition', 'attachment; filename="equipment-export.csv"')
-    return res.status(200).send(csv)
   } catch (error) {
     console.error('[equipment/export] error', error)
     return res.status(500).send({ error: 'Failed to export equipment' })

@@ -577,7 +577,7 @@
 	              <button
 	                :disabled="!projectStore.currentProjectId"
 	                aria-label="Upload equipment"
-	                :title="projectStore.currentProjectId ? 'Upload equipment from CSV/XLSX' : 'Select a project'"
+                  :title="projectStore.currentProjectId ? 'Upload equipment from XLSX' : 'Select a project'"
 	                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
 	                @click="showUploadDialog = true"
 	              >
@@ -610,16 +610,16 @@
 	                role="tooltip"
 	                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
 	              >
-	                Upload equipment from CSV/XLSX
+                  Upload equipment from XLSX
 	              </div>
 	            </div>
 	            <div class="relative inline-block group shrink-0">
 	              <button
 	                :disabled="!projectStore.currentProjectId"
-	                aria-label="Download equipment"
-	                :title="projectStore.currentProjectId ? 'Download visible equipment as CSV' : 'Select a project'"
+                  aria-label="Download equipment"
+                  :title="projectStore.currentProjectId ? 'Download filtered equipment as XLSX (editable)' : 'Select a project'"
 	                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
-	                @click="downloadEquipmentList"
+                  @click="downloadEquipmentList()"
 	              >
 	                <svg
 	                  xmlns="http://www.w3.org/2000/svg"
@@ -650,7 +650,7 @@
 	                role="tooltip"
 	                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
 	              >
-	                Download filtered equipment as CSV
+	                Download editable XLSX
 	              </div>
 	            </div>
 	            <button
@@ -1491,17 +1491,13 @@
       </template>
       <div class="space-y-4">
         <div class="text-sm text-white/70">
-          Upload a CSV/XLSX with columns: <span class="font-medium">tag</span>, <span class="font-medium">type</span>,
-          <span class="font-medium">title</span>, <span class="font-medium">system</span> (optional, default Mechanical),
-          <span class="font-medium">status</span> (optional, default Not Started), <span class="font-medium">space</span> (optional),
-          <span class="font-medium">description</span> (optional), <span class="font-medium">components</span> (optional JSON),
-          <span class="font-medium">checklists</span> (optional JSON), <span class="font-medium">functional tests</span> (optional JSON).
+          Upload an XLSX exported from this page (recommended) or use the template.
         </div>
         <div>
           <div class="flex items-center justify-between gap-3">
             <input
               type="file"
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
               class="block w-full text-sm"
               @change="onUploadFileChange"
             >
@@ -1510,7 +1506,7 @@
               class="shrink-0 px-2 py-1.5 text-xs rounded-md bg-white/10 hover:bg-white/15 border border-white/15 text-white"
               @click="downloadUploadTemplate"
             >
-              Download CSV template
+              Download XLSX template
             </button>
           </div>
           <div
@@ -2115,63 +2111,40 @@ function loadListState() {
 }
 function persistListState() {
   try {
-    const payload = {
-      search: search.value,
-      typeFilter: typeFilter.value,
-      statusFilter: statusFilter.value,
-	      systemFilter: systemFilter.value,
-	      onlyWithChecklists: onlyWithChecklists.value,
-	      myChecklistsOnly: myChecklistsOnly.value,
-	      onlyWithFpt: onlyWithFpt.value,
-	      onlyWithIssues: onlyWithIssues.value,
-      checklistSystemFilter: checklistSystemFilter.value,
-      locationFilter: locationFilter.value,
-      responsibleFilter: responsibleFilter.value,
-      tagsFilter: tagsFilter.value,
-      installationDateFrom: installationDateFrom.value,
-      installationDateTo: installationDateTo.value,
-      testDateFrom: testDateFrom.value,
-      testDateTo: testDateTo.value,
-      sortKey: sortKey.value,
-      sortDir: sortDir.value
+    const data: any = {
+      search: search.value || '',
+      typeFilter: typeFilter.value || '',
+      statusFilter: statusFilter.value || '',
+      systemFilter: systemFilter.value || '',
+      onlyWithChecklists: !!onlyWithChecklists.value,
+      myChecklistsOnly: !!myChecklistsOnly.value,
+      onlyWithFpt: !!onlyWithFpt.value,
+      onlyWithIssues: !!onlyWithIssues.value,
+      checklistSystemFilter: checklistSystemFilter.value || '',
+      locationFilter: locationFilter.value || '',
+      responsibleFilter: responsibleFilter.value || '',
+      tagsFilter: tagsFilter.value || '',
+      installationDateFrom: installationDateFrom.value || '',
+      installationDateTo: installationDateTo.value || '',
+      testDateFrom: testDateFrom.value || '',
+      testDateTo: testDateTo.value || '',
+      sortKey: sortKey.value || '',
+      sortDir: sortDir.value,
     }
-    sessionStorage.setItem(stateStorageKey.value, JSON.stringify(payload))
-  } catch (e) { /* ignore storage errors */ }
+    sessionStorage.setItem(stateStorageKey.value, JSON.stringify(data))
+  } catch (e) { /* ignore parse/storage errors */ }
 }
-	watch(stateStorageKey, () => loadListState(), { immediate: true })
-	watch([search, typeFilter, statusFilter, systemFilter, onlyWithChecklists, myChecklistsOnly, onlyWithFpt, onlyWithIssues, checklistSystemFilter, locationFilter, responsibleFilter, tagsFilter, installationDateFrom, installationDateTo, testDateFrom, testDateTo, sortKey, sortDir], () => persistListState())
-	// Keep My Checklists consistent with the user's role and “Has Checklists”
-	watch([myChecklistsOnly, currentProjectRole], () => {
-	  if (myChecklistsOnly.value && !String(currentProjectRole.value || '').trim()) {
-	    myChecklistsOnly.value = false
-	    return
-	  }
-	  if (myChecklistsOnly.value && !onlyWithChecklists.value) {
-	    onlyWithChecklists.value = true
-	  }
-	})
-
-const advancedFiltersActiveCount = computed(() => {
-  let n = 0
-  if (String(locationFilter.value || '').trim()) n += 1
-  if (String(responsibleFilter.value || '').trim()) n += 1
-  if (String(tagsFilter.value || '').trim()) n += 1
-  if (String(installationDateFrom.value || '').trim()) n += 1
-  if (String(installationDateTo.value || '').trim()) n += 1
-  if (String(testDateFrom.value || '').trim()) n += 1
-  if (String(testDateTo.value || '').trim()) n += 1
-  if (String(systemFilter.value || '').trim()) n += 1
-  return n
-})
 
 function openFilters() {
-  try {
-    const desktop = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(min-width: 768px)').matches
-      : false
-    if (desktop) showAdvancedFilters.value = !showAdvancedFilters.value
-    else showFiltersModal.value = true
-  } catch (e) {
+  const isDesktop = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(min-width: 768px)').matches
+    : true
+
+  if (isDesktop) {
+    showFiltersModal.value = false
+    showAdvancedFilters.value = !showAdvancedFilters.value
+  } else {
+    showAdvancedFilters.value = false
     showFiltersModal.value = true
   }
 }
@@ -2187,7 +2160,6 @@ function clearAdvancedFilters() {
   systemFilter.value = ''
   try { closeSystemMenu() } catch (e) { /* ignore */ }
 }
-
 const parentOptions = computed(() => spacesStore.items)
 
 // options sourced from lists.js
@@ -2987,7 +2959,25 @@ const showUploadDialog = ref(false)
 const uploadParsing = ref(false)
 const uploadFileName = ref('')
 const uploadError = ref('')
-type UploadRow = { tag: string; type: string; title: string; system?: string; status?: string; space?: string; description?: string; components?: string; checklists?: string; functionaltests?: string }
+type UploadRow = {
+  tag: string
+  type: string
+  title: string
+  system?: string
+  status?: string
+  space?: string
+  description?: string
+  responsible?: string
+  tags?: string
+  orderdate?: string
+  installationdate?: string
+  balancedate?: string
+  testdate?: string
+  attributes?: string
+  components?: string
+  checklists?: string
+  functionaltests?: string
+}
 const uploadRows = ref<UploadRow[]>([])
 
 function normalizeHeader(h: any): string { return String(h || '').trim().toLowerCase() }
@@ -3005,25 +2995,488 @@ function onUploadFileChange(e: Event) {
     try {
       const data = reader.result as ArrayBuffer
       const wb = XLSX.read(data, { type: 'array' })
-      const sheet = wb.Sheets[wb.SheetNames[0]]
-      const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as any[]
-      const rows: UploadRow[] = []
-      for (const obj of json) {
-        const m: Record<string, any> = {}
-        for (const k of Object.keys(obj)) m[normalizeHeader(k)] = obj[k]
-        rows.push({
-          tag: String(m['tag'] || '').trim(),
-          type: String(m['type'] || '').trim(),
-          title: String(m['title'] || '').trim(),
-          system: String(m['system'] || '').trim(),
-          status: String(m['status'] || '').trim(),
-          space: String(m['space'] || '').trim(),
-          description: String(m['description'] || '').trim(),
-          components: String(m['components'] || '').trim(),
-          checklists: String(m['checklists'] || '').trim(),
-          functionaltests: String(m['functional tests'] || m['functionaltests'] || '').trim(),
-        })
+
+      const sheetNames = Array.isArray(wb.SheetNames) ? wb.SheetNames : []
+      const sheetByLower = new Map<string, string>()
+      for (const name of sheetNames) sheetByLower.set(String(name || '').trim().toLowerCase(), name)
+
+      const equipmentSheetName = sheetByLower.get('equipment')
+      const hasMultiSheet = Boolean(equipmentSheetName)
+
+      const readSheetRows = (sheetName?: string) => {
+        if (!sheetName) return [] as any[]
+        const s = wb.Sheets[sheetName]
+        if (!s) return [] as any[]
+        return XLSX.utils.sheet_to_json(s, { defval: '' }) as any[]
       }
+
+      const rows: UploadRow[] = []
+
+      if (hasMultiSheet) {
+        const equipJson = readSheetRows(equipmentSheetName)
+
+        const attrsJson = readSheetRows(sheetByLower.get('attributes'))
+        const compsJson = readSheetRows(sheetByLower.get('components'))
+        const compAttrsJson = readSheetRows(sheetByLower.get('componentattributes'))
+        const checklistJson = readSheetRows(
+          sheetByLower.get('checklists') ||
+          sheetByLower.get('checklist') ||
+          sheetByLower.get('checklistquestions') ||
+          sheetByLower.get('checklistquestion'),
+        )
+        const fptJson = readSheetRows(
+          sheetByLower.get('functionaltests') ||
+          sheetByLower.get('functionaltest'),
+        )
+        const fptTableJson = readSheetRows(
+          sheetByLower.get('functionaltesttable') ||
+          sheetByLower.get('functionaltesttables'),
+        )
+        const fptStepsJson = readSheetRows(
+          sheetByLower.get('functionalteststeps') ||
+          sheetByLower.get('fptsteps'),
+        )
+        const fptColsJson = readSheetRows(
+          sheetByLower.get('functionaltesttablecolumns') ||
+          sheetByLower.get('fpttablecolumns'),
+        )
+        const fptCellsJson = readSheetRows(
+          sheetByLower.get('functionaltesttablecells') ||
+          sheetByLower.get('fpttablecells'),
+        )
+
+        const tagKey = (t: any) => String(t || '').trim().toLowerCase()
+
+        // Attributes -> { tagLower: [{key,value}, ...] }
+        const attributesByTag = new Map<string, Array<{ key: string; value: any }>>()
+        for (const obj of attrsJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const key = String(m['key'] || '').trim()
+          const value = m['value']
+          if (!t || !key) continue
+          const list = attributesByTag.get(t) || []
+          list.push({ key, value: value ?? '' })
+          attributesByTag.set(t, list)
+        }
+
+        // Components + ComponentAttributes
+        const componentMetaByTag = new Map<string, Array<any>>()
+        const componentAttrsByTag = new Map<string, Map<number, Array<{ key: string; value: any }>>>()
+
+        const parseKvLines = (raw: any) => {
+          const s = String(raw ?? '').trim()
+          if (!s) return [] as Array<{ key: string; value: any }>
+          const lines = s.split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)
+          const out: Array<{ key: string; value: any }> = []
+          for (const line of lines) {
+            const i = line.indexOf(':')
+            if (i <= 0) continue
+            const key = line.slice(0, i).trim()
+            const value = line.slice(i + 1).trim()
+            if (!key) continue
+            out.push({ key, value })
+          }
+          return out
+        }
+
+        for (const obj of compsJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          if (!t) continue
+          const idx = Number(m['componentindex'] ?? m['index'] ?? '')
+          const attrsFromComponentCell = parseKvLines(m['attributes'])
+          const comp = {
+            __index: Number.isFinite(idx) ? idx : null,
+            tag: String(m['componenttag'] || m['tag'] || '').trim(),
+            type: String(m['type'] || '').trim(),
+            title: String(m['title'] || '').trim(),
+            status: String(m['status'] || '').trim(),
+            notes: String(m['notes'] || '').trim(),
+            __attrs: attrsFromComponentCell,
+            attributes: {},
+          }
+          const list = componentMetaByTag.get(t) || []
+          list.push(comp)
+          componentMetaByTag.set(t, list)
+        }
+
+        for (const obj of compAttrsJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const idx = Number(m['componentindex'] ?? m['index'] ?? '')
+          const key = String(m['key'] || '').trim()
+          const value = m['value']
+          if (!t || !Number.isFinite(idx) || !key) continue
+          if (!componentAttrsByTag.has(t)) componentAttrsByTag.set(t, new Map())
+          const per = componentAttrsByTag.get(t)!
+          const list = per.get(idx) || []
+          list.push({ key, value: value ?? '' })
+          per.set(idx, list)
+        }
+
+        const buildComponentsForTag = (tLower: string) => {
+          const list = (componentMetaByTag.get(tLower) || []).slice()
+          // sort by provided index if present, otherwise preserve order
+          list.sort((a: any, b: any) => {
+            const ai = a.__index
+            const bi = b.__index
+            if (ai === null && bi === null) return 0
+            if (ai === null) return 1
+            if (bi === null) return -1
+            return ai - bi
+          })
+          const attrsMap = componentAttrsByTag.get(tLower) || new Map()
+          return list.map((c: any, ordinal: number) => {
+            const idx = (c.__index !== null && Number.isFinite(c.__index)) ? c.__index : ordinal
+            const attrsList = ([] as Array<{ key: string; value: any }>).concat(c.__attrs || [], attrsMap.get(idx) || [])
+            const attrsObj: Record<string, any> = {}
+            for (const it of attrsList) {
+              const k = String(it.key || '').trim()
+              if (!k) continue
+              attrsObj[k] = it.value
+            }
+            const out: any = { ...c }
+            delete out.__index
+            delete out.__attrs
+            out.attributes = attrsObj
+            return out
+          })
+        }
+
+        // Checklists -> sections/questions
+        const checklistRowsByTag = new Map<string, any[]>()
+        for (const obj of checklistJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          if (!t) continue
+          const list = checklistRowsByTag.get(t) || []
+          list.push(m)
+          checklistRowsByTag.set(t, list)
+        }
+        const buildChecklistsForTag = (tLower: string) => {
+          const list = checklistRowsByTag.get(tLower) || []
+          const sectionMap = new Map<number, any>()
+          const toNum = (v: any) => {
+            const n = Number(v)
+            return Number.isFinite(n) ? n : null
+          }
+          const parseIds = (raw: any) => {
+            const s = String(raw || '').trim()
+            if (!s) return []
+            return s.split(',').map(x => String(x || '').trim()).filter(Boolean)
+          }
+          for (const m of list) {
+            const checklistIndex = toNum(m['checklistindex'] ?? m['sectionindex']) ?? 0
+            if (!sectionMap.has(checklistIndex)) {
+              sectionMap.set(checklistIndex, {
+                number: (m['checklistnumber'] ?? m['sectionnumber']) === '' ? null : (toNum(m['checklistnumber'] ?? m['sectionnumber']) ?? (m['checklistnumber'] ?? m['sectionnumber'])),
+                title: String(((m['checklisttitle'] ?? m['sectiontitle']) || '')).trim(),
+                type: String(((m['checklisttype'] ?? m['sectiontype']) || '')).trim(),
+                system: String(((m['checklistsystem'] ?? m['sectionsystem']) || '')).trim(),
+                responsible: String(((m['checklistresponsible'] ?? m['sectionresponsible']) || '')).trim(),
+                notes: '',
+                questions: [],
+              })
+            }
+            const sec = sectionMap.get(checklistIndex)
+            const qIndex = toNum(m['questionindex']) ?? (sec.questions.length)
+            sec.questions.push({
+              __index: qIndex,
+              number: m['questionnumber'] === '' ? null : (toNum(m['questionnumber']) ?? m['questionnumber']),
+              question_text: String(m['questiontext'] || '').trim(),
+              answer: String(m['answer'] || '').trim() || null,
+              notes: String(m['notes'] || '').trim() || null,
+              cx_answer: String(m['cx_answer'] || '').trim() || null,
+              oprItemIds: parseIds(m['opritemids']),
+            })
+          }
+          const sections = Array.from(sectionMap.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([, sec]) => {
+              sec.questions = (sec.questions || []).slice().sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0)).map((q: any) => {
+                const out = { ...q }
+                delete out.__index
+                return out
+              })
+              return sec
+            })
+          return sections
+        }
+
+        // FunctionalTests + steps + table
+        const fptByTag = new Map<string, Map<number, any>>()
+        const ensureFpt = (tLower: string, idx: number) => {
+          if (!fptByTag.has(tLower)) fptByTag.set(tLower, new Map())
+          const m = fptByTag.get(tLower)!
+          if (!m.has(idx)) m.set(idx, { __index: idx, rows: [], table: { columns: [], rows: [] } })
+          return m.get(idx)!
+        }
+        const parseIds = (raw: any) => {
+          const s = String(raw || '').trim()
+          if (!s) return []
+          return s.split(',').map(x => String(x || '').trim()).filter(Boolean)
+        }
+        const parseResultLines = (raw: any) => {
+          const s = String(raw ?? '').trim()
+          if (!s) return [] as any[]
+          const lines = s.split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)
+          const out: Array<{ rowIndex: number | null; columnIndex: number | null; columnKey: string; columnName: string; value: string }> = []
+          const toKey = (k: string) => String(k || '').trim().toLowerCase()
+          for (const line of lines) {
+            const segs = line.includes('|')
+              ? line.split('|')
+              : (line.includes(';') ? line.split(';') : line.split(','))
+            const kv: Record<string, string> = {}
+            for (const seg of segs) {
+              const part = String(seg || '').trim()
+              if (!part) continue
+              const i = part.indexOf(':')
+              if (i <= 0) continue
+              const k = toKey(part.slice(0, i))
+              const v = part.slice(i + 1).trim()
+              if (!k) continue
+              kv[k] = v
+            }
+            const rowIndex = toNum(kv['rowindex'])
+            const columnIndex = toNum(kv['columnindex'])
+            const columnKey = String(kv['columnkey'] || '').trim()
+            if (!columnKey) continue
+            const columnName = String(kv['columnname'] || '').trim()
+            const value = String(kv['value'] ?? '').replace(/\\n/g, '\n').trim()
+            out.push({ rowIndex, columnIndex, columnKey, columnName, value })
+          }
+          return out
+        }
+        const toNum = (v: any) => {
+          const n = Number(v)
+          return Number.isFinite(n) ? n : null
+        }
+        for (const obj of fptJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const idx = toNum(m['functionaltestindex'] ?? m['testindex'])
+          if (!t || idx === null) continue
+          const tdoc = ensureFpt(t, idx)
+          const nraw = (m['functionaltestnumber'] ?? m['testnumber'])
+          tdoc.number = nraw === '' ? null : (toNum(nraw) ?? nraw)
+          tdoc.name = String(m['name'] || '').trim()
+          const pass = String(m['pass'] || '').trim().toLowerCase()
+          tdoc.pass = pass === 'pass' ? true : (pass === 'fail' ? false : null)
+          tdoc.notes = String(m['notes'] || '').trim()
+          tdoc.description = String(m['description'] || '').trim()
+          tdoc.oprItemIds = parseIds(m['opritemids'])
+
+          // Consolidated format: FunctionalTests sheet includes steps inline.
+          const hasInlineSteps = (
+            Object.prototype.hasOwnProperty.call(m, 'stepindex') ||
+            Object.prototype.hasOwnProperty.call(m, 'step') ||
+            Object.prototype.hasOwnProperty.call(m, 'expected') ||
+            Object.prototype.hasOwnProperty.call(m, 'actual')
+          )
+          if (hasInlineSteps) {
+            const stepIndex = toNum(m['stepindex'])
+            const step = String(m['step'] || '').trim()
+            const expected = String(m['expected'] || '').trim()
+            const actual = String(m['actual'] || '').trim()
+            // Only add a step row if it has an index (exported) or any content.
+            if (stepIndex !== null || step || expected || actual) {
+              tdoc.rows.push({
+                __index: stepIndex ?? tdoc.rows.length,
+                step,
+                expected,
+                actual,
+              })
+            }
+          }
+
+          // Consolidated format: FunctionalTests.results contains table cells.
+          if (Object.prototype.hasOwnProperty.call(m, 'results')) {
+            const cells = parseResultLines(m['results'])
+            if (cells.length) {
+              if (!tdoc.table || typeof tdoc.table !== 'object') tdoc.table = { columns: [], rows: [] }
+              if (!Array.isArray(tdoc.table.columns)) tdoc.table.columns = []
+              if (!Array.isArray(tdoc.table.rows)) tdoc.table.rows = []
+
+              for (const cell of cells) {
+                const rowIndex = cell.rowIndex
+                const colKey = String(cell.columnKey || '').trim()
+                if (rowIndex === null || !colKey) continue
+
+                const existing = (tdoc.table.columns || []).find((c: any) => String(c?.key || '') === colKey)
+                if (!existing) {
+                  tdoc.table.columns.push({ __index: cell.columnIndex ?? tdoc.table.columns.length, key: colKey, name: cell.columnName || '' })
+                } else {
+                  if (!existing.name && cell.columnName) existing.name = cell.columnName
+                  if (existing.__index === undefined && cell.columnIndex !== null) existing.__index = cell.columnIndex
+                }
+
+                while ((tdoc.table.rows || []).length <= rowIndex) tdoc.table.rows.push({})
+                tdoc.table.rows[rowIndex][colKey] = cell.value
+              }
+            }
+          }
+        }
+
+        // Consolidated format: FunctionalTestTable sheet contains table columns + cell values.
+        for (const obj of fptTableJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const idx = toNum(m['functionaltestindex'] ?? m['testindex'])
+          const rowIndex = toNum(m['rowindex'])
+          const columnIndex = toNum(m['columnindex'] ?? m['colindex'])
+          const colKey = String(((m['columnkey'] ?? m['colkey']) || '')).trim()
+          const colName = String(m['columnname'] ?? m['name'] ?? '').trim()
+          const value = String(m['value'] ?? '').trim()
+          if (!t || idx === null || rowIndex === null || !colKey) continue
+          const tdoc = ensureFpt(t, idx)
+          if (!tdoc.table || typeof tdoc.table !== 'object') tdoc.table = { columns: [], rows: [] }
+          if (!Array.isArray(tdoc.table.columns)) tdoc.table.columns = []
+          if (!Array.isArray(tdoc.table.rows)) tdoc.table.rows = []
+
+          // Ensure column exists.
+          const existing = (tdoc.table.columns || []).find((c: any) => String(c?.key || '') === colKey)
+          if (!existing) {
+            tdoc.table.columns.push({ __index: columnIndex ?? tdoc.table.columns.length, key: colKey, name: colName })
+          } else {
+            if (!existing.name && colName) existing.name = colName
+            if (existing.__index === undefined && columnIndex !== null) existing.__index = columnIndex
+          }
+
+          // Ensure row exists.
+          while ((tdoc.table.rows || []).length <= rowIndex) tdoc.table.rows.push({})
+          tdoc.table.rows[rowIndex][colKey] = value
+        }
+
+        for (const obj of fptStepsJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const idx = toNum(m['functionaltestindex'] ?? m['testindex'])
+          const stepIndex = toNum(m['stepindex'])
+          if (!t || idx === null || stepIndex === null) continue
+          const tdoc = ensureFpt(t, idx)
+          tdoc.rows.push({ __index: stepIndex, step: String(m['step'] || '').trim(), expected: String(m['expected'] || '').trim(), actual: String(m['actual'] || '').trim() })
+        }
+        for (const obj of fptColsJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const idx = toNum(m['functionaltestindex'] ?? m['testindex'])
+          const colIndex = toNum(m['columnindex'] ?? m['colindex'])
+          if (!t || idx === null || colIndex === null) continue
+          const tdoc = ensureFpt(t, idx)
+          tdoc.table.columns.push({ __index: colIndex, key: String(m['key'] || '').trim(), name: String(m['name'] || '').trim() })
+        }
+        for (const obj of fptCellsJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const t = tagKey(m['equipmenttag'] || m['tag'])
+          const idx = toNum(m['functionaltestindex'] ?? m['testindex'])
+          const rowIndex = toNum(m['rowindex'])
+          const colKey = String(((m['columnkey'] ?? m['colkey']) || '')).trim()
+          if (!t || idx === null || rowIndex === null || !colKey) continue
+          const tdoc = ensureFpt(t, idx)
+          // ensure row exists
+          while ((tdoc.table.rows || []).length <= rowIndex) tdoc.table.rows.push({})
+          tdoc.table.rows[rowIndex][colKey] = String(m['value'] ?? '').trim()
+        }
+
+        const buildFptsForTag = (tLower: string) => {
+          const m = fptByTag.get(tLower)
+          if (!m) return []
+          const tests = Array.from(m.values()).sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0))
+          return tests.map((t: any) => {
+            // finalize order
+            if (Array.isArray(t.rows)) {
+              t.rows = t.rows.slice().sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0)).map((x: any) => {
+                const out = { ...x }
+                delete out.__index
+                return out
+              })
+            }
+            if (t.table && Array.isArray(t.table.columns)) {
+              t.table.columns = t.table.columns.slice().sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0)).map((x: any) => {
+                const out = { ...x }
+                delete out.__index
+                return out
+              })
+            }
+            delete t.__index
+            // If table is empty, drop it (keeps payload smaller)
+            const hasCols = Array.isArray(t.table?.columns) && t.table.columns.length
+            const hasRows = Array.isArray(t.table?.rows) && t.table.rows.length
+            if (!hasCols && !hasRows) delete t.table
+            // If steps empty, drop
+            if (!Array.isArray(t.rows) || t.rows.length === 0) delete t.rows
+            return t
+          })
+        }
+
+        // Build upload rows from Equipment sheet and attach reconstructed JSON fields.
+        for (const obj of equipJson) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+          const tag = String(m['tag'] || '').trim()
+          const tLower = tagKey(tag)
+          const attributes = attributesByTag.has(tLower) ? JSON.stringify(attributesByTag.get(tLower)) : ''
+          const components = componentMetaByTag.has(tLower) ? JSON.stringify(buildComponentsForTag(tLower)) : ''
+          const checklists = checklistRowsByTag.has(tLower) ? JSON.stringify(buildChecklistsForTag(tLower)) : ''
+          const functionaltests = fptByTag.has(tLower) ? JSON.stringify(buildFptsForTag(tLower)) : ''
+          rows.push({
+            tag,
+            type: String(m['type'] || '').trim(),
+            title: String(m['title'] || '').trim(),
+            system: String(m['system'] || '').trim(),
+            status: String(m['status'] || '').trim(),
+            space: String(m['space'] || m['spacename'] || '').trim(),
+            description: String(m['description'] || '').trim(),
+            responsible: String(m['responsible'] || '').trim(),
+            tags: String(m['tags'] || '').trim(),
+            orderdate: String(m['orderdate'] || '').trim(),
+            installationdate: String(m['installationdate'] || '').trim(),
+            balancedate: String(m['balancedate'] || '').trim(),
+            testdate: String(m['testdate'] || '').trim(),
+            attributes,
+            components,
+            checklists,
+            functionaltests,
+          })
+        }
+      } else {
+        const sheet = wb.Sheets[wb.SheetNames[0]]
+        const json: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as any[]
+        for (const obj of json) {
+          const m: Record<string, any> = {}
+          for (const k of Object.keys(obj)) m[normalizeHeader(k)] = obj[k]
+          rows.push({
+            tag: String(m['tag'] || '').trim(),
+            type: String(m['type'] || '').trim(),
+            title: String(m['title'] || '').trim(),
+            system: String(m['system'] || '').trim(),
+            status: String(m['status'] || '').trim(),
+            space: String(m['space'] || '').trim(),
+            description: String(m['description'] || '').trim(),
+            responsible: String(m['responsible'] || '').trim(),
+            tags: String(m['tags'] || '').trim(),
+            orderdate: String(m['order date'] || m['orderdate'] || '').trim(),
+            installationdate: String(m['installation date'] || m['installationdate'] || '').trim(),
+            balancedate: String(m['balance date'] || m['balancedate'] || '').trim(),
+            testdate: String(m['test date'] || m['testdate'] || '').trim(),
+            attributes: String(m['attributes'] || '').trim(),
+            components: String(m['components'] || '').trim(),
+            checklists: String(m['checklists'] || '').trim(),
+            functionaltests: String(m['functional tests'] || m['functionaltests'] || '').trim(),
+          })
+        }
+      }
+
       uploadRows.value = rows
     } catch (err: any) {
       uploadError.value = err?.message || 'Failed to parse file'
@@ -3254,6 +3707,32 @@ function parseJsonMaybe<T = any>(txt?: string): T | undefined {
   if (!s) return undefined
   try { return JSON.parse(s) as T } catch (e) { return undefined }
 }
+
+function normalizeEquipmentAttributes(attrs: any): Array<{ key: string; value: string }> {
+  if (!attrs) return []
+  if (Array.isArray(attrs)) {
+    return attrs
+      .map((a: any) => ({ key: String(a?.key || '').trim(), value: String(a?.value ?? '').trim() }))
+      .filter((a: any) => a.key)
+  }
+  if (typeof attrs === 'object') {
+    return Object.keys(attrs)
+      .map((k) => ({ key: String(k || '').trim(), value: String((attrs as any)[k] ?? '').trim() }))
+      .filter((a) => a.key)
+  }
+  return []
+}
+
+function parseTagsCsv(raw?: string): string[] {
+  const s = String(raw || '').trim()
+  if (!s) return []
+  return s.split(',').map(x => String(x || '').trim()).filter(Boolean)
+}
+
+function parseDateOnlyMaybe(raw?: string): string | undefined {
+  const d = isoDateOnly(raw)
+  return d || undefined
+}
 function normalizeComponentAttributes(attrs: any): any {
   if (!attrs) return {}
   if (Array.isArray(attrs)) {
@@ -3297,12 +3776,28 @@ async function submitUploadCreate() {
         if (hasVal(r.system)) simpleFields.system = r.system
         if (hasVal(r.status)) simpleFields.status = resolveStatus(r.status)
         if (hasVal(r.description)) simpleFields.description = r.description
+        if (hasVal((r as any).responsible)) simpleFields.responsible = String((r as any).responsible || '').trim()
+        if (hasVal((r as any).tags)) simpleFields.tags = parseTagsCsv(String((r as any).tags || ''))
+        const od = parseDateOnlyMaybe((r as any).orderdate)
+        const idt = parseDateOnlyMaybe((r as any).installationdate)
+        const bd = parseDateOnlyMaybe((r as any).balancedate)
+        const td = parseDateOnlyMaybe((r as any).testdate)
+        if (od) simpleFields.orderDate = od
+        if (idt) simpleFields.installationDate = idt
+        if (bd) simpleFields.balanceDate = bd
+        if (td) simpleFields.testDate = td
         if (hasVal(r.space)) {
           const sid = resolveSpaceId(r.space)
           if (sid) simpleFields.spaceId = sid
         }
         if (Object.keys(simpleFields).length) {
           try { await (equipmentStore as any).updateFields(id, simpleFields) } catch (e) { /* best-effort */ }
+        }
+
+        const attrsJson = hasVal((r as any).attributes) ? parseJsonMaybe<any>((r as any).attributes) : undefined
+        if (attrsJson) {
+          const normalized = normalizeEquipmentAttributes(attrsJson)
+          try { await (equipmentStore as any).updateFields(id, { attributes: normalized }) } catch (e) { /* ignore */ }
         }
         // Nested arrays: replace only if JSON provided
         const compJson = hasVal(r.components) ? parseJsonMaybe<any[]>(r.components) : undefined
@@ -3338,8 +3833,21 @@ async function submitUploadCreate() {
           status: resolveStatus(r.status),
           description: r.description || undefined,
         }
+        if (hasVal((r as any).responsible)) payload.responsible = String((r as any).responsible || '').trim()
+        if (hasVal((r as any).tags)) payload.tags = parseTagsCsv(String((r as any).tags || ''))
+        const od = parseDateOnlyMaybe((r as any).orderdate)
+        const idt = parseDateOnlyMaybe((r as any).installationdate)
+        const bd = parseDateOnlyMaybe((r as any).balancedate)
+        const td = parseDateOnlyMaybe((r as any).testdate)
+        if (od) payload.orderDate = od
+        if (idt) payload.installationDate = idt
+        if (bd) payload.balanceDate = bd
+        if (td) payload.testDate = td
         const sid = resolveSpaceId(r.space)
         if (sid) payload.spaceId = sid
+
+        const attrsJson = parseJsonMaybe<any>((r as any).attributes)
+        if (attrsJson) payload.attributes = normalizeEquipmentAttributes(attrsJson)
 
         const compJson = parseJsonMaybe<any[]>(r.components)
         if (Array.isArray(compJson)) {
@@ -3375,6 +3883,7 @@ async function submitUploadCreate() {
           const created = await equipmentStore.create(minimal)
           const createdId = String((created as any).id || (created as any)._id)
           try { if (payload.components) await equipmentStore.updateFields(createdId, { components: payload.components } as any) } catch (e) { /* best-effort */ }
+          try { if (payload.attributes) await equipmentStore.updateFields(createdId, { attributes: payload.attributes } as any) } catch (e) { /* best-effort */ }
           try { if (payload.checklists) await equipmentStore.updateFields(createdId, { checklists: payload.checklists } as any) } catch (e) { /* best-effort */ }
           try { if (payload.functionalTests) await equipmentStore.updateFields(createdId, { functionalTests: payload.functionalTests } as any) } catch (e) { /* best-effort */ }
         }
@@ -3395,61 +3904,93 @@ async function submitUploadCreate() {
 }
 
 function downloadUploadTemplate() {
-  const headers = [
-    'tag',
-    'type',
-    'title',
-    'system',
-    'status',
-    'space',
-    'description',
-    'components',
-    'checklists',
-    'functional tests',
+  const wb = XLSX.utils.book_new()
+
+  const equipmentRows = [
+    {
+      tag: 'EQ-001',
+      type: 'Pump',
+      title: 'Chilled Water Pump 1',
+      system: 'Mechanical',
+      status: 'Not Started',
+      space: 'Level 1 - Mechanical Room',
+      description: 'Example equipment created via upload',
+      responsible: '',
+      tags: 'example, import',
+      orderDate: '',
+      installationDate: '',
+      balanceDate: '',
+      testDate: '',
+    },
   ]
 
-  const example = {
-    tag: 'EQ-001',
-    type: 'Pump',
-    title: 'Chilled Water Pump 1',
-    system: 'Mechanical',
-    status: 'Not Started',
-    space: 'Level 1 - Mechanical Room',
-    description: 'Example equipment created via upload',
-    components: JSON.stringify([
-      {
-        tag: 'CMP-001',
-        type: 'Motor',
-        title: 'Motor 5hp',
-        attributes: { Voltage: '480V', Phase: '3' }
-      }
-    ]),
-    checklists: JSON.stringify([
-      { title: 'Pre-Start', items: [ { text: 'Verify power', done: false } ] }
-    ]),
-    'functional tests': JSON.stringify([
-      { title: 'Spin Test', steps: [ { text: 'Start', result: '' } ] }
-    ])
-  } as Record<string, any>
+  const attributesRows = [
+    { equipmentTag: 'EQ-001', key: 'Voltage', value: '480V' },
+    { equipmentTag: 'EQ-001', key: 'Phase', value: '3' },
+  ]
 
-  const esc = (val: any) => {
-    const s = String(val ?? '')
-    // Escape quotes by doubling them per RFC4180, and wrap in quotes if needed
-    const needsQuotes = /[",\n\r]/.test(s) || s.includes(',')
-    const doubled = s.replace(/"/g, '""')
-    return needsQuotes ? '"' + doubled + '"' : doubled
-  }
+  const componentsRows = [
+    {
+      equipmentTag: 'EQ-001',
+      componentIndex: 0,
+      componentTag: 'CMP-001',
+      type: 'Motor',
+      title: 'Motor 5hp',
+      status: 'Not Started',
+      notes: '',
+      Attributes: 'Horsepower: 5hp\nVoltage: 480V',
+    },
+  ]
 
-  const csvRows: string[] = []
-  csvRows.push(headers.join(','))
-  const exampleRow = headers.map(h => esc(example[h] ?? ''))
-  csvRows.push(exampleRow.join(','))
-  const csv = '\ufeff' + csvRows.join('\r\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const checklistsRows = [
+    {
+      equipmentTag: 'EQ-001',
+      checklistIndex: 0,
+      checklistNumber: 1,
+      checklistTitle: 'Pre-Start',
+      checklistType: '',
+      checklistSystem: 'Mechanical',
+      checklistResponsible: '',
+      questionIndex: 0,
+      questionNumber: 1,
+      questionText: 'Verify power',
+      answer: '',
+      notes: '',
+      cx_answer: '',
+      oprItemIds: '',
+    },
+  ]
+
+  const functionalTestsRows = [
+    {
+      equipmentTag: 'EQ-001',
+      functionalTestIndex: 0,
+      functionalTestNumber: 1,
+      name: 'Spin Test',
+      pass: '',
+      notes: '',
+      description: '',
+      oprItemIds: '',
+      stepIndex: 0,
+      step: 'Start motor',
+      expected: 'Motor spins',
+      actual: '',
+      results: 'rowIndex: 0 | columnIndex: 0 | columnKey: amps | columnName: Amps | value: 12.3',
+    },
+  ]
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(equipmentRows), 'Equipment')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attributesRows), 'Attributes')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(componentsRows), 'Components')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(checklistsRows), 'Checklists')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(functionalTestsRows), 'FunctionalTests')
+
+  const array = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'equipment-upload-template.csv'
+  a.download = 'equipment-upload-template.xlsx'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
@@ -3491,7 +4032,9 @@ async function downloadEquipmentList() {
 	      headers: getAuthHeaders(),
       responseType: 'blob'
     })
-    const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+	    const blob = res.data instanceof Blob
+        ? res.data
+        : new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const proj: any = projectStore.currentProject as any
     const name = String(proj?.title || proj?.name || 'project')
@@ -3499,7 +4042,7 @@ async function downloadEquipmentList() {
     const today = new Date().toISOString().slice(0, 10)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${safeName}-equipment-${today}.csv`
+	    a.download = `${safeName}-equipment-${today}.xlsx`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
