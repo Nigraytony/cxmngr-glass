@@ -6,7 +6,9 @@
     <template #header>
       <div class="flex items-start justify-between gap-3 w-full">
         <div>
-          <div class="text-lg font-semibold">{{ title || 'Auto-tag this page' }}</div>
+          <div class="text-lg font-semibold">
+            {{ title || 'Auto-tag this page' }}
+          </div>
           <div class="text-xs text-white/60 mt-1">
             Suggests tags from the project tag library only. Apply selectively.
           </div>

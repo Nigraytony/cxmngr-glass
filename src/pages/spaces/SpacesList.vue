@@ -22,7 +22,7 @@
     </div>
 
     <!-- toolbar below breadcrumbs (search first) -->
-    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30">
+    <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 flex flex-wrap items-center justify-between gap-3 gap-y-2 w-full max-w-full min-w-0 relative z-30">
       <!-- Error banner for plan guard or missing project -->
       <div
         v-if="spacesStore.errorCode"
@@ -44,8 +44,8 @@
           <span v-else>{{ spacesStore.error || 'Unable to load spaces.' }}</span>
         </div>
       </div>
-      <div class="flex flex-wrap items-end justify-between gap-3 gap-y-2 min-w-0">
-        <div class="flex flex-wrap items-end gap-3 gap-y-2 min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-3 gap-y-2 w-full min-w-0">
+        <div class="flex items-center gap-3 min-w-0 flex-wrap">
           <!-- Add Space round button with hover tooltip -->
           <div class="relative inline-block group">
             <button
@@ -78,15 +78,15 @@
           </div>
 
           <!-- Types filter styled like Issues status filter -->
-          <div>
-            <label class="block text-white/70 text-sm">Type</label>
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Type</label>
             <div
               ref="typeMenuRef"
               class="relative"
             >
               <button
                 :aria-expanded="showTypeMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[12rem] justify-between"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 min-w-[9rem] justify-between"
                 @click="toggleTypeMenu"
               >
                 <span class="flex items-center gap-2">
@@ -128,89 +128,96 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 gap-y-2">
-          <button
-            class="px-3 py-2 rounded bg-white/10 hover:bg-white/15 text-white border border-white/20 min-w-[120px]"
-            @click="toggleView"
-          >
-            <span
-              v-if="viewMode === 'list'"
-              class="inline-flex items-center gap-2"
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+          <div class="relative inline-block group shrink-0">
+            <button
+              type="button"
+              aria-label="Toggle view mode"
+              :title="viewMode === 'list' ? 'Tree view' : 'List view'"
+              class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+              @click="toggleView"
             >
-              <!-- hierarchy/tree icon -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                aria-hidden="true"
+              <span
+                v-if="viewMode === 'list'"
+                class="inline-flex items-center gap-2"
               >
-                <!-- top node -->
-                <circle
-                  cx="12"
-                  cy="5"
-                  r="2.25"
-                />
-                <!-- bottom left node -->
-                <circle
-                  cx="7"
-                  cy="19"
-                  r="2.25"
-                />
-                <!-- bottom right node -->
-                <circle
-                  cx="17"
-                  cy="19"
-                  r="2.25"
-                />
-                <!-- connectors -->
-                <path
-                  d="M12 7.5v5.5"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M12 13h-3"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M12 13h3"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <span>Tree View</span>
-            </span>
-            <span
-              v-else
-              class="inline-flex items-center gap-2"
+                <!-- hierarchy/tree icon -->
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="12"
+                    cy="5"
+                    r="2.25"
+                  />
+                  <circle
+                    cx="7"
+                    cy="19"
+                    r="2.25"
+                  />
+                  <circle
+                    cx="17"
+                    cy="19"
+                    r="2.25"
+                  />
+                  <path
+                    d="M12 7.5v5.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M12 13h-3"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M12 13h3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span class="text-sm">Tree</span>
+              </span>
+              <span
+                v-else
+                class="inline-flex items-center gap-2"
+              >
+                <!-- list icon -->
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 7h14"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M5 12h14"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M5 17h14"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span class="text-sm">List</span>
+              </span>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
             >
-              <!-- list icon -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                aria-hidden="true"
-              >
-                <path
-                  d="M5 7h14"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M5 12h14"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M5 17h14"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <span>List View</span>
-            </span>
-          </button>
+              {{ viewMode === 'list' ? 'Tree view' : 'List view' }}
+            </div>
+          </div>
 
           <div class="relative inline-block group">
             <button
@@ -244,34 +251,46 @@
           </div>
 
           <!-- Download Excel button -->
-          <button
-            :disabled="!filtered.length"
-            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-            @click="downloadSpacesXlsx"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              class="w-4 h-4"
+          <div class="relative inline-block group shrink-0">
+            <button
+              :disabled="!filtered.length"
+              aria-label="Download spaces"
+              :title="filtered.length ? 'Download filtered spaces as XLSX (editable)' : 'Nothing to download'"
+              class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+              @click="downloadSpacesXlsx"
             >
-              <rect
-                x="3"
-                y="3"
-                width="18"
-                height="18"
-                rx="2"
-                ry="2"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M12 3v12"
                 stroke-width="1.5"
-              />
-              <path
-                d="M8 3v18M16 3v18M3 8h18M3 16h18"
+                stroke-linecap="round"
+              /><path
+                d="M7 10l5 5 5-5"
                 stroke-width="1.5"
-              />
-            </svg>
-            <span>Download Excel</span>
-          </button>
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><rect
+                x="4"
+                y="17"
+                width="16"
+                height="4"
+                rx="1.5"
+                stroke-width="1.5"
+              /></svg>
+              <span class="text-sm">Download</span>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Download editable XLSX
+            </div>
+          </div>
 
           <!-- Upload Excel button + hidden input -->
           <div
@@ -280,7 +299,9 @@
           >
             <button
               :disabled="!projectStore.currentProjectId || uploading"
-              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+              aria-label="Upload spaces"
+              :title="projectStore.currentProjectId ? 'Upload spaces from XLSX' : 'Select a project'"
+              class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
               @click="triggerUpload"
             >
               <svg
@@ -291,23 +312,26 @@
                 class="w-4 h-4"
               >
                 <path
-                  d="M12 3v11"
+                  d="M12 3v12"
                   stroke-width="1.5"
                   stroke-linecap="round"
                 />
                 <path
-                  d="M8 7l4-4 4 4"
+                  d="M7 8l5-5 5 5"
                   stroke-width="1.5"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
-                <path
-                  d="M5 20h14"
+                <rect
+                  x="4"
+                  y="15"
+                  width="16"
+                  height="6"
+                  rx="1.5"
                   stroke-width="1.5"
-                  stroke-linecap="round"
                 />
               </svg>
-              <span>{{ uploading ? 'Uploading…' : 'Upload Excel' }}</span>
+              <span class="text-sm">{{ uploading ? 'Uploading…' : 'Upload' }}</span>
             </button>
             <input
               ref="fileInput"
@@ -337,7 +361,10 @@
             <button
               type="button"
               aria-label="More tools"
-              :class="['w-10 h-10 flex items-center justify-center rounded-full text-white border', showAdvancedFilters ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10']"
+              :class="[
+                'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
+                showAdvancedFilters ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+              ]"
               @click="showAdvancedFilters = !showAdvancedFilters"
             >
               <svg
@@ -384,7 +411,7 @@
             <label class="block text-white/70 text-sm">Status</label>
             <select
               v-model="statusFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
               <option value="">
                 All
@@ -403,7 +430,7 @@
             <label class="block text-white/70 text-sm">Responsible</label>
             <select
               v-model="responsibleFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
               <option value="">
                 All
@@ -422,7 +449,7 @@
             <label class="block text-white/70 text-sm">Location</label>
             <select
               v-model="locationFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
               <option value="">
                 All
@@ -441,7 +468,7 @@
             <label class="block text-white/70 text-sm">System</label>
             <select
               v-model="systemFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
               <option value="">
                 All
@@ -461,7 +488,7 @@
             <input
               v-model="dateFrom"
               type="date"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+              class="w-full px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
 
@@ -470,7 +497,7 @@
             <input
               v-model="dateTo"
               type="date"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
+              class="w-full px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
 
@@ -480,7 +507,7 @@
               v-model="tagsFilter"
               type="text"
               placeholder="e.g. commissioning, urgent"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm placeholder:text-white/50"
+              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
         </div>
@@ -490,14 +517,14 @@
     <!-- list -->
     <div
       v-if="viewMode === 'list'"
-      class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto"
+      class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl overflow-x-auto min-w-0"
     >
-      <!-- pagination toolbar (top) removed -- keep simpler single control block at bottom -->
-      <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
-        <div class="col-span-2">
+      <div class="flex items-center justify-between gap-3 gap-y-2 flex-wrap px-2 py-1 text-white/70 text-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-white/60">Sort</span>
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('tag')"
           >
             <span>Tag</span>
@@ -514,11 +541,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-4">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('title')"
           >
             <span>Title</span>
@@ -535,11 +560,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-2">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('type')"
           >
             <span>Type</span>
@@ -556,11 +579,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-3 hidden lg:block">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('parent')"
           >
             <span>Parent</span>
@@ -578,128 +599,201 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-1 text-right">
-          Actions
-        </div>
       </div>
-      <div class="divide-y divide-white/10">
+
+      <div class="flex flex-col gap-3 mt-2">
         <div
           v-for="s in paged"
-          :key="s.id"
-          class="grid grid-cols-12 items-center px-2 py-2 text-white/90"
+          :key="s.id || (s as any)._id"
+          class="rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm"
         >
-          <div
-            class="col-span-2 truncate"
-            :title="s.tag"
+          <RouterLink
+            :to="{ name: 'space-edit', params: { id: s.id || (s as any)._id } }"
+            class="flex-1 min-w-0"
+            tabindex="0"
+            style="text-decoration: none;"
           >
-            {{ s.tag || '-' }}
-          </div>
-          <div
-            class="col-span-4 truncate"
-            :title="s.title"
-          >
-            {{ s.title }}
-          </div>
-          <div class="col-span-2">
-            {{ s.type }}
-          </div>
-          <div
-            class="col-span-3 hidden lg:block truncate text-sm"
-            :title="s.parentChain || spaceParentChainLabelById(s.parentSpace)"
-          >
-            {{ s.parentChain || spaceParentChainLabelById(s.parentSpace) || '-' }}
-          </div>
-          <div class="col-span-1 flex items-center justify-end gap-2">
-            <!-- Visit icon button -->
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Open space"
-              :title="`Open ${s.title || 'space'}`"
-              @click="visit(s)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+              <div class="flex flex-col min-w-[70px] items-start">
+                <div class="text-xs text-white/60">
+                  Tag
+                </div>
+                <div class="text-lg font-bold text-white">
+                  {{ s.tag || '-' }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Title:</span>
+                  <span
+                    class="text-base font-semibold text-white truncate"
+                    :title="s.title"
+                  >{{ s.title || '-' }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Type:</span>
+                  <span
+                    v-if="s.type"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ s.type }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">Parent:</span>
+                  <span
+                    class="text-xs text-white/80 truncate"
+                    :title="(s as any).parentChain || spaceParentChainLabelById((s as any).parentSpace)"
+                  >{{ (s as any).parentChain || spaceParentChainLabelById((s as any).parentSpace) || '-' }}</span>
+                </div>
+                <div class="w-full border-t border-dashed border-white/30 my-1" />
+                <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
+                  <span
+                    v-if="(s as any).status"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >
+                    <span>Status:</span>
+                    <span class="font-semibold">{{ (s as any).status }}</span>
+                  </span>
+                  <span
+                    v-if="spaceResponsibleValue(s)"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >
+                    <span>Responsible:</span>
+                    <span class="font-semibold">{{ spaceResponsibleValue(s) }}</span>
+                  </span>
+                  <span
+                    v-if="spaceLocationValue(s)"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >
+                    <span>Location:</span>
+                    <span class="font-semibold">{{ spaceLocationValue(s) }}</span>
+                  </span>
+                  <span
+                    v-if="spaceSystemValues(s).length"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >
+                    <span>System:</span>
+                    <span class="font-semibold">{{ spaceSystemValues(s)[0] }}</span>
+                    <span
+                      v-if="spaceSystemValues(s).length > 1"
+                      class="text-white/60"
+                    >+{{ spaceSystemValues(s).length - 1 }}</span>
+                  </span>
+
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ Number((s as any).equipmentCount || 0) }}</span>
+                    <span>Equipment</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ Number((s as any).subspacesCount || 0) }}</span>
+                    <span>Subspaces</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ Number((s as any).issuesCount || 0) }}</span>
+                    <span>Issues</span>
+                  </span>
+
+                  <span
+                    v-if="Array.isArray((s as any).tags) && (s as any).tags.length"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >
+                    <span class="font-semibold">{{ (s as any).tags.length }}</span>
+                    <span>Tags</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </RouterLink>
+
+          <div class="flex flex-col items-end min-w-[120px] justify-end gap-1">
+            <div class="flex items-center justify-end gap-2">
+              <RouterLink
+                :to="{ name: 'space-edit', params: { id: s.id || (s as any)._id } }"
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Open"
+                :title="'Open ' + (s.title || s.tag || 'space')"
               >
-                <path
-                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"
                   stroke-width="1.5"
-                />
-                <circle
+                /><circle
                   cx="12"
                   cy="12"
                   r="3"
                   stroke-width="1.5"
-                />
-              </svg>
-            </button>
-            <!-- Edit icon button -->
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Edit space"
-              :title="`Edit ${s.title || 'space'}`"
-              @click="openEdit(s)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
+                /></svg>
+              </RouterLink>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Edit space"
+                :title="`Edit ${s.title || 'space'}`"
+                @click="openEdit(s)"
               >
-                <path
-                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
-                  stroke-width="1.5"
-                />
-                <path
-                  d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
-                  stroke-width="1.5"
-                />
-              </svg>
-            </button>
-            <!-- Delete icon button -->
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
-              aria-label="Delete space"
-              :title="`Delete ${s.title || 'space'}`"
-              @click="confirmRemove(s)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                    stroke-width="1.5"
+                  />
+                </svg>
+              </button>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                aria-label="Delete space"
+                :title="`Delete ${s.title || 'space'}`"
+                @click="confirmRemove(s)"
               >
-                <path
-                  d="M6 7h12"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-                <path
-                  d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
-                  stroke-width="1.5"
-                />
-                <rect
-                  x="6"
-                  y="7"
-                  width="12"
-                  height="14"
-                  rx="2"
-                  stroke-width="1.5"
-                />
-                <path
-                  d="M10 11v6M14 11v6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M6 7h12"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                    stroke-width="1.5"
+                  />
+                  <rect
+                    x="6"
+                    y="7"
+                    width="12"
+                    height="14"
+                    rx="2"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M10 11v6M14 11v6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+
         <div
           v-if="!loading && totalFiltered === 0"
           class="p-6 text-white/60 text-center"
@@ -1110,11 +1204,11 @@ const canAutoTagSpacesPage = computed(() => {
   return tier === 'premium' || hasFeature
 })
 
-const spaces = computed(() => spacesStore.items)
+const spaces = computed<Space[]>(() => spacesStore.items)
 // server-driven list for paging (list view)
-const serverSpaces = ref([])
+const serverSpaces = ref<Space[]>([])
 const serverTotal = ref(0)
-const listSpaces = computed(() => serverSpaces.value)
+const listSpaces = computed<Space[]>(() => serverSpaces.value)
 // Local writable loading state for this component; mirror store.loading for compatibility
 const loading = ref(false)
 watch(() => spacesStore.loading, (v) => { loading.value = !!v }, { immediate: true })
@@ -1244,11 +1338,11 @@ const spaceSystemOptions = computed(() => {
 })
 
 // Filter over server-provided page so list view and downloads reflect current page
-const filtered = computed(() => {
+const filtered = computed<Space[]>(() => {
   const q = search.value.trim().toLowerCase()
   const t = typeFilter.value
   const list = listSpaces.value || []
-  return list.filter(s => {
+  return list.filter((s: Space) => {
     if (t && s.type !== t) return false
     const statusNeedle = normLower(statusFilter.value)
     if (statusNeedle && normLower((s as any)?.status) !== statusNeedle) return false
@@ -1282,7 +1376,7 @@ const filtered = computed(() => {
       const tags = Array.isArray((s as any)?.tags) ? (s as any).tags : []
       const hay = tags.map((t: any) => normLower(t)).filter(Boolean)
       if (!hay.length) return false
-      if (!tagTerms.every(term => hay.some(tag => tag.includes(term)))) return false
+      if (!tagTerms.every(term => hay.some((tag: string) => tag.includes(term)))) return false
     }
 
     if (!q) return true
@@ -1462,26 +1556,26 @@ async function fetchSpacesPage(projectId?: string) {
     if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     const res = await http.get('/api/spaces', { params, headers: getAuthHeaders() })
-  const data = res && res.data ? res.data : {}
-  if (Array.isArray(data.items)) serverSpaces.value = data.items.map(s => ({ ...(s || {}), id: s._id || s.id }))
-  else if (Array.isArray(data)) serverSpaces.value = data.map(s => ({ ...(s || {}), id: s._id || s.id }))
-  else serverSpaces.value = []
-  serverTotal.value = Number(data.total ?? data.count ?? serverSpaces.value.length)
-  if (Array.isArray(data.types)) serverTypes.value = data.types.map((t: any) => String(t))
-  if (data.typeCounts && typeof data.typeCounts === 'object') {
-    const map: Record<string, number> = {}
-    for (const [k, v] of Object.entries(data.typeCounts)) {
-      map[String(k)] = Number(v) || 0
+    const data = res && res.data ? res.data : {}
+    if (Array.isArray(data.items)) serverSpaces.value = data.items.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
+    else if (Array.isArray(data)) serverSpaces.value = data.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
+    else serverSpaces.value = []
+    serverTotal.value = Number(data.total ?? data.count ?? serverSpaces.value.length)
+    if (Array.isArray(data.types)) serverTypes.value = data.types.map((t: any) => String(t))
+    if (data.typeCounts && typeof data.typeCounts === 'object') {
+      const map: Record<string, number> = {}
+      for (const [k, v] of Object.entries(data.typeCounts)) {
+        map[String(k)] = Number(v) || 0
+      }
+      serverTypeCounts.value = map
+    } else {
+      serverTypeCounts.value = {}
     }
-    serverTypeCounts.value = map
-  } else {
-    serverTypeCounts.value = {}
-  }
-  const tp = Math.max(1, Math.ceil(serverTotal.value / pageSize.value))
-  if (page.value > tp) {
-    page.value = tp
-    await fetchSpacesPage(pid)
-  }
+    const tp = Math.max(1, Math.ceil(serverTotal.value / pageSize.value))
+    if (page.value > tp) {
+      page.value = tp
+      await fetchSpacesPage(pid)
+    }
   } catch (e: any) {
     // If the API path isn't available (404), fall back to store-based fetch so list view still works
     if (e && e.response && e.response.status === 404) {
@@ -1621,14 +1715,29 @@ async function confirmRemove(s: Space) {
 
 // View toggle and tree helpers
 const viewMode = ref<'list' | 'tree'>('list')
-function toggleView() {
-  viewMode.value = viewMode.value === 'list' ? 'tree' : 'list'
-  if (viewMode.value === 'tree') {
-    // When entering tree view, load persisted state or expand first-level (Buildings)
+async function toggleView() {
+  const next = viewMode.value === 'list' ? 'tree' : 'list'
+  viewMode.value = next
+
+  const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+
+  if (next === 'tree') {
+    // Tree view relies on the store's full dataset.
+    // List view uses a paged API and does not populate spacesStore.items.
+    try {
+      if (pid) await spacesStore.fetchByProject(String(pid))
+    } catch (_) { /* ignore */ }
+
+    openNodes.value = new Set()
+    openInitDone.value = false
     const loaded = loadOpenNodes()
     if (!loaded) initOpenNodesIfEmpty()
     openInitDone.value = true
+    return
   }
+
+  // Switching back to list view; refresh the paged slice.
+  fetchSpacesPage(String(pid)).catch(() => {})
 }
 
 type NodeRow = { node: any, depth: number }
@@ -1852,10 +1961,45 @@ async function onRootDrop(e: DragEvent) {
 }
 
 // Download XLSX (filtered set)
-function downloadSpacesXlsx() {
+async function downloadSpacesXlsx() {
   try {
     const rows = filtered.value || []
     if (!rows.length) return
+
+    // For hierarchy columns (parent/building/floor), we need the full space set.
+    // List view uses paged API and does not guarantee the store has items.
+    try {
+      const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+      if (pid && (!spacesStore.items || spacesStore.items.length === 0 || !spacesStore.byId || Object.keys(spacesStore.byId).length === 0)) {
+        await spacesStore.fetchByProject(String(pid))
+      }
+    } catch (_) { /* ignore */ }
+
+    const joinLimited = (arr: any[], maxItems = 200) => {
+      const list = Array.isArray(arr) ? arr.map(v => String(v || '').trim()).filter(Boolean) : []
+      const unique = Array.from(new Set(list))
+      unique.sort((a, b) => a.localeCompare(b))
+      const slice = unique.slice(0, maxItems)
+      const suffix = unique.length > maxItems ? `; +${unique.length - maxItems} more` : ''
+      return slice.join('; ') + suffix
+    }
+
+    // Optional: fetch linked lists for export columns (equipment tags, subspace tags, issue ids)
+    let exportDetailsBySpaceId: Record<string, any> = {}
+    try {
+      const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+      const ids = rows.map((s: any) => String(s?.id || s?._id || '')).filter(Boolean)
+      if (pid && ids.length) {
+        const res = await http.get('/api/spaces/export-details', {
+          params: { projectId: pid, ids: ids.join(',') },
+          headers: getAuthHeaders()
+        })
+        const data = res && res.data ? res.data : {}
+        exportDetailsBySpaceId = (data.bySpaceId && typeof data.bySpaceId === 'object') ? data.bySpaceId : {}
+      }
+    } catch (_) {
+      exportDetailsBySpaceId = {}
+    }
 
     // Helpers to compute hierarchy
     const byId = parentMap.value
@@ -1874,14 +2018,26 @@ function downloadSpacesXlsx() {
       return null
     }
 
-    // Round-trip-friendly columns
+    // Round-trip-friendly columns (+ additional read-only columns)
     const cols = [
       'id',
       'tag',
       'title',
       'type',
+      'status',
+      'responsible',
+      'location',
+      'system',
+      'systems',
+      'tags',
       'description',
       'attributes',
+      'equipment count',
+      'subspaces count',
+      'issues count',
+      'equipment tags',
+      'subspace tags',
+      'issue numbers',
       // parent references (names aligned with importer candidates)
       'parent id',
       'parent tag',
@@ -1890,11 +2046,13 @@ function downloadSpacesXlsx() {
       'building',
       'building tag',
       'floor',
-      'floor tag'
+      'floor tag',
+      'updated at'
     ]
 
     const data = rows.map((s: Space) => {
       const id = String((s as any).id || (s as any)._id || '')
+      const details = id && exportDetailsBySpaceId ? (exportDetailsBySpaceId[id] || {}) : {}
       const parent = getParentObj(s)
       const building = firstAncestorOfType(s, 'Building')
       const floor = firstAncestorOfType(s, 'Floor')
@@ -1903,19 +2061,32 @@ function downloadSpacesXlsx() {
         tag: s.tag || '',
         title: s.title || '',
         type: s.type || '',
+        status: String((s as any).status || ''),
+        responsible: spaceResponsibleValue(s),
+        location: spaceLocationValue(s),
+        system: String((s as any).system || ''),
+        systems: (Array.isArray((s as any).systems) ? (s as any).systems.map((v: any) => String(v)).filter(Boolean).join('; ') : ''),
+        tags: (Array.isArray((s as any).tags) ? (s as any).tags.map((t: any) => String(t)).filter(Boolean).join('; ') : ''),
         description: (s as any).description || '',
         attributes: (Array.isArray((s as any).attributes) ? (s as any).attributes.map((a: any) => {
           const k = String(a && a.key != null ? a.key : '').trim()
           const v = String(a && a.value != null ? a.value : '').trim()
           return k || v ? (k ? `${k}: ${v}` : v) : ''
         }).filter(Boolean).join('; ') : ''),
+        'equipment count': Number((s as any).equipmentCount || 0),
+        'subspaces count': Number((s as any).subspacesCount || 0),
+        'issues count': Number((s as any).issuesCount || 0),
+        'equipment tags': joinLimited(details?.equipmentTags || []),
+        'subspace tags': joinLimited(details?.subspaceTags || []),
+        'issue numbers': joinLimited(details?.issueNumbers || []),
         'parent id': parent ? String((parent as any).id || (parent as any)._id || '') : '',
         'parent tag': parent?.tag || '',
         'parent title': parent?.title || '',
         building: building?.title || '',
         'building tag': building?.tag || '',
         floor: floor?.title || '',
-        'floor tag': floor?.tag || ''
+        'floor tag': floor?.tag || '',
+        'updated at': String((s as any).updatedAt || (s as any).createdAt || '')
       }
     })
 
@@ -1926,15 +2097,28 @@ function downloadSpacesXlsx() {
       { wch: 14 }, // tag
       { wch: 30 }, // title
       { wch: 14 }, // type
+      { wch: 14 }, // status
+      { wch: 22 }, // responsible
+      { wch: 22 }, // location
+      { wch: 16 }, // system
+      { wch: 24 }, // systems
+      { wch: 24 }, // tags
       { wch: 60 }, // description
       { wch: 40 }, // attributes
+      { wch: 16 }, // equipment count
+      { wch: 16 }, // subspaces count
+      { wch: 14 }, // issues count
+      { wch: 42 }, // equipment tags
+      { wch: 42 }, // subspace tags
+      { wch: 22 }, // issue numbers
       { wch: 24 }, // parent id
       { wch: 14 }, // parent tag
       { wch: 30 }, // parent title
       { wch: 30 }, // building
       { wch: 16 }, // building tag
       { wch: 30 }, // floor
-      { wch: 16 }  // floor tag
+      { wch: 16 }, // floor tag
+      { wch: 22 }  // updated at
     ]
 
     const wb = XLSX.utils.book_new()

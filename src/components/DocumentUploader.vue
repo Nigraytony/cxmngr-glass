@@ -115,6 +115,16 @@ const notice = ref('')
 let removalTimers = new Map<string, ReturnType<typeof setTimeout>>()
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
+function scheduleRemoval(item: UploadItem, delayMs: number) {
+  const existing = removalTimers.get(item.id)
+  if (existing) { clearTimeout(existing); removalTimers.delete(item.id) }
+  const tid = setTimeout(() => {
+    uploads.value = uploads.value.filter(u => u.id !== item.id)
+    removalTimers.delete(item.id)
+  }, Math.max(0, Number(delayMs) || 0))
+  removalTimers.set(item.id, tid)
+}
+
 function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}` }
 const inputId = `doc-uploader-${Math.random().toString(36).slice(2, 8)}`
 
@@ -200,11 +210,7 @@ async function processFiles(files: File[]) {
         updateUpload(item, { status: 'uploading', progress: 0 })
         const result = await props.upload(f, (pct: number) => updateUpload(item, { progress: pct }))
         updateUpload(item, { status: 'done', progress: 100 })
-        const tid = setTimeout(() => {
-          uploads.value = uploads.value.filter(u => u.id !== item.id)
-          removalTimers.delete(item.id)
-        }, 5000)
-        removalTimers.set(item.id, tid)
+        scheduleRemoval(item, 5000)
         emit('file-done', { file: f, result })
       } catch (e: any) {
         const data = e?.response?.data
@@ -214,6 +220,8 @@ async function processFiles(files: File[]) {
           ? ` Allowed: ${data.allowedExtensions.map((x: string) => `.${x}`).join(', ')}`
           : ''
         updateUpload(item, { status: 'error', message: (serverMsg ? `${serverMsg}${code}${allowedExt}` : '') || e?.message || 'Upload failed' })
+        // Auto-dismiss failed uploads after a few seconds to avoid stale error clutter.
+        scheduleRemoval(item, 8000)
         emit('error', { file: f, error: e })
       }
     }
@@ -238,11 +246,7 @@ async function retryUpload(item: UploadItem) {
     updateUpload(item, { status: 'uploading', progress: 0, message: '' })
     const result = await props.upload(item.file, (pct: number) => updateUpload(item, { progress: pct }))
     updateUpload(item, { status: 'done', progress: 100 })
-    const tid = setTimeout(() => {
-      uploads.value = uploads.value.filter(u => u.id !== item.id)
-      removalTimers.delete(item.id)
-    }, 5000)
-    removalTimers.set(item.id, tid)
+    scheduleRemoval(item, 5000)
     emit('file-done', { file: item.file, result })
   } catch (e: any) {
     const data = e?.response?.data
@@ -252,6 +256,7 @@ async function retryUpload(item: UploadItem) {
       ? ` Allowed: ${data.allowedExtensions.map((x: string) => `.${x}`).join(', ')}`
       : ''
     updateUpload(item, { status: 'error', message: (serverMsg ? `${serverMsg}${code}${allowedExt}` : '') || e?.message || 'Upload failed' })
+    scheduleRemoval(item, 8000)
     emit('error', { file: item.file, error: e })
   } finally {
     uploadingNow.value = false

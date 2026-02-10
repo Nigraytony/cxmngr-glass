@@ -577,22 +577,22 @@
             class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
           >
         </div>
-	        <div>
-	          <label class="block text-sm text-white/70">Type</label>
-	          <select
-	            v-model="draft.type"
-	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
-	          >
-	            <option
-	              v-for="opt in checklistTypeOptions"
-	              :key="String(opt.value ?? opt.text)"
-	              :value="opt.value ?? ''"
-	              class="bg-slate-950 text-gray-300"
-	            >
-	              {{ opt.text }}
-	            </option>
-	          </select>
-	        </div>
+        <div>
+          <label class="block text-sm text-white/70">Type</label>
+          <select
+            v-model="draft.type"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+          >
+            <option
+              v-for="opt in checklistTypeOptions"
+              :key="String(opt.value ?? opt.text)"
+              :value="opt.value ?? ''"
+              class="bg-slate-950 text-gray-300"
+            >
+              {{ opt.text }}
+            </option>
+          </select>
+        </div>
         <div>
           <label class="block text-sm text-white/70">System</label>
           <select
@@ -664,12 +664,12 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <label class="text-sm text-white/70">Questions</label>
-	          <button
-	            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-gray-300"
-	            @click="addDraftQuestion"
-	          >
-	            Add Question
-	          </button>
+          <button
+            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-gray-300"
+            @click="addDraftQuestion"
+          >
+            Add Question
+          </button>
         </div>
         <div
           v-if="!draft.questions.length"
@@ -785,69 +785,69 @@
       </div>
     </template>
   </Modal>
-	  <!-- Edit Checklist Modal -->
-	  <Modal v-model="editOpen">
-	    <template #header>
-	      <div class="flex items-center justify-between">
-	        <div class="font-medium">
-	          Edit Checklist
-	        </div>
-	        <div class="text-white/70 text-sm">
-	          Update details and questions
-	        </div>
-	      </div>
-	    </template>
-	    <div class="space-y-3">
-	      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-	        <div>
-	          <label class="block text-sm text-white/70">Number</label>
-	          <input
-	            v-model="editDraft.number"
-	            type="number"
-	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
-	          >
-	        </div>
-	        <div>
-	          <label class="block text-sm text-white/70">Title</label>
-	          <input
-	            v-model="editDraft.title"
-	            type="text"
-	            placeholder="Section title"
-	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
-	          >
-	        </div>
-	        <div>
-	          <label class="block text-sm text-white/70">Type</label>
-	          <select
-	            v-model="editDraft.type"
-	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
-	          >
-	            <option
-	              v-for="opt in checklistTypeOptions"
-	              :key="String(opt.value ?? opt.text)"
-	              :value="opt.value ?? ''"
-	              class="bg-slate-950 text-gray-300"
-	            >
-	              {{ opt.text }}
-	            </option>
-	          </select>
-	        </div>
-	        <div>
-	          <label class="block text-sm text-white/70">System</label>
-	          <select
-	            v-model="editDraft.system"
-	            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
-	          >
-	            <option
-	              v-for="opt in systemSelectOptions"
-	              :key="String(opt.value ?? opt.text)"
-	              :value="opt.value ?? ''"
-	              class="bg-slate-950 text-gray-300"
-	            >
-	              {{ opt.text }}
-	            </option>
-	          </select>
-	        </div>
+  <!-- Edit Checklist Modal -->
+  <Modal v-model="editOpen">
+    <template #header>
+      <div class="flex items-center justify-between">
+        <div class="font-medium">
+          Edit Checklist
+        </div>
+        <div class="text-white/70 text-sm">
+          Update details and questions
+        </div>
+      </div>
+    </template>
+    <div class="space-y-3">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm text-white/70">Number</label>
+          <input
+            v-model="editDraft.number"
+            type="number"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+          >
+        </div>
+        <div>
+          <label class="block text-sm text-white/70">Title</label>
+          <input
+            v-model="editDraft.title"
+            type="text"
+            placeholder="Section title"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+          >
+        </div>
+        <div>
+          <label class="block text-sm text-white/70">Type</label>
+          <select
+            v-model="editDraft.type"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+          >
+            <option
+              v-for="opt in checklistTypeOptions"
+              :key="String(opt.value ?? opt.text)"
+              :value="opt.value ?? ''"
+              class="bg-slate-950 text-gray-300"
+            >
+              {{ opt.text }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm text-white/70">System</label>
+          <select
+            v-model="editDraft.system"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300"
+          >
+            <option
+              v-for="opt in systemSelectOptions"
+              :key="String(opt.value ?? opt.text)"
+              :value="opt.value ?? ''"
+              class="bg-slate-950 text-gray-300"
+            >
+              {{ opt.text }}
+            </option>
+          </select>
+        </div>
         <div>
           <label class="block text-sm text-white/70">Status</label>
           <select
@@ -894,54 +894,54 @@
       <div>
         <label class="block text-sm text-white/70">Notes</label>
         <input
-	          v-model="editDraft.notes"
-	          type="text"
-	          placeholder="Optional notes"
-	          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
-	        >
-	      </div>
-	      <div class="space-y-2">
-	        <div class="flex items-center justify-between">
-	          <label class="text-sm text-white/70">Questions</label>
-		          <button
-		            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-gray-300"
-		            @click="addEditQuestion"
-		          >
-		            Add Question
-		          </button>
-	        </div>
-	        <div
-	          v-if="!editDraft.questions.length"
-	          class="text-white/60 text-sm"
-	        >
-	          No questions yet.
-	        </div>
-	        <ul
-	          v-else
-	          class="space-y-2"
-	        >
-	          <li
-	            v-for="(q, i) in editDraft.questions"
-	            :key="i"
-	            class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2"
-	          >
-	            <input
-	              v-model="q.number"
-	              type="number"
-	              class="w-20 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300"
-	            >
-	            <input
-	              v-model="q.question_text"
-	              type="text"
-	              placeholder="Question text"
-	              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
-	            >
-	            <button
-	              class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
-	              title="Remove question"
-	              aria-label="Remove question"
-	              @click="removeEditQuestion(i)"
-	            >
+          v-model="editDraft.notes"
+          type="text"
+          placeholder="Optional notes"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+        >
+      </div>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="text-sm text-white/70">Questions</label>
+          <button
+            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-gray-300"
+            @click="addEditQuestion"
+          >
+            Add Question
+          </button>
+        </div>
+        <div
+          v-if="!editDraft.questions.length"
+          class="text-white/60 text-sm"
+        >
+          No questions yet.
+        </div>
+        <ul
+          v-else
+          class="space-y-2"
+        >
+          <li
+            v-for="(q, i) in editDraft.questions"
+            :key="i"
+            class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center gap-2"
+          >
+            <input
+              v-model="q.number"
+              type="number"
+              class="w-20 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300"
+            >
+            <input
+              v-model="q.question_text"
+              type="text"
+              placeholder="Question text"
+              class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-gray-300"
+            >
+            <button
+              class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+              title="Remove question"
+              aria-label="Remove question"
+              @click="removeEditQuestion(i)"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"

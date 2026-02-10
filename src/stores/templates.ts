@@ -8,6 +8,7 @@ import { useProjectStore } from './project'
 export interface Template {
   id?: string
   _id?: string
+  instancesCount?: number
   number?: string
   tag: string
   title: string

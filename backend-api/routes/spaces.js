@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Space = require('../models/space');
+const Equipment = require('../models/equipment');
+const Issue = require('../models/issue');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
@@ -257,13 +259,51 @@ router.get('/', auth, requireFeature('spaces'), requirePermission('spaces.read',
       ]
     }
     const total = await Space.countDocuments(filter)
-    const items = await Space.find(filter)
+    let items = await Space.find(filter)
       .select(LIGHT_FIELDS)
       .sort({ [sortBy]: sortDir })
       .skip((page - 1) * perPage)
       .limit(perPage)
       .lean()
     await buildParentChains(projectId, items)
+
+    // Counts for current page:
+    // - equipmentCount: equipment records whose spaceId == this space
+    // - subspacesCount: spaces whose parentSpace == this space id
+    // - issuesCount: issues whose spaceId == this space
+    const spaceObjectIds = (items || []).map(s => s && s._id).filter(Boolean)
+    const spaceIdStrings = spaceObjectIds.map(id => String(id))
+    if (spaceObjectIds.length) {
+      const projectObjId = new mongoose.Types.ObjectId(String(projectId))
+      const [equipAgg, subAgg, issueAgg] = await Promise.all([
+        Equipment.aggregate([
+          { $match: { projectId: projectObjId, spaceId: { $in: spaceObjectIds } } },
+          { $group: { _id: '$spaceId', count: { $sum: 1 } } },
+        ]),
+        Space.aggregate([
+          { $match: { project: projectObjId, parentSpace: { $in: spaceIdStrings } } },
+          { $group: { _id: '$parentSpace', count: { $sum: 1 } } },
+        ]),
+        Issue.aggregate([
+          { $match: { projectId: projectObjId, spaceId: { $in: spaceObjectIds } } },
+          { $group: { _id: '$spaceId', count: { $sum: 1 } } },
+        ]),
+      ])
+
+      const equipBySpace = new Map(equipAgg.map(a => [String(a && a._id), Number(a && a.count) || 0]))
+      const subBySpace = new Map(subAgg.map(a => [String(a && a._id), Number(a && a.count) || 0]))
+      const issuesBySpace = new Map(issueAgg.map(a => [String(a && a._id), Number(a && a.count) || 0]))
+
+      items = items.map(s => {
+        const sid = String(s && s._id)
+        return {
+          ...s,
+          equipmentCount: equipBySpace.get(sid) || 0,
+          subspacesCount: subBySpace.get(sid) || 0,
+          issuesCount: issuesBySpace.get(sid) || 0,
+        }
+      })
+    }
     let types = []
     let typeCounts = {}
     if (includeTypes) {
@@ -278,6 +318,79 @@ router.get('/', auth, requireFeature('spaces'), requirePermission('spaces.read',
   } catch (error) {
     console.error('[spaces] list error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to list spaces' })
+  }
+})
+
+// Export helper: fetch per-space linked lists (equipment tags, subspace tags, issue ids)
+// Query: projectId required, ids (comma-separated ObjectIds) required
+router.get('/export-details', auth, requireFeature('spaces'), requirePermission('spaces.read', { projectParam: 'projectId' }), async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
+
+    const rawIds = req.query.ids ?? req.query.spaceIds ?? ''
+    const ids = String(rawIds || '')
+      .split(',')
+      .map(s => String(s || '').trim())
+      .filter(Boolean)
+
+    if (!ids.length) return res.status(400).send({ error: 'ids is required' })
+    if (ids.length > 200) return res.status(400).send({ error: 'Too many ids (max 200)' })
+    for (const id of ids) {
+      if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).send({ error: 'Invalid id in ids' })
+    }
+
+    const projectObjId = new mongoose.Types.ObjectId(String(projectId))
+    const spaceObjectIds = ids.map(id => new mongoose.Types.ObjectId(id))
+
+    const [equipAgg, subAgg, issueAgg] = await Promise.all([
+      Equipment.aggregate([
+        { $match: { projectId: projectObjId, spaceId: { $in: spaceObjectIds } } },
+        { $project: { spaceId: 1, tag: 1 } },
+        { $group: { _id: '$spaceId', equipmentTags: { $addToSet: '$tag' }, equipmentIds: { $addToSet: '$_id' } } },
+      ]),
+      Space.aggregate([
+        { $match: { project: projectObjId, parentSpace: { $in: ids } } },
+        { $project: { parentSpace: 1, tag: 1 } },
+        { $group: { _id: '$parentSpace', subspaceTags: { $addToSet: '$tag' }, subspaceIds: { $addToSet: '$_id' } } },
+      ]),
+      Issue.aggregate([
+        { $match: { projectId: projectObjId, spaceId: { $in: spaceObjectIds } } },
+        { $project: { spaceId: 1, number: 1 } },
+        { $group: { _id: '$spaceId', issueIds: { $addToSet: '$_id' }, issueNumbers: { $addToSet: '$number' } } },
+      ]),
+    ])
+
+    const bySpaceId = {}
+    for (const id of ids) bySpaceId[String(id)] = { equipmentTags: [], equipmentIds: [], subspaceTags: [], subspaceIds: [], issueIds: [], issueNumbers: [] }
+
+    for (const row of (equipAgg || [])) {
+      const sid = String(row && row._id)
+      if (!sid) continue
+      bySpaceId[sid] = bySpaceId[sid] || { equipmentTags: [], equipmentIds: [], subspaceTags: [], subspaceIds: [], issueIds: [], issueNumbers: [] }
+      bySpaceId[sid].equipmentTags = (row.equipmentTags || []).map(v => String(v || '')).filter(Boolean)
+      bySpaceId[sid].equipmentIds = (row.equipmentIds || []).map(v => String(v || '')).filter(Boolean)
+    }
+    for (const row of (subAgg || [])) {
+      const sid = String(row && row._id)
+      if (!sid) continue
+      bySpaceId[sid] = bySpaceId[sid] || { equipmentTags: [], equipmentIds: [], subspaceTags: [], subspaceIds: [], issueIds: [], issueNumbers: [] }
+      bySpaceId[sid].subspaceTags = (row.subspaceTags || []).map(v => String(v || '')).filter(Boolean)
+      bySpaceId[sid].subspaceIds = (row.subspaceIds || []).map(v => String(v || '')).filter(Boolean)
+    }
+    for (const row of (issueAgg || [])) {
+      const sid = String(row && row._id)
+      if (!sid) continue
+      bySpaceId[sid] = bySpaceId[sid] || { equipmentTags: [], equipmentIds: [], subspaceTags: [], subspaceIds: [], issueIds: [], issueNumbers: [] }
+      bySpaceId[sid].issueIds = (row.issueIds || []).map(v => String(v || '')).filter(Boolean)
+      bySpaceId[sid].issueNumbers = (row.issueNumbers || []).filter(v => v !== null && v !== undefined && v !== '').map(v => Number(v)).filter(n => Number.isFinite(n)).sort((a, b) => a - b)
+    }
+
+    res.status(200).send({ bySpaceId })
+  } catch (error) {
+    console.error('[spaces] export-details error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to load export details' })
   }
 })
 

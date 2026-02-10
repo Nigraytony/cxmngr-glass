@@ -437,363 +437,363 @@
         </div>
       </div>
 
-	      <!-- Advanced filters (md+). For mobile, use the modal. -->
-	      <div
-	        v-if="showAdvancedFilters"
-	        class="w-full hidden md:block mt-3 pt-3 border-t border-white/10"
-	      >
-	        <div class="space-y-3">
-	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Location</label>
-	              <input
-	                v-model="locationFilter"
-	                type="text"
-	                placeholder="space tag or name"
-	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              >
-	            </div>
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Responsible</label>
-	              <input
-	                v-model="responsibleFilter"
-	                type="text"
-	                placeholder="name or email"
-	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              >
-	            </div>
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Tags</label>
-	              <input
-	                v-model="tagsFilter"
-	                type="text"
-	                placeholder="comma-separated"
-	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              >
-	            </div>
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Installation Date</label>
-	              <div class="grid grid-cols-2 gap-2">
-	                <input
-	                  v-model="installationDateFrom"
-	                  type="date"
-	                  placeholder="From"
-	                  :class="[
-	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                    installationDateFrom ? 'text-white' : 'text-white/60',
-	                  ]"
-	                >
-	                <input
-	                  v-model="installationDateTo"
-	                  type="date"
-	                  placeholder="To"
-	                  :class="[
-	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                    installationDateTo ? 'text-white' : 'text-white/60',
-	                  ]"
-	                >
-	              </div>
-	            </div>
-	          </div>
+      <!-- Advanced filters (md+). For mobile, use the modal. -->
+      <div
+        v-if="showAdvancedFilters"
+        class="w-full hidden md:block mt-3 pt-3 border-t border-white/10"
+      >
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Location</label>
+              <input
+                v-model="locationFilter"
+                type="text"
+                placeholder="space tag or name"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Responsible</label>
+              <input
+                v-model="responsibleFilter"
+                type="text"
+                placeholder="name or email"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Tags</label>
+              <input
+                v-model="tagsFilter"
+                type="text"
+                placeholder="comma-separated"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Installation Date</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input
+                  v-model="installationDateFrom"
+                  type="date"
+                  placeholder="From"
+                  :class="[
+                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                    installationDateFrom ? 'text-white' : 'text-white/60',
+                  ]"
+                >
+                <input
+                  v-model="installationDateTo"
+                  type="date"
+                  placeholder="To"
+                  :class="[
+                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                    installationDateTo ? 'text-white' : 'text-white/60',
+                  ]"
+                >
+              </div>
+            </div>
+          </div>
 	
-	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Test Date</label>
-	              <div class="grid grid-cols-2 gap-2">
-	                <input
-	                  v-model="testDateFrom"
-	                  type="date"
-	                  placeholder="From"
-	                  :class="[
-	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                    testDateFrom ? 'text-white' : 'text-white/60',
-	                  ]"
-	                >
-	                <input
-	                  v-model="testDateTo"
-	                  type="date"
-	                  placeholder="To"
-	                  :class="[
-	                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                    testDateTo ? 'text-white' : 'text-white/60',
-	                  ]"
-	                >
-	              </div>
-	            </div>
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">System</label>
-	              <div
-	                ref="systemMenuRef"
-	                class="relative"
-	              >
-	                <button
-	                  :aria-expanded="showSystemMenu ? 'true' : 'false'"
-	                  class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
-	                  @click="toggleSystemMenu"
-	                >
-	                  <span class="flex items-center gap-2 min-w-0">
-	                    <span class="truncate">{{ systemFilterLabel }}</span>
-	                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0">{{ systemCount(systemFilter || 'All') }}</span>
-	                  </span>
-	                  <svg
-	                    xmlns="http://www.w3.org/2000/svg"
-	                    viewBox="0 0 24 24"
-	                    fill="none"
-	                    stroke="currentColor"
-	                    class="w-3 h-3 ml-1 shrink-0"
-	                  ><path
-	                    d="M6 9l6 6 6-6"
-	                    stroke-width="1.5"
-	                    stroke-linecap="round"
-	                    stroke-linejoin="round"
-	                  /></svg>
-	                </button>
-	                <div
-	                  v-if="showSystemMenu"
-	                  class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
-	                  role="menu"
-	                >
-	                  <div class="py-1">
-	                    <button
-	                      v-for="opt in systemOptions"
-	                      :key="opt.value || opt.name"
-	                      role="menuitem"
-	                      :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
-	                      @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
-	                    >
-	                      <span>{{ opt.name }}</span>
-	                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
-	                    </button>
-	                  </div>
-	                </div>
-	              </div>
-	            </div>
-	          </div>
-	        </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Test Date</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input
+                  v-model="testDateFrom"
+                  type="date"
+                  placeholder="From"
+                  :class="[
+                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                    testDateFrom ? 'text-white' : 'text-white/60',
+                  ]"
+                >
+                <input
+                  v-model="testDateTo"
+                  type="date"
+                  placeholder="To"
+                  :class="[
+                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                    testDateTo ? 'text-white' : 'text-white/60',
+                  ]"
+                >
+              </div>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">System</label>
+              <div
+                ref="systemMenuRef"
+                class="relative"
+              >
+                <button
+                  :aria-expanded="showSystemMenu ? 'true' : 'false'"
+                  class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
+                  @click="toggleSystemMenu"
+                >
+                  <span class="flex items-center gap-2 min-w-0">
+                    <span class="truncate">{{ systemFilterLabel }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80 shrink-0">{{ systemCount(systemFilter || 'All') }}</span>
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-3 h-3 ml-1 shrink-0"
+                  ><path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
+                </button>
+                <div
+                  v-if="showSystemMenu"
+                  class="absolute left-0 mt-2 w-56 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+                  role="menu"
+                >
+                  <div class="py-1">
+                    <button
+                      v-for="opt in systemOptions"
+                      :key="opt.value || opt.name"
+                      role="menuitem"
+                      :class="['w-full px-3 py-2 text-left inline-flex items-center justify-between gap-2', systemFilterKey === (opt.name === 'All' ? 'All' : String(opt.value).toLowerCase()) ? 'bg-white/10 text-white' : 'text-white/90 hover:bg-white/10']"
+                      @click="systemFilter = (opt.name === 'All' ? '' : String(opt.value || '')); closeSystemMenu()"
+                    >
+                      <span>{{ opt.name }}</span>
+                      <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 	
-	        <div class="mt-3 flex items-center justify-between gap-3">
-	          <div class="flex flex-wrap items-center gap-2">
-	            <div class="relative inline-block group shrink-0">
-	              <button
-	                :disabled="!projectStore.currentProjectId"
-	                aria-label="Upload equipment"
-                  :title="projectStore.currentProjectId ? 'Upload equipment from XLSX' : 'Select a project'"
-	                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
-	                @click="showUploadDialog = true"
-	              >
-	                <svg
-	                  xmlns="http://www.w3.org/2000/svg"
-	                  viewBox="0 0 24 24"
-	                  fill="none"
-	                  stroke="currentColor"
-	                  class="w-4 h-4"
-	                ><path
-	                  d="M12 3v12"
-	                  stroke-width="1.5"
-	                  stroke-linecap="round"
-	                /><path
-	                  d="M7 8l5-5 5 5"
-	                  stroke-width="1.5"
-	                  stroke-linecap="round"
-	                  stroke-linejoin="round"
-	                /><rect
-	                  x="4"
-	                  y="15"
-	                  width="16"
-	                  height="6"
-	                  rx="1.5"
-	                  stroke-width="1.5"
-	                /></svg>
-	                <span class="text-sm">Upload</span>
-	              </button>
-	              <div
-	                role="tooltip"
-	                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-	              >
-                  Upload equipment from XLSX
-	              </div>
-	            </div>
-	            <div class="relative inline-block group shrink-0">
-	              <button
-	                :disabled="!projectStore.currentProjectId"
-                  aria-label="Download equipment"
-                  :title="projectStore.currentProjectId ? 'Download filtered equipment as XLSX (editable)' : 'Select a project'"
-	                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
-                  @click="downloadEquipmentList()"
-	              >
-	                <svg
-	                  xmlns="http://www.w3.org/2000/svg"
-	                  viewBox="0 0 24 24"
-	                  fill="none"
-	                  stroke="currentColor"
-	                  class="w-4 h-4"
-	                ><path
-	                  d="M12 3v12"
-	                  stroke-width="1.5"
-	                  stroke-linecap="round"
-	                /><path
-	                  d="M7 10l5 5 5-5"
-	                  stroke-width="1.5"
-	                  stroke-linecap="round"
-	                  stroke-linejoin="round"
-	                /><rect
-	                  x="4"
-	                  y="17"
-	                  width="16"
-	                  height="4"
-	                  rx="1.5"
-	                  stroke-width="1.5"
-	                /></svg>
-	                <span class="text-sm">Download</span>
-	              </button>
-	              <div
-	                role="tooltip"
-	                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-	              >
-	                Download editable XLSX
-	              </div>
-	            </div>
-	            <button
-	              type="button"
-	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-	              @click="clearAdvancedFilters"
-	            >
-	              Clear advanced filters
-	            </button>
-	          </div>
-	          <div class="text-xs text-white/50">
-	            Advanced filters show on desktop; mobile uses the Filters panel.
-	          </div>
-	        </div>
-	      </div>
-	    </div>
+        <div class="mt-3 flex items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative inline-block group shrink-0">
+              <button
+                :disabled="!projectStore.currentProjectId"
+                aria-label="Upload equipment"
+                :title="projectStore.currentProjectId ? 'Upload equipment from XLSX' : 'Select a project'"
+                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+                @click="showUploadDialog = true"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M12 3v12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><path
+                  d="M7 8l5-5 5 5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /><rect
+                  x="4"
+                  y="15"
+                  width="16"
+                  height="6"
+                  rx="1.5"
+                  stroke-width="1.5"
+                /></svg>
+                <span class="text-sm">Upload</span>
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Upload equipment from XLSX
+              </div>
+            </div>
+            <div class="relative inline-block group shrink-0">
+              <button
+                :disabled="!projectStore.currentProjectId"
+                aria-label="Download equipment"
+                :title="projectStore.currentProjectId ? 'Download filtered equipment as XLSX (editable)' : 'Select a project'"
+                class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+                @click="downloadEquipmentList()"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M12 3v12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><path
+                  d="M7 10l5 5 5-5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                /><rect
+                  x="4"
+                  y="17"
+                  width="16"
+                  height="4"
+                  rx="1.5"
+                  stroke-width="1.5"
+                /></svg>
+                <span class="text-sm">Download</span>
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Download editable XLSX
+              </div>
+            </div>
+            <button
+              type="button"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+              @click="clearAdvancedFilters"
+            >
+              Clear advanced filters
+            </button>
+          </div>
+          <div class="text-xs text-white/50">
+            Advanced filters show on desktop; mobile uses the Filters panel.
+          </div>
+        </div>
+      </div>
+    </div>
 
-	    <!-- Mobile Filters Modal -->
-	    <Modal v-model="showFiltersModal">
-	      <template #header>
-	        <h3 class="text-lg font-semibold">
-	          Filters
-	        </h3>
-	      </template>
-	      <div class="space-y-4">
-	        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Location</label>
-	            <input
-	              v-model="locationFilter"
-	              type="text"
-	              placeholder="space tag or name"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	            >
-	          </div>
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Responsible</label>
-	            <input
-	              v-model="responsibleFilter"
-	              type="text"
-	              placeholder="name or email"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	            >
-	          </div>
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Tags</label>
-	            <input
-	              v-model="tagsFilter"
-	              type="text"
-	              placeholder="comma-separated"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	            >
-	          </div>
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">System</label>
-	            <select
-	              v-model="systemFilter"
-	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-	            >
-	              <option value="">
-	                All ({{ systemCount('All') }})
-	              </option>
-	              <option
-	                v-for="opt in systemOptions.filter(o => o.name !== 'All')"
-	                :key="opt.value || opt.name"
-	                :value="String(opt.value || '')"
-	              >
-	                {{ opt.name }} ({{ opt.count }})
-	              </option>
-	            </select>
-	          </div>
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Installation Date</label>
-	            <div class="grid grid-cols-2 gap-2">
-	              <input
-	                v-model="installationDateFrom"
-	                type="date"
-	                placeholder="From"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  installationDateFrom ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	              <input
-	                v-model="installationDateTo"
-	                type="date"
-	                placeholder="To"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  installationDateTo ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	            </div>
-	          </div>
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Test Date</label>
-	            <div class="grid grid-cols-2 gap-2">
-	              <input
-	                v-model="testDateFrom"
-	                type="date"
-	                placeholder="From"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  testDateFrom ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	              <input
-	                v-model="testDateTo"
-	                type="date"
-	                placeholder="To"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  testDateTo ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	            </div>
-	          </div>
-	        </div>
-	      </div>
-	      <template #footer>
-	        <div class="flex items-center justify-between gap-2 w-full">
-	          <button
-	            type="button"
-	            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
-	            @click="clearAdvancedFilters"
-	          >
-	            Clear
-	          </button>
-	          <button
-	            type="button"
-	            class="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/20"
-	            @click="showFiltersModal = false"
-	          >
-	            Done
-	          </button>
-	        </div>
-	      </template>
-	    </Modal>
+    <!-- Mobile Filters Modal -->
+    <Modal v-model="showFiltersModal">
+      <template #header>
+        <h3 class="text-lg font-semibold">
+          Filters
+        </h3>
+      </template>
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Location</label>
+            <input
+              v-model="locationFilter"
+              type="text"
+              placeholder="space tag or name"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Responsible</label>
+            <input
+              v-model="responsibleFilter"
+              type="text"
+              placeholder="name or email"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Tags</label>
+            <input
+              v-model="tagsFilter"
+              type="text"
+              placeholder="comma-separated"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">System</label>
+            <select
+              v-model="systemFilter"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            >
+              <option value="">
+                All ({{ systemCount('All') }})
+              </option>
+              <option
+                v-for="opt in systemOptions.filter(o => o.name !== 'All')"
+                :key="opt.value || opt.name"
+                :value="String(opt.value || '')"
+              >
+                {{ opt.name }} ({{ opt.count }})
+              </option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Installation Date</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="installationDateFrom"
+                type="date"
+                placeholder="From"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  installationDateFrom ? 'text-white' : 'text-white/60',
+                ]"
+              >
+              <input
+                v-model="installationDateTo"
+                type="date"
+                placeholder="To"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  installationDateTo ? 'text-white' : 'text-white/60',
+                ]"
+              >
+            </div>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Test Date</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="testDateFrom"
+                type="date"
+                placeholder="From"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  testDateFrom ? 'text-white' : 'text-white/60',
+                ]"
+              >
+              <input
+                v-model="testDateTo"
+                type="date"
+                placeholder="To"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  testDateTo ? 'text-white' : 'text-white/60',
+                ]"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex items-center justify-between gap-2 w-full">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
+            @click="clearAdvancedFilters"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/20"
+            @click="showFiltersModal = false"
+          >
+            Done
+          </button>
+        </div>
+      </template>
+    </Modal>
 
-	    <!-- analytics -->
-	    <div
-	      v-if="showAnalytics"
-	      class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
+    <!-- analytics -->
+    <div
+      v-if="showAnalytics"
+      class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
     >
       <div class="flex items-center justify-between mb-4">
         <div class="text-white font-semibold">
@@ -1228,252 +1228,252 @@
 
       <form @submit.prevent="save">
         <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-sm text-white/70">Tag</label>
-              <input
-                v-model="form.tag"
-                type="text"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+          <div>
+            <label class="text-sm text-white/70">Tag</label>
+            <input
+              v-model="form.tag"
+              type="text"
+              required
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+          </div>
+          <div>
+            <label class="text-sm text-white/70">Type</label>
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                @click="showModalTypeOptions"
+                @keydown.down.prevent="onModalTypeArrow(1)"
+                @keydown.up.prevent="onModalTypeArrow(-1)"
+                @keydown.enter.prevent="chooseHighlightedModalType"
+                @keydown.esc="hideModalTypeDropdown"
+                @blur="hideModalTypeDropdown"
+                @wheel.prevent="(e) => onModalTypeArrow(e.deltaY > 0 ? 1 : -1)"
               >
-            </div>
-            <div>
-              <label class="text-sm text-white/70">Type</label>
-              <div class="relative">
-                <button
-                  type="button"
-                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
-                  @click="showModalTypeOptions"
-                  @keydown.down.prevent="onModalTypeArrow(1)"
-                  @keydown.up.prevent="onModalTypeArrow(-1)"
-                  @keydown.enter.prevent="chooseHighlightedModalType"
-                  @keydown.esc="hideModalTypeDropdown"
-                  @blur="hideModalTypeDropdown"
-                  @wheel.prevent="(e) => onModalTypeArrow(e.deltaY > 0 ? 1 : -1)"
+                <span>{{ modalTypeOptions.find(opt => opt.value === form.type)?.text || form.type }}</span>
+                <svg
+                  class="w-4 h-4 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <span>{{ modalTypeOptions.find(opt => opt.value === form.type)?.text || form.type }}</span>
-                  <svg
-                    class="w-4 h-4 text-white/50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
 
-                <div
-                  v-if="showModalTypeDropdown"
-                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
-                >
-                  <div class="py-1">
-                    <button
-                      v-for="(opt, i) in modalTypeOptions"
-                      :key="opt.value"
-                      type="button"
-                      class="w-full px-3 py-2 text-left text-white/90"
-                      :class="i === highlightedModalTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @click="selectModalType(opt.value)"
-                    >
-                      {{ opt.text }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Title</label>
-              <input
-                v-model="form.title"
-                type="text"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              <div
+                v-if="showModalTypeDropdown"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
               >
-            </div>
-            <div>
-              <label class="text-sm text-white/70">System</label>
-              <div class="relative">
-                <button
-                  type="button"
-                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
-                  @click="showModalSystemOptions"
-                  @keydown.down.prevent="onModalSystemArrow(1)"
-                  @keydown.up.prevent="onModalSystemArrow(-1)"
-                  @keydown.enter.prevent="chooseHighlightedModalSystem"
-                  @keydown.esc="hideModalSystemDropdown"
-                  @blur="hideModalSystemDropdown"
-                  @wheel.prevent="(e) => onModalSystemArrow(e.deltaY > 0 ? 1 : -1)"
-                >
-                  <span>{{ modalSystemOptions.find(opt => opt.value === form.system)?.text || form.system || 'Select System' }}</span>
-                  <svg
-                    class="w-4 h-4 text-white/50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div class="py-1">
+                  <button
+                    v-for="(opt, i) in modalTypeOptions"
+                    :key="opt.value"
+                    type="button"
+                    class="w-full px-3 py-2 text-left text-white/90"
+                    :class="i === highlightedModalTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="selectModalType(opt.value)"
                   >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                <div
-                  v-if="showModalSystemDropdown"
-                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
-                >
-                  <div class="py-1">
-                    <button
-                      v-for="(opt, i) in modalSystemOptions"
-                      :key="opt.value"
-                      type="button"
-                      class="w-full px-3 py-2 text-left text-white/90"
-                      :class="i === highlightedModalSystemIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @click="selectModalSystem(opt.value)"
-                    >
-                      {{ opt.text }}
-                    </button>
-                  </div>
+                    {{ opt.text }}
+                  </button>
                 </div>
               </div>
-            </div>
-            <div>
-              <label class="text-sm text-white/70">Status</label>
-              <div class="relative">
-                <button
-                  type="button"
-                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
-                  @click="showModalStatusOptions"
-                  @keydown.down.prevent="onModalStatusArrow(1)"
-                  @keydown.up.prevent="onModalStatusArrow(-1)"
-                  @keydown.enter.prevent="chooseHighlightedModalStatus"
-                  @keydown.esc="hideModalStatusDropdown"
-                  @blur="hideModalStatusDropdown"
-                  @wheel.prevent="(e) => onModalStatusArrow(e.deltaY > 0 ? 1 : -1)"
-                >
-                  <span>{{ form.status || 'Select Status' }}</span>
-                  <svg
-                    class="w-4 h-4 text-white/50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                <div
-                  v-if="showModalStatusDropdown"
-                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
-                >
-                  <div class="py-1">
-                    <button
-                      v-for="(status, i) in statuses"
-                      :key="status"
-                      type="button"
-                      class="w-full px-3 py-2 text-left text-white/90"
-                      :class="i === highlightedModalStatusIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @click="selectModalStatus(status)"
-                    >
-                      {{ status }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Space</label>
-              <div class="relative">
-                <button
-                  type="button"
-                  class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
-                  @click="showModalSpaceOptions"
-                  @keydown.down.prevent="onModalSpaceArrow(1)"
-                  @keydown.up.prevent="onModalSpaceArrow(-1)"
-                  @keydown.enter.prevent="chooseHighlightedModalSpace"
-                  @keydown.esc="hideModalSpaceDropdown"
-                  @blur="hideModalSpaceDropdown"
-                  @wheel.prevent="(e) => onModalSpaceArrow(e.deltaY > 0 ? 1 : -1)"
-                >
-                  <span>{{ (form as any).spaceId ? parentOptions.find(p => p.id === (form as any).spaceId)?.title + ' (' + parentOptions.find(p => p.id === (form as any).spaceId)?.type + ')' : 'None' }}</span>
-                  <svg
-                    class="w-4 h-4 text-white/50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                <div
-                  v-if="showModalSpaceDropdown"
-                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
-                >
-                  <div class="py-1">
-                    <button
-                      type="button"
-                      class="w-full px-3 py-2 text-left text-white/90"
-                      :class="highlightedModalSpaceIndex === -1 ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @click="selectModalSpace('')"
-                    >
-                      None
-                    </button>
-                    <button
-                      v-for="(p, i) in parentOptions"
-                      :key="p.id"
-                      type="button"
-                      class="w-full px-3 py-2 text-left text-white/90"
-                      :class="i === highlightedModalSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @click="p.id && selectModalSpace(p.id)"
-                    >
-                      {{ p.title }} ({{ p.type }})
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Description</label>
-              <textarea
-                v-model="form.description"
-                rows="3"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              />
             </div>
           </div>
-          <div class="mt-4 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
-              @click="closeModal"
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Title</label>
+            <input
+              v-model="form.title"
+              type="text"
+              required
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
-            >
-              Save
-            </button>
           </div>
+          <div>
+            <label class="text-sm text-white/70">System</label>
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                @click="showModalSystemOptions"
+                @keydown.down.prevent="onModalSystemArrow(1)"
+                @keydown.up.prevent="onModalSystemArrow(-1)"
+                @keydown.enter.prevent="chooseHighlightedModalSystem"
+                @keydown.esc="hideModalSystemDropdown"
+                @blur="hideModalSystemDropdown"
+                @wheel.prevent="(e) => onModalSystemArrow(e.deltaY > 0 ? 1 : -1)"
+              >
+                <span>{{ modalSystemOptions.find(opt => opt.value === form.system)?.text || form.system || 'Select System' }}</span>
+                <svg
+                  class="w-4 h-4 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+
+              <div
+                v-if="showModalSystemDropdown"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+              >
+                <div class="py-1">
+                  <button
+                    v-for="(opt, i) in modalSystemOptions"
+                    :key="opt.value"
+                    type="button"
+                    class="w-full px-3 py-2 text-left text-white/90"
+                    :class="i === highlightedModalSystemIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="selectModalSystem(opt.value)"
+                  >
+                    {{ opt.text }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="text-sm text-white/70">Status</label>
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                @click="showModalStatusOptions"
+                @keydown.down.prevent="onModalStatusArrow(1)"
+                @keydown.up.prevent="onModalStatusArrow(-1)"
+                @keydown.enter.prevent="chooseHighlightedModalStatus"
+                @keydown.esc="hideModalStatusDropdown"
+                @blur="hideModalStatusDropdown"
+                @wheel.prevent="(e) => onModalStatusArrow(e.deltaY > 0 ? 1 : -1)"
+              >
+                <span>{{ form.status || 'Select Status' }}</span>
+                <svg
+                  class="w-4 h-4 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+
+              <div
+                v-if="showModalStatusDropdown"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+              >
+                <div class="py-1">
+                  <button
+                    v-for="(status, i) in statuses"
+                    :key="status"
+                    type="button"
+                    class="w-full px-3 py-2 text-left text-white/90"
+                    :class="i === highlightedModalStatusIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="selectModalStatus(status)"
+                  >
+                    {{ status }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Space</label>
+            <div class="relative">
+              <button
+                type="button"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                @click="showModalSpaceOptions"
+                @keydown.down.prevent="onModalSpaceArrow(1)"
+                @keydown.up.prevent="onModalSpaceArrow(-1)"
+                @keydown.enter.prevent="chooseHighlightedModalSpace"
+                @keydown.esc="hideModalSpaceDropdown"
+                @blur="hideModalSpaceDropdown"
+                @wheel.prevent="(e) => onModalSpaceArrow(e.deltaY > 0 ? 1 : -1)"
+              >
+                <span>{{ (form as any).spaceId ? parentOptions.find(p => p.id === (form as any).spaceId)?.title + ' (' + parentOptions.find(p => p.id === (form as any).spaceId)?.type + ')' : 'None' }}</span>
+                <svg
+                  class="w-4 h-4 text-white/50"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+
+              <div
+                v-if="showModalSpaceDropdown"
+                class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+              >
+                <div class="py-1">
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 text-left text-white/90"
+                    :class="highlightedModalSpaceIndex === -1 ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="selectModalSpace('')"
+                  >
+                    None
+                  </button>
+                  <button
+                    v-for="(p, i) in parentOptions"
+                    :key="p.id"
+                    type="button"
+                    class="w-full px-3 py-2 text-left text-white/90"
+                    :class="i === highlightedModalSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @click="p.id && selectModalSpace(p.id)"
+                  >
+                    {{ p.title }} ({{ p.type }})
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Description</label>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            />
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
+            @click="closeModal"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
+          >
+            Save
+          </button>
+        </div>
       </form>
     </Modal>
 
@@ -2232,29 +2232,39 @@ const preSystemFiltered = computed(() => {
 
 const systemCounts = computed<Record<string, number>>(() => {
   const m: Record<string, number> = {}
+  const normKey = (k: any) => String(k || '').trim().toLowerCase()
   const serverCounts = serverSystemCounts.value || {}
   if (Object.keys(serverCounts).length) {
     for (const [k, v] of Object.entries(serverCounts)) {
-      const key = String(k || '').trim()
+      const key = normKey(k)
       if (!key) continue
       m[key] = Number(v) || 0
     }
   }
   if (!Object.keys(m).length && Array.isArray(serverEquipment.value) && serverEquipment.value.length) {
     for (const e of serverEquipment.value as any[]) {
-      const key = String((e as any).system || '').trim()
+      const key = normKey((e as any).system)
       if (!key) continue
       m[key] = (m[key] || 0) + 1
     }
   }
   if (!Object.keys(m).length) {
     for (const e of preSystemFiltered.value) {
-      const key = String(e.system || '').trim()
+      const key = normKey(e.system)
       if (!key) continue
       m[key] = (m[key] || 0) + 1
     }
   }
-  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
+
+  const facetSum = Object.entries(m)
+    .filter(([k]) => k !== 'All')
+    .reduce((acc, [, v]) => acc + (Number(v) || 0), 0)
+  if (facetSum > 0) {
+    m['All'] = facetSum
+  } else {
+    // "All" here means: total under current search/type/status filters, before applying system filter.
+    m['All'] = preSystemFiltered.value.length
+  }
   return m
 })
 
@@ -2265,6 +2275,7 @@ const systemFilterOptions = computed(() => {
   const entries = Object.entries(systemCounts.value || {})
   for (const [val, cnt] of entries) {
     if (!val) continue
+    if (val === 'All') continue
     const valLower = String(val).toLowerCase()
     if (seen.has(valLower)) continue
     seen.add(valLower)
@@ -2563,6 +2574,7 @@ function typeCount(name: string) {
 const systemOptions = computed<Array<{ name: string; value: string; count: number }>>(() => {
   const opts: Array<{ name: string; value: string; count: number }> = []
   const mappingArr: Array<any> = (lists as any)?.systemOptions || []
+  const seen = new Set<string>()
   const labelFor = (val: string) => {
     const valLower = String(val || '').toLowerCase()
     const found = mappingArr.find((o: any) => o && o.value !== undefined && String(o.value).toLowerCase() === valLower)
@@ -2571,8 +2583,12 @@ const systemOptions = computed<Array<{ name: string; value: string; count: numbe
   const names = serverSystems.value.length ? serverSystems.value : Object.keys(systemCounts.value).filter(k => k !== 'All')
   for (const name of names) {
     if (!name) continue
-    const count = systemCounts.value[name] || 0
-    opts.push({ name: labelFor(name), value: String(name).toLowerCase(), count })
+    const key = String(name).trim().toLowerCase()
+    if (!key) continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    const count = systemCounts.value[key] || 0
+    opts.push({ name: labelFor(name), value: key, count })
   }
   opts.sort((a, b) => a.name.localeCompare(b.name))
   return [{ name: 'All', value: 'All', count: systemCounts.value['All'] || preSystemFiltered.value.length }, ...opts]
@@ -2626,7 +2642,17 @@ const statusCounts = computed<Record<string, number>>(() => {
       m[key] = (m[key] || 0) + 1
     }
   }
-  m['All'] = Number(totalFiltered.value || filtered.value.length || 0)
+
+  // Derive "All" from facet totals when available.
+  // This avoids showing 0 for All when server-provided per-status counts are non-zero.
+  const facetSum = Object.entries(m)
+    .filter(([k]) => k !== 'All')
+    .reduce((acc, [, v]) => acc + (Number(v) || 0), 0)
+  if (facetSum > 0) {
+    m['All'] = facetSum
+  } else {
+    m['All'] = Number(serverTotalAll.value || serverTotal.value || 0) || preStatusFiltered.value.length
+  }
   return m
 })
 const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
@@ -2648,7 +2674,7 @@ const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
     if (ib !== -1) return 1
     return a.name.localeCompare(b.name)
   })
-  return [{ name: 'All', count: preStatusFiltered.value.length }, ...opts]
+  return [{ name: 'All', count: counts['All'] || preStatusFiltered.value.length }, ...opts]
 })
 function statusCount(name: string) {
   const opt = (statusOptions.value || []).find(o => o.name === name)

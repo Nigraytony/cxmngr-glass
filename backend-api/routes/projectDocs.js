@@ -7,6 +7,7 @@ const router = express.Router({ mergeParams: true })
 const { auth } = require('../middleware/auth')
 const { requireActiveProject } = require('../middleware/subscription')
 const { requireNotDisabled } = require('../middleware/killSwitch')
+const { requirePermission } = require('../middleware/rbac')
 const { isTruthy, requireObjectIdParam, requireObjectIdQuery, requireObjectIdBody } = require('../middleware/validate')
 const Project = require('../models/project')
 const DocFolder = require('../models/docFolder')
@@ -210,6 +211,7 @@ router.get(
   requireNotDisabled('uploads'),
   requireObjectIdParam('projectId'),
   requireActiveProject,
+  requirePermission('folders.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
@@ -237,6 +239,7 @@ router.get(
   requireNotDisabled('uploads'),
   requireObjectIdParam('projectId'),
   requireActiveProject,
+  requirePermission('documents.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
@@ -265,6 +268,7 @@ router.post(
   requireNotDisabled('uploads'),
   requireObjectIdParam('projectId'),
   requireActiveProject,
+  requirePermission('folders.create', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
@@ -315,6 +319,7 @@ router.patch(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('folderId'),
   requireActiveProject,
+  requirePermission('folders.update', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFolder,
   async (req, res) => {
@@ -403,6 +408,7 @@ router.delete(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('folderId'),
   requireActiveProject,
+  requirePermission('folders.delete', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFolder,
   async (req, res) => {
@@ -477,6 +483,7 @@ router.get(
   requireObjectIdParam('projectId'),
   requireObjectIdQuery('folderId'),
   requireActiveProject,
+  requirePermission('documents.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
@@ -526,6 +533,7 @@ router.post(
   rateLimit({ windowMs: 60_000, max: 60, keyPrefix: 'docs-upload', keyFn: docsRateLimitKey }),
   requireObjectIdParam('projectId'),
   requireActiveProject,
+  requirePermission('documents.create', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   requireObjectIdBody('folderId'),
   async (req, res) => {
@@ -628,6 +636,7 @@ router.post(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('fileId'),
   requireActiveProject,
+  requirePermission('documents.create', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFile,
   async (req, res) => {
@@ -712,6 +721,7 @@ router.get(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('fileId'),
   requireActiveProject,
+  requirePermission('documents.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFile,
   async (req, res) => {
@@ -737,6 +747,7 @@ router.get(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('fileId'),
   requireActiveProject,
+  requirePermission('documents.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFile,
   async (req, res) => {
@@ -833,6 +844,7 @@ router.patch(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('fileId'),
   requireActiveProject,
+  requirePermission('documents.update', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFile,
   async (req, res) => {
@@ -905,6 +917,7 @@ router.delete(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('fileId'),
   requireActiveProject,
+  requirePermission('documents.delete', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFile,
   async (req, res) => {

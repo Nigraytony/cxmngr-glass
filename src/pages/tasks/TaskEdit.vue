@@ -3,39 +3,39 @@
     <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Tasks', to: '/app/tasks' }, { text: modeLabel } ]" />
 
     <div class="p-4 rounded bg-white/6 border border-white/10 text-white">
-	      <div class="flex items-center gap-2 mb-4">
-	        <button
-	          type="button"
-	          class="px-3 py-1.5 rounded-lg border text-sm"
-	          :class="activeTab === 'info' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
-	          @click="activeTab = 'info'"
-	        >
-	          Info
-	        </button>
-	        <button
-	          type="button"
-	          class="px-3 py-1.5 rounded-lg border text-sm"
-	          :class="activeTab === 'expenses' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
-	          @click="activeTab = 'expenses'"
-	        >
-	          Expenses
-	        </button>
-	        <button
-	          type="button"
-	          class="px-3 py-1.5 rounded-lg border text-sm"
-	          :class="activeTab === 'settings' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
-	          @click="activeTab = 'settings'"
-	        >
-	          Settings
-	        </button>
-	        <RouterLink
-	          v-if="isOprTask"
-	          to="/app/opr"
-	          class="px-3 py-1.5 rounded-lg border text-sm bg-indigo-500/15 border-indigo-400/40 text-indigo-100 hover:bg-indigo-500/25"
-	        >
-	          OPR Workshop
-	        </RouterLink>
-	      </div>
+      <div class="flex items-center gap-2 mb-4">
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="activeTab === 'info' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+          @click="activeTab = 'info'"
+        >
+          Info
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="activeTab === 'expenses' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+          @click="activeTab = 'expenses'"
+        >
+          Expenses
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border text-sm"
+          :class="activeTab === 'settings' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/8'"
+          @click="activeTab = 'settings'"
+        >
+          Settings
+        </button>
+        <RouterLink
+          v-if="isOprTask"
+          to="/app/opr"
+          class="px-3 py-1.5 rounded-lg border text-sm bg-indigo-500/15 border-indigo-400/40 text-indigo-100 hover:bg-indigo-500/25"
+        >
+          OPR Workshop
+        </RouterLink>
+      </div>
 
       <div
         v-if="activeTab === 'info'"
@@ -102,22 +102,22 @@
             </option>
           </select>
         </div>
-	        <div>
-	          <label class="block text-white/70 text-sm">Start</label>
-	          <input
-	            v-model="startLocal"
-	            type="datetime-local"
-	            class="w-full px-3 py-2 rounded bg-white/10"
-	          >
-	        </div>
-	        <div>
-	          <label class="block text-white/70 text-sm">End</label>
-	          <input
-	            v-model="endLocal"
-	            type="datetime-local"
-	            class="w-full px-3 py-2 rounded bg-white/10"
-	          >
-	        </div>
+        <div>
+          <label class="block text-white/70 text-sm">Start</label>
+          <input
+            v-model="startLocal"
+            type="datetime-local"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
+        </div>
+        <div>
+          <label class="block text-white/70 text-sm">End</label>
+          <input
+            v-model="endLocal"
+            type="datetime-local"
+            class="w-full px-3 py-2 rounded bg-white/10"
+          >
+        </div>
         <div class="col-span-2">
           <label class="block text-white/70 text-sm">Notes</label>
           <textarea

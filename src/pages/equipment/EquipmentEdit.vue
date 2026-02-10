@@ -751,293 +751,293 @@
             <div class="text-xs text-white/60">
               Links below are legacy URL attachments (not stored in Azure).
             </div>
-          <!-- Manual link add (optional) -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-            <div>
-              <label class="block text-sm text-white/70">Filename</label>
-              <input
-                v-model="newAttachment.filename"
-                type="text"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                placeholder="specs.pdf"
-              >
+            <!-- Manual link add (optional) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div>
+                <label class="block text-sm text-white/70">Filename</label>
+                <input
+                  v-model="newAttachment.filename"
+                  type="text"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  placeholder="specs.pdf"
+                >
+              </div>
+              <div>
+                <label class="block text-sm text-white/70">URL</label>
+                <input
+                  v-model="newAttachment.url"
+                  type="url"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  placeholder="https://..."
+                >
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+                  @click="addAttachment"
+                >
+                  Add
+                </button>
+              </div>
             </div>
             <div>
-              <label class="block text-sm text-white/70">URL</label>
-              <input
-                v-model="newAttachment.url"
-                type="url"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                placeholder="https://..."
+              <label class="block text-sm text-white/70 mb-1">Attachments</label>
+              <div
+                v-if="!((form as any).attachments && (form as any).attachments.length)"
+                class="text-white/60"
               >
-            </div>
-            <div class="flex items-center gap-2">
-              <button
-                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
-                @click="addAttachment"
+                No attachments added.
+              </div>
+              <ul
+                v-else
+                class="space-y-2"
               >
-                Add
-              </button>
-            </div>
-          </div>
-          <div>
-            <label class="block text-sm text-white/70 mb-1">Attachments</label>
-            <div
-              v-if="!((form as any).attachments && (form as any).attachments.length)"
-              class="text-white/60"
-            >
-              No attachments added.
-            </div>
-            <ul
-              v-else
-              class="space-y-2"
-            >
-              <li
-                v-for="(a, i) in (form as any).attachments"
-                :key="i"
-                class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3"
-              >
-                <div class="flex items-start gap-3 min-w-0">
-                  <!-- Type icon (click to open viewer) -->
-                  <button
-                    class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
-                    title="Preview"
-                    @click="openAttachment(i)"
-                  >
-                    <!-- PDF -->
-                    <svg
-                      v-if="attachmentKind(a) === 'pdf'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-red-300"
+                <li
+                  v-for="(a, i) in (form as any).attachments"
+                  :key="i"
+                  class="p-2 rounded-md bg-white/5 border border-white/10 flex items-center justify-between gap-3"
+                >
+                  <div class="flex items-start gap-3 min-w-0">
+                    <!-- Type icon (click to open viewer) -->
+                    <button
+                      class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+                      title="Preview"
+                      @click="openAttachment(i)"
                     >
-                      <path
-                        d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M13 2v6h6"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- Sheet -->
-                    <svg
-                      v-else-if="attachmentKind(a) === 'sheet'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-green-300"
-                    >
-                      <rect
-                        x="3"
-                        y="4"
-                        width="18"
-                        height="16"
-                        rx="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M3 9h18M8 4v16M14 4v16"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- Word/Text -->
-                    <svg
-                      v-else-if="attachmentKind(a) === 'word' || attachmentKind(a) === 'txt'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                      :class="attachmentKind(a) === 'word' ? 'text-blue-300' : 'text-gray-300'"
-                    >
-                      <rect
-                        x="4"
-                        y="4"
-                        width="16"
-                        height="16"
-                        rx="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M7 9h10M7 12h10M7 15h7"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- PowerPoint -->
-                    <svg
-                      v-else-if="attachmentKind(a) === 'ppt'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-orange-300"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M12 12h6a6 6 0 0 0-6-6v6z"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- Image -->
-                    <svg
-                      v-else-if="attachmentKind(a) === 'image'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-purple-300"
-                    >
-                      <rect
-                        x="3"
-                        y="5"
-                        width="18"
-                        height="14"
-                        rx="2"
-                        ry="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M8 13l3-3 5 6"
-                        stroke-width="1.5"
-                      />
-                      <circle
-                        cx="8"
-                        cy="9"
-                        r="1.5"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- Zip -->
-                    <svg
-                      v-else-if="attachmentKind(a) === 'zip'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-yellow-300"
-                    >
-                      <rect
-                        x="5"
-                        y="3"
-                        width="14"
-                        height="18"
-                        rx="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M12 4v3m0 2v3m0 2v3"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- Link -->
-                    <svg
-                      v-else-if="attachmentKind(a) === 'link'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-indigo-300"
-                    >
-                      <path
-                        d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <!-- Generic file -->
-                    <svg
-                      v-else
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4 text-white/70"
-                    >
-                      <rect
-                        x="4"
-                        y="3"
-                        width="16"
-                        height="18"
-                        rx="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M8 7h8M8 11h8M8 15h6"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                  </button>
-                  <div class="min-w-0">
-                    <div class="truncate text-sm">
-                      {{ a.filename || fileNameFromUrl(a.url) }}
-                    </div>
-                    <div class="text-xs text-white/60 truncate">
-                      {{ a.url }}
-                    </div>
-                    <div
-                      v-if="attachmentMeta(a)"
-                      class="text-xs text-white/50 mt-0.5"
-                    >
-                      {{ attachmentMeta(a) }}
+                      <!-- PDF -->
+                      <svg
+                        v-if="attachmentKind(a) === 'pdf'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-red-300"
+                      >
+                        <path
+                          d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M13 2v6h6"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- Sheet -->
+                      <svg
+                        v-else-if="attachmentKind(a) === 'sheet'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-green-300"
+                      >
+                        <rect
+                          x="3"
+                          y="4"
+                          width="18"
+                          height="16"
+                          rx="2"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M3 9h18M8 4v16M14 4v16"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- Word/Text -->
+                      <svg
+                        v-else-if="attachmentKind(a) === 'word' || attachmentKind(a) === 'txt'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                        :class="attachmentKind(a) === 'word' ? 'text-blue-300' : 'text-gray-300'"
+                      >
+                        <rect
+                          x="4"
+                          y="4"
+                          width="16"
+                          height="16"
+                          rx="2"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M7 9h10M7 12h10M7 15h7"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- PowerPoint -->
+                      <svg
+                        v-else-if="attachmentKind(a) === 'ppt'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-orange-300"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="9"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M12 12h6a6 6 0 0 0-6-6v6z"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- Image -->
+                      <svg
+                        v-else-if="attachmentKind(a) === 'image'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-purple-300"
+                      >
+                        <rect
+                          x="3"
+                          y="5"
+                          width="18"
+                          height="14"
+                          rx="2"
+                          ry="2"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M8 13l3-3 5 6"
+                          stroke-width="1.5"
+                        />
+                        <circle
+                          cx="8"
+                          cy="9"
+                          r="1.5"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- Zip -->
+                      <svg
+                        v-else-if="attachmentKind(a) === 'zip'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-yellow-300"
+                      >
+                        <rect
+                          x="5"
+                          y="3"
+                          width="14"
+                          height="18"
+                          rx="2"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M12 4v3m0 2v3m0 2v3"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- Link -->
+                      <svg
+                        v-else-if="attachmentKind(a) === 'link'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-indigo-300"
+                      >
+                        <path
+                          d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                      <!-- Generic file -->
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4 text-white/70"
+                      >
+                        <rect
+                          x="4"
+                          y="3"
+                          width="16"
+                          height="18"
+                          rx="2"
+                          stroke-width="1.5"
+                        />
+                        <path
+                          d="M8 7h8M8 11h8M8 15h6"
+                          stroke-width="1.5"
+                        />
+                      </svg>
+                    </button>
+                    <div class="min-w-0">
+                      <div class="truncate text-sm">
+                        {{ a.filename || fileNameFromUrl(a.url) }}
+                      </div>
+                      <div class="text-xs text-white/60 truncate">
+                        {{ a.url }}
+                      </div>
+                      <div
+                        v-if="attachmentMeta(a)"
+                        class="text-xs text-white/50 mt-0.5"
+                      >
+                        {{ attachmentMeta(a) }}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button
-                    class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
-                    @click="openAttachment(i)"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
-                    title="Remove"
-                    aria-label="Remove"
-                    @click="removeAttachment(i)"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    ><path
-                      d="M3 6h18"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    /><path
-                      d="M8 6l1-2h6l1 2"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    /><rect
-                      x="6"
-                      y="6"
-                      width="12"
-                      height="14"
-                      rx="1.5"
-                      stroke-width="1.5"
-                    /><path
-                      d="M10 10v6M14 10v6"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                    /></svg>
-                  </button>
-                </div>
-              </li>
-            </ul>
-          </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                      @click="openAttachment(i)"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
+                      title="Remove"
+                      aria-label="Remove"
+                      @click="removeAttachment(i)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      ><path
+                        d="M3 6h18"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      /><path
+                        d="M8 6l1-2h6l1 2"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      /><rect
+                        x="6"
+                        y="6"
+                        width="12"
+                        height="14"
+                        rx="1.5"
+                        stroke-width="1.5"
+                      /><path
+                        d="M10 10v6M14 10v6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      /></svg>
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </template>
         </div>
 
@@ -1074,16 +1074,16 @@
               Save Checklists
             </button>
           </div>
-	          <ChecklistPanel
-	            v-model="checklists"
-	            :project-id="String(form.projectId || projectStore.currentProjectId || '')"
-	            :equipment-id="String(form.id || (form as any)._id || id)"
-	            :equipment-tag="String(form.tag || '')"
-	            :equipment-space="equipmentSpaceName"
-	            @change="onChecklistsChange"
-	            @persist="persistChecklists"
-	          />
-	        </div>
+          <ChecklistPanel
+            v-model="checklists"
+            :project-id="String(form.projectId || projectStore.currentProjectId || '')"
+            :equipment-id="String(form.id || (form as any)._id || id)"
+            :equipment-tag="String(form.tag || '')"
+            :equipment-space="equipmentSpaceName"
+            @change="onChecklistsChange"
+            @persist="persistChecklists"
+          />
+        </div>
 
         <!-- FPT Tab -->
         <div
@@ -3046,7 +3046,7 @@ async function persistFunctionalTests(tests: any[]) {
 function onFunctionalTestsChange(tests: any[]) {
   // Keep changes local while the user is editing; do not auto-save.
   // (Auto-save caused disruptive resets while typing.)
-  ;(form.value as any).functionalTests = Array.isArray(tests) ? tests : []
+  (form.value as any).functionalTests = Array.isArray(tests) ? tests : []
 }
 
 // Immediate save handler for explicit Save button in FunctionalTestsPanel

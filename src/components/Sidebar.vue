@@ -8,361 +8,361 @@
   >
     <div class="flex flex-col h-full">
       <div class="relative h-16 flex items-center gap-2 px-3">
-      <!-- Show brand mark + word when sidebar is open -->
-      <div
-        v-if="open"
-        class="h-12 max-w-[240px] flex items-center gap-3"
-      >
-        <picture>
-          <source
-            srcset="/brand/logo-2.svg"
-            type="image/svg+xml"
-          >
-          <img
-            src="/brand/logo-2.png"
-            alt="Cxma logo"
-            class="h-10 w-10 object-contain invert"
-          >
-        </picture>
-        <span class="text-white text-xl font-semibold tracking-wide">Cxma</span>
-      </div>
-      <!-- Compact square logo when collapsed (mark only) -->
-      <div
-        v-else
-        class="h-12 w-12 rounded-xl overflow-hidden grid place-items-center"
-      >
-        <picture>
-          <source
-            srcset="/brand/logo.svg"
-            type="image/svg+xml"
-          >
-          <img
-            src="/brand/logo-2.png"
-            alt="Cxma logo"
-            class="h-9 w-9 object-contain invert"
-          >
-        </picture>
-      </div>
+        <!-- Show brand mark + word when sidebar is open -->
+        <div
+          v-if="open"
+          class="h-12 max-w-[240px] flex items-center gap-3"
+        >
+          <picture>
+            <source
+              srcset="/brand/logo-2.svg"
+              type="image/svg+xml"
+            >
+            <img
+              src="/brand/logo-2.png"
+              alt="Cxma logo"
+              class="h-10 w-10 object-contain invert"
+            >
+          </picture>
+          <span class="text-white text-xl font-semibold tracking-wide">Cxma</span>
+        </div>
+        <!-- Compact square logo when collapsed (mark only) -->
+        <div
+          v-else
+          class="h-12 w-12 rounded-xl overflow-hidden grid place-items-center"
+        >
+          <picture>
+            <source
+              srcset="/brand/logo.svg"
+              type="image/svg+xml"
+            >
+            <img
+              src="/brand/logo-2.png"
+              alt="Cxma logo"
+              class="h-9 w-9 object-contain invert"
+            >
+          </picture>
+        </div>
       </div>
 
       <div class="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
         <nav class="space-y-1">
-      <!-- Dashboard -->
-      <RouterLink
-        to="/app"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          route.path === '/app' ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="route.path === '/app' ? 'page' : null"
-      >
-        <span class="i">🏠</span>
-        <span v-if="open">Dashboard</span>
-      </RouterLink>
-      <!-- Assistant -->
-      <RouterLink
-        to="/app/assistant"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/assistant') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/assistant') ? 'page' : null"
-      >
-        <span class="i">🤖</span>
-        <span v-if="open">Assistant</span>
-      </RouterLink>
-      <!-- OPR Workshop (paid add-on; visible to all projects) -->
-	      <RouterLink
-	        v-if="showStandaloneOprWorkshopLink"
-	        to="/app/opr"
-	        :class="[
-	          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-	          isActive('/app/opr') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-	        ]"
-	        :aria-current="isActive('/app/opr') ? 'page' : null"
-	      >
-	        <span class="i">🗳️</span>
-	        <span
-	          v-if="open"
-	          class="flex items-center justify-between gap-2 w-full min-w-0"
-	        >
-	          <span class="truncate">OPR Workshop</span>
-	          <span
-	            v-if="opr.workshopIsActive"
-	            class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100 shrink-0"
-	          >
-	            Live
-	          </span>
-	          <span
-	            v-else
-	            class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
-	          >
-	            Add-on
-	          </span>
-	        </span>
-	      </RouterLink>
-      <!-- Tasks + Process tree (split action: click label to open list page; click caret to expand tree) -->
-      <div v-if="featureEnabled('tasks')">
-        <div class="flex items-stretch">
+          <!-- Dashboard -->
           <RouterLink
-            to="/app/tasks"
+            to="/app"
             :class="[
-              'flex-1 flex items-center gap-3 px-3 py-2 rounded-l-lg text-white/90 border border-white/10 border-r-0 min-w-0',
-              isActive('/app/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              route.path === '/app' ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
             ]"
-            :aria-current="isRouteName('tasks') ? 'page' : null"
+            :aria-current="route.path === '/app' ? 'page' : null"
           >
-            <span class="i shrink-0">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  d="M9 11l2 2 4-4"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M21 6H7"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M21 12H7"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M21 18H7"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </span>
+            <span class="i">🏠</span>
+            <span v-if="open">Dashboard</span>
+          </RouterLink>
+          <!-- Assistant -->
+          <RouterLink
+            to="/app/assistant"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/assistant') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/assistant') ? 'page' : null"
+          >
+            <span class="i">🤖</span>
+            <span v-if="open">Assistant</span>
+          </RouterLink>
+          <!-- OPR Workshop (paid add-on; visible to all projects) -->
+          <RouterLink
+            v-if="showStandaloneOprWorkshopLink"
+            to="/app/opr"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/opr') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/opr') ? 'page' : null"
+          >
+            <span class="i">🗳️</span>
             <span
               v-if="open"
-              class="truncate"
-            >Tasks</span>
-          </RouterLink>
-
-          <button
-            v-if="open"
-            type="button"
-            class="px-2 rounded-r-lg border border-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="processOpen ? 'bg-white/15 border-white/20' : 'bg-white/5'"
-            :disabled="!currentProjectId"
-            :title="currentProjectId ? (processOpen ? 'Hide process tree' : 'Show process tree') : 'Select a project to view the process tree'"
-            @click="toggleProcessOpen"
-          >
-            <span class="inline-flex items-center gap-2">
+              class="flex items-center justify-between gap-2 w-full min-w-0"
+            >
+              <span class="truncate">OPR Workshop</span>
               <span
-                v-if="processLoading"
-                class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70"
+                v-if="opr.workshopIsActive"
+                class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100 shrink-0"
               >
-                Loading…
+                Live
               </span>
-              <svg
-                class="w-4 h-4 text-white/70 transition-transform"
-                :class="processOpen ? 'rotate-180' : ''"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
+              <span
+                v-else
+                class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
               >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
+                Add-on
+              </span>
             </span>
-          </button>
-        </div>
-
-        <div
-          v-if="currentProjectId && open && processOpen"
-          class="mt-1 ml-[-0.75rem] pl-3 border-l border-white/10 space-y-1 pr-1"
-        >
-          <div
-            v-if="processError"
-            class="text-xs text-red-200 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
-          >
-            {{ processError }}
-          </div>
-          <div
-            v-else-if="!processLoading && processVisibleNodes.length === 0"
-            class="text-xs text-white/60 px-3 py-2 rounded-lg bg-white/5 border border-white/10"
-          >
-            No tasks found for this project.
-          </div>
-
-          <div
-            v-for="n in processVisibleNodes"
-            :key="n.key"
-            class="flex items-start gap-1 px-2 py-0.5 rounded-md hover:bg-white/10"
-            :class="n.active ? 'bg-white/15 border border-white/15' : 'border border-transparent'"
-            :style="processRowStyle(n)"
-          >
-            <button
-              v-if="n.hasChildren"
-              type="button"
-              class="mt-0 w-4 h-4 grid place-items-center rounded hover:bg-white/10 text-white/70 shrink-0"
-	              :title="processExpanded[n.key] ? 'Collapse' : 'Expand'"
-	              @click.stop="toggleProcessNode(n.key)"
-	            >
-	              <svg
-	                class="w-3 h-3 transition-transform"
-	                :class="processExpanded[n.key] ? 'rotate-90' : ''"
-	                xmlns="http://www.w3.org/2000/svg"
-	                viewBox="0 0 24 24"
-	                fill="none"
-                stroke="currentColor"
+          </RouterLink>
+          <!-- Tasks + Process tree (split action: click label to open list page; click caret to expand tree) -->
+          <div v-if="featureEnabled('tasks')">
+            <div class="flex items-stretch">
+              <RouterLink
+                to="/app/tasks"
+                :class="[
+                  'flex-1 flex items-center gap-3 px-3 py-2 rounded-l-lg text-white/90 border border-white/10 border-r-0 min-w-0',
+                  isActive('/app/tasks') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+                ]"
+                :aria-current="isRouteName('tasks') ? 'page' : null"
               >
-                <path
-                  d="M9 6l6 6-6 6"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-	            </button>
-	            <span
-	              v-else
-	              class="mt-0 w-4 h-4"
-	            />
+                <span class="i shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-5 h-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M9 11l2 2 4-4"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M21 6H7"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M21 12H7"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M21 18H7"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span
+                  v-if="open"
+                  class="truncate"
+                >Tasks</span>
+              </RouterLink>
+
+              <button
+                v-if="open"
+                type="button"
+                class="px-2 rounded-r-lg border border-white/10 text-white/80 hover:bg-white/20 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                :class="processOpen ? 'bg-white/15 border-white/20' : 'bg-white/5'"
+                :disabled="!currentProjectId"
+                :title="currentProjectId ? (processOpen ? 'Hide process tree' : 'Show process tree') : 'Select a project to view the process tree'"
+                @click="toggleProcessOpen"
+              >
+                <span class="inline-flex items-center gap-2">
+                  <span
+                    v-if="processLoading"
+                    class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70"
+                  >
+                    Loading…
+                  </span>
+                  <svg
+                    class="w-4 h-4 text-white/70 transition-transform"
+                    :class="processOpen ? 'rotate-180' : ''"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </div>
 
             <div
-              v-if="n.taskId"
-              class="min-w-0 flex-1 flex items-center gap-2"
+              v-if="currentProjectId && open && processOpen"
+              class="mt-1 ml-[-0.75rem] pl-3 border-l border-white/10 space-y-1 pr-1"
             >
-              <RouterLink
-                :to="{ name: 'task-edit', params: { id: n.taskId } }"
-                class="min-w-0 flex-1 text-xs text-white/85 hover:text-white truncate"
-                :title="`${n.wbs} ${n.name}`"
+              <div
+                v-if="processError"
+                class="text-xs text-red-200 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
               >
-                <span class="text-white/60 mr-1">{{ n.wbs }}</span>
-                <span class="truncate">{{ n.name }}</span>
-              </RouterLink>
+                {{ processError }}
+              </div>
+              <div
+                v-else-if="!processLoading && processVisibleNodes.length === 0"
+                class="text-xs text-white/60 px-3 py-2 rounded-lg bg-white/5 border border-white/10"
+              >
+                No tasks found for this project.
+              </div>
 
-              <RouterLink
-                v-if="isOprWorkshopTaskNode(n)"
-                to="/app/opr"
-                class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 hover:bg-white/20 hover:text-white shrink-0 ml-auto"
-                title="Open OPR Workshop"
-                @click.stop
+              <div
+                v-for="n in processVisibleNodes"
+                :key="n.key"
+                class="flex items-start gap-1 px-2 py-0.5 rounded-md hover:bg-white/10"
+                :class="n.active ? 'bg-white/15 border border-white/15' : 'border border-transparent'"
+                :style="processRowStyle(n)"
               >
-                workshop
-              </RouterLink>
+                <button
+                  v-if="n.hasChildren"
+                  type="button"
+                  class="mt-0 w-4 h-4 grid place-items-center rounded hover:bg-white/10 text-white/70 shrink-0"
+                  :title="processExpanded[n.key] ? 'Collapse' : 'Expand'"
+                  @click.stop="toggleProcessNode(n.key)"
+                >
+                  <svg
+                    class="w-3 h-3 transition-transform"
+                    :class="processExpanded[n.key] ? 'rotate-90' : ''"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M9 6l6 6-6 6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+                <span
+                  v-else
+                  class="mt-0 w-4 h-4"
+                />
+
+                <div
+                  v-if="n.taskId"
+                  class="min-w-0 flex-1 flex items-center gap-2"
+                >
+                  <RouterLink
+                    :to="{ name: 'task-edit', params: { id: n.taskId } }"
+                    class="min-w-0 flex-1 text-xs text-white/85 hover:text-white truncate"
+                    :title="`${n.wbs} ${n.name}`"
+                  >
+                    <span class="text-white/60 mr-1">{{ n.wbs }}</span>
+                    <span class="truncate">{{ n.name }}</span>
+                  </RouterLink>
+
+                  <RouterLink
+                    v-if="isOprWorkshopTaskNode(n)"
+                    to="/app/opr"
+                    class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 hover:bg-white/20 hover:text-white shrink-0 ml-auto"
+                    title="Open OPR Workshop"
+                    @click.stop
+                  >
+                    workshop
+                  </RouterLink>
+                </div>
+                <button
+                  v-else
+                  type="button"
+                  class="min-w-0 flex-1 text-left text-xs text-white/70 hover:text-white"
+                  :title="n.wbs"
+                  @click="n.hasChildren ? toggleProcessNode(n.key) : null"
+                >
+                  <span class="text-white/60 mr-1">{{ n.wbs }}</span>
+                  <span class="truncate">{{ n.name }}</span>
+                </button>
+              </div>
             </div>
-            <button
-              v-else
-              type="button"
-              class="min-w-0 flex-1 text-left text-xs text-white/70 hover:text-white"
-              :title="n.wbs"
-              @click="n.hasChildren ? toggleProcessNode(n.key) : null"
-            >
-              <span class="text-white/60 mr-1">{{ n.wbs }}</span>
-              <span class="truncate">{{ n.name }}</span>
-            </button>
           </div>
-        </div>
-      </div>
-      <!-- Activities -->
-      <RouterLink
-        v-if="featureEnabled('activities')"
-        to="/app/activities"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/activities') ? 'page' : null"
-      >
-        <span class="i">📝</span>
-        <span v-if="open">Activities</span>
-      </RouterLink>
-      <!-- Templates -->
-      <RouterLink
-        v-if="featureEnabled('templates')"
-        to="/app/templates"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/templates') ? 'page' : null"
-      >
-        <span class="i">📦</span>
-        <span v-if="open">Templates</span>
-      </RouterLink>
-      <!-- Documents -->
-      <RouterLink
-        v-if="featureEnabled('documents')"
-        to="/app/documents"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/documents') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/documents') ? 'page' : null"
-      >
-        <span class="i">📁</span>
-        <span v-if="open">Documents</span>
-      </RouterLink>
-      <!-- Spaces -->
-      <RouterLink
-        v-if="featureEnabled('spaces')"
-        to="/app/spaces"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/spaces') ? 'page' : null"
-      >
-        <span class="i">🏢</span>
-        <span v-if="open">Spaces</span>
-      </RouterLink>
-      <!-- Equipment -->
-      <RouterLink
-        v-if="featureEnabled('equipment')"
-        to="/app/equipment"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/equipment') ? 'page' : null"
-      >
-        <span class="i">🧰</span>
-        <span v-if="open">Equipment</span>
-      </RouterLink>
-      <!-- Issues -->
-      <RouterLink
-        v-if="featureEnabled('issues')"
-        to="/app/issues"
-        :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-          isActive('/app/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
-        ]"
-        :aria-current="isActive('/app/issues') ? 'page' : null"
-      >
-        <span class="i">🐞</span>
-        <span v-if="open">Issues</span>
-      </RouterLink>
-      <button
-        v-if="currentProjectId && featureEnabled('ai')"
-        type="button"
-        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10 hover:bg-white/20"
-	        @click="openAiChat"
-	      >
-	        <span class="i">✨</span>
-	        <span v-if="open">AI</span>
-	      </button>
+          <!-- Activities -->
+          <RouterLink
+            v-if="featureEnabled('activities')"
+            to="/app/activities"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/activities') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/activities') ? 'page' : null"
+          >
+            <span class="i">📝</span>
+            <span v-if="open">Activities</span>
+          </RouterLink>
+          <!-- Templates -->
+          <RouterLink
+            v-if="featureEnabled('templates')"
+            to="/app/templates"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/templates') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/templates') ? 'page' : null"
+          >
+            <span class="i">📦</span>
+            <span v-if="open">Templates</span>
+          </RouterLink>
+          <!-- Documents -->
+          <RouterLink
+            v-if="featureEnabled('documents')"
+            to="/app/documents"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/documents') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/documents') ? 'page' : null"
+          >
+            <span class="i">📁</span>
+            <span v-if="open">Documents</span>
+          </RouterLink>
+          <!-- Spaces -->
+          <RouterLink
+            v-if="featureEnabled('spaces')"
+            to="/app/spaces"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/spaces') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/spaces') ? 'page' : null"
+          >
+            <span class="i">🏢</span>
+            <span v-if="open">Spaces</span>
+          </RouterLink>
+          <!-- Equipment -->
+          <RouterLink
+            v-if="featureEnabled('equipment')"
+            to="/app/equipment"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/equipment') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/equipment') ? 'page' : null"
+          >
+            <span class="i">🧰</span>
+            <span v-if="open">Equipment</span>
+          </RouterLink>
+          <!-- Issues -->
+          <RouterLink
+            v-if="featureEnabled('issues')"
+            to="/app/issues"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/issues') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/issues') ? 'page' : null"
+          >
+            <span class="i">🐞</span>
+            <span v-if="open">Issues</span>
+          </RouterLink>
+          <button
+            v-if="currentProjectId && featureEnabled('ai')"
+            type="button"
+            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10 hover:bg-white/20"
+            @click="openAiChat"
+          >
+            <span class="i">✨</span>
+            <span v-if="open">AI</span>
+          </button>
         </nav>
       </div>
 

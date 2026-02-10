@@ -120,7 +120,7 @@ async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
   }
 }
 
-async function sendResetEmail({ to, name, resetUrl }) {
+async function sendResetEmail({ to, name, resetUrl, expiresMinutes }) {
   if (isTruthy(process.env.DISABLE_EMAIL)) {
     try {
       const fs = require('fs')
@@ -128,7 +128,7 @@ async function sendResetEmail({ to, name, resetUrl }) {
       const outDir = path.join(__dirname, '..', 'tmp')
       if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true })
       const file = path.join(outDir, 'emails.log')
-      const record = { to, name, resetUrl, ts: new Date().toISOString(), disabled: true, kind: 'reset' }
+      const record = { to, name, resetUrl, expiresMinutes, ts: new Date().toISOString(), disabled: true, kind: 'reset' }
       fs.appendFileSync(file, JSON.stringify(record) + '\n')
       console.info('[mailer] DISABLE_EMAIL enabled; reset email written to', file)
     } catch (e) {
@@ -140,18 +140,31 @@ async function sendResetEmail({ to, name, resetUrl }) {
     try {
       // eslint-disable-next-line global-require
       const mailSpy = require('../tests/mailSpy');
-      mailSpy.push({ to, name, resetUrl, ts: new Date().toISOString() });
+      mailSpy.push({ to, name, resetUrl, expiresMinutes, ts: new Date().toISOString() });
     } catch (e) {
       global.__sentEmails = global.__sentEmails || [];
-      global.__sentEmails.push({ to, name, resetUrl, ts: new Date().toISOString() });
+      global.__sentEmails.push({ to, name, resetUrl, expiresMinutes, ts: new Date().toISOString() });
     }
     return { accepted: [to], messageId: 'test-reset-message' };
   }
+
+  const humanizeMinutes = (mins) => {
+    const m = Number(mins)
+    if (!Number.isFinite(m) || m <= 0) return ''
+    if (m % 60 === 0) {
+      const h = m / 60
+      return h === 1 ? '1 hour' : `${h} hours`
+    }
+    return m === 1 ? '1 minute' : `${m} minutes`
+  }
+
+  const expiresText = expiresMinutes ? humanizeMinutes(expiresMinutes) : ''
 
   const html = `
     <p>Hello ${name || ''},</p>
     <p>We received a request to reset your password. Click the link below to set a new password:</p>
     <p><a href="${resetUrl}">Reset your password</a></p>
+    ${expiresText ? `<p>This link is valid for ${expiresText}.</p>` : ''}
     <p>If you didn't request this, you can safely ignore this email.</p>
   `;
 
@@ -164,7 +177,7 @@ async function sendResetEmail({ to, name, resetUrl }) {
       const outDir = path.join(__dirname, '..', 'tmp');
       if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
       const file = path.join(outDir, 'emails.log');
-      const record = { to, name, resetUrl, html, ts: new Date().toISOString() };
+      const record = { to, name, resetUrl, expiresMinutes, html, ts: new Date().toISOString() };
       fs.appendFileSync(file, JSON.stringify(record) + '\n');
       console.info('[mailer] SMTP missing; reset email written to', file);
       return { accepted: [to], messageId: `local-log-reset-${Date.now()}` };
@@ -200,7 +213,7 @@ async function sendResetEmail({ to, name, resetUrl }) {
       const outDir = path.join(__dirname, '..', 'tmp');
       if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
       const file = path.join(outDir, 'emails.log');
-      const record = { to, name, resetUrl, html, ts: new Date().toISOString(), error: String(err) };
+      const record = { to, name, resetUrl, expiresMinutes, html, ts: new Date().toISOString(), error: String(err) };
       fs.appendFileSync(file, JSON.stringify(record) + '\n');
       console.error('[mailer] reset sendMail failed; wrote invite to', file);
     } catch (e) {

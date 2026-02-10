@@ -27,17 +27,17 @@
       <!-- Left group: add, search, filters -->
       <div class="flex items-center gap-3 min-w-0">
         <div class="relative inline-block group">
-	          <button
-	            :disabled="!projectStore.currentProjectId"
-	            aria-label="Add issue"
-	            aria-describedby="add-issue-tooltip"
-	            :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'"
-	            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
-	            @click="openAddModal"
-	          >
-	            <svg
-	              xmlns="http://www.w3.org/2000/svg"
-	              class="w-5 h-5"
+          <button
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Add issue"
+            aria-describedby="add-issue-tooltip"
+            :title="!projectStore.currentProjectId ? 'Select a project first' : 'Add issue'"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="openAddModal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -45,12 +45,12 @@
               <path
                 fill-rule="evenodd"
                 d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-	                clip-rule="evenodd"
-	              />
-	            </svg>
-	          </button>
-	          <div
-	            id="add-issue-tooltip"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+          <div
+            id="add-issue-tooltip"
             role="tooltip"
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
@@ -58,24 +58,24 @@
           </div>
         </div>
 
-	        <!-- Primary filters (Type + Status) -->
-	        <div class="hidden md:flex flex-wrap items-center gap-3 gap-y-2">
-	          <div class="flex items-center gap-2">
-	            <label class="text-white/70 text-sm">Type</label>
+        <!-- Primary filters (Type + Status) -->
+        <div class="hidden md:flex flex-wrap items-center gap-3 gap-y-2">
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Type</label>
             <div
               ref="typeMenuRef"
               class="relative"
             >
-	              <button
-	                :aria-expanded="showTypeMenu ? 'true' : 'false'"
-	                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-40 justify-between"
-	                @click="toggleTypeMenu"
-	              >
-	                <span class="flex items-center gap-2 min-w-0">
-	                  <span class="truncate">{{ typeFilter }}</span>
-	                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter) }}</span>
-	                </span>
-	                <svg
+              <button
+                :aria-expanded="showTypeMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-40 justify-between"
+                @click="toggleTypeMenu"
+              >
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ typeFilter }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ typeCount(typeFilter) }}</span>
+                </span>
+                <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -108,22 +108,22 @@
               </div>
             </div>
           </div>
-	          <div class="flex items-center gap-2">
-	            <label class="text-white/70 text-sm">Status</label>
+          <div class="flex items-center gap-2">
+            <label class="text-white/70 text-sm">Status</label>
             <div
               ref="statusMenuRef"
               class="relative"
             >
-	              <button
-	                :aria-expanded="showStatusMenu ? 'true' : 'false'"
-	                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-40 justify-between"
-	                @click="toggleStatusMenu"
-	              >
-	                <span class="flex items-center gap-2 min-w-0">
-	                  <span class="truncate">{{ statusFilter }}</span>
-	                  <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
-	                </span>
-	                <svg
+              <button
+                :aria-expanded="showStatusMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-40 justify-between"
+                @click="toggleStatusMenu"
+              >
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ statusFilter }}</span>
+                  <span :class="statusBadgeClass(statusFilter) + ' text-xs px-2 py-0.5 rounded-full'">{{ statusCount(statusFilter) }}</span>
+                </span>
+                <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
@@ -158,73 +158,73 @@
                     </span>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
                   </button>
-	            </div>
-	          </div>
-	        </div>
-	      </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-	      <!-- Right group: hide closed + downloads -->
-	      <div class="flex items-center gap-3 flex-wrap">
-	        <div class="flex items-center gap-2">
-	          <input
+      <!-- Right group: hide closed + downloads -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+          <input
             id="hideClosedChk"
             v-model="hideClosed"
             type="checkbox"
-	            class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
+            class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
           >
-	          <label
-	            for="hideClosedChk"
-	            class="text-white/70 text-sm select-none"
-	          >Hide closed</label>
-	        </div>
+          <label
+            for="hideClosedChk"
+            class="text-white/70 text-sm select-none"
+          >Hide closed</label>
+        </div>
 
-	        <div class="relative inline-block group shrink-0">
-	          <button
-	            :disabled="!projectStore.currentProjectId"
-	            aria-label="Toggle My Issues"
-	            :title="projectStore.currentProjectId ? 'Toggle My Issues' : 'Select a project'"
-	            :aria-pressed="myIssuesOnly ? 'true' : 'false'"
-	            :class="[
-	              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
-	              myIssuesOnly ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10'
-	            ]"
-	            @click="myIssuesOnly = !myIssuesOnly"
-	          >
-	            <svg
-	              xmlns="http://www.w3.org/2000/svg"
-	              viewBox="0 0 24 24"
-	              fill="none"
-	              stroke="currentColor"
-	              class="w-5 h-5"
-	              aria-hidden="true"
-	            >
-	              <path
-	                d="M20 21a8 8 0 10-16 0"
-	                stroke-width="1.5"
-	                stroke-linecap="round"
-	              />
-	              <path
-	                d="M12 11a4 4 0 100-8 4 4 0 000 8z"
-	                stroke-width="1.5"
-	                stroke-linecap="round"
-	                stroke-linejoin="round"
-	              />
-	            </svg>
-	          </button>
-	          <div
-	            role="tooltip"
-	            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-	          >
-	            {{ myIssuesOnly ? 'Showing My Issues' : 'My Issues' }}
-	          </div>
-	        </div>
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Toggle My Issues"
+            :title="projectStore.currentProjectId ? 'Toggle My Issues' : 'Select a project'"
+            :aria-pressed="myIssuesOnly ? 'true' : 'false'"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
+              myIssuesOnly ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-white/6 border-white/10 hover:bg-white/10'
+            ]"
+            @click="myIssuesOnly = !myIssuesOnly"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+              aria-hidden="true"
+            >
+              <path
+                d="M20 21a8 8 0 10-16 0"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M12 11a4 4 0 100-8 4 4 0 000 8z"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            {{ myIssuesOnly ? 'Showing My Issues' : 'My Issues' }}
+          </div>
+        </div>
 
-	        <div class="relative inline-block group shrink-0">
-	          <button
-	            :disabled="!projectStore.currentProjectId"
-	            aria-label="Toggle analytics"
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!projectStore.currentProjectId"
+            aria-label="Toggle analytics"
             :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
             :class="[
               'h-10 px-3 inline-flex items-center gap-2 rounded-full text-white border disabled:opacity-40',
@@ -264,19 +264,19 @@
                 stroke-width="1.5"
                 stroke-linecap="round"
               />
-	            </svg>
-	          </button>
-	          <div
-	            role="tooltip"
+            </svg>
+          </button>
+          <div
+            role="tooltip"
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
             {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
           </div>
         </div>
 
-	        <div class="relative inline-block group shrink-0">
-	          <button
-	            :disabled="!canAutoTagIssuesPage"
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!canAutoTagIssuesPage"
             aria-label="Auto-tag this page"
             :title="canAutoTagIssuesPage ? 'Auto-tag this page' : 'Auto-tagging requires AI + a selected project'"
             class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
@@ -307,66 +307,66 @@
             class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
           >
             Auto-tag this page
-	          </div>
-	        </div>
+          </div>
+        </div>
 
-	        <div class="relative inline-block group shrink-0">
-	          <button
-	            :disabled="!projectStore.currentProjectId"
-	            type="button"
-	            aria-label="More tools"
-	            :title="projectStore.currentProjectId ? 'More tools' : 'Select a project'"
-	            :class="[
-	              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
-	              (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
-	            ]"
-	            @click="openFilters"
-	          >
-	            <svg
-	              xmlns="http://www.w3.org/2000/svg"
-	              viewBox="0 0 24 24"
-	              fill="none"
-	              stroke="currentColor"
-	              class="w-5 h-5"
-	              aria-hidden="true"
-	            >
-	              <path
-	                d="M6 12h.01M12 12h.01M18 12h.01"
-	                stroke-width="2.5"
-	                stroke-linecap="round"
-	                stroke-linejoin="round"
-	              />
-	            </svg>
-	            <span
-	              :class="[
-	                'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
-	                advancedFiltersActiveCount > 0 ? '' : 'invisible'
-	              ]"
-	            >{{ advancedFiltersActiveCount }}</span>
-	          </button>
-	          <div
-	            role="tooltip"
-	            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-	          >
-	            More tools
-	          </div>
-	        </div>
-	      </div>
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="!projectStore.currentProjectId"
+            type="button"
+            aria-label="More tools"
+            :title="projectStore.currentProjectId ? 'More tools' : 'Select a project'"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40 relative',
+              (showAdvancedFilters || showFiltersModal) ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+            ]"
+            @click="openFilters"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 12h.01M12 12h.01M18 12h.01"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span
+              :class="[
+                'absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white/15 border border-white/20 text-white/80 text-[11px] inline-flex items-center justify-center',
+                advancedFiltersActiveCount > 0 ? '' : 'invisible'
+              ]"
+            >{{ advancedFiltersActiveCount }}</span>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            More tools
+          </div>
+        </div>
       </div>
+    </div>
 
-      <!-- Advanced filters (md+). For mobile, use the modal. -->
-      <div
-        v-if="showAdvancedFilters && isDesktop"
-        class="w-full mt-3 pt-3 border-t border-white/10"
-	      >
-	        <div class="space-y-3">
-	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[2.25fr_0.9fr_2.25fr_2fr_2fr] gap-3 items-end">
-	            <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Priority</label>
-	            <div
-	              ref="priorityMenuRef"
-	              class="relative"
-	            >
+    <!-- Advanced filters (md+). For mobile, use the modal. -->
+    <div
+      v-if="showAdvancedFilters && isDesktop"
+      class="w-full mt-3 pt-3 border-t border-white/10"
+    >
+      <div class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[2.25fr_0.9fr_2.25fr_2fr_2fr] gap-3 items-end">
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Priority</label>
+            <div
+              ref="priorityMenuRef"
+              class="relative"
+            >
               <button
                 :aria-expanded="showPriorityMenu ? 'true' : 'false'"
                 class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
@@ -412,35 +412,35 @@
                     <span class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80">{{ opt.count }}</span>
                   </button>
                 </div>
-	              </div>
-	            </div>
-	            </div>
+              </div>
+            </div>
+          </div>
 	
-	            <div class="flex flex-col gap-1">
-	              <label
-	                for="hasOprChk"
-	                class="text-white/70 text-sm whitespace-nowrap text-center"
-	              >Has OPR</label>
-	              <label
-	                for="hasOprChk"
-	                class="w-full h-8 rounded-lg bg-white/6 flex items-center justify-center cursor-pointer"
-	              >
-	                <input
-	                  id="hasOprChk"
-	                  v-model="hasOprFilter"
-	                  type="checkbox"
-		                  class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
-	                  :disabled="oprAddonRequired || !preferredProjectId"
-	                >
-	              </label>
-	            </div>
+          <div class="flex flex-col gap-1">
+            <label
+              for="hasOprChk"
+              class="text-white/70 text-sm whitespace-nowrap text-center"
+            >Has OPR</label>
+            <label
+              for="hasOprChk"
+              class="w-full h-8 rounded-lg bg-white/6 flex items-center justify-center cursor-pointer"
+            >
+              <input
+                id="hasOprChk"
+                v-model="hasOprFilter"
+                type="checkbox"
+                class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
+                :disabled="oprAddonRequired || !preferredProjectId"
+              >
+            </label>
+          </div>
 	
-	            <div class="flex flex-col gap-1">
-		            <label class="text-white/70 text-sm">OPR</label>
-		            <div
-		              ref="oprMenuRef"
-		              class="relative"
-		            >
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">OPR</label>
+            <div
+              ref="oprMenuRef"
+              class="relative"
+            >
               <button
                 :aria-expanded="showOprMenu ? 'true' : 'false'"
                 class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between disabled:opacity-40 disabled:cursor-not-allowed"
@@ -501,334 +501,334 @@
                       class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
                     >
                       Archived
-	            </span>
-	          </button>
-		              </div>
-		            </div>
-	            </div>
-	            </div>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 		
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Location</label>
-	              <input
-	                v-model="locationFilter"
-	                type="text"
-	                placeholder="e.g. Mezzanine"
-	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              >
-	            </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Location</label>
+            <input
+              v-model="locationFilter"
+              type="text"
+              placeholder="e.g. Mezzanine"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
 	
-	            <div class="flex flex-col gap-1">
-	              <label class="text-white/70 text-sm">Responsible</label>
-	              <input
-	                v-model="responsibleFilter"
-	                type="text"
-	                placeholder="name or email"
-	                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              >
-	            </div>
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Assigned To</label>
+            <input
+              v-model="responsibleFilter"
+              type="text"
+              placeholder="name or email"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
+        </div>
 	
-	          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-	            <div class="flex flex-col gap-1">
-		            <label class="text-white/70 text-sm">System</label>
-		            <input
-		              v-model="systemFilter"
-		              type="text"
-	              placeholder="e.g. HVAC"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	            >
-	            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">System</label>
+            <input
+              v-model="systemFilter"
+              type="text"
+              placeholder="e.g. HVAC"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
 	
-	            <div class="flex flex-col gap-1">
-		            <label class="text-white/70 text-sm">Date Found</label>
-		            <div class="grid grid-cols-2 gap-2">
-		              <input
-		                v-model="dateFoundFrom"
-	                type="date"
-	                placeholder="From"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dateFoundFrom ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	              <input
-	                v-model="dateFoundTo"
-	                type="date"
-	                placeholder="To"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dateFoundTo ? 'text-white' : 'text-white/60',
-	                ]"
-		              >
-		            </div>
-	            </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Date Found</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="dateFoundFrom"
+                type="date"
+                placeholder="From"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dateFoundFrom ? 'text-white' : 'text-white/60',
+                ]"
+              >
+              <input
+                v-model="dateFoundTo"
+                type="date"
+                placeholder="To"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dateFoundTo ? 'text-white' : 'text-white/60',
+                ]"
+              >
+            </div>
+          </div>
 	
-	            <div class="flex flex-col gap-1">
-		            <label class="text-white/70 text-sm">Due Date</label>
-		            <div class="grid grid-cols-2 gap-2">
-		              <input
-		                v-model="dueDateFrom"
-	                type="date"
-	                placeholder="From"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dueDateFrom ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	              <input
-	                v-model="dueDateTo"
-	                type="date"
-	                placeholder="To"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dueDateTo ? 'text-white' : 'text-white/60',
-	                ]"
-		              >
-		            </div>
-	            </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Due Date</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="dueDateFrom"
+                type="date"
+                placeholder="From"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dueDateFrom ? 'text-white' : 'text-white/60',
+                ]"
+              >
+              <input
+                v-model="dueDateTo"
+                type="date"
+                placeholder="To"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dueDateTo ? 'text-white' : 'text-white/60',
+                ]"
+              >
+            </div>
+          </div>
 	
-	            <div class="flex flex-col gap-1">
-		            <label class="text-white/70 text-sm">Tags</label>
-		            <input
-		              v-model="tagsFilter"
-		              type="text"
-		              placeholder="comma-separated"
-		              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-		            >
-	            </div>
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Tags</label>
+            <input
+              v-model="tagsFilter"
+              type="text"
+              placeholder="comma-separated"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+            >
+          </div>
+        </div>
 
-	        <div class="mt-3 flex items-center justify-between gap-3">
-	          <div class="flex flex-wrap items-center gap-2">
-	            <div
-	              ref="downloadsRef"
-	              class="relative"
-	            >
-	              <button
-	                :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
-	                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
-	                @click="toggleDownloadsMenu"
-	              >
-	                <svg
-	                  xmlns="http://www.w3.org/2000/svg"
-	                  viewBox="0 0 24 24"
-	                  fill="none"
-	                  stroke="currentColor"
-	                  class="w-4 h-4"
-	                >
-	                  <path
-	                    d="M4 7h16M4 12h16M4 17h16"
-	                    stroke-width="1.5"
-	                    stroke-linecap="round"
-	                  />
-	                </svg>
-	                <span>Downloads</span>
-	                <svg
-	                  xmlns="http://www.w3.org/2000/svg"
-	                  viewBox="0 0 24 24"
-	                  fill="none"
-	                  stroke="currentColor"
-	                  class="w-3 h-3 ml-1"
-	                >
-	                  <path
-	                    d="M6 9l6 6 6-6"
-	                    stroke-width="1.5"
-	                    stroke-linecap="round"
-	                    stroke-linejoin="round"
-	                  />
-	                </svg>
-	              </button>
-	              <div
-	                v-if="showDownloadsMenu"
-	                class="absolute left-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
-	              >
-	                <div
-	                  class="py-1"
-	                  role="menu"
-	                >
-	                  <button
-	                    role="menuitem"
-	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
-	                    @click="onChooseColumnsClick"
-	                  >
-	                    <svg
-	                      xmlns="http://www.w3.org/2000/svg"
-	                      viewBox="0 0 24 24"
-	                      fill="none"
-	                      stroke="currentColor"
-	                      class="w-4 h-4"
-	                    >
-	                      <path
-	                        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-	                        stroke-width="1.5"
-	                      />
-	                      <path
-	                        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
-	                        stroke-width="1.5"
-	                      />
-	                    </svg>
-	                    <span>Choose columns</span>
-	                  </button>
-	                  <div class="my-1 h-px bg-white/10" />
-	                  <button
-	                    :disabled="!filteredIssues.length"
-	                    role="menuitem"
-	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-	                    @click="onDownloadCsvClick"
-	                  >
-	                    <svg
-	                      xmlns="http://www.w3.org/2000/svg"
-	                      viewBox="0 0 24 24"
-	                      fill="none"
-	                      stroke="currentColor"
-	                      class="w-4 h-4"
-	                    >
-	                      <path
-	                        d="M12 3v11"
-	                        stroke-width="1.5"
-	                        stroke-linecap="round"
-	                      />
-	                      <path
-	                        d="M8 11l4 4 4-4"
-	                        stroke-width="1.5"
-	                        stroke-linecap="round"
-	                        stroke-linejoin="round"
-	                      />
-	                      <path
-	                        d="M5 20h14"
-	                        stroke-width="1.5"
-	                        stroke-linecap="round"
-	                      />
-	                    </svg>
-	                    <span>Download CSV</span>
-	                  </button>
-	                  <button
-	                    :disabled="!filteredIssues.length"
-	                    role="menuitem"
-	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-	                    @click="onDownloadXlsxClick"
-	                  >
-	                    <svg
-	                      xmlns="http://www.w3.org/2000/svg"
-	                      viewBox="0 0 24 24"
-	                      fill="none"
-	                      stroke="currentColor"
-	                      class="w-4 h-4"
-	                    >
-	                      <rect
-	                        x="3"
-	                        y="3"
-	                        width="18"
-	                        height="18"
-	                        rx="2"
-	                        ry="2"
-	                        stroke-width="1.5"
-	                      />
-	                      <path
-	                        d="M8 3v18M16 3v18M3 8h18M3 16h18"
-	                        stroke-width="1.5"
-	                      />
-	                    </svg>
-	                    <span>Download Excel</span>
-	                  </button>
-	                  <div class="my-1 h-px bg-white/10" />
-	                  <div class="px-3 py-1 text-xs text-white/60">
-	                    Reports
-	                  </div>
-	                  <button
-	                    :disabled="!filteredIssues.length"
-	                    role="menuitem"
-	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-	                    @click="onDownloadDetailedReport"
-	                  >
-	                    <svg
-	                      xmlns="http://www.w3.org/2000/svg"
-	                      viewBox="0 0 24 24"
-	                      fill="none"
-	                      stroke="currentColor"
-	                      class="w-4 h-4"
-	                    >
-	                      <path
-	                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-	                        stroke-width="1.5"
-	                      />
-	                      <path
-	                        d="M14 2v6h6"
-	                        stroke-width="1.5"
-	                      />
-	                      <path
-	                        d="M9 15h3a2 2 0 1 0 0-4H9v6z"
-	                        stroke-width="1.5"
-	                      />
-	                    </svg>
-	                    <span>Detailed PDF (one per issue)</span>
-	                  </button>
-	                  <button
-	                    :disabled="!filteredIssues.length"
-	                    role="menuitem"
-	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-	                    @click="onDownloadCompactReport"
-	                  >
-	                    <svg
-	                      xmlns="http://www.w3.org/2000/svg"
-	                      viewBox="0 0 24 24"
-	                      fill="none"
-	                      stroke="currentColor"
-	                      class="w-4 h-4"
-	                    >
-	                      <path
-	                        d="M4 7h16M4 12h16M4 17h16"
-	                        stroke-width="1.5"
-	                        stroke-linecap="round"
-	                      />
-	                    </svg>
-	                    <span>Compact PDF (continuous)</span>
-	                  </button>
-	                  <button
-	                    :disabled="!filteredIssues.length"
-	                    role="menuitem"
-	                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-	                    @click="onDownloadListReport"
-	                  >
-	                    <svg
-	                      xmlns="http://www.w3.org/2000/svg"
-	                      viewBox="0 0 24 24"
-	                      fill="none"
-	                      stroke="currentColor"
-	                      class="w-4 h-4"
-	                    >
-	                      <rect
-	                        x="3"
-	                        y="4"
-	                        width="18"
-	                        height="16"
-	                        rx="2"
-	                        ry="2"
-	                        stroke-width="1.5"
-	                      />
-	                      <path
-	                        d="M3 9h18M9 4v16M15 4v16"
-	                        stroke-width="1.5"
-	                      />
-	                    </svg>
-	                    <span>List PDF (table)</span>
-	                  </button>
-	                </div>
-	              </div>
-	            </div>
-	            <button
-	              type="button"
-	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-	              @click="clearAdvancedFilters"
-	            >
-	              Clear advanced filters
-	            </button>
-	          </div>
-	          <div class="text-xs text-white/50">
-	            Advanced filters show on desktop; mobile uses the Filters panel.
-	          </div>
-	        </div>
+        <div class="mt-3 flex items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <div
+              ref="downloadsRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
+                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
+                @click="toggleDownloadsMenu"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M4 7h16M4 12h16M4 17h16"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span>Downloads</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-3 h-3 ml-1"
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+              <div
+                v-if="showDownloadsMenu"
+                class="absolute left-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
+              >
+                <div
+                  class="py-1"
+                  role="menu"
+                >
+                  <button
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
+                    @click="onChooseColumnsClick"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>Choose columns</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadCsvClick"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M12 3v11"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M8 11l4 4 4-4"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M5 20h14"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <span>Download CSV</span>
+                  </button>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadXlsxClick"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <rect
+                        x="3"
+                        y="3"
+                        width="18"
+                        height="18"
+                        rx="2"
+                        ry="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M8 3v18M16 3v18M3 8h18M3 16h18"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>Download Excel</span>
+                  </button>
+                  <div class="my-1 h-px bg-white/10" />
+                  <div class="px-3 py-1 text-xs text-white/60">
+                    Reports
+                  </div>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadDetailedReport"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M14 2v6h6"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M9 15h3a2 2 0 1 0 0-4H9v6z"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>Detailed PDF (one per issue)</span>
+                  </button>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadCompactReport"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M4 7h16M4 12h16M4 17h16"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <span>Compact PDF (continuous)</span>
+                  </button>
+                  <button
+                    :disabled="!filteredIssues.length"
+                    role="menuitem"
+                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
+                    @click="onDownloadListReport"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <rect
+                        x="3"
+                        y="4"
+                        width="18"
+                        height="16"
+                        rx="2"
+                        ry="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M3 9h18M9 4v16M15 4v16"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                    <span>List PDF (table)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+              @click="clearAdvancedFilters"
+            >
+              Clear advanced filters
+            </button>
+          </div>
+          <div class="text-xs text-white/50">
+            Advanced filters show on desktop; mobile uses the Filters panel.
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1110,7 +1110,7 @@
                     <span v-if="issue.responsible_person"><span class="text-white/80">Responsible:</span> {{ issue.responsible_person }}</span>
                     <span v-if="issue.equipment"><span class="text-white/80">Equipment:</span> {{ issue.equipment }}</span>
                     <span v-if="issue.recommendation"><span class="text-white/80">Recommendation:</span> {{ issue.recommendation }}</span>
-                    <span v-if="issue.dueDate"><span class="text-white/80">Respond By:</span> {{ formatDate(issue.dueDate) }}</span>
+                    <span v-if="issue.dueDate"><span class="text-white/80">Due date:</span> {{ formatDueDate(issue.dueDate) }}</span>
                     <span v-if="issue.closedDate"><span class="text-white/80">Closed:</span> {{ formatDate(issue.closedDate) }}</span>
                   </div>
                 </div>
@@ -1474,9 +1474,9 @@
         </h3>
       </template>
       <div class="space-y-4">
-	        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Type</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Type</label>
             <select
               v-model="typeFilter"
               class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
@@ -1491,8 +1491,8 @@
             </select>
           </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Status</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Status</label>
             <select
               v-model="statusFilter"
               class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
@@ -1507,12 +1507,12 @@
             </select>
           </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Priority</label>
-		            <select
-		              v-model="priorityFilter"
-	              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-	            >
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Priority</label>
+            <select
+              v-model="priorityFilter"
+              class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            >
               <option
                 v-for="opt in priorityOptions"
                 :key="opt.name"
@@ -1520,53 +1520,53 @@
               >
                 {{ opt.name }} ({{ opt.count }})
               </option>
-		            </select>
-		          </div>
+            </select>
+          </div>
 	
-		          <div class="flex flex-col gap-1">
-		            <label
-		              for="hasOprChkMobile"
-		              class="text-white/70 text-sm text-center"
-		            >Has OPR</label>
-		            <label
-		              for="hasOprChkMobile"
-		              class="w-full h-8 rounded-lg bg-white/6 flex items-center justify-center cursor-pointer"
-		            >
-		              <input
-		                id="hasOprChkMobile"
-		                v-model="hasOprFilter"
-		                type="checkbox"
-			                class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
-		                :disabled="oprAddonRequired || !preferredProjectId"
-		              >
-		            </label>
-		          </div>
+          <div class="flex flex-col gap-1">
+            <label
+              for="hasOprChkMobile"
+              class="text-white/70 text-sm text-center"
+            >Has OPR</label>
+            <label
+              for="hasOprChkMobile"
+              class="w-full h-8 rounded-lg bg-white/6 flex items-center justify-center cursor-pointer"
+            >
+              <input
+                id="hasOprChkMobile"
+                v-model="hasOprFilter"
+                type="checkbox"
+                class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30"
+                :disabled="oprAddonRequired || !preferredProjectId"
+              >
+            </label>
+          </div>
 	
-	          <div class="flex flex-col gap-1 items-start">
-	            <label
-	              for="myIssuesChkMobile"
-	              class="text-white/70 text-sm"
-	            >My Issues</label>
-	            <input
-	              id="myIssuesChkMobile"
-	              v-model="myIssuesOnly"
-	              type="checkbox"
-	              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30 mt-1"
-	            >
-	          </div>
+          <div class="flex flex-col gap-1 items-start">
+            <label
+              for="myIssuesChkMobile"
+              class="text-white/70 text-sm"
+            >My Issues</label>
+            <input
+              id="myIssuesChkMobile"
+              v-model="myIssuesOnly"
+              type="checkbox"
+              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30 mt-1"
+            >
+          </div>
 	
-			          <div class="flex flex-col gap-1">
-			            <label class="text-white/70 text-sm">OPR</label>
-			            <div
-			              ref="oprMenuRef"
-	              class="relative"
-	            >
-	              <button
-	                :aria-expanded="showOprMenu ? 'true' : 'false'"
-	                class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between disabled:opacity-40 disabled:cursor-not-allowed"
-	                :disabled="oprAddonRequired || !preferredProjectId"
-	                @click="toggleOprMenu"
-	              >
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">OPR</label>
+            <div
+              ref="oprMenuRef"
+              class="relative"
+            >
+              <button
+                :aria-expanded="showOprMenu ? 'true' : 'false'"
+                class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="oprAddonRequired || !preferredProjectId"
+                @click="toggleOprMenu"
+              >
                 <span class="flex items-center gap-2 min-w-0">
                   <span class="truncate">{{ oprFilterLabel }}</span>
                   <span
@@ -1623,98 +1623,98 @@
                       Archived
                     </span>
                   </button>
-			                </div>
-			              </div>
-			            </div>
-			          </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Location</label>
-	            <input
-	              v-model="locationFilter"
-	              type="text"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              placeholder="e.g. Mezzanine"
-	            >
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Location</label>
+            <input
+              v-model="locationFilter"
+              type="text"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              placeholder="e.g. Mezzanine"
+            >
+          </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Responsible</label>
-	            <input
-	              v-model="responsibleFilter"
-	              type="text"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              placeholder="name or email"
-	            >
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Assigned To</label>
+            <input
+              v-model="responsibleFilter"
+              type="text"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              placeholder="name or email"
+            >
+          </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">System</label>
-	            <input
-	              v-model="systemFilter"
-	              type="text"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              placeholder="e.g. HVAC"
-	            >
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">System</label>
+            <input
+              v-model="systemFilter"
+              type="text"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              placeholder="e.g. HVAC"
+            >
+          </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Date Found</label>
-	            <div class="grid grid-cols-2 gap-2">
-	              <input
-	                v-model="dateFoundFrom"
-	                type="date"
-	                placeholder="From"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dateFoundFrom ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	              <input
-	                v-model="dateFoundTo"
-	                type="date"
-	                placeholder="To"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dateFoundTo ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	            </div>
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Date Found</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="dateFoundFrom"
+                type="date"
+                placeholder="From"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dateFoundFrom ? 'text-white' : 'text-white/60',
+                ]"
+              >
+              <input
+                v-model="dateFoundTo"
+                type="date"
+                placeholder="To"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dateFoundTo ? 'text-white' : 'text-white/60',
+                ]"
+              >
+            </div>
+          </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Due Date</label>
-	            <div class="grid grid-cols-2 gap-2">
-	              <input
-	                v-model="dueDateFrom"
-	                type="date"
-	                placeholder="From"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dueDateFrom ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	              <input
-	                v-model="dueDateTo"
-	                type="date"
-	                placeholder="To"
-	                :class="[
-	                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-	                  dueDateTo ? 'text-white' : 'text-white/60',
-	                ]"
-	              >
-	            </div>
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Due Date</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input
+                v-model="dueDateFrom"
+                type="date"
+                placeholder="From"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dueDateFrom ? 'text-white' : 'text-white/60',
+                ]"
+              >
+              <input
+                v-model="dueDateTo"
+                type="date"
+                placeholder="To"
+                :class="[
+                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                  dueDateTo ? 'text-white' : 'text-white/60',
+                ]"
+              >
+            </div>
+          </div>
 
-	          <div class="flex flex-col gap-1">
-	            <label class="text-white/70 text-sm">Tags</label>
-	            <input
-	              v-model="tagsFilter"
-	              type="text"
-	              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-	              placeholder="comma-separated"
-	            >
-	          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-white/70 text-sm">Tags</label>
+            <input
+              v-model="tagsFilter"
+              type="text"
+              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              placeholder="comma-separated"
+            >
+          </div>
         </div>
       </div>
       <template #footer>
@@ -1967,6 +1967,32 @@ function formatDate(date) {
   const d = new Date(date)
   if (isNaN(d)) return ''
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function formatDueDate(date: unknown) {
+  if (!date) return ''
+
+  // Due dates are conceptually date-only. If they come across as YYYY-MM-DD
+  // (or an ISO timestamp at midnight), format as a local calendar date to avoid
+  // timezone-based +/- 1 day shifts.
+  if (typeof date === 'string') {
+    const m = date.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (m) {
+      const year = Number(m[1])
+      const month = Number(m[2])
+      const day = Number(m[3])
+      const isMidnightIso = date.length > 10 && /T00:00:00(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/.test(date)
+      const isDateOnly = date.length === 10
+      if (isDateOnly || isMidnightIso) {
+        const d = new Date(year, month - 1, day)
+        if (!isNaN(d as any)) {
+          return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+        }
+      }
+    }
+  }
+
+  return formatDate(date as any)
 }
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'

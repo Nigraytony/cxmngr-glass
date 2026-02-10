@@ -416,7 +416,9 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
 
     // generate token
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+    const resetTtlMinutesRaw = Number(process.env.PASSWORD_RESET_TTL_MINUTES || 60)
+    const resetTtlMinutes = Number.isFinite(resetTtlMinutesRaw) ? Math.max(5, Math.round(resetTtlMinutesRaw)) : 60
+    const expiresAt = new Date(Date.now() + resetTtlMinutes * 60_000)
 
     // store token
     const pr = new PasswordReset({ userId: user._id, token, expiresAt });
@@ -425,7 +427,12 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     const resetUrl = `${APP_URL}/reset-password?token=${token}`;
     // send email (best-effort)
     try {
-      await sendResetEmail({ to: user.email, name: `${user.firstName || ''} ${user.lastName || ''}`.trim(), resetUrl });
+      await sendResetEmail({
+        to: user.email,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        resetUrl,
+        expiresMinutes: resetTtlMinutes,
+      });
     } catch (e) {
       console.error('forgot-password: failed to send reset email', e);
     }

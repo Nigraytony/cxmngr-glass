@@ -11,6 +11,10 @@ export interface Space {
   tag?: string
   title: string
   type: string // e.g., Building, Floor, Room, Area, Level, Corridor, Roof
+  parentChain?: string
+  equipmentCount?: number
+  subspacesCount?: number
+  issuesCount?: number
   description?: string
   tags?: string[]
   project: string // projectId

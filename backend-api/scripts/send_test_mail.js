@@ -16,7 +16,7 @@ async function main() {
     console.error('[test-mail] Invite failed:', e)
   }
   try {
-    const info2 = await sendResetEmail({ to, name: 'User', resetUrl: 'https://example.com/reset' })
+      const info2 = await sendResetEmail({ to, name: 'User', resetUrl: 'https://example.com/reset', expiresMinutes: 60 })
     console.log('[test-mail] Reset sent:', info2)
   } catch (e) {
     console.error('[test-mail] Reset failed:', e)

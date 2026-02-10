@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Template = require('../models/template');
+const Equipment = require('../models/equipment');
 const Project = require('../models/project');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
@@ -16,6 +17,7 @@ const path = require('path');
 const { rateLimit } = require('../middleware/rateLimit');
 const sanitizeHtml = require('sanitize-html');
 const { buildSafeRegex } = require('../utils/search')
+const XLSX = require('xlsx')
 
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
 router.param('id', (req, res, next, value) => {
@@ -226,12 +228,30 @@ router.get('/', auth, requireFeature('templates'), requirePermission('templates.
 
     const totalAll = await Template.countDocuments({ projectId })
     const total = await Template.countDocuments(filter)
-    const items = await Template.find(filter)
+    let items = await Template.find(filter)
       .select(LIGHT_FIELDS)
       .sort({ [sortBy]: sortDir })
       .skip((page - 1) * perPage)
       .limit(perPage)
       .lean()
+
+    // Instances count: number of equipment records referencing each template.
+    // We compute this for the current page only to keep list requests fast.
+    const templateIds = items.map(t => t && t._id).filter(Boolean)
+    if (templateIds.length) {
+      let projectObjectId = null
+      try { projectObjectId = new mongoose.Types.ObjectId(projectId) } catch {}
+      const projectMatch = projectObjectId ? { projectId: projectObjectId } : { projectId }
+      const instancesAgg = await Equipment.aggregate([
+        { $match: { ...projectMatch, template: { $in: templateIds } } },
+        { $group: { _id: '$template', count: { $sum: 1 } } },
+      ])
+      const instancesById = new Map(instancesAgg.map(a => [String(a && a._id), a && a.count ? a.count : 0]))
+      items = items.map(t => ({
+        ...t,
+        instancesCount: instancesById.get(String(t && t._id)) || 0,
+      }))
+    }
 
     let facets = {}
     if (includeFacets) {
@@ -264,11 +284,256 @@ router.get('/', auth, requireFeature('templates'), requirePermission('templates.
   }
 });
 
+// Export templates as XLSX (all records matching filters for a project)
+router.get('/export', auth, requireFeature('templates'), requirePermission('templates.read', { projectParam: 'projectId' }), async (req, res) => {
+  try {
+    const projectId = req.query.projectId
+    if (!projectId) return res.status(400).send({ error: 'projectId is required' })
+    if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
+
+    const format = String(req.query.format || 'xlsx').toLowerCase()
+    if (format && format !== 'xlsx') return res.status(400).send({ error: 'Only XLSX export is supported' })
+
+    const filter = { projectId }
+    if (req.query.search) {
+      const rx = buildSafeRegex(req.query.search, { maxLen: 128 })
+      if (rx) filter.$or = [
+        { tag: { $regex: rx } },
+        { title: { $regex: rx } },
+        { type: { $regex: rx } },
+        { system: { $regex: rx } },
+      ]
+    }
+    if (req.query.type !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.type)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid type' })
+      if (v) filter.type = v
+    }
+    if (req.query.system !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.system)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid system' })
+      if (v) filter.system = v
+    }
+    if (req.query.status !== undefined) {
+      const v = normalizeOptionalFilterString(req.query.status)
+      if (v === undefined) return res.status(400).send({ error: 'Invalid status' })
+      if (v) filter.status = v
+    }
+
+    const items = await Template.find(filter).sort({ tag: 1 }).lean()
+    const records = items.map(toPlainTemplate)
+
+    const toIsoDateOnly = (v) => {
+      if (!v) return ''
+      try {
+        const d = v instanceof Date ? v : new Date(v)
+        if (!d || isNaN(d.getTime())) return ''
+        return d.toISOString().slice(0, 10)
+      } catch (_) {
+        return ''
+      }
+    }
+
+    const asStr = (v) => (v === undefined || v === null) ? '' : String(v)
+
+    const normalizeKv = (arrOrObj) => {
+      if (!arrOrObj) return []
+      if (Array.isArray(arrOrObj)) {
+        return arrOrObj
+          .map((x) => ({ key: asStr(x && (x.key ?? x.title)).trim(), value: asStr(x && x.value) }))
+          .filter((x) => x.key)
+      }
+      if (typeof arrOrObj === 'object') {
+        return Object.keys(arrOrObj).map((k) => ({ key: asStr(k).trim(), value: asStr(arrOrObj[k]) }))
+          .filter((x) => x.key)
+      }
+      return []
+    }
+
+    const wb = XLSX.utils.book_new()
+
+    const templateRows = records.map((t) => ({
+      id: asStr(t._id || t.id || ''),
+      tag: asStr(t.tag || ''),
+      type: asStr(t.type || ''),
+      title: asStr(t.title || ''),
+      system: asStr(t.system || ''),
+      status: asStr(t.status || ''),
+      spaceId: asStr(t.spaceId || ''),
+      responsible: asStr(t.responsible || ''),
+      orderDate: toIsoDateOnly(t.orderDate),
+      installationDate: toIsoDateOnly(t.installationDate),
+      balanceDate: toIsoDateOnly(t.balanceDate),
+      testDate: toIsoDateOnly(t.testDate),
+      tags: Array.isArray(t.tags) ? t.tags.map((x) => asStr(x).trim()).filter(Boolean).join(', ') : asStr(t.tags || ''),
+      description: asStr(t.description || ''),
+      template: asStr(t.template || ''),
+      projectId: asStr(t.projectId || ''),
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(templateRows), 'Templates')
+
+    const attrRows = []
+    const compRows = []
+    const checklistQuestionRows = []
+    const fptRows = []
+
+    for (const t of records) {
+      const tag = asStr(t.tag || '').trim()
+      if (!tag) continue
+
+      const attrs = normalizeKv(t.attributes || (t.metadata && t.metadata.attributes))
+      for (const a of attrs) {
+        attrRows.push({ templateTag: tag, key: a.key, value: asStr(a.value) })
+      }
+
+      const comps = Array.isArray(t.components) ? t.components : []
+      for (let ci = 0; ci < comps.length; ci++) {
+        const c = comps[ci] || {}
+        const cattrs = normalizeKv(c.attributes)
+        const attrsText = cattrs.length
+          ? cattrs
+            .map((ca) => {
+              const k = asStr(ca.key || '').trim()
+              const v = asStr(ca.value)
+              return k ? `${k}: ${v}` : ''
+            })
+            .filter(Boolean)
+            .join('\n')
+          : ''
+
+        compRows.push({
+          templateTag: tag,
+          componentIndex: ci,
+          componentTag: asStr(c.tag || ''),
+          type: asStr(c.type || ''),
+          title: asStr(c.title || ''),
+          status: asStr(c.status || ''),
+          notes: asStr(c.notes || ''),
+          Attributes: attrsText,
+        })
+      }
+
+      const sections = Array.isArray(t.checklists) ? t.checklists : []
+      for (let si = 0; si < sections.length; si++) {
+        const sec = sections[si] || {}
+        const questions = Array.isArray(sec.questions) ? sec.questions : []
+        for (let qi = 0; qi < questions.length; qi++) {
+          const q = questions[qi] || {}
+          const oprIds = Array.isArray(q.oprItemIds) ? q.oprItemIds.map((x) => asStr(x).trim()).filter(Boolean) : []
+          checklistQuestionRows.push({
+            templateTag: tag,
+            checklistIndex: si,
+            checklistNumber: sec.number ?? '',
+            checklistTitle: asStr(sec.title || ''),
+            checklistType: asStr(sec.type || ''),
+            checklistSystem: asStr(sec.system || ''),
+            checklistResponsible: asStr(sec.responsible || ''),
+            questionIndex: qi,
+            questionNumber: q.number ?? '',
+            questionText: asStr(q.question_text || ''),
+            answer: asStr(q.answer || ''),
+            notes: asStr(q.notes || ''),
+            cx_answer: asStr(q.cx_answer || ''),
+            oprItemIds: oprIds.join(', '),
+          })
+        }
+      }
+
+      const tests = Array.isArray(t.functionalTests) ? t.functionalTests : []
+      for (let ti = 0; ti < tests.length; ti++) {
+        const ft = tests[ti] || {}
+        const oprIds = Array.isArray(ft.oprItemIds) ? ft.oprItemIds.map((x) => asStr(x).trim()).filter(Boolean) : []
+        const base = {
+          templateTag: tag,
+          functionalTestIndex: ti,
+          functionalTestNumber: ft.number ?? '',
+          name: asStr(ft.name || ''),
+          pass: ft.pass === true ? 'pass' : (ft.pass === false ? 'fail' : (asStr(ft.pass || '') || '')),
+          notes: asStr(ft.notes || ''),
+          description: asStr(ft.description || ''),
+          oprItemIds: oprIds.join(', '),
+        }
+
+        const table = (ft && typeof ft === 'object') ? ft.table : null
+        const cols = Array.isArray(table && table.columns) ? table.columns : []
+        const rows = Array.isArray(table && table.rows) ? table.rows : []
+        const resultsLines = []
+        for (let ri = 0; ri < rows.length; ri++) {
+          const row = rows[ri] || {}
+          for (let ci = 0; ci < cols.length; ci++) {
+            const col = cols[ci] || {}
+            const columnKey = asStr(col && col.key).trim()
+            if (!columnKey) continue
+            const columnName = asStr(col && col.name)
+            const rawVal = row[columnKey]
+            const valueText = (rawVal === undefined || rawVal === null) ? '' : asStr(rawVal)
+            const safeValue = valueText.replace(/\r?\n/g, '\\n').replace(/\|/g, '¦')
+            const safeColumnName = asStr(columnName).replace(/\r?\n/g, ' ').replace(/\|/g, '¦')
+            resultsLines.push(`rowIndex: ${ri} | columnIndex: ${ci} | columnKey: ${columnKey} | columnName: ${safeColumnName} | value: ${safeValue}`)
+          }
+        }
+
+        const steps = Array.isArray(ft.rows) ? ft.rows : []
+        if (steps.length) {
+          for (let si = 0; si < steps.length; si++) {
+            const s = steps[si] || {}
+            fptRows.push({
+              ...base,
+              stepIndex: si,
+              step: asStr(s.step || ''),
+              expected: asStr(s.expected || ''),
+              actual: asStr(s.actual || ''),
+              results: si === 0 ? resultsLines.join('\n') : '',
+            })
+          }
+        } else {
+          fptRows.push({
+            ...base,
+            stepIndex: '',
+            step: '',
+            expected: '',
+            actual: '',
+            results: resultsLines.join('\n'),
+          })
+        }
+      }
+    }
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attrRows), 'Attributes')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compRows), 'Components')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(checklistQuestionRows), 'Checklists')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fptRows), 'FunctionalTests')
+
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', 'attachment; filename="templates-export.xlsx"')
+    res.status(200).send(buf)
+  } catch (error) {
+    console.error('[templates] export error', error && (error.stack || error.message || error))
+    res.status(500).send({ error: 'Failed to export templates' })
+  }
+})
+
 // Read by project
 router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requirePermission('templates.read', { projectParam: 'projectId' }), requireFeature('templates'), async (req, res) => {
   try {
-    const list = await Template.find({ projectId: req.params.projectId }).select(LIGHT_FIELDS);
-    res.status(200).send(list.map(toPlainTemplate));
+    const projectId = req.params.projectId
+    const list = await Template.find({ projectId }).select(LIGHT_FIELDS).lean();
+
+    const templateIds = list.map(t => t && t._id).filter(Boolean)
+    let instancesById = new Map()
+    if (templateIds.length) {
+      const instancesAgg = await Equipment.aggregate([
+        { $match: { projectId: new mongoose.Types.ObjectId(projectId), template: { $in: templateIds } } },
+        { $group: { _id: '$template', count: { $sum: 1 } } },
+      ])
+      instancesById = new Map(instancesAgg.map(a => [String(a && a._id), a && a.count ? a.count : 0]))
+    }
+
+    res.status(200).send(list.map(t => ({
+      ...toPlainTemplate(t),
+      instancesCount: instancesById.get(String(t && t._id)) || 0,
+    })));
   } catch (error) {
     console.error('[templates] list by project error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to load templates' });

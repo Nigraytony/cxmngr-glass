@@ -112,6 +112,9 @@ tmp/
 # Personal settings
 TODO.txt
 
+# Local spreadsheets
+cxma_features.xlsx
+
 # Tauri/Rust build artifacts and binaries
 src-tauri/target/
 src-tauri/target/**

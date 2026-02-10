@@ -337,7 +337,10 @@
                       class="mt-2 text-xs"
                     >
                       Status:
-                      <span class="px-2 py-0.5 rounded-full border ml-1" :class="attendeeStatusClass">{{ attendeeStatusLabel }}</span>
+                      <span
+                        class="px-2 py-0.5 rounded-full border ml-1"
+                        :class="attendeeStatusClass"
+                      >{{ attendeeStatusLabel }}</span>
                     </div>
                   </div>
                   <button
@@ -402,7 +405,10 @@
                     {{ p.snapshot?.role || '—' }}
                   </div>
                   <div class="col-span-1 flex items-center justify-end gap-2">
-                    <span class="text-[11px] px-2 py-0.5 rounded-full border" :class="attendeeStatusPillClass(p.status)">{{ p.status }}</span>
+                    <span
+                      class="text-[11px] px-2 py-0.5 rounded-full border"
+                      :class="attendeeStatusPillClass(p.status)"
+                    >{{ p.status }}</span>
                     <template v-if="isAdmin && p.userId">
                       <button
                         v-if="p.status !== 'approved'"
@@ -443,573 +449,717 @@
         <!-- Q&A Tab -->
         <!-- Left: session / controls -->
         <div class="col-span-12 lg:col-span-5 h-full min-h-0">
-        <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
-          <div class="flex items-center justify-between gap-3">
-            <div class="text-white font-semibold">
-              Questions
-            </div>
-            <div class="flex items-center gap-2">
-              <div
-                v-if="isAdmin && addonEnabled"
-                class="relative inline-block group"
-              >
-                <button
-                  type="button"
-                  class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
-                  aria-label="New question"
-                  @click="openCreateQuestion"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="w-5 h-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
-                  </svg>
-                </button>
+          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-white font-semibold">
+                Questions
+              </div>
+              <div class="flex items-center gap-2">
                 <div
-                  role="tooltip"
-                  class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                  v-if="isAdmin && addonEnabled"
+                  class="relative inline-block group"
                 >
-                  New question
+                  <button
+                    type="button"
+                    class="w-10 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                    aria-label="New question"
+                    @click="openCreateQuestion"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-5 h-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+                    </svg>
+                  </button>
+                  <div
+                    role="tooltip"
+                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+                  >
+                    New question
+                  </div>
                 </div>
-              </div>
-              <button
-                v-if="isAdmin && active?.id"
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                @click="selectedQuestionId = active?.id || null"
-              >
-                Jump to active
-              </button>
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm disabled:opacity-50"
-                :disabled="opr.loading"
-                @click="refresh"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
-            <div
-              v-if="!addonEnabled"
-              class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
-            >
-              <div class="font-semibold text-white">
-                OPR Workshop is a paid add-on
-              </div>
-              <div class="text-sm text-white/70 mt-1">
-                One-time purchase: $24.99 per project.
-              </div>
-              <div class="mt-3 flex items-center gap-2">
                 <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm"
-                  @click="purchaseAddon"
-                >
-                  Purchase
-                </button>
-                <button
+                  v-if="isAdmin && active?.id"
                   type="button"
                   class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                  @click="refreshProject"
+                  @click="selectedQuestionId = active?.id || null"
                 >
-                  I already purchased
+                  Jump to active
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm disabled:opacity-50"
+                  :disabled="opr.loading"
+                  @click="refresh"
+                >
+                  Refresh
                 </button>
               </div>
             </div>
 
-            <div
-              v-if="opr.questions.length"
-              class="space-y-3"
-            >
-	              <div
-	                v-for="q in opr.questions"
-	                :key="q.id"
-	                class="rounded-xl bg-white/5 border border-white/10 p-3 text-white/80"
-	              >
-	                <div class="flex items-start justify-between gap-3">
-	                  <button
-	                    type="button"
-	                    class="min-w-0 text-left"
-	                    @click="selectedQuestionId = q.id"
-	                  >
-	                    <div class="flex items-center gap-2">
-	                      <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
-	                        {{ questionTagMap[q.id] }}
-	                      </span>
-	                      <span class="text-white/90 text-sm font-semibold truncate">
-	                        {{ truncate(q.prompt, 80) }}
-	                      </span>
-	                    </div>
-	                    <div class="mt-1 text-white/60 text-xs">
-	                      {{ statusLabel(q.status) }}
-	                    </div>
-	                  </button>
-
-	                  <div class="shrink-0 flex items-center gap-2">
-	                    <span
-	                      v-if="active?.id === q.id"
-	                      class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/20 text-emerald-200"
-	                    >
-	                      Active
-	                    </span>
-
-	                    <div class="flex items-center gap-1">
-	                      <button
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-	                        title="View"
-	                        aria-label="View"
-	                        @click="selectedQuestionId = q.id"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-	                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke-width="1.5" />
-	                          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke-width="1.5" />
-	                        </svg>
-	                      </button>
-
-	                      <button
-	                        v-if="isAdmin"
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-	                        title="Edit question"
-	                        aria-label="Edit question"
-	                        @click="openEditQuestion(q)"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-	                          <path d="M12 20h9" stroke-width="1.5" />
-	                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" stroke-width="1.5" />
-	                        </svg>
-	                      </button>
-
-	                      <button
-	                        v-if="isAdmin && (q.status === 'draft' || q.status === 'closed')"
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
-	                        title="Open for responses"
-	                        aria-label="Open for responses"
-	                        @click="adminOpenForResponses(q)"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-	                          <path d="M8 5v14l11-7-11-7z" />
-	                        </svg>
-	                      </button>
-
-	                      <button
-	                        v-if="isAdmin && q.status === 'open'"
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-	                        title="Close responses"
-	                        aria-label="Close responses"
-	                        @click="adminCloseResponses(q)"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-	                          <path d="M12 6v6l4 2" stroke-width="1.5" />
-	                          <path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z" stroke-width="1.5" />
-	                          <path d="M6 6l12 12" stroke-width="1.5" />
-	                        </svg>
-	                      </button>
-
-	                      <button
-	                        v-if="isAdmin && q.status === 'closed'"
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-	                        title="Open voting"
-	                        aria-label="Open voting"
-	                        @click="adminOpenVotingFor(q)"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-	                          <path d="M9 12l2 2 4-4" stroke-width="1.5" />
-	                          <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-width="1.5" />
-	                        </svg>
-	                      </button>
-
-	                      <button
-	                        v-if="isAdmin && q.status === 'voting'"
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-	                        title="Close voting"
-	                        aria-label="Close voting"
-	                        @click="adminCloseVotingFor(q)"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-	                          <path d="M6 6h12v12H6z" />
-	                        </svg>
-	                      </button>
-
-	                      <button
-	                        v-if="isAdmin"
-	                        type="button"
-	                        class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-	                        title="Delete question"
-	                        aria-label="Delete question"
-	                        @click="deleteQuestionCard(q)"
-	                      >
-	                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-	                          <path d="M3 6h18" stroke-width="1.5" />
-	                          <path d="M8 6V4h8v2" stroke-width="1.5" />
-	                          <path d="M6 6l1 16h10l1-16" stroke-width="1.5" />
-	                          <path d="M10 11v6" stroke-width="1.5" />
-	                          <path d="M14 11v6" stroke-width="1.5" />
-	                        </svg>
-	                      </button>
-	                    </div>
-	                  </div>
-	                </div>
-
-	                <div
-	                  v-if="selectedQuestion?.id === q.id"
-	                  class="mt-3 pt-3 border-t border-white/10"
-	                >
-	                  <div class="flex items-start justify-between gap-3">
-	                    <div class="min-w-0">
-	                      <div class="text-white font-semibold">
-	                        <span v-if="selectedQuestionTag" class="mr-2 text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80">
-	                          {{ selectedQuestionTag }}
-	                        </span>
-	                        {{ statusLabel(selectedQuestion.status) }}
-	                      </div>
-	                      <div class="text-white/70 text-sm mt-1 whitespace-pre-wrap">
-	                        {{ selectedQuestion.prompt }}
-	                      </div>
-	                    </div>
-	                    <div class="shrink-0">
-	                      <span class="inline-flex items-center px-2 py-1 rounded-md text-xs bg-white/10 border border-white/15 text-white/80">
-	                        {{ countdownLabel }}
-	                      </span>
-	                    </div>
-	                  </div>
-
-	                  <div
-	                    v-if="selectedQuestion.status === 'open'"
-	                    class="mt-4 grid gap-2"
-	                  >
-	                    <label class="block">
-	                      <div class="text-white/80 text-sm mb-1">Your answer</div>
-	                      <textarea
-	                        v-model="answerText"
-	                        rows="3"
-	                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-	                        placeholder="Type an answer… (you can submit up to 10)"
-	                      />
-	                    </label>
-	                    <div class="flex items-center justify-between gap-2">
-	                      <div class="text-xs text-white/60">
-	                        Tip: answers auto-close when time expires (admins can also close early).
-	                      </div>
-	                      <button
-	                        type="button"
-	                        class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-	                        :disabled="!answerText.trim() || submittingAnswer"
-	                        @click="submitAnswer"
-	                      >
-	                        Submit Answer
-	                      </button>
-	                    </div>
-	                  </div>
-
-	                  <div
-	                    v-else-if="selectedQuestion.status === 'closed'"
-	                    class="mt-4"
-	                  >
-	                    <div class="text-sm text-white/70">
-	                      Answers are now visible to all participants.
-	                    </div>
-	                  </div>
-
-	                  <div
-	                    v-else-if="selectedQuestion.status === 'voting'"
-	                    class="mt-4 space-y-3"
-	                  >
-	                    <div class="text-sm text-white/70">
-	                      Select your favorite 5 answers and rank them (1 = most favored).
-	                    </div>
-
-	                    <div class="grid gap-2">
-	                      <div
-	                        v-for="r in [1,2,3,4,5]"
-	                        :key="r"
-	                        class="grid grid-cols-12 gap-2 items-center"
-	                      >
-	                        <div class="col-span-2 text-white/80 text-sm">
-	                          {{ r }}
-	                        </div>
-	                        <div class="col-span-10">
-	                          <select
-	                            v-model="voteByRank[r]"
-	                            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-	                          >
-	                            <option value="">
-	                              Select answer…
-	                            </option>
-	                            <option
-	                              v-for="a in voteableAnswers"
-	                              :key="a.id"
-	                              :value="a.id"
-	                              :disabled="isAnswerChosenElsewhere(a.id, r)"
-	                            >
-	                              {{ answerTagMap[a.id] ? `${answerTagMap[a.id]} — ` : '' }}{{ truncate(a.text, 100) }}
-	                            </option>
-	                          </select>
-	                        </div>
-	                      </div>
-	                    </div>
-
-	                    <div class="flex items-center justify-end gap-2">
-	                      <button
-	                        type="button"
-	                        class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-	                        :disabled="!canSubmitVote || submittingVote"
-	                        @click="submitVote"
-	                      >
-	                        Submit Vote
-	                      </button>
-	                    </div>
-	                  </div>
-
-	                  <div
-	                    v-else-if="selectedQuestion.status === 'finalized'"
-	                    class="mt-4"
-	                  >
-	                    <div class="text-sm text-white/70">
-	                      Voting is closed. Results are visible on the right.
-	                    </div>
-	                  </div>
-	                </div>
-	              </div>
-	            </div>
-
-	            <div
-	              v-else
-	              class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/70 text-sm"
-	            >
-	              No questions yet.
-	            </div>
-
-	            <div
-	              v-if="isAdmin && opr.questions.length === 0"
-	              class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
-	            >
-              <div class="font-semibold text-white">
-                Create the first question
-              </div>
-              <div class="text-sm text-white/70 mt-1">
-                Create and open a new question to start the session.
-              </div>
-
-              <div class="mt-4 grid gap-3">
-                <label class="block">
-                  <div class="text-white/80 text-sm mb-1">Category</div>
-                  <select
-                    v-model="draft.categoryId"
-                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+            <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
+              <div
+                v-if="!addonEnabled"
+                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+              >
+                <div class="font-semibold text-white">
+                  OPR Workshop is a paid add-on
+                </div>
+                <div class="text-sm text-white/70 mt-1">
+                  One-time purchase: $24.99 per project.
+                </div>
+                <div class="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm"
+                    @click="purchaseAddon"
                   >
-                    <option value="" disabled>
-                      Select category…
-                    </option>
-                    <option
-                      v-for="c in opr.categories"
-                      :key="c.id"
-                      :value="c.id"
+                    Purchase
+                  </button>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
+                    @click="refreshProject"
+                  >
+                    I already purchased
+                  </button>
+                </div>
+              </div>
+
+              <div
+                v-if="opr.questions.length"
+                class="space-y-3"
+              >
+                <div
+                  v-for="q in opr.questions"
+                  :key="q.id"
+                  class="rounded-xl bg-white/5 border border-white/10 p-3 text-white/80"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      class="min-w-0 text-left"
+                      @click="selectedQuestionId = q.id"
                     >
-                      {{ c.name }}
-                    </option>
-                  </select>
-                </label>
+                      <div class="flex items-center gap-2">
+                        <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
+                          {{ questionTagMap[q.id] }}
+                        </span>
+                        <span class="text-white/90 text-sm font-semibold truncate">
+                          {{ truncate(q.prompt, 80) }}
+                        </span>
+                      </div>
+                      <div class="mt-1 text-white/60 text-xs">
+                        {{ statusLabel(q.status) }}
+                      </div>
+                    </button>
 
-                <label class="block">
-                  <div class="text-white/80 text-sm mb-1">Question prompt</div>
-                  <textarea
-                    v-model="draft.prompt"
-                    rows="4"
-                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-                    placeholder="Enter the question for the session…"
-                  />
-                </label>
+                    <div class="shrink-0 flex items-center gap-2">
+                      <span
+                        v-if="active?.id === q.id"
+                        class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/20 text-emerald-200"
+                      >
+                        Active
+                      </span>
 
-                <label class="block">
-                  <div class="text-white/80 text-sm mb-1">Answer window (minutes)</div>
-                  <input
-                    v-model.number="draft.durationMinutes"
-                    type="number"
-                    min="1"
-                    max="240"
-                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                      <div class="flex items-center gap-1">
+                        <button
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                          title="View"
+                          aria-label="View"
+                          @click="selectedQuestionId = q.id"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                              stroke-width="1.5"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          v-if="isAdmin"
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                          title="Edit question"
+                          aria-label="Edit question"
+                          @click="openEditQuestion(q)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M12 20h9"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"
+                              stroke-width="1.5"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          v-if="isAdmin && (q.status === 'draft' || q.status === 'closed')"
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+                          title="Open for responses"
+                          aria-label="Open for responses"
+                          @click="adminOpenForResponses(q)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path d="M8 5v14l11-7-11-7z" />
+                          </svg>
+                        </button>
+
+                        <button
+                          v-if="isAdmin && q.status === 'open'"
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                          title="Close responses"
+                          aria-label="Close responses"
+                          @click="adminCloseResponses(q)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M12 6v6l4 2"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M6 6l12 12"
+                              stroke-width="1.5"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          v-if="isAdmin && q.status === 'closed'"
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                          title="Open voting"
+                          aria-label="Open voting"
+                          @click="adminOpenVotingFor(q)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M9 12l2 2 4-4"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                              stroke-width="1.5"
+                            />
+                          </svg>
+                        </button>
+
+                        <button
+                          v-if="isAdmin && q.status === 'voting'"
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                          title="Close voting"
+                          aria-label="Close voting"
+                          @click="adminCloseVotingFor(q)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path d="M6 6h12v12H6z" />
+                          </svg>
+                        </button>
+
+                        <button
+                          v-if="isAdmin"
+                          type="button"
+                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+                          title="Delete question"
+                          aria-label="Delete question"
+                          @click="deleteQuestionCard(q)"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M3 6h18"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M8 6V4h8v2"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M6 6l1 16h10l1-16"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M10 11v6"
+                              stroke-width="1.5"
+                            />
+                            <path
+                              d="M14 11v6"
+                              stroke-width="1.5"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="selectedQuestion?.id === q.id"
+                    class="mt-3 pt-3 border-t border-white/10"
                   >
-                </label>
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="text-white font-semibold">
+                          <span
+                            v-if="selectedQuestionTag"
+                            class="mr-2 text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80"
+                          >
+                            {{ selectedQuestionTag }}
+                          </span>
+                          {{ statusLabel(selectedQuestion.status) }}
+                        </div>
+                        <div class="text-white/70 text-sm mt-1 whitespace-pre-wrap">
+                          {{ selectedQuestion.prompt }}
+                        </div>
+                      </div>
+                      <div class="shrink-0">
+                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs bg-white/10 border border-white/15 text-white/80">
+                          {{ countdownLabel }}
+                        </span>
+                      </div>
+                    </div>
 
+                    <div
+                      v-if="selectedQuestion.status === 'open'"
+                      class="mt-4 grid gap-2"
+                    >
+                      <label class="block">
+                        <div class="text-white/80 text-sm mb-1">Your answer</div>
+                        <textarea
+                          v-model="answerText"
+                          rows="3"
+                          class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                          placeholder="Type an answer… (you can submit up to 10)"
+                        />
+                      </label>
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="text-xs text-white/60">
+                          Tip: answers auto-close when time expires (admins can also close early).
+                        </div>
+                        <button
+                          type="button"
+                          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          :disabled="!answerText.trim() || submittingAnswer"
+                          @click="submitAnswer"
+                        >
+                          Submit Answer
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      v-else-if="selectedQuestion.status === 'closed'"
+                      class="mt-4"
+                    >
+                      <div class="text-sm text-white/70">
+                        Answers are now visible to all participants.
+                      </div>
+                    </div>
+
+                    <div
+                      v-else-if="selectedQuestion.status === 'voting'"
+                      class="mt-4 space-y-3"
+                    >
+                      <div class="text-sm text-white/70">
+                        Select your favorite 5 answers and rank them (1 = most favored).
+                      </div>
+
+                      <div class="grid gap-2">
+                        <div
+                          v-for="r in [1,2,3,4,5]"
+                          :key="r"
+                          class="grid grid-cols-12 gap-2 items-center"
+                        >
+                          <div class="col-span-2 text-white/80 text-sm">
+                            {{ r }}
+                          </div>
+                          <div class="col-span-10">
+                            <select
+                              v-model="voteByRank[r]"
+                              class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                            >
+                              <option value="">
+                                Select answer…
+                              </option>
+                              <option
+                                v-for="a in voteableAnswers"
+                                :key="a.id"
+                                :value="a.id"
+                                :disabled="isAnswerChosenElsewhere(a.id, r)"
+                              >
+                                {{ answerTagMap[a.id] ? `${answerTagMap[a.id]} — ` : '' }}{{ truncate(a.text, 100) }}
+                              </option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          :disabled="!canSubmitVote || submittingVote"
+                          @click="submitVote"
+                        >
+                          Submit Vote
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      v-else-if="selectedQuestion.status === 'finalized'"
+                      class="mt-4"
+                    >
+                      <div class="text-sm text-white/70">
+                        Voting is closed. Results are visible on the right.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-else
+                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/70 text-sm"
+              >
+                No questions yet.
+              </div>
+
+              <div
+                v-if="isAdmin && opr.questions.length === 0"
+                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+              >
+                <div class="font-semibold text-white">
+                  Create the first question
+                </div>
+                <div class="text-sm text-white/70 mt-1">
+                  Create and open a new question to start the session.
+                </div>
+
+                <div class="mt-4 grid gap-3">
+                  <label class="block">
+                    <div class="text-white/80 text-sm mb-1">Category</div>
+                    <select
+                      v-model="draft.categoryId"
+                      class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                    >
+                      <option
+                        value=""
+                        disabled
+                      >
+                        Select category…
+                      </option>
+                      <option
+                        v-for="c in opr.categories"
+                        :key="c.id"
+                        :value="c.id"
+                      >
+                        {{ c.name }}
+                      </option>
+                    </select>
+                  </label>
+
+                  <label class="block">
+                    <div class="text-white/80 text-sm mb-1">Question prompt</div>
+                    <textarea
+                      v-model="draft.prompt"
+                      rows="4"
+                      class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                      placeholder="Enter the question for the session…"
+                    />
+                  </label>
+
+                  <label class="block">
+                    <div class="text-white/80 text-sm mb-1">Answer window (minutes)</div>
+                    <input
+                      v-model.number="draft.durationMinutes"
+                      type="number"
+                      min="1"
+                      max="240"
+                      class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                    >
+                  </label>
+
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    :disabled="!canStart"
+                    @click="startQuestion"
+                  >
+                    Create & Open Question
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: answers/results -->
+        <div class="col-span-12 lg:col-span-7 h-full min-h-0">
+          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md text-sm border"
+                  :class="rightTab === 'responses' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
+                  @click="rightTab = 'responses'"
+                >
+                  Responses
+                </button>
+                <button
+                  v-if="addonEnabled"
+                  type="button"
+                  class="px-3 py-2 rounded-md text-sm border"
+                  :class="rightTab === 'register' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
+                  @click="rightTab = 'register'"
+                >
+                  OPR Items
+                </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <template v-if="rightTab === 'responses'">
+                  <button
+                    v-if="selectedQuestion"
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
+                    @click="refreshAnswersAndResults"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    v-if="canMergeAnswers"
+                    type="button"
+                    class="h-9 w-9 inline-grid place-items-center rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+                    :title="mergeMode ? 'Exit merge mode' : 'Merge responses'"
+                    :aria-label="mergeMode ? 'Exit merge mode' : 'Merge responses'"
+                    @click="toggleMergeMode"
+                  >
+                    <svg
+                      v-if="!mergeMode"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <circle
+                        cx="7"
+                        cy="6"
+                        r="2"
+                        stroke-width="1.5"
+                      />
+                      <circle
+                        cx="7"
+                        cy="18"
+                        r="2"
+                        stroke-width="1.5"
+                      />
+                      <circle
+                        cx="17"
+                        cy="12"
+                        r="2"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M9 7.2L15.2 10.8"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M9 16.8L15.2 13.2"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M6 6l12 12"
+                        stroke-width="1.5"
+                      />
+                      <path
+                        d="M18 6 6 18"
+                        stroke-width="1.5"
+                      />
+                    </svg>
+                  </button>
+                </template>
+                <template v-else>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
+                    :disabled="!registerCategoryId"
+                    @click="refreshItems"
+                  >
+                    Refresh
+                  </button>
+                </template>
+              </div>
+            </div>
+
+            <div
+              v-if="rightTab === 'responses' && mergeMode"
+              class="mt-3 rounded-lg bg-white/5 border border-white/10 p-3 flex items-center justify-between gap-3"
+            >
+              <div class="text-xs text-white/70">
+                Select 2+ responses to merge. The merged response will keep the earliest response tag.
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  :disabled="!canStart"
-                  @click="startQuestion"
+                  :disabled="mergeSelectedIds.length < 2"
+                  @click="openMergeModal"
                 >
-                  Create & Open Question
+                  Merge ({{ mergeSelectedIds.length }})
+                </button>
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white text-sm"
+                  @click="exitMergeMode"
+                >
+                  Done
                 </button>
               </div>
             </div>
 
-          </div>
-        </div>
-      </div>
-
-      <!-- Right: answers/results -->
-      <div class="col-span-12 lg:col-span-7 h-full min-h-0">
-        <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-1">
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md text-sm border"
-                :class="rightTab === 'responses' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
-                @click="rightTab = 'responses'"
-              >
-                Responses
-              </button>
-              <button
-                v-if="addonEnabled"
-                type="button"
-                class="px-3 py-2 rounded-md text-sm border"
-                :class="rightTab === 'register' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
-                @click="rightTab = 'register'"
-              >
-                OPR Items
-              </button>
-            </div>
-            <div class="flex items-center gap-2">
+            <div class="mt-3 flex-1 min-h-0 overflow-auto pr-1">
               <template v-if="rightTab === 'responses'">
-                <button
-                  v-if="selectedQuestion"
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                  @click="refreshAnswersAndResults"
+                <div
+                  v-if="!selectedQuestion"
+                  class="text-white/70 text-sm"
                 >
-                  Refresh
-                </button>
-                <button
-                  v-if="canMergeAnswers"
-                  type="button"
-                  class="h-9 w-9 inline-grid place-items-center rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
-                  :title="mergeMode ? 'Exit merge mode' : 'Merge responses'"
-                  :aria-label="mergeMode ? 'Exit merge mode' : 'Merge responses'"
-                  @click="toggleMergeMode"
-                >
-                  <svg v-if="!mergeMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <circle cx="7" cy="6" r="2" stroke-width="1.5" />
-                    <circle cx="7" cy="18" r="2" stroke-width="1.5" />
-                    <circle cx="17" cy="12" r="2" stroke-width="1.5" />
-                    <path d="M9 7.2L15.2 10.8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M9 16.8L15.2 13.2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4">
-                    <path d="M6 6l12 12" stroke-width="1.5" />
-                    <path d="M18 6 6 18" stroke-width="1.5" />
-                  </svg>
-                </button>
-              </template>
-              <template v-else>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                  :disabled="!registerCategoryId"
-                  @click="refreshItems"
-                >
-                  Refresh
-                </button>
-              </template>
-            </div>
-          </div>
+                  Start a question to collect answers and vote on outcomes.
+                </div>
 
-          <div
-            v-if="rightTab === 'responses' && mergeMode"
-            class="mt-3 rounded-lg bg-white/5 border border-white/10 p-3 flex items-center justify-between gap-3"
-          >
-            <div class="text-xs text-white/70">
-              Select 2+ responses to merge. The merged response will keep the earliest response tag.
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="mergeSelectedIds.length < 2"
-                @click="openMergeModal"
-              >
-                Merge ({{ mergeSelectedIds.length }})
-              </button>
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white text-sm"
-                @click="exitMergeMode"
-              >
-                Done
-              </button>
-            </div>
-          </div>
+                <template v-else>
+                  <div
+                    v-if="selectedQuestion.status === 'finalized' && opr.results.length"
+                    class="space-y-2"
+                  >
+                    <div
+                      v-for="r in opr.results"
+                      :key="r.answerId"
+                      class="rounded-lg bg-white/5 border border-white/10 p-3"
+                    >
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
+                            {{ answerTagMap[r.answerId] || `#${r.rank}` }}
+                          </span>
+                          <span class="text-white font-semibold shrink-0">#{{ r.rank }}</span>
+                          <span
+                            v-if="isCurrentUserId(r.authorUserId)"
+                            class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/10 border border-white/15 text-white/80 shrink-0"
+                            title="Your response"
+                            aria-label="Your response"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-3.5 h-3.5"
+                            >
+                              <path
+                                d="M20 21a8 8 0 1 0-16 0"
+                                stroke-width="1.5"
+                              />
+                              <path
+                                d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                                stroke-width="1.5"
+                              />
+                            </svg>
+                          </span>
+                        </div>
+                        <div class="text-white/70 text-sm min-w-0 truncate">
+                          {{ displayNameForUserId(r.authorUserId) }} · {{ r.score }} pts
+                        </div>
+                      </div>
+                      <div class="text-white/80 text-sm mt-1 whitespace-pre-wrap">
+                        {{ r.text }}
+                      </div>
+                    </div>
+                  </div>
 
-          <div class="mt-3 flex-1 min-h-0 overflow-auto pr-1">
-            <template v-if="rightTab === 'responses'">
-              <div
-                v-if="!selectedQuestion"
-                class="text-white/70 text-sm"
-              >
-                Start a question to collect answers and vote on outcomes.
-              </div>
-
-              <template v-else>
-	              <div
-	                v-if="selectedQuestion.status === 'finalized' && opr.results.length"
-	                class="space-y-2"
-	              >
-	                <div
-	                  v-for="r in opr.results"
-	                  :key="r.answerId"
-	                  class="rounded-lg bg-white/5 border border-white/10 p-3"
-	                >
-		                  <div class="flex items-center justify-between gap-2">
-		                    <div class="flex items-center gap-2 min-w-0">
-		                      <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
-		                        {{ answerTagMap[r.answerId] || `#${r.rank}` }}
-		                      </span>
-		                      <span class="text-white font-semibold shrink-0">#{{ r.rank }}</span>
-		                      <span
-		                        v-if="isCurrentUserId(r.authorUserId)"
-		                        class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/10 border border-white/15 text-white/80 shrink-0"
-		                        title="Your response"
-		                        aria-label="Your response"
-		                      >
-		                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3.5 h-3.5">
-		                          <path d="M20 21a8 8 0 1 0-16 0" stroke-width="1.5" />
-		                          <path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke-width="1.5" />
-		                        </svg>
-		                      </span>
-		                    </div>
-		                    <div class="text-white/70 text-sm min-w-0 truncate">
-		                      {{ displayNameForUserId(r.authorUserId) }} · {{ r.score }} pts
-		                    </div>
-		                  </div>
-		                  <div class="text-white/80 text-sm mt-1 whitespace-pre-wrap">
-		                    {{ r.text }}
-		                  </div>
-		                </div>
-	              </div>
-
-	              <div
-                v-else
-                class="space-y-2"
-              >
-	                <div
-	                  v-for="a in visibleAnswers"
-	                  :key="a.id"
-		                  class="rounded-lg bg-white/5 border border-white/10 p-3"
-                    :class="mergeMode && isMergeSelected(a.id) ? 'ring-2 ring-white/25' : ''"
-		                >
-		                  <div class="mb-1 flex items-center justify-between gap-2">
-		                    <div class="flex items-center gap-2 min-w-0">
+                  <div
+                    v-else
+                    class="space-y-2"
+                  >
+                    <div
+                      v-for="a in visibleAnswers"
+                      :key="a.id"
+                      class="rounded-lg bg-white/5 border border-white/10 p-3"
+                      :class="mergeMode && isMergeSelected(a.id) ? 'ring-2 ring-white/25' : ''"
+                    >
+                      <div class="mb-1 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
                           <label
                             v-if="mergeMode"
                             class="inline-flex items-center shrink-0"
@@ -1022,9 +1172,9 @@
                               @change="toggleMergeSelected(a.id)"
                             >
                           </label>
-		                      <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
-		                        {{ answerTagMap[a.id] || '' }}
-		                      </span>
+                          <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
+                            {{ answerTagMap[a.id] || '' }}
+                          </span>
                           <button
                             v-if="isAdmin && !mergeMode && mergedCountFor(a) > 0"
                             type="button"
@@ -1032,180 +1182,210 @@
                             :title="`Merged (${mergedCountFor(a)}) — click to view / unmerge`"
                             @click="openMergeDetail(a.id)"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3.5 h-3.5">
-                              <path d="M8 8h8" stroke-width="1.5" />
-                              <path d="M8 12h8" stroke-width="1.5" />
-                              <path d="M8 16h8" stroke-width="1.5" />
-                              <path d="M6 6h12v12H6z" stroke-width="1.5" />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-3.5 h-3.5"
+                            >
+                              <path
+                                d="M8 8h8"
+                                stroke-width="1.5"
+                              />
+                              <path
+                                d="M8 12h8"
+                                stroke-width="1.5"
+                              />
+                              <path
+                                d="M8 16h8"
+                                stroke-width="1.5"
+                              />
+                              <path
+                                d="M6 6h12v12H6z"
+                                stroke-width="1.5"
+                              />
                             </svg>
                             <span>{{ mergedCountFor(a) }}</span>
                           </button>
-		                      <span
-		                        v-if="isCurrentUserId(a.authorUserId)"
-		                        class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/10 border border-white/15 text-white/80 shrink-0"
-		                        title="Your response"
-		                        aria-label="Your response"
-		                      >
-		                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-3.5 h-3.5">
-		                          <path d="M20 21a8 8 0 1 0-16 0" stroke-width="1.5" />
-		                          <path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke-width="1.5" />
-		                        </svg>
-		                      </span>
-		                    </div>
-		                    <div class="text-xs text-white/60 min-w-0 truncate">
-		                      {{ displayNameForUserId(a.authorUserId) }}
-		                    </div>
-		                  </div>
-		                  <div class="text-white/80 text-sm whitespace-pre-wrap">
-		                    {{ a.text }}
-		                  </div>
-		                </div>
-                <div
-                  v-if="visibleAnswers.length === 0"
-                  class="text-white/70 text-sm"
-                >
-                  No answers yet.
-                </div>
-              </div>
+                          <span
+                            v-if="isCurrentUserId(a.authorUserId)"
+                            class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/10 border border-white/15 text-white/80 shrink-0"
+                            title="Your response"
+                            aria-label="Your response"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-3.5 h-3.5"
+                            >
+                              <path
+                                d="M20 21a8 8 0 1 0-16 0"
+                                stroke-width="1.5"
+                              />
+                              <path
+                                d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+                                stroke-width="1.5"
+                              />
+                            </svg>
+                          </span>
+                        </div>
+                        <div class="text-xs text-white/60 min-w-0 truncate">
+                          {{ displayNameForUserId(a.authorUserId) }}
+                        </div>
+                      </div>
+                      <div class="text-white/80 text-sm whitespace-pre-wrap">
+                        {{ a.text }}
+                      </div>
+                    </div>
+                    <div
+                      v-if="visibleAnswers.length === 0"
+                      class="text-white/70 text-sm"
+                    >
+                      No answers yet.
+                    </div>
+                  </div>
+                </template>
               </template>
-            </template>
 
-            <template v-else>
-              <div class="space-y-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <label class="block">
-                    <div class="text-white/70 text-xs mb-1">Category</div>
-                    <select
-                      v-model="registerCategoryId"
-                      class="min-w-[240px] rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-                    >
-                      <option :value="ALL_CATEGORIES">
-                        All Categories
-                      </option>
-                      <option
-                        v-for="c in opr.categories"
-                        :key="c.id"
-                        :value="c.id"
+              <template v-else>
+                <div class="space-y-3">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <label class="block">
+                      <div class="text-white/70 text-xs mb-1">Category</div>
+                      <select
+                        v-model="registerCategoryId"
+                        class="min-w-[240px] rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
                       >
-                        {{ c.name }}
-                      </option>
-                    </select>
-                  </label>
+                        <option :value="ALL_CATEGORIES">
+                          All Categories
+                        </option>
+                        <option
+                          v-for="c in opr.categories"
+                          :key="c.id"
+                          :value="c.id"
+                        >
+                          {{ c.name }}
+                        </option>
+                      </select>
+                    </label>
 
-                  <label
-                    v-if="isAdmin"
-                    class="flex items-center gap-2 text-white/70 text-sm mt-6"
-                    title="Include archived OPR items"
-                  >
-                    <input
-                      v-model="registerIncludeArchived"
-                      type="checkbox"
-                      class="h-4 w-4 rounded border-white/20 bg-black/20 text-white focus:ring-white/30"
+                    <label
+                      v-if="isAdmin"
+                      class="flex items-center gap-2 text-white/70 text-sm mt-6"
+                      title="Include archived OPR items"
                     >
-                    Include archived
-                  </label>
+                      <input
+                        v-model="registerIncludeArchived"
+                        type="checkbox"
+                        class="h-4 w-4 rounded border-white/20 bg-black/20 text-white focus:ring-white/30"
+                      >
+                      Include archived
+                    </label>
 
-                  <label class="block flex-1 min-w-[220px]">
-                    <div class="text-white/70 text-xs mb-1">Search</div>
-                    <input
-                      v-model="registerSearch"
-                      type="text"
-                      class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-                      placeholder="Search OPR items…"
-                    >
-                  </label>
-                </div>
+                    <label class="block flex-1 min-w-[220px]">
+                      <div class="text-white/70 text-xs mb-1">Search</div>
+                      <input
+                        v-model="registerSearch"
+                        type="text"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                        placeholder="Search OPR items…"
+                      >
+                    </label>
+                  </div>
 
-                <div
-                  v-if="filteredOprItems.length === 0"
-                  class="text-white/70 text-sm"
-                >
-                  <template v-if="registerCategoryId === ALL_CATEGORIES">
-                    No OPR items yet. Close voting on questions to publish the top {{ topN }} items per category.
-                  </template>
-                  <template v-else>
-                    No OPR items yet for this category. Close voting on a question to publish the top {{ topN }} items.
-                  </template>
-                </div>
-
-                <div
-                  v-else
-                  class="space-y-2"
-                >
                   <div
-                    v-for="item in filteredOprItems"
-                    :key="item.id"
-                    :id="oprItemDomId(item.id)"
-                    class="rounded-lg bg-white/5 border border-white/10 p-3"
-                    :class="deepLinkItemId && item.id === deepLinkItemId ? 'ring-2 ring-indigo-400/40 border-indigo-400/30 bg-indigo-500/10' : ''"
+                    v-if="filteredOprItems.length === 0"
+                    class="text-white/70 text-sm"
                   >
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="flex items-center gap-2 min-w-0">
-                        <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 shrink-0">
-                          #{{ item.rank }}
-                        </span>
-                        <span
-                          v-if="registerCategoryId === ALL_CATEGORIES"
-                          class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0"
-                          :title="String(categoryNameById[item.categoryId || ''] || 'Category')"
-                        >
-                          {{ categoryNameById[item.categoryId || ''] || 'Category' }}
-                        </span>
-                        <span
-                          v-if="item.questionId && questionTagMap[item.questionId]"
-                          class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0"
-                        >
-                          {{ questionTagMap[item.questionId] }}
-                        </span>
-                        <span
-                          v-if="item.status === 'archived'"
-                          class="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60 shrink-0"
-                          title="Archived"
-                        >
-                          Archived
-                        </span>
+                    <template v-if="registerCategoryId === ALL_CATEGORIES">
+                      No OPR items yet. Close voting on questions to publish the top {{ topN }} items per category.
+                    </template>
+                    <template v-else>
+                      No OPR items yet for this category. Close voting on a question to publish the top {{ topN }} items.
+                    </template>
+                  </div>
+
+                  <div
+                    v-else
+                    class="space-y-2"
+                  >
+                    <div
+                      v-for="item in filteredOprItems"
+                      :id="oprItemDomId(item.id)"
+                      :key="item.id"
+                      class="rounded-lg bg-white/5 border border-white/10 p-3"
+                      :class="deepLinkItemId && item.id === deepLinkItemId ? 'ring-2 ring-indigo-400/40 border-indigo-400/30 bg-indigo-500/10' : ''"
+                    >
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 shrink-0">
+                            #{{ item.rank }}
+                          </span>
+                          <span
+                            v-if="registerCategoryId === ALL_CATEGORIES"
+                            class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0"
+                            :title="String(categoryNameById[item.categoryId || ''] || 'Category')"
+                          >
+                            {{ categoryNameById[item.categoryId || ''] || 'Category' }}
+                          </span>
+                          <span
+                            v-if="item.questionId && questionTagMap[item.questionId]"
+                            class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0"
+                          >
+                            {{ questionTagMap[item.questionId] }}
+                          </span>
+                          <span
+                            v-if="item.status === 'archived'"
+                            class="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60 shrink-0"
+                            title="Archived"
+                          >
+                            Archived
+                          </span>
+                        </div>
+
+                        <div class="text-xs text-white/60 shrink-0">
+                          {{ item.score }} pts
+                        </div>
                       </div>
 
-                      <div class="text-xs text-white/60 shrink-0">
-                        {{ item.score }} pts
-                      </div>
-                    </div>
-
-                    <div class="text-white/85 text-sm mt-1 whitespace-pre-wrap">
-                      {{ item.text }}
-                    </div>
-
-                    <div class="mt-2 flex items-center justify-between gap-2">
-                      <div class="text-xs text-white/60 truncate">
-                        <span v-if="item.questionId && questionTagMap[item.questionId]">
-                          Source: {{ questionTagMap[item.questionId] }}
-                        </span>
-                        <span v-if="item.questionId && sourceAnswerBadge(item)">
-                          · {{ sourceAnswerBadge(item) }}
-                        </span>
+                      <div class="text-white/85 text-sm mt-1 whitespace-pre-wrap">
+                        {{ item.text }}
                       </div>
 
-                      <button
-                        v-if="item.questionId"
-                        type="button"
-                        class="text-xs text-white/80 hover:text-white underline underline-offset-2 shrink-0"
-                        @click="jumpToItemSource(item)"
-                      >
-                        View source
-                      </button>
+                      <div class="mt-2 flex items-center justify-between gap-2">
+                        <div class="text-xs text-white/60 truncate">
+                          <span v-if="item.questionId && questionTagMap[item.questionId]">
+                            Source: {{ questionTagMap[item.questionId] }}
+                          </span>
+                          <span v-if="item.questionId && sourceAnswerBadge(item)">
+                            · {{ sourceAnswerBadge(item) }}
+                          </span>
+                        </div>
+
+                        <button
+                          v-if="item.questionId"
+                          type="button"
+                          class="text-xs text-white/80 hover:text-white underline underline-offset-2 shrink-0"
+                          @click="jumpToItemSource(item)"
+                        >
+                          View source
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-	            </template>
-	          </div>
-	        </div>
-	      </div>
-	    </div>
-	      <div
-	        v-else-if="mainTab === 'results' || mainTab === 'import'"
-	        class="flex-1 min-h-0"
-	      >
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        v-else-if="mainTab === 'results' || mainTab === 'import'"
+        class="flex-1 min-h-0"
+      >
         <!-- Results Tab -->
         <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
           <div class="flex items-center justify-between gap-3">
@@ -1230,165 +1410,54 @@
               >
                 Refresh
               </button>
-	        </div>
-	      </div>
-
-      <div
-        v-if="mainTab === 'import'"
-        class="grid grid-cols-12 gap-4 flex-1 min-h-0"
-      >
-        <div class="col-span-12 lg:col-span-6 h-full min-h-0">
-          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-white font-semibold">
-                Add items (manual)
-              </div>
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                :disabled="importSubmitting"
-                @click="resetImportDraft"
-              >
-                Reset
-              </button>
-            </div>
-
-            <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
-              <div
-                v-if="!isAdmin"
-                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
-              >
-                Only the CxA/Admin can import OPR items.
-              </div>
-              <div
-                v-else-if="!addonEnabled"
-                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
-              >
-                Enable the OPR Workshop add-on to import items.
-              </div>
-              <template v-else>
-                <label class="block">
-                  <div class="text-white/70 text-sm mb-1">Category</div>
-                  <select
-                    v-model="importDefaultCategoryId"
-                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-                  >
-                    <option value="" disabled>
-                      Select category…
-                    </option>
-                    <option
-                      v-for="c in opr.categories"
-                      :key="c.id"
-                      :value="c.id"
-                    >
-                      {{ c.name }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <div class="text-white/70 text-sm mb-1">Items (one per line)</div>
-                  <textarea
-                    v-model="importLines"
-                    rows="10"
-                    class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
-                    placeholder="Enter one OPR item per line…"
-                  />
-                </label>
-
-                <div class="flex items-center justify-between gap-2">
-                  <div class="text-xs text-white/60">
-                    {{ manualLineCount }} items ready
-                  </div>
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                    :disabled="importSubmitting || !importDefaultCategoryId || manualLineCount === 0"
-                    @click="submitManualImport"
-                  >
-                    {{ importSubmitting ? 'Saving…' : 'Add items' }}
-                  </button>
-                </div>
-              </template>
             </div>
           </div>
-        </div>
 
-        <div class="col-span-12 lg:col-span-6 h-full min-h-0">
-          <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-white font-semibold">
-                Upload (CSV/XLSX)
-              </div>
-              <div class="flex items-center gap-2">
-                <label class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm cursor-pointer">
-                  <input
-                    type="file"
-                    class="hidden"
-                    accept=".csv,.xlsx,.xls"
-                    :disabled="!isAdmin || importSubmitting"
-                    @change="onImportFileSelected"
-                  >
-                  Choose file
-                </label>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                  :disabled="importSubmitting || importRows.length === 0"
-                  @click="clearImportRows"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
-              <div class="text-xs text-white/60">
-                Expected columns: <span class="text-white/80">category</span>, <span class="text-white/80">text</span> (required). Optional: <span class="text-white/80">rank</span>, <span class="text-white/80">score</span>.
-              </div>
-
-              <div
-                v-if="importRows.length === 0"
-                class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/70 text-sm"
-              >
-                Upload a CSV/XLSX file to preview and import OPR items.
-              </div>
-
-              <template v-else>
-                <div class="flex items-center justify-between gap-2">
-                  <div class="text-xs text-white/60">
-                    {{ importRowsValidCount }} / {{ importRows.length }} valid
+          <div
+            v-if="mainTab === 'import'"
+            class="grid grid-cols-12 gap-4 flex-1 min-h-0"
+          >
+            <div class="col-span-12 lg:col-span-6 h-full min-h-0">
+              <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-white font-semibold">
+                    Add items (manual)
                   </div>
                   <button
                     type="button"
-                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                    :disabled="importSubmitting || importRowsValidCount === 0"
-                    @click="submitFileImport"
+                    class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                    :disabled="importSubmitting"
+                    @click="resetImportDraft"
                   >
-                    {{ importSubmitting ? 'Importing…' : `Import ${importRowsValidCount}` }}
+                    Reset
                   </button>
                 </div>
 
-                <div class="rounded-xl border border-white/10 overflow-hidden">
-                  <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
-                    <div class="col-span-4">Category</div>
-                    <div class="col-span-6">Text</div>
-                    <div class="col-span-1 text-right">Rank</div>
-                    <div class="col-span-1 text-right">Score</div>
+                <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
+                  <div
+                    v-if="!isAdmin"
+                    class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+                  >
+                    Only the CxA/Admin can import OPR items.
                   </div>
                   <div
-                    v-for="(r, idx) in importRows"
-                    :key="r._key"
-                    class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-start"
-                    :class="rowError(r) ? 'bg-red-500/5' : ''"
+                    v-else-if="!addonEnabled"
+                    class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
                   >
-                    <div class="col-span-4">
+                    Enable the OPR Workshop add-on to import items.
+                  </div>
+                  <template v-else>
+                    <label class="block">
+                      <div class="text-white/70 text-sm mb-1">Category</div>
                       <select
-                        v-model="importRows[idx].categoryId"
-                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm"
+                        v-model="importDefaultCategoryId"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
                       >
-                        <option value="">
-                          Select…
+                        <option
+                          value=""
+                          disabled
+                        >
+                          Select category…
                         </option>
                         <option
                           v-for="c in opr.categories"
@@ -1398,140 +1467,262 @@
                           {{ c.name }}
                         </option>
                       </select>
-                      <div
-                        v-if="rowError(r)"
-                        class="text-[11px] text-red-200 mt-1"
-                      >
-                        {{ rowError(r) }}
-                      </div>
-                    </div>
-                    <div class="col-span-6">
+                    </label>
+
+                    <label class="block">
+                      <div class="text-white/70 text-sm mb-1">Items (one per line)</div>
                       <textarea
-                        v-model="importRows[idx].text"
-                        rows="2"
-                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm"
+                        v-model="importLines"
+                        rows="10"
+                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+                        placeholder="Enter one OPR item per line…"
                       />
-                    </div>
-                    <div class="col-span-1 text-right">
-                      <input
-                        v-model.number="importRows[idx].rank"
-                        type="number"
-                        min="1"
-                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm text-right"
-                      >
-                    </div>
-                    <div class="col-span-1 text-right">
-                      <input
-                        v-model.number="importRows[idx].score"
-                        type="number"
-                        class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm text-right"
-                      >
+                    </label>
+
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="text-xs text-white/60">
+                        {{ manualLineCount }} items ready
+                      </div>
                       <button
                         type="button"
-                        class="mt-2 text-[11px] text-white/70 hover:text-white underline underline-offset-2"
-                        @click="removeImportRow(idx)"
+                        class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                        :disabled="importSubmitting || !importDefaultCategoryId || manualLineCount === 0"
+                        @click="submitManualImport"
                       >
-                        Remove
+                        {{ importSubmitting ? 'Saving…' : 'Add items' }}
                       </button>
                     </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-12 lg:col-span-6 h-full min-h-0">
+              <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-white font-semibold">
+                    Upload (CSV/XLSX)
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <label class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm cursor-pointer">
+                      <input
+                        type="file"
+                        class="hidden"
+                        accept=".csv,.xlsx,.xls"
+                        :disabled="!isAdmin || importSubmitting"
+                        @change="onImportFileSelected"
+                      >
+                      Choose file
+                    </label>
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
+                      :disabled="importSubmitting || importRows.length === 0"
+                      @click="clearImportRows"
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
-              </template>
+
+                <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
+                  <div class="text-xs text-white/60">
+                    Expected columns: <span class="text-white/80">category</span>, <span class="text-white/80">text</span> (required). Optional: <span class="text-white/80">rank</span>, <span class="text-white/80">score</span>.
+                  </div>
+
+                  <div
+                    v-if="importRows.length === 0"
+                    class="rounded-xl bg-white/5 border border-white/10 p-4 text-white/70 text-sm"
+                  >
+                    Upload a CSV/XLSX file to preview and import OPR items.
+                  </div>
+
+                  <template v-else>
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="text-xs text-white/60">
+                        {{ importRowsValidCount }} / {{ importRows.length }} valid
+                      </div>
+                      <button
+                        type="button"
+                        class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+                        :disabled="importSubmitting || importRowsValidCount === 0"
+                        @click="submitFileImport"
+                      >
+                        {{ importSubmitting ? 'Importing…' : `Import ${importRowsValidCount}` }}
+                      </button>
+                    </div>
+
+                    <div class="rounded-xl border border-white/10 overflow-hidden">
+                      <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
+                        <div class="col-span-4">
+                          Category
+                        </div>
+                        <div class="col-span-6">
+                          Text
+                        </div>
+                        <div class="col-span-1 text-right">
+                          Rank
+                        </div>
+                        <div class="col-span-1 text-right">
+                          Score
+                        </div>
+                      </div>
+                      <div
+                        v-for="(r, idx) in importRows"
+                        :key="r._key"
+                        class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-start"
+                        :class="rowError(r) ? 'bg-red-500/5' : ''"
+                      >
+                        <div class="col-span-4">
+                          <select
+                            v-model="importRows[idx].categoryId"
+                            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm"
+                          >
+                            <option value="">
+                              Select…
+                            </option>
+                            <option
+                              v-for="c in opr.categories"
+                              :key="c.id"
+                              :value="c.id"
+                            >
+                              {{ c.name }}
+                            </option>
+                          </select>
+                          <div
+                            v-if="rowError(r)"
+                            class="text-[11px] text-red-200 mt-1"
+                          >
+                            {{ rowError(r) }}
+                          </div>
+                        </div>
+                        <div class="col-span-6">
+                          <textarea
+                            v-model="importRows[idx].text"
+                            rows="2"
+                            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm"
+                          />
+                        </div>
+                        <div class="col-span-1 text-right">
+                          <input
+                            v-model.number="importRows[idx].rank"
+                            type="number"
+                            min="1"
+                            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm text-right"
+                          >
+                        </div>
+                        <div class="col-span-1 text-right">
+                          <input
+                            v-model.number="importRows[idx].score"
+                            type="number"
+                            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-2 py-1.5 text-sm text-right"
+                          >
+                          <button
+                            type="button"
+                            class="mt-2 text-[11px] text-white/70 hover:text-white underline underline-offset-2"
+                            @click="removeImportRow(idx)"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
           <template v-else>
-          <div
-            v-if="!addonEnabled"
-            class="mt-3 rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
-          >
-            Enable the OPR Workshop add-on to view results.
-          </div>
+            <div
+              v-if="!addonEnabled"
+              class="mt-3 rounded-xl bg-white/5 border border-white/10 p-4 text-white/80"
+            >
+              Enable the OPR Workshop add-on to view results.
+            </div>
 
-          <div
-            v-else
-            class="mt-3 overflow-auto pr-1 min-h-0 flex-1"
-          >
-            <div
-              v-if="resultsLoading"
-              class="text-white/70 text-sm"
-            >
-              Loading…
-            </div>
-            <div
-              v-else-if="resultsRows.length === 0"
-              class="text-white/70 text-sm"
-            >
-              No results yet. Finalize voting on questions to generate ranked results.
-            </div>
             <div
               v-else
-              class="rounded-xl border border-white/10 overflow-hidden"
+              class="mt-3 overflow-auto pr-1 min-h-0 flex-1"
             >
-              <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
-                <div class="col-span-2">
-                  Category
-                </div>
-                <div class="col-span-1">
-                  Q
-                </div>
-                <div class="col-span-1 text-right">
-                  Rank
-                </div>
-                <div class="col-span-1 text-right">
-                  Score
-                </div>
-                <div class="col-span-1 text-right">
-                  Votes
-                </div>
-                <div class="col-span-2">
-                  Vote breakdown
-                </div>
-                <div class="col-span-4">
-                  Response
-                </div>
+              <div
+                v-if="resultsLoading"
+                class="text-white/70 text-sm"
+              >
+                Loading…
               </div>
               <div
-                v-for="r in resultsRows"
-                :key="r.questionId + ':' + r.answerId"
-                class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-start"
+                v-else-if="resultsRows.length === 0"
+                class="text-white/70 text-sm"
               >
-                <div class="col-span-2 text-white/85">
-                  {{ r.categoryName || '—' }}
+                No results yet. Finalize voting on questions to generate ranked results.
+              </div>
+              <div
+                v-else
+                class="rounded-xl border border-white/10 overflow-hidden"
+              >
+                <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-white/5 text-xs text-white/70">
+                  <div class="col-span-2">
+                    Category
+                  </div>
+                  <div class="col-span-1">
+                    Q
+                  </div>
+                  <div class="col-span-1 text-right">
+                    Rank
+                  </div>
+                  <div class="col-span-1 text-right">
+                    Score
+                  </div>
+                  <div class="col-span-1 text-right">
+                    Votes
+                  </div>
+                  <div class="col-span-2">
+                    Vote breakdown
+                  </div>
+                  <div class="col-span-4">
+                    Response
+                  </div>
                 </div>
-                <div class="col-span-1">
-                  <span
-                    v-if="questionTagMap[r.questionId]"
-                    class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80"
-                    :title="r.questionPrompt"
-                  >{{ questionTagMap[r.questionId] }}</span>
-                  <span
-                    v-else
-                    class="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60"
-                    :title="r.questionPrompt"
-                  >Q</span>
-                </div>
-                <div class="col-span-1 text-right text-white/85">
-                  {{ r.rank }}
-                </div>
-                <div class="col-span-1 text-right text-white/85">
-                  {{ r.score }}
-                </div>
-                <div class="col-span-1 text-right text-white/85">
-                  {{ r.voteCount }}
-                </div>
-                <div class="col-span-2 text-xs text-white/70 leading-5">
-                  <div>#1: {{ r.rankCounts?.['1'] || 0 }} · #2: {{ r.rankCounts?.['2'] || 0 }}</div>
-                  <div>#3: {{ r.rankCounts?.['3'] || 0 }} · #4: {{ r.rankCounts?.['4'] || 0 }} · #5: {{ r.rankCounts?.['5'] || 0 }}</div>
-                </div>
-                <div class="col-span-4 text-white/85 whitespace-pre-wrap">
-                  {{ r.text }}
+                <div
+                  v-for="r in resultsRows"
+                  :key="r.questionId + ':' + r.answerId"
+                  class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/10 text-sm items-start"
+                >
+                  <div class="col-span-2 text-white/85">
+                    {{ r.categoryName || '—' }}
+                  </div>
+                  <div class="col-span-1">
+                    <span
+                      v-if="questionTagMap[r.questionId]"
+                      class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80"
+                      :title="r.questionPrompt"
+                    >{{ questionTagMap[r.questionId] }}</span>
+                    <span
+                      v-else
+                      class="text-[11px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60"
+                      :title="r.questionPrompt"
+                    >Q</span>
+                  </div>
+                  <div class="col-span-1 text-right text-white/85">
+                    {{ r.rank }}
+                  </div>
+                  <div class="col-span-1 text-right text-white/85">
+                    {{ r.score }}
+                  </div>
+                  <div class="col-span-1 text-right text-white/85">
+                    {{ r.voteCount }}
+                  </div>
+                  <div class="col-span-2 text-xs text-white/70 leading-5">
+                    <div>#1: {{ r.rankCounts?.['1'] || 0 }} · #2: {{ r.rankCounts?.['2'] || 0 }}</div>
+                    <div>#3: {{ r.rankCounts?.['3'] || 0 }} · #4: {{ r.rankCounts?.['4'] || 0 }} · #5: {{ r.rankCounts?.['5'] || 0 }}</div>
+                  </div>
+                  <div class="col-span-4 text-white/85 whitespace-pre-wrap">
+                    {{ r.text }}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           </template>
         </div>
       </div>
@@ -1718,24 +1909,27 @@
         </div>
       </template>
     </Modal>
-	    <Modal
-	      v-model="questionModalOpen"
-	      panel-class="max-w-2xl"
-	    >
+    <Modal
+      v-model="questionModalOpen"
+      panel-class="max-w-2xl"
+    >
       <template #header>
         <div class="text-lg font-semibold">
           Edit question
         </div>
       </template>
 
-	      <div class="space-y-3">
-	        <label class="block space-y-1">
-	          <div class="text-white/70 text-sm">Category</div>
-	          <select
-	            v-model="questionModalCategoryId"
-	            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
-	          >
-            <option value="" disabled>
+      <div class="space-y-3">
+        <label class="block space-y-1">
+          <div class="text-white/70 text-sm">Category</div>
+          <select
+            v-model="questionModalCategoryId"
+            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+          >
+            <option
+              value=""
+              disabled
+            >
               Select category…
             </option>
             <option
@@ -1748,27 +1942,27 @@
           </select>
         </label>
 
-	        <label class="block space-y-1">
-	          <div class="text-white/70 text-sm">Prompt</div>
-	          <textarea
-	            v-model="questionModalPrompt"
-	            rows="5"
-	            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/40"
-	            placeholder="Enter the question prompt…"
-	          />
-	        </label>
+        <label class="block space-y-1">
+          <div class="text-white/70 text-sm">Prompt</div>
+          <textarea
+            v-model="questionModalPrompt"
+            rows="5"
+            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/40"
+            placeholder="Enter the question prompt…"
+          />
+        </label>
 
-	        <label class="block space-y-1">
-	          <div class="text-white/70 text-sm">Answer window (minutes)</div>
-	          <input
-	            v-model.number="questionModalDurationMinutes"
-	            type="number"
-	            min="1"
-	            max="240"
-	            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
-	          >
-	        </label>
-	      </div>
+        <label class="block space-y-1">
+          <div class="text-white/70 text-sm">Answer window (minutes)</div>
+          <input
+            v-model.number="questionModalDurationMinutes"
+            type="number"
+            min="1"
+            max="240"
+            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+          >
+        </label>
+      </div>
 
       <template #footer>
         <div class="flex items-center justify-end gap-2">
@@ -1789,24 +1983,27 @@
       </template>
     </Modal>
 
-	    <Modal
-	      v-model="createQuestionOpen"
-	      panel-class="max-w-2xl"
-	    >
+    <Modal
+      v-model="createQuestionOpen"
+      panel-class="max-w-2xl"
+    >
       <template #header>
         <div class="text-lg font-semibold">
           New question
         </div>
       </template>
 
-	      <div class="space-y-3">
-	        <label class="block space-y-1">
-	          <div class="text-white/70 text-sm">Category</div>
-	          <select
-	            v-model="createQuestionCategoryId"
-	            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
-	          >
-            <option value="" disabled>
+      <div class="space-y-3">
+        <label class="block space-y-1">
+          <div class="text-white/70 text-sm">Category</div>
+          <select
+            v-model="createQuestionCategoryId"
+            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+          >
+            <option
+              value=""
+              disabled
+            >
               Select category…
             </option>
             <option
@@ -1819,27 +2016,27 @@
           </select>
         </label>
 
-	        <label class="block space-y-1">
-	          <div class="text-white/70 text-sm">Prompt</div>
-	          <textarea
-	            v-model="createQuestionPrompt"
-	            rows="5"
-	            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/40"
-	            placeholder="Enter the question prompt…"
-	          />
-	        </label>
+        <label class="block space-y-1">
+          <div class="text-white/70 text-sm">Prompt</div>
+          <textarea
+            v-model="createQuestionPrompt"
+            rows="5"
+            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder-white/40"
+            placeholder="Enter the question prompt…"
+          />
+        </label>
 
-	        <label class="block space-y-1">
-	          <div class="text-white/70 text-sm">Answer window (minutes)</div>
-	          <input
-	            v-model.number="createQuestionDurationMinutes"
-	            type="number"
-	            min="1"
-	            max="240"
-	            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
-	          >
-	        </label>
-	      </div>
+        <label class="block space-y-1">
+          <div class="text-white/70 text-sm">Answer window (minutes)</div>
+          <input
+            v-model.number="createQuestionDurationMinutes"
+            type="number"
+            min="1"
+            max="240"
+            class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
+          >
+        </label>
+      </div>
 
       <template #footer>
         <div class="flex items-center justify-end gap-2">
@@ -1943,7 +2140,10 @@
         </div>
       </template>
 
-      <div v-if="mergeDetailCanonical" class="space-y-3">
+      <div
+        v-if="mergeDetailCanonical"
+        class="space-y-3"
+      >
         <div class="flex items-center justify-between gap-3">
           <div class="text-sm text-white/70">
             Canonical:
@@ -1969,7 +2169,10 @@
           <div class="text-white font-semibold text-sm">
             Merged from
           </div>
-          <div v-if="mergedAnswersForDetail.length" class="mt-2 space-y-2">
+          <div
+            v-if="mergedAnswersForDetail.length"
+            class="mt-2 space-y-2"
+          >
             <div
               v-for="a in mergedAnswersForDetail"
               :key="a.id"
@@ -1986,7 +2189,10 @@
               </div>
             </div>
           </div>
-          <div v-else class="mt-2 text-sm text-white/60">
+          <div
+            v-else
+            class="mt-2 text-sm text-white/60"
+          >
             No merged responses found.
           </div>
         </div>

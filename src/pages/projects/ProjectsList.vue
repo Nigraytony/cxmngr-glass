@@ -4,7 +4,7 @@
     class="space-y-6 relative"
   >
     <div>
-      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Projects', to: '/app/projects' }]" >
+      <BreadCrumbs :items="[{ text: 'Dashboard', to: '/app' }, { text: 'Projects', to: '/app/projects' }]">
         <template #middle>
           <div class="hidden sm:block">
             <SearchPill
@@ -320,8 +320,17 @@
                     stroke="currentColor"
                     class="w-4 h-4"
                   >
-                    <path d="M3 12a9 9 0 1 0 3-6.7" stroke-width="1.5" stroke-linecap="round" />
-                    <path d="M3 4v4h4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path
+                      d="M3 12a9 9 0 1 0 3-6.7"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M3 4v4h4"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
                   </svg>
                 </button>
                 <!-- Make default: icon button with custom tooltip -->

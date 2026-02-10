@@ -46,7 +46,7 @@
           class="p-3 rounded bg-white/5"
         >
           <div class="font-medium mb-2 text-white">
-            {{ resource }}
+            {{ resourceLabel(resource) }}
           </div>
           <div class="grid grid-cols-4 gap-2 text-sm">
             <label
@@ -102,12 +102,23 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'saved'])
 
+const resourceLabels = {
+  documents: 'Documents (files)',
+  folders: 'Folders',
+}
+
+function resourceLabel(resource) {
+  return resourceLabels[resource] || resource
+}
+
 // Define matrix of resources -> operations. Keep in sync with backend permissions.
 const matrix = {
   tasks: ['create', 'read', 'update', 'delete'],
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],
+  documents: ['create', 'read', 'update', 'delete'],
+  folders: ['create', 'read', 'update', 'delete'],
   templates: ['create', 'read', 'update', 'delete'],
   spaces: ['create', 'read', 'update', 'delete'],
   projects: ['create', 'read', 'update', 'delete']

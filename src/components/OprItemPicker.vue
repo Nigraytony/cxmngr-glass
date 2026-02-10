@@ -87,7 +87,10 @@
               v-model="categoryId"
               class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
             >
-              <option value="" disabled>
+              <option
+                value=""
+                disabled
+              >
                 Select category…
               </option>
               <option

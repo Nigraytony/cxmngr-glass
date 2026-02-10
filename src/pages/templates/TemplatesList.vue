@@ -231,30 +231,128 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 gap-y-2">
-          <button
-            :disabled="exporting || !projectStore.currentProjectId"
-            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
-            @click="downloadTemplates('xlsx')"
-          >
-            <span v-if="exporting">Exporting…</span>
-            <span v-else>Download XLSX</span>
-          </button>
-          <button
-            :disabled="exportingCsv || !projectStore.currentProjectId"
-            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
-            @click="downloadTemplates('csv')"
-          >
-            <span v-if="exportingCsv">Exporting…</span>
-            <span v-else>Download CSV</span>
-          </button>
-          <button
-            :disabled="importing || !projectStore.currentProjectId"
-            class="px-3 py-2 rounded bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 disabled:opacity-50"
-            @click="triggerImport()"
-          >
-            <span v-if="importing">Importing…</span>
-            <span v-else>Upload CSV/XLSX</span>
-          </button>
+          <div class="relative inline-block group shrink-0">
+            <button
+              :disabled="importing || !projectStore.currentProjectId"
+              aria-label="Upload templates"
+              :title="projectStore.currentProjectId ? 'Upload templates from CSV/XLSX' : 'Select a project'"
+              class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+              @click="triggerImport()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M12 3v12"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M7 8l5-5 5 5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><rect
+                x="4"
+                y="15"
+                width="16"
+                height="6"
+                rx="1.5"
+                stroke-width="1.5"
+              /></svg>
+              <span class="text-sm">{{ importing ? 'Importing…' : 'Upload' }}</span>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Upload templates from CSV/XLSX
+            </div>
+          </div>
+
+          <div class="relative inline-block group shrink-0">
+            <button
+              :disabled="exporting || !projectStore.currentProjectId"
+              aria-label="Download templates XLSX"
+              :title="projectStore.currentProjectId ? 'Download filtered templates as XLSX (editable)' : 'Select a project'"
+              class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+              @click="downloadTemplatesXlsx()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M12 3v12"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M7 10l5 5 5-5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><rect
+                x="4"
+                y="17"
+                width="16"
+                height="4"
+                rx="1.5"
+                stroke-width="1.5"
+              /></svg>
+              <span class="text-sm">{{ exporting ? 'Exporting…' : 'xlsx' }}</span>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Download editable XLSX
+            </div>
+          </div>
+
+          <div class="relative inline-block group shrink-0">
+            <button
+              :disabled="exportingCsv || !projectStore.currentProjectId"
+              aria-label="Download templates CSV"
+              :title="projectStore.currentProjectId ? 'Download filtered templates as CSV' : 'Select a project'"
+              class="px-3 h-10 flex items-center justify-center rounded-full bg-white/6 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 gap-2"
+              @click="downloadTemplatesCsv()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              ><path
+                d="M12 3v12"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              /><path
+                d="M7 10l5 5 5-5"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /><rect
+                x="4"
+                y="17"
+                width="16"
+                height="4"
+                rx="1.5"
+                stroke-width="1.5"
+              /></svg>
+              <span class="text-sm">{{ exportingCsv ? 'Exporting…' : 'CSV' }}</span>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Download CSV
+            </div>
+          </div>
           <input
             ref="fileInputRef"
             type="file"
@@ -267,12 +365,13 @@
     </div>
 
     <!-- list -->
-    <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-2 min-w-0 overflow-x-auto">
-      <div class="grid grid-cols-12 px-2 py-2 text-white/70 text-sm">
-        <div class="col-span-1">
+    <div class="rounded-2xl p-4 bg-white/6 backdrop-blur-xl overflow-x-auto min-w-0">
+      <div class="flex items-center justify-between gap-3 gap-y-2 flex-wrap px-2 py-1 text-white/70 text-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-white/60">Sort</span>
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('tag')"
           >
             <span>Tag</span>
@@ -289,11 +388,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-3">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('title')"
           >
             <span>Title</span>
@@ -310,11 +407,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-2">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('type')"
           >
             <span>Type</span>
@@ -331,11 +426,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-2">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('system')"
           >
             <span>System</span>
@@ -352,11 +445,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-2">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('space')"
           >
             <span>Location</span>
@@ -373,11 +464,9 @@
               class="text-xs opacity-40"
             >⇅</span>
           </button>
-        </div>
-        <div class="col-span-1">
           <button
             type="button"
-            class="flex items-center gap-2"
+            class="inline-flex items-center gap-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10"
             @click="setSort('status')"
           >
             <span>Status</span>
@@ -395,173 +484,220 @@
             >⇅</span>
           </button>
         </div>
-        <div class="col-span-1 text-right">
-          Actions
-        </div>
       </div>
-      <div class="divide-y divide-white/10">
+
+      <div class="flex flex-col gap-3 mt-2">
         <div
           v-for="t in paged"
-          :key="t.id"
-          class="grid grid-cols-12 items-center px-2 py-2 text-white/90"
+          :key="t.id || (t as any)._id"
+          class="rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm"
         >
-          <div
-            class="col-span-1 truncate"
-            :title="t.tag"
+          <RouterLink
+            :to="{ name: 'template-edit', params: { id: t.id || (t as any)._id } }"
+            class="flex-1 min-w-0"
+            tabindex="0"
+            style="text-decoration: none;"
           >
-            {{ t.tag || '-' }}
-          </div>
-          <div
-            class="col-span-3 truncate"
-            :title="t.title"
-          >
-            {{ t.title }}
-          </div>
-          <div class="col-span-2 truncate">
-            {{ t.type }}
-          </div>
-          <div class="col-span-2 truncate">
-            {{ t.system || '-' }}
-          </div>
-          <div
-            class="col-span-2 truncate"
-            :title="spaceName(t.spaceId)"
-          >
-            {{ spaceName(t.spaceId) || '-' }}
-          </div>
-          <div class="col-span-1 truncate">
-            {{ t.status || '-' }}
-          </div>
-          <div class="col-span-1 flex items-center justify-end gap-2">
-            <RouterLink
-              :to="{ name: 'template-edit', params: { id: t.id || (t as any)._id } }"
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Open"
-              :title="'Open ' + (t.title || t.tag)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              ><path
-                d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"
-                stroke-width="1.5"
-              /><circle
-                cx="12"
-                cy="12"
-                r="3"
-                stroke-width="1.5"
-              /></svg>
-            </RouterLink>
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Duplicate"
-              title="Duplicate"
-              @click="duplicateTemplate(t)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+              <div class="flex flex-col min-w-[70px] items-start">
+                <div class="text-xs text-white/60">
+                  Tag
+                </div>
+                <div class="text-lg font-bold text-white">
+                  {{ t.tag || '-' }}
+                </div>
+              </div>
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Title:</span>
+                  <span
+                    class="text-base font-semibold text-white truncate"
+                    :title="t.title"
+                  >{{ t.title || '-' }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Type:</span>
+                  <span
+                    v-if="t.type"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ t.type }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">System:</span>
+                  <span
+                    v-if="t.system"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ t.system }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                  <span class="text-xs text-white/60 ml-4">Status:</span>
+                  <span
+                    v-if="t.status"
+                    :class="statusBadgeClass(t.status) + ' text-xs px-2 py-0.5 rounded-full'"
+                  >{{ t.status }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+                </div>
+                <div class="w-full border-t border-dashed border-white/30 my-1" />
+                <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
+                  <span v-if="spaceName(t.spaceId)"><span class="text-white/80">Location:</span> {{ spaceName(t.spaceId) }}</span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ Number((t as any).instancesCount || 0) }}</span>
+                    <span>Instances</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ countArray((t as any).components) }}</span>
+                    <span>Components</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ countArray((t as any).checklists) }}</span>
+                    <span>Checklists</span>
+                  </span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                    <span class="font-semibold">{{ countArray((t as any).functionalTests) }}</span>
+                    <span>FPT</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </RouterLink>
+          <div class="flex flex-col items-end min-w-[160px] justify-end gap-1">
+            <div class="flex items-center justify-end gap-2">
+              <RouterLink
+                :to="{ name: 'template-edit', params: { id: t.id || (t as any)._id } }"
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Open"
+                :title="'Open ' + (t.title || t.tag)"
               >
-                <rect
-                  x="9"
-                  y="3"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"
+                  stroke-width="1.5"
+                /><circle
+                  cx="12"
+                  cy="12"
+                  r="3"
+                  stroke-width="1.5"
+                /></svg>
+              </RouterLink>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Duplicate"
+                title="Duplicate"
+                @click="duplicateTemplate(t)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <rect
+                    x="9"
+                    y="3"
+                    width="12"
+                    height="12"
+                    rx="2"
+                    stroke-width="1.5"
+                  />
+                  <rect
+                    x="3"
+                    y="9"
+                    width="12"
+                    height="12"
+                    rx="2"
+                    stroke-width="1.5"
+                  />
+                </svg>
+              </button>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Edit"
+                @click="openEdit(t)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
+                  stroke-width="1.5"
+                /><path
+                  d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
+                  stroke-width="1.5"
+                /></svg>
+              </button>
+              <button
+                class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
+                aria-label="Delete"
+                @click="confirmRemove(t)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                ><path
+                  d="M6 7h12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                /><path
+                  d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                  stroke-width="1.5"
+                /><rect
+                  x="6"
+                  y="7"
                   width="12"
-                  height="12"
+                  height="14"
                   rx="2"
                   stroke-width="1.5"
-                />
-                <rect
-                  x="3"
-                  y="9"
-                  width="12"
-                  height="12"
-                  rx="2"
+                /><path
+                  d="M10 11v6M14 11v6"
                   stroke-width="1.5"
-                />
-              </svg>
-            </button>
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
-              aria-label="Edit"
-              @click="openEdit(t)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              ><path
-                d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"
-                stroke-width="1.5"
-              /><path
-                d="M14.06 6.19l1.77-1.77a1.5 1.5 0 0 1 2.12 0l1.63 1.63a1.5 1.5 0 0 1 0 2.12l-1.77 1.77"
-                stroke-width="1.5"
-              /></svg>
-            </button>
-            <button
-              class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
-              aria-label="Delete"
-              @click="confirmRemove(t)"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                class="w-4 h-4"
-              ><path
-                d="M6 7h12"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              /><path
-                d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
-                stroke-width="1.5"
-              /><rect
-                x="6"
-                y="7"
-                width="12"
-                height="14"
-                rx="2"
-                stroke-width="1.5"
-              /><path
-                d="M10 11v6M14 11v6"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              /></svg>
-            </button>
+                  stroke-linecap="round"
+                /></svg>
+              </button>
+            </div>
           </div>
         </div>
+
         <div
-          v-if="!templates.length && !loading"
+          v-if="!loading && !Number(displayTotal) && !templates.length && !serverTemplates.length"
           class="p-6 text-white/60 text-center"
         >
           No templates yet.
         </div>
         <div
-          v-else-if="!filtered.length && !loading"
+          v-else-if="!loading && !filtered.length"
           class="p-6 text-white/60 text-center"
         >
           No matching templates.
         </div>
-        <div
-          v-if="loading"
-        >
+        <div v-if="loading">
           <Spinner />
         </div>
       </div>
       <!-- pagination controls -->
       <div
         v-if="filtered.length"
-        class="flex items-center justify-between px-2 py-3 text-white/70 text-sm"
+        class="grid gap-2 px-2 py-3 text-white/70 text-sm md:grid-cols-[1fr_auto_1fr] md:items-center"
       >
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 md:justify-self-start">
           <span>Rows per page</span>
           <select
             v-model.number="pageSize"
@@ -577,7 +713,7 @@
           </select>
           <span class="ml-2">{{ startItem }}–{{ endItem }} of {{ displayTotal }}</span>
         </div>
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1 md:justify-self-center">
           <button
             :disabled="page === 1"
             class="px-2 py-1 rounded border border-white/20 bg-white/5 disabled:opacity-40"
@@ -594,6 +730,10 @@
             Next
           </button>
         </div>
+        <div
+          aria-hidden="true"
+          class="hidden md:block"
+        />
       </div>
     </div>
 
@@ -617,112 +757,112 @@
 
       <form @submit.prevent="save">
         <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-sm text-white/70">Tag</label>
-              <input
-                v-model="form.tag"
-                type="text"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-            </div>
-            <div>
-              <label class="text-sm text-white/70">Type</label>
-              <select
-                v-model="form.type"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="opt in modalTypeOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.text }}
-                </option>
-              </select>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Title</label>
-              <input
-                v-model="form.title"
-                type="text"
-                required
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-            </div>
-            <div>
-              <label class="text-sm text-white/70">System</label>
-              <select
-                v-model="form.system"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="opt in modalSystemOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.text }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="text-sm text-white/70">Status</label>
-              <select
-                v-model="form.status"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option
-                  v-for="s in statuses"
-                  :key="s"
-                  :value="s"
-                >
-                  {{ s }}
-                </option>
-              </select>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Space</label>
-              <select
-                v-model="form.spaceId"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              >
-                <option :value="''">
-                  None
-                </option>
-                <option
-                  v-for="p in parentOptions"
-                  :key="p.id"
-                  :value="p.id"
-                >
-                  {{ p.title }} ({{ p.type }})
-                </option>
-              </select>
-            </div>
-            <div class="col-span-2">
-              <label class="text-sm text-white/70">Description</label>
-              <textarea
-                v-model="form.description"
-                rows="3"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
-              />
-            </div>
-          </div>
-          <div class="mt-4 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
-              @click="closeModal"
+          <div>
+            <label class="text-sm text-white/70">Tag</label>
+            <input
+              v-model="form.tag"
+              type="text"
+              required
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
-            >
-              Save
-            </button>
           </div>
+          <div>
+            <label class="text-sm text-white/70">Type</label>
+            <select
+              v-model="form.type"
+              required
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+              <option
+                v-for="opt in modalTypeOptions"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.text }}
+              </option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Title</label>
+            <input
+              v-model="form.title"
+              type="text"
+              required
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+          </div>
+          <div>
+            <label class="text-sm text-white/70">System</label>
+            <select
+              v-model="form.system"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+              <option
+                v-for="opt in modalSystemOptions"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.text }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-white/70">Status</label>
+            <select
+              v-model="form.status"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+              <option
+                v-for="s in statuses"
+                :key="s"
+                :value="s"
+              >
+                {{ s }}
+              </option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Space</label>
+            <select
+              v-model="form.spaceId"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            >
+              <option :value="''">
+                None
+              </option>
+              <option
+                v-for="p in parentOptions"
+                :key="p.id"
+                :value="p.id"
+              >
+                {{ p.title }} ({{ p.type }})
+              </option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-white/70">Description</label>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+            />
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20"
+            @click="closeModal"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-3 py-2 rounded bg-white/20 border border-white/30 hover:bg-white/30"
+          >
+            Save
+          </button>
+        </div>
       </form>
     </Modal>
   </section>
@@ -795,7 +935,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 const templates = computed(() => templatesStore.items)
 const loading = computed(() => templatesStore.loading)
-const serverTemplates = ref([])
+const serverTemplates = ref<Template[]>([])
 const serverTotal = ref(0)
 const serverTotalAll = ref(0)
 const totalFiltered = computed(() => Number(serverTotal.value || 0) || filtered.value.length)
@@ -810,6 +950,10 @@ const parentMap = computed(() => spacesStore.byId)
 function spaceName(spaceId?: string | null) {
   const pid = spaceId ? String(spaceId) : ''
   return pid && parentMap.value[pid] ? parentMap.value[pid].title : ''
+}
+
+function countArray(v: any) {
+  return Array.isArray(v) ? v.length : 0
 }
 
 // Prefer server-provided page when available; otherwise filter the full store list
@@ -1448,12 +1592,58 @@ function normalizeTemplateRow(t: any) {
   }
 }
 
-async function downloadTemplates(format: 'csv' | 'xlsx') {
+async function downloadTemplatesXlsx() {
   const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
   if (!pid) { ui.showError('Select a project first'); return }
-  const loadingFlag = format === 'csv' ? exportingCsv : exporting
-  if (loadingFlag.value) return
-  loadingFlag.value = true
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const params: any = {
+      projectId: String(pid),
+      search: search.value || '',
+      type: typeFilter.value || '',
+      system: systemFilter.value || '',
+      status: statusFilter.value || '',
+    }
+
+    const res = await http.get('/api/templates/export', {
+      params,
+      headers: getAuthHeaders(),
+      responseType: 'blob'
+    })
+
+    const blob = res.data instanceof Blob
+      ? res.data
+      : new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+
+    const safeName = String((projectStore.currentProject as any)?.name || 'project')
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\-_.]/g, '')
+      .slice(0, 50) || 'project'
+    const today = new Date().toISOString().slice(0, 10)
+
+    a.href = url
+    a.download = `${safeName}-templates-${today}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to export templates')
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function downloadTemplatesCsv() {
+  const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
+  if (!pid) { ui.showError('Select a project first'); return }
+  if (exportingCsv.value) return
+  exportingCsv.value = true
   try {
     const all = await fetchAllTemplatesForExport(String(pid))
     if (!all.length) { ui.showError('No templates to export'); return }
@@ -1461,13 +1651,13 @@ async function downloadTemplates(format: 'csv' | 'xlsx') {
     const sheet = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, sheet, 'Templates')
-    const fname = `templates-${pid}.${format}`
-    XLSX.writeFile(wb, fname, { bookType: format === 'csv' ? 'csv' : 'xlsx' })
+    const fname = `templates-${pid}.csv`
+    XLSX.writeFile(wb, fname, { bookType: 'csv' })
     ui.showSuccess(`Exported ${rows.length} templates`)
   } catch (e: any) {
     ui.showError(e?.message || 'Failed to export templates')
   } finally {
-    loadingFlag.value = false
+    exportingCsv.value = false
   }
 }
 
@@ -1490,10 +1680,31 @@ async function handleImportFile(e: Event) {
   try {
     const buf = await file.arrayBuffer()
     const wb = XLSX.read(buf, { type: 'array' })
-    const sheet = wb.Sheets[wb.SheetNames[0]]
-    const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-    if (!rows.length) { ui.showError('No rows found in file'); return }
+
+    const normalizeHeader = (raw: any) => String(raw || '').trim().toLowerCase().replace(/\s+/g, '')
+    const sheetNames = Array.isArray(wb.SheetNames) ? wb.SheetNames : []
+    const sheetByLower = new Map<string, string>()
+    for (const name of sheetNames) sheetByLower.set(String(name || '').trim().toLowerCase(), name)
+
+    const templatesSheetName = sheetByLower.get('templates')
+    const hasMultiSheet = Boolean(templatesSheetName)
+
+    const readSheetRows = (sheetName?: string) => {
+      if (!sheetName) return [] as any[]
+      const s = wb.Sheets[sheetName]
+      if (!s) return [] as any[]
+      return XLSX.utils.sheet_to_json(s, { defval: '' }) as any[]
+    }
+
     let created = 0
+    let failed = 0
+
+    const parseTagsCsv = (raw?: any): string[] => {
+      const s = String(raw ?? '').trim()
+      if (!s) return []
+      return s.split(',').map((x) => String(x || '').trim()).filter(Boolean)
+    }
+
     const parseArrayField = (raw: any) => {
       if (Array.isArray(raw)) return raw
       if (raw === undefined || raw === null) return []
@@ -1506,39 +1717,404 @@ async function handleImportFile(e: Event) {
         return []
       }
     }
-    for (const r of rows) {
-      const get = (keys: string[]) => {
-        for (const k of keys) {
-          if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return String(r[k]).trim()
-          if (r[k.toLowerCase()] !== undefined && r[k.toLowerCase()] !== null && String(r[k.toLowerCase()]).trim() !== '') return String(r[k.toLowerCase()]).trim()
+
+    if (hasMultiSheet) {
+      const tmplJson = readSheetRows(templatesSheetName)
+      const attrsJson = readSheetRows(sheetByLower.get('attributes'))
+      const compsJson = readSheetRows(sheetByLower.get('components'))
+      const compAttrsJson = readSheetRows(sheetByLower.get('componentattributes'))
+      const checklistJson = readSheetRows(
+        sheetByLower.get('checklists') ||
+        sheetByLower.get('checklist') ||
+        sheetByLower.get('checklistquestions') ||
+        sheetByLower.get('checklistquestion'),
+      )
+      const fptJson = readSheetRows(
+        sheetByLower.get('functionaltests') ||
+        sheetByLower.get('functionaltest'),
+      )
+
+      const tagKey = (t: any) => String(t || '').trim().toLowerCase()
+
+      // Attributes -> { tagLower: [{key,value}, ...] }
+      const attributesByTag = new Map<string, Array<{ key: string; value: any }>>()
+      for (const obj of attrsJson) {
+        const m: Record<string, any> = {}
+        for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+        const t = tagKey(m['templatetag'] || m['tag'])
+        const key = String(m['key'] || '').trim()
+        const value = m['value']
+        if (!t || !key) continue
+        const list = attributesByTag.get(t) || []
+        list.push({ key, value: value ?? '' })
+        attributesByTag.set(t, list)
+      }
+
+      // Components + ComponentAttributes
+      const componentMetaByTag = new Map<string, Array<any>>()
+      const componentAttrsByTag = new Map<string, Map<number, Array<{ key: string; value: any }>>>()
+
+      const parseKvLines = (raw: any) => {
+        const s = String(raw ?? '').trim()
+        if (!s) return [] as Array<{ key: string; value: any }>
+        const lines = s.split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)
+        const out: Array<{ key: string; value: any }> = []
+        for (const line of lines) {
+          const i = line.indexOf(':')
+          if (i <= 0) continue
+          const key = line.slice(0, i).trim()
+          const value = line.slice(i + 1).trim()
+          if (!key) continue
+          out.push({ key, value })
         }
-        return ''
+        return out
       }
-      const tag = get(['tag', 'Tag'])
-      const title = get(['title', 'Title'])
-      if (!tag || !title) continue
-      const payload: any = {
-        tag,
-        title,
-        type: get(['type', 'Type']),
-        system: get(['system', 'System']),
-        status: get(['status', 'Status']) || 'Not Started',
-        responsible: get(['responsible', 'Responsible']),
-        description: get(['description', 'Description']),
-        components: parseArrayField(r.components ?? r.Components),
-        checklists: parseArrayField(r.checklists ?? r.Checklists),
-        functionalTests: parseArrayField(r.functionalTests ?? r.FunctionalTests),
-        projectId: pid,
-        project: pid
+
+      for (const obj of compsJson) {
+        const m: Record<string, any> = {}
+        for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+        const t = tagKey(m['templatetag'] || m['tag'])
+        if (!t) continue
+        const idx = Number(m['componentindex'] ?? m['index'] ?? '')
+        const attrsFromComponentCell = parseKvLines(m['attributes'])
+        const comp = {
+          __index: Number.isFinite(idx) ? idx : null,
+          tag: String(m['componenttag'] || m['tag'] || '').trim(),
+          type: String(m['type'] || '').trim(),
+          title: String(m['title'] || '').trim(),
+          status: String(m['status'] || '').trim(),
+          notes: String(m['notes'] || '').trim(),
+          __attrs: attrsFromComponentCell,
+          attributes: {},
+        }
+        const list = componentMetaByTag.get(t) || []
+        list.push(comp)
+        componentMetaByTag.set(t, list)
       }
-      try {
-        await templatesStore.create(payload as Template)
-        created += 1
-      } catch (err: any) {
-        console.error('Import row failed', err)
+
+      for (const obj of compAttrsJson) {
+        const m: Record<string, any> = {}
+        for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+        const t = tagKey(m['templatetag'] || m['tag'])
+        const idx = Number(m['componentindex'] ?? m['index'] ?? '')
+        const key = String(m['key'] || '').trim()
+        const value = m['value']
+        if (!t || !Number.isFinite(idx) || !key) continue
+        if (!componentAttrsByTag.has(t)) componentAttrsByTag.set(t, new Map())
+        const per = componentAttrsByTag.get(t)!
+        const list = per.get(idx) || []
+        list.push({ key, value: value ?? '' })
+        per.set(idx, list)
+      }
+
+      const buildComponentsForTag = (tLower: string) => {
+        const list = (componentMetaByTag.get(tLower) || []).slice()
+        list.sort((a: any, b: any) => {
+          const ai = a.__index
+          const bi = b.__index
+          if (ai === null && bi === null) return 0
+          if (ai === null) return 1
+          if (bi === null) return -1
+          return ai - bi
+        })
+        const attrsMap = componentAttrsByTag.get(tLower) || new Map()
+        return list.map((c: any, ordinal: number) => {
+          const idx = (c.__index !== null && Number.isFinite(c.__index)) ? c.__index : ordinal
+          const attrsList = ([] as Array<{ key: string; value: any }>).concat(c.__attrs || [], attrsMap.get(idx) || [])
+          const attrsObj: Record<string, any> = {}
+          for (const it of attrsList) {
+            const k = String(it.key || '').trim()
+            if (!k) continue
+            attrsObj[k] = it.value
+          }
+          const out: any = { ...c }
+          delete out.__index
+          delete out.__attrs
+          out.attributes = attrsObj
+          return out
+        })
+      }
+
+      // Checklists -> sections/questions
+      const checklistRowsByTag = new Map<string, any[]>()
+      for (const obj of checklistJson) {
+        const m: Record<string, any> = {}
+        for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+        const t = tagKey(m['templatetag'] || m['tag'])
+        if (!t) continue
+        const list = checklistRowsByTag.get(t) || []
+        list.push(m)
+        checklistRowsByTag.set(t, list)
+      }
+
+      const toNum = (v: any) => {
+        const n = Number(v)
+        return Number.isFinite(n) ? n : null
+      }
+
+      const parseIds = (raw: any) => {
+        const s = String(raw || '').trim()
+        if (!s) return []
+        return s.split(',').map(x => String(x || '').trim()).filter(Boolean)
+      }
+
+      const buildChecklistsForTag = (tLower: string) => {
+        const list = checklistRowsByTag.get(tLower) || []
+        const sectionMap = new Map<number, any>()
+        for (const m of list) {
+          const checklistIndex = toNum(m['checklistindex'] ?? m['sectionindex']) ?? 0
+          if (!sectionMap.has(checklistIndex)) {
+            sectionMap.set(checklistIndex, {
+              number: (m['checklistnumber'] ?? m['sectionnumber']) === '' ? null : (toNum(m['checklistnumber'] ?? m['sectionnumber']) ?? (m['checklistnumber'] ?? m['sectionnumber'])),
+              title: String(((m['checklisttitle'] ?? m['sectiontitle']) || '')).trim(),
+              type: String(((m['checklisttype'] ?? m['sectiontype']) || '')).trim(),
+              system: String(((m['checklistsystem'] ?? m['sectionsystem']) || '')).trim(),
+              responsible: String(((m['checklistresponsible'] ?? m['sectionresponsible']) || '')).trim(),
+              notes: '',
+              questions: [],
+            })
+          }
+          const sec = sectionMap.get(checklistIndex)
+          const qIndex = toNum(m['questionindex']) ?? (sec.questions.length)
+          sec.questions.push({
+            __index: qIndex,
+            number: m['questionnumber'] === '' ? null : (toNum(m['questionnumber']) ?? m['questionnumber']),
+            question_text: String(m['questiontext'] || '').trim(),
+            answer: String(m['answer'] || '').trim() || null,
+            notes: String(m['notes'] || '').trim() || null,
+            cx_answer: String(m['cx_answer'] || '').trim() || null,
+            oprItemIds: parseIds(m['opritemids']),
+          })
+        }
+        return Array.from(sectionMap.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([, sec]) => {
+            sec.questions = (sec.questions || []).slice()
+              .sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0))
+              .map((q: any) => {
+                const out = { ...q }
+                delete out.__index
+                return out
+              })
+            return sec
+          })
+      }
+
+      // FunctionalTests (consolidated sheet with inline steps + results)
+      const fptByTag = new Map<string, Map<number, any>>()
+      const ensureFpt = (tLower: string, idx: number) => {
+        if (!fptByTag.has(tLower)) fptByTag.set(tLower, new Map())
+        const m = fptByTag.get(tLower)!
+        if (!m.has(idx)) m.set(idx, { __index: idx, rows: [], table: { columns: [], rows: [] } })
+        return m.get(idx)!
+      }
+
+      const parseResultLines = (raw: any) => {
+        const s = String(raw ?? '').trim()
+        if (!s) return [] as any[]
+        const lines = s.split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)
+        const out: Array<{ rowIndex: number | null; columnIndex: number | null; columnKey: string; columnName: string; value: string }> = []
+        const toKey = (k: string) => String(k || '').trim().toLowerCase()
+        for (const line of lines) {
+          const segs = line.includes('|')
+            ? line.split('|')
+            : (line.includes(';') ? line.split(';') : line.split(','))
+          const kv: Record<string, string> = {}
+          for (const seg of segs) {
+            const part = String(seg || '').trim()
+            if (!part) continue
+            const i = part.indexOf(':')
+            if (i <= 0) continue
+            const k = toKey(part.slice(0, i))
+            const v = part.slice(i + 1).trim()
+            if (!k) continue
+            kv[k] = v
+          }
+          const rowIndex = toNum(kv['rowindex'])
+          const columnIndex = toNum(kv['columnindex'])
+          const columnKey = String(kv['columnkey'] || '').trim()
+          if (!columnKey) continue
+          const columnName = String(kv['columnname'] || '').trim()
+          const value = String(kv['value'] ?? '').replace(/\\n/g, '\n').trim()
+          out.push({ rowIndex, columnIndex, columnKey, columnName, value })
+        }
+        return out
+      }
+
+      for (const obj of fptJson) {
+        const m: Record<string, any> = {}
+        for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+        const t = tagKey(m['templatetag'] || m['tag'])
+        const idx = toNum(m['functionaltestindex'] ?? m['testindex'])
+        if (!t || idx === null) continue
+        const tdoc = ensureFpt(t, idx)
+        const nraw = (m['functionaltestnumber'] ?? m['testnumber'])
+        tdoc.number = nraw === '' ? null : (toNum(nraw) ?? nraw)
+        tdoc.name = String(m['name'] || '').trim()
+        const pass = String(m['pass'] || '').trim().toLowerCase()
+        tdoc.pass = pass === 'pass' ? true : (pass === 'fail' ? false : null)
+        tdoc.notes = String(m['notes'] || '').trim()
+        tdoc.description = String(m['description'] || '').trim()
+        tdoc.oprItemIds = parseIds(m['opritemids'])
+
+        const hasInlineSteps = (
+          Object.prototype.hasOwnProperty.call(m, 'stepindex') ||
+          Object.prototype.hasOwnProperty.call(m, 'step') ||
+          Object.prototype.hasOwnProperty.call(m, 'expected') ||
+          Object.prototype.hasOwnProperty.call(m, 'actual')
+        )
+        if (hasInlineSteps) {
+          const stepIndex = toNum(m['stepindex'])
+          const step = String(m['step'] || '').trim()
+          const expected = String(m['expected'] || '').trim()
+          const actual = String(m['actual'] || '').trim()
+          if (stepIndex !== null || step || expected || actual) {
+            tdoc.rows.push({
+              __index: stepIndex ?? tdoc.rows.length,
+              step,
+              expected,
+              actual,
+            })
+          }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(m, 'results')) {
+          const cells = parseResultLines(m['results'])
+          if (cells.length) {
+            if (!tdoc.table || typeof tdoc.table !== 'object') tdoc.table = { columns: [], rows: [] }
+            if (!Array.isArray(tdoc.table.columns)) tdoc.table.columns = []
+            if (!Array.isArray(tdoc.table.rows)) tdoc.table.rows = []
+            for (const cell of cells) {
+              const rowIndex = cell.rowIndex
+              const colKey = String(cell.columnKey || '').trim()
+              if (rowIndex === null || !colKey) continue
+              const existing = (tdoc.table.columns || []).find((c: any) => String(c?.key || '') === colKey)
+              if (!existing) {
+                tdoc.table.columns.push({ __index: cell.columnIndex ?? tdoc.table.columns.length, key: colKey, name: cell.columnName || '' })
+              } else {
+                if (!existing.name && cell.columnName) existing.name = cell.columnName
+                if (existing.__index === undefined && cell.columnIndex !== null) existing.__index = cell.columnIndex
+              }
+              while ((tdoc.table.rows || []).length <= rowIndex) tdoc.table.rows.push({})
+              tdoc.table.rows[rowIndex][colKey] = cell.value
+            }
+          }
+        }
+      }
+
+      const buildFptsForTag = (tLower: string) => {
+        const m = fptByTag.get(tLower)
+        if (!m) return []
+        const tests = Array.from(m.values()).sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0))
+        return tests.map((t: any) => {
+          if (Array.isArray(t.rows)) {
+            t.rows = t.rows.slice().sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0)).map((x: any) => {
+              const out = { ...x }
+              delete out.__index
+              return out
+            })
+          }
+          if (t.table && Array.isArray(t.table.columns)) {
+            t.table.columns = t.table.columns.slice().sort((a: any, b: any) => (a.__index ?? 0) - (b.__index ?? 0)).map((x: any) => {
+              const out = { ...x }
+              delete out.__index
+              return out
+            })
+          }
+          delete t.__index
+          const hasCols = Array.isArray(t.table?.columns) && t.table.columns.length
+          const hasRows = Array.isArray(t.table?.rows) && t.table.rows.length
+          if (!hasCols && !hasRows) delete t.table
+          if (!Array.isArray(t.rows) || t.rows.length === 0) delete t.rows
+          return t
+        })
+      }
+
+      if (!tmplJson.length) { ui.showError('No rows found in Templates sheet'); return }
+
+      for (const obj of tmplJson) {
+        const m: Record<string, any> = {}
+        for (const k of Object.keys(obj || {})) m[normalizeHeader(k)] = (obj as any)[k]
+        const tag = String(m['tag'] || '').trim()
+        const title = String(m['title'] || '').trim()
+        if (!tag || !title) continue
+        const tLower = tagKey(tag)
+
+        const payload: any = {
+          tag,
+          title,
+          type: String(m['type'] || '').trim(),
+          system: String(m['system'] || '').trim(),
+          status: String(m['status'] || '').trim() || 'Not Started',
+          spaceId: String(m['spaceid'] || '').trim() || undefined,
+          responsible: String(m['responsible'] || '').trim(),
+          description: String(m['description'] || '').trim(),
+          template: String(m['template'] || '').trim() || undefined,
+          orderDate: String(m['orderdate'] || '').trim() || undefined,
+          installationDate: String(m['installationdate'] || '').trim() || undefined,
+          balanceDate: String(m['balancedate'] || '').trim() || undefined,
+          testDate: String(m['testdate'] || '').trim() || undefined,
+          tags: parseTagsCsv(m['tags']),
+          attributes: attributesByTag.get(tLower) || [],
+          components: componentMetaByTag.has(tLower) ? buildComponentsForTag(tLower) : [],
+          checklists: checklistRowsByTag.has(tLower) ? buildChecklistsForTag(tLower) : [],
+          functionalTests: fptByTag.has(tLower) ? buildFptsForTag(tLower) : [],
+          projectId: pid,
+          project: pid,
+        }
+
+        try {
+          await templatesStore.create(payload as Template)
+          created += 1
+        } catch (err: any) {
+          failed += 1
+          console.error('Import row failed', err)
+        }
+      }
+    } else {
+      const sheet = wb.Sheets[wb.SheetNames[0]]
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+      if (!rows.length) { ui.showError('No rows found in file'); return }
+
+      for (const r of rows) {
+        const get = (keys: string[]) => {
+          for (const k of keys) {
+            if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return String(r[k]).trim()
+            if (r[k.toLowerCase()] !== undefined && r[k.toLowerCase()] !== null && String(r[k.toLowerCase()]).trim() !== '') return String(r[k.toLowerCase()]).trim()
+          }
+          return ''
+        }
+        const tag = get(['tag', 'Tag'])
+        const title = get(['title', 'Title'])
+        if (!tag || !title) continue
+        const payload: any = {
+          tag,
+          title,
+          type: get(['type', 'Type']),
+          system: get(['system', 'System']),
+          status: get(['status', 'Status']) || 'Not Started',
+          responsible: get(['responsible', 'Responsible']),
+          description: get(['description', 'Description']),
+          tags: parseTagsCsv(r.tags ?? r.Tags),
+          attributes: parseArrayField(r.attributes ?? r.Attributes),
+          components: parseArrayField(r.components ?? r.Components),
+          checklists: parseArrayField(r.checklists ?? r.Checklists),
+          functionalTests: parseArrayField(r.functionalTests ?? r.FunctionalTests),
+          projectId: pid,
+          project: pid
+        }
+        try {
+          await templatesStore.create(payload as Template)
+          created += 1
+        } catch (err: any) {
+          failed += 1
+          console.error('Import row failed', err)
+        }
       }
     }
-    ui.showSuccess(`Imported ${created} templates`)
+
+    if (failed) ui.showSuccess(`Imported ${created} templates (${failed} failed)`)
+    else ui.showSuccess(`Imported ${created} templates`)
     // Refresh list
     fetchTemplatesPage(String(pid)).catch(() => {})
   } catch (err: any) {

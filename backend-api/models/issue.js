@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const issueSchema = new mongoose.Schema({
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+  spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space', required: false },
   number: { type: Number, required: false },
   // Optional asset tag (e.g., equipment tag like "AHU-1") for sorting/searching in lists.
   tag: { type: String, required: false },
@@ -46,6 +47,7 @@ issueSchema.pre('save', function (next) {
 })
 
 issueSchema.index({ projectId: 1 })
+issueSchema.index({ projectId: 1, spaceId: 1 })
 issueSchema.index({ projectId: 1, tag: 1 })
 issueSchema.index({ projectId: 1, oprItemIds: 1 })
 

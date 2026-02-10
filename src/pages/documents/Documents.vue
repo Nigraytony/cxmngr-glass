@@ -379,6 +379,36 @@
                               </text>
                             </svg>
                           </span>
+                          <span
+                            v-else-if="fileIconKey(f.contentType) === 'img'"
+                            class="inline-flex text-sky-200"
+                            aria-hidden="true"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              class="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.7"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <rect
+                                x="4"
+                                y="6"
+                                width="16"
+                                height="14"
+                                rx="2"
+                              />
+                              <path d="M8 14l2-2 4 4" />
+                              <path d="M14 14l1.5-1.5L20 17" />
+                              <circle
+                                cx="9"
+                                cy="10"
+                                r="1"
+                              />
+                            </svg>
+                          </span>
                           <span v-else>{{ fileIconEmoji(f.contentType) }}</span>
                         </span>
                         <button
@@ -842,7 +872,6 @@ function fileIconEmoji(ct: string) {
   const key = fileIconKey(ct)
   if (key === 'xlsx') return '📊'
   if (key === 'docx') return '📝'
-  if (key === 'img') return '🖼️'
   return '📄'
 }
 

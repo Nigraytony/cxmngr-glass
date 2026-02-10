@@ -1233,7 +1233,10 @@
                 </div>
               </div>
 
-              <div v-show="projectTagsOpen" class="mt-3">
+              <div
+                v-show="projectTagsOpen"
+                class="mt-3"
+              >
                 <div class="flex flex-wrap gap-2 mt-2">
                   <span
                     v-for="t in (project?.tags || [])"
@@ -1310,7 +1313,10 @@
                 </div>
               </div>
 
-              <div v-show="aiOpen" class="mt-3">
+              <div
+                v-show="aiOpen"
+                class="mt-3"
+              >
                 <div class="text-sm text-white/70 mb-3">
                   Store a project-scoped OpenAI API key (encrypted on the server). The key is never exposed back to the browser.
                 </div>
@@ -1558,7 +1564,7 @@
                     class="p-0 rounded"
                   >
                     <div
-                      v-if="idx > 0"
+                      v-if="Number(idx) > 0"
                       class="border-t border-white/10 mb-1"
                     />
                     <div
@@ -1658,7 +1664,7 @@
                           class="p-1 rounded"
                         >
                           <div class="font-medium text-white mb-2">
-                            {{ resource }}
+                            {{ permResourceLabel(resource) }}
                           </div>
                           <div class="grid grid-cols-4 gap-2 text-sm">
                             <label
@@ -1735,7 +1741,10 @@
                 </div>
               </div>
 
-              <div v-show="searchIssuesOpen" class="mt-3">
+              <div
+                v-show="searchIssuesOpen"
+                class="mt-3"
+              >
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label class="block text-white/80 mb-1">Search mode</label>
@@ -1851,8 +1860,8 @@
                 </option>
                 <option
                   v-for="t in allTypes"
-                  :key="t"
-                  :value="t"
+                  :key="String(t)"
+                  :value="String(t)"
                 >
                   {{ t }}
                 </option>
@@ -2043,7 +2052,7 @@
             class="p-3 rounded bg-white/5"
           >
             <div class="font-medium mb-2">
-              {{ resource }}
+              {{ permResourceLabel(resource) }}
             </div>
             <div class="grid grid-cols-4 gap-2 text-sm">
               <label
@@ -2073,7 +2082,7 @@
             Delete
           </button>
           <button
-            class="px-3 py-1 rounded bg-white/6 mr-2"
+            class="px-3 py-1 rounded bg-white/6 text-white/80 hover:text-white mr-2"
             @click="closeRoleModal"
           >
             Cancel
@@ -2155,7 +2164,7 @@
       v-if="showPermsModal && modalMember"
       :visible="showPermsModal"
       :member="modalMember"
-      :project-id="projectId"
+      :project-id="projectIdString"
       :role-templates="displayedRoleTemplates"
       @close="closePermsModal"
       @saved="onMemberPermissionsSaved"
@@ -2185,10 +2194,23 @@ const projectStore = useProjectStore()
 const route = useRoute()
 const router = useRouter()
 
+type StripePrice = {
+  id?: string
+  priceId?: string
+  key?: string
+  name?: string
+  label?: string
+}
+
 const projectId = route.params.id || route.query.id || null
-const project = ref(null)
+const projectIdString = computed(() => {
+  const v: any = projectId
+  if (Array.isArray(v)) return String(v[0] || '')
+  return v ? String(v) : ''
+})
+const project = ref<any>(null)
 const activeTab = ref('info')
-const logs = ref([])
+const logs = ref<any[]>([])
 const logsSearch = ref('')
 const selectedType = ref('')
 const startDateText = ref('')
@@ -2196,17 +2218,17 @@ const endDateText = ref('')
 const logsPerPage = ref(10)
 const logsPage = ref(1)
 const logsTotal = ref(0)
-const formErrors = ref({})
+const formErrors = ref<Record<string, any>>({})
 const ui = useUiStore()
-const clientFileInput = ref(null)
-const cxaFileInput = ref(null)
+const clientFileInput = ref<HTMLInputElement | null>(null)
+const cxaFileInput = ref<HTMLInputElement | null>(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
-const invites = ref([])
+const invites = ref<any[]>([])
 // track which invite ids are currently being resent
-const loadingInviteIds = ref([])
-const roleTemplates = ref([])
+const loadingInviteIds = ref<string[]>([])
+const roleTemplates = ref<any[]>([])
 // Dedicated UI list that always preserves all visible roles
-const roleTemplatesView = ref([])
+const roleTemplatesView = ref<any[]>([])
 
 const seedRoleTemplatesBusy = ref(false)
 
@@ -2230,16 +2252,16 @@ watch(() => route.query.tab, () => {
 })
 
 // Recommend a plan for a given feature (simple mapping; adjust as needed)
-function recommendPlanForFeature(f) {
+function recommendPlanForFeature(f: string) {
   const key = String(f || '').toLowerCase()
   if (key === 'ai') return 'premium'
   // For heavier features like templates and activities, recommend standard; for all others, basic
   const recommendedTier = (key === 'templates' || key === 'activities') ? 'standard' : 'basic'
   // Try to resolve to a concrete price id from loaded prices
-  const byKey = (prices.value || []).find(p => String(p.key || '') === recommendedTier)
+  const byKey = (prices.value || []).find((p: StripePrice) => String(p.key || '') === recommendedTier)
   if (byKey) return String(byKey.id)
   // Fallback: look for a price with matching label/name
-  const byName = (prices.value || []).find(p => String(p.name || p.label || '').toLowerCase().includes(recommendedTier))
+  const byName = (prices.value || []).find((p: StripePrice) => String(p.name || p.label || '').toLowerCase().includes(recommendedTier))
   if (byName) return String(byName.id)
   // As last resort, pick first available
   return prices.value && prices.value.length ? String(prices.value[0].id) : ''
@@ -2412,7 +2434,7 @@ async function handleChangePlan() {
     ui.showSuccess('Plan updated')
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('change plan err', e)
     ui.showError(e?.response?.data?.error || 'Failed to change plan')
   } finally {
@@ -2435,7 +2457,7 @@ async function resetFeaturesToPlanDefaults() {
     ui.showSuccess('Features reset to plan defaults')
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('reset features err', e)
     ui.showError(e?.response?.data?.error || 'Failed to reset features')
   } finally {
@@ -2450,7 +2472,7 @@ async function handleCancel(atPeriodEnd = true) {
     ui.showSuccess(atPeriodEnd ? 'Will cancel at period end' : 'Subscription canceled')
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('cancel err', e)
     ui.showError(e?.response?.data?.error || 'Failed to cancel subscription')
   } finally {
@@ -2465,7 +2487,7 @@ async function handleResume() {
     ui.showSuccess('Cancellation removed')
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('resume err', e)
     ui.showError(e?.response?.data?.error || 'Failed to resume subscription')
   } finally {
@@ -2485,7 +2507,7 @@ async function handleChangeBillingAdmin() {
     ui.showSuccess('Billing admin updated')
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('billing admin change err', e)
     ui.showError(e?.response?.data?.error || 'Failed to update billing admin')
   } finally {
@@ -2508,7 +2530,7 @@ async function handleSetupIntent() {
     }
     showCardForm.value = true
     ui.showInfo('Enter card details and click Save card')
-  } catch (e) {
+  } catch (e: any) {
     console.error('setup intent err', e)
     ui.showError(e?.response?.data?.error || 'Failed to create setup intent')
   } finally {
@@ -2553,7 +2575,7 @@ async function handleUpdatePaymentMethod() {
     await loadPaymentMethods()
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('update PM err', e)
     ui.showError(e?.response?.data?.error || 'Failed to update payment method')
   } finally {
@@ -2587,7 +2609,7 @@ async function makeDefaultFromList(pmId: string) {
     await loadPaymentMethods()
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('make default err', e)
     ui.showError(e?.response?.data?.error || 'Failed to update default payment method')
   } finally {
@@ -2649,7 +2671,7 @@ async function handleDetach(pmId: string) {
     await loadPaymentMethods()
     await refreshProject()
     await loadBillingSummary()
-  } catch (e) {
+  } catch (e: any) {
     console.error('detach PM err', e)
     ui.showError(e?.response?.data?.error || 'Failed to detach payment method')
   } finally {
@@ -2659,9 +2681,9 @@ async function handleDetach(pmId: string) {
 
 // Modal-based permissions editor state & handlers
 const showPermsModal = ref(false)
-const modalMember = ref(null)
+const modalMember = ref<any | null>(null)
 
-function openPermsModal(member) {
+function openPermsModal(member: any) {
   modalMember.value = member
   showPermsModal.value = true
 }
@@ -2673,10 +2695,10 @@ function closePermsModal() {
 
 // Modal-based member editor state & handlers
 const showEditMemberModal = ref(false)
-const editingMember = ref(null)
+const editingMember = ref<any | null>(null)
 const editMemberForm = ref({ firstName: '', lastName: '', email: '', company: '', role: '' })
 
-function openEditMember(member) {
+function openEditMember(member: any) {
   editingMember.value = member
   editMemberForm.value = {
     firstName: member.firstName || '',
@@ -2700,7 +2722,7 @@ async function saveEditedMember() {
     // Update the local project.team entry and persist project
     const idOrEmail = editingMember.value._id || editingMember.value.email
     const list = Array.isArray(project.value.team) ? project.value.team.slice() : []
-    const idx = list.findIndex(m => ((m._id || m.email) === idOrEmail))
+    const idx = list.findIndex((m: any) => ((m._id || m.email) === idOrEmail))
     const updated = { ...list[idx], ...editMemberForm.value }
     if (idx >= 0) list.splice(idx, 1, updated)
     else list.push(updated)
@@ -2708,17 +2730,17 @@ async function saveEditedMember() {
     await projectStore.updateProject(project.value)
     ui.showSuccess('Member updated')
     closeEditMember()
-  } catch (err) {
+  } catch (err: any) {
     console.error('saveEditedMember error', err)
     ui.showError(err?.response?.data?.error || 'Failed to save member')
   }
 }
 
-async function onMemberPermissionsSaved(updatedMember) {
+async function onMemberPermissionsSaved(updatedMember: any) {
   try {
     if (updatedMember && project.value && Array.isArray(project.value.team)) {
       const idOrEmail = updatedMember._id || updatedMember.email
-      const idx = project.value.team.findIndex(m => ((m._id || m.email) === idOrEmail))
+      const idx = project.value.team.findIndex((m: any) => ((m._id || m.email) === idOrEmail))
       if (idx >= 0) {
         // Merge to preserve local fields and ensure reactivity
         const merged = { ...project.value.team[idx], ...updatedMember }
@@ -2739,8 +2761,18 @@ async function onMemberPermissionsSaved(updatedMember) {
 
 // Role template editor modal state & handlers
 const showRoleModal = ref(false)
-const editingRoleTemplate = ref({ name: '', description: '', permissionsText: '' })
-const selectedRolePerms = ref(new Set())
+type RoleTemplateDraft = { _id?: string; name: string; description: string; permissionsText: string }
+const editingRoleTemplate = ref<RoleTemplateDraft>({ name: '', description: '', permissionsText: '' })
+const selectedRolePerms = ref<Set<string>>(new Set())
+const permResourceLabels: Record<string, string> = {
+  documents: 'Documents (files)',
+  folders: 'Folders',
+}
+
+function permResourceLabel(resource: string) {
+  return permResourceLabels[resource] || resource
+}
+
 const permMatrix = {
   tasks: ['create', 'read', 'update', 'delete'],
   issues: ['create', 'read', 'update', 'delete'],
@@ -2748,6 +2780,8 @@ const permMatrix = {
   equipment: ['create', 'read', 'update', 'delete'],
   'equipment.checklists': ['create', 'read', 'update', 'delete'],
   'equipment.functionalTests': ['create', 'read', 'update', 'delete'],
+  documents: ['create', 'read', 'update', 'delete'],
+  folders: ['create', 'read', 'update', 'delete'],
   templates: ['create', 'read', 'update', 'delete'],
   spaces: ['create', 'read', 'update', 'delete'],
   projects: ['update', 'delete'],
@@ -2756,7 +2790,7 @@ const permMatrix = {
 }
 
 // Accordion state for role templates in the Settings card
-const openRoles = ref(new Set())
+const openRoles = ref<Set<string>>(new Set())
 
 // Collapsible state for the Roles card
 const rolesOpen = ref(false)
@@ -2792,16 +2826,16 @@ const selectedRolePermsArray = computed({
 })
 
 // Inline editing state for role templates
-const roleEdits = ref({}) // map roleId -> Set
+const roleEdits = ref<Record<string, Set<string>>>({}) // map roleId -> Set
 
-function getTemplateById(id) {
+function getTemplateById(id: string) {
   try {
     const list = displayedRoleTemplates.value || []
-    return list.find(r => (r && ((r._id || r.id) === id))) || null
+    return list.find((r: any) => (r && ((r._id || r.id) === id))) || null
   } catch (e) { return null }
 }
 
-function toggleRoleOpen(id) {
+function toggleRoleOpen(id: string) {
   try {
     if (!id) return
     const s = new Set(openRoles.value)
@@ -2820,11 +2854,11 @@ function toggleRoleOpen(id) {
   } catch (e) { /* ignore */ }
 }
 
-function isRoleOpen(id) {
+function isRoleOpen(id: string) {
   try { return openRoles.value.has(id) } catch (e) { return false }
 }
 
-function isPermChecked(roleId, perm) {
+function isPermChecked(roleId: string, perm: string) {
   try {
     const s = roleEdits.value[roleId]
     if (s) return s.has(perm)
@@ -2833,7 +2867,7 @@ function isPermChecked(roleId, perm) {
   } catch (e) { return false }
 }
 
-function togglePerm(roleId, perm) {
+function togglePerm(roleId: string, perm: string) {
   try {
     const current = roleEdits.value[roleId] || new Set()
     const s = new Set(current)
@@ -2843,7 +2877,7 @@ function togglePerm(roleId, perm) {
   } catch (e) { /* ignore */ }
 }
 
-function hasRoleChanges(roleId, tpl) {
+function hasRoleChanges(roleId: string, tpl: any) {
   try {
     const s = roleEdits.value[roleId]
     if (!s) return false
@@ -2854,14 +2888,14 @@ function hasRoleChanges(roleId, tpl) {
   } catch (e) { return false }
 }
 
-function cancelRoleEdits(roleId, tpl) {
+function cancelRoleEdits(roleId: string, tpl: any) {
   try {
     const perms = Array.isArray(tpl?.permissions) ? tpl.permissions : []
     roleEdits.value = Object.assign({}, roleEdits.value, { [roleId]: new Set(perms) })
   } catch (e) { /* ignore */ }
 }
 
-async function saveRoleInline(tpl) {
+async function saveRoleInline(tpl: any) {
   try {
     const id = tpl._id || tpl.id
     const pid = projectId || (project.value && (project.value._id || project.value.id))
@@ -2919,13 +2953,13 @@ async function saveRoleInline(tpl) {
     }
     // Refresh project to ensure full, authoritative role list is shown after inline save
     try { await refreshProject() } catch (e) { /* ignore */ }
-  } catch (err) {
+  } catch (err: any) {
     console.error('saveRoleInline error', err)
     ui.showError(err?.response?.data?.error || 'Failed to save role')
   }
 }
 
-function openRoleModal(template) {
+function openRoleModal(template: any) {
   if (template && (template._id || template.id)) {
     // editing existing
     editingRoleTemplate.value = {
@@ -3056,13 +3090,13 @@ async function saveRoleTemplate() {
     // Close modal immediately after successful local update
     // Note: Removed refreshProject() call to prevent clearing roles due to timing/permission issues
     closeRoleModal()
-  } catch (err) {
+  } catch (err: any) {
     console.error('saveRoleTemplate error', err)
     ui.showError(err?.response?.data?.error || 'Failed to save role template')
   }
 }
 
-async function deleteRoleTemplate(tpl) {
+async function deleteRoleTemplate(tpl: any) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id))
     if (!pid) return ui.showError('No project selected')
@@ -3074,7 +3108,7 @@ async function deleteRoleTemplate(tpl) {
       // remove locally so UI updates immediately
       try {
         // Get the source of currently displayed roles directly (avoid computed property circular dependency)
-        let currentlyDisplayed = []
+        let currentlyDisplayed: any[] = []
         if (project.value && Array.isArray(project.value.roleTemplates) && project.value.roleTemplates.length > 0) {
           currentlyDisplayed = [...project.value.roleTemplates]
         } else if (Array.isArray(roleTemplates.value)) {
@@ -3082,7 +3116,7 @@ async function deleteRoleTemplate(tpl) {
         }
         
         // Remove the deleted role from the currently displayed roles
-        const filteredTemplates = currentlyDisplayed.filter(r => ((r._id || r.id) !== id))
+        const filteredTemplates = currentlyDisplayed.filter((r: any) => ((r._id || r.id) !== id))
         
         // Update project roleTemplates
         if (project.value) {
@@ -3091,14 +3125,14 @@ async function deleteRoleTemplate(tpl) {
         
         // Also update global roleTemplates cache if present
         if (Array.isArray(roleTemplates.value)) {
-          roleTemplates.value = [...roleTemplates.value.filter(r => ((r._id || r.id) !== id))]
+          roleTemplates.value = [...roleTemplates.value.filter((r: any) => ((r._id || r.id) !== id))]
         }
       } catch (e) { 
         console.warn('Local role template deletion failed:', e)
       }
       // Note: Removed refreshProject() call to prevent clearing roles due to timing/permission issues
       closeRoleModal()
-  } catch (err) {
+  } catch (err: any) {
     console.error('deleteRoleTemplate error', err)
     ui.showError(err?.response?.data?.error || 'Failed to delete role template')
   }
@@ -3135,7 +3169,7 @@ async function fetchRoleTemplates() {
 const selectedRoleTemplate = computed(() => {
   try {
     const rv = displayedRoleTemplates.value || []
-    return rv.find(r => r && (r.name === (newMember.value.role || '')) ) || null
+    return rv.find((r: any) => r && (r.name === (newMember.value.role || '')) ) || null
   } catch (e) { return null }
 })
 
@@ -3158,7 +3192,7 @@ const currentProjectMember = computed(() => {
   try {
     const me = authStore.user
     if (!me || !project.value || !Array.isArray(project.value.team)) return null
-    return project.value.team.find((t) => (String(t._id) === String(me._id) || String((t.email || '')).toLowerCase() === String((me.email || '')).toLowerCase())) || null
+    return project.value.team.find((t: any) => (String(t._id) === String(me._id) || String((t.email || '')).toLowerCase() === String((me.email || '')).toLowerCase())) || null
   } catch (e) { return null }
 })
 
@@ -3280,7 +3314,7 @@ function addProjectTagFromInput() {
 function removeProjectTag(tag: string) {
   if (!project.value) return
   const key = String(tag || '').trim().toLowerCase()
-  project.value.tags = (project.value.tags || []).filter(t => String(t || '').trim().toLowerCase() !== key)
+  project.value.tags = (project.value.tags || []).filter((t: any) => String(t || '').trim().toLowerCase() !== key)
 }
 
 // Issues per-page (local, per-project) preference UI
@@ -3453,7 +3487,7 @@ watch(aiProvider, (p) => {
   if (next === 'openai' && (!aiModel.value || aiModel.value.startsWith('gemini') || aiModel.value.startsWith('claude'))) aiModel.value = 'gpt-4o-mini'
 })
 
-function tabClass(t) {
+function tabClass(t: string) {
   return activeTab.value === t ? 'bg-white/10 text-white font-medium' : 'bg-white/5 text-white/80'
 }
 
@@ -3476,9 +3510,9 @@ async function refreshBillingStateAfterCheckout() {
 
 onMounted(async () => {
   setActiveTabFromQuery()
-  if (projectId) {
+  if (projectIdString.value) {
     try {
-      const p = await projectStore.fetchProject(projectId)
+      const p = await projectStore.fetchProject(projectIdString.value)
       project.value = { ...p }
       if (!project.value.searchMode) project.value.searchMode = 'substring'
       // attempt to load role templates for richer role selection (global admins only)
@@ -3506,7 +3540,7 @@ onMounted(async () => {
       if (!project.value.searchMode) project.value.searchMode = 'substring'
     }
     // Watch for the store to populate (async fetch) and set project when ready
-    watch(projectStore.currentProject, (nv) => {
+    watch(() => projectStore.currentProject, (nv) => {
       if (!projectId && nv) { project.value = { ...nv }; if (!project.value.searchMode) project.value.searchMode = 'substring' }
     }, { immediate: true })
     // fallback: if after a short tick we still don't have a project, try reading selectedProjectId from localStorage and fetch directly
@@ -3549,7 +3583,7 @@ async function loadInvites() {
     if (!pid) return;
     const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
     invites.value = data || []
-  } catch (err) {
+  } catch (err: any) {
     const status = err?.response?.status
     if (status !== 404) {
       console.error('loadInvites error', err)
@@ -3558,7 +3592,7 @@ async function loadInvites() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function resendInvite(inviteId) {
+async function resendInvite(inviteId: string) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return ui.showError('No project selected')
@@ -3566,13 +3600,13 @@ async function resendInvite(inviteId) {
     ui.showSuccess('Invitation resent')
     // reload invites to update timestamps
     await loadInvites()
-  } catch (err) {
+  } catch (err: any) {
     console.error('resendInvite error', err)
     ui.showError(err?.response?.data?.error || 'Failed to resend invite')
   }
 }
 
-function findInviteIdForMember(member) {
+function findInviteIdForMember(member: any) {
   try {
     if (!member || !member.email) return null
     const e = String(member.email).toLowerCase()
@@ -3584,18 +3618,18 @@ function findInviteIdForMember(member) {
   }
 }
 
-function isResending(inviteId) {
-  return inviteId && loadingInviteIds.value.includes(inviteId)
+function isResending(inviteId: string | null) {
+  return !!inviteId && loadingInviteIds.value.includes(inviteId)
 }
 
-async function resendInviteForMember(member) {
+async function resendInviteForMember(member: any) {
   try {
     const id = findInviteIdForMember(member)
     if (!id) return ui.showError('No matching invite found for that member')
     if (isResending(id)) return
     loadingInviteIds.value.push(id)
     await resendInvite(id)
-  } catch (err) {
+  } catch (err: any) {
     console.error('resendInviteForMember error', err)
     ui.showError('Failed to resend invite')
   } finally {
@@ -3605,9 +3639,9 @@ async function resendInviteForMember(member) {
   }
 }
 
-function fmt(d) { try { return d ? new Date(d).toLocaleString() : '' } catch (e) { return String(d || '') } }
-const allTypes = computed(() => {
-  const set = new Set()
+function fmt(d: any) { try { return d ? new Date(d).toLocaleString() : '' } catch (e) { return String(d || '') } }
+const allTypes = computed<string[]>(() => {
+  const set = new Set<string>()
   for (const e of (logs.value || [])) { if (e && e.type) set.add(String(e.type)) }
   return Array.from(set).sort()
 })
@@ -3699,11 +3733,11 @@ watch(activeTab, (t) => {
 // Reload logs when type filter changes (server-side filter), reset to first page
 watch(selectedType, () => { logsPage.value = 1; loadLogs() })
 
-function removeMember(m) {
-  project.value.team = (project.value.team || []).filter(tm => (tm._id || tm.email) !== (m._id || m.email))
+function removeMember(m: any) {
+  project.value.team = (project.value.team || []).filter((tm: any) => (tm._id || tm.email) !== (m._id || m.email))
 }
 
-function statusBadgeClass(status) {
+function statusBadgeClass(status: any) {
   const s = String(status || '').toLowerCase()
   if (s === 'invited' || s === 'pending') return 'bg-amber-400/20 text-amber-200 border border-amber-400/30'
   if (s === 'rejected' || s === 'declined') return 'bg-gray-600/20 text-gray-200 border border-gray-600/30'
@@ -3711,7 +3745,7 @@ function statusBadgeClass(status) {
   return 'bg-white/6 text-white/80 border border-white/10'
 }
 
-function statusLabel(member) {
+function statusLabel(member: any) {
   const raw = member && (member.status || member.inviteStatus) ? String(member.status || member.inviteStatus) : (member && member._id ? 'active' : 'invited')
   const s = String(raw || '').toLowerCase()
   if (s === 'invited' || s === 'pending') return 'Invited'
@@ -3742,7 +3776,7 @@ async function addMember() {
     await refreshProject()
     await loadInvites()
     ui.showSuccess(data && data.message ? data.message : 'Member added')
-  } catch (err) {
+  } catch (err: any) {
     console.error('addMember error', err)
     const serverData = err?.response?.data
     const msg = serverData ? (typeof serverData === 'string' ? serverData : (serverData.error || JSON.stringify(serverData))) : (err?.message || 'Failed to add member')
@@ -3890,8 +3924,9 @@ async function ensureProjectLogosWithinLimit() {
   }
 }
 
-async function onClientLogoSelected(e) {
-  const f = e.target.files && e.target.files[0]
+async function onClientLogoSelected(e: Event) {
+  const input = e.target as HTMLInputElement | null
+  const f = input && input.files && input.files[0]
   if (!f) return
   try {
     project.value.logo = await fileToResizedDataUrl(f, { maxDim: 512, mime: 'image/jpeg', quality: 0.9, maxBytes: 350 * 1024 })
@@ -3902,8 +3937,9 @@ async function onClientLogoSelected(e) {
   }
 }
 
-async function onCxaLogoSelected(e) {
-  const f = e.target.files && e.target.files[0]
+async function onCxaLogoSelected(e: Event) {
+  const input = e.target as HTMLInputElement | null
+  const f = input && input.files && input.files[0]
   if (!f) return
   ensureCommissioningAgent()
   try {
@@ -3944,7 +3980,7 @@ async function save() {
     await ensureProjectLogosWithinLimit()
     await projectStore.updateProject(project.value)
     ui.showSuccess('Saved')
-  } catch (e) {
+  } catch (e: any) {
     console.error('ProjectEdit.save error:', e)
     let msg = 'Failed to save'
     try {
@@ -3968,9 +4004,9 @@ async function save() {
 }
 
 // Your three monthly plan price IDs:
-const prices = ref([]);
-const selectedPrice = ref<any>(null);
-const loading = ref(false);
+const prices = ref<StripePrice[]>([])
+const selectedPrice = ref<string | null>(null)
+const loading = ref(false)
 const stripeKeyPresent = computed(() => {
   try {
     const v = import.meta && import.meta.env && import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
@@ -4032,7 +4068,7 @@ const billingAdminOptions = computed(() => {
 })
 
 // Plan details shown in the UI when a selection is made
-const planDetailsById = ref({});
+const planDetailsById = ref<Record<string, any>>({})
 
 const selectedPlanDetails = computed(() => {
   const id = selectedPrice.value;
@@ -4052,7 +4088,7 @@ const selectedPlanDetails = computed(() => {
 });
 
 // Ensure any selection resolves to a proper Stripe Price ID
-function resolvePriceId(sel) {
+function resolvePriceId(sel: unknown) {
   const s = String(sel || '').trim();
   if (!s) return s;
   if (s.startsWith('price_')) return s;
@@ -4088,7 +4124,7 @@ async function loadPlansAndSelect() {
       const id = String(p.priceId || p.key || '').trim() || String(p.key || 'basic');
       return { id, priceId: id, label: p.label || p.name || p.key || id, key: p.key, name: p.name || p.label || id };
     });
-    const details = {};
+    const details: Record<string, any> = {};
     for (const p of list) {
       const id = String(p.priceId || p.key || '');
       const parts = String(p.label || p.name || '').split('–');
@@ -4208,7 +4244,7 @@ async function refreshProject() {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
     const prevRoleTemplates = project.value && Array.isArray(project.value.roleTemplates) ? project.value.roleTemplates.slice() : (Array.isArray(roleTemplates.value) ? roleTemplates.value.slice() : [])
-    const p = await projectStore.fetchProject(pid);
+    const p = await projectStore.fetchProject(String(pid));
     // If backend returned no roleTemplates (possible due to permissions), preserve existing local templates
     if (!Array.isArray(p.roleTemplates) || p.roleTemplates.length === 0) {
       p.roleTemplates = prevRoleTemplates.slice()
@@ -4258,7 +4294,7 @@ async function startCheckout() {
     } else {
       ui.showError('Failed to start checkout');
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('startCheckout error', err);
     ui.showError(err?.response?.data?.error || 'Failed to start checkout');
   } finally {
@@ -4278,7 +4314,7 @@ async function openBillingPortal() {
     } else {
       ui.showError('Failed to open billing portal');
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('openBillingPortal error', err);
     ui.showError(err?.response?.data?.error || 'Failed to open billing portal');
   } finally {

@@ -1,6 +1,6 @@
 <template>
   <div class="p-4">
-    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Users' }]" >
+    <BreadCrumbs :items="[{ text: 'Admin', to: '/app/admin' }, { text: 'Users' }]">
       <template #middle>
         <SearchPill
           v-model="q"
