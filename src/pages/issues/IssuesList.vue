@@ -3197,12 +3197,39 @@ const myIdentity = computed(() => {
   return { email, name }
 })
 
+function issueAssignedToSearchFields(i: any) {
+  const out: string[] = []
+
+  // existing legacy/string fields
+  out.push(i?.responsible_person)
+  out.push(i?.responsible)
+
+  const a = i?.assignedTo
+  if (a) {
+    if (typeof a === 'string') {
+      out.push(a)
+    } else if (typeof a === 'object') {
+      // common shapes: { firstName, lastName, email } or { name, email }
+      const first = (a as any)?.firstName
+      const last = (a as any)?.lastName
+      const name = (a as any)?.name || (a as any)?.fullName || (a as any)?.displayName || [first, last].filter(Boolean).join(' ')
+      out.push(name)
+      out.push((a as any)?.email)
+      out.push((a as any)?.mail)
+      out.push((a as any)?.userPrincipalName)
+      out.push((a as any)?.username)
+    }
+  }
+
+  return out
+    .map(v => String(v || '').trim().toLowerCase())
+    .filter(Boolean)
+}
+
 function isMyIssueRow(i: any) {
   const { email, name } = myIdentity.value || { email: '', name: '' }
   if (!email && !name) return false
-  const fields = [i?.responsible_person, i?.assignedTo, i?.responsible]
-    .map(v => String(v || '').trim().toLowerCase())
-    .filter(Boolean)
+  const fields = issueAssignedToSearchFields(i)
   for (const f of fields) {
     if (email && f.includes(email)) return true
     if (name && f === name) return true
@@ -3258,8 +3285,7 @@ const filteredIssues = computed(() => {
     : withLocation
   const withResponsible = respQ
     ? withSystem.filter((i: any) => {
-      const fields = [i.responsible_person, i.assignedTo, i.responsible]
-        .map(v => String(v || '').toLowerCase())
+      const fields = issueAssignedToSearchFields(i)
       return fields.some(v => v.includes(respQ))
     })
     : withSystem
