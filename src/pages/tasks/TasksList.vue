@@ -55,18 +55,45 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 gap-y-2">
-          <button
-            class="px-3 py-2 rounded bg-white/10 text-white border border-white/20"
-            @click="fetch()"
-          >
-            Refresh
-          </button>
+          <div class="relative inline-block group">
+            <button
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+              aria-label="Refresh"
+              @click="fetch()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M3 12a9 9 0 1 0 3-6.7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M3 4v4h4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Refresh
+            </div>
+          </div>
 
           <div class="relative inline-block group">
             <button
               class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
               aria-label="Settings"
-              @click="showSettingsModal = true"
+              @click="openSettingsModal"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -92,10 +119,83 @@
 
           <div class="relative inline-block group">
             <button
-              class="px-3 py-2 rounded bg-white/6 text-white border border-white/10 hover:bg-white/10"
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+              aria-label="Export PDF report"
+              :disabled="downloadingTasksPdf"
+              @click="downloadTasksPdf"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M7 3h7l3 3v15a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 21V4.5A1.5 1.5 0 0 1 7.5 3"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M14 3v4h4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M8 12h8"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M8 16h6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Export PDF report
+            </div>
+          </div>
+
+          <div class="relative inline-block group">
+            <button
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+              aria-label="Import tasks"
               @click="openImportModal"
             >
-              Import
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 3v12"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M7 8l5-5 5 5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <rect
+                  x="4"
+                  y="15"
+                  width="16"
+                  height="6"
+                  rx="1.5"
+                  stroke-width="1.5"
+                />
+              </svg>
             </button>
             <div
               role="tooltip"
@@ -288,109 +388,81 @@
         v-if="showAdvancedFilters"
         class="mt-3 pt-3 border-t border-white/10"
       >
-        <div class="grid grid-cols-12 gap-3">
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">Status</label>
-            <select
-              v-model="statusFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
-            >
-              <option value="">
-                All
-              </option>
-              <option
-                v-for="opt in taskStatusOptions"
-                :key="`s-${opt}`"
-                :value="opt"
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Status</label>
+              <select
+                v-model="statusFilter"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                {{ opt }}
-              </option>
-            </select>
-          </div>
+                <option value="">
+                  All
+                </option>
+                <option
+                  v-for="opt in statusFilterOptions"
+                  :key="`s-${opt}`"
+                  :value="opt"
+                >
+                  {{ opt }}
+                </option>
+              </select>
+            </div>
 
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">Responsible</label>
-            <select
-              v-model="responsibleFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
-            >
-              <option value="">
-                All
-              </option>
-              <option
-                v-for="opt in taskResponsibleOptions"
-                :key="`r-${opt}`"
-                :value="opt"
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Assigned to</label>
+              <select
+                v-model="assigneeFilter"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                {{ opt }}
-              </option>
-            </select>
+                <option value="">
+                  All
+                </option>
+                <option
+                  v-for="opt in assigneeFilterOptions"
+                  :key="`a-${opt.value}`"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
           </div>
 
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">Location</label>
-            <select
-              v-model="locationFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
-            >
-              <option value="">
-                All
-              </option>
-              <option
-                v-for="opt in taskLocationOptions"
-                :key="`l-${opt}`"
-                :value="opt"
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Date range</label>
+              <div class="grid grid-cols-2 gap-2">
+                <input
+                  v-model="dateFrom"
+                  type="date"
+                  placeholder="From"
+                  :class="[
+                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                    dateFrom ? 'text-white' : 'text-white/60',
+                  ]"
+                >
+                <input
+                  v-model="dateTo"
+                  type="date"
+                  placeholder="To"
+                  :class="[
+                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
+                    dateTo ? 'text-white' : 'text-white/60',
+                  ]"
+                >
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-1 md:col-span-1 xl:col-span-3">
+              <label class="text-white/70 text-sm">Tags</label>
+              <input
+                v-model="tagsFilter"
+                type="text"
+                placeholder="e.g. commissioning, urgent"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
               >
-                {{ opt }}
-              </option>
-            </select>
-          </div>
-
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">System</label>
-            <select
-              v-model="systemFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
-            >
-              <option value="">
-                All
-              </option>
-              <option
-                v-for="opt in taskSystemOptions"
-                :key="`sys-${opt}`"
-                :value="opt"
-              >
-                {{ opt }}
-              </option>
-            </select>
-          </div>
-
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">From</label>
-            <input
-              v-model="dateFrom"
-              type="date"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
-            >
-          </div>
-
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">To</label>
-            <input
-              v-model="dateTo"
-              type="date"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm"
-            >
-          </div>
-
-          <div class="col-span-12 sm:col-span-6">
-            <label class="block text-white/70 text-sm">Tags</label>
-            <input
-              v-model="tagsFilter"
-              type="text"
-              placeholder="e.g. commissioning, urgent"
-              class="w-full px-3 py-2 rounded-lg bg-white/6 border border-white/10 text-white text-sm placeholder:text-white/50"
-            >
+            </div>
           </div>
         </div>
       </div>
@@ -725,6 +797,70 @@
                     class="h-6 bg-emerald-400/10 border-t-2 border-emerald-400/60"
                   />
                 </tr>
+
+                <tr
+                  v-if="listTopLevelTasks.length"
+                  class="border-t border-white/15 bg-white/5"
+                >
+                  <td class="px-2 py-2" />
+                  <td class="px-3 py-2 align-top">
+                    <div class="text-sm font-medium text-white/60">
+                      —
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 align-top relative">
+                    <div style="padding-bottom: 0.6rem">
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="font-semibold">
+                          Totals
+                        </div>
+                        <div class="text-xs text-white/70">
+                          {{ listTotals.status }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="absolute left-3 right-3 -bottom-px h-3 flex items-end">
+                      <div class="relative w-full">
+                        <div class="h-[3px] bg-white/10 rounded overflow-hidden">
+                          <div
+                            :style="{ width: (listTotals.percentComplete || 0) + '%' }"
+                            class="h-full bg-emerald-400/80"
+                          />
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span class="text-[9px] leading-none text-white/80">{{ (listTotals.percentComplete || 0) + '%' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    v-if="showDurationColumn"
+                    class="px-3 py-2 align-top"
+                  >
+                    <div>{{ listTotals.duration != null ? listTotals.duration : '' }}</div>
+                  </td>
+                  <td
+                    v-if="showStartColumn"
+                    class="px-3 py-2 align-top"
+                  >
+                    {{ fmt(listTotals.start) }}
+                  </td>
+                  <td
+                    v-if="showFinishColumn"
+                    class="px-3 py-2 align-top"
+                  >
+                    {{ fmt(listTotals.finish) }}
+                  </td>
+                  <td
+                    v-if="showCostColumn"
+                    class="px-3 py-2 align-top"
+                  >
+                    <div>{{ listTotals.cost != null ? formatCurrency(listTotals.cost) : '' }}</div>
+                  </td>
+                  <td class="px-3 py-2 text-right text-white/60">
+                    Project totals
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -947,110 +1083,620 @@
           Settings
         </div>
       </template>
-      <div class="text-white/90 space-y-3">
-        <div class="flex items-center gap-3">
-          <label class="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              class="w-4 h-4"
-              :checked="ui.showTaskCreateLinkActivityButton"
-              @change="(e) => { ui.setShowTaskCreateLinkActivityButton(e.target.checked); ui.showInfo('Settings updated') }"
-            >
-            <span>Show “Create &amp; link activity” button</span>
-          </label>
+      <div class="space-y-4 text-sm text-white/90">
+        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="settingsTab === 'list' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="settingsTab = 'list'"
+          >
+            List
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="settingsTab === 'report' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="settingsTab = 'report'"
+          >
+            Report
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="settingsTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            @click="settingsTab = 'cover'"
+          >
+            Cover Page
+          </button>
         </div>
-        <div class="flex items-center gap-3">
-          <label class="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              class="w-4 h-4"
-              :checked="ui.showTaskDurationColumn"
-              @change="(e) => { ui.setShowTaskDurationColumn(e.target.checked); ui.showInfo('Settings updated') }"
-            >
-            <span>Show Duration column</span>
-          </label>
-        </div>
-        <div class="flex items-center gap-3">
-          <label class="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              class="w-4 h-4"
-              :checked="ui.showTaskStartColumn"
-              @change="(e) => { ui.setShowTaskStartColumn(e.target.checked); ui.showInfo('Settings updated') }"
-            >
-            <span>Show Start column</span>
-          </label>
-        </div>
-        <div class="flex items-center gap-3">
-          <label class="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              class="w-4 h-4"
-              :checked="ui.showTaskFinishColumn"
-              @change="(e) => { ui.setShowTaskFinishColumn(e.target.checked); ui.showInfo('Settings updated') }"
-            >
-            <span>Show Finish column</span>
-          </label>
-        </div>
+
         <div
-          v-if="isAdmin"
-          class="space-y-4"
+          v-if="settingsTab === 'list'"
+          class="space-y-3"
         >
           <div class="flex items-center gap-3">
             <label class="inline-flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 class="w-4 h-4"
-                :checked="ui.showCostColumn"
-                @change="(e) => { ui.setShowCostColumn(e.target.checked); ui.showInfo('Settings updated') }"
+                :checked="ui.showTaskCreateLinkActivityButton"
+                @change="(e) => { ui.setShowTaskCreateLinkActivityButton(e.target.checked); ui.showInfo('Settings updated') }"
               >
-              <span>Show Cost column</span>
+              <span>Show “Create &amp; link activity” button</span>
             </label>
           </div>
-          <div>
+          <div class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="w-4 h-4"
+                :checked="ui.showTaskDurationColumn"
+                @change="(e) => { ui.setShowTaskDurationColumn(e.target.checked); ui.showInfo('Settings updated') }"
+              >
+              <span>Show Duration column</span>
+            </label>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="w-4 h-4"
+                :checked="ui.showTaskStartColumn"
+                @change="(e) => { ui.setShowTaskStartColumn(e.target.checked); ui.showInfo('Settings updated') }"
+              >
+              <span>Show Start column</span>
+            </label>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="w-4 h-4"
+                :checked="ui.showTaskFinishColumn"
+                @change="(e) => { ui.setShowTaskFinishColumn(e.target.checked); ui.showInfo('Settings updated') }"
+              >
+              <span>Show Finish column</span>
+            </label>
+          </div>
+          <div
+            v-if="isAdmin"
+            class="space-y-4"
+          >
             <div class="flex items-center gap-3">
-              <label class="text-sm text-white/80 whitespace-nowrap">Bill rate</label>
-              <div class="flex items-center gap-2 flex-1">
-                <span class="text-white/70">$</span>
+              <label class="inline-flex items-center gap-2 text-sm">
                 <input
-                  v-model.number="billRateInput"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
-                  @change="persistBillRateSetting"
-                  @blur="persistBillRateSetting"
+                  type="checkbox"
+                  class="w-4 h-4"
+                  :checked="ui.showCostColumn"
+                  @change="(e) => { ui.setShowCostColumn(e.target.checked); ui.showInfo('Settings updated') }"
+                >
+                <span>Show Cost column</span>
+              </label>
+            </div>
+            <div>
+              <div class="flex items-center gap-3">
+                <label class="text-sm text-white/80 whitespace-nowrap">Bill rate</label>
+                <div class="flex items-center gap-2 flex-1">
+                  <span class="text-white/70">$</span>
+                  <input
+                    v-model.number="billRateInput"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="flex-1 px-3 py-2 rounded bg-white/10 border border-white/15 text-white"
+                    @change="persistBillRateSetting"
+                    @blur="persistBillRateSetting"
+                  >
+                </div>
+              </div>
+              <p class="text-xs text-white/60 mt-1">
+                Used when tasks auto-calculate cost as duration × bill rate.
+              </p>
+            </div>
+          </div>
+          <div
+            v-else
+            class="text-sm text-white/70"
+          >
+            Cost column visible to admins only.
+          </div>
+        </div>
+
+        <div
+          v-else-if="settingsTab === 'report'"
+          class="space-y-4"
+        >
+          <div class="grid grid-cols-2 gap-3">
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="tasksReport.include.coverPage"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Cover Page</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="tasksReport.include.analytics"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Analytics charts</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="tasksReport.include.summary"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Progress summary</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
+                v-model="tasksReport.include.table"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Tasks table</span>
+            </label>
+          </div>
+
+          <div class="space-y-2">
+            <div class="text-white/80">
+              Report columns
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <label
+                v-for="c in tasksReportColumnOptions"
+                :key="c.key"
+                class="inline-flex items-center gap-2 text-sm"
+              >
+                <input
+                  v-model="tasksReport.columns[c.key]"
+                  type="checkbox"
+                  class="rounded"
+                >
+                <span class="text-white/80">{{ c.label }}</span>
+              </label>
+            </div>
+            <div class="text-xs text-white/60">
+              The PDF uses the current filters/search. Toggle columns here.
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="space-y-4"
+        >
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="block text-white/80 mb-1">Cover title</label>
+              <input
+                v-model="tasksReport.coverTitle"
+                type="text"
+                placeholder="Tasks Report"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
+              >
+            </div>
+            <div>
+              <label class="block text-white/80 mb-1">Cover subtitle</label>
+              <input
+                v-model="tasksReport.coverSubtitle"
+                type="text"
+                placeholder="Project Name"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
+              >
+            </div>
+            <div>
+              <label class="block text-white/80 mb-1">By line (optional)</label>
+              <input
+                v-model="tasksReport.coverByLine"
+                type="text"
+                placeholder="By: John Doe, PE (Company)"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
+              >
+              <div class="text-xs text-white/60 mt-1">
+                Printed on the cover page below the project name.
+              </div>
+            </div>
+            <div>
+              <label class="block text-white/80 mb-1">Jumbotron photo (optional)</label>
+              <div class="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="block w-full text-white/80 text-sm"
+                  @change="onTasksCoverJumbotronSelected"
+                >
+                <button
+                  v-if="tasksReport.coverJumbotronDataUrl"
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-red-500/20 border border-red-500/30 text-red-100 hover:bg-red-500/30 text-sm"
+                  @click="clearTasksCoverJumbotron"
+                >
+                  Remove
+                </button>
+              </div>
+              <div
+                v-if="tasksReport.coverJumbotronDataUrl"
+                class="mt-3"
+              >
+                <img
+                  :src="tasksReport.coverJumbotronDataUrl"
+                  class="max-h-40 w-full object-contain rounded-md border border-white/10 bg-black/10"
                 >
               </div>
             </div>
-            <p class="text-xs text-white/60 mt-1">
-              Used when tasks auto-calculate cost as duration × bill rate.
-            </p>
           </div>
-        </div>
-        <div
-          v-else
-          class="text-sm text-white/70"
-        >
-          Cost column visible to admins only.
         </div>
       </div>
       <template #footer>
-        <div class="flex justify-end">
+        <div class="flex items-center justify-between w-full">
           <button
-            class="px-3 py-2 rounded bg-white/6 text-white"
-            @click="showSettingsModal = false"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            @click="resetTasksReportSettings"
           >
-            Close
+            Reset report settings
           </button>
+          <div class="flex items-center gap-2">
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              @click="showSettingsModal = false"
+            >
+              Close
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35"
+              @click="saveTasksReportSettings"
+            >
+              Save report settings
+            </button>
+          </div>
         </div>
       </template>
     </Modal>
+
+    <!-- Hidden letter-sized report DOM used for PDF generation -->
+    <div
+      v-if="renderTasksReport"
+      ref="tasksReportRoot"
+      class="fixed top-0 -left-[2500px] w-[816px] pointer-events-none"
+    >
+      <div class="space-y-0">
+        <div
+          v-if="tasksReport.include.coverPage"
+          class="tasks-report-page bg-white text-black px-12 py-12"
+          style="width:816px; height:1056px; box-sizing:border-box;"
+        >
+          <div class="h-full flex flex-col">
+            <div class="flex items-center justify-between">
+              <div class="w-40">
+                <img
+                  v-if="clientLogoForReport"
+                  :src="clientLogoForReport"
+                  class="h-10 w-auto object-contain"
+                  alt="Client logo"
+                >
+              </div>
+              <div class="w-40 flex justify-end">
+                <img
+                  v-if="cxaLogoForReport"
+                  :src="cxaLogoForReport"
+                  class="h-10 w-auto object-contain"
+                  alt="Commissioning agent logo"
+                >
+              </div>
+            </div>
+
+            <div class="text-center mt-6">
+              <div
+                v-if="String(tasksReport.coverTitle || '').trim()"
+                class="text-3xl font-semibold"
+              >
+                {{ reportTitleResolved }}
+              </div>
+              <div
+                v-if="String(coverSubtitleResolved).trim()"
+                class="text-xl font-semibold mt-3"
+              >
+                {{ coverSubtitleResolved }}
+              </div>
+            </div>
+
+            <div
+              v-if="tasksReport.coverJumbotronDataUrl"
+              class="flex-1 flex items-center justify-center mt-8"
+            >
+              <img
+                :src="tasksReport.coverJumbotronDataUrl"
+                class="max-h-[520px] w-full object-contain rounded-lg border border-black/10"
+              >
+            </div>
+
+            <div
+              v-if="String(tasksReport.coverByLine || '').trim() || reportGeneratedDate"
+              class="text-center mt-6"
+            >
+              <div
+                v-if="String(tasksReport.coverByLine || '').trim()"
+                class="text-sm text-black/70"
+              >
+                {{ tasksReport.coverByLine }}
+              </div>
+              <div class="text-sm text-black/60 mt-2">
+                Generated {{ reportGeneratedDate }}
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <div class="text-sm text-black/80">
+                <span class="font-semibold">Project:</span>
+                <span class="ml-1">{{ projectNameResolved }}</span>
+              </div>
+              <div class="text-sm text-black/80 mt-1">
+                <span class="font-semibold">Tasks:</span>
+                <span class="ml-1">{{ reportTotalTasks }} total, {{ reportCompletedTasks }} completed ({{ reportCompletionPercent }}%)</span>
+              </div>
+
+              <div class="mt-10 pt-3 border-t border-black/10 flex items-center justify-between text-xs text-black/60">
+                <div class="flex items-center gap-1">
+                  <img
+                    v-if="cxmaLogoForReport"
+                    :src="cxmaLogoForReport"
+                    class="block h-4 w-4 shrink-0 object-contain"
+                    alt="cxma"
+                  >
+                  <div class="font-semibold tracking-wide leading-none relative -top-1.5">
+                    cxma
+                  </div>
+                  <div class="ml-3 font-semibold tracking-wide text-black/60">
+                    Tasks Report
+                  </div>
+                </div>
+                <div>
+                  Page {{ reportCoverPageNo }} of {{ reportTotalPages }}
+                </div>
+                <div>
+                  {{ reportGeneratedDate }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="shouldRenderOverviewPage"
+          class="tasks-report-page bg-white text-black px-10 pt-4 pb-8"
+          style="width:816px; height:1056px; box-sizing:border-box;"
+        >
+          <div class="h-full flex flex-col">
+            <div class="flex items-center justify-between">
+              <div class="w-40">
+                <img
+                  v-if="clientLogoForReport"
+                  :src="clientLogoForReport"
+                  class="h-10 w-auto object-contain"
+                  alt="Client logo"
+                >
+              </div>
+              <div class="text-center">
+                <div class="text-2xl font-semibold">
+                  {{ reportTitleResolved }}
+                </div>
+              </div>
+              <div class="w-40 flex justify-end">
+                <img
+                  v-if="cxaLogoForReport"
+                  :src="cxaLogoForReport"
+                  class="h-10 w-auto object-contain"
+                  alt="Commissioning agent logo"
+                >
+              </div>
+            </div>
+
+            <div
+              v-if="tasksReport.include.summary"
+              class="mt-4 grid grid-cols-3 gap-4"
+            >
+              <div class="rounded-lg border border-black/10 p-4">
+                <div class="text-xs text-black/60">
+                  Total tasks
+                </div>
+                <div class="text-2xl font-semibold">
+                  {{ reportTotalTasks }}
+                </div>
+              </div>
+              <div class="rounded-lg border border-black/10 p-4">
+                <div class="text-xs text-black/60">
+                  Completed
+                </div>
+                <div class="text-2xl font-semibold">
+                  {{ reportCompletedTasks }}
+                </div>
+              </div>
+              <div class="rounded-lg border border-black/10 p-4">
+                <div class="text-xs text-black/60">
+                  Overall completion
+                </div>
+                <div class="text-2xl font-semibold">
+                  {{ reportCompletionPercent }}%
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="tasksReport.include.analytics"
+              class="mt-6"
+            >
+              <div class="rounded-lg border border-black/10 p-3">
+                <TasksListCharts
+                  :analytics="tasksAnalytics"
+                  :loading="tasksAnalyticsLoading"
+                  mode="light"
+                  embedded
+                  :height-scale="0.60"
+                  variant="report"
+                />
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <div
+                v-if="tasksReport.include.analytics"
+                class="text-xs text-black/50 pt-4"
+              >
+                Notes: Charts are project-wide analytics.
+              </div>
+
+              <div class="mt-3 pt-3 border-t border-black/10 flex items-center justify-between text-xs text-black/60">
+                <div class="flex items-center gap-1">
+                  <img
+                    v-if="cxmaLogoForReport"
+                    :src="cxmaLogoForReport"
+                    class="block h-4 w-4 shrink-0 object-contain"
+                    alt="cxma"
+                  >
+                  <div class="font-semibold tracking-wide leading-none relative -top-1.5">
+                    cxma
+                  </div>
+                  <div class="ml-3 font-semibold tracking-wide text-black/60">
+                    Tasks Report
+                  </div>
+                </div>
+                <div>
+                  Page {{ reportOverviewPageNo }} of {{ reportTotalPages }}
+                </div>
+                <div>
+                  {{ reportGeneratedDate }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="tasksReport.include.table">
+          <div
+            v-for="(chunk, idx) in reportTaskChunks"
+            :key="`tp-${idx}`"
+            class="tasks-report-page bg-white text-black px-10 py-10"
+            style="width:816px; height:1056px; box-sizing:border-box;"
+          >
+            <div class="h-full flex flex-col">
+              <div class="flex items-center justify-between">
+                <div class="w-40">
+                  <img
+                    v-if="clientLogoForReport"
+                    :src="clientLogoForReport"
+                    class="h-10 w-auto object-contain"
+                    alt="Client logo"
+                  >
+                </div>
+                <div class="w-40 flex justify-end">
+                  <img
+                    v-if="cxaLogoForReport"
+                    :src="cxaLogoForReport"
+                    class="h-10 w-auto object-contain"
+                    alt="Commissioning agent logo"
+                  >
+                </div>
+              </div>
+
+              <div class="mt-4 overflow-hidden rounded-lg border border-black/10">
+                <table class="w-full text-[11px]">
+                  <thead class="bg-black/5">
+                    <tr>
+                      <th
+                        v-for="col in reportSelectedColumns"
+                        :key="`h-${col.key}`"
+                        class="text-left font-semibold px-2 py-2 border-b border-black/10"
+                      >
+                        {{ col.label }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="t in chunk"
+                      :key="t && (t._id || t.taskId || t.wbs || t.name)"
+                      :class="[
+                        'border-b border-black/5',
+                        wbsDepth(t?.wbs) === 0 ? 'font-semibold' : 'font-normal',
+                      ]"
+                    >
+                      <td
+                        v-for="col in reportSelectedColumns"
+                        :key="`c-${col.key}`"
+                        class="px-2 py-2 align-top"
+                      >
+                        <template v-if="col.key === 'name'">
+                          <div
+                            :style="{ paddingLeft: `${Math.min(6, wbsDepth(t?.wbs)) * 10}px` }"
+                            class="whitespace-normal"
+                          >
+                            {{ reportValue(col.key, t) }}
+                          </div>
+                        </template>
+                        <template v-else>
+                          {{ reportValue(col.key, t) }}
+                        </template>
+                      </td>
+                    </tr>
+
+                    <tr
+                      v-if="idx === (reportTaskChunks.length - 1)"
+                      class="bg-black/5 border-t border-black/10 font-semibold"
+                    >
+                      <td
+                        v-for="col in reportSelectedColumns"
+                        :key="`tot-${col.key}`"
+                        class="px-2 py-2 align-top"
+                      >
+                        <template v-if="col.key === 'name'">
+                          Totals
+                        </template>
+                        <template v-else>
+                          {{ reportTotalsValue(col.key) }}
+                        </template>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mt-auto pt-3 border-t border-black/10 flex items-center justify-between text-xs text-black/60">
+                <div class="flex items-center gap-1">
+                  <img
+                    v-if="cxmaLogoForReport"
+                    :src="cxmaLogoForReport"
+                    class="block h-4 w-4 shrink-0 object-contain"
+                    alt="cxma"
+                  >
+                  <div class="font-semibold tracking-wide leading-none relative -top-1.5">
+                    cxma
+                  </div>
+                  <div class="ml-3 font-semibold tracking-wide text-black/60">
+                    Tasks Report
+                  </div>
+                </div>
+                <div>
+                  Page {{ reportTableStartPageNo + idx }} of {{ reportTotalPages }}
+                </div>
+                <div>
+                  {{ reportGeneratedDate }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
@@ -1061,11 +1707,13 @@ import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import TaskEditForm from '../../components/TaskEditForm.vue'
 import TasksListCharts from '../../components/charts/TasksListCharts.vue'
-import lists from '../../lists.js'
   import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
   import { http } from '../../utils/http'
   import { runCoachmarkOnce } from '../../utils/coachmarks'
   import { useRoute, useRouter } from 'vue-router'
+import { jsPDF } from 'jspdf'
+import html2canvas from 'html2canvas'
+;(window).html2canvas = (window).html2canvas || html2canvas
 
 const projectStore = useProjectStore()
 const ui = useUiStore()
@@ -1089,14 +1737,444 @@ const showSettingsModal = ref(false)
 const billRateInput = ref(ui.tasksBillRate || 0)
 const showAutoTagModal = ref(false)
 
+const settingsTab = ref('list')
+
+const downloadingTasksPdf = ref(false)
+const renderTasksReport = ref(false)
+const tasksReportRoot = ref(null)
+
+const reportLogos = ref({ client: '', cxa: '', cxma: '' })
+
+const TASKS_REPORT_STORAGE_KEY = computed(() => `tasksReportSettings:${projectStore.currentProjectId || 'global'}`)
+function hasLocalStorage() {
+  try { return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined' } catch (e) { return false }
+}
+function defaultTasksReportSettings() {
+  return {
+    include: { coverPage: true, analytics: true, summary: true, table: true },
+    coverTitle: 'Tasks Report',
+    coverSubtitle: '',
+    coverByLine: '',
+    coverJumbotronDataUrl: '',
+    columns: {
+      wbs: true,
+      name: true,
+      status: true,
+      percentComplete: true,
+      start: true,
+      finish: true,
+      duration: false,
+      assignee: true,
+      tags: false,
+      cost: false,
+    },
+  }
+}
+
+const tasksReport = ref(defaultTasksReportSettings())
+
+async function fetchAsDataUrl(src) {
+  try {
+    const s = String(src || '').trim()
+    if (!s) return ''
+    if (s.startsWith('data:')) return s
+    const res = await fetch(s, { mode: 'cors', credentials: 'same-origin' })
+    if (!res.ok) return ''
+    const blob = await res.blob()
+    const dataUrl = await new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(blob)
+    })
+    return String(dataUrl || '')
+  } catch (e) {
+    return ''
+  }
+}
+
+async function prepareReportLogos() {
+  const p = projectStore.currentProject || {}
+  const clientSrc = String(p.logo || '').trim()
+  const cxaSrc = String((p.commissioning_agent && p.commissioning_agent.logo) || '').trim()
+  const cxmaSrc = '/brand/logo-2.png'
+  const [client, cxa, cxma] = await Promise.all([
+    fetchAsDataUrl(clientSrc),
+    fetchAsDataUrl(cxaSrc),
+    fetchAsDataUrl(cxmaSrc),
+  ])
+  reportLogos.value = {
+    client: client || clientSrc,
+    cxa: cxa || cxaSrc,
+    cxma: cxma || cxmaSrc,
+  }
+}
+
+function loadTasksReportSettings() {
+  if (!hasLocalStorage()) return
+  try {
+    const raw = localStorage.getItem(TASKS_REPORT_STORAGE_KEY.value)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return
+    const base = defaultTasksReportSettings()
+    tasksReport.value = {
+      ...base,
+      ...data,
+      include: { ...base.include, ...(data.include || {}) },
+      columns: { ...base.columns, ...(data.columns || {}) },
+    }
+
+    // Normalize legacy title value
+    if (String(tasksReport.value.coverTitle || '').trim() === 'TasksReport') {
+      tasksReport.value.coverTitle = 'Tasks Report'
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function saveTasksReportSettings() {
+  if (!hasLocalStorage()) {
+    try { ui.showInfo('Report settings saved') } catch (e) { /* ignore */ }
+    return
+  }
+  try {
+    localStorage.setItem(TASKS_REPORT_STORAGE_KEY.value, JSON.stringify(tasksReport.value))
+    ui.showInfo('Report settings saved')
+  } catch (e) {
+    try { ui.showError('Failed to save report settings') } catch (err) { /* ignore */ }
+  }
+}
+
+function resetTasksReportSettings() {
+  tasksReport.value = defaultTasksReportSettings()
+  saveTasksReportSettings()
+}
+
+function openSettingsModal() {
+  settingsTab.value = 'list'
+  loadTasksReportSettings()
+  showSettingsModal.value = true
+}
+
+function onTasksCoverJumbotronSelected(evt) {
+  try {
+    const file = evt && evt.target && evt.target.files && evt.target.files[0] ? evt.target.files[0] : null
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => { tasksReport.value.coverJumbotronDataUrl = String(reader.result || '') }
+    reader.readAsDataURL(file)
+  } catch (e) { /* ignore */ }
+}
+
+function clearTasksCoverJumbotron() {
+  tasksReport.value.coverJumbotronDataUrl = ''
+}
+
 const showAdvancedFilters = ref(false)
 const statusFilter = ref('')
-const responsibleFilter = ref('')
-const locationFilter = ref('')
-const systemFilter = ref('')
+const assigneeFilter = ref('')
 const dateFrom = ref('')
 const dateTo = ref('')
 const tagsFilter = ref('')
+
+const statusFilterOptions = Object.freeze(['Not Started', 'Pending', 'In Progress', 'Completed'])
+
+const tasksReportColumnOptions = computed(() => {
+  const base = [
+    { key: 'wbs', label: 'WBS' },
+    { key: 'name', label: 'Name' },
+    { key: 'status', label: 'Status' },
+    { key: 'percentComplete', label: '% Complete' },
+    { key: 'start', label: 'Start' },
+    { key: 'finish', label: 'Finish' },
+    { key: 'duration', label: 'Duration' },
+    { key: 'assignee', label: 'Assigned to' },
+    { key: 'tags', label: 'Tags' },
+  ]
+  if (isAdmin.value) base.push({ key: 'cost', label: 'Cost' })
+  return base
+})
+
+const reportSelectedColumns = computed(() => {
+  const cols = tasksReport.value && tasksReport.value.columns ? tasksReport.value.columns : {}
+  return (tasksReportColumnOptions.value || []).filter(c => cols && cols[c.key] === true)
+})
+
+const projectNameResolved = computed(() => String((projectStore.currentProject && projectStore.currentProject.name) || '').trim() || 'Project')
+const coverSubtitleResolved = computed(() => {
+  const user = String(tasksReport.value.coverSubtitle || '').trim()
+  return user
+})
+function humanizeTitleSpacing(input) {
+  const s = String(input || '')
+  if (!s) return ''
+  // Add spaces for common camelCase/PascalCase boundaries while keeping acronyms intact.
+  return s
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+const reportTitleResolved = computed(() => {
+  const raw = String(tasksReport.value.coverTitle || '').trim()
+  return humanizeTitleSpacing(raw || 'Tasks Report')
+})
+const reportGeneratedDate = computed(() => {
+  try { return new Date().toLocaleDateString() } catch (e) { return '' }
+})
+
+const clientLogoForReport = computed(() => String(reportLogos.value.client || '').trim())
+const cxaLogoForReport = computed(() => String(reportLogos.value.cxa || '').trim())
+const cxmaLogoForReport = computed(() => String(reportLogos.value.cxma || '').trim())
+
+const shouldRenderOverviewPage = computed(() => {
+  return !!(tasksReport.value && tasksReport.value.include && (tasksReport.value.include.summary || tasksReport.value.include.analytics))
+})
+
+const reportTotalPages = computed(() => {
+  const cover = tasksReport.value && tasksReport.value.include && tasksReport.value.include.coverPage
+  const overview = shouldRenderOverviewPage.value ? 1 : 0
+  const tablePages = (tasksReport.value && tasksReport.value.include && tasksReport.value.include.table) ? (reportTaskChunks.value || []).length : 0
+  return (cover ? 1 : 0) + overview + tablePages
+})
+const reportCoverPageNo = computed(() => 1)
+const reportOverviewPageNo = computed(() => {
+  const coverPages = (tasksReport.value && tasksReport.value.include && tasksReport.value.include.coverPage) ? 1 : 0
+  return coverPages + 1
+})
+const reportTableStartPageNo = computed(() => {
+  const coverPages = (tasksReport.value && tasksReport.value.include && tasksReport.value.include.coverPage) ? 1 : 0
+  const overviewPages = shouldRenderOverviewPage.value ? 1 : 0
+  return coverPages + overviewPages + 1
+})
+
+const reportTasksBase = computed(() => {
+  // Use the same list the user is looking at (search + filters) and exclude deleted.
+  return (filtered.value || []).filter(t => !(t && (t.deleted === true || String(t.status || '').toLowerCase() === 'deleted')))
+})
+
+const reportTotalTasks = computed(() => (reportTasksBase.value || []).length)
+const reportCompletedTasks = computed(() => (reportTasksBase.value || []).filter(t => isComplete(t)).length)
+const reportCompletionPercent = computed(() => {
+  const total = reportTotalTasks.value
+  if (!total) return 0
+  return Math.round((reportCompletedTasks.value / total) * 100)
+})
+
+function chunkArray(arr, size) {
+  const out = []
+  const a = Array.isArray(arr) ? arr : []
+  const n = Math.max(1, Number(size) || 1)
+  for (let i = 0; i < a.length; i += n) out.push(a.slice(i, i + n))
+  return out
+}
+
+const reportTaskChunks = computed(() => {
+  // Keep conservative to avoid clipping at the bottom when rows wrap.
+  const rowsPerPage = 26
+  return chunkArray(reportTasksBase.value || [], rowsPerPage)
+})
+
+function computeTopLevelTotals(topTasks) {
+  const top = Array.isArray(topTasks) ? topTasks : []
+
+  let percentSum = 0
+  let percentCount = 0
+  let durationSum = 0
+  let durationAny = false
+  let costSum = 0
+  let costAny = false
+  let earliestStart = null
+  let latestFinish = null
+
+  for (const t of top) {
+    const p = pct(t)
+    if (Number.isFinite(p)) {
+      percentSum += p
+      percentCount += 1
+    }
+
+    const d = dur(t)
+    if (d != null && Number.isFinite(Number(d))) {
+      durationSum += Number(d)
+      durationAny = true
+    }
+
+    const c = costVal(t)
+    if (c != null && Number.isFinite(Number(c))) {
+      costSum += Number(c)
+      costAny = true
+    }
+
+    const sd = startVal(t)
+    if (sd instanceof Date && !isNaN(sd.getTime())) {
+      if (earliestStart === null || sd < earliestStart) earliestStart = sd
+    }
+
+    const ed = endVal(t)
+    if (ed instanceof Date && !isNaN(ed.getTime())) {
+      if (latestFinish === null || ed > latestFinish) latestFinish = ed
+    }
+  }
+
+  const percentComplete = percentCount ? Math.max(0, Math.min(100, Math.round(percentSum / percentCount))) : 0
+  const status = percentComplete >= 100 ? 'Completed' : (percentComplete <= 0 ? 'Not Started' : 'In Progress')
+  const duration = durationAny ? Number(durationSum.toFixed(2)) : null
+  const cost = costAny ? Number(costSum.toFixed(2)) : null
+
+  return {
+    status,
+    percentComplete,
+    start: earliestStart,
+    finish: latestFinish,
+    duration,
+    cost,
+  }
+}
+
+const reportTopLevelTasks = computed(() => {
+  return (reportTasksBase.value || []).filter(t => wbsDepth(t?.wbs) === 0)
+})
+const reportTotals = computed(() => {
+  return computeTopLevelTotals(reportTopLevelTasks.value || [])
+})
+
+const listActiveTasks = computed(() => {
+  // Project totals should not depend on current search/filter UI; only exclude deleted.
+  return (tasks.value || []).filter(t => !(t && (t.deleted === true || String(t.status || '').toLowerCase() === 'deleted')))
+})
+
+const listTopLevelTasks = computed(() => {
+  return (listActiveTasks.value || []).filter(t => wbsDepth(t?.wbs) === 0)
+})
+
+const listTotals = computed(() => computeTopLevelTotals(listTopLevelTasks.value || []))
+function reportTotalsValue(key) {
+  try {
+    const tot = reportTotals.value || {}
+    if (key === 'status') return String(tot.status || '')
+    if (key === 'percentComplete') return `${Number(tot.percentComplete || 0)}%`
+    if (key === 'start') return fmtDateShort(tot.start)
+    if (key === 'finish') return fmtDateShort(tot.finish)
+    if (key === 'duration') return tot.duration != null ? String(tot.duration) : ''
+    if (key === 'cost') return tot.cost != null ? formatCurrency(tot.cost) : ''
+    return ''
+  } catch (e) {
+    return ''
+  }
+}
+
+const teamMemberLabelById = computed(() => {
+  const p = projectStore.currentProject || {}
+  const team = Array.isArray(p.team) ? p.team : []
+  const map = {}
+  for (const m of team) {
+    const id = String(m?._id || m?.id || '').trim()
+    if (!id) continue
+    map[id] = teamMemberLabel(m)
+  }
+  return map
+})
+
+function fmtDateShort(d) {
+  if (!d) return ''
+  try { return new Date(d).toLocaleDateString() } catch (e) { return String(d) }
+}
+
+function reportValue(key, t) {
+  try {
+    if (!t) return ''
+    if (key === 'wbs') return String(t.wbs || '')
+    if (key === 'name') return String(t.name || t.title || '')
+    if (key === 'status') {
+      const children = getImmediateChildren(t)
+      if (children && children.length > 0) {
+        const p = pct(t)
+        if (p >= 100) return 'Completed'
+        if (p <= 0) return 'Not Started'
+        return 'In Progress'
+      }
+      return String(t.status || '')
+    }
+    if (key === 'percentComplete') return `${pct(t)}%`
+    if (key === 'start') return fmtDateShort(startVal(t))
+    if (key === 'finish') return fmtDateShort(endVal(t))
+    if (key === 'duration') {
+      const d = dur(t)
+      return d != null ? String(d) : ''
+    }
+    if (key === 'assignee') {
+      const id = taskAssigneeId(t)
+      return id ? (teamMemberLabelById.value[id] || id) : ''
+    }
+    if (key === 'tags') return Array.isArray(t.tags) ? t.tags.join(', ') : ''
+    if (key === 'cost') return formatCurrency(costVal(t))
+    return ''
+  } catch (e) {
+    return ''
+  }
+}
+
+async function downloadTasksPdf() {
+  if (downloadingTasksPdf.value) return
+  downloadingTasksPdf.value = true
+  loadTasksReportSettings()
+  try {
+    await prepareReportLogos()
+    if (tasksReport.value.include.analytics && projectStore.currentProjectId) {
+      // Ensure analytics is loaded for charts.
+      if (!tasksAnalytics.value && !tasksAnalyticsLoading.value) await fetchTasksAnalytics(projectStore.currentProjectId)
+    }
+
+    renderTasksReport.value = true
+    await nextTick()
+    // Allow charts to render.
+    await new Promise(resolve => setTimeout(resolve, 600))
+
+    const root = tasksReportRoot.value
+    if (!root) throw new Error('Report container not available')
+    const pages = Array.from(root.querySelectorAll('.tasks-report-page'))
+    if (!pages.length) throw new Error('No report pages to export')
+
+    const doc = new jsPDF({ unit: 'pt', format: 'letter', compress: true })
+    const pageW = doc.internal.pageSize.getWidth()
+    const pageH = doc.internal.pageSize.getHeight()
+
+    for (let i = 0; i < pages.length; i += 1) {
+      const el = pages[i]
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+      })
+      const imgData = canvas.toDataURL('image/png')
+      if (i > 0) doc.addPage('letter', 'portrait')
+      doc.addImage(imgData, 'PNG', 0, 0, pageW, pageH)
+    }
+
+    const safeName = projectNameResolved.value.replace(/[^a-z0-9\-_]+/gi, '-').replace(/-+/g, '-').replace(/(^-|-$)/g, '')
+    const stamp = (() => {
+      try {
+        const d = new Date()
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}${m}${day}`
+      } catch (e) { return '' }
+    })()
+    const filename = `tasks-report${safeName ? `-${safeName}` : ''}${stamp ? `-${stamp}` : ''}.pdf`
+    doc.save(filename)
+    try { ui.showInfo('PDF downloaded') } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.error('downloadTasksPdf error', e)
+    try { ui.showError(e?.message || 'Failed to generate PDF') } catch (err) { /* ignore */ }
+  } finally {
+    renderTasksReport.value = false
+    downloadingTasksPdf.value = false
+  }
+}
 
 const projectAllowedTags = computed(() => {
   const p = projectStore.currentProject || {}
@@ -1120,78 +2198,40 @@ function dateInputToMs(v, endOfDay = false) {
   return Number.isFinite(t) ? t : null
 }
 
-function taskResponsibleValue(t) {
-  return norm(
-    t?.responsible ||
-      t?.responsibleRole ||
-      t?.assignedRole ||
-      t?.assigneeRole ||
-      t?.role ||
-      t?.assignee ||
-      t?.assignedTo ||
-      ''
-  )
+function taskAssigneeId(t) {
+  const a = t && t.assignee !== undefined ? t.assignee : null
+  if (!a) return ''
+  if (typeof a === 'string') return String(a)
+  if (typeof a === 'object') return String(a._id || a.id || '')
+  return String(a)
 }
 
-function taskLocationValue(t) {
-  return norm(t?.location || t?.spaceName || t?.space || '')
+function teamMemberLabel(m) {
+  const first = norm(m?.firstName)
+  const last = norm(m?.lastName)
+  const name = norm([first, last].filter(Boolean).join(' '))
+  const role = norm(m?.role)
+  return role ? `${name || '(No name)'} — ${role}` : (name || '(No name)')
 }
 
-function taskSystemValues(t) {
-  const systems = Array.isArray(t?.systems) ? t.systems : []
-  const primary = norm(t?.system || '')
-  const out = new Set()
-  if (primary) out.add(primary)
-  for (const s of systems) {
-    const v = norm(s)
-    if (v) out.add(v)
-  }
-  return Array.from(out)
-}
+const assigneeFilterOptions = computed(() => {
+  const p = projectStore.currentProject || {}
+  const team = Array.isArray(p.team) ? p.team : []
 
-const taskStatusOptions = computed(() => {
-  const set = new Set()
-  for (const t of (tasks.value || [])) {
-    const s = norm(t?.status)
-    if (!s) continue
-    if (normLower(s) === 'deleted') continue
-    set.add(s)
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
-})
+  const options = team
+    .map(m => {
+      const id = String(m?._id || m?.id || '').trim()
+      if (!id) return null
+      return {
+        value: id,
+        label: teamMemberLabel(m),
+        sortKey: `${norm(m?.lastName)}|${norm(m?.firstName)}|${id}`.toLowerCase(),
+      }
+    })
+    .filter(Boolean)
 
-const taskResponsibleOptions = computed(() => {
-  const set = new Set()
-  for (const t of (tasks.value || [])) {
-    const r = taskResponsibleValue(t)
-    if (r) set.add(r)
-  }
-  for (const r of (lists.roleOptions || [])) {
-    const v = norm(r?.value || r)
-    if (v) set.add(v)
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
-})
-
-const taskLocationOptions = computed(() => {
-  const set = new Set()
-  for (const t of (tasks.value || [])) {
-    const l = taskLocationValue(t)
-    if (l) set.add(l)
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
-})
-
-const taskSystemOptions = computed(() => {
-  const set = new Set()
-  for (const t of (tasks.value || [])) {
-    for (const s of taskSystemValues(t)) set.add(s)
-  }
-  for (const s of (lists.systemOptions || [])) {
-    const v = norm(s?.value || s)
-    if (v) set.add(v)
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
+  options.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+  return options.map(({ value, label }) => ({ value, label }))
 })
 
 const canAutoTagTasksPage = computed(() => {
@@ -1448,20 +2488,8 @@ const filtered = computed(() => {
   const statusNeedle = normLower(statusFilter.value)
   if (statusNeedle) list = list.filter(t => normLower(t?.status) === statusNeedle)
 
-  const responsibleNeedle = normLower(responsibleFilter.value)
-  if (responsibleNeedle) list = list.filter(t => normLower(taskResponsibleValue(t)) === responsibleNeedle)
-
-  const locationNeedle = normLower(locationFilter.value)
-  if (locationNeedle) list = list.filter(t => normLower(taskLocationValue(t)) === locationNeedle)
-
-  const systemNeedle = normLower(systemFilter.value)
-  if (systemNeedle) {
-    list = list.filter(t => {
-      const primary = normLower(t?.system)
-      if (primary && primary === systemNeedle) return true
-      return taskSystemValues(t).some(s => normLower(s) === systemNeedle)
-    })
-  }
+  const assigneeNeedle = normLower(assigneeFilter.value)
+  if (assigneeNeedle) list = list.filter(t => normLower(taskAssigneeId(t)) === assigneeNeedle)
 
   const fromMs = dateInputToMs(dateFrom.value, false)
   const toMs = dateInputToMs(dateTo.value, true)

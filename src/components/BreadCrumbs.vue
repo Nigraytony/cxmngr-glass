@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex items-center justify-between gap-4 flex-wrap min-w-0">
+  <div class="flex items-center justify-between gap-4 flex-wrap min-w-0">
     <!-- Left: page title -->
     <div class="min-w-0">
       <h1 class="text-2xl font-semibold text-white truncate">
@@ -10,9 +10,9 @@
     <!-- Middle: optional slot (centered horizontally in the full row) -->
     <div
       v-if="$slots.middle"
-      class="w-full md:w-full md:max-w-xl md:px-4 md:absolute md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:pointer-events-none"
+      class="w-full md:flex-1 md:min-w-0 md:max-w-xl"
     >
-      <div class="md:pointer-events-auto">
+      <div class="w-full min-w-0">
         <slot name="middle" />
       </div>
     </div>

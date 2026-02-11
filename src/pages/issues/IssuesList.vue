@@ -1107,7 +1107,7 @@
                   <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
                     <span v-if="issue.system"><span class="text-white/80">System:</span> {{ issue.system }}</span>
                     <span v-if="issue.location"><span class="text-white/80">Location:</span> {{ issue.location }}</span>
-                    <span v-if="issue.responsible_person"><span class="text-white/80">Responsible:</span> {{ issue.responsible_person }}</span>
+                    <span v-if="issue.responsible_person"><span class="text-white/80">Assigned to:</span> {{ issue.responsible_person }}</span>
                     <span v-if="issue.equipment"><span class="text-white/80">Equipment:</span> {{ issue.equipment }}</span>
                     <span v-if="issue.recommendation"><span class="text-white/80">Recommendation:</span> {{ issue.recommendation }}</span>
                     <span v-if="issue.dueDate"><span class="text-white/80">Due date:</span> {{ formatDueDate(issue.dueDate) }}</span>
