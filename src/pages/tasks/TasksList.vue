@@ -205,10 +205,15 @@
             </div>
           </div>
 
-          <div class="relative inline-block group">
+          <div class="relative inline-block group shrink-0">
             <button
-              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
+              :disabled="!projectStore.currentProjectId"
               aria-label="Toggle analytics"
+              :title="projectStore.currentProjectId ? 'Toggle analytics' : 'Select a project'"
+              :class="[
+                'w-10 h-10 flex items-center justify-center rounded-full text-white border disabled:opacity-40',
+                showAnalytics ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+              ]"
               @click="toggleAnalytics"
             >
               <svg
@@ -216,7 +221,7 @@
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                class="w-4 h-4"
+                class="w-5 h-5"
               >
                 <path
                   d="M4 19V5"
@@ -224,21 +229,24 @@
                   stroke-linecap="round"
                 />
                 <path
-                  d="M4 19h16"
+                  d="M8 19v-6"
                   stroke-width="1.5"
                   stroke-linecap="round"
                 />
                 <path
-                  d="M7 16l3-4 3 2 4-6"
+                  d="M12 19V9"
                   stroke-width="1.5"
                   stroke-linecap="round"
-                  stroke-linejoin="round"
                 />
                 <path
-                  d="M17 8h2v2"
+                  d="M16 19v-3"
                   stroke-width="1.5"
                   stroke-linecap="round"
-                  stroke-linejoin="round"
+                />
+                <path
+                  d="M20 19V7"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
                 />
               </svg>
             </button>
@@ -246,7 +254,7 @@
               role="tooltip"
               class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
             >
-              Analytics
+              {{ showAnalytics ? 'Hide analytics' : 'Show analytics' }}
             </div>
           </div>
 
