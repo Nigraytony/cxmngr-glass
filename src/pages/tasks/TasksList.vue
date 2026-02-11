@@ -917,27 +917,43 @@
             </div>
 
             <div
-              v-if="ganttError"
-              class="text-sm text-red-200 bg-red-500/10 border border-red-400/20 rounded-lg px-3 py-2 mb-2"
-            >
-              {{ ganttError }}
-            </div>
-
-            <div
-              class="gantt-dark rounded-xl overflow-auto bg-slate-950 border border-white/10"
-              style="max-height: 70vh;"
-            >
-              <div
-                ref="ganttEl"
-                class="min-w-[900px]"
-              />
-            </div>
-
-            <div
               v-if="ganttNoTasks"
-              class="text-white/70 text-sm mt-2"
+              class="text-white/70 text-sm"
             >
               No tasks with valid Start/Finish dates to render.
+            </div>
+
+            <div
+              v-else
+              class="rounded-xl overflow-auto bg-slate-950 border border-white/10"
+              style="max-height: 70vh;"
+            >
+              <GGanttChart
+                :chart-start="ganttChartStart"
+                :chart-end="ganttChartEnd"
+                :precision="ganttPrecision"
+                bar-start="start"
+                bar-end="end"
+                color-scheme="dark"
+                :grid="true"
+                label-column-title=""
+                :label-column-width="ganttLabelColumnWidth"
+                width="100%"
+                @click-bar="onGanttBarClick"
+              >
+                <template #label-column-row="{ label }">
+                  <div class="text-white/90 truncate">
+                    {{ label }}
+                  </div>
+                </template>
+
+                <GGanttRow
+                  v-for="row in ganttRows"
+                  :key="row.id"
+                  :label="row.label"
+                  :bars="[row.bar]"
+                />
+              </GGanttChart>
             </div>
           </div>
         </template>
@@ -1787,7 +1803,7 @@ import TasksListCharts from '../../components/charts/TasksListCharts.vue'
   import { http } from '../../utils/http'
   import { runCoachmarkOnce } from '../../utils/coachmarks'
   import { useRoute, useRouter } from 'vue-router'
-import { loadGantt } from '../../lib/frappeGanttAdapter'
+import { GGanttChart, GGanttRow, extendDayjs } from '@infectoone/vue-ganttastic'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 ;(window).html2canvas = (window).html2canvas || html2canvas
@@ -1809,72 +1825,111 @@ const deletingName = ref('')
 const deletingCount = ref(0)
 const viewMode = ref('list')
 
-const ganttEl = ref(null)
 const ganttViewMode = ref('Week')
-const ganttError = ref('')
-const ganttNoTasks = ref(false)
-let ganttCtor = null
+extendDayjs()
 
-function toYmd(d) {
+const ganttPrecision = computed(() => {
+  const m = String(ganttViewMode.value || '').trim().toLowerCase()
+  if (m === 'day') return 'day'
+  if (m === 'week') return 'week'
+  if (m === 'month') return 'month'
+  return 'week'
+})
+
+const ganttLabelColumnWidth = computed(() => {
+  // Wider column helps keep names readable on larger screens.
+  return '340px'
+})
+
+function toGanttDate(d) {
   if (!d) return null
   try {
     const ms = new Date(d).getTime()
     if (!Number.isFinite(ms)) return null
-    return new Date(ms).toISOString().slice(0, 10)
+    return new Date(ms)
   } catch (e) {
     return null
   }
 }
 
-async function renderGantt() {
-  if (viewMode.value !== 'gantt') return
-  if (!ganttEl.value) return
+const taskById = computed(() => {
+  const out = {}
+  for (const t of (tasks.value || [])) {
+    const id = t && t._id ? String(t._id) : ''
+    if (id) out[id] = t
+  }
+  return out
+})
 
-  ganttError.value = ''
-  ganttNoTasks.value = false
-
+const ganttRows = computed(() => {
   const rows = Array.isArray(filtered.value) ? filtered.value : []
-  const items = rows
+  return rows
     .filter(t => t && t._id)
     .map(t => {
-      const start = toYmd(startVal(t))
-      const end = toYmd(endVal(t) || startVal(t))
+      const start = toGanttDate(startVal(t))
+      const end = toGanttDate(endVal(t) || startVal(t))
       if (!start || !end) return null
+      const id = String(t._id)
+      const w = t.wbs ? String(t.wbs) : ''
+      const n = t.name ? String(t.name) : ''
+      const label = `${w ? w + ' ' : ''}${n}`.trim() || w || id
       return {
-        id: String(t._id),
-        name: `${t.wbs ? String(t.wbs) + ' ' : ''}${String(t.name || '').trim()}`.trim() || String(t.wbs || t._id),
-        start,
-        end,
-        progress: Number(pct(t) || 0),
-        dependencies: ''
+        id,
+        label,
+        bar: {
+          start,
+          end,
+          taskId: id,
+          progress: Number(pct(t) || 0),
+          ganttBarConfig: {
+            id,
+            label: '',
+            hasHandles: false,
+            immobile: true,
+            style: {
+              background: 'rgba(59, 130, 246, 0.35)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+            },
+          }
+        }
       }
     })
     .filter(Boolean)
+})
 
-  if (!items.length) {
-    ganttNoTasks.value = true
-    try { ganttEl.value.innerHTML = '' } catch (e) { /* ignore */ }
-    return
+const ganttNoTasks = computed(() => ganttRows.value.length === 0)
+
+const ganttChartStart = computed(() => {
+  const rows = ganttRows.value
+  let min = Infinity
+  for (const r of rows) {
+    const ms = r?.bar?.start ? new Date(r.bar.start).getTime() : NaN
+    if (Number.isFinite(ms)) min = Math.min(min, ms)
   }
+  if (!Number.isFinite(min)) return new Date()
+  // padding
+  return new Date(min - 24 * 60 * 60 * 1000)
+})
 
+const ganttChartEnd = computed(() => {
+  const rows = ganttRows.value
+  let max = -Infinity
+  for (const r of rows) {
+    const ms = r?.bar?.end ? new Date(r.bar.end).getTime() : NaN
+    if (Number.isFinite(ms)) max = Math.max(max, ms)
+  }
+  if (!Number.isFinite(max)) return new Date()
+  // padding
+  return new Date(max + 24 * 60 * 60 * 1000)
+})
+
+function onGanttBarClick({ bar }) {
   try {
-    if (!ganttCtor) ganttCtor = await loadGantt()
-    // reset container to avoid stale SVG
-    ganttEl.value.innerHTML = ''
-    new ganttCtor(ganttEl.value, items, {
-      view_mode: ganttViewMode.value,
-      on_click: (task) => {
-        try {
-          const id = task && task.id ? String(task.id) : ''
-          const original = rows.find(x => x && String(x._id) === id)
-          if (original) openTask(original, null)
-        } catch (e) { /* ignore */ }
-      }
-    })
-  } catch (e) {
-    console.error('renderGantt error', e)
-    ganttError.value = e?.message || 'Failed to render Gantt'
-  }
+    const id = bar?.taskId || bar?.ganttBarConfig?.id ? String(bar.taskId || bar.ganttBarConfig.id) : ''
+    if (!id) return
+    const t = taskById.value[id]
+    if (t) openTask(t, null)
+  } catch (e) { /* ignore */ }
 }
 const showEditModal = ref(false)
 const editingId = ref(null)
@@ -2716,23 +2771,7 @@ const filtered = computed(() => {
 
 // Re-render Gantt when switching views, changing scale, or updating the visible task set.
 // These watchers must be declared after `filtered` to avoid TDZ errors during setup.
-watch(viewMode, async (mode) => {
-  if (mode !== 'gantt') return
-  await nextTick()
-  renderGantt()
-})
-
-watch(ganttViewMode, async () => {
-  if (viewMode.value !== 'gantt') return
-  await nextTick()
-  renderGantt()
-})
-
-watch(filtered, async () => {
-  if (viewMode.value !== 'gantt') return
-  await nextTick()
-  renderGantt()
-})
+// (No watchers needed for GGanttChart; it re-renders reactively.)
 
 const autoTagTaskItems = computed(() => {
   const list = Array.isArray(filtered.value) ? filtered.value : []
@@ -3660,72 +3699,6 @@ async function doDelete() {
   }
 }
 </script>
-
-<style>
-/* Dark theme overrides for frappe-gantt (scoped by wrapper class). */
-.gantt-dark {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.gantt-dark .gantt-container {
-  background: transparent;
-}
-
-.gantt-dark .grid-background,
-.gantt-dark .grid-header,
-.gantt-dark .grid-row {
-  fill: rgba(255, 255, 255, 0.02) !important;
-}
-
-.gantt-dark .grid-line {
-  stroke: rgba(255, 255, 255, 0.08) !important;
-}
-
-.gantt-dark .tick line {
-  stroke: rgba(255, 255, 255, 0.10) !important;
-}
-
-.gantt-dark .tick text,
-.gantt-dark .lower-text,
-.gantt-dark .upper-text {
-  fill: rgba(255, 255, 255, 0.78) !important;
-}
-
-.gantt-dark .bar {
-  fill: rgba(59, 130, 246, 0.35) !important; /* blue */
-  stroke: rgba(255, 255, 255, 0.18) !important;
-}
-
-.gantt-dark .bar-progress {
-  fill: rgba(34, 197, 94, 0.65) !important; /* green */
-}
-
-.gantt-dark .bar-label {
-  fill: rgba(255, 255, 255, 0.90) !important;
-}
-
-.gantt-dark .today-highlight {
-  fill: rgba(251, 191, 36, 0.14) !important; /* amber */
-}
-
-.gantt-dark .handle {
-  fill: rgba(255, 255, 255, 0.30) !important;
-}
-
-.gantt-dark .popup-wrapper {
-  background: rgba(2, 6, 23, 0.95) !important; /* slate-950 */
-  color: rgba(255, 255, 255, 0.92) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-}
-
-.gantt-dark .popup-wrapper .title {
-  color: rgba(255, 255, 255, 0.92) !important;
-}
-
-.gantt-dark .popup-wrapper .subtitle {
-  color: rgba(255, 255, 255, 0.70) !important;
-}
-</style>
 
 <style scoped>
 .drop-enter-from,
