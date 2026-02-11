@@ -37,10 +37,51 @@
           <div class="inline-flex items-center gap-2">
             <div class="relative inline-block group">
               <button
-                :class="['px-3 py-1 rounded', viewMode === 'list' ? 'bg-white/10' : 'bg-transparent']"
+                aria-label="List view"
+                :class="[
+                  'w-10 h-10 flex items-center justify-center rounded-full text-white border',
+                  viewMode === 'list' ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+                ]"
                 @click="viewMode = 'list'"
               >
-                List
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    d="M9 6h12"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M9 12h12"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M9 18h12"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M4 6h.01"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M4 12h.01"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M4 18h.01"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                </svg>
               </button>
               <div
                 role="tooltip"
@@ -52,10 +93,46 @@
 
             <div class="relative inline-block group">
               <button
-                :class="['px-3 py-1 rounded', viewMode === 'gantt' ? 'bg-white/10' : 'bg-transparent']"
+                aria-label="Gantt view"
+                :class="[
+                  'w-10 h-10 flex items-center justify-center rounded-full text-white border',
+                  viewMode === 'gantt' ? 'bg-white/15 border-white/20 hover:bg-white/20' : 'bg-transparent border-white/10 hover:bg-white/10'
+                ]"
                 @click="viewMode = 'gantt'"
               >
-                Gantt
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-5 h-5"
+                >
+                  <path
+                    d="M4 7h6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M4 12h10"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M4 17h8"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M14 7h6v5h-6z"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M16 12h6v5h-6z"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                </svg>
               </button>
               <div
                 role="tooltip"
