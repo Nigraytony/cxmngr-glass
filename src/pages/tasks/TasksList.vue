@@ -50,7 +50,20 @@
               </div>
             </div>
 
-            <!-- Gantt view removed for now -->
+            <div class="relative inline-block group">
+              <button
+                :class="['px-3 py-1 rounded', viewMode === 'gantt' ? 'bg-white/10' : 'bg-transparent']"
+                @click="viewMode = 'gantt'"
+              >
+                Gantt
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Gantt view
+              </div>
+            </div>
           </div>
         </div>
 
@@ -510,7 +523,10 @@
           No tasks found for this project.
         </div>
         <template v-else>
-          <div class="rounded-md border border-white/10">
+          <div
+            v-if="viewMode === 'list'"
+            class="rounded-md border border-white/10"
+          >
             <table class="w-full table-fixed text-sm compact-rows">
               <thead class="bg-white/5 text-white/70">
                 <tr>
@@ -871,6 +887,58 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          <div
+            v-else-if="viewMode === 'gantt'"
+            class="rounded-2xl bg-white/6 border border-white/10 p-3"
+          >
+            <div class="flex items-center justify-between gap-3 mb-2">
+              <div class="text-white/80 text-sm">
+                Gantt
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-white/60 text-xs">Scale</label>
+                <select
+                  v-model="ganttViewMode"
+                  class="px-2 py-1 rounded-md bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-xs border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
+                >
+                  <option value="Day">
+                    Day
+                  </option>
+                  <option value="Week">
+                    Week
+                  </option>
+                  <option value="Month">
+                    Month
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div
+              v-if="ganttError"
+              class="text-sm text-red-200 bg-red-500/10 border border-red-400/20 rounded-lg px-3 py-2 mb-2"
+            >
+              {{ ganttError }}
+            </div>
+
+            <div
+              class="rounded-xl overflow-auto bg-white"
+              style="max-height: 70vh;"
+            >
+              <div
+                ref="ganttEl"
+                class="min-w-[900px]"
+              />
+            </div>
+
+            <div
+              v-if="ganttNoTasks"
+              class="text-white/70 text-sm mt-2"
+            >
+              No tasks with valid Start/Finish dates to render.
+            </div>
           </div>
         </template>
       </div>
@@ -1719,6 +1787,7 @@ import TasksListCharts from '../../components/charts/TasksListCharts.vue'
   import { http } from '../../utils/http'
   import { runCoachmarkOnce } from '../../utils/coachmarks'
   import { useRoute, useRouter } from 'vue-router'
+import { loadGantt } from '../../lib/frappeGanttAdapter'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 ;(window).html2canvas = (window).html2canvas || html2canvas
@@ -1739,6 +1808,74 @@ const deletingId = ref(null)
 const deletingName = ref('')
 const deletingCount = ref(0)
 const viewMode = ref('list')
+
+const ganttEl = ref(null)
+const ganttViewMode = ref('Week')
+const ganttError = ref('')
+const ganttNoTasks = ref(false)
+let ganttCtor = null
+
+function toYmd(d) {
+  if (!d) return null
+  try {
+    const ms = new Date(d).getTime()
+    if (!Number.isFinite(ms)) return null
+    return new Date(ms).toISOString().slice(0, 10)
+  } catch (e) {
+    return null
+  }
+}
+
+async function renderGantt() {
+  if (viewMode.value !== 'gantt') return
+  if (!ganttEl.value) return
+
+  ganttError.value = ''
+  ganttNoTasks.value = false
+
+  const rows = Array.isArray(filtered.value) ? filtered.value : []
+  const items = rows
+    .filter(t => t && t._id)
+    .map(t => {
+      const start = toYmd(startVal(t))
+      const end = toYmd(endVal(t) || startVal(t))
+      if (!start || !end) return null
+      return {
+        id: String(t._id),
+        name: `${t.wbs ? String(t.wbs) + ' ' : ''}${String(t.name || '').trim()}`.trim() || String(t.wbs || t._id),
+        start,
+        end,
+        progress: Number(pct(t) || 0),
+        dependencies: ''
+      }
+    })
+    .filter(Boolean)
+
+  if (!items.length) {
+    ganttNoTasks.value = true
+    try { ganttEl.value.innerHTML = '' } catch (e) { /* ignore */ }
+    return
+  }
+
+  try {
+    if (!ganttCtor) ganttCtor = await loadGantt()
+    // reset container to avoid stale SVG
+    ganttEl.value.innerHTML = ''
+    new ganttCtor(ganttEl.value, items, {
+      view_mode: ganttViewMode.value,
+      on_click: (task) => {
+        try {
+          const id = task && task.id ? String(task.id) : ''
+          const original = rows.find(x => x && String(x._id) === id)
+          if (original) openTask(original, null)
+        } catch (e) { /* ignore */ }
+      }
+    })
+  } catch (e) {
+    console.error('renderGantt error', e)
+    ganttError.value = e?.message || 'Failed to render Gantt'
+  }
+}
 const showEditModal = ref(false)
 const editingId = ref(null)
 const showSettingsModal = ref(false)
@@ -2396,6 +2533,24 @@ function persistListState() {
 }
 watch(listStateKey, () => loadListState(), { immediate: true })
 watch([q, viewMode], () => persistListState())
+
+watch(viewMode, async (mode) => {
+  if (mode !== 'gantt') return
+  await nextTick()
+  renderGantt()
+})
+
+watch(ganttViewMode, async () => {
+  if (viewMode.value !== 'gantt') return
+  await nextTick()
+  renderGantt()
+})
+
+watch(filtered, async () => {
+  if (viewMode.value !== 'gantt') return
+  await nextTick()
+  renderGantt()
+})
 
 async function toggleComplete(t, checked) {
   if (!t || !t._id) return
