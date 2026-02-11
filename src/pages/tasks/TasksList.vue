@@ -924,7 +924,7 @@
             </div>
 
             <div
-              class="rounded-xl overflow-auto bg-white"
+              class="gantt-dark rounded-xl overflow-auto bg-slate-950 border border-white/10"
               style="max-height: 70vh;"
             >
               <div
@@ -3660,6 +3660,72 @@ async function doDelete() {
   }
 }
 </script>
+
+<style>
+/* Dark theme overrides for frappe-gantt (scoped by wrapper class). */
+.gantt-dark {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.gantt-dark .gantt-container {
+  background: transparent;
+}
+
+.gantt-dark .grid-background,
+.gantt-dark .grid-header,
+.gantt-dark .grid-row {
+  fill: rgba(255, 255, 255, 0.02) !important;
+}
+
+.gantt-dark .grid-line {
+  stroke: rgba(255, 255, 255, 0.08) !important;
+}
+
+.gantt-dark .tick line {
+  stroke: rgba(255, 255, 255, 0.10) !important;
+}
+
+.gantt-dark .tick text,
+.gantt-dark .lower-text,
+.gantt-dark .upper-text {
+  fill: rgba(255, 255, 255, 0.78) !important;
+}
+
+.gantt-dark .bar {
+  fill: rgba(59, 130, 246, 0.35) !important; /* blue */
+  stroke: rgba(255, 255, 255, 0.18) !important;
+}
+
+.gantt-dark .bar-progress {
+  fill: rgba(34, 197, 94, 0.65) !important; /* green */
+}
+
+.gantt-dark .bar-label {
+  fill: rgba(255, 255, 255, 0.90) !important;
+}
+
+.gantt-dark .today-highlight {
+  fill: rgba(251, 191, 36, 0.14) !important; /* amber */
+}
+
+.gantt-dark .handle {
+  fill: rgba(255, 255, 255, 0.30) !important;
+}
+
+.gantt-dark .popup-wrapper {
+  background: rgba(2, 6, 23, 0.95) !important; /* slate-950 */
+  color: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.gantt-dark .popup-wrapper .title {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.gantt-dark .popup-wrapper .subtitle {
+  color: rgba(255, 255, 255, 0.70) !important;
+}
+</style>
 
 <style scoped>
 .drop-enter-from,
