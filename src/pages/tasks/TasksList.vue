@@ -2534,24 +2534,6 @@ function persistListState() {
 watch(listStateKey, () => loadListState(), { immediate: true })
 watch([q, viewMode], () => persistListState())
 
-watch(viewMode, async (mode) => {
-  if (mode !== 'gantt') return
-  await nextTick()
-  renderGantt()
-})
-
-watch(ganttViewMode, async () => {
-  if (viewMode.value !== 'gantt') return
-  await nextTick()
-  renderGantt()
-})
-
-watch(filtered, async () => {
-  if (viewMode.value !== 'gantt') return
-  await nextTick()
-  renderGantt()
-})
-
 async function toggleComplete(t, checked) {
   if (!t || !t._id) return
 
@@ -2730,6 +2712,26 @@ const filtered = computed(() => {
   })
 
   return visible
+})
+
+// Re-render Gantt when switching views, changing scale, or updating the visible task set.
+// These watchers must be declared after `filtered` to avoid TDZ errors during setup.
+watch(viewMode, async (mode) => {
+  if (mode !== 'gantt') return
+  await nextTick()
+  renderGantt()
+})
+
+watch(ganttViewMode, async () => {
+  if (viewMode.value !== 'gantt') return
+  await nextTick()
+  renderGantt()
+})
+
+watch(filtered, async () => {
+  if (viewMode.value !== 'gantt') return
+  await nextTick()
+  renderGantt()
 })
 
 const autoTagTaskItems = computed(() => {
