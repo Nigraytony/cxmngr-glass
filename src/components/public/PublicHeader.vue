@@ -11,7 +11,7 @@
           <img
             src="/brand/logo-2.png"
             alt="Cxma logo"
-            class="h-8 w-8 object-contain"
+            class="h-8 w-8 object-contain dark:invert"
           >
         </picture>
         <span class="text-lg font-semibold tracking-wide text-slate-900 dark:text-slate-100">Cxma</span>

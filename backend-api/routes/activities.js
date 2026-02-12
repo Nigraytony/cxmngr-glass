@@ -41,6 +41,63 @@ function sendServerError(res, err, fallback) {
   return res.status(500).send({ error: safeErrorMessage(err, fallback) })
 }
 
+function isAdminLikeRole(role) {
+  const r = String(role || '').trim().toLowerCase()
+  return r === 'admin' || r === 'globaladmin' || r === 'superadmin'
+}
+
+async function isProjectAdminLike(req, projectId) {
+  try {
+    if (isAdminLikeRole(req.user && req.user.role)) return true
+    const pid = String(projectId || '').trim()
+    if (!pid || !mongoose.Types.ObjectId.isValid(pid)) return false
+    const project = await Project.findById(pid).select('team').lean()
+    if (!project || !Array.isArray(project.team)) return false
+    const uid = String(req.user && (req.user._id || req.user.id) || '').trim()
+    const email = String(req.user && req.user.email || '').trim().toLowerCase()
+    if (!uid && !email) return false
+    const member = project.team.find((t) => {
+      if (!t) return false
+      const mid = String(t._id || t.id || '').trim()
+      if (uid && mid && mid === uid) return true
+      const me = String(t.email || '').trim().toLowerCase()
+      if (email && me && me === email) return true
+      return false
+    })
+    if (!member) return false
+    const mr = String(member.role || '').trim().toLowerCase()
+    return mr === 'admin' || mr === 'cxa'
+  } catch (e) {
+    return false
+  }
+}
+
+function activityCreatorId(activity) {
+  if (!activity) return ''
+  const raw = (activity.createdBy && (activity.createdBy._id || activity.createdBy.id)) || activity.createdBy || activity.createdById
+  return String(raw || '').trim()
+}
+
+function normalizeStatusForVisibility(value) {
+  const s = String(value || '').trim().toLowerCase()
+  return s || 'draft'
+}
+
+async function canViewActivity(req, activity) {
+  try {
+    const status = normalizeStatusForVisibility(activity && activity.status)
+    if (status !== 'draft') return true
+    const pid = activity && activity.projectId ? String(activity.projectId) : (req.query && req.query.projectId)
+    if (await isProjectAdminLike(req, pid)) return true
+    const uid = String(req.user && (req.user._id || req.user.id) || '').trim()
+    if (!uid) return false
+    const creator = activityCreatorId(activity)
+    return creator && creator === uid
+  } catch (e) {
+    return false
+  }
+}
+
 // multer memory storage for small images
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 250 * 1024 } });
 const uploadDocs = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -137,6 +194,8 @@ router.post(
   async (req, res) => {
   try {
     const payload = pickActivityPayload(req.body)
+    // Set server-authoritative creator for draft visibility rules.
+    payload.createdBy = req.user && req.user._id ? req.user._id : null
     // Disallow clients from setting heavy media arrays on create; use upload endpoints.
     delete payload.photos
     delete payload.attachments
@@ -189,8 +248,24 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
 
     // Return a lightweight list with counts for UI list views, without embedding heavy arrays
     // like photos (base64) or full comments/attachments.
+    const adminLike = await isProjectAdminLike(req, projectId)
+    const baseMatch = filter
+    const visibilityMatch = adminLike
+      ? baseMatch
+      : {
+        $and: [
+          baseMatch,
+          {
+            $or: [
+              { $expr: { $ne: [{ $ifNull: ['$status', 'draft'] }, 'draft'] } },
+              { createdBy: new mongoose.Types.ObjectId(String(req.user && req.user._id || '')) },
+            ],
+          },
+        ],
+      }
+
     const activities = await Activity.aggregate([
-      { $match: filter },
+      { $match: visibilityMatch },
       { $sort: { createdAt: -1 } },
       {
         $project: {
@@ -200,6 +275,7 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
           startDate: 1,
           endDate: 1,
           projectId: 1,
+          createdBy: 1,
           status: { $ifNull: ['$status', 'draft'] },
           location: 1,
           spaceId: 1,
@@ -234,7 +310,20 @@ router.get('/analytics', auth, requireFeature('activities'), requirePermission('
     if (!projectId) return res.status(400).send({ error: 'projectId is required' })
     if (!mongoose.Types.ObjectId.isValid(String(projectId))) return res.status(400).send({ error: 'Invalid projectId' })
     const projectObjectId = new mongoose.Types.ObjectId(String(projectId))
-    const projectMatch = { projectId: projectObjectId }
+    const adminLike = await isProjectAdminLike(req, projectId)
+    const projectMatch = adminLike
+      ? { projectId: projectObjectId }
+      : {
+        $and: [
+          { projectId: projectObjectId },
+          {
+            $or: [
+              { $expr: { $ne: [{ $ifNull: ['$status', 'draft'] }, 'draft'] } },
+              { createdBy: new mongoose.Types.ObjectId(String(req.user && req.user._id || '')) },
+            ],
+          },
+        ],
+      }
 
     const [
       activitiesByStatusAgg,
@@ -341,7 +430,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
-    const lightFields = 'name type status startDate endDate projectId location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues'
+    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos
@@ -356,6 +445,9 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     if (!activity) {
       return res.status(404).send()
     }
+    if (!(await canViewActivity(req, activity))) {
+      return res.status(404).send()
+    }
     res.status(200).send(activity)
   } catch (error) {
     console.error('[activities] get error', error && (error.stack || error.message || error))
@@ -366,8 +458,11 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
 // Photos-only endpoint to avoid sending other heavy fields
 router.get('/:id/photos', auth, requireObjectIdParam('id'), loadActivityProjectId, requireFeature('activities'), requireActivitiesRead, async (req, res) => {
   try {
-    const activity = await Activity.findById(req.params.id).select('photos').lean()
+    const activity = await Activity.findById(req.params.id).select('photos status projectId createdBy').lean()
     if (!activity) return res.status(404).send()
+    if (!(await canViewActivity(req, activity))) {
+      return res.status(404).send()
+    }
     res.status(200).send(activity.photos || [])
   } catch (error) {
     console.error('[activities] photos get error', error && (error.stack || error.message || error))

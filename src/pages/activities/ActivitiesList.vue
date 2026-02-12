@@ -1259,6 +1259,22 @@ const filtered = computed(() => {
   let list = store.activities as any[]
   // activities in store are already filtered by current project in fetchActivities()
 
+  // Draft visibility: only the creator + admin/global-admin should see Draft.
+  // Everyone else can see Published/Completed.
+  try {
+    const role = String(auth && (auth as any).user && (auth as any).user.role || '').trim().toLowerCase()
+    const isAdminLike = role === 'admin' || role === 'globaladmin' || role === 'superadmin'
+    if (!isAdminLike) {
+      const uid = String(auth && (auth as any).user && ((auth as any).user._id || (auth as any).user.id) || '').trim()
+      list = list.filter((a: any) => {
+        const st = statusValue(a)
+        if (st !== 'draft') return true
+        const creator = String((a && (a.createdBy?._id || a.createdBy?.id)) || a?.createdBy || a?.createdById || '').trim()
+        return Boolean(uid && creator && creator === uid)
+      })
+    }
+  } catch (e) { /* ignore */ }
+
   const typeNeedle = normLower(typeFilter.value)
   if (typeNeedle) list = list.filter((a: any) => normLower(a?.type) === typeNeedle)
 

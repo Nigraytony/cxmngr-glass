@@ -33,6 +33,8 @@ const activitySchema = new mongoose.Schema({
   startDate: { type: Date, default: Date.now },
   endDate: { type: Date, default: Date.now },
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
+  // Creator of the activity (used for Draft visibility)
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   issues: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Issue' }],
   // comments include user identity and optional avatar for display
   comments: [{ userId: mongoose.Schema.Types.ObjectId, name: String, avatar: String, text: String, createdAt: { type: Date, default: Date.now } }],
@@ -74,6 +76,7 @@ activitySchema.pre('save', function (next) {
 // Useful indexes to speed up common queries
 activitySchema.index({ projectId: 1 })
 activitySchema.index({ projectId: 1, status: 1 })
+activitySchema.index({ projectId: 1, createdBy: 1 })
 activitySchema.index({ startDate: 1 })
 activitySchema.index({ 'comments.userId': 1 })
 activitySchema.index({ spaceId: 1 })

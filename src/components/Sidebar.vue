@@ -33,7 +33,7 @@
         >
           <picture>
             <source
-              srcset="/brand/logo.svg"
+              srcset="/brand/logo-2.svg"
               type="image/svg+xml"
             >
             <img

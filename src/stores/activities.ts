@@ -23,6 +23,7 @@ export interface Activity {
   descriptionHtml?: string
   type?: string
   status?: 'draft' | 'published' | 'completed'
+  createdBy?: string
   startDate?: string
   endDate?: string
   projectId: string
