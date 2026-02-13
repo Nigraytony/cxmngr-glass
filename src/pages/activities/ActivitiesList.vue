@@ -346,25 +346,6 @@
           </div>
 
           <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">Responsible</label>
-            <select
-              v-model="responsibleFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
-            >
-              <option value="">
-                All
-              </option>
-              <option
-                v-for="opt in responsibleOptions"
-                :key="`r-${opt}`"
-                :value="opt"
-              >
-                {{ opt }}
-              </option>
-            </select>
-          </div>
-
-          <div class="col-span-12 sm:col-span-3">
             <label class="block text-white/70 text-sm">Location</label>
             <select
               v-model="locationFilter"
@@ -384,26 +365,7 @@
           </div>
 
           <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">System</label>
-            <select
-              v-model="systemFilter"
-              class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
-            >
-              <option value="">
-                All
-              </option>
-              <option
-                v-for="opt in systemOptions"
-                :key="`sys-${opt}`"
-                :value="opt"
-              >
-                {{ opt }}
-              </option>
-            </select>
-          </div>
-
-          <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">From</label>
+            <label class="block text-white/70 text-sm">Start date</label>
             <input
               v-model="dateFrom"
               type="date"
@@ -415,7 +377,7 @@
           </div>
 
           <div class="col-span-12 sm:col-span-3">
-            <label class="block text-white/70 text-sm">To</label>
+            <label class="block text-white/70 text-sm">End date</label>
             <input
               v-model="dateTo"
               type="date"
@@ -435,6 +397,16 @@
               class="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
+        </div>
+
+        <div class="mt-3 flex items-center justify-start gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+            @click="clearAdvancedFilters"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
     </div>
@@ -958,9 +930,7 @@ const q = ref('')
 const typeFilter = ref<string>('')
 const showAdvancedFilters = ref(false)
 const statusFilter = ref<'draft' | 'published' | 'completed' | ''>('')
-const responsibleFilter = ref<string>('')
 const locationFilter = ref<string>('')
-const systemFilter = ref<string>('')
 const dateFrom = ref<string>('')
 const dateTo = ref<string>('')
 const tagsFilter = ref<string>('')
@@ -1120,7 +1090,18 @@ onMounted(async () => {
 
 function fmt(d?: string) {
   if (!d) return ''
-  try { return new Date(d).toLocaleDateString() } catch (e) { return String(d) }
+  const s = String(d).trim()
+  if (!s) return ''
+
+  const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s)
+  const hasExplicitTimezone = /Z$/.test(s) || /[+-]\d{2}:\d{2}$/.test(s)
+  const useUtc = isDateOnly || hasExplicitTimezone
+
+  try {
+    return new Date(s).toLocaleDateString(undefined, useUtc ? { timeZone: 'UTC' } : undefined)
+  } catch (e) {
+    return s
+  }
 }
 
 watch(() => projectStore.currentProjectId, async (pid) => {
@@ -1202,32 +1183,6 @@ function dateInputToMs(v: any, endOfDay = false) {
   return Number.isFinite(t) ? t : null
 }
 
-function activityResponsibleValue(a: any) {
-  return norm(
-    a?.responsible ||
-      a?.responsibleRole ||
-      a?.assignedRole ||
-      a?.assigneeRole ||
-      a?.role ||
-      a?.assignee ||
-      a?.assignedTo ||
-      ''
-  )
-}
-
-const responsibleOptions = computed(() => {
-  const set = new Set<string>()
-  for (const a of (store.activities as any[])) {
-    const r = activityResponsibleValue(a)
-    if (r) set.add(r)
-  }
-  for (const r of (lists.roleOptions || [])) {
-    const v = norm((r as any)?.value || r)
-    if (v) set.add(v)
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
-})
-
 const locationOptions = computed(() => {
   const set = new Set<string>()
   for (const a of (store.activities as any[])) {
@@ -1237,23 +1192,13 @@ const locationOptions = computed(() => {
   return Array.from(set).sort((a, b) => a.localeCompare(b))
 })
 
-const systemOptions = computed(() => {
-  const set = new Set<string>()
-  for (const a of (store.activities as any[])) {
-    const systems = Array.isArray(a?.systems) ? a.systems : []
-    const primary = norm(a?.system)
-    if (primary) set.add(primary)
-    for (const s of systems) {
-      const v = norm(s)
-      if (v) set.add(v)
-    }
-  }
-  for (const s of (lists.systemOptions || [])) {
-    const v = norm((s as any)?.value || s)
-    if (v) set.add(v)
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b))
-})
+function clearAdvancedFilters() {
+  statusFilter.value = ''
+  locationFilter.value = ''
+  dateFrom.value = ''
+  dateTo.value = ''
+  tagsFilter.value = ''
+}
 
 const filtered = computed(() => {
   let list = store.activities as any[]
@@ -1281,21 +1226,8 @@ const filtered = computed(() => {
   const statusNeedle = normLower(statusFilter.value)
   if (statusNeedle) list = list.filter((a: any) => statusValue(a) === statusNeedle)
 
-  const responsibleNeedle = normLower(responsibleFilter.value)
-  if (responsibleNeedle) list = list.filter((a: any) => normLower(activityResponsibleValue(a)) === responsibleNeedle)
-
   const locationNeedle = normLower(locationFilter.value)
   if (locationNeedle) list = list.filter((a: any) => normLower(a?.location) === locationNeedle)
-
-  const systemNeedle = normLower(systemFilter.value)
-  if (systemNeedle) {
-    list = list.filter((a: any) => {
-      const primary = normLower(a?.system)
-      if (primary && primary === systemNeedle) return true
-      const systems = Array.isArray(a?.systems) ? a.systems : []
-      return systems.some((s: any) => normLower(s) === systemNeedle)
-    })
-  }
 
   const fromMs = dateInputToMs(dateFrom.value, false)
   const toMs = dateInputToMs(dateTo.value, true)

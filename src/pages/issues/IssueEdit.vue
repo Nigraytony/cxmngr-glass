@@ -361,7 +361,7 @@
                   theme="snow"
                   content-type="html"
                   :read-only="isClosed"
-                  class="rounded-md min-h-[24rem]"
+                  class="rounded-md"
                 />
               </div>
             </div>
@@ -2543,10 +2543,15 @@ const isClosedToggle = computed({
   border-color: rgba(255, 255, 255, 0.2);
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
-  min-height: 22rem;
+  /* Fixed-height editor: keep layout stable; scroll inside. */
+  height: 18rem;
+  max-height: 50vh;
 }
 :deep(.ql-editor) {
   color: #fff;
+  /* Scroll content inside the fixed container */
+  height: 100%;
+  overflow-y: auto;
 }
 :deep(.ql-editor.ql-blank::before) {
   /* Tailwind gray-400 for better readability on glass background */

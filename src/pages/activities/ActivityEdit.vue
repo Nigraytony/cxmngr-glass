@@ -188,29 +188,211 @@
           <!-- Info Tab -->
           <div
             v-if="currentTab === 'Info'"
-            class="grid md:grid-cols-2 gap-x-4 gap-y-1 items-start"
+            class="grid md:grid-cols-2 gap-4 items-start"
           >
-            <div>
-              <label class="block text-sm text-white/70">Name</label>
-              <input
-                v-model="form.name"
-                type="text"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                placeholder="Activity name"
-              >
+            <div class="flex flex-col gap-3 min-w-0">
+              <div>
+                <label class="block text-sm text-white/70">Name</label>
+                <input
+                  v-model="form.name"
+                  type="text"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  placeholder="Activity name"
+                >
+              </div>
+
+              <div>
+                <label class="block text-sm text-white/70">Type</label>
+                <div class="relative">
+                  <button
+                    type="button"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                    @click="showTypeOptions"
+                    @keydown.down.prevent="onTypeArrow(1)"
+                    @keydown.up.prevent="onTypeArrow(-1)"
+                    @keydown.enter.prevent="chooseHighlightedType"
+                    @keydown.esc="hideTypeDropdown"
+                    @blur="hideTypeDropdown"
+                    @wheel.prevent="(e) => onTypeArrow(e.deltaY > 0 ? 1 : -1)"
+                  >
+                    <span>{{ form.type }}</span>
+                    <svg
+                      class="w-4 h-4 text-white/50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    v-if="showTypeDropdown"
+                    class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                  >
+                    <div class="py-1">
+                      <button
+                        v-for="(type, i) in types"
+                        :key="type"
+                        type="button"
+                        class="w-full px-3 py-2 text-left text-white/90"
+                        :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                        @mousedown.prevent="selectType(type)"
+                      >
+                        {{ type }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm text-white/70">Status</label>
+                <select
+                  v-model="form.status"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+                >
+                  <option value="draft">
+                    Draft
+                  </option>
+                  <option value="published">
+                    Published
+                  </option>
+                  <option value="completed">
+                    Completed
+                  </option>
+                </select>
+              </div>
+
+              <div v-if="linkedTasks.length > 0">
+                <label class="block text-sm text-white/70">Linked Tasks</label>
+                <div class="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/80">
+                  <div
+                    v-if="linkedTasksLoading"
+                    class="text-white/60"
+                  >
+                    Loading…
+                  </div>
+                  <div
+                    v-else
+                    class="space-y-1"
+                  >
+                    <div
+                      v-for="t in linkedTasks"
+                      :key="t._id"
+                      class="flex items-center justify-between gap-2"
+                    >
+                      <div class="min-w-0 truncate">
+                        <span
+                          v-if="t.wbs"
+                          class="text-white/60"
+                        >{{ t.wbs }} — </span>{{ t.name }}
+                      </div>
+                      <RouterLink
+                        :to="{ name: 'task-edit', params: { id: t._id } }"
+                        class="text-xs text-white/70 hover:text-white underline shrink-0"
+                      >
+                        Open
+                      </RouterLink>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-sm text-white/70">Start Date</label>
+                    <input
+                      v-model="form.startDate"
+                      type="date"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    >
+                  </div>
+                  <div>
+                    <label class="block text-sm text-white/70">End Date</label>
+                    <input
+                      v-model="form.endDate"
+                      type="date"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm text-white/70">Location</label>
+                <div class="relative">
+                  <input
+                    v-model="spaceQuery"
+                    type="text"
+                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    placeholder="Search spaces by tag, title or parent..."
+                    @input="onSpaceInput"
+                    @keydown.down.prevent="onSpaceArrow(1)"
+                    @keydown.up.prevent="onSpaceArrow(-1)"
+                    @keydown.enter.prevent="chooseHighlightedSpace"
+                    @keydown.esc="hideSpaceSuggestions"
+                    @focus="onSpaceFocus"
+                    @blur="hideSpaceSuggestions"
+                  >
+                  <button
+                    v-if="form.spaceId"
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                    title="Clear selected space"
+                    @click="clearSpace"
+                  >
+                    ✕
+                  </button>
+
+                  <div
+                    v-if="showSpaceSuggestions && filteredSpaceSuggestions.length"
+                    class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                  >
+                    <div class="py-1">
+                      <button
+                        v-for="(s, i) in filteredSpaceSuggestions"
+                        :key="s.id || s._id"
+                        class="w-full px-3 py-2 text-left inline-flex items-center justify-between gap-3 text-white/90"
+                        :class="i === highlightedSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                        @mousedown.prevent="selectSpace(s)"
+                      >
+                        <span class="min-w-0 flex-1 truncate">
+                          <span class="font-medium">{{ s.tag || '(no tag)' }}</span>
+                          <span class="text-white/70 ml-2">{{ s.title }}</span>
+                        </span>
+                        <span class="text-xs text-white/60 truncate">{{ spaceParentChainLabel(s) }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <input
+                  v-model="form.spaceId"
+                  type="hidden"
+                >
+              </div>
             </div>
 
-            <div class="md:row-span-4">
-              <label class="block text-sm text-white/70">Description</label>
-              <div class="rounded-md border border-white/20 bg-white/10">
-                <QuillEditor
-                  v-model:content="form.descriptionHtml"
-                  theme="snow"
-                  content-type="html"
-                  class="rounded-md"
-                />
+            <div class="flex flex-col gap-3 min-w-0">
+              <div>
+                <label class="block text-sm text-white/70">Description</label>
+                <div class="rounded-md border border-white/20 bg-white/10">
+                  <QuillEditor
+                    v-model:content="form.descriptionHtml"
+                    theme="snow"
+                    content-type="html"
+                    class="rounded-md"
+                  />
+                </div>
               </div>
-              <div class="mt-3">
+
+              <div>
                 <div class="flex items-center gap-3">
                   <div class="text-sm text-white/70 shrink-0">
                     Tags
@@ -305,186 +487,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div>
-              <label class="block text-sm text-white/70">Type</label>
-              <div class="relative">
-                <button
-                  type="button"
-                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
-                  @click="showTypeOptions"
-                  @keydown.down.prevent="onTypeArrow(1)"
-                  @keydown.up.prevent="onTypeArrow(-1)"
-                  @keydown.enter.prevent="chooseHighlightedType"
-                  @keydown.esc="hideTypeDropdown"
-                  @blur="hideTypeDropdown"
-                  @wheel.prevent="(e) => onTypeArrow(e.deltaY > 0 ? 1 : -1)"
-                >
-                  <span>{{ form.type }}</span>
-                  <svg
-                    class="w-4 h-4 text-white/50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-
-                <div
-                  v-if="showTypeDropdown"
-                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
-                >
-                  <div class="py-1">
-                    <button
-                      v-for="(type, i) in types"
-                      :key="type"
-                      type="button"
-                      class="w-full px-3 py-2 text-left text-white/90"
-                      :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @mousedown.prevent="selectType(type)"
-                    >
-                      {{ type }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-3">
-                <label class="block text-sm text-white/70">Status</label>
-                <select
-                  v-model="form.status"
-                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
-                >
-                  <option value="draft">
-                    Draft
-                  </option>
-                  <option value="published">
-                    Published
-                  </option>
-                  <option value="completed">
-                    Completed
-                  </option>
-                </select>
-              </div>
-
-              <div
-                v-if="linkedTasks.length > 0"
-                class="md:col-span-1 mt-3"
-              >
-                <label class="block text-sm text-white/70">Linked Tasks</label>
-                <div class="rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white/80">
-                  <div
-                    v-if="linkedTasksLoading"
-                    class="text-white/60"
-                  >
-                    Loading…
-                  </div>
-                  <div
-                    v-else
-                    class="space-y-1"
-                  >
-                    <div
-                      v-for="t in linkedTasks"
-                      :key="t._id"
-                      class="flex items-center justify-between gap-2"
-                    >
-                      <div class="min-w-0 truncate">
-                        <span
-                          v-if="t.wbs"
-                          class="text-white/60"
-                        >{{ t.wbs }} — </span>{{ t.name }}
-                      </div>
-                      <RouterLink
-                        :to="{ name: 'task-edit', params: { id: t._id } }"
-                        class="text-xs text-white/70 hover:text-white underline shrink-0"
-                      >
-                        Open
-                      </RouterLink>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="space-y-1">
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="block text-sm text-white/70">Start Date</label>
-                  <input
-                    v-model="form.startDate"
-                    type="date"
-                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                  >
-                </div>
-                <div>
-                  <label class="block text-sm text-white/70">End Date</label>
-                  <input
-                    v-model="form.endDate"
-                    type="date"
-                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                  >
-                </div>
-              </div>
-            </div>
-
-            <div class="mt-1">
-              <label class="block text-sm text-white/70">Location</label>
-              <div class="relative">
-                <input
-                  v-model="spaceQuery"
-                  type="text"
-                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
-                  placeholder="Search spaces by tag, title or parent..."
-                  @input="onSpaceInput"
-                  @keydown.down.prevent="onSpaceArrow(1)"
-                  @keydown.up.prevent="onSpaceArrow(-1)"
-                  @keydown.enter.prevent="chooseHighlightedSpace"
-                  @keydown.esc="hideSpaceSuggestions"
-                  @focus="onSpaceFocus"
-                  @blur="hideSpaceSuggestions"
-                >
-                <button
-                  v-if="form.spaceId"
-                  type="button"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
-                  title="Clear selected space"
-                  @click="clearSpace"
-                >
-                  ✕
-                </button>
-
-                <div
-                  v-if="showSpaceSuggestions && filteredSpaceSuggestions.length"
-                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
-                >
-                  <div class="py-1">
-                    <button
-                      v-for="(s, i) in filteredSpaceSuggestions"
-                      :key="s.id || s._id"
-                      class="w-full px-3 py-2 text-left inline-flex items-center justify-between gap-3 text-white/90"
-                      :class="i === highlightedSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                      @mousedown.prevent="selectSpace(s)"
-                    >
-                      <span class="min-w-0 flex-1 truncate">
-                        <span class="font-medium">{{ s.tag || '(no tag)' }}</span>
-                        <span class="text-white/70 ml-2">{{ s.title }}</span>
-                      </span>
-                      <span class="text-xs text-white/60 truncate">{{ spaceParentChainLabel(s) }}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <input
-                v-model="form.spaceId"
-                type="hidden"
-              >
             </div>
 
             <div class="md:col-span-2">
@@ -5212,14 +5214,14 @@ watch(() => form.projectId, async (pid) => {
   border-color: rgba(255, 255, 255, 0.2);
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
-  /* Constrain editor height so page doesn't grow endlessly */
-  min-height: 16rem;   /* comfortable initial space */
-  max-height: 50vh;    /* cap to viewport */
+  /* Fixed-height editor: keep layout stable; scroll inside. */
+  height: 18rem;
+  max-height: 50vh;
 }
 :deep(.ql-editor) {
   color: #fff;
-  /* Make the editor area scroll inside the fixed container */
-  max-height: 50vh;
+  /* Scroll content inside the fixed container */
+  height: 100%;
   overflow-y: auto;
 }
 :deep(.ql-editor.ql-blank::before) {

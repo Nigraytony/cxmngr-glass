@@ -443,7 +443,7 @@
         class="w-full hidden md:block mt-3 pt-3 border-t border-white/10"
       >
         <div class="space-y-3">
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div class="flex flex-col gap-1">
               <label class="text-white/70 text-sm">Location</label>
               <input
@@ -454,73 +454,6 @@
               >
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-white/70 text-sm">Responsible</label>
-              <input
-                v-model="responsibleFilter"
-                type="text"
-                placeholder="name or email"
-                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-              >
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="text-white/70 text-sm">Tags</label>
-              <input
-                v-model="tagsFilter"
-                type="text"
-                placeholder="comma-separated"
-                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-              >
-            </div>
-            <div class="flex flex-col gap-1">
-              <label class="text-white/70 text-sm">Installation Date</label>
-              <div class="grid grid-cols-2 gap-2">
-                <input
-                  v-model="installationDateFrom"
-                  type="date"
-                  placeholder="From"
-                  :class="[
-                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                    installationDateFrom ? 'text-white' : 'text-white/60',
-                  ]"
-                >
-                <input
-                  v-model="installationDateTo"
-                  type="date"
-                  placeholder="To"
-                  :class="[
-                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                    installationDateTo ? 'text-white' : 'text-white/60',
-                  ]"
-                >
-              </div>
-            </div>
-          </div>
-	
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-3">
-            <div class="flex flex-col gap-1">
-              <label class="text-white/70 text-sm">Test Date</label>
-              <div class="grid grid-cols-2 gap-2">
-                <input
-                  v-model="testDateFrom"
-                  type="date"
-                  placeholder="From"
-                  :class="[
-                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                    testDateFrom ? 'text-white' : 'text-white/60',
-                  ]"
-                >
-                <input
-                  v-model="testDateTo"
-                  type="date"
-                  placeholder="To"
-                  :class="[
-                    'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                    testDateTo ? 'text-white' : 'text-white/60',
-                  ]"
-                >
-              </div>
-            </div>
-            <div class="flex flex-col gap-1">
               <label class="text-white/70 text-sm">System</label>
               <div
                 ref="systemMenuRef"
@@ -528,7 +461,7 @@
               >
                 <button
                   :aria-expanded="showSystemMenu ? 'true' : 'false'"
-                  class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
+                  class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2 w-full justify-between"
                   @click="toggleSystemMenu"
                 >
                   <span class="flex items-center gap-2 min-w-0">
@@ -567,6 +500,15 @@
                   </div>
                 </div>
               </div>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-white/70 text-sm">Tags</label>
+              <input
+                v-model="tagsFilter"
+                type="text"
+                placeholder="comma-separated"
+                class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+              >
             </div>
           </div>
         </div>
@@ -687,15 +629,6 @@
             >
           </div>
           <div class="flex flex-col gap-1">
-            <label class="text-white/70 text-sm">Responsible</label>
-            <input
-              v-model="responsibleFilter"
-              type="text"
-              placeholder="name or email"
-              class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-            >
-          </div>
-          <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">Tags</label>
             <input
               v-model="tagsFilter"
@@ -721,52 +654,6 @@
                 {{ opt.name }} ({{ opt.count }})
               </option>
             </select>
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-white/70 text-sm">Installation Date</label>
-            <div class="grid grid-cols-2 gap-2">
-              <input
-                v-model="installationDateFrom"
-                type="date"
-                placeholder="From"
-                :class="[
-                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                  installationDateFrom ? 'text-white' : 'text-white/60',
-                ]"
-              >
-              <input
-                v-model="installationDateTo"
-                type="date"
-                placeholder="To"
-                :class="[
-                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                  installationDateTo ? 'text-white' : 'text-white/60',
-                ]"
-              >
-            </div>
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-white/70 text-sm">Test Date</label>
-            <div class="grid grid-cols-2 gap-2">
-              <input
-                v-model="testDateFrom"
-                type="date"
-                placeholder="From"
-                :class="[
-                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                  testDateFrom ? 'text-white' : 'text-white/60',
-                ]"
-              >
-              <input
-                v-model="testDateTo"
-                type="date"
-                placeholder="To"
-                :class="[
-                  'px-3 py-2 rounded-lg appearance-none [color-scheme:dark] bg-white/10 hover:bg-white/15 focus:bg-white/15 text-sm border border-white/15 focus:outline-none focus:ring-2 focus:ring-white/30 placeholder-white/40',
-                  testDateTo ? 'text-white' : 'text-white/60',
-                ]"
-              >
-            </div>
           </div>
         </div>
       </div>
@@ -1758,13 +1645,8 @@ const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operati
 		const onlyWithFpt = ref(false)
 		const onlyWithIssues = ref(false)
 		const checklistSystemFilter = ref('')
-	const locationFilter = ref('')
-	const responsibleFilter = ref('')
-	const tagsFilter = ref('')
-	const installationDateFrom = ref('')
-	const installationDateTo = ref('')
-	const testDateFrom = ref('')
-	const testDateTo = ref('')
+  const locationFilter = ref('')
+  const tagsFilter = ref('')
 	const showAdvancedFilters = ref(false)
 	const showFiltersModal = ref(false)
 const serverTypes = ref<string[]>([])
@@ -1993,16 +1875,12 @@ function isoDateOnly(value: any): string {
 	  const reqIssues = onlyWithIssues.value
 	  const checklistSys = checklistSystemFilter.value
 	  const loc = String(locationFilter.value || '').trim().toLowerCase()
-	  const resp = String(responsibleFilter.value || '').trim().toLowerCase()
+	  
   const wantTags = String(tagsFilter.value || '')
     .split(',')
     .map(s => String(s || '').trim().toLowerCase())
     .filter(Boolean)
     .slice(0, 30)
-  const instFrom = isoDateOnly(installationDateFrom.value)
-  const instTo = isoDateOnly(installationDateTo.value)
-  const testFrom = isoDateOnly(testDateFrom.value)
-  const testTo = isoDateOnly(testDateTo.value)
 
 	  const baseList = serverFetchedOnce.value ? listEquipment.value : equipment.value
 	  return (baseList || []).filter(e => {
@@ -2023,26 +1901,10 @@ function isoDateOnly(value: any): string {
 	      const chain = String(equipmentSpaceChain(e) || '').toLowerCase()
 	      if (!chain.includes(loc)) return false
     }
-    if (resp) {
-      const v = String((e as any)?.responsible || '').toLowerCase()
-      if (!v.includes(resp)) return false
-    }
     if (wantTags.length) {
       const tagsArr: any[] = Array.isArray((e as any)?.tags) ? (e as any).tags : []
       const tagSet = new Set(tagsArr.map(t => String(t || '').trim().toLowerCase()).filter(Boolean))
       if (!wantTags.some(t => tagSet.has(t))) return false
-    }
-    if (instFrom || instTo) {
-      const d = isoDateOnly((e as any)?.installationDate)
-      if (!d) return false
-      if (instFrom && d < instFrom) return false
-      if (instTo && d > instTo) return false
-    }
-    if (testFrom || testTo) {
-      const d = isoDateOnly((e as any)?.testDate)
-      if (!d) return false
-      if (testFrom && d < testFrom) return false
-      if (testTo && d > testTo) return false
     }
     if (!q) return true
     const fields = [e.tag || '', e.title || '', e.type || '', e.system || ''].map(f => f.toLowerCase())
@@ -2098,12 +1960,7 @@ function loadListState() {
 	      if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
       if (typeof data.checklistSystemFilter === 'string') checklistSystemFilter.value = data.checklistSystemFilter
       if (typeof data.locationFilter === 'string') locationFilter.value = data.locationFilter
-      if (typeof data.responsibleFilter === 'string') responsibleFilter.value = data.responsibleFilter
       if (typeof data.tagsFilter === 'string') tagsFilter.value = data.tagsFilter
-      if (typeof data.installationDateFrom === 'string') installationDateFrom.value = data.installationDateFrom
-      if (typeof data.installationDateTo === 'string') installationDateTo.value = data.installationDateTo
-      if (typeof data.testDateFrom === 'string') testDateFrom.value = data.testDateFrom
-      if (typeof data.testDateTo === 'string') testDateTo.value = data.testDateTo
       if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
       if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
     }
@@ -2122,12 +1979,7 @@ function persistListState() {
       onlyWithIssues: !!onlyWithIssues.value,
       checklistSystemFilter: checklistSystemFilter.value || '',
       locationFilter: locationFilter.value || '',
-      responsibleFilter: responsibleFilter.value || '',
       tagsFilter: tagsFilter.value || '',
-      installationDateFrom: installationDateFrom.value || '',
-      installationDateTo: installationDateTo.value || '',
-      testDateFrom: testDateFrom.value || '',
-      testDateTo: testDateTo.value || '',
       sortKey: sortKey.value || '',
       sortDir: sortDir.value,
     }
@@ -2151,12 +2003,7 @@ function openFilters() {
 
 function clearAdvancedFilters() {
   locationFilter.value = ''
-  responsibleFilter.value = ''
   tagsFilter.value = ''
-  installationDateFrom.value = ''
-  installationDateTo.value = ''
-  testDateFrom.value = ''
-  testDateTo.value = ''
   systemFilter.value = ''
   try { closeSystemMenu() } catch (e) { /* ignore */ }
 }
@@ -3561,16 +3408,7 @@ async function fetchEquipmentPage(projectId?: string) {
     if (systemFilter.value) params.system = systemFilter.value
     if (statusFilter.value) params.status = statusFilter.value
     if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value || '').trim()
-    if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value || '').trim()
     if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value || '').trim()
-    const instFrom = isoDateOnly(installationDateFrom.value)
-    const instTo = isoDateOnly(installationDateTo.value)
-    const testFrom = isoDateOnly(testDateFrom.value)
-    const testTo = isoDateOnly(testDateTo.value)
-    if (instFrom) params.installationDateFrom = instFrom
-    if (instTo) params.installationDateTo = instTo
-    if (testFrom) params.testDateFrom = testFrom
-    if (testTo) params.testDateTo = testTo
 	    if (onlyWithChecklists.value) params.hasChecklists = '1'
 	    if (onlyWithFpt.value) params.hasFpt = '1'
 	    if (onlyWithIssues.value) params.hasIssues = '1'
@@ -3676,12 +3514,7 @@ const debouncedFetch = debounce(() => { fetchEquipmentPage().catch(() => {}) }, 
 	  () => systemFilter.value,
 	  () => statusFilter.value,
 	  () => locationFilter.value,
-	  () => responsibleFilter.value,
 	  () => tagsFilter.value,
-	  () => installationDateFrom.value,
-	  () => installationDateTo.value,
-	  () => testDateFrom.value,
-	  () => testDateTo.value,
 	  () => onlyWithChecklists.value,
 	  () => myChecklistsOnly.value,
 	  () => onlyWithFpt.value,
@@ -4037,16 +3870,7 @@ async function downloadEquipmentList() {
     system: systemFilter.value || '',
   }
   if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value || '').trim()
-  if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value || '').trim()
   if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value || '').trim()
-  const instFrom = isoDateOnly(installationDateFrom.value)
-  const instTo = isoDateOnly(installationDateTo.value)
-  const testFrom = isoDateOnly(testDateFrom.value)
-  const testTo = isoDateOnly(testDateTo.value)
-  if (instFrom) params.installationDateFrom = instFrom
-  if (instTo) params.installationDateTo = instTo
-  if (testFrom) params.testDateFrom = testFrom
-  if (testTo) params.testDateTo = testTo
 	  if (onlyWithChecklists.value) params.hasChecklists = '1'
 	  if (onlyWithFpt.value) params.hasFpt = '1'
 	  if (onlyWithIssues.value) params.hasIssues = '1'

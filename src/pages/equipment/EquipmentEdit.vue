@@ -168,7 +168,7 @@
           v-if="currentTab === 'Info'"
           class="grid md:grid-cols-2 gap-x-4 gap-y-2 items-start"
         >
-          <div>
+          <div class="flex flex-col gap-3">
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm text-white/70">Tag</label>
@@ -228,7 +228,7 @@
                 </div>
               </div>
             </div>
-            <div class="mt-2">
+            <div>
               <label class="block text-sm text-white/70">Title</label>
               <input
                 v-model="form.title"
@@ -237,7 +237,7 @@
                 class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
               >
             </div>
-            <div class="mt-2 grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm text-white/70">System</label>
                 <div class="relative">
@@ -337,7 +337,7 @@
                 </div>
               </div>
             </div>
-            <div class="mt-2">
+            <div>
               <label class="block text-sm text-white/70">Space</label>
               <div class="relative">
                 <button
@@ -394,7 +394,7 @@
                 </div>
               </div>
             </div>
-            <div class="mt-2">
+            <div>
               <label class="block text-sm text-white/70">Description</label>
               <textarea
                 v-model="form.description"
@@ -402,7 +402,7 @@
                 class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
               />
             </div>
-            <div class="mt-2">
+            <div>
               <div class="flex items-center gap-3">
                 <div class="text-sm text-white/70 shrink-0">
                   Tags
@@ -497,7 +497,7 @@
                 </div>
               </div>
             </div>
-            <div class="mt-4 flex items-center gap-2">
+            <div class="pt-1 flex items-center gap-2">
               <button
                 class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
                 @click="save"

@@ -25,7 +25,7 @@
     <div class="rounded-2xl p-3 bg-white/6 backdrop-blur-xl border border-white/10 min-w-0 relative z-30">
       <!-- Error banner for plan guard or missing project -->
       <div
-        v-if="templatesStore.errorCode"
+        v-if="(templatesStore as any).errorCode"
         class="w-full"
       >
         <div class="rounded-md border border-white/20 bg-red-500/20 text-red-100 px-3 py-2 text-sm inline-flex items-center gap-2">
@@ -39,9 +39,9 @@
             d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11.5a.75.75 0 011.5 0v5a.75.75 0 01-1.5 0v-5zm.75 8a1 1 0 100-2 1 1 0 000 2z"
             clip-rule="evenodd"
           /></svg>
-          <span v-if="templatesStore.errorCode === 'PROJECT_NOT_FOUND'">Selected project not found. Please reselect a project.</span>
-          <span v-else-if="templatesStore.errorCode === 'FEATURE_NOT_IN_PLAN'">Templates are not available on your current subscription plan.</span>
-          <span v-else>{{ templatesStore.error || 'Unable to load templates.' }}</span>
+          <span v-if="(templatesStore as any).errorCode === 'PROJECT_NOT_FOUND'">Selected project not found. Please reselect a project.</span>
+          <span v-else-if="(templatesStore as any).errorCode === 'FEATURE_NOT_IN_PLAN'">Templates are not available on your current subscription plan.</span>
+          <span v-else>{{ (templatesStore as any).error || 'Unable to load templates.' }}</span>
         </div>
       </div>
       <div class="flex flex-wrap items-end justify-between gap-3 gap-y-2 min-w-0">
