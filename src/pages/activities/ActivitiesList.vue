@@ -417,8 +417,16 @@
       class="rounded-2xl p-4 md:p-6 bg-white/5 border border-white/10"
     >
       <div class="flex items-center justify-between mb-4">
-        <div class="text-white font-semibold">
-          Analytics
+        <div class="min-w-0">
+          <div class="text-white font-semibold">
+            Analytics
+          </div>
+          <div
+            v-if="hasActiveFilters"
+            class="text-xs text-white/60"
+          >
+            Showing analytics for filtered results
+          </div>
         </div>
         <button
           class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/90"
@@ -428,8 +436,8 @@
         </button>
       </div>
       <ActivitiesListCharts
-        :analytics="activitiesAnalytics"
-        :loading="analyticsLoading"
+        :analytics="activitiesAnalyticsForView"
+        :loading="analyticsLoadingForView"
       />
     </div>
 
@@ -952,6 +960,110 @@ const activitiesAnalytics = ref<ActivitiesAnalytics | null>(null)
 const analyticsForProjectId = ref('')
 const showAutoTagModal = ref(false)
 
+const hasActiveFilters = computed(() => {
+  return Boolean(
+    qTrimmed.value
+    || String(typeFilter.value || '').trim()
+    || String(statusFilter.value || '').trim()
+    || String(locationFilter.value || '').trim()
+    || String(dateFrom.value || '').trim()
+    || String(dateTo.value || '').trim()
+    || String(tagsFilter.value || '').trim()
+  )
+})
+
+function monthKeyFromActivity(a: any): string {
+  const raw = a?.startDate || a?.start || a?.createdAt || null
+  if (!raw) return 'Unspecified'
+  const t = new Date(raw).getTime()
+  if (!Number.isFinite(t)) return 'Unspecified'
+  const d = new Date(t)
+  const y = d.getUTCFullYear()
+  const m = d.getUTCMonth() + 1
+  return `${y}-${String(m).padStart(2, '0')}`
+}
+
+function computeAnalyticsFromList(list: any[]): ActivitiesAnalytics {
+  const byStatus = new Map<string, number>()
+  const byType = new Map<string, number>()
+  const byLocation = new Map<string, number>()
+  const byMonth = new Map<string, number>()
+
+  const totals = {
+    totalActivities: 0,
+    totalIssues: 0,
+    totalPhotos: 0,
+    totalComments: 0,
+    totalAttachments: 0,
+    totalEquipment: 0,
+  }
+
+  const rows = Array.isArray(list) ? list : []
+  totals.totalActivities = rows.length
+
+  for (const a of rows) {
+    const st = statusValue(a)
+    byStatus.set(st, (byStatus.get(st) || 0) + 1)
+
+    const t = norm(a?.type) || 'Unspecified'
+    byType.set(t, (byType.get(t) || 0) + 1)
+
+    const loc = norm(a?.location) || 'Unspecified'
+    byLocation.set(loc, (byLocation.get(loc) || 0) + 1)
+
+    const mk = monthKeyFromActivity(a)
+    byMonth.set(mk, (byMonth.get(mk) || 0) + 1)
+
+    const issuesCount = Number.isFinite(Number((a as any)?.issuesCount))
+      ? Number((a as any).issuesCount)
+      : (Array.isArray((a as any)?.issues) ? (a as any).issues.length : 0)
+    const photosCount = Number.isFinite(Number((a as any)?.photosCount))
+      ? Number((a as any).photosCount)
+      : (Array.isArray((a as any)?.photos) ? (a as any).photos.length : 0)
+    const commentsCount = Number.isFinite(Number((a as any)?.commentsCount))
+      ? Number((a as any).commentsCount)
+      : (Array.isArray((a as any)?.comments) ? (a as any).comments.length : 0)
+    const attachmentsCount = Number.isFinite(Number((a as any)?.attachmentsCount))
+      ? Number((a as any).attachmentsCount)
+      : (Array.isArray((a as any)?.attachments) ? (a as any).attachments.length : 0)
+    const equipmentCount = Number.isFinite(Number((a as any)?.equipmentCount))
+      ? Number((a as any).equipmentCount)
+      : (Array.isArray((a as any)?.systems) ? (a as any).systems.length : 0)
+
+    totals.totalIssues += issuesCount
+    totals.totalPhotos += photosCount
+    totals.totalComments += commentsCount
+    totals.totalAttachments += attachmentsCount
+    totals.totalEquipment += equipmentCount
+  }
+
+  const activitiesByStatus = Array.from(byStatus.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+  const activitiesByType = Array.from(byType.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+  const activitiesByLocation = Array.from(byLocation.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => (Number(b.count) - Number(a.count)) || String(a.name).localeCompare(String(b.name)))
+    .slice(0, 50)
+  const activitiesByMonth = Array.from(byMonth.entries())
+    .map(([month, count]) => ({ month, count }))
+    .sort((a, b) => String(a.month).localeCompare(String(b.month)))
+
+  return { totals, activitiesByStatus, activitiesByType, activitiesByLocation, activitiesByMonth }
+}
+
+const activitiesAnalyticsForView = computed<ActivitiesAnalytics | null>(() => {
+  if (hasActiveFilters.value) return computeAnalyticsFromList(filtered.value as any[])
+  return activitiesAnalytics.value
+})
+
+const analyticsLoadingForView = computed(() => {
+  if (hasActiveFilters.value) return false
+  return analyticsLoading.value
+})
+
 const resolvedProjectId = computed(() => {
   try {
     return String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
@@ -1055,7 +1167,7 @@ async function fetchAnalytics() {
 function toggleAnalytics() {
   showAnalytics.value = !showAnalytics.value
   try { localStorage.setItem(analyticsStorageKey(), showAnalytics.value ? '1' : '0') } catch (e) { /* ignore */ }
-  if (showAnalytics.value) fetchAnalytics().catch(() => {})
+  if (showAnalytics.value && !hasActiveFilters.value) fetchAnalytics().catch(() => {})
 }
 
 function loadPageSize() {
@@ -1077,7 +1189,7 @@ onMounted(async () => {
   loadShowAnalytics()
   await store.fetchActivities().catch(() => {})
   if (projectStore.currentProjectId) await spacesStore.fetchByProject(projectStore.currentProjectId).catch(() => {})
-  if (showAnalytics.value) fetchAnalytics().catch(() => {})
+  if (showAnalytics.value && !hasActiveFilters.value) fetchAnalytics().catch(() => {})
 
   const pid = String(resolvedProjectId.value || '').trim()
   const uid = auth.user?._id ? String(auth.user._id) : null
@@ -1113,7 +1225,7 @@ watch(() => projectStore.currentProjectId, async (pid) => {
   page.value = 1
   analyticsForProjectId.value = ''
   activitiesAnalytics.value = null
-  if (showAnalytics.value) fetchAnalytics().catch(() => {})
+  if (showAnalytics.value && !hasActiveFilters.value) fetchAnalytics().catch(() => {})
 })
 
 // Styled Type dropdown state and options (like Issues filters)

@@ -3,6 +3,8 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
+const DocFolder = require('../models/docFolder')
+const DocFile = require('../models/docFile')
 const OprItem = require('../models/oprItem')
 const Space = require('../models/space');
 const { auth } = require('../middleware/auth');
@@ -1397,7 +1399,33 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, req
     if (!equipment) {
       return res.status(404).send();
     }
-    res.status(200).send(toPlainEquipment(equipment));
+
+    // Include doc-backed counts for Azure Photos/Attachments tabs.
+    // These folders are created lazily by the UI, so missing folder => count 0.
+    const projectId = String(req.query.projectId || equipment.projectId || '')
+    const equipmentId = String(req.params.id || '')
+    const photosPath = `Photos/Equipment/${equipmentId}`
+    const attachmentsPath = `Attachments/Equipment/${equipmentId}`
+
+    const [photosFolder, attachmentsFolder] = await Promise.all([
+      DocFolder.findOne({ projectId, deletedAt: null, path: photosPath }).select('_id').lean(),
+      DocFolder.findOne({ projectId, deletedAt: null, path: attachmentsPath }).select('_id').lean(),
+    ])
+
+    const [docsPhotosCount, docsAttachmentsCount] = await Promise.all([
+      photosFolder
+        ? DocFile.countDocuments({ projectId, folderId: photosFolder._id, status: { $ne: 'deleted' }, contentType: /^image\// })
+        : 0,
+      attachmentsFolder
+        ? DocFile.countDocuments({ projectId, folderId: attachmentsFolder._id, status: { $ne: 'deleted' } })
+        : 0,
+    ])
+
+    res.status(200).send({
+      ...toPlainEquipment(equipment),
+      docsPhotosCount: Number(docsPhotosCount || 0),
+      docsAttachmentsCount: Number(docsAttachmentsCount || 0),
+    });
   } catch (error) {
     console.error('[equipment] list by project error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to load equipment' });

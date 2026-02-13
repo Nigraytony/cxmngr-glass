@@ -2031,6 +2031,8 @@ const ai = useAiStore()
 
 const azureAttachmentsCount = ref(0)
 const azurePhotosCount = ref(0)
+const issuesCountHint = ref<number | null>(null)
+const commentsCountHint = ref<number | null>(null)
 const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const id = computed(() => String(props.id || route.params.id || ''))
@@ -2587,6 +2589,7 @@ onMounted(async () => {
         }
       }
       if (activityData) {
+      initTabBadgeCountsFromActivity(activityData)
       // Ensure selected project matches the activity's project for downstream loads
       try {
         const actPid = String(activityData.projectId || '')
@@ -4636,6 +4639,25 @@ function openIssueModal() {
 }
 function closeIssueModal() { showIssueModal.value = false }
 
+function maybeNumber(v: any): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function initTabBadgeCountsFromActivity(activityData: any) {
+  const photosCount = maybeNumber(activityData?.photosCount)
+  if (photosCount !== null) azurePhotosCount.value = photosCount
+
+  const attachmentsCount = maybeNumber(activityData?.attachmentsCount)
+  if (attachmentsCount !== null) azureAttachmentsCount.value = attachmentsCount
+
+  const issuesCount = maybeNumber(activityData?.issuesCount)
+  if (issuesCount !== null) issuesCountHint.value = issuesCount
+
+  const commentsCount = maybeNumber(activityData?.commentsCount)
+  if (commentsCount !== null) commentsCountHint.value = commentsCount
+}
+
 // Map IssueForm values to API values (mirrors IssuesList.vue)
 function toApiPriority(v: any) {
   const m: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', comment: 'Comment' }
@@ -4687,8 +4709,16 @@ async function createActivityIssue() {
 // Counts per tab for badges
 function countForTab(t: string): number {
   if (t === 'Photos') return azurePhotosCount.value
-  if (t === 'Issues') return issuesForActivity.value.length
-  if (t === 'Comments') return (form.comments || []).length
+  if (t === 'Issues') {
+    if (Array.isArray((form as any).issues) && (form as any).issues.length) return (form as any).issues.length
+    if (issuesCountHint.value !== null) return issuesCountHint.value
+    return issuesForActivity.value.length
+  }
+  if (t === 'Comments') {
+    if (commentsLoaded.value) return (form.comments || []).length
+    if (commentsCountHint.value !== null) return commentsCountHint.value
+    return (form.comments || []).length
+  }
   if (t === 'Attachments') return azureAttachmentsCount.value
   if (t === 'Equipment' || t === 'Equipment Reviewed') return (form.systems || []).length
   return 0

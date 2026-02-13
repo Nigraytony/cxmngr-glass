@@ -4,6 +4,8 @@ const Space = require('../models/space');
 const Equipment = require('../models/equipment');
 const Issue = require('../models/issue');
 const Project = require('../models/project');
+const DocFolder = require('../models/docFolder')
+const DocFile = require('../models/docFile')
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
@@ -476,7 +478,24 @@ router.get('/:id', auth, requireObjectIdParam('id'), lookupSpaceProject, require
       }
       space.parentChain = chainArr.join(' > ')
     }
-    res.status(200).send({ ...space, subSpaces });
+    // Doc-backed Attachments tab uses project documents folders:
+    // Attachments / Space / {spaceId}
+    let docsAttachmentsCount = 0
+    try {
+      const projectId = String(req.params.project || space.project || '').trim()
+      const sid = String(space._id || req.params.id || '').trim()
+      if (projectId && sid) {
+        const attachmentsPath = `Attachments/Space/${sid}`
+        const folder = await DocFolder.findOne({ projectId, deletedAt: null, path: attachmentsPath }).select('_id').lean()
+        if (folder && folder._id) {
+          docsAttachmentsCount = await DocFile.countDocuments({ projectId, folderId: folder._id, status: { $ne: 'deleted' } })
+        }
+      }
+    } catch (_) {
+      docsAttachmentsCount = 0
+    }
+
+    res.status(200).send({ ...space, subSpaces, docsAttachmentsCount: Number(docsAttachmentsCount || 0) });
   } catch (error) {
     console.error('[spaces] get error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to load space' });

@@ -900,6 +900,16 @@ const suggestedSpaceTags = ref<SuggestedTag[]>([])
 const azureAttachmentsCount = ref(0)
 const azureProjectId = computed(() => String((form.value as any).project || (form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
+function maybeNumber(v: any): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function initAzureBadgeCountsFromSpace(s: any) {
+  const c = maybeNumber(s?.docsAttachmentsCount)
+  if (c !== null) azureAttachmentsCount.value = c
+}
+
 const canSuggestSpaceTags = computed(() => {
   const pid = String((form.value as any).project || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
   if (!pid) return false
@@ -1182,6 +1192,7 @@ async function load() {
     if (!found) await spaces.fetchOne(id.value)
     const s = spaces.items.find(sp => String(sp.id || (sp as any)._id) === id.value)
     if (s) {
+      initAzureBadgeCountsFromSpace(s)
       // Normalize attachments (backend stores as string URLs) and drop empties
       const normAtt = Array.isArray((s as any).attachments)
         ? (s as any).attachments

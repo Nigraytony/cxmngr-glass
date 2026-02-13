@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const Template = require('../models/template');
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
+const DocFolder = require('../models/docFolder')
+const DocFile = require('../models/docFile')
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
 const { requireActiveProject } = require('../middleware/subscription');
@@ -558,7 +560,33 @@ router.get('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, requ
   try {
     const rec = await Template.findById(req.params.id);
     if (!rec) return res.status(404).send();
-    res.status(200).send(toPlainTemplate(rec));
+
+    // Include doc-backed counts for Azure Photos/Attachments tabs.
+    // These folders are created lazily by the UI, so missing folder => count 0.
+    const projectId = String(req.params.projectId || '')
+    const templateId = String(req.params.id || '')
+    const photosPath = `Photos/Template/${templateId}`
+    const attachmentsPath = `Attachments/Template/${templateId}`
+
+    const [photosFolder, attachmentsFolder] = await Promise.all([
+      DocFolder.findOne({ projectId, deletedAt: null, path: photosPath }).select('_id').lean(),
+      DocFolder.findOne({ projectId, deletedAt: null, path: attachmentsPath }).select('_id').lean(),
+    ])
+
+    const [docsPhotosCount, docsAttachmentsCount] = await Promise.all([
+      photosFolder
+        ? DocFile.countDocuments({ projectId, folderId: photosFolder._id, status: { $ne: 'deleted' }, contentType: /^image\// })
+        : 0,
+      attachmentsFolder
+        ? DocFile.countDocuments({ projectId, folderId: attachmentsFolder._id, status: { $ne: 'deleted' } })
+        : 0,
+    ])
+
+    res.status(200).send({
+      ...toPlainTemplate(rec),
+      docsPhotosCount: Number(docsPhotosCount || 0),
+      docsAttachmentsCount: Number(docsAttachmentsCount || 0),
+    });
   } catch (error) {
     console.error('[templates] get error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to load template' });

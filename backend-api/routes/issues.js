@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const Issue = require('../models/issue');
+const DocFolder = require('../models/docFolder')
+const DocFile = require('../models/docFile')
 const Equipment = require('../models/equipment');
 const Project = require('../models/project');
 const OprItem = require('../models/oprItem')
@@ -566,11 +568,37 @@ async function loadIssueProjectId(req, res, next) {
 // Read a single issue by ID
 router.get('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requireFeature('issues'), requirePermission('issues.read', { projectParam: 'projectId' }), async (req, res) => {
   try {
-    const issue = await Issue.findById(req.params.id);
+    const issue = await Issue.findById(req.params.id).lean();
     if (!issue) {
       return res.status(404).send();
     }
-    res.status(200).send(issue);
+
+    // Include doc-backed counts for Azure Photos/Attachments tabs.
+    // These folders are created lazily by the UI, so missing folder => count 0.
+    const projectId = String(req.query.projectId || issue.projectId || '')
+    const issueId = String(req.params.id || '')
+    const photosPath = `Photos/Issue/${issueId}`
+    const attachmentsPath = `Attachments/Issue/${issueId}`
+
+    const [photosFolder, attachmentsFolder] = await Promise.all([
+      DocFolder.findOne({ projectId, deletedAt: null, path: photosPath }).select('_id').lean(),
+      DocFolder.findOne({ projectId, deletedAt: null, path: attachmentsPath }).select('_id').lean(),
+    ])
+
+    const [docsPhotosCount, docsAttachmentsCount] = await Promise.all([
+      photosFolder
+        ? DocFile.countDocuments({ projectId, folderId: photosFolder._id, status: { $ne: 'deleted' }, contentType: /^image\// })
+        : 0,
+      attachmentsFolder
+        ? DocFile.countDocuments({ projectId, folderId: attachmentsFolder._id, status: { $ne: 'deleted' } })
+        : 0,
+    ])
+
+    res.status(200).send({
+      ...issue,
+      docsPhotosCount: Number(docsPhotosCount || 0),
+      docsAttachmentsCount: Number(docsAttachmentsCount || 0),
+    });
   } catch (error) {
     console.error('[issues] get error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to load issue' });

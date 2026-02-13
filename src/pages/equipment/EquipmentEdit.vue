@@ -1687,6 +1687,18 @@ const azureAttachmentsCount = ref(0)
 const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
+function maybeNumber(v: any): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function initAzureBadgeCountsFromEquipment(eq: any) {
+  const photos = maybeNumber(eq?.docsPhotosCount)
+  const attachments = maybeNumber(eq?.docsAttachmentsCount)
+  if (photos !== null) azurePhotosCount.value = photos
+  if (attachments !== null) azureAttachmentsCount.value = attachments
+}
+
 const canSuggestEquipmentTags = computed(() => {
   const pid = String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
   if (!pid) return false
@@ -3148,6 +3160,10 @@ async function load() {
     if (eq) {
       form.value = { ...eq, id: (eq as any)._id || (eq as any).id || id.value }
       ;(form.value as any).tags = normalizeTags((form.value as any).tags)
+
+      // Seed badge counts immediately (before Azure panels mount).
+      initAzureBadgeCountsFromEquipment(eq)
+
       // photos are not fetched by default; reset flag so Photos tab can fetch when opened
       photosLoaded.value = Array.isArray((eq as any).photos) && (eq as any).photos.some((p: any) => p && p.data)
       issuesLoaded.value = false

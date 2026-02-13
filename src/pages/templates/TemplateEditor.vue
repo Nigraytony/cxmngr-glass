@@ -1244,6 +1244,18 @@ const azureAttachmentsCount = ref(0)
 const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String((form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
+function maybeNumber(v: any): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function initAzureBadgeCountsFromTemplate(t: any) {
+  const p = maybeNumber(t?.docsPhotosCount)
+  if (p !== null) azurePhotosCount.value = p
+  const a = maybeNumber(t?.docsAttachmentsCount)
+  if (a !== null) azureAttachmentsCount.value = a
+}
+
 const canSuggestTemplateTags = computed(() => {
   const pid = String((form.value as any).projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
   if (!pid) return false
@@ -1569,6 +1581,7 @@ async function load() {
     const t = await templatesStore.fetchOne(id.value)
     if (t) {
       form.value = { ...t } as any
+      initAzureBadgeCountsFromTemplate(t)
       // Normalize tags from canonical field; fall back to legacy comma-separated labels if present
       const legacyLabels = typeof (t as any).labels === 'string'
         ? (t as any).labels.split(',').map((s: string) => s.trim()).filter(Boolean)

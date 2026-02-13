@@ -448,7 +448,37 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     if (!(await canViewActivity(req, activity))) {
       return res.status(404).send()
     }
-    res.status(200).send(activity)
+
+    // Always include count fields for tab badges / list UIs, without forcing heavy arrays into the payload.
+    let counts = null
+    try {
+      const agg = await Activity.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(String(req.params.id)) } },
+        {
+          $project: {
+            issuesCount: { $size: { $ifNull: ['$issues', []] } },
+            photosCount: { $size: { $ifNull: ['$photos', []] } },
+            commentsCount: { $size: { $ifNull: ['$comments', []] } },
+            attachmentsCount: { $size: { $ifNull: ['$attachments', []] } },
+            equipmentCount: { $size: { $ifNull: ['$systems', []] } },
+          },
+        },
+      ])
+      counts = Array.isArray(agg) && agg[0] ? agg[0] : null
+    } catch (e) {
+      counts = null
+    }
+
+    const out = {
+      ...activity,
+      issuesCount: counts ? Number(counts.issuesCount || 0) : (Array.isArray(activity.issues) ? activity.issues.length : 0),
+      photosCount: counts ? Number(counts.photosCount || 0) : (Array.isArray(activity.photos) ? activity.photos.length : 0),
+      commentsCount: counts ? Number(counts.commentsCount || 0) : (Array.isArray(activity.comments) ? activity.comments.length : 0),
+      attachmentsCount: counts ? Number(counts.attachmentsCount || 0) : (Array.isArray(activity.attachments) ? activity.attachments.length : 0),
+      equipmentCount: counts ? Number(counts.equipmentCount || 0) : (Array.isArray(activity.systems) ? activity.systems.length : 0),
+    }
+
+    res.status(200).send(out)
   } catch (error) {
     console.error('[activities] get error', error && (error.stack || error.message || error))
     res.status(500).send({ error: 'Failed to load activity' })

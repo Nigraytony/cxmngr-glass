@@ -1193,6 +1193,18 @@ const azureAttachmentsCount = ref(0)
 const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
+function maybeNumber(v: any): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function initAzureBadgeCountsFromIssue(issue: any) {
+  const photos = maybeNumber(issue?.docsPhotosCount)
+  const attachments = maybeNumber(issue?.docsAttachmentsCount)
+  if (photos !== null) azurePhotosCount.value = photos
+  if (attachments !== null) azureAttachmentsCount.value = attachments
+}
+
 const id = computed(() => String(route.params.id))
 const isNew = computed(() => id.value === 'new')
 const saving = ref(false)
@@ -1788,6 +1800,7 @@ onMounted(async () => {
   if (!isNew.value) {
     try {
       const i = await issues.fetchIssue(id.value)
+      initAzureBadgeCountsFromIssue(i)
       Object.assign(form, {
         title: i?.title || i?.type || '',
         description: i?.description || '',
@@ -1844,6 +1857,7 @@ watch(id, async (nv, ov) => {
   }
   try {
     const i = await issues.fetchIssue(String(nv))
+    initAzureBadgeCountsFromIssue(i)
     Object.assign(form, {
       title: i?.title || i?.type || '',
       description: i?.description || '',
