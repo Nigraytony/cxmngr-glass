@@ -654,6 +654,12 @@
             class="w-full h-full"
             title="PDF preview"
           />
+          <iframe
+            v-else-if="isPreviewOffice(previewContentType || previewFile.contentType)"
+            :src="previewUrl"
+            class="w-full h-full"
+            title="Office preview"
+          />
           <div
             v-else-if="isPreviewImage(previewContentType || previewFile.contentType)"
             class="w-full h-full overflow-auto p-3"
@@ -987,6 +993,22 @@ function isPreviewImage(contentType: string) {
   return String(contentType || '').toLowerCase().startsWith('image/')
 }
 
+function isOfficeDoc(contentType: string) {
+  const v = String(contentType || '').toLowerCase()
+  return v.includes('wordprocessingml') || v.includes('spreadsheetml')
+}
+
+function isPreviewOffice(contentType: string) {
+  const v = String(contentType || '').toLowerCase()
+  if (v === 'office') return true
+  return isOfficeDoc(v)
+}
+
+function officeEmbedUrl(srcUrl: string) {
+  // Microsoft Office Online viewer (requires a publicly reachable URL; SAS URLs work).
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(String(srcUrl || ''))}`
+}
+
 const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewFile = ref<DocFile | null>(null)
@@ -1014,11 +1036,25 @@ async function openPreview(file: DocFile) {
     previewUrl.value = url
     previewContentType.value = contentType || 'application/pdf'
   } catch (e: any) {
-    const data = e?.response?.data
-    const msg = data?.error || e?.message || 'Failed to load preview'
-    const hint = data?.hint ? String(data.hint) : ''
-    ui.showError(hint ? `${msg} — ${hint}` : msg)
-    previewOpen.value = false
+    // If server-side conversion fails (common for DOCX/XLSX depending on environment), fall back to Office web viewer.
+    if (isOfficeDoc(file.contentType)) {
+      try {
+        const { downloadUrl } = await documents.getDownloadUrl(projectId.value, file.id)
+        previewUrl.value = officeEmbedUrl(downloadUrl)
+        previewContentType.value = 'office'
+      } catch (e2: any) {
+        const data2 = e2?.response?.data
+        const msg2 = data2?.error || e2?.message || 'Failed to load preview'
+        ui.showError(msg2)
+        previewOpen.value = false
+      }
+    } else {
+      const data = e?.response?.data
+      const msg = data?.error || e?.message || 'Failed to load preview'
+      const hint = data?.hint ? String(data.hint) : ''
+      ui.showError(hint ? `${msg} — ${hint}` : msg)
+      previewOpen.value = false
+    }
   } finally {
     previewLoading.value = false
   }
