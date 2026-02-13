@@ -37,7 +37,7 @@ function getEmailProviderPreference() {
 async function sendViaSendGrid({ to, subject, html }) {
   if (!sgMail) throw new Error('SendGrid not configured')
   const from = process.env.MAIL_FROM || 'no-reply@example.com'
-  const fromName = process.env.MAIL_FROM_NAME || ''
+  const fromName = process.env.MAIL_FROM_NAME || 'CxMa.io'
   const msg = {
     to,
     from: fromName ? { email: from, name: fromName } : from,
@@ -294,7 +294,7 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
 
   const html = `
     <p>Hello,</p>
-    <p>An admin (${requesterEmail || 'CxManager'}) is requesting access to your profile to provide support.</p>
+    <p>An admin (${requesterEmail || 'CxMa.io'}) is requesting access to your profile to provide support.</p>
     <p><strong>Your access PIN is: ${String(pin)}</strong></p>
     <p>This PIN expires in ${Number(expiresMinutes) || 10} minutes.</p>
     <p>If you did not request support, you can ignore this email.</p>
@@ -320,7 +320,7 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
   }
 
   try {
-    return await sendEmailBestEffort({ to, subject: 'CXMngr support access PIN', html })
+    return await sendEmailBestEffort({ to, subject: 'CxMa.io support access PIN', html })
   } catch (err) {
     try {
       const fs = require('fs');

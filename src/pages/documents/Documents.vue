@@ -113,6 +113,8 @@
             :multiple="true"
             :disabled="!selectedFolder || documents.loadingFiles"
             :enable-retry="true"
+            :compress-images="true"
+            :compress-target-bytes="256 * 1024"
             accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png,.heic,.heif"
             @file-done="scheduleRefreshFiles"
             @done="refreshFiles"
@@ -297,6 +299,9 @@
                     <th class="text-right font-medium px-3 py-2 w-28">
                       Size
                     </th>
+                    <th class="text-right font-medium px-3 py-2 w-36">
+                      Uploaded
+                    </th>
                     <th class="text-right font-medium px-3 py-2 w-32">
                       Actions
                     </th>
@@ -308,7 +313,7 @@
                     class="border-t border-white/10"
                   >
                     <td
-                      colspan="3"
+                      colspan="4"
                       class="px-3 py-3 text-white/70"
                     >
                       Loading files…
@@ -319,7 +324,7 @@
                     class="border-t border-white/10"
                   >
                     <td
-                      colspan="3"
+                      colspan="4"
                       class="px-3 py-3 text-white/70"
                     >
                       <span v-if="qTrimmed">No matching files.</span>
@@ -334,7 +339,7 @@
                     <td class="px-3 py-2">
                       <div
                         class="flex items-center gap-2 min-w-0"
-                        :title="`${prettyType(f.contentType)} • Updated: ${formatDate(f.updatedAt)}`"
+                        :title="`${prettyType(f.contentType)} • Uploaded: ${formatDate(f.createdAt)} • Updated: ${formatDate(f.updatedAt)}`"
                       >
                         <span
                           class="text-white/70"
@@ -423,6 +428,9 @@
                     </td>
                     <td class="px-3 py-2 text-right text-white/70">
                       {{ formatBytes(f.sizeBytes) }}
+                    </td>
+                    <td class="px-3 py-2 text-right text-white/70 whitespace-nowrap">
+                      {{ formatDateShort(f.createdAt) }}
                     </td>
                     <td class="px-3 py-2">
                       <div class="flex items-center justify-end gap-2">
@@ -895,6 +903,16 @@ function formatDate(iso: string) {
   }
 }
 
+function formatDateShort(iso: string) {
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    return d.toLocaleDateString()
+  } catch {
+    return iso
+  }
+}
+
 function inferContentType(filename: string) {
   const name = String(filename || '').toLowerCase()
   if (name.endsWith('.pdf')) return 'application/pdf'
@@ -905,6 +923,17 @@ function inferContentType(filename: string) {
   if (name.endsWith('.heic')) return 'image/heic'
   if (name.endsWith('.heif')) return 'image/heif'
   return ''
+}
+
+function normalizeFilenameForCompare(name: string) {
+  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function filenameExistsInCurrentFolder(name: string, excludeFileId?: string) {
+  const key = normalizeFilenameForCompare(name)
+  if (!key) return false
+  const list = Array.isArray(documents.files) ? documents.files : []
+  return list.some((f) => f && f.id !== excludeFileId && normalizeFilenameForCompare(f.originalName) === key)
 }
 
 function onUploadError(payload: { file: File; error: any }) {
@@ -926,6 +955,12 @@ async function uploadOne(file: File, onProgress: (pct: number) => void) {
     contentType,
     sizeBytes: file.size,
   })
+
+  const finalName = String((req as any)?.originalName || file.name)
+  const renamedFrom = String((req as any)?.renamedFrom || '')
+  if (renamedFrom && finalName && normalizeFilenameForCompare(renamedFrom) === normalizeFilenameForCompare(file.name) && normalizeFilenameForCompare(finalName) !== normalizeFilenameForCompare(file.name)) {
+    ui.showInfo(`A file named “${file.name}” already exists. Uploading as “${finalName}”.`)
+  }
 
   await blobHttp.put(req.uploadUrl, file, {
     withCredentials: false,
@@ -1118,6 +1153,10 @@ async function saveFileModal() {
   fileModalSaving.value = true
   try {
     if (fileModalMode.value === 'rename') {
+      if (filenameExistsInCurrentFolder(fileModalName.value, fileModalFileId.value)) {
+        ui.showError('A file with that name already exists in this folder')
+        return
+      }
       await documents.updateFile(projectId.value, fileModalFileId.value, { filename: fileModalName.value })
       ui.showSuccess('File renamed')
     } else {
@@ -1127,7 +1166,13 @@ async function saveFileModal() {
     fileModalOpen.value = false
     await refreshFiles()
   } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'File update failed')
+    const status = e?.response?.status
+    const code = e?.response?.data?.code
+    if (status === 409 && code === 'DOC_FILENAME_EXISTS') {
+      ui.showError(e?.response?.data?.error || 'A file with that name already exists in this folder')
+    } else {
+      ui.showError(e?.response?.data?.error || e?.message || 'File update failed')
+    }
   } finally {
     fileModalSaving.value = false
   }

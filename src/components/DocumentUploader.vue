@@ -90,6 +90,8 @@ const props = defineProps<{
   disabled?: boolean
   concurrency?: number
   enableRetry?: boolean
+  compressImages?: boolean
+  compressTargetBytes?: number
 }>()
 
 const emit = defineEmits<{
@@ -104,9 +106,11 @@ const multiple = computed(() => props.multiple ?? true)
 const disabled = computed(() => props.disabled ?? false)
 const concurrency = computed(() => Math.max(1, Math.floor(props.concurrency ?? 2)))
 const enableRetry = computed(() => props.enableRetry ?? false)
+const compressImages = computed(() => props.compressImages ?? false)
+const compressTargetBytes = computed(() => Math.max(1, Math.floor(props.compressTargetBytes ?? 256 * 1024)))
 
 // Upload state
- type UploadStatus = 'pending' | 'uploading' | 'done' | 'error'
+ type UploadStatus = 'pending' | 'compressing' | 'uploading' | 'done' | 'error'
  interface UploadItem { id: string; name: string; size: number; progress: number; status: UploadStatus; message?: string; file?: File }
 const uploads = ref<UploadItem[]>([])
 const uploadingNow = ref(false)
@@ -207,11 +211,27 @@ async function processFiles(files: File[]) {
       const f = accepted[i]
       const item = addUpload(f)
       try {
-        updateUpload(item, { status: 'uploading', progress: 0 })
-        const result = await props.upload(f, (pct: number) => updateUpload(item, { progress: pct }))
+        let uploadFile = f
+        if (compressImages.value && isLikelyImageFile(f) && f.size > compressTargetBytes.value) {
+          updateUpload(item, { status: 'compressing', message: 'Compressing…' })
+          try {
+            uploadFile = await compressImageIfNeeded(f, compressTargetBytes.value, (from, to) => {
+              updateUpload(item, { message: `Compressed ${Math.round(from/1024)}KB → ${Math.round(to/1024)}KB` })
+            })
+            updateUpload(item, { name: uploadFile.name, size: uploadFile.size, file: uploadFile })
+          } catch (_e: any) {
+            // Best-effort: if we can't compress below the target (or browser can't decode), fall back to uploading original.
+            updateUpload(item, { message: `Unable to compress below ${Math.round(compressTargetBytes.value / 1024)}KB — uploading original` })
+            uploadFile = f
+            updateUpload(item, { file: f })
+          }
+        }
+
+        updateUpload(item, { status: 'uploading', progress: 0, message: item.message || '' })
+        const result = await props.upload(uploadFile, (pct: number) => updateUpload(item, { progress: pct }))
         updateUpload(item, { status: 'done', progress: 100 })
         scheduleRemoval(item, 5000)
-        emit('file-done', { file: f, result })
+        emit('file-done', { file: uploadFile, result })
       } catch (e: any) {
         const data = e?.response?.data
         const serverMsg = data?.error || data?.message
@@ -222,7 +242,7 @@ async function processFiles(files: File[]) {
         updateUpload(item, { status: 'error', message: (serverMsg ? `${serverMsg}${code}${allowedExt}` : '') || e?.message || 'Upload failed' })
         // Auto-dismiss failed uploads after a few seconds to avoid stale error clutter.
         scheduleRemoval(item, 8000)
-        emit('error', { file: f, error: e })
+        emit('error', { file: (item.file || f), error: e })
       }
     }
   }
@@ -261,5 +281,77 @@ async function retryUpload(item: UploadItem) {
   } finally {
     uploadingNow.value = false
   }
+}
+
+function isLikelyImageFile(f: File): boolean {
+  if (!f) return false
+  if (f.type && f.type.startsWith('image/')) return true
+  return /\.(png|jpe?g|gif|webp|heic|heif|bmp|tif|tiff|svg)$/i.test(f.name)
+}
+
+// Compression helpers (same approach as PhotoUploader)
+async function compressImageIfNeeded(file: File, maxBytes = 256 * 1024, onCompressed?: (from: number, to: number) => void): Promise<File> {
+  if (file.size <= maxBytes) return file
+  const img = await loadImageFromFile(file)
+  let quality = 0.9
+  let scale = 1.0
+  const MAX_DIM = 2000
+  const [startW, startH] = fitWithin(img.width, img.height, MAX_DIM, MAX_DIM)
+  let w = startW, h = startH
+
+  for (let i = 0; i < 14; i++) {
+    const blob = await drawToBlob(img, w, h, quality)
+    if (blob.size <= maxBytes) {
+      onCompressed?.(file.size, blob.size)
+      return new File([blob], ensureJpegFilename(file.name), { type: 'image/jpeg' })
+    }
+    if (quality > 0.5) {
+      quality -= 0.1
+    } else {
+      scale *= 0.85
+      w = Math.max(320, Math.round(startW * scale))
+      h = Math.max(320, Math.round(startH * scale))
+    }
+  }
+  const lastBlob = await drawToBlob(img, w, h, 0.4)
+  onCompressed?.(file.size, lastBlob.size)
+  if (lastBlob.size > maxBytes) {
+    throw new Error(`Unable to compress photo below ${Math.round(maxBytes / 1024)}KB`)
+  }
+  return new File([lastBlob], ensureJpegFilename(file.name), { type: 'image/jpeg' })
+}
+
+function ensureJpegFilename(name: string) {
+  const base = String(name || '').trim() || 'photo'
+  const replaced = base.replace(/\.(png|webp|gif|jpg|jpeg|heic|heif|bmp|tif|tiff|svg)$/i, '.jpg')
+  return replaced.toLowerCase().endsWith('.jpg') ? replaced : `${replaced}.jpg`
+}
+
+function fitWithin(w: number, h: number, maxW: number, maxH: number): [number, number] {
+  const ratio = Math.min(maxW / w, maxH / h, 1)
+  return [Math.round(w * ratio), Math.round(h * ratio)]
+}
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = String(reader.result)
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
+function drawToBlob(img: HTMLImageElement, width: number, height: number, quality = 0.9): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, width, height)
+  return new Promise((resolve) => canvas.toBlob(b => resolve(b || new Blob()), 'image/jpeg', quality))
 }
 </script>

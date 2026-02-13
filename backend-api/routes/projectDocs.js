@@ -119,6 +119,63 @@ function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+function normalizeFilenameForCompare(name) {
+  return asString(name).trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function splitFilenameParts(name) {
+  const s = asString(name).trim()
+  const dot = s.lastIndexOf('.')
+  // Treat ".env" as no-extension; only split when dot is not first char.
+  if (dot <= 0 || dot === s.length - 1) return { base: s, ext: '' }
+  return { base: s.slice(0, dot), ext: s.slice(dot) }
+}
+
+async function listActiveFilesInFolder({ projectId, folderId, excludeFileId }) {
+  const q = { projectId, folderId, status: { $ne: 'deleted' } }
+  if (excludeFileId) q._id = { $ne: excludeFileId }
+  return DocFile.find(q).select('originalName').lean()
+}
+
+async function ensureUniqueFilenameOr409({ projectId, folderId, desiredName, excludeFileId, res }) {
+  const normalizedDesired = normalizeFilenameForCompare(desiredName)
+  if (!normalizedDesired) {
+    res.status(400).json({ error: 'Filename is required' })
+    return { ok: false }
+  }
+
+  const existing = await listActiveFilesInFolder({ projectId, folderId, excludeFileId })
+  const used = new Set(existing.map((f) => normalizeFilenameForCompare(f && f.originalName)))
+  if (used.has(normalizedDesired)) {
+    res.status(409).json({ error: 'A file with that name already exists in this folder', code: 'DOC_FILENAME_EXISTS' })
+    return { ok: false }
+  }
+  return { ok: true }
+}
+
+async function computeUniqueFilename({ projectId, folderId, desiredName }) {
+  const trimmed = asString(desiredName).trim()
+  const normalizedDesired = normalizeFilenameForCompare(trimmed)
+  if (!normalizedDesired) return trimmed
+
+  const existing = await listActiveFilesInFolder({ projectId, folderId })
+  const used = new Set(existing.map((f) => normalizeFilenameForCompare(f && f.originalName)).filter(Boolean))
+  if (!used.has(normalizedDesired)) return trimmed
+
+  const parts = splitFilenameParts(trimmed)
+  const base = parts.base || 'Untitled'
+  const ext = parts.ext
+  for (let n = 2; n <= 500; n++) {
+    const candidate = `${base} (${n})${ext}`
+    const key = normalizeFilenameForCompare(candidate)
+    if (!key) continue
+    if (!used.has(key)) return candidate
+  }
+  // Extremely unlikely: fall back to random suffix.
+  const rand = crypto.randomUUID().slice(0, 8)
+  return `${base} (${rand})${ext}`
+}
+
 function sendStorageConfigError(res, err) {
   const status = Number(err && err.status)
   if (status !== 503) return false
@@ -585,6 +642,11 @@ router.post(
         return res.status(400).json({ error: pairV.error, code: pairV.code, allowedExtensions: pairV.allowedExtensions })
       }
 
+      // Enforce unique filenames within a folder (case/whitespace-insensitive).
+      // For uploads we auto-rename on conflict to avoid a hard failure.
+      const requestedName = filenameV.value
+      const uniqueName = await computeUniqueFilename({ projectId, folderId, desiredName: requestedName })
+
       const uuid = crypto.randomUUID()
       const blobName = `docs/${projectId}/${uuid}`
 
@@ -592,7 +654,7 @@ router.post(
         orgId,
         projectId,
         folderId,
-        originalName: filenameV.value,
+        originalName: uniqueName,
         blobName,
         contentType,
         sizeBytes,
@@ -620,6 +682,8 @@ router.post(
         fileId: String(file._id),
         uploadUrl: sas.url,
         expiresAt: sas.expiresAt,
+        originalName: file.originalName,
+        renamedFrom: file.originalName !== requestedName ? requestedName : undefined,
       })
     } catch (e) {
       if (sendStorageConfigError(res, e)) return
@@ -873,6 +937,21 @@ router.patch(
         const folder = await DocFolder.findOne({ _id: fid, projectId, deletedAt: null }).select('_id').lean()
         if (!folder) return res.status(404).json({ error: 'Folder not found' })
         next.folderId = fid
+      }
+
+      // Enforce unique filenames per folder on manual rename/move.
+      // (Upload path auto-renames instead.)
+      if (next.originalName !== undefined || next.folderId !== undefined) {
+        const targetFolderId = next.folderId !== undefined ? String(next.folderId) : String(file.folderId)
+        const targetName = next.originalName !== undefined ? String(next.originalName) : String(file.originalName)
+        const ok = await ensureUniqueFilenameOr409({
+          projectId,
+          folderId: targetFolderId,
+          desiredName: targetName,
+          excludeFileId: fileId,
+          res,
+        })
+        if (!ok.ok) return
       }
 
       if (!Object.keys(next).length) {

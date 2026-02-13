@@ -113,7 +113,7 @@ export const useDocumentsStore = defineStore('documents', () => {
       payload,
       { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }
     )
-    return data as { fileId: string; uploadUrl: string; expiresAt: string }
+    return data as { fileId: string; uploadUrl: string; expiresAt: string; originalName?: string; renamedFrom?: string }
   }
 
   async function completeUpload(projectId: string, fileId: string) {
