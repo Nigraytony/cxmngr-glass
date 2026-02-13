@@ -123,7 +123,7 @@ async function checkForActiveOprWorkshop(projectId) {
 
 watch(
   [() => auth.authReady, () => resolvedProjectId.value],
-  ([ready, pid], [prevReady, prevPid]) => {
+  ([ready, pid], [_prevReady, prevPid]) => {
     if (!ready) return
     if (pid && pid !== prevPid) {
       try { opr.workshop = null } catch (_) { /* ignore */ }

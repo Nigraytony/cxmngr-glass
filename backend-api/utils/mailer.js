@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 const { isTruthy } = require('../middleware/validate')
 let sgMail = null
-const hasSendGrid = !!process.env.SENDGRID_API_KEY
+const hasSendGrid = !!(process.env.SENDGRID_API_KEY && String(process.env.SENDGRID_API_KEY).trim())
 if (hasSendGrid) {
   try {
     sgMail = require('@sendgrid/mail')
@@ -21,6 +21,81 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS || process.env.MAILTRAP_PASS || ''
   }
 });
+
+function getSmtpCreds() {
+  const user = process.env.SMTP_USER || process.env.MAILTRAP_USER || ''
+  const pass = process.env.SMTP_PASS || process.env.MAILTRAP_PASS || ''
+  const configured = !!(String(user).trim() && String(pass).trim())
+  return { user, pass, configured }
+}
+
+function getEmailProviderPreference() {
+  // Supported values: 'smtp' | 'sendgrid'. Anything else => auto.
+  return String(process.env.EMAIL_PROVIDER || '').trim().toLowerCase()
+}
+
+async function sendViaSendGrid({ to, subject, html }) {
+  if (!sgMail) throw new Error('SendGrid not configured')
+  const from = process.env.MAIL_FROM || 'no-reply@example.com'
+  const fromName = process.env.MAIL_FROM_NAME || ''
+  const msg = {
+    to,
+    from: fromName ? { email: from, name: fromName } : from,
+    subject,
+    html,
+  }
+  const [resp] = await sgMail.send(msg)
+  return { accepted: [to], messageId: resp?.headers?.['x-message-id'] || 'sendgrid' }
+}
+
+async function sendViaSmtp({ to, subject, html }) {
+  return transporter.sendMail({
+    from: process.env.MAIL_FROM || 'no-reply@example.com',
+    to,
+    subject,
+    html,
+  })
+}
+
+async function sendEmailBestEffort({ to, subject, html }) {
+  const pref = getEmailProviderPreference()
+  const smtp = getSmtpCreds()
+  const canSmtp = smtp.configured
+  const canSendGrid = !!sgMail
+
+  if (pref === 'sendgrid') {
+    try {
+      return await sendViaSendGrid({ to, subject, html })
+    } catch (e) {
+      if (canSmtp) return await sendViaSmtp({ to, subject, html })
+      throw e
+    }
+  }
+
+  if (pref === 'smtp') {
+    try {
+      return await sendViaSmtp({ to, subject, html })
+    } catch (e) {
+      if (canSendGrid) return await sendViaSendGrid({ to, subject, html })
+      throw e
+    }
+  }
+
+  // Auto: prefer SMTP when configured; fall back to SendGrid.
+  if (canSmtp) {
+    try {
+      return await sendViaSmtp({ to, subject, html })
+    } catch (e) {
+      if (canSendGrid) return await sendViaSendGrid({ to, subject, html })
+      throw e
+    }
+  }
+  if (canSendGrid) return await sendViaSendGrid({ to, subject, html })
+
+  const err = new Error('No email provider configured (set SMTP_* or SENDGRID_API_KEY)')
+  err.code = 'EMAIL_NOT_CONFIGURED'
+  throw err
+}
 
 async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
   if (isTruthy(process.env.DISABLE_EMAIL)) {
@@ -65,7 +140,8 @@ async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
   // If SMTP credentials are not provided, write invites to a local dev log
   const smtpUser = process.env.SMTP_USER || process.env.MAILTRAP_USER || '';
   const smtpPass = process.env.SMTP_PASS || process.env.MAILTRAP_PASS || '';
-  if (!smtpUser || !smtpPass) {
+  const hasSmtp = !!(String(smtpUser).trim() && String(smtpPass).trim())
+  if (!hasSmtp && !sgMail) {
     try {
       const fs = require('fs')
       const path = require('path')
@@ -74,7 +150,7 @@ async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
       const file = path.join(outDir, 'emails.log')
       const record = { to, inviterName, projectName, acceptUrl, html, ts: new Date().toISOString() }
       fs.appendFileSync(file, JSON.stringify(record) + '\n')
-      console.info('[mailer] SMTP credentials missing; invite written to', file)
+      console.info('[mailer] Email provider not configured; invite written to', file)
       return { accepted: [to], messageId: `local-log-${Date.now()}` }
     } catch (e) {
       console.error('failed to write invite to local log', e)
@@ -83,25 +159,7 @@ async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
   }
 
   try {
-    if (sgMail) {
-      const from = process.env.MAIL_FROM || 'no-reply@example.com'
-      const fromName = process.env.MAIL_FROM_NAME || ''
-      const msg = {
-        to,
-        from: fromName ? { email: from, name: fromName } : from,
-        subject: `Invitation to join project: ${projectName}`,
-        html,
-      }
-      const [resp] = await sgMail.send(msg)
-      return { accepted: [to], messageId: resp?.headers?.['x-message-id'] || 'sendgrid' }
-    }
-    const info = await transporter.sendMail({
-      from: process.env.MAIL_FROM || 'no-reply@example.com',
-      to,
-      subject: `Invitation to join project: ${projectName}`,
-      html
-    });
-    return info;
+    return await sendEmailBestEffort({ to, subject: `Invitation to join project: ${projectName}`, html })
   } catch (err) {
     // On send failure, persist to local log so invites are not lost in dev
     try {
@@ -170,7 +228,8 @@ async function sendResetEmail({ to, name, resetUrl, expiresMinutes }) {
 
   const smtpUser = process.env.SMTP_USER || process.env.MAILTRAP_USER || '';
   const smtpPass = process.env.SMTP_PASS || process.env.MAILTRAP_PASS || '';
-  if (!smtpUser || !smtpPass) {
+  const hasSmtp = !!(String(smtpUser).trim() && String(smtpPass).trim())
+  if (!hasSmtp && !sgMail) {
     try {
       const fs = require('fs');
       const path = require('path');
@@ -179,7 +238,7 @@ async function sendResetEmail({ to, name, resetUrl, expiresMinutes }) {
       const file = path.join(outDir, 'emails.log');
       const record = { to, name, resetUrl, expiresMinutes, html, ts: new Date().toISOString() };
       fs.appendFileSync(file, JSON.stringify(record) + '\n');
-      console.info('[mailer] SMTP missing; reset email written to', file);
+      console.info('[mailer] Email provider not configured; reset email written to', file);
       return { accepted: [to], messageId: `local-log-reset-${Date.now()}` };
     } catch (e) {
       console.error('failed to write reset email to local log', e);
@@ -187,25 +246,7 @@ async function sendResetEmail({ to, name, resetUrl, expiresMinutes }) {
   }
 
   try {
-    if (sgMail) {
-      const from = process.env.MAIL_FROM || 'no-reply@example.com'
-      const fromName = process.env.MAIL_FROM_NAME || ''
-      const msg = {
-        to,
-        from: fromName ? { email: from, name: fromName } : from,
-        subject: 'Reset your password',
-        html,
-      }
-      const [resp] = await sgMail.send(msg)
-      return { accepted: [to], messageId: resp?.headers?.['x-message-id'] || 'sendgrid' }
-    }
-    const info = await transporter.sendMail({
-      from: process.env.MAIL_FROM || 'no-reply@example.com',
-      to,
-      subject: 'Reset your password',
-      html,
-    });
-    return info;
+    return await sendEmailBestEffort({ to, subject: 'Reset your password', html })
   } catch (err) {
     try {
       const fs = require('fs');
@@ -261,7 +302,8 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
 
   const smtpUser = process.env.SMTP_USER || process.env.MAILTRAP_USER || '';
   const smtpPass = process.env.SMTP_PASS || process.env.MAILTRAP_PASS || '';
-  if (!smtpUser || !smtpPass) {
+  const hasSmtp = !!(String(smtpUser).trim() && String(smtpPass).trim())
+  if (!hasSmtp && !sgMail) {
     try {
       const fs = require('fs');
       const path = require('path');
@@ -270,7 +312,7 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
       const file = path.join(outDir, 'emails.log');
       const record = { to, requesterEmail, pin, expiresMinutes, html, ts: new Date().toISOString(), kind: 'support_access_pin' };
       fs.appendFileSync(file, JSON.stringify(record) + '\n');
-      console.info('[mailer] SMTP missing; support access PIN written to', file);
+      console.info('[mailer] Email provider not configured; support access PIN written to', file);
       return { accepted: [to], messageId: `local-log-support-pin-${Date.now()}` };
     } catch (e) {
       console.error('failed to write support access PIN to local log', e);
@@ -278,25 +320,7 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
   }
 
   try {
-    if (sgMail) {
-      const from = process.env.MAIL_FROM || 'no-reply@example.com'
-      const fromName = process.env.MAIL_FROM_NAME || ''
-      const msg = {
-        to,
-        from: fromName ? { email: from, name: fromName } : from,
-        subject: 'CXMngr support access PIN',
-        html,
-      }
-      const [resp] = await sgMail.send(msg)
-      return { accepted: [to], messageId: resp?.headers?.['x-message-id'] || 'sendgrid' }
-    }
-    const info = await transporter.sendMail({
-      from: process.env.MAIL_FROM || 'no-reply@example.com',
-      to,
-      subject: 'CXMngr support access PIN',
-      html,
-    });
-    return info;
+    return await sendEmailBestEffort({ to, subject: 'CXMngr support access PIN', html })
   } catch (err) {
     try {
       const fs = require('fs');

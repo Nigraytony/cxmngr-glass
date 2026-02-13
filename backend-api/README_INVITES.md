@@ -1,4 +1,4 @@
-Invite/emailing setup
+# Invite/emailing setup
 
 Environment variables required for emails:
 
@@ -7,7 +7,9 @@ Environment variables required for emails:
 - SMTP_USER - SMTP username
 - SMTP_PASS - SMTP password
 - MAIL_FROM - From address for outgoing emails (optional)
-- APP_URL - Public app URL for constructing accept links (default http://localhost:5173)
+- EMAIL_PROVIDER - Optional: 'smtp' or 'sendgrid' to force provider selection
+- SENDGRID_API_KEY - Optional: enables SendGrid sending (used when EMAIL_PROVIDER=sendgrid or when SMTP is not configured)
+- APP_URL - Public app URL for constructing accept links (default `http://localhost:5173`)
 
 What was added:
 
@@ -21,6 +23,7 @@ How it works:
 2. The invited user visits the link, registers. On successful registration/login, the frontend will call POST /api/projects/accept-invite with the token which will add the user to the project's team.
 
 Note: This is a minimal implementation for dev/testing. In production you should:
+
 - Use signed tokens with expiry
 - Rate-limit invite creation
 - Add better email templates and clickable CTA

@@ -1002,7 +1002,7 @@
 
             <div
               v-else
-              class="rounded-xl overflow-auto bg-slate-950 border border-white/10"
+              class="task-gantt rounded-xl overflow-auto bg-slate-950 border border-white/10"
               style="max-height: 70vh;"
             >
               <GGanttChart
@@ -1949,7 +1949,9 @@ const ganttRows = computed(() => {
       const id = String(t._id)
       const w = t.wbs ? String(t.wbs) : ''
       const n = t.name ? String(t.name) : ''
-      const label = `${w ? w + ' ' : ''}${n}`.trim() || w || id
+      const depth = w ? wbsDepth(w) : 0
+      const indent = depth > 0 ? '\u00A0'.repeat(depth * 5) : ''
+      const label = (`${indent}${w ? w + ' ' : ''}${n}`).trimEnd() || w || id
       return {
         id,
         label,
@@ -3817,5 +3819,34 @@ async function doDelete() {
 .compact-rows .drop-enter-to,
 .compact-rows .drop-leave-from {
   height: 1.125rem !important;
+}
+
+.task-gantt :deep(.g-gantt-chart) {
+  background: transparent !important;
+}
+
+.task-gantt :deep(.g-timeaxis) {
+  background: transparent !important;
+}
+
+.task-gantt :deep(.g-grid-line) {
+  border-left-width: 0.5px;
+  border-left-color: rgba(255, 255, 255, 0.06);
+}
+
+.task-gantt :deep(.g-gantt-row > .g-gantt-row-bars-container) {
+  border-top-width: 0.75px;
+  border-bottom-width: 0.75px;
+  border-top-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.task-gantt :deep(.g-label-column-row) {
+  border-bottom: 0.75px solid rgba(255, 255, 255, 0.08);
+}
+
+.task-gantt :deep(.g-timeaxis-hour-pin) {
+  width: 0.5px;
+  opacity: 0.5;
 }
 </style>

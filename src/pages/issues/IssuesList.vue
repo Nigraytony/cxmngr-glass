@@ -1441,7 +1441,7 @@
                 class="form-checkbox rounded bg-white/10 border-white/20"
                 :value="col"
                 :checked="selectedColumnsSet.has(col)"
-                @change="onToggleColumn(col, $event.target.checked)"
+                @change="(e) => onToggleColumn(col, (e.target as HTMLInputElement).checked)"
               >
               <span class="text-sm">{{ col }}</span>
             </label>
@@ -1961,15 +1961,24 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, watch, onMounted, onBeforeUnmount, reactive } from 'vue'
+import type { Issue } from '../../stores/issues'
+
+type IssueRow = (Partial<Issue> & {
+  priority?: string
+  responsible_person?: string
+  project?: any
+}) & Record<string, any>
+
 // Utility: format a date string to a readable format
-function formatDate(date) {
+function formatDate(date: string | number | Date | null | undefined): string {
   if (!date) return ''
   const d = new Date(date)
-  if (isNaN(d)) return ''
+  if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-function formatDueDate(date: unknown) {
+function formatDueDate(date: unknown): string {
   if (!date) return ''
 
   // Due dates are conceptually date-only. If they come across as YYYY-MM-DD
@@ -1994,7 +2003,6 @@ function formatDueDate(date: unknown) {
 
   return formatDate(date as any)
 }
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import SearchPill from '../../components/SearchPill.vue'
@@ -2013,9 +2021,9 @@ import { getAuthHeaders } from '../../utils/auth'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
-  import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
-  import { confirm as inlineConfirm } from '../../utils/confirm'
-  import { runCoachmarkOnce } from '../../utils/coachmarks'
+import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
+import { confirm as inlineConfirm } from '../../utils/confirm'
+import { runCoachmarkOnce } from '../../utils/coachmarks'
 // Preferred/common export columns in desired order
 const removedColumns = ['projectId', 'comments', 'attachments', 'photos', 'documents', 'updatedAt', 'closedBy']
 const preferredColumns = ['number','title','description','type','priority','severity','status','foundBy','dateFound','assignedTo','responsible_person','dueDate','createdAt','closedDate','location','system']
@@ -2110,41 +2118,40 @@ async function fetchIssuesAnalytics(projectId?: string) {
     analyticsLoading.value = false
   }
 }
-const serverIssues = ref([])
+const serverIssues = ref<IssueRow[]>([])
 const serverTotal = ref(0)
 const serverTotalAll = ref(0)
 const listMode = ref<'api' | 'store'>('api')
-const serverTypes = ref([])
-const serverPriorities = ref([])
-const serverStatuses = ref([])
-const serverTypeCounts = ref({})
-const serverPriorityCounts = ref({})
-const serverStatusCounts = ref({})
+const serverTypes = ref<string[]>([])
+const serverPriorities = ref<string[]>([])
+const serverStatuses = ref<string[]>([])
+const serverTypeCounts = ref<Record<string, number>>({})
+const serverPriorityCounts = ref<Record<string, number>>({})
+const serverStatusCounts = ref<Record<string, number>>({})
 
 // Spinner component import removed (not used)
 
 // Helper to get a stable id
-function idOf(issue) {
-  return issue?.id || issue?._id || ''
+function idOf(issue: Partial<Issue> | null | undefined): string {
+  return String((issue as any)?.id || (issue as any)?._id || '')
 }
 
 // Track toggle-in-progress state per issue id
-import { reactive } from 'vue'
-const toggling = reactive({})
+const toggling = reactive<Record<string, boolean>>({})
 
-function isClosedRow(issue) {
+function isClosedRow(issue: Partial<Issue> | null | undefined): boolean {
   const s = String(issue?.status || '').toLowerCase()
   return s === 'closed' || s === 'canceled' || s === 'cancelled'
 }
 
-async function toggleIssueClosed(issue) {
+async function toggleIssueClosed(issue: Partial<Issue> | null | undefined): Promise<void> {
   const id = idOf(issue)
   if (!id) return
   try {
     toggling[id] = true
     const nextClosed = !isClosedRow(issue)
-    const payload = nextClosed
-      ? { status: 'Closed', closedDate: isoDate(new Date()), closedBy: defaultFoundByLabel() }
+    const payload: Partial<Issue> = nextClosed
+      ? { status: 'Closed', closedDate: isoDate(new Date()), closedBy: String(defaultFoundByLabel() || '') }
       : { status: 'Open', closedDate: '', closedBy: '' }
     await issuesStore.updateIssue(id, payload)
     ui.showSuccess(nextClosed ? 'Issue closed' : 'Issue reopened')
@@ -2155,13 +2162,13 @@ async function toggleIssueClosed(issue) {
   }
 }
 
-function truncate(text, n) {
+function truncate(text: string | null | undefined, n: number): string {
   if (!text) return ''
   return text.length > n ? text.slice(0, n - 1) + '…' : text
 }
 
 // Convert WYSIWYG/HTML to plain text for display/search
-function htmlToText(html) {
+function htmlToText(html: unknown): string {
   if (!html) return ''
   try {
     const tmp = document.createElement('div')
@@ -2174,7 +2181,7 @@ function htmlToText(html) {
   }
 }
 
-function priorityClass(p) {
+function priorityClass(p: string | null | undefined): string {
   const key = (p || '').toLowerCase()
   if (key.includes('critical') || key === 'critical') return 'bg-red-600 text-white'
   if (key.includes('high')) return 'bg-red-500 text-white'
@@ -2183,7 +2190,7 @@ function priorityClass(p) {
   return 'bg-white/6 text-white'
 }
 
-function normalizePriorityLabel(p) {
+function normalizePriorityLabel(p: string | null | undefined): string {
   const key = String(p || '').trim().toLowerCase()
   if (key.includes('critical')) return 'Critical'
   if (key.includes('high')) return 'High'
@@ -2194,7 +2201,7 @@ function normalizePriorityLabel(p) {
   return key.charAt(0).toUpperCase() + key.slice(1)
 }
 
-function priorityBgClass(p) {
+function priorityBgClass(p: string | null | undefined): string {
   const key = (p || '').toLowerCase()
   if (key.includes('critical') || key === 'critical') return 'bg-red-600'
   if (key.includes('high')) return 'bg-red-500'
@@ -2203,19 +2210,19 @@ function priorityBgClass(p) {
   return 'bg-white/30'
 }
 
-function priorityBadgeClass(p) {
+function priorityBadgeClass(p: string | null | undefined): string {
   if (!p || p === 'All') return 'bg-white/10 text-white/80'
   return priorityClass(p)
 }
 
-function priorityCount(name) {
+function priorityCount(name: string): number {
   try {
-    const opt = (priorityOptions.value || []).find(o => o && o.name === name)
+    const opt = (priorityOptions.value || []).find((o: any) => o && o.name === name)
     return opt ? opt.count : 0
   } catch (e) { return 0 }
 }
 
-function statusBgClass(s) {
+function statusBgClass(s: string | null | undefined): string {
   const key = (s || '').toLowerCase()
   if (key === 'open') return 'bg-sky-500'
   if (key === 'in progress' || key === 'pending') return 'bg-amber-500'
@@ -2225,7 +2232,7 @@ function statusBgClass(s) {
   return 'bg-white/30'
 }
 
-function statusBadgeClass(s) {
+function statusBadgeClass(s: string | null | undefined): string {
   if (!s || s === 'All') return 'bg-white/10 text-white/80'
   const key = s.toLowerCase()
   if (key === 'open') return 'bg-sky-500 text-white'
@@ -2236,17 +2243,17 @@ function statusBadgeClass(s) {
   return 'bg-white/10 text-white/80'
 }
 
-function statusCount(name) {
+function statusCount(name: string): number {
   try {
-    const opt = (statusOptions.value || []).find(o => o && o.name === name)
+    const opt = (statusOptions.value || []).find((o: any) => o && o.name === name)
     return opt ? opt.count : 0
   } catch (e) { return 0 }
 }
 
-const selectedIssue = ref(null)
+const selectedIssue = ref<IssueRow | null>(null)
 const showViewModal = ref(false)
 const showAddModal = ref(false)
-const newIssue = ref({
+const newIssue = ref<any>({
   number: null,
   title: '',
   description: '',
@@ -2260,34 +2267,34 @@ const newIssue = ref({
   location: '',
   system: ''
 })
-const editIssue = ref(null)
-const formErrors = ref({})
+const editIssue = ref<Record<string, any>>({})
+const formErrors = ref<Record<string, string>>({})
 const ui = useUiStore()
-const pageSection = ref(null)
+const pageSection = ref<HTMLElement | null>(null)
 const isEditReadOnly = computed(() => {
   const s = String(editIssue.value?.status || '').toLowerCase()
   return s === 'closed' || s === 'canceled' || s === 'cancelled'
 })
 // Columns chooser state
 const showColumnsModal = ref(false)
-const selectedColumns = ref([])
-const selectedColumnsSet = computed(() => new Set(selectedColumns.value || []))
+const selectedColumns = ref<string[]>([])
+const selectedColumnsSet = computed<Set<string>>(() => new Set(selectedColumns.value || []))
 const columnsStorageKey = computed(() => `issuesExportColumns:${projectStore.currentProjectId || 'global'}`)
 // Downloads dropdown state
 const showDownloadsMenu = ref(false)
-const downloadsRef = ref(null)
-const reportRef = ref(null)
+const downloadsRef = ref<HTMLElement | null>(null)
+const reportRef = ref<any>(null)
 const showTypeMenu = ref(false)
-const typeMenuRef = ref(null)
+const typeMenuRef = ref<HTMLElement | null>(null)
 const showPriorityMenu = ref(false)
-const priorityMenuRef = ref(null)
+const priorityMenuRef = ref<HTMLElement | null>(null)
 const showStatusMenu = ref(false)
-const statusMenuRef = ref(null)
+const statusMenuRef = ref<HTMLElement | null>(null)
 const showOprMenu = ref(false)
-const oprMenuRef = ref(null)
+const oprMenuRef = ref<HTMLElement | null>(null)
 
-const availableColumns = computed(() => {
-  const colSet = new Set()
+const availableColumns = computed<string[]>(() => {
+  const colSet = new Set<string>()
   for (const it of issuesStore.issues) {
     if (!it || typeof it !== 'object') continue
     for (const k of Object.keys(it)) {
@@ -2298,7 +2305,7 @@ const availableColumns = computed(() => {
   return Array.from(colSet)
 })
 
-const sortedAvailableColumns = computed(() => {
+const sortedAvailableColumns = computed<string[]>(() => {
   const avail = new Set(availableColumns.value)
   removedColumns.forEach(c => avail.delete(c))
   return [
@@ -2308,7 +2315,7 @@ const sortedAvailableColumns = computed(() => {
 })
 
 function loadSelectedColumns() {
-  const sanitize = (cols) => (cols || []).filter(c => !removedColumns.includes(c))
+  const sanitize = (cols: unknown): string[] => (Array.isArray(cols) ? cols : []).map(String).filter(c => !removedColumns.includes(c))
   try {
     const raw = localStorage.getItem(columnsStorageKey.value)
     if (raw) {
@@ -2346,7 +2353,7 @@ function selectCommonColumns() {
   const avail = new Set(availableColumns.value)
   selectedColumns.value = preferredColumns.filter(c => avail.has(c))
 }
-function orderColumns(cols) {
+function orderColumns(cols: string[]): string[] {
   const pref = preferredColumns
   const inPref = cols.filter(c => pref.includes(c))
   const remaining = cols.filter(c => !pref.includes(c)).sort()
@@ -2354,16 +2361,16 @@ function orderColumns(cols) {
   const orderedPref = pref.filter(c => inPref.includes(c))
   return [...orderedPref, ...remaining]
 }
-function onToggleColumn(col, checked) {
+function onToggleColumn(col: string, checked: boolean): void {
   const set = new Set(selectedColumns.value)
   if (checked) set.add(col); else set.delete(col)
   selectedColumns.value = orderColumns(Array.from(set))
 }
 
-function getExportColumns(rows) {
+function getExportColumns(rows: any[]): string[] {
   // Use selected columns if any; otherwise derive from rows using preferred order then others
   if (selectedColumns.value && selectedColumns.value.length) return orderColumns(selectedColumns.value.slice().filter(c => !removedColumns.includes(c)))
-  const colSet = new Set()
+  const colSet = new Set<string>()
   for (const it of rows) {
     if (!it || typeof it !== 'object') continue
     for (const k of Object.keys(it)) {
@@ -2420,17 +2427,19 @@ function onDownloadXlsxClick() {
   exportFilteredIssuesXlsx()
 }
 
-function handleClickOutside(e) {
+function handleClickOutside(e: MouseEvent): void {
   const dEl = downloadsRef.value
   const tEl = typeMenuRef.value
   const pEl = priorityMenuRef.value
   const sEl = statusMenuRef.value
   const oEl = oprMenuRef.value
-  if (dEl && !dEl.contains(e.target)) closeDownloadsMenu()
-  if (tEl && !tEl.contains(e.target)) closeTypeMenu()
-  if (pEl && !pEl.contains(e.target)) closePriorityMenu()
-  if (sEl && !sEl.contains(e.target)) closeStatusMenu()
-  if (oEl && !oEl.contains(e.target)) closeOprMenu()
+  const target = (e.target as Node | null)
+  if (!target) return
+  if (dEl && !dEl.contains(target)) closeDownloadsMenu()
+  if (tEl && !tEl.contains(target)) closeTypeMenu()
+  if (pEl && !pEl.contains(target)) closePriorityMenu()
+  if (sEl && !sEl.contains(target)) closeStatusMenu()
+  if (oEl && !oEl.contains(target)) closeOprMenu()
 }
 onMounted(() => document.addEventListener('click', handleClickOutside))
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
@@ -2448,44 +2457,44 @@ onMounted(async () => {
   }
 })
 
-function validateIssue(obj) {
-  const e = {}
-  if ((!obj.title || !obj.title.trim()) && (!obj.type || !obj.type.trim())) e.type = 'Title or Type is required'
-  if (!obj.description || obj.description.trim().length < 10) e.description = 'Description must be at least 10 characters'
-  if (!obj.priority) e.priority = 'Priority is required'
-  if (!obj.assignedTo || !obj.assignedTo.trim()) e.assignedTo = 'Assigned To is required'
+function validateIssue(obj: any): Record<string, string> {
+  const e: Record<string, string> = {}
+  if ((!obj?.title || !String(obj.title).trim()) && (!obj?.type || !String(obj.type).trim())) e.type = 'Title or Type is required'
+  if (!obj?.description || String(obj.description).trim().length < 10) e.description = 'Description must be at least 10 characters'
+  if (!obj?.priority) e.priority = 'Priority is required'
+  if (!obj?.assignedTo || !String(obj.assignedTo).trim()) e.assignedTo = 'Assigned To is required'
   return e
 }
 
 // Normalize incoming values to list-backed values expected by IssueForm
-function normalizePriority(v) {
+function normalizePriority(v: unknown): string {
   const s = String(v || '').toLowerCase()
-  const map = { low: 'low', medium: 'medium', high: 'high', critical: 'critical', comment: 'comment' }
+  const map: Record<string, string> = { low: 'low', medium: 'medium', high: 'high', critical: 'critical', comment: 'comment' }
   if (map[s]) return map[s]
   // also accept API labels
-  const byLabel = { low: 'low', medium: 'medium', high: 'high', critical: 'critical' }
+  const byLabel: Record<string, string> = { low: 'low', medium: 'medium', high: 'high', critical: 'critical' }
   return byLabel[s] || (byLabel[s.charAt(0).toUpperCase() + s.slice(1)] ? byLabel[s.charAt(0).toUpperCase() + s.slice(1)] : 'medium')
 }
-function normalizeStatus(v) {
+function normalizeStatus(v: unknown): string {
   const s = String(v || '').toLowerCase()
-  const map = { open: 'open', pending: 'pending', closed: 'closed', resolved: 'resolved', canceled: 'canceled', cancelled: 'canceled', 'in progress': 'pending' }
+  const map: Record<string, string> = { open: 'open', pending: 'pending', closed: 'closed', resolved: 'resolved', canceled: 'canceled', cancelled: 'canceled', 'in progress': 'pending' }
   return map[s] || 'open'
 }
 function computeNextIssueNumber() {
   try {
     const pid = projectStore.currentProjectId
     if (!pid) return undefined
-    const nums = issuesStore.issues
-      .filter(i => String(i.projectId || i.project?._id || i.project || '') === String(pid))
-      .map(i => Number(i.number) || 0)
+    const nums = (issuesStore.issues as any[])
+      .filter((i: any) => String(i?.projectId || i?.project?._id || i?.project || '') === String(pid))
+      .map((i: any) => Number(i?.number) || 0)
     const max = nums.length ? Math.max(...nums) : 0
     return max + 1
   } catch (e) { return undefined }
 }
 
-function isoDate(d) {
+function isoDate(d: unknown): string {
   try {
-    const dt = d instanceof Date ? d : new Date(d)
+    const dt = d instanceof Date ? d : new Date(d as any)
     const y = dt.getFullYear()
     const m = String(dt.getMonth() + 1).padStart(2, '0')
     const day = String(dt.getDate()).padStart(2, '0')
@@ -2493,14 +2502,15 @@ function isoDate(d) {
   } catch (e) { return '' }
 }
 
-function defaultFoundByLabel() {
+function defaultFoundByLabel(): string {
   try {
     const team = (projectStore.currentProject || {}).team || []
-    const myEmail = (authStore.user && authStore.user.email) ? String(authStore.user.email) : ''
-    const me = myEmail ? team.find(m => String(m?.email || '').toLowerCase() === myEmail.toLowerCase()) : null
-    const firstName = (authStore.user?.firstName) || (me?.firstName) || ''
-    const lastName = (authStore.user?.lastName) || (me?.lastName) || ''
-    const company = (me?.company) || (authStore.user && authStore.user.company) || ''
+    const userAny: any = authStore.user as any
+    const myEmail = userAny?.email ? String(userAny.email) : ''
+    const me = myEmail ? team.find((m: any) => String(m?.email || '').toLowerCase() === myEmail.toLowerCase()) : null
+    const firstName = userAny?.firstName || (me as any)?.firstName || ''
+    const lastName = userAny?.lastName || (me as any)?.lastName || ''
+    const company = (me as any)?.company || userAny?.company || ''
     const name = `${firstName} ${lastName}`.trim()
     if (name && company) return `${name} (${company})`
     return name || company || ''
@@ -2585,7 +2595,7 @@ const statusFilter = ref('All')
 		const searchQuery = ref('')
 const searchMode = computed(() => {
   try {
-    const p = projectStore.currentProject && projectStore.currentProject.value ? projectStore.currentProject.value : null
+    const p: any = (projectStore as any).currentProject || null
     const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
     return m || 'substring'
   } catch (e) { return 'substring' }
@@ -2688,10 +2698,10 @@ function persistListState() {
 	}
 
 // Debounce helper (small local utility)
-function debounce(fn, wait = 200) {
-  let t
-  return (...args) => {
-    clearTimeout(t)
+function debounce<T extends (...args: any[]) => any>(fn: T, wait = 200): (...args: Parameters<T>) => void {
+  let t: ReturnType<typeof setTimeout> | undefined
+  return (...args: Parameters<T>) => {
+    if (t) clearTimeout(t)
     t = setTimeout(() => fn(...args), wait)
   }
 }
@@ -3067,14 +3077,14 @@ function openOprItemFromChip(it: OprItemMeta) {
 }
 
 const effectiveSearch = ref('')
-const updateEffective = debounce((val) => { effectiveSearch.value = val }, 200)
+const updateEffective = debounce((val: string) => { effectiveSearch.value = val }, 200)
 
 watch(() => searchQuery.value, (v) => updateEffective(v))
 // Now that search/effective/search watchers exist, wire up persistence
 watch(listStateKey, () => loadListState(), { immediate: true })
 watch([searchQuery, typeFilter, priorityFilter, statusFilter, oprCategoryFilter, oprItemFilter, hasOprFilter, locationFilter, responsibleFilter, systemFilter, dateFoundFrom, dateFoundTo, dueDateFrom, dueDateTo, tagsFilter, hideClosed, myIssuesOnly, sortKey, sortDir], () => persistListState())
-const priorityCounts = computed(() => {
-  const map = {}
+const priorityCounts = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
   const serverCounts = serverPriorityCounts.value || {}
   if (Object.keys(serverCounts).length) {
     for (const [k, v] of Object.entries(serverCounts)) {
@@ -3084,13 +3094,13 @@ const priorityCounts = computed(() => {
   }
   if (!Object.keys(map).length && Array.isArray(serverIssues.value) && serverIssues.value.length) {
     for (const i of serverIssues.value) {
-      const p = normalizePriorityLabel(i.priority || 'Unspecified')
+      const p = normalizePriorityLabel((i as any).priority || 'Unspecified')
       map[p] = (map[p] || 0) + 1
     }
   }
   if (!Object.keys(map).length && Array.isArray(issuesStore.issues)) {
-    for (const i of issuesStore.issues) {
-      const p = normalizePriorityLabel(i.priority || 'Unspecified')
+    for (const i of (issuesStore.issues as any[])) {
+      const p = normalizePriorityLabel((i as any).priority || 'Unspecified')
       map[p] = (map[p] || 0) + 1
     }
   }
@@ -3099,9 +3109,9 @@ const priorityCounts = computed(() => {
 })
 
 const priorityOptions = computed(() => {
-  const entries = Object.entries(priorityCounts.value)
+  const entries: Array<{ name: string; count: number }> = Object.entries(priorityCounts.value)
     .filter(([name]) => name !== 'All')
-    .map(([name, count]) => ({ name: normalizePriorityLabel(name), count }))
+    .map(([name, count]) => ({ name: normalizePriorityLabel(name), count: Number(count) || 0 }))
   // Sort commonly used priorities first
   const order = ['Critical', 'High', 'Medium', 'Low', 'Unspecified']
   entries.sort((a, b) => {
@@ -3114,8 +3124,8 @@ const priorityOptions = computed(() => {
   return [{ name: 'All', count: priorityCounts.value['All'] || issuesStore.issues.length }, ...entries]
 })
 
-const typeCounts = computed(() => {
-  const map = {}
+const typeCounts = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
   const serverCounts = serverTypeCounts.value || {}
   if (Object.keys(serverCounts).length) {
     for (const [k, v] of Object.entries(serverCounts)) {
@@ -3130,8 +3140,8 @@ const typeCounts = computed(() => {
     }
   }
   if (!Object.keys(map).length && Array.isArray(issuesStore.issues)) {
-    for (const i of issuesStore.issues) {
-      const t = (i.type || 'Unspecified')
+    for (const i of (issuesStore.issues as any[])) {
+      const t = ((i as any).type || 'Unspecified')
       map[t] = (map[t] || 0) + 1
     }
   }
@@ -3140,19 +3150,19 @@ const typeCounts = computed(() => {
 })
 
 const typeOptions = computed(() => {
-  const entries = Object.entries(typeCounts.value)
+  const entries: Array<{ name: string; count: number }> = Object.entries(typeCounts.value)
     .filter(([name]) => name !== 'All')
-    .map(([name, count]) => ({ name, count }))
+    .map(([name, count]) => ({ name, count: Number(count) || 0 }))
   entries.sort((a, b) => a.name.localeCompare(b.name))
   return [{ name: 'All', count: typeCounts.value['All'] || issuesStore.issues.length }, ...entries]
 })
-function typeCount(name) {
-  const opt = (typeOptions.value || []).find(o => o && o.name === name)
+function typeCount(name: string): number {
+  const opt = (typeOptions.value || []).find((o: any) => o && o.name === name)
   return opt ? opt.count : 0
 }
 
-const statusCounts = computed(() => {
-  const map = {}
+const statusCounts = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {}
   const serverCounts = serverStatusCounts.value || {}
   if (Object.keys(serverCounts).length) {
     for (const [k, v] of Object.entries(serverCounts)) {
@@ -3167,8 +3177,8 @@ const statusCounts = computed(() => {
     }
   }
   if (!Object.keys(map).length && Array.isArray(issuesStore.issues)) {
-    for (const i of issuesStore.issues) {
-      const s = (i.status || 'Unspecified')
+    for (const i of (issuesStore.issues as any[])) {
+      const s = ((i as any).status || 'Unspecified')
       map[s] = (map[s] || 0) + 1
     }
   }
@@ -3177,7 +3187,8 @@ const statusCounts = computed(() => {
 })
 
 const statusOptions = computed(() => {
-  const entries = Object.entries(statusCounts.value).map(([name, count]) => ({ name, count }))
+  const entries: Array<{ name: string; count: number }> = Object.entries(statusCounts.value)
+    .map(([name, count]) => ({ name, count: Number(count) || 0 }))
   // Preferred order
   const order = ['Open', 'In Progress', 'Pending', 'Resolved', 'Closed', 'Canceled', 'Cancelled']
   entries.sort((a, b) => {
@@ -3238,11 +3249,13 @@ function isMyIssueRow(i: any) {
 }
 
 // Apply client-side filter over the server-returned page so exports and UI behave
-const filteredIssues = computed(() => {
+const filteredIssues = computed<IssueRow[]>(() => {
   const q = (effectiveSearch.value || '').trim().toLowerCase()
   // prefer server-provided page when available; otherwise fall back to full store list
   const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
-  const baseAll = useServer ? serverIssues.value : (Array.isArray(issuesStore.issues) ? issuesStore.issues : [])
+  const baseAll: IssueRow[] = useServer
+    ? serverIssues.value
+    : (Array.isArray(issuesStore.issues) ? (issuesStore.issues as any as IssueRow[]) : [])
   const list = (!priorityFilter.value || priorityFilter.value === 'All')
     ? baseAll
     : baseAll.filter(i => (i.priority || '').toLowerCase() === priorityFilter.value.toLowerCase())
@@ -3337,15 +3350,15 @@ function clearSearch() {
 }
 
 // Keyboard shortcuts: '/' focuses search, Escape clears
-function keyHandler(e) {
+function keyHandler(e: KeyboardEvent): void {
   if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
     e.preventDefault()
-    const el = document.querySelector('input[placeholder="Search issues..."]')
+    const el = document.querySelector('input[placeholder="Search issues..."]') as HTMLInputElement | null
     if (el) el.focus()
   }
   if (e.key === 'Escape') {
     clearSearch()
-    const el = document.querySelector('input[placeholder="Search issues..."]')
+    const el = document.querySelector('input[placeholder="Search issues..."]') as HTMLInputElement | null
     if (el) el.blur()
   }
 }
@@ -3356,9 +3369,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', keyHandler))
 // preferredProjectId: default project from auth takes precedence over explicit selection
 const preferredProjectId = computed(() => {
   try {
-    const projects = authStore.user?.projects
+    const projects: any[] | undefined = (authStore.user as any)?.projects
     if (Array.isArray(projects)) {
-      const dp = projects.find(p => p && p.default)
+      const dp = projects.find((p: any) => p && typeof p === 'object' && p.default)
       if (dp) return typeof dp === 'string' ? dp : (dp._id || dp.id || null)
     }
   } catch (e) { /* ignore */ }
@@ -3378,7 +3391,7 @@ watch(showAnalytics, (open) => {
 })
 
 // Fetch when paging/sort/search/filter changes (debounced)
-function fetchIssuesPage(projectId) {
+function fetchIssuesPage(projectId?: string | null) {
   return (async () => {
     loading.value = true
     try {
@@ -3394,11 +3407,10 @@ function fetchIssuesPage(projectId) {
           if (apiHostname === pageHostname || !rawEnvBase) {
             if (pid) {
               // ask store to populate (per-project)
-              if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
-              else await issuesStore.fetchIssues()
+              await issuesStore.fetchIssues(String(pid))
               const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
-              const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
-              serverIssues.value = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
+              const filteredByProject = (all as any[]).filter((i: any) => String(i?.projectId || i?.project || '') === String(pid))
+              serverIssues.value = filteredByProject.map((i: any) => ({ ...(i || {}), id: i?._id || i?.id }))
               serverTotal.value = serverIssues.value.length
               serverTotalAll.value = serverTotal.value
               serverTypes.value = []
@@ -3424,7 +3436,7 @@ function fetchIssuesPage(projectId) {
         // ignore env access errors and continue
       }
 
-      const params = {
+      const params: any = {
         page: page.value,
         perPage: pageSize.value,
       }
@@ -3454,7 +3466,7 @@ function fetchIssuesPage(projectId) {
 
       const res = await http.get('/api/issues', { params, headers: getAuthHeaders() })
       const data = res && res.data ? res.data : {}
-      const normalize = (i) => {
+      const normalize = (i: any): IssueRow => {
         const obj = { ...(i || {}) }
         obj.id = i?._id || i?.id
         obj.priority = obj.priority || obj.severity || 'Unspecified'
@@ -3473,8 +3485,8 @@ function fetchIssuesPage(projectId) {
       serverTotalAll.value = Number(data.totalAll || serverTotal.value || serverIssues.value.length)
       // facets
       if (Array.isArray(data.types)) {
-        const map = {}
-        const list = []
+        const map: Record<string, number> = {}
+        const list: string[] = []
         for (const t of data.types) {
           const name = String((t && t.name) || (t && t._id) || t || '').trim()
           const count = Number((t && t.count) || 0)
@@ -3489,8 +3501,8 @@ function fetchIssuesPage(projectId) {
         serverTypeCounts.value = {}
       }
       if (Array.isArray(data.priorities)) {
-        const map = {}
-        const list = []
+        const map: Record<string, number> = {}
+        const list: string[] = []
         for (const t of data.priorities) {
           const name = String((t && t.name) || (t && t._id) || t || '').trim()
           const count = Number((t && t.count) || 0)
@@ -3505,8 +3517,8 @@ function fetchIssuesPage(projectId) {
         serverPriorityCounts.value = {}
       }
       if (Array.isArray(data.statuses)) {
-        const map = {}
-        const list = []
+        const map: Record<string, number> = {}
+        const list: string[] = []
         for (const t of data.statuses) {
           const name = String((t && t.name) || (t && t._id) || t || '').trim()
           const count = Number((t && t.count) || 0)
@@ -3520,17 +3532,16 @@ function fetchIssuesPage(projectId) {
         serverStatuses.value = []
         serverStatusCounts.value = {}
       }
-    } catch (e) {
+    } catch (e: any) {
       // If endpoint missing (404), fall back to store-based data so UI still works
-      if (e && e.response && e.response.status === 404) {
+      if (e?.response?.status === 404) {
         try {
           const pid = projectId ?? preferredProjectId.value
             if (pid) {
-            if (typeof issuesStore.fetchByProject === 'function') await issuesStore.fetchByProject(String(pid))
-            else await issuesStore.fetchIssues()
+            await issuesStore.fetchIssues(String(pid))
             const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
-	              const filteredByProject = all.filter((i) => String(i.projectId || i.project || '') === String(pid))
-	              const mapped = filteredByProject.map((i) => ({ ...(i || {}), id: i._id || i.id }))
+	              const filteredByProject = (all as any[]).filter((i: any) => String(i?.projectId || i?.project || '') === String(pid))
+	              const mapped = filteredByProject.map((i: any) => ({ ...(i || {}), id: i?._id || i?.id }))
 	              const mineFiltered = myIssuesOnly.value ? mapped.filter((i) => isMyIssueRow(i)) : mapped
 	              serverIssues.value = mineFiltered
 	              serverTotal.value = mineFiltered.length
@@ -3699,13 +3710,13 @@ function nextPage() { if (page.value < totalPages.value) page.value++ }
 // pagination helpers: explicit page setter and pages array removed
 // (not needed in this component — navigation uses prevPage/nextPage)
 
-function openView(issue) {
+function openView(issue: IssueRow) {
   const id = issue.id || issue._id
   if (!id) return
   router.push({ name: 'issue-edit', params: { id } })
 }
 
-async function onDelete(issue) {
+async function onDelete(issue: IssueRow) {
   const id = idOf(issue)
   if (!id) return
   const ok = await inlineConfirm({
@@ -3719,13 +3730,13 @@ async function onDelete(issue) {
   try {
     await issuesStore.deleteIssue(id)
     ui.showSuccess('Issue deleted')
-  } catch (e) {
+  } catch (e: any) {
     ui.showError(e?.response?.data?.error || 'Failed to delete issue')
   }
 }
 
 
-function openEdit(issue) {
+function openEdit(issue: IssueRow) {
   // Prepare editIssue with normalized values for the form selects
   selectedIssue.value = issue
   const norm = {
@@ -3752,16 +3763,21 @@ function openEdit(issue) {
 function addIssue() {
   const errs = validateIssue(newIssue.value)
   if (Object.keys(errs).length) { formErrors.value = errs; return }
+  const pid = String(projectStore.currentProjectId || '').trim()
+  if (!pid) {
+    ui.showError('Select a project first')
+    return
+  }
   // map UI fields to backend Issue fields: responsible_person -> assignedTo, priority -> severity
   const payload = {
-    projectId: projectStore.currentProjectId,
+    projectId: pid,
     title: newIssue.value.title || newIssue.value.type || '',
     number: typeof newIssue.value.number === 'number' ? newIssue.value.number : computeNextIssueNumber(),
     description: newIssue.value.description,
     type: newIssue.value.type,
-    severity: toApiPriority(newIssue.value.priority),
+    severity: toApiPriority(newIssue.value.priority) as any,
     assignedTo: newIssue.value.assignedTo,
-    status: toApiStatus(newIssue.value.status),
+    status: toApiStatus(newIssue.value.status) as any,
     foundBy: newIssue.value.foundBy || undefined,
     dateFound: newIssue.value.dateFound || undefined,
     dueDate: newIssue.value.dueDate || undefined,
@@ -3777,13 +3793,13 @@ function addIssue() {
 }
 
 // Map UI values to API labels
-function toApiPriority(v) {
-  const m = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', comment: 'Comment' }
+function toApiPriority(v: unknown): string | undefined {
+  const m: Record<string, string> = { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical', comment: 'Comment' }
   const k = String(v || '').toLowerCase()
   return m[k] || undefined
 }
-function toApiStatus(v) {
-  const m = { open: 'Open', pending: 'In Progress', closed: 'Closed', resolved: 'Resolved', canceled: 'Canceled', cancelled: 'Canceled' }
+function toApiStatus(v: unknown): string | undefined {
+  const m: Record<string, string> = { open: 'Open', pending: 'In Progress', closed: 'Closed', resolved: 'Resolved', canceled: 'Canceled', cancelled: 'Canceled' }
   const k = String(v || '').toLowerCase()
   return m[k] || undefined
 }
@@ -3791,7 +3807,7 @@ function toApiStatus(v) {
 const showCloseModal = ref(false)
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function openClose(issue) {
+function openClose(issue: IssueRow) {
   selectedIssue.value = issue
   showCloseModal.value = true
 }
@@ -3799,6 +3815,7 @@ function openClose(issue) {
 function confirmClose() {
   if (!selectedIssue.value) return
   const id = selectedIssue.value.id || selectedIssue.value._id
+  if (!id) return
   // update status to 'Closed' via API
   issuesStore.updateIssue(id, { status: 'Closed', closedDate: isoDate(new Date()), closedBy: defaultFoundByLabel() }).then(() => {
     showCloseModal.value = false
@@ -3807,7 +3824,7 @@ function confirmClose() {
 }
 
 function saveEdit() {
-  if (!editIssue.value) return
+  if (!editIssue.value || Object.keys(editIssue.value).length === 0) return
   const errs = validateIssue(editIssue.value)
   if (Object.keys(errs).length) { formErrors.value = errs; return }
   const id = editIssue.value.id || editIssue.value._id || selectedIssue.value?.id || selectedIssue.value?._id
@@ -3816,9 +3833,9 @@ function saveEdit() {
     title: editIssue.value.title || editIssue.value.type,
     description: editIssue.value.description,
     type: editIssue.value.type,
-    severity: toApiPriority(editIssue.value.priority),
+    severity: toApiPriority(editIssue.value.priority) as any,
     assignedTo: editIssue.value.assignedTo || editIssue.value.responsible_person,
-    status: toApiStatus(editIssue.value.status),
+    status: toApiStatus(editIssue.value.status) as any,
     number: typeof editIssue.value.number === 'number' ? editIssue.value.number : (editIssue.value.number ? Number(editIssue.value.number) : undefined),
     dateFound: editIssue.value.dateFound || undefined,
     foundBy: editIssue.value.foundBy || undefined,
@@ -3839,7 +3856,7 @@ function saveEdit() {
 }
 
 function cancelEdit() {
-  editIssue.value = null
+  editIssue.value = {}
   showViewModal.value = false
 }
 
@@ -3867,7 +3884,7 @@ watch(pageSize, () => {
 })
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function togglePriority(name) {
+function togglePriority(name: string) {
   if (!name) return
   if (name === 'All' || name === priorityFilter.value) {
     priorityFilter.value = 'All'
@@ -3883,9 +3900,9 @@ function exportFilteredIssuesCsv() {
     const cols = getExportColumns(rows)
 
     // CSV escaping
-    const cell = (v) => {
+    const cell = (v: unknown): string => {
       if (v === null || v === undefined) return ''
-      let s
+      let s: string
       if (Array.isArray(v) || typeof v === 'object') {
         try { s = JSON.stringify(v) } catch (e) { s = String(v) }
       } else { s = String(v) }
@@ -3929,8 +3946,8 @@ function exportFilteredIssuesXlsx() {
     const cols = getExportColumns(rows)
 
     // Build an array of objects mapping description to text-only
-    const data = rows.map(it => {
-      const obj = {}
+    const data = rows.map((it: any) => {
+      const obj: Record<string, any> = {}
       for (const c of cols) {
         let val = it?.[c]
         if (c === 'description') val = htmlToText(val)
