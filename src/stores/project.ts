@@ -375,6 +375,14 @@ export const useProjectStore = defineStore('project', () => {
     const auth = useAuthStore();
     watch(() => auth.user && auth.user.projects, (projectsVal) => {
       if (!projectsVal) return
+      // If a project is already selected (from localStorage) but we haven't hydrated
+      // `currentProject` yet (common during auth bootstrap), fetch it now so
+      // feature-gated UI (e.g., Systems) can render correctly.
+      try {
+        if (currentProjectId.value && !currentProject.value && getToken()) {
+          fetchProject(String(currentProjectId.value)).catch(() => {})
+        }
+      } catch (e) { /* ignore */ }
       // Do not override an explicit user selection (localStorage/currentProjectId).
       if (currentProjectId.value) return
       const dp = Array.isArray(projectsVal) ? projectsVal.find((p: any) => p && p.default) : null
@@ -383,6 +391,16 @@ export const useProjectStore = defineStore('project', () => {
         const id = typeof dp === 'string' ? dp : (dd._id || dd.id || null)
         if (id) setCurrentProject(String(id))
       }
+    }, { immediate: true })
+
+    // Also try again when auth finishes bootstrapping.
+    watch(() => auth.authReady, (ready) => {
+      if (!ready) return
+      try {
+        if (currentProjectId.value && !currentProject.value && getToken()) {
+          fetchProject(String(currentProjectId.value)).catch(() => {})
+        }
+      } catch (e) { /* ignore */ }
     }, { immediate: true })
   } catch (e) {
     // ignore if store not ready

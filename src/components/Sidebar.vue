@@ -341,6 +341,19 @@
             <span class="i">🧰</span>
             <span v-if="open">Equipment</span>
           </RouterLink>
+          <!-- Systems -->
+          <RouterLink
+            v-if="featureEnabled('systems')"
+            to="/app/systems"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/systems') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/systems') ? 'page' : null"
+          >
+            <span class="i">🧩</span>
+            <span v-if="open">Systems</span>
+          </RouterLink>
           <!-- Issues -->
           <RouterLink
             v-if="featureEnabled('issues')"
@@ -468,6 +481,7 @@ function normalizeTierKey(raw) {
 const DEFAULT_FEATURES = {
   issues: true,
   equipment: true,
+  systems: false,
   spaces: true,
   activities: true,
   templates: false,
@@ -477,9 +491,9 @@ const DEFAULT_FEATURES = {
 }
 // Plan feature map aligned with backend plans.js
 const PLAN_FEATURES = {
-  basic:    { issues: true, equipment: true, spaces: false, templates: false, documents: false, activities: false, tasks: false, ai: false },
-  standard: { issues: true, equipment: true, spaces: true, templates: false, documents: false, activities: true, tasks: false, ai: false },
-  premium:  { issues: true, equipment: true, spaces: true, templates: true, documents: true, activities: true, tasks: true, ai: true },
+  basic:    { issues: true, equipment: true, systems: false, spaces: false, templates: false, documents: false, activities: false, tasks: false, ai: false },
+  standard: { issues: true, equipment: true, systems: false, spaces: true, templates: false, documents: false, activities: true, tasks: false, ai: false },
+  premium:  { issues: true, equipment: true, systems: true, spaces: true, templates: true, documents: true, activities: true, tasks: true, ai: true },
 }
 
 const activeFeatures = computed(() => {
@@ -496,6 +510,10 @@ const activeFeatures = computed(() => {
   if (!inferredPremium) merged.templates = false
   if (!inferredPremium) merged.documents = false
   else merged.documents = true
+
+  // Legacy projects: subscriptionTier may be stale (e.g. still "basic") while
+  // premium-only feature flags are enabled. In that case, enable Systems too.
+  if (inferredPremium) merged.systems = true
   return merged
 })
 

@@ -26,6 +26,7 @@ const AdminBilling = () => import('../pages/admin/Billing.vue')
 const ActivityEdit = () => import('../pages/activities/ActivityEdit.vue')
 const SpaceEdit = () => import('../pages/spaces/EditSpaces.vue')
 const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
+const SystemEdit = () => import('../pages/systems/SystemEdit.vue')
 // Use the cleaned up editor component to avoid malformed legacy file
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
 const Assistant = () => import('../pages/assistant/Assistant.vue')
@@ -56,8 +57,10 @@ const routes = [
   { path: 'activities/:id', name: 'activity-edit', component: ActivityEdit, props: true },
       { path: 'spaces', name: 'spaces', component: () => import(/* webpackChunkName: "spaces" */ '../pages/spaces/SpacesList.vue') },
       { path: 'equipment', name: 'equipment', component: () => import(/* webpackChunkName: "equipment" */ '../pages/equipment/EquipmentList.vue') },
+      { path: 'systems', name: 'systems', component: () => import(/* webpackChunkName: "systems" */ '../pages/systems/SystemsList.vue') },
   { path: 'spaces/:id', name: 'space-edit', component: SpaceEdit, props: true },
       { path: 'equipment/:id', name: 'equipment-edit', component: EquipmentEdit, props: true },
+      { path: 'systems/:id', name: 'system-edit', component: SystemEdit, props: true },
     { path: 'templates', name: 'templates', component: () => import(/* webpackChunkName: "templates" */ '../pages/templates/TemplatesList.vue') },
     { path: 'templates/:id', name: 'template-edit', component: TemplateEdit, props: true },
       { path: 'documents', name: 'documents', component: () => import('../pages/documents/Documents.vue') },
@@ -128,9 +131,9 @@ async function ensurePlansLoaded() {
     } catch (e) {
       // Fallback to sensible defaults if fetch fails
       PLAN_FEATURES = {
-        basic:    { issues: true, equipment: true, spaces: false, templates: false, activities: false, tasks: false },
-        standard: { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: false },
-        premium:  { issues: true, equipment: true, spaces: true,  templates: true,  activities: true,  tasks: true },
+        basic:    { issues: true, equipment: true, systems: false, spaces: false, templates: false, activities: false, tasks: false },
+        standard: { issues: true, equipment: true, systems: false, spaces: true,  templates: true,  activities: true,  tasks: false },
+        premium:  { issues: true, equipment: true, systems: true,  spaces: true,  templates: true,  activities: true,  tasks: true },
       }
       return PLAN_FEATURES
     } finally {
@@ -182,6 +185,7 @@ router.beforeEach(async (to) => {
     activities: ['activities', 'activity-edit'],
     issues: ['issues', 'issue-edit'],
     tasks: ['tasks', 'task-edit'],
+    systems: ['systems', 'system-edit'],
   }
   const routeName = to.name ? String(to.name) : ''
   let featureKey = null
@@ -193,7 +197,13 @@ router.beforeEach(async (to) => {
     const tier = (projectStore.currentProject?.subscriptionTier || projectStore.currentProject?.subscription || '').toLowerCase()
     const tierFlags = (tier && PLAN_FEATURES && PLAN_FEATURES[tier]) ? PLAN_FEATURES[tier] : {}
     // Merge: tier defaults first, then project-specific overrides
+    const inferredPremium = tier === 'premium' || userFlags.tasks === true || userFlags.ai === true || userFlags.documents === true || userFlags.templates === true
     const flags = { ...tierFlags, ...userFlags }
+
+    // Legacy projects can have a stale subscriptionTier (e.g. "basic") while premium-only
+    // flags are enabled. In that case, allow Systems as well.
+    if (inferredPremium) flags.systems = true
+
     if (flags && flags[featureKey] === false) {
       const featureName = featureKey.charAt(0).toUpperCase() + featureKey.slice(1)
       ui.showWarning(`${featureName} is not available on your current plan. Upgrade to access it.`, { duration: 4000 })

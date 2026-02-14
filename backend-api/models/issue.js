@@ -28,6 +28,7 @@ const issueSchema = new mongoose.Schema({
   oprItemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'OprItem' }],
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: false }, // Reference to an asset if applicable
   activityId: { type: mongoose.Schema.Types.ObjectId, ref: 'Activity', required: false }, // Reference to an activity if applicable
+  systemId: { type: mongoose.Schema.Types.ObjectId, ref: 'System', required: false }, // Reference to a system if applicable
   // photos stored in DB as base64 strings (note: keep sizes small)
   photos: [{ filename: String, data: String, contentType: String, size: Number, uploadedBy: mongoose.Schema.Types.ObjectId, uploadedByName: String, uploadedByAvatar: String, caption: { type: String, default: '' }, createdAt: { type: Date, default: Date.now } }],
   // other attachments (documents) can be stored as external URLs or metadata

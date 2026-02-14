@@ -29,6 +29,7 @@ export interface Issue {
   resolution?: string
   assetId?: string
   activityId?: string
+  systemId?: string
   photos?: string[]
   documents?: string[]
   comments?: string[]

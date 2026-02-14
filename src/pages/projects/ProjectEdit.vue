@@ -2237,7 +2237,7 @@ const transactions = ref<any[]>([])
 // Feature upgrade prompt from router redirect
 const upgradeFeature = computed(() => {
   const q = String(route.query.upgrade || '').toLowerCase()
-  return q && ['spaces','equipment','templates','activities','issues','tasks','ai'].includes(q) ? q : ''
+  return q && ['spaces','equipment','systems','templates','activities','issues','tasks','ai'].includes(q) ? q : ''
 })
 
 function setActiveTabFromQuery() {
@@ -2778,6 +2778,7 @@ const permMatrix = {
   issues: ['create', 'read', 'update', 'delete'],
   activities: ['create', 'read', 'update', 'delete'],
   equipment: ['create', 'read', 'update', 'delete'],
+  systems: ['create', 'read', 'update', 'delete'],
   'equipment.checklists': ['create', 'read', 'update', 'delete'],
   'equipment.functionalTests': ['create', 'read', 'update', 'delete'],
   documents: ['create', 'read', 'update', 'delete'],

@@ -100,7 +100,7 @@
         No functional tests yet
       </div>
       <div class="text-white/60 text-sm mt-1">
-        Create the first FPT for this equipment.
+          Create the first FPT for this {{ resolvedAssetLabel }}.
       </div>
       <div class="mt-3">
         <button
@@ -1293,6 +1293,12 @@ const props = defineProps<{
   equipmentId?: string,
   equipmentTag?: string,
   equipmentSpace?: string,
+  // Generic alias props (optional): allows reuse beyond Equipment
+  assetId?: string | null,
+  assetTag?: string | null,
+  assetSpace?: string | null,
+  assetLabel?: string | null,
+  assetEntity?: string | null,
   signatures?: any[],
   readOnly?: boolean
 }>()
@@ -1338,6 +1344,23 @@ function normalizeText(value: unknown): string | undefined {
   const str = String(value).trim()
   return str || undefined
 }
+
+const resolvedAssetLabel = computed(() => {
+  const v = normalizeText(props.assetLabel)
+  return v ? v : 'equipment'
+})
+const resolvedAssetLabelTitle = computed(() => {
+  const v = resolvedAssetLabel.value
+  return v ? (v.charAt(0).toUpperCase() + v.slice(1)) : 'Equipment'
+})
+const resolvedAssetEntity = computed(() => {
+  const v = normalizeText(props.assetEntity)
+  return v ? v : resolvedAssetLabel.value
+})
+const resolvedAssetKey = computed(() => String(props.assetId || props.equipmentId || props.assetTag || props.equipmentTag || 'global'))
+const resolvedAssetId = computed(() => normalizeId(props.assetId ?? props.equipmentId))
+const resolvedAssetTag = computed(() => normalizeText(props.assetTag ?? props.equipmentTag))
+const resolvedAssetSpace = computed(() => normalizeText(props.assetSpace ?? props.equipmentSpace) || '')
 
 function isIssueDeleted(issue: any): boolean {
   if (!issue) return true
@@ -1458,8 +1481,8 @@ function normalize(v: any): FunctionalTestItem[] {
 const local = reactive<FunctionalTestItem[]>(normalize(props.modelValue))
 watch(() => props.modelValue, (v) => { local.splice(0, local.length, ...normalize(v)) })
 
-// Persist accordion open/closed state per equipment
-const storageKey = computed(() => `fpt-open:${props.equipmentId || props.equipmentTag || 'global'}`)
+// Persist accordion open/closed state per asset
+const storageKey = computed(() => `fpt-open:${resolvedAssetKey.value}`)
 function readOpenState() {
   try {
     const raw = localStorage.getItem(storageKey.value)
@@ -1561,7 +1584,7 @@ const fieldOpenVersion = ref(0)
 const descOpenMap = new WeakMap<FunctionalTestItem, boolean>()
 const notesOpenMap = new WeakMap<FunctionalTestItem, boolean>()
 
-// Persist field open/closed state per equipment across sessions (by current list index)
+// Persist field open/closed state per asset across sessions (by current list index)
 const storageFieldsKey = computed(() => `${storageKey.value}:fields`)
 function readFieldOpenState() {
   try {
@@ -2075,11 +2098,11 @@ function toApiStatus(v: any) {
 function openIssue(i: number) {
   issueCtx.value = { index: i }
   const t = local[i]
-  const eq = normalizeText(props.equipmentTag) || normalizeId(props.equipmentId) || 'Equipment'
-  issueDraft.value.title = `FPT: ${eq} • #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`.slice(0, 120)
+  const asset = resolvedAssetTag.value || resolvedAssetId.value || resolvedAssetLabelTitle.value
+  issueDraft.value.title = `FPT: ${asset} • #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`.slice(0, 120)
   const lines: string[] = []
-  lines.push(`Equipment: ${eq}`)
-  if (props.equipmentSpace) lines.push(`Space: ${props.equipmentSpace}`)
+  lines.push(`${resolvedAssetLabelTitle.value}: ${asset}`)
+  if (resolvedAssetSpace.value) lines.push(`Space: ${resolvedAssetSpace.value}`)
   lines.push(`Test: #${t.number ?? (i+1)}${t.name ? ' – ' + t.name : ''}`)
   if (t.expected_result) lines.push(`Expected: ${t.expected_result}`)
   if (t.actual_result) lines.push(`Actual: ${t.actual_result}`)
@@ -2088,8 +2111,8 @@ function openIssue(i: number) {
   issueDraft.value.type = 'FPT'
   issueDraft.value.status = 'open'
   issueDraft.value.priority = 'medium'
-  // `Issue.location` should represent physical location/space; store equipment tag in `Issue.tag`.
-  issueDraft.value.location = normalizeText(props.equipmentSpace) || ''
+  // `Issue.location` should represent physical location/space; store asset tag in `Issue.tag`.
+  issueDraft.value.location = resolvedAssetSpace.value || ''
   issueDraft.value.system = t && (t as any).system ? String((t as any).system) : ''
   issueDraft.value.foundBy = ''
   issueDraft.value.dateFound = ''
@@ -2108,8 +2131,8 @@ async function createIssueFromTest() {
     const pid = normalizeId(props.projectId) || normalizeId((projectStore.currentProjectId as any)?.value ?? projectStore.currentProjectId) || ''
     if (!pid) return
     const draft = issueDraft.value || ({} as any)
-    const assetId = normalizeId(props.equipmentId)
-    const location = normalizeText(draft.location) || normalizeText(props.equipmentSpace)
+    const assetId = resolvedAssetId.value
+    const location = normalizeText(draft.location) || resolvedAssetSpace.value
     const payload: any = {
       projectId: pid,
       title: (draft.title || '').trim() || 'FPT Issue',
@@ -2118,7 +2141,7 @@ async function createIssueFromTest() {
       severity: toApiPriority(draft.priority),
       status: toApiStatus(draft.status),
       system: normalizeText(draft.system) || (t && (t as any).system ? (t as any).system : undefined),
-      tag: normalizeText(props.equipmentTag) || undefined,
+      tag: resolvedAssetTag.value || undefined,
       assignedTo: draft.assignedTo || undefined,
       foundBy: draft.foundBy || undefined,
       dateFound: draft.dateFound || undefined,
@@ -2139,7 +2162,15 @@ async function createIssueFromTest() {
         by,
         type: 'fpt_issue_created',
         module: 'fpt',
-        scope: { entity: 'equipment', equipmentId: props.equipmentId || null, equipmentTag: props.equipmentTag || null, projectId: pid },
+        scope: {
+          entity: resolvedAssetEntity.value,
+          assetId: resolvedAssetId.value || null,
+          assetTag: resolvedAssetTag.value || null,
+          // Backward-compat fields for existing log viewers/filters
+          equipmentId: props.equipmentId || null,
+          equipmentTag: props.equipmentTag || null,
+          projectId: pid,
+        },
         test: { number: t.number ?? i+1, name: t.name || '' },
         issue: { id: (created as any).id || (created as any)._id, number: (created as any).number }
     }).catch(() => { /* ignore project log failures */ })

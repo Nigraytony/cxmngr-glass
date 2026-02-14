@@ -13,6 +13,7 @@ module.exports = [
     features: {
       issues: true,
       equipment: true,
+       systems: false,
       spaces: false,
       templates: false,
       documents: false,
@@ -24,6 +25,7 @@ module.exports = [
       team: 10,
       issues: 250,
       equipment: 100,
+       systems: 0,
       spaces: 0,
       templates: 0,
       activities: 0,
@@ -39,6 +41,7 @@ module.exports = [
     features: {
       issues: true,
       equipment: true,
+       systems: false,
       spaces: true,
       templates: false,
       documents: false,
@@ -50,6 +53,7 @@ module.exports = [
       team: 25,
       issues: 1000,
       equipment: 500,
+       systems: 0,
       spaces: 100,
       templates: 0,
       activities: 500,
@@ -65,6 +69,7 @@ module.exports = [
     features: {
       issues: true,
       equipment: true,
+       systems: true,
       spaces: true,
       templates: true,
       documents: true,
@@ -76,6 +81,7 @@ module.exports = [
       team: 200,
       issues: 100000,
       equipment: 100000,
+       systems: 100000,
       spaces: 100000,
       templates: 100000,
       activities: 100000,

@@ -92,7 +92,7 @@
         No checklists yet
       </div>
       <div class="text-white/60 text-sm mt-1">
-        Create the first checklist for this equipment.
+        Create the first checklist for this {{ resolvedAssetLabel }}.
       </div>
       <div class="mt-3">
         <button
@@ -1048,12 +1048,35 @@ const props = defineProps<{
   equipmentId?: string | null
   equipmentTag?: string | null
   equipmentSpace?: string | null
+  // Generic alias props (optional): allows reuse beyond Equipment
+  assetId?: string | null
+  assetTag?: string | null
+  assetSpace?: string | null
+  assetLabel?: string | null // e.g. 'system'
+  assetEntity?: string | null // e.g. 'system'
 }>()
 const emit = defineEmits<{
   (e: 'update:modelValue', v: ChecklistSection[]): void
   (e: 'change', v: ChecklistSection[]): void
   (e: 'persist', v: ChecklistSection[]): void
 }>()
+
+const resolvedAssetLabel = computed(() => {
+  const v = String(props.assetLabel || '').trim()
+  return v ? v : 'equipment'
+})
+const resolvedAssetLabelTitle = computed(() => {
+  const v = resolvedAssetLabel.value
+  return v ? (v.charAt(0).toUpperCase() + v.slice(1)) : 'Equipment'
+})
+const resolvedAssetKey = computed(() => String(props.assetId || props.equipmentId || props.assetTag || props.equipmentTag || 'unknown'))
+const resolvedAssetId = computed(() => normalizeId(props.assetId ?? props.equipmentId))
+const resolvedAssetTag = computed(() => normalizeText(props.assetTag ?? props.equipmentTag))
+const resolvedAssetSpace = computed(() => normalizeText(props.assetSpace ?? props.equipmentSpace) || '')
+const resolvedAssetEntity = computed(() => {
+  const v = String(props.assetEntity || '').trim()
+  return v ? v : 'equipment'
+})
 
 const local = reactive<ChecklistSection[]>(normalize(props.modelValue))
 watch(() => props.modelValue, (v) => {
@@ -1094,11 +1117,11 @@ function normalize(v: any): ChecklistSection[] {
   }))
 }
 
-// Filters and search (persist per equipment in sessionStorage)
+// Filters and search (persist per asset in sessionStorage)
 const search = ref('')
 const filterType = ref('')
 const filterSystem = ref('')
-const FILTER_STATE_KEY = computed(() => `checklistsFilters:${String(props.equipmentId || props.equipmentTag || 'unknown')}`)
+const FILTER_STATE_KEY = computed(() => `checklistsFilters:${resolvedAssetKey.value}`)
 function loadFilterState() {
   try {
     const raw = sessionStorage.getItem(FILTER_STATE_KEY.value)
@@ -1225,12 +1248,12 @@ function openAttachIssue(si: number, qi: number | null = null) {
   Object.keys(issueErrors).forEach(k => delete issueErrors[k])
   const sec = local[si]
   const q = qi != null ? sec?.questions?.[qi] : null
-  const eq = (props.equipmentTag || props.equipmentId || 'Equipment') as any
+  const asset = (resolvedAssetTag.value || resolvedAssetId.value || resolvedAssetLabelTitle.value) as any
   const secLabel = `Sec ${sec?.number ?? (si+1)}${sec?.title ? ' – ' + sec.title : ''}`
   const qLabel = q ? ` • Q${q.number ?? (qi!+1)}${q.question_text ? ' – ' + q.question_text : ''}` : ''
-  issueDraft.value.title = `Checklist: ${eq} • ${secLabel}${qLabel}`.slice(0, 120)
+  issueDraft.value.title = `Checklist: ${asset} • ${secLabel}${qLabel}`.slice(0, 120)
   const lines: string[] = []
-  lines.push(`Equipment: ${eq}`)
+  lines.push(`${resolvedAssetLabelTitle.value}: ${asset}`)
   lines.push(`Section: ${secLabel}`)
   if (q) lines.push(`Question: ${q.question_text || ''}`)
   if (q && q.answer) lines.push(`Answer: ${String(q.answer).toUpperCase()}`)
@@ -1239,8 +1262,8 @@ function openAttachIssue(si: number, qi: number | null = null) {
   issueDraft.value.type = 'checklist'
   issueDraft.value.status = 'open'
   issueDraft.value.priority = 'medium'
-  // `Issue.location` should represent physical location/space; store equipment tag in `Issue.tag`.
-  issueDraft.value.location = normalizeText(props.equipmentSpace) || ''
+  // `Issue.location` should represent physical location/space; store asset tag in `Issue.tag`.
+  issueDraft.value.location = resolvedAssetSpace.value || ''
   issueDraft.value.system = (sec?.system as any) ? String(sec.system) : ''
   issueDraft.value.foundBy = ''
   issueDraft.value.dateFound = ''
@@ -1268,9 +1291,9 @@ async function saveAttachIssue() {
       severity: toApiPriority(draft.priority),
       status: toApiStatus(draft.status),
       system: normalizeText(draft.system) || (sec?.system as any) || undefined,
-      tag: normalizeText(props.equipmentTag) || undefined,
-      location: normalizeText(draft.location) || normalizeText(props.equipmentSpace) || undefined,
-      assetId: normalizeId(props.equipmentId),
+      tag: resolvedAssetTag.value || undefined,
+      location: normalizeText(draft.location) || resolvedAssetSpace.value || undefined,
+      assetId: resolvedAssetId.value || undefined,
       assignedTo: normalizeText(draft.assignedTo),
       foundBy: normalizeText(draft.foundBy),
       dateFound: normalizeText(draft.dateFound),
@@ -1304,7 +1327,10 @@ function logEvent(si: number, type: string, data: LogPayload = {}) {
         type,
         module: 'checklists',
         scope: {
-          entity: 'equipment',
+          entity: resolvedAssetEntity.value,
+          assetId: resolvedAssetId.value || null,
+          assetTag: resolvedAssetTag.value || null,
+          // Backward-compat fields for existing log viewers/filters
           equipmentId: props.equipmentId || null,
           equipmentTag: props.equipmentTag || null,
           projectId: pid,
@@ -1322,9 +1348,9 @@ function logEvent(si: number, type: string, data: LogPayload = {}) {
   } catch (e) { /* ignore normalization errors */ }
 }
 
-// Expand/collapse state (persisted per equipment in sessionStorage)
+// Expand/collapse state (persisted per asset in sessionStorage)
 const open = ref<Record<string, boolean>>({})
-const OPEN_STATE_KEY = computed(() => `checklistsOpen:${String(props.equipmentId || props.equipmentTag || 'unknown')}`)
+const OPEN_STATE_KEY = computed(() => `checklistsOpen:${resolvedAssetKey.value}`)
 function loadOpenState() {
   try {
     const raw = sessionStorage.getItem(OPEN_STATE_KEY.value)

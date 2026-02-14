@@ -17,6 +17,7 @@ const cors = require('cors');
 const projectRoutes = require('./routes/projects');
 const issueRoutes = require('./routes/issues');
 const equipmentRoutes = require('./routes/equipment');
+const systemsRoutes = require('./routes/systems');
 const templateRoutes = require('./routes/templates');
 const taskRoutes = require('./routes/tasks');
 const activityRoutes = require('./routes/activities');
@@ -196,6 +197,9 @@ app.use('/api/issues',
 );
 app.use('/api/equipment', 
   equipmentRoutes
+);
+app.use('/api/systems', 
+  systemsRoutes
 );
 app.use('/api/templates', 
   templateRoutes

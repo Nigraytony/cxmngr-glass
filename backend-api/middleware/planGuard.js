@@ -8,10 +8,24 @@ function getPlansArray() {
   return Object.keys(plans || {}).map(k => ({ key: k, ...(plans[k] || {}) }))
 }
 
+function inferTierFromFeatures(subscriptionFeatures) {
+  const f = subscriptionFeatures && typeof subscriptionFeatures === 'object' ? subscriptionFeatures : null
+  if (!f) return ''
+  // Premium-only indicators in this app.
+  if (f.ai === true || f.tasks === true || f.documents === true) return 'premium'
+  // Templates has historically been premium-only in UI; treat as premium.
+  if (f.templates === true) return 'premium'
+  // Standard indicators.
+  if (f.spaces === true || f.activities === true) return 'standard'
+  // Basic indicators.
+  if (f.issues === true || f.equipment === true) return 'basic'
+  return ''
+}
+
 function getPlan(project) {
   const list = getPlansArray()
   if (!project) return list[0]
-  // Prefer Stripe price mapping first (source of truth), then fall back to tier
+  // Prefer Stripe price mapping when it is configured/mapped, then fall back to tier.
   const priceId = project.stripePriceId || project.priceId
   if (priceId) {
     const byPrice = list.find(p => p.priceId === priceId)
@@ -19,6 +33,14 @@ function getPlan(project) {
   }
   const tier = String(project.subscriptionTier || '').toLowerCase()
   const byTier = list.find(p => String(p.key || '').toLowerCase() === tier)
+  // Legacy/backfilled projects can have a stale subscriptionTier but accurate
+  // subscriptionFeatures. Infer tier from premium-only feature flags.
+  const inferredTier = inferTierFromFeatures(project.subscriptionFeatures)
+  if (inferredTier) {
+    const byInferred = list.find(p => String(p.key || '').toLowerCase() === inferredTier)
+    if (byInferred) return byInferred
+  }
+
   if (byTier) return byTier
   return list[0]
 }
