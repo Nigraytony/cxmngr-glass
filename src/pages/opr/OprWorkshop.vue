@@ -24,44 +24,119 @@
       <!-- Tabs -->
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm"
-            :class="mainTab === 'info' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
-            @click="tryGoTab('info')"
-          >
-            Info
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="mainTab === 'qa' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
-            :disabled="!canEnterQa"
-            :title="canEnterQa ? 'Questions & Answers' : 'Check in and wait for admin approval to enter Q&A'"
-            @click="tryGoTab('qa')"
-          >
-            Q&amp;A
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="mainTab === 'results' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
-            :disabled="!canEnterResults"
-            :title="canEnterResults ? 'Results' : 'Check in and wait for admin approval to view Results'"
-            @click="tryGoTab('results')"
-          >
-            Results
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="mainTab === 'import' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
-            :disabled="!canEnterImport"
-            :title="canEnterImport ? 'Import OPR items' : 'Admin only'"
-            @click="tryGoTab('import')"
-          >
-            Import
-          </button>
+          <TooltipWrap text="Workshop info">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md border text-sm inline-flex items-center gap-2"
+              :class="mainTab === 'info' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+              aria-label="Info"
+              @click="tryGoTab('info')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path d="M12 16v-4" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M12 8h.01" stroke-width="2" stroke-linecap="round" />
+                <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke-width="1.5" />
+              </svg>
+              <span>Info</span>
+            </button>
+          </TooltipWrap>
+
+          <TooltipWrap :text="canEnterQa ? 'Questions & Answers' : 'Check in and wait for admin approval to enter Q&A'">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              :class="mainTab === 'qa' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+              :disabled="!canEnterQa"
+              aria-label="Q&A"
+              @click="tryGoTab('qa')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M7.5 8.25h9"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M7.5 11.25h6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M21 12c0 3.866-3.134 7-7 7h-1.5a.75.75 0 0 0-.53.22l-2.47 2.47V19H10c-3.866 0-7-3.134-7-7s3.134-7 7-7h4c3.866 0 7 3.134 7 7Z"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Q&amp;A</span>
+            </button>
+          </TooltipWrap>
+
+          <TooltipWrap :text="canEnterResults ? 'Results' : 'Check in and wait for admin approval to view Results'">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              :class="mainTab === 'results' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+              :disabled="!canEnterResults"
+              aria-label="Results"
+              @click="tryGoTab('results')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path d="M4 19V5" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M4 19h16" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M8 17v-6" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M12 17V9" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M16 17v-3" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+              <span>Results</span>
+            </button>
+          </TooltipWrap>
+
+          <TooltipWrap :text="canEnterImport ? 'Import OPR items' : 'Admin only'">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md border text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              :class="mainTab === 'import' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-white/80 hover:bg-white/15'"
+              :disabled="!canEnterImport"
+              aria-label="Import"
+              @click="tryGoTab('import')"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path d="M12 3v12" stroke-width="1.5" stroke-linecap="round" />
+                <path d="M7.5 7.5 12 3l4.5 4.5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>Import</span>
+            </button>
+          </TooltipWrap>
           <span
             v-if="!isAdmin && attendeeStatusLabel"
             class="ml-2 text-xs px-2 py-0.5 rounded-full border"
@@ -69,23 +144,62 @@
           >{{ attendeeStatusLabel }}</span>
         </div>
         <div class="flex items-center gap-2">
-          <button
+          <TooltipWrap
             v-if="isAdmin && addonEnabled"
-            type="button"
-            class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm disabled:opacity-50"
-            :disabled="generatingWorkshopReport"
-            @click="openWorkshopReportSettings"
+            text="Print / download PDF report"
           >
-            Print/PDF
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-            :disabled="opr.loading || workshopLoading || attendeesLoading || resultsLoading"
-            @click="refreshAll"
-          >
-            Refresh
-          </button>
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+              :disabled="generatingWorkshopReport"
+              aria-label="Print or PDF"
+              @click="openWorkshopReportSettings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path d="M6 9V2h12v7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M6 14h12v8H6v-8Z" stroke-width="1.5" stroke-linejoin="round" />
+              </svg>
+              <span>Print/PDF</span>
+            </button>
+          </TooltipWrap>
+
+          <TooltipWrap text="Refresh workshop data">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+              :disabled="opr.loading || workshopLoading || attendeesLoading || resultsLoading"
+              aria-label="Refresh"
+              @click="refreshAll"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M20 12a8 8 0 1 1-2.34-5.66"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 4v6h-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </TooltipWrap>
         </div>
       </div>
 
@@ -101,23 +215,60 @@
                 Workshop info
               </div>
               <div class="flex items-center gap-2">
-                <button
+                <TooltipWrap
                   v-if="isAdmin && addonEnabled"
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                  :disabled="workshopSaving"
-                  @click="saveWorkshopInfo"
+                  text="Save workshop info"
                 >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                  :disabled="workshopLoading"
-                  @click="refreshWorkshopOnly"
-                >
-                  Refresh
-                </button>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    :disabled="workshopSaving"
+                    aria-label="Save"
+                    @click="saveWorkshopInfo"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path d="M20 6 9 17l-5-5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Save</span>
+                  </button>
+                </TooltipWrap>
+
+                <TooltipWrap text="Refresh workshop info">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    :disabled="workshopLoading"
+                    aria-label="Refresh workshop"
+                    @click="refreshWorkshopOnly"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M20 12a8 8 0 1 1-2.34-5.66"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M20 4v6h-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+                </TooltipWrap>
               </div>
             </div>
 
@@ -132,20 +283,57 @@
                 One-time purchase: $24.99 per project.
               </div>
               <div class="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm"
-                  @click="purchaseAddon"
-                >
-                  Purchase
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                  @click="refreshProject"
-                >
-                  I already purchased
-                </button>
+                <TooltipWrap text="Purchase OPR Workshop add-on">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm inline-flex items-center gap-2"
+                    aria-label="Purchase"
+                    @click="purchaseAddon"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path d="M2 7h20" stroke-width="1.5" stroke-linecap="round" />
+                      <path d="M4 7l1 14h14l1-14" stroke-width="1.5" stroke-linejoin="round" />
+                      <path d="M9 11h6" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <span>Purchase</span>
+                  </button>
+                </TooltipWrap>
+
+                <TooltipWrap text="Refresh project to confirm purchase">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm inline-flex items-center gap-2"
+                    aria-label="I already purchased"
+                    @click="refreshProject"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M20 12a8 8 0 1 1-2.34-5.66"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M20 4v6h-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span>I already purchased</span>
+                  </button>
+                </TooltipWrap>
               </div>
             </div>
 
@@ -251,10 +439,22 @@
                   >
                   <button
                     type="button"
-                    class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                    class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80 inline-flex items-center gap-2"
                     @click="addWorkshopTagsFromInput"
                   >
-                    Add
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-4 h-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    <span>Add</span>
                   </button>
                 </div>
                 <div
@@ -282,32 +482,80 @@
                 >
                   {{ workshopStarted ? 'Session live' : 'Session not started' }}
                 </span>
-                <button
+                <TooltipWrap
                   v-if="isAdmin && addonEnabled && !workshopStarted"
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                  :disabled="startingWorkshop || workshopLoading"
-                  @click="startWorkshopSession"
+                  text="Start the workshop session"
                 >
-                  {{ startingWorkshop ? 'Starting…' : 'Start session' }}
-                </button>
-                <button
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    :disabled="startingWorkshop || workshopLoading"
+                    aria-label="Start session"
+                    @click="startWorkshopSession"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path d="M8 5v14l11-7-11-7z" />
+                    </svg>
+                    {{ startingWorkshop ? 'Starting…' : 'Start session' }}
+                  </button>
+                </TooltipWrap>
+                <TooltipWrap
                   v-if="isAdmin && addonEnabled && workshopStarted"
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-red-500/15 border border-red-500/25 hover:bg-red-500/20 text-red-200 text-sm disabled:opacity-50"
-                  :disabled="endingWorkshop || workshopLoading"
-                  @click="endWorkshopSession"
+                  text="End the workshop session"
                 >
-                  {{ endingWorkshop ? 'Ending…' : 'End session' }}
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                  :disabled="attendeesLoading || workshopLoading"
-                  @click="refreshAttendees"
-                >
-                  Refresh
-                </button>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-red-500/15 border border-red-500/25 hover:bg-red-500/20 text-red-200 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    :disabled="endingWorkshop || workshopLoading"
+                    aria-label="End session"
+                    @click="endWorkshopSession"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path d="M6 6h12v12H6z" />
+                    </svg>
+                    {{ endingWorkshop ? 'Ending…' : 'End session' }}
+                  </button>
+                </TooltipWrap>
+                <TooltipWrap text="Refresh participants">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    :disabled="attendeesLoading || workshopLoading"
+                    aria-label="Refresh"
+                    @click="refreshAttendees"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M20 12a8 8 0 1 1-2.34-5.66"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M20 4v6h-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    Refresh
+                  </button>
+                </TooltipWrap>
               </div>
             </div>
 
@@ -343,14 +591,31 @@
                       >{{ attendeeStatusLabel }}</span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                    :disabled="checkingIn || !workshopStarted || attendeeStatus === 'approved'"
-                    @click="checkInToWorkshop"
-                  >
-                    {{ !workshopStarted ? 'Not started' : attendeeStatus === 'approved' ? 'Admitted' : checkingIn ? 'Checking in…' : 'Check in' }}
-                  </button>
+                  <TooltipWrap text="Check in to join this workshop">
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                      :disabled="checkingIn || !workshopStarted || attendeeStatus === 'approved'"
+                      aria-label="Check in"
+                      @click="checkInToWorkshop"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          d="M20 6 9 17l-5-5"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      {{ !workshopStarted ? 'Not started' : attendeeStatus === 'approved' ? 'Admitted' : checkingIn ? 'Checking in…' : 'Check in' }}
+                    </button>
+                  </TooltipWrap>
                 </div>
                 <div
                   v-if="profileIncompleteMessage"
@@ -455,9 +720,9 @@
                 Questions
               </div>
               <div class="flex items-center gap-2">
-                <div
+                <TooltipWrap
                   v-if="isAdmin && addonEnabled"
-                  class="relative inline-block group"
+                  text="New question"
                 >
                   <button
                     type="button"
@@ -474,29 +739,62 @@
                       <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
                     </svg>
                   </button>
-                  <div
-                    role="tooltip"
-                    class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
-                  >
-                    New question
-                  </div>
-                </div>
-                <button
+                </TooltipWrap>
+
+                <TooltipWrap
                   v-if="isAdmin && active?.id"
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                  @click="selectedQuestionId = active?.id || null"
+                  text="Jump to currently active question"
                 >
-                  Jump to active
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm disabled:opacity-50"
-                  :disabled="opr.loading"
-                  @click="refresh"
-                >
-                  Refresh
-                </button>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm inline-flex items-center gap-2"
+                    aria-label="Jump to active"
+                    @click="selectedQuestionId = active?.id || null"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path d="M5 12h14" stroke-width="1.5" stroke-linecap="round" />
+                      <path d="M13 6l6 6-6 6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span>Jump to active</span>
+                  </button>
+                </TooltipWrap>
+
+                <TooltipWrap text="Refresh questions">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                    :disabled="opr.loading"
+                    aria-label="Refresh"
+                    @click="refresh"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M20 12a8 8 0 1 1-2.34-5.66"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M20 4v6h-6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+                </TooltipWrap>
               </div>
             </div>
 
@@ -512,20 +810,56 @@
                   One-time purchase: $24.99 per project.
                 </div>
                 <div class="mt-3 flex items-center gap-2">
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm"
-                    @click="purchaseAddon"
-                  >
-                    Purchase
-                  </button>
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                    @click="refreshProject"
-                  >
-                    I already purchased
-                  </button>
+                  <TooltipWrap text="Purchase OPR Workshop add-on">
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm inline-flex items-center gap-2"
+                      aria-label="Purchase"
+                      @click="purchaseAddon"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path d="M2 7h20" stroke-width="1.5" stroke-linecap="round" />
+                        <path d="M4 7l1 14h14l1-14" stroke-width="1.5" stroke-linejoin="round" />
+                        <path d="M9 11h6" stroke-width="1.5" stroke-linecap="round" />
+                      </svg>
+                      <span>Purchase</span>
+                    </button>
+                  </TooltipWrap>
+                  <TooltipWrap text="Refresh project to confirm purchase">
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm inline-flex items-center gap-2"
+                      aria-label="I already purchased"
+                      @click="refreshProject"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          d="M20 12a8 8 0 1 1-2.34-5.66"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        />
+                        <path
+                          d="M20 4v6h-6"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      <span>I already purchased</span>
+                    </button>
+                  </TooltipWrap>
                 </div>
               </div>
 
@@ -566,13 +900,13 @@
                       </span>
 
                       <div class="flex items-center gap-1">
-                        <button
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-                          title="View"
-                          aria-label="View"
-                          @click="selectedQuestionId = q.id"
-                        >
+                        <TooltipWrap text="View">
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            aria-label="View"
+                            @click="selectedQuestionId = q.id"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -589,16 +923,19 @@
                               stroke-width="1.5"
                             />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
 
-                        <button
+                        <TooltipWrap
                           v-if="isAdmin"
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-                          title="Edit question"
-                          aria-label="Edit question"
-                          @click="openEditQuestion(q)"
+                          text="Edit question"
                         >
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            aria-label="Edit question"
+                            @click="openEditQuestion(q)"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -615,16 +952,19 @@
                               stroke-width="1.5"
                             />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
 
-                        <button
+                        <TooltipWrap
                           v-if="isAdmin && (q.status === 'draft' || q.status === 'closed')"
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
-                          title="Open for responses"
-                          aria-label="Open for responses"
-                          @click="adminOpenForResponses(q)"
+                          text="Open for responses"
                         >
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50"
+                            aria-label="Open for responses"
+                            @click="adminOpenForResponses(q)"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -633,16 +973,19 @@
                           >
                             <path d="M8 5v14l11-7-11-7z" />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
 
-                        <button
+                        <TooltipWrap
                           v-if="isAdmin && q.status === 'open'"
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-                          title="Close responses"
-                          aria-label="Close responses"
-                          @click="adminCloseResponses(q)"
+                          text="Close responses"
                         >
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            aria-label="Close responses"
+                            @click="adminCloseResponses(q)"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -663,16 +1006,19 @@
                               stroke-width="1.5"
                             />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
 
-                        <button
+                        <TooltipWrap
                           v-if="isAdmin && q.status === 'closed'"
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-                          title="Open voting"
-                          aria-label="Open voting"
-                          @click="adminOpenVotingFor(q)"
+                          text="Open voting"
                         >
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            aria-label="Open voting"
+                            @click="adminOpenVotingFor(q)"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -689,16 +1035,19 @@
                               stroke-width="1.5"
                             />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
 
-                        <button
+                        <TooltipWrap
                           v-if="isAdmin && q.status === 'voting'"
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-                          title="Close voting"
-                          aria-label="Close voting"
-                          @click="adminCloseVotingFor(q)"
+                          text="Close voting"
                         >
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            aria-label="Close voting"
+                            @click="adminCloseVotingFor(q)"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -707,16 +1056,19 @@
                           >
                             <path d="M6 6h12v12H6z" />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
 
-                        <button
+                        <TooltipWrap
                           v-if="isAdmin"
-                          type="button"
-                          class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-50"
-                          title="Delete question"
-                          aria-label="Delete question"
-                          @click="deleteQuestionCard(q)"
+                          text="Delete question"
                         >
+                          <button
+                            type="button"
+                            class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/15 border border-red-500/30 text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+                            aria-label="Delete question"
+                            @click="deleteQuestionCard(q)"
+                          >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
@@ -745,7 +1097,8 @@
                               stroke-width="1.5"
                             />
                           </svg>
-                        </button>
+                          </button>
+                        </TooltipWrap>
                       </div>
                     </div>
                   </div>
@@ -956,42 +1309,112 @@
           <div class="rounded-2xl bg-white/8 border border-white/10 ring-1 ring-white/10 p-4 h-full flex flex-col min-h-0">
             <div class="flex items-center justify-between gap-3">
               <div class="flex items-center gap-1">
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md text-sm border"
-                  :class="rightTab === 'responses' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
-                  @click="rightTab = 'responses'"
-                >
-                  Responses
-                </button>
-                <button
+                <TooltipWrap text="Responses">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md text-sm border inline-flex items-center gap-2"
+                    :class="rightTab === 'responses' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
+                    aria-label="Responses"
+                    @click="rightTab = 'responses'"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M7 8h10"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M7 12h7"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M21 12a8 8 0 1 1-3-6.25"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    <span>Responses</span>
+                  </button>
+                </TooltipWrap>
+
+                <TooltipWrap
                   v-if="addonEnabled"
-                  type="button"
-                  class="px-3 py-2 rounded-md text-sm border"
-                  :class="rightTab === 'register' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
-                  @click="rightTab = 'register'"
+                  text="OPR Items"
                 >
-                  OPR Items
-                </button>
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md text-sm border inline-flex items-center gap-2"
+                    :class="rightTab === 'register' ? 'bg-white/15 border-white/20 text-white/90' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'"
+                    aria-label="OPR Items"
+                    @click="rightTab = 'register'"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path d="M6 7h12" stroke-width="1.5" stroke-linecap="round" />
+                      <path d="M6 12h12" stroke-width="1.5" stroke-linecap="round" />
+                      <path d="M6 17h12" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
+                    <span>OPR Items</span>
+                  </button>
+                </TooltipWrap>
               </div>
               <div class="flex items-center gap-2">
                 <template v-if="rightTab === 'responses'">
-                  <button
+                  <TooltipWrap
                     v-if="selectedQuestion"
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                    @click="refreshAnswersAndResults"
+                    text="Refresh responses and results"
                   >
-                    Refresh
-                  </button>
-                  <button
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm inline-flex items-center gap-2"
+                      aria-label="Refresh"
+                      @click="refreshAnswersAndResults"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          d="M20 12a8 8 0 1 1-2.34-5.66"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        />
+                        <path
+                          d="M20 4v6h-6"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      <span>Refresh</span>
+                    </button>
+                  </TooltipWrap>
+
+                  <TooltipWrap
                     v-if="canMergeAnswers"
-                    type="button"
-                    class="h-9 w-9 inline-grid place-items-center rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
-                    :title="mergeMode ? 'Exit merge mode' : 'Merge responses'"
-                    :aria-label="mergeMode ? 'Exit merge mode' : 'Merge responses'"
-                    @click="toggleMergeMode"
+                    :text="mergeMode ? 'Exit merge mode' : 'Merge responses'"
                   >
+                    <button
+                      type="button"
+                      class="h-9 w-9 inline-grid place-items-center rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15"
+                      :aria-label="mergeMode ? 'Exit merge mode' : 'Merge responses'"
+                      @click="toggleMergeMode"
+                    >
                     <svg
                       v-if="!mergeMode"
                       xmlns="http://www.w3.org/2000/svg"
@@ -1048,17 +1471,40 @@
                         stroke-width="1.5"
                       />
                     </svg>
-                  </button>
+                    </button>
+                  </TooltipWrap>
                 </template>
                 <template v-else>
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm"
-                    :disabled="!registerCategoryId"
-                    @click="refreshItems"
-                  >
-                    Refresh
-                  </button>
+                  <TooltipWrap text="Refresh OPR items">
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-white/15 border border-white/20 hover:bg-white/20 text-white/90 text-sm inline-flex items-center gap-2"
+                      :disabled="!registerCategoryId"
+                      aria-label="Refresh"
+                      @click="refreshItems"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          d="M20 12a8 8 0 1 1-2.34-5.66"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        />
+                        <path
+                          d="M20 4v6h-6"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      <span>Refresh</span>
+                    </button>
+                  </TooltipWrap>
                 </template>
               </div>
             </div>
@@ -1071,21 +1517,70 @@
                 Select 2+ responses to merge. The merged response will keep the earliest response tag.
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  :disabled="mergeSelectedIds.length < 2"
-                  @click="openMergeModal"
-                >
-                  Merge ({{ mergeSelectedIds.length }})
-                </button>
-                <button
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white text-sm"
-                  @click="exitMergeMode"
-                >
-                  Done
-                </button>
+                <TooltipWrap text="Merge selected responses">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                    :disabled="mergeSelectedIds.length < 2"
+                    aria-label="Merge"
+                    @click="openMergeModal"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M7 7h6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M11 11h6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M7 17h6"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M13 7l4 4-4 4"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span>Merge ({{ mergeSelectedIds.length }})</span>
+                  </button>
+                </TooltipWrap>
+                <TooltipWrap text="Exit merge mode">
+                  <button
+                    type="button"
+                    class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white text-sm inline-flex items-center gap-2"
+                    aria-label="Done"
+                    @click="exitMergeMode"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      class="w-4 h-4"
+                    >
+                      <path
+                        d="M20 6 9 17l-5-5"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <span>Done</span>
+                  </button>
+                </TooltipWrap>
               </div>
             </div>
 
@@ -1160,28 +1655,32 @@
                     >
                       <div class="mb-1 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2 min-w-0">
-                          <label
+                          <TooltipWrap
                             v-if="mergeMode"
-                            class="inline-flex items-center shrink-0"
-                            :title="isMergeSelected(a.id) ? 'Deselect' : 'Select'"
+                            :text="isMergeSelected(a.id) ? 'Deselect response' : 'Select response'"
                           >
-                            <input
-                              type="checkbox"
-                              class="h-5 w-5 rounded border-white/20 bg-black/20 text-white focus:ring-white/30"
-                              :checked="isMergeSelected(a.id)"
-                              @change="toggleMergeSelected(a.id)"
-                            >
-                          </label>
+                            <label class="inline-flex items-center shrink-0">
+                              <input
+                                type="checkbox"
+                                class="h-5 w-5 rounded border-white/20 bg-black/20 text-white focus:ring-white/30"
+                                :checked="isMergeSelected(a.id)"
+                                @change="toggleMergeSelected(a.id)"
+                              >
+                            </label>
+                          </TooltipWrap>
                           <span class="text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 shrink-0">
                             {{ answerTagMap[a.id] || '' }}
                           </span>
-                          <button
+                          <TooltipWrap
                             v-if="isAdmin && !mergeMode && mergedCountFor(a) > 0"
-                            type="button"
-                            class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15 shrink-0"
-                            :title="`Merged (${mergedCountFor(a)}) — click to view / unmerge`"
-                            @click="openMergeDetail(a.id)"
+                            :text="`Merged (${mergedCountFor(a)}) — click to view / unmerge`"
                           >
+                            <button
+                              type="button"
+                              class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white/10 border border-white/15 text-white/80 hover:bg-white/15 shrink-0"
+                              aria-label="Merged"
+                              @click="openMergeDetail(a.id)"
+                            >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 24 24"
@@ -1207,7 +1706,8 @@
                               />
                             </svg>
                             <span>{{ mergedCountFor(a) }}</span>
-                          </button>
+                            </button>
+                          </TooltipWrap>
                           <span
                             v-if="isCurrentUserId(a.authorUserId)"
                             class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white/10 border border-white/15 text-white/80 shrink-0"
@@ -1365,14 +1865,43 @@
                           </span>
                         </div>
 
-                        <button
+                        <TooltipWrap
                           v-if="item.questionId"
-                          type="button"
-                          class="text-xs text-white/80 hover:text-white underline underline-offset-2 shrink-0"
-                          @click="jumpToItemSource(item)"
+                          text="View the source question"
                         >
-                          View source
-                        </button>
+                          <button
+                            type="button"
+                            class="text-xs text-white/80 hover:text-white underline underline-offset-2 shrink-0 inline-flex items-center gap-1"
+                            aria-label="View source"
+                            @click="jumpToItemSource(item)"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-3.5 h-3.5"
+                            >
+                              <path
+                                d="M10 14l2-2 2 2"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                              <path
+                                d="M12 12v7"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                              />
+                              <path
+                                d="M20 20H4"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                              />
+                            </svg>
+                            View source
+                          </button>
+                        </TooltipWrap>
                       </div>
                     </div>
                   </div>
@@ -1402,14 +1931,36 @@
                 placeholder="Search results…"
                 class="px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 w-64"
               >
-              <button
-                type="button"
-                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                :disabled="resultsLoading"
-                @click="refreshResults"
-              >
-                Refresh
-              </button>
+              <TooltipWrap text="Refresh results">
+                <button
+                  type="button"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                  :disabled="resultsLoading"
+                  aria-label="Refresh results"
+                  @click="refreshResults"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M20 12a8 8 0 1 1-2.34-5.66"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M20 4v6h-6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <span>Refresh</span>
+                </button>
+              </TooltipWrap>
             </div>
           </div>
 
@@ -1423,14 +1974,36 @@
                   <div class="text-white font-semibold">
                     Add items (manual)
                   </div>
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                    :disabled="importSubmitting"
-                    @click="resetImportDraft"
-                  >
-                    Reset
-                  </button>
+                  <TooltipWrap text="Reset the manual import draft">
+                    <button
+                      type="button"
+                      class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                      :disabled="importSubmitting"
+                      aria-label="Reset"
+                      @click="resetImportDraft"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        class="w-4 h-4"
+                      >
+                        <path
+                          d="M20 12a8 8 0 1 1-2.34-5.66"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                        />
+                        <path
+                          d="M20 4v6h-6"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                      <span>Reset</span>
+                    </button>
+                  </TooltipWrap>
                 </div>
 
                 <div class="mt-3 space-y-3 overflow-auto pr-1 min-h-0 flex-1">
@@ -1483,14 +2056,27 @@
                       <div class="text-xs text-white/60">
                         {{ manualLineCount }} items ready
                       </div>
-                      <button
-                        type="button"
-                        class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                        :disabled="importSubmitting || !importDefaultCategoryId || manualLineCount === 0"
-                        @click="submitManualImport"
-                      >
-                        {{ importSubmitting ? 'Saving…' : 'Add items' }}
-                      </button>
+                      <TooltipWrap text="Add items from the manual list">
+                        <button
+                          type="button"
+                          class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                          :disabled="importSubmitting || !importDefaultCategoryId || manualLineCount === 0"
+                          aria-label="Add items"
+                          @click="submitManualImport"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path d="M12 5v14" stroke-width="1.5" stroke-linecap="round" />
+                            <path d="M5 12h14" stroke-width="1.5" stroke-linecap="round" />
+                          </svg>
+                          <span>{{ importSubmitting ? 'Saving…' : 'Add items' }}</span>
+                        </button>
+                      </TooltipWrap>
                     </div>
                   </template>
                 </div>
@@ -1504,24 +2090,64 @@
                     Upload (CSV/XLSX)
                   </div>
                   <div class="flex items-center gap-2">
-                    <label class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm cursor-pointer">
-                      <input
-                        type="file"
-                        class="hidden"
-                        accept=".csv,.xlsx,.xls"
-                        :disabled="!isAdmin || importSubmitting"
-                        @change="onImportFileSelected"
+                    <TooltipWrap text="Choose a CSV/XLSX file">
+                      <label class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm cursor-pointer inline-flex items-center gap-2">
+                        <input
+                          type="file"
+                          class="hidden"
+                          accept=".csv,.xlsx,.xls"
+                          :disabled="!isAdmin || importSubmitting"
+                          @change="onImportFileSelected"
+                        >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          class="w-4 h-4"
+                        >
+                          <path
+                            d="M12 16V4"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                          />
+                          <path
+                            d="M8 8l4-4 4 4"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                          <path
+                            d="M20 20H4"
+                            stroke-width="1.5"
+                            stroke-linecap="round"
+                          />
+                        </svg>
+                        <span>Choose file</span>
+                      </label>
+                    </TooltipWrap>
+                    <TooltipWrap text="Clear the upload preview">
+                      <button
+                        type="button"
+                        class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                        :disabled="importSubmitting || importRows.length === 0"
+                        aria-label="Clear"
+                        @click="clearImportRows"
                       >
-                      Choose file
-                    </label>
-                    <button
-                      type="button"
-                      class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm disabled:opacity-50"
-                      :disabled="importSubmitting || importRows.length === 0"
-                      @click="clearImportRows"
-                    >
-                      Clear
-                    </button>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          class="w-4 h-4"
+                        >
+                          <path d="M3 6h18" stroke-width="1.5" stroke-linecap="round" />
+                          <path d="M8 6V4h8v2" stroke-width="1.5" stroke-linejoin="round" />
+                          <path d="M8 6l1 14h6l1-14" stroke-width="1.5" stroke-linejoin="round" />
+                        </svg>
+                        <span>Clear</span>
+                      </button>
+                    </TooltipWrap>
                   </div>
                 </div>
 
@@ -1542,14 +2168,41 @@
                       <div class="text-xs text-white/60">
                         {{ importRowsValidCount }} / {{ importRows.length }} valid
                       </div>
-                      <button
-                        type="button"
-                        class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
-                        :disabled="importSubmitting || importRowsValidCount === 0"
-                        @click="submitFileImport"
-                      >
-                        {{ importSubmitting ? 'Importing…' : `Import ${importRowsValidCount}` }}
-                      </button>
+                      <TooltipWrap text="Import valid rows">
+                        <button
+                          type="button"
+                          class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50 inline-flex items-center gap-2"
+                          :disabled="importSubmitting || importRowsValidCount === 0"
+                          aria-label="Import"
+                          @click="submitFileImport"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M12 4v10"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            />
+                            <path
+                              d="M8 10l4 4 4-4"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                            <path
+                              d="M20 20H4"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            />
+                          </svg>
+                          <span>{{ importSubmitting ? 'Importing…' : `Import ${importRowsValidCount}` }}</span>
+                        </button>
+                      </TooltipWrap>
                     </div>
 
                     <div class="rounded-xl border border-white/10 overflow-hidden">
@@ -1742,22 +2395,67 @@
 
       <div class="space-y-4 text-sm">
         <div class="flex items-center gap-2 border-b border-white/10 pb-3">
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm"
-            :class="workshopReportTab === 'general' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
-            @click="workshopReportTab = 'general'"
-          >
-            General Settings
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm"
-            :class="workshopReportTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
-            @click="workshopReportTab = 'cover'"
-          >
-            Cover Page
-          </button>
+          <TooltipWrap text="General report settings">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md border text-sm inline-flex items-center gap-2"
+              :class="workshopReportTab === 'general' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+              aria-label="General settings"
+              @click="workshopReportTab = 'general'"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M19.4 15a7.8 7.8 0 0 0 .1-2l2-1.2-2-3.4-2.3.7a7.8 7.8 0 0 0-1.7-1l-.3-2.4H11l-.3 2.4a7.8 7.8 0 0 0-1.7 1l-2.3-.7-2 3.4 2 1.2a7.8 7.8 0 0 0 .1 2l-2 1.2 2 3.4 2.3-.7a7.8 7.8 0 0 0 1.7 1l.3 2.4h4l.3-2.4a7.8 7.8 0 0 0 1.7-1l2.3.7 2-3.4-2-1.2Z"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>General Settings</span>
+            </button>
+          </TooltipWrap>
+          <TooltipWrap text="Cover page settings">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md border text-sm inline-flex items-center gap-2"
+              :class="workshopReportTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+              aria-label="Cover page"
+              @click="workshopReportTab = 'cover'"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M7 4h10a2 2 0 0 1 2 2v14H5V6a2 2 0 0 1 2-2Z"
+                  stroke-width="1.5"
+                />
+                <path
+                  d="M8 8h8"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M8 12h6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Cover Page</span>
+            </button>
+          </TooltipWrap>
         </div>
 
         <div
@@ -1856,14 +2554,30 @@
                 @change="onWorkshopCoverImageSelected"
               >
             </label>
-            <button
+            <TooltipWrap
               v-if="workshopReport.coverJumbotronDataUrl"
-              type="button"
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm"
-              @click="clearWorkshopCoverImage"
+              text="Remove cover image"
             >
-              Clear image
-            </button>
+              <button
+                type="button"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/90 text-sm inline-flex items-center gap-2"
+                aria-label="Clear image"
+                @click="clearWorkshopCoverImage"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path d="M3 6h18" stroke-width="1.5" stroke-linecap="round" />
+                  <path d="M8 6V4h8v2" stroke-width="1.5" stroke-linejoin="round" />
+                  <path d="M8 6l1 14h6l1-14" stroke-width="1.5" stroke-linejoin="round" />
+                </svg>
+                <span>Clear image</span>
+              </button>
+            </TooltipWrap>
           </div>
           <div
             v-if="workshopReport.coverJumbotronDataUrl"
@@ -1880,31 +2594,105 @@
 
       <template #footer>
         <div class="flex items-center justify-between gap-2 w-full">
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
-            :disabled="generatingWorkshopReport"
-            @click="resetWorkshopReportSettings"
-          >
-            Reset
-          </button>
+          <TooltipWrap text="Reset report settings">
+            <button
+              type="button"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white disabled:opacity-50 inline-flex items-center gap-2"
+              :disabled="generatingWorkshopReport"
+              aria-label="Reset"
+              @click="resetWorkshopReportSettings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M20 12a8 8 0 1 1-2.34-5.66"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M20 4v6h-6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Reset</span>
+            </button>
+          </TooltipWrap>
           <div class="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
-              :disabled="generatingWorkshopReport"
-              @click="showWorkshopReportDialog = false"
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 disabled:opacity-50"
-              :disabled="generatingWorkshopReport"
-              @click="generateWorkshopReportPdf"
-            >
-              {{ generatingWorkshopReport ? 'Generating…' : 'Generate PDF' }}
-            </button>
+            <TooltipWrap text="Close report settings">
+              <button
+                type="button"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white disabled:opacity-50 inline-flex items-center gap-2"
+                :disabled="generatingWorkshopReport"
+                aria-label="Close"
+                @click="showWorkshopReportDialog = false"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M6 6l12 12"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M18 6 6 18"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span>Close</span>
+              </button>
+            </TooltipWrap>
+            <TooltipWrap text="Generate and download the PDF report">
+              <button
+                type="button"
+                class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35 disabled:opacity-50 inline-flex items-center gap-2"
+                :disabled="generatingWorkshopReport"
+                aria-label="Generate PDF"
+                @click="generateWorkshopReportPdf"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M7 3h7l3 3v15H7V3Z"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M14 3v3h3"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M9 12h6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M9 16h6"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <span>{{ generatingWorkshopReport ? 'Generating…' : 'Generate PDF' }}</span>
+              </button>
+            </TooltipWrap>
           </div>
         </div>
       </template>
@@ -2220,7 +3008,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+  import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
   import axios from 'axios'
   import { useRoute } from 'vue-router'
   import * as XLSX from 'xlsx'
@@ -2234,6 +3022,23 @@
   import { confirm } from '../../utils/confirm'
   import { getApiBase } from '../../utils/api'
   import { getAuthHeaders } from '../../utils/auth'
+
+const TOOLTIP_CLASS = 'pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100'
+const TooltipWrap = defineComponent({
+  name: 'TooltipWrap',
+  props: {
+    text: { type: String, required: true },
+  },
+  setup(props, { slots }) {
+    return () => {
+      const t = String(props.text || '').trim()
+      return h('div', { class: 'relative inline-block group' }, [
+        slots.default ? slots.default() : null,
+        t ? h('div', { role: 'tooltip', class: TOOLTIP_CLASS }, t) : null,
+      ])
+    }
+  },
+})
 
 const auth = useAuthStore()
 const projectStore = useProjectStore()
