@@ -1875,15 +1875,98 @@ async function handleImportFile(e: Event) {
             })
           }
           const sec = sectionMap.get(checklistIndex)
-          const qIndex = toNum(m['questionindex']) ?? (sec.questions.length)
+
+          const splitPipeRow = (line: string) => String(line || '').split('|').map((x) => String(x ?? '').trim())
+          const decodeCell = (v: any) => String(v ?? '').replace(/\\n/g, '\n').replace(/¦/g, '|').trim()
+          const parseQuestionsPipeTable = (raw: any) => {
+            const s = String(raw ?? '').trim()
+            if (!s) return [] as Array<Record<string, string>>
+            const lines = s.split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)
+            if (!lines.length) return []
+            const header = lines[0]
+            if (!header.includes('|')) return []
+            const headerSegs = splitPipeRow(header)
+            const first = (headerSegs[0] || '').trim().toLowerCase()
+            if (!(first === '#' || first === 'no' || first === 'no.' || first === 'row' || first === 'index')) return []
+
+            const headerCols = headerSegs.slice(1).map((h, idx) => {
+              const rawHeader = decodeCell(h)
+              const m = rawHeader.match(/^(.*)\[([^\]]+)\]\s*$/)
+              const name = (m ? String(m[1] || '').trim() : rawHeader.trim())
+              const key = (m ? String(m[2] || '').trim() : '')
+              let derivedKey = key
+              if (!derivedKey) {
+                derivedKey = String(name || `col_${idx + 1}`)
+                  .trim()
+                  .toLowerCase()
+                  .replace(/\s+/g, '_')
+                  .replace(/[^a-z0-9_]/g, '')
+                if (!derivedKey) derivedKey = `col_${idx + 1}`
+              }
+              return { key: derivedKey, name: name || derivedKey, columnIndex: idx }
+            }).filter((c) => c.key)
+
+            const out: Array<Record<string, string>> = []
+            for (let li = 1; li < lines.length; li++) {
+              const segs = splitPipeRow(lines[li])
+              if (!segs.length) continue
+              const obj: Record<string, string> = {}
+              for (let ci = 0; ci < headerCols.length; ci++) {
+                const col = headerCols[ci]
+                obj[col.key] = decodeCell(segs[ci + 1] ?? '')
+              }
+              out.push(obj)
+            }
+            return out
+          }
+
+          // New consolidated format: one row per checklist with a pipe-table in Questions.
+          if (Object.prototype.hasOwnProperty.call(m, 'questions') && String(m['questions'] ?? '').trim()) {
+            const qrows = parseQuestionsPipeTable(m['questions'])
+            for (const qr of qrows) {
+              const qText = String(qr['question_text'] ?? qr['question'] ?? qr['questiontext'] ?? '').trim()
+              const qNumRaw = (qr['number'] ?? qr['questionnumber'] ?? '')
+              const qNumText = String(qNumRaw ?? '').trim()
+              const answerText = String(qr['answer'] ?? '').trim()
+              const notesText = String(qr['notes'] ?? '').trim()
+              const cxText = String(qr['cx_answer'] ?? qr['cxanswer'] ?? '').trim()
+              const oprText = String(qr['opritemids'] ?? qr['opr_item_ids'] ?? qr['opritemids'] ?? '').trim()
+              if (!qText && !qNumText && !answerText && !notesText && !cxText && !oprText) continue
+              sec.questions.push({
+                __index: sec.questions.length,
+                number: qNumText === '' ? null : (toNum(qNumText) ?? qNumText),
+                question_text: qText,
+                answer: answerText || null,
+                notes: notesText || null,
+                cx_answer: cxText || null,
+                oprItemIds: parseIds(oprText),
+              })
+            }
+            continue
+          }
+
+          // Old format: one row per question.
+          const qText = String(m['questiontext'] || '').trim()
+          const qNumVal = (m['questionnumber'] ?? '')
+          const qNumText = String(qNumVal ?? '').trim()
+          const ansText = String(m['answer'] || '').trim()
+          const notesText = String(m['notes'] || '').trim()
+          const cxText = String(m['cx_answer'] || '').trim()
+          const oprText = String(m['opritemids'] || '').trim()
+          const qIndex = toNum(m['questionindex'])
+          const hasQuestionData = (
+            qText || qNumText || ansText || notesText || cxText || oprText ||
+            qIndex !== null || Object.prototype.hasOwnProperty.call(m, 'questionindex')
+          )
+          if (!hasQuestionData) continue
           sec.questions.push({
-            __index: qIndex,
-            number: m['questionnumber'] === '' ? null : (toNum(m['questionnumber']) ?? m['questionnumber']),
-            question_text: String(m['questiontext'] || '').trim(),
-            answer: String(m['answer'] || '').trim() || null,
-            notes: String(m['notes'] || '').trim() || null,
-            cx_answer: String(m['cx_answer'] || '').trim() || null,
-            oprItemIds: parseIds(m['opritemids']),
+            __index: qIndex ?? (sec.questions.length),
+            number: qNumText === '' ? null : (toNum(qNumText) ?? qNumVal),
+            question_text: qText,
+            answer: ansText || null,
+            notes: notesText || null,
+            cx_answer: cxText || null,
+            oprItemIds: parseIds(oprText),
           })
         }
         return Array.from(sectionMap.entries())
@@ -1915,6 +1998,65 @@ async function handleImportFile(e: Event) {
         const lines = s.split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)
         const out: Array<{ rowIndex: number | null; columnIndex: number | null; columnKey: string; columnName: string; value: string }> = []
         const toKey = (k: string) => String(k || '').trim().toLowerCase()
+
+        const splitPipeRow = (line: string) => String(line || '').split('|').map((x) => String(x ?? '').trim())
+        const decodeCell = (v: any) => String(v ?? '').replace(/\\n/g, '\n').replace(/¦/g, '|').trim()
+
+        // New format (export):
+        //   # | Column Name [columnKey] | Another [anotherKey]
+        //   1 | value | value
+        //   2 | ...
+        const looksLikePipeTable = (() => {
+          if (!lines.length) return false
+          const header = lines[0]
+          if (!header.includes('|')) return false
+          if (/\brow\s*index\s*:/i.test(header) || /\browindex\s*:/i.test(header) || /\bcolumn\s*key\s*:/i.test(header) || /\bcolumnkey\s*:/i.test(header) || /\bvalue\s*:/i.test(header)) return false
+          const segs = splitPipeRow(header)
+          const first = (segs[0] || '').toLowerCase()
+          return (first === '#' || first === 'no' || first === 'no.' || first === 'row' || first === 'index') && segs.length >= 2
+        })()
+
+        if (looksLikePipeTable) {
+          const headerSegs = splitPipeRow(lines[0])
+          const headerCols = headerSegs.slice(1).map((h, idx) => {
+            const rawHeader = decodeCell(h)
+            const m = rawHeader.match(/^(.*)\[([^\]]+)\]\s*$/)
+            const name = (m ? String(m[1] || '').trim() : rawHeader.trim())
+            const key = (m ? String(m[2] || '').trim() : '')
+
+            let derivedKey = key
+            if (!derivedKey) {
+              derivedKey = String(name || `col_${idx + 1}`)
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/[^a-z0-9_]/g, '')
+              if (!derivedKey) derivedKey = `col_${idx + 1}`
+            }
+
+            return { columnIndex: idx, columnKey: derivedKey, columnName: name || derivedKey }
+          }).filter((c) => c.columnKey)
+
+          for (let li = 1; li < lines.length; li++) {
+            const segs = splitPipeRow(lines[li])
+            if (!segs.length) continue
+            const rowNo = toNum(segs[0])
+            const rowIndex = (rowNo !== null && rowNo > 0) ? (rowNo - 1) : (li - 1)
+            for (let ci = 0; ci < headerCols.length; ci++) {
+              const col = headerCols[ci]
+              const rawVal = segs[ci + 1] ?? ''
+              out.push({
+                rowIndex,
+                columnIndex: col.columnIndex,
+                columnKey: col.columnKey,
+                columnName: col.columnName,
+                value: decodeCell(rawVal),
+              })
+            }
+          }
+          return out
+        }
+
         for (const line of lines) {
           const segs = line.includes('|')
             ? line.split('|')
@@ -1934,8 +2076,8 @@ async function handleImportFile(e: Event) {
           const columnIndex = toNum(kv['columnindex'])
           const columnKey = String(kv['columnkey'] || '').trim()
           if (!columnKey) continue
-          const columnName = String(kv['columnname'] || '').trim()
-          const value = String(kv['value'] ?? '').replace(/\\n/g, '\n').trim()
+          const columnName = String(kv['columnname'] || '').replace(/¦/g, '|').trim()
+          const value = String(kv['value'] ?? '').replace(/\\n/g, '\n').replace(/¦/g, '|').trim()
           out.push({ rowIndex, columnIndex, columnKey, columnName, value })
         }
         return out

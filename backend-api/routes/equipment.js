@@ -1238,26 +1238,55 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
         for (let si = 0; si < sections.length; si++) {
           const sec = sections[si] || {}
           const questions = Array.isArray(sec.questions) ? sec.questions : []
-          for (let qi = 0; qi < questions.length; qi++) {
-            const q = questions[qi] || {}
-            const oprIds = Array.isArray(q.oprItemIds) ? q.oprItemIds.map((x) => asStr(x).trim()).filter(Boolean) : []
-            checklistQuestionRows.push({
-              equipmentTag: tag,
-              checklistIndex: si,
-              checklistNumber: sec.number ?? '',
-              checklistTitle: asStr(sec.title || ''),
-              checklistType: asStr(sec.type || ''),
-              checklistSystem: asStr(sec.system || ''),
-              checklistResponsible: asStr(sec.responsible || ''),
-              questionIndex: qi,
-              questionNumber: q.number ?? '',
-              questionText: asStr(q.question_text || ''),
-              answer: asStr(q.answer || ''),
-              notes: asStr(q.notes || ''),
-              cx_answer: asStr(q.cx_answer || ''),
-              oprItemIds: oprIds.join(', '),
-            })
+
+          const safeHeaderCell = (v) => asStr(v).replace(/\r?\n/g, ' ').replace(/\|/g, '¦').trim()
+          const safeValueCell = (v) => {
+            const raw = (v === undefined || v === null) ? '' : asStr(v)
+            return raw.replace(/\r?\n/g, '\\n').replace(/\|/g, '¦')
           }
+          const formatQuestionsPipeTable = (qList) => {
+            if (!Array.isArray(qList) || qList.length === 0) return ''
+            const cols = [
+              { name: 'Number', key: 'number' },
+              { name: 'Question', key: 'question_text' },
+              { name: 'Answer', key: 'answer' },
+              { name: 'Notes', key: 'notes' },
+              { name: 'CX Answer', key: 'cx_answer' },
+              { name: 'OPR Item Ids', key: 'oprItemIds' },
+            ]
+
+            const headerParts = ['#']
+            for (const c of cols) {
+              headerParts.push(`${safeHeaderCell(c.name)} [${safeHeaderCell(c.key)}]`)
+            }
+            const lines = [headerParts.join(' | ')]
+
+            for (let qi = 0; qi < qList.length; qi++) {
+              const q = qList[qi] || {}
+              const oprIds = Array.isArray(q.oprItemIds) ? q.oprItemIds.map((x) => asStr(x).trim()).filter(Boolean) : []
+              const parts = [String(qi + 1)]
+              parts.push(safeValueCell(q.number ?? ''))
+              parts.push(safeValueCell(q.question_text || ''))
+              parts.push(safeValueCell(q.answer || ''))
+              parts.push(safeValueCell(q.notes || ''))
+              parts.push(safeValueCell(q.cx_answer || ''))
+              parts.push(safeValueCell(oprIds.join(', ')))
+              lines.push(parts.join(' | '))
+            }
+
+            return lines.join('\n')
+          }
+
+          checklistQuestionRows.push({
+            equipmentTag: tag,
+            checklistIndex: si,
+            checklistNumber: sec.number ?? '',
+            checklistTitle: asStr(sec.title || ''),
+            checklistType: asStr(sec.type || ''),
+            checklistSystem: asStr(sec.system || ''),
+            checklistResponsible: asStr(sec.responsible || ''),
+            Questions: formatQuestionsPipeTable(questions),
+          })
         }
 
         const tests = Array.isArray(r.functionalTests) ? r.functionalTests : []
@@ -1278,21 +1307,42 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
           const table = (t && typeof t === 'object') ? t.table : null
           const cols = Array.isArray(table && table.columns) ? table.columns : []
           const rows = Array.isArray(table && table.rows) ? table.rows : []
-          const resultsLines = []
-          for (let ri = 0; ri < rows.length; ri++) {
-            const row = rows[ri] || {}
-            for (let ci = 0; ci < cols.length; ci++) {
-              const col = cols[ci] || {}
-              const columnKey = asStr(col && col.key).trim()
-              if (!columnKey) continue
-              const columnName = asStr(col && col.name)
-              const rawVal = row[columnKey]
-              const valueText = (rawVal === undefined || rawVal === null) ? '' : asStr(rawVal)
-              const safeValue = valueText.replace(/\r?\n/g, '\\n').replace(/\|/g, '¦')
-              const safeColumnName = asStr(columnName).replace(/\r?\n/g, ' ').replace(/\|/g, '¦')
-              resultsLines.push(`rowIndex: ${ri} | columnIndex: ${ci} | columnKey: ${columnKey} | columnName: ${safeColumnName} | value: ${safeValue}`)
-            }
+          const safeHeaderCell = (v) => asStr(v).replace(/\r?\n/g, ' ').replace(/\|/g, '¦').trim()
+          const safeValueCell = (v) => {
+            const raw = (v === undefined || v === null) ? '' : asStr(v)
+            return raw.replace(/\r?\n/g, '\\n').replace(/\|/g, '¦')
           }
+          const formatResultsPipeTable = (columns, rowList) => {
+            if (!Array.isArray(columns) || columns.length === 0) return ''
+            if (!Array.isArray(rowList) || rowList.length === 0) return ''
+
+            const headerParts = ['#']
+            const colMeta = []
+            for (let ci = 0; ci < columns.length; ci++) {
+              const col = columns[ci] || {}
+              const key = asStr(col.key).trim()
+              if (!key) continue
+              const name = asStr(col.name).trim()
+              const headerName = safeHeaderCell(name || key)
+              const headerKey = safeHeaderCell(key)
+              headerParts.push(`${headerName} [${headerKey}]`)
+              colMeta.push({ key, name })
+            }
+            if (colMeta.length === 0) return ''
+
+            const lines = [headerParts.join(' | ')]
+            for (let ri = 0; ri < rowList.length; ri++) {
+              const row = rowList[ri] || {}
+              const parts = [String(ri + 1)]
+              for (const c of colMeta) {
+                parts.push(safeValueCell(row[c.key]))
+              }
+              lines.push(parts.join(' | '))
+            }
+            return lines.join('\n')
+          }
+
+          const resultsText = formatResultsPipeTable(cols, rows)
 
           const steps = Array.isArray(t.rows) ? t.rows : []
           if (steps.length) {
@@ -1304,7 +1354,7 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
                 step: asStr(s.step || ''),
                 expected: asStr(s.expected || ''),
                 actual: asStr(s.actual || ''),
-                results: si === 0 ? resultsLines.join('\n') : '',
+                results: si === 0 ? resultsText : '',
               })
             }
           } else {
@@ -1315,7 +1365,7 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
               step: '',
               expected: '',
               actual: '',
-              results: resultsLines.join('\n'),
+              results: resultsText,
             })
           }
         }
