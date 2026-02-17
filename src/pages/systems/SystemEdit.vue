@@ -2038,8 +2038,10 @@ async function onSave() {
       const created = await systemsStore.create(payload)
       const newId = String((created as any).id || (created as any)._id || '')
       if (newId) router.replace({ name: 'system-edit', params: { id: newId } })
+      ui.showSuccess('System created')
     } else {
       await systemsStore.update({ ...payload, id: id.value })
+      ui.showSuccess('System saved')
     }
   } catch (e: any) {
     error.value = e?.response?.data?.error || e?.message || 'Failed to save system'

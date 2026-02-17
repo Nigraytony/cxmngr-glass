@@ -163,6 +163,16 @@
           v-if="projectStore.currentProjectId"
           type="button"
           class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+          :disabled="systemsStore.loading || filtered.length===0"
+          :title="filtered.length ? 'Download filtered systems as XLSX' : 'No systems to export'"
+          @click="downloadSystemsXlsx"
+        >
+          Download XLSX
+        </button>
+        <button
+          v-if="projectStore.currentProjectId"
+          type="button"
+          class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
           :disabled="systemsStore.loading"
           @click="refresh"
         >
@@ -723,11 +733,14 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import * as XLSX from 'xlsx'
 // Navigation uses <RouterLink> directly
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
 import SearchPill from '../../components/SearchPill.vue'
 import Spinner from '../../components/Spinner.vue'
+import { useEquipmentStore } from '../../stores/equipment'
+import { useOprStore } from '../../stores/opr'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useSystemsStore, type SystemRecord } from '../../stores/systems'
@@ -735,6 +748,8 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 
 const projectStore = useProjectStore()
 const systemsStore = useSystemsStore()
+const equipmentStore = useEquipmentStore()
+const oprStore = useOprStore()
 const ui = useUiStore()
 
 const search = ref('')
@@ -946,6 +961,249 @@ async function refresh() {
   const pid = String(projectStore.currentProjectId || '')
   if (!pid) return
   await systemsStore.fetchByProject(pid)
+}
+
+function encodePipeCell(v: any) {
+  const s = String(v ?? '').trim()
+  if (!s) return ''
+  return s
+    .replace(/\|/g, '¦')
+    .replace(/\r?\n/g, '\\n')
+}
+
+function buildQuestionsPipeTable(questions: any[]) {
+  const qs = Array.isArray(questions) ? questions : []
+  const header = '# | Number [number] | Question [question_text] | Answer [answer] | Notes [notes] | CX Answer [cx_answer] | OPR Item Ids [oprItemIds]'
+  const lines = [header]
+  for (let i = 0; i < qs.length; i++) {
+    const q = qs[i] || {}
+    const opr = Array.isArray(q.oprItemIds) ? q.oprItemIds.map((x: any) => String((x && (x._id || x.id)) || x || '').trim()).filter(Boolean).join(',') : String(q.oprItemIds || '').trim()
+    lines.push([
+      String(i + 1),
+      encodePipeCell(q.number ?? ''),
+      encodePipeCell(q.question_text ?? q.question ?? ''),
+      encodePipeCell(q.answer ?? ''),
+      encodePipeCell(q.notes ?? ''),
+      encodePipeCell(q.cx_answer ?? ''),
+      encodePipeCell(opr),
+    ].join(' | '))
+  }
+  return lines.join('\n')
+}
+
+function buildResultsPipeTable(table: any) {
+  const columns = Array.isArray(table?.columns) ? table.columns : []
+  const rows = Array.isArray(table?.rows) ? table.rows : []
+  const cols = columns
+    .map((c: any, idx: number) => ({ key: String(c?.key || '').trim() || `col_${idx + 1}`, name: String(c?.name || c?.key || '').trim() || String(c?.key || '').trim() || `col_${idx + 1}` }))
+    .filter((c: any) => c.key)
+  if (!cols.length) return ''
+
+  const header = ['#', ...cols.map((c: any) => `${encodePipeCell(c.name)} [${encodePipeCell(c.key)}]`)].join(' | ')
+  const lines = [header]
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || {}
+    lines.push([
+      String(i + 1),
+      ...cols.map((c: any) => encodePipeCell(r[c.key] ?? '')),
+    ].join(' | '))
+  }
+  return lines.join('\n')
+}
+
+function normalizeIdArray(raw: any): string[] {
+  const arr = Array.isArray(raw) ? raw : (raw ? [raw] : [])
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const v of arr) {
+    const id = String((v && (v._id || v.id)) || v || '').trim()
+    if (!id) continue
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
+async function downloadSystemsXlsx() {
+  try {
+    const pid = String(projectStore.currentProjectId || '')
+    if (!pid) {
+      ui.showError('Select a project first')
+      return
+    }
+    const systems = Array.isArray(sorted.value) ? sorted.value : []
+    if (!systems.length) {
+      ui.showWarning('No systems to export')
+      return
+    }
+
+    // Best-effort: load lookup tables for equipment + OPR item text.
+    try {
+      if (!Array.isArray(equipmentStore.items) || equipmentStore.items.length === 0 || equipmentStore.items.some((e: any) => String(e?.projectId || '') !== pid)) {
+        await equipmentStore.fetchByProject(pid)
+      }
+    } catch { /* non-blocking */ }
+    try {
+      // OPR may not be enabled in plan; treat failures as non-blocking.
+      if (!Array.isArray(oprStore.items) || oprStore.items.length === 0) {
+        await oprStore.fetchItems(pid)
+      }
+    } catch { /* non-blocking */ }
+
+    const oprItemById: Record<string, any> = {}
+    try {
+      for (const it of (Array.isArray(oprStore.items) ? oprStore.items : [])) {
+        const id = String((it as any)?.id || (it as any)?._id || '').trim()
+        if (id) oprItemById[id] = it
+      }
+    } catch { /* ignore */ }
+
+    const equipmentById = equipmentStore.byId
+
+    const systemsRows = systems.map((s: any) => {
+      const parent = s?.parentSystem ? systemsStore.byId[String(s.parentSystem)] : null
+      const tags = Array.isArray(s?.tags) ? s.tags.join(', ') : ''
+      const attrs = Array.isArray(s?.attributes)
+        ? s.attributes
+          .filter((a: any) => a && String(a.key || '').trim())
+          .map((a: any) => `${String(a.key || '').trim()}: ${String(a.value || '').trim()}`.trim())
+          .join('\n')
+        : ''
+
+      const equipmentIds = normalizeIdArray(s?.equipmentIds)
+      const equipmentList = equipmentIds
+        .map((id) => {
+          const e: any = equipmentById[String(id)]
+          const tag = String(e?.tag || '').trim()
+          const title = String(e?.title || '').trim()
+          if (tag && title) return `${tag} - ${title}`
+          if (tag) return tag
+          if (title) return title
+          return id
+        })
+        .join('\n')
+
+      const oprItemIds = normalizeIdArray(s?.oprItemIds)
+      const oprList = oprItemIds
+        .map((id) => {
+          const it: any = oprItemById[String(id)]
+          const text = String(it?.text || '').trim()
+          return text || id
+        })
+        .join('\n')
+
+      return {
+        tag: String(s?.tag || ''),
+        name: String(s?.name || ''),
+        type: String(s?.type || ''),
+        parentTag: String(parent?.tag || ''),
+        parentName: String(parent?.name || ''),
+        description: String(s?.description || ''),
+        tags,
+        attributes: attrs,
+        equipment: equipmentList,
+        oprItems: oprList,
+        createdAt: s?.createdAt || '',
+        updatedAt: s?.updatedAt || '',
+      }
+    })
+
+    const checklistsRows: any[] = []
+    for (const s of systems) {
+      const systemTag = String((s as any)?.tag || '')
+      const cls = Array.isArray((s as any)?.checklists) ? (s as any).checklists : []
+      for (let i = 0; i < cls.length; i++) {
+        const sec = cls[i] || {}
+        const questions = Array.isArray(sec?.questions) ? sec.questions : []
+        checklistsRows.push({
+          systemTag,
+          checklistIndex: i,
+          checklistNumber: sec?.number ?? '',
+          checklistTitle: String(sec?.title || ''),
+          checklistType: String(sec?.type || ''),
+          checklistSystem: String(sec?.system || ''),
+          checklistResponsible: String(sec?.responsible || ''),
+          Questions: buildQuestionsPipeTable(questions),
+        })
+      }
+    }
+
+    const functionalTestsRows: any[] = []
+    for (const s of systems) {
+      const systemTag = String((s as any)?.tag || '')
+      const tests = Array.isArray((s as any)?.functionalTests) ? (s as any).functionalTests : []
+      for (let i = 0; i < tests.length; i++) {
+        const t = tests[i] || {}
+        const pass = t?.pass === true ? 'PASS' : (t?.pass === false ? 'FAIL' : '')
+        const opr = Array.isArray(t?.oprItemIds)
+          ? t.oprItemIds.map((x: any) => String((x && (x._id || x.id)) || x || '').trim()).filter(Boolean).join(',')
+          : String(t?.oprItemIds || '').trim()
+
+        const steps = Array.isArray(t?.rows) ? t.rows : (Array.isArray(t?.steps) ? t.steps : [])
+        const results = buildResultsPipeTable(t?.table)
+        if (!steps.length) {
+          functionalTestsRows.push({
+            systemTag,
+            functionalTestIndex: i,
+            functionalTestNumber: t?.number ?? '',
+            name: String(t?.name || ''),
+            pass,
+            notes: String(t?.notes || ''),
+            description: String(t?.description || ''),
+            oprItemIds: opr,
+            stepIndex: '',
+            step: '',
+            expected: '',
+            actual: '',
+            results,
+          })
+        } else {
+          for (let si = 0; si < steps.length; si++) {
+            const st = steps[si] || {}
+            functionalTestsRows.push({
+              systemTag,
+              functionalTestIndex: i,
+              functionalTestNumber: t?.number ?? '',
+              name: String(t?.name || ''),
+              pass,
+              notes: String(t?.notes || ''),
+              description: String(t?.description || ''),
+              oprItemIds: opr,
+              stepIndex: si,
+              step: String(st?.step || ''),
+              expected: String(st?.expected || ''),
+              actual: String(st?.actual || ''),
+              results,
+            })
+          }
+        }
+      }
+    }
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(systemsRows), 'Systems')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(checklistsRows), 'Checklists')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(functionalTestsRows), 'FunctionalTests')
+
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const href = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+
+    const proj: any = projectStore.currentProject as any
+    const name = String(proj?.title || proj?.name || 'project')
+    const safeName = name.replace(/\s+/g, '_').replace(/[^A-Za-z0-9_-]+/g, '')
+    const today = new Date().toISOString().slice(0, 10)
+    a.href = href
+    a.download = `${safeName}-systems-${today}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(href)
+  } catch (e: any) {
+    ui.showError(e?.message || 'Failed to export Excel')
+  }
 }
 
 function openCreate() {

@@ -71,9 +71,9 @@
             <span class="i">🤖</span>
             <span v-if="open">Assistant</span>
           </RouterLink>
-          <!-- OPR Workshop (paid add-on; visible to all projects) -->
+          <!-- OPR Workshop (paid add-on; only shown when a session is active) -->
           <RouterLink
-            v-if="showStandaloneOprWorkshopLink"
+            v-if="showOprWorkshopLink"
             to="/app/opr"
             :class="[
               'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
@@ -88,18 +88,25 @@
             >
               <span class="truncate">OPR Workshop</span>
               <span
-                v-if="opr.workshopIsActive"
                 class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100 shrink-0"
               >
                 Live
               </span>
-              <span
-                v-else
-                class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 shrink-0"
-              >
-                Add-on
-              </span>
             </span>
+          </RouterLink>
+
+          <!-- OPR Items (project-wide list + coverage; uses link endpoints, no admission required) -->
+          <RouterLink
+            v-if="showOprItemsLink"
+            to="/app/opr/items"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isActive('/app/opr/items') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isActive('/app/opr/items') ? 'page' : null"
+          >
+            <span class="i">📋</span>
+            <span v-if="open">OPR Items</span>
           </RouterLink>
           <!-- Tasks + Process tree (split action: click label to open list page; click caret to expand tree) -->
           <div v-if="featureEnabled('tasks')">
@@ -254,7 +261,7 @@
                   </RouterLink>
 
                   <RouterLink
-                    v-if="isOprWorkshopTaskNode(n)"
+                    v-if="opr.workshopIsActive && isOprWorkshopTaskNode(n)"
                     to="/app/opr"
                     class="text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/15 text-white/70 hover:bg-white/20 hover:text-white shrink-0 ml-auto"
                     title="Open OPR Workshop"
@@ -558,6 +565,15 @@ const hasOprTaskForProject = computed(() => {
 	  if (!featureEnabled('tasks')) return true
 	  return !hasOprTaskForProject.value
 	})
+
+  const showOprWorkshopLink = computed(() => {
+    if (!currentProjectId.value) return false
+    return opr.workshopIsActive && showStandaloneOprWorkshopLink.value
+  })
+
+  const showOprItemsLink = computed(() => {
+    return Boolean(currentProjectId.value)
+  })
 
 function openAiChat() {
   if (!props.open) emit('toggle')

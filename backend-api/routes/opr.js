@@ -16,6 +16,7 @@ const OprAnswer = require('../models/oprAnswer')
 const OprParticipant = require('../models/oprParticipant')
 const OprVote = require('../models/oprVote')
 const OprItem = require('../models/oprItem')
+const OprLinkEvaluation = require('../models/oprLinkEvaluation')
 const OprWorkshop = require('../models/oprWorkshop')
 const OprWorkshopAttendee = require('../models/oprWorkshopAttendee')
 
@@ -112,6 +113,37 @@ function requireOprEnabled(req, res, next) {
 function requireOprAdmin(req, res, next) {
   if (isProjectAdmin(req.oprProject, req.user)) return next()
   return res.status(403).json({ error: 'Forbidden', code: 'OPR_ADMIN_REQUIRED' })
+}
+
+function normalizeText(value, maxLen = 5000) {
+  const s = asString(value).trim()
+  if (!s) return ''
+  if (s.length > maxLen) return s.slice(0, maxLen)
+  return s
+}
+
+function isValidObjectId(id) {
+  return Boolean(id && mongoose.Types.ObjectId.isValid(String(id)))
+}
+
+function isHexObjectIdString(s) {
+  const v = asString(s).trim()
+  return /^[a-fA-F0-9]{24}$/.test(v)
+}
+
+function normalizeItemPayload(raw) {
+  const categoryId = asString(raw && raw.categoryId).trim()
+  const text = normalizeText(raw && raw.text, 2000)
+  const rankRaw = raw && raw.rank
+  const scoreRaw = raw && raw.score
+  const rank = typeof rankRaw === 'number' ? rankRaw : (rankRaw == null || rankRaw === '' ? null : Number(rankRaw))
+  const score = typeof scoreRaw === 'number' ? scoreRaw : (scoreRaw == null || scoreRaw === '' ? null : Number(scoreRaw))
+  return {
+    categoryId,
+    text,
+    rank: Number.isFinite(rank) ? rank : null,
+    score: Number.isFinite(score) ? score : null,
+  }
 }
 
 function userProjectRole(user, projectId) {
@@ -615,6 +647,346 @@ router.get('/link/items', async (req, res) => {
     })))
   } catch (e) {
     return res.status(500).json({ error: 'Failed to load OPR items' })
+  }
+})
+
+// Admin-only: import/create OPR items without workshop admission.
+// Still protected by auth + active subscription + project access + add-on enabled.
+router.post('/link/items', requireOprAdmin, async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+
+    const incoming = Array.isArray(req.body && req.body.items) ? req.body.items : []
+    if (!incoming.length) return res.status(400).json({ error: 'items is required' })
+    if (incoming.length > 1000) return res.status(400).json({ error: 'Too many items (max 1000)' })
+
+    const now = new Date()
+    const docs = []
+    for (const raw of incoming) {
+      const item = normalizeItemPayload(raw)
+      if (!item.categoryId || !isValidObjectId(item.categoryId)) {
+        return res.status(400).json({ error: 'Invalid categoryId in items' })
+      }
+      if (!item.text) return res.status(400).json({ error: 'Item text is required' })
+      docs.push({
+        orgId,
+        projectId,
+        categoryId: item.categoryId,
+        text: item.text,
+        rank: item.rank,
+        score: item.score,
+        status: 'active',
+        createdBy: req.user._id,
+        updatedBy: req.user._id,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    const inserted = await OprItem.insertMany(docs, { ordered: false })
+    return res.json({ ok: true, inserted: Array.isArray(inserted) ? inserted.length : docs.length })
+  } catch (e) {
+    // Handle duplicate rank constraint or other validation errors gracefully
+    const msg = e && e.message ? e.message : 'Failed to import OPR items'
+    return res.status(500).json({ error: msg })
+  }
+})
+
+// Admin-only: upsert OPR items from spreadsheet.
+// - If an item row includes an existing `id` (or `_id`), update it.
+// - If `id` is missing/unknown, insert a new item.
+router.post('/link/items/upsert', requireOprAdmin, async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+
+    const incoming = Array.isArray(req.body && req.body.items) ? req.body.items : []
+    if (!incoming.length) return res.status(400).json({ error: 'items is required' })
+    if (incoming.length > 1000) return res.status(400).json({ error: 'Too many items (max 1000)' })
+
+    const now = new Date()
+    const idCandidates = incoming
+      .map((r) => asString(r && (r.id || r._id)).trim())
+      .filter((id) => isHexObjectIdString(id))
+
+    const existingIds = new Set()
+    if (idCandidates.length) {
+      const rows = await OprItem.find({ orgId, projectId, _id: { $in: idCandidates } })
+        .select('_id')
+        .lean()
+      for (const r of rows) existingIds.add(String(r._id))
+    }
+
+    const updateOps = []
+    const insertDocs = []
+    let skipped = 0
+
+    for (const raw of incoming) {
+      const idRaw = asString(raw && (raw.id || raw._id)).trim()
+      const item = normalizeItemPayload(raw)
+      const statusRaw = asString(raw && raw.status).trim().toLowerCase()
+      const status = (statusRaw === 'active' || statusRaw === 'archived') ? statusRaw : null
+
+      if (!item.categoryId || !isValidObjectId(item.categoryId)) {
+        skipped += 1
+        continue
+      }
+      if (!item.text) {
+        skipped += 1
+        continue
+      }
+
+      if (isHexObjectIdString(idRaw) && existingIds.has(idRaw)) {
+        const $set = {
+          categoryId: item.categoryId,
+          text: item.text,
+          rank: item.rank,
+          score: item.score,
+          updatedBy: req.user._id,
+          updatedAt: now,
+        }
+        if (status) $set.status = status
+        updateOps.push({
+          updateOne: {
+            filter: { orgId, projectId, _id: idRaw },
+            update: { $set },
+          }
+        })
+      } else {
+        insertDocs.push({
+          orgId,
+          projectId,
+          categoryId: item.categoryId,
+          text: item.text,
+          rank: item.rank,
+          score: item.score,
+          status: status || 'active',
+          createdBy: req.user._id,
+          updatedBy: req.user._id,
+          createdAt: now,
+          updatedAt: now,
+        })
+      }
+    }
+
+    let updated = 0
+    let inserted = 0
+    if (updateOps.length) {
+      const r = await OprItem.bulkWrite(updateOps, { ordered: false })
+      updated = Number(r && (r.modifiedCount || r.nModified || 0))
+    }
+    if (insertDocs.length) {
+      const insertedDocs = await OprItem.insertMany(insertDocs, { ordered: false })
+      inserted = Array.isArray(insertedDocs) ? insertedDocs.length : insertDocs.length
+    }
+    return res.json({ ok: true, updated, inserted, skipped })
+  } catch (e) {
+    const msg = e && e.message ? e.message : 'Failed to upsert OPR items'
+    return res.status(500).json({ error: msg })
+  }
+})
+
+// Link evaluation (verification) endpoints: pass/fail/na/unverified per linked OPR item.
+router.get('/link/evaluations', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+
+    const oprItemId = req.query.oprItemId ? String(req.query.oprItemId).trim() : ''
+    const contextType = req.query.contextType ? String(req.query.contextType).trim() : ''
+    const contextId = req.query.contextId ? String(req.query.contextId).trim() : ''
+    const targetType = req.query.targetType ? String(req.query.targetType).trim() : ''
+    const targetId = req.query.targetId ? String(req.query.targetId).trim() : ''
+    const targetKey = req.query.targetKey ? String(req.query.targetKey).trim() : ''
+
+    const limitRaw = req.query.limit ? String(req.query.limit).trim() : ''
+    const limit = limitRaw ? Math.max(0, Math.min(100, parseInt(limitRaw, 10) || 0)) : 0
+
+    const oprItemIdsRaw = req.query.oprItemIds
+    const oprItemIds = oprItemIdsRaw
+      ? String(oprItemIdsRaw)
+        .split(',')
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+      : []
+    if (oprItemIds.length && oprItemIds.some((id) => !isValidObjectId(id))) {
+      return res.status(400).json({ error: 'Invalid oprItemIds' })
+    }
+
+    const filter = { orgId, projectId }
+    if (oprItemId) {
+      if (!isValidObjectId(oprItemId)) return res.status(400).json({ error: 'Invalid oprItemId' })
+      filter.oprItemId = oprItemId
+    }
+    if (oprItemIds.length) filter.oprItemId = { $in: oprItemIds }
+
+    if (contextType) filter.contextType = contextType
+    if (contextId) {
+      if (!isValidObjectId(contextId)) return res.status(400).json({ error: 'Invalid contextId' })
+      filter.contextId = contextId
+    }
+    if (targetType) filter.targetType = targetType
+    if (targetId) {
+      if (!isValidObjectId(targetId)) return res.status(400).json({ error: 'Invalid targetId' })
+      filter.targetId = targetId
+    }
+    if (targetKey) filter.targetKey = targetKey
+
+    let q = OprLinkEvaluation.find(filter)
+      .select('_id oprItemId contextType contextId contextLabel targetType targetId targetKey targetLabel status notes evidenceUrl evaluatedBy evaluatedAt updatedAt createdAt')
+      .sort({ evaluatedAt: -1, updatedAt: -1 })
+    if (limit > 0) q = q.limit(limit)
+    const rows = await q.lean()
+
+    return res.json((rows || []).map((r) => ({
+      id: String(r._id),
+      oprItemId: String(r.oprItemId),
+      contextType: r.contextType,
+      contextId: r.contextId ? String(r.contextId) : null,
+      contextLabel: r.contextLabel || '',
+      targetType: r.targetType,
+      targetId: r.targetId ? String(r.targetId) : null,
+      targetKey: r.targetKey || '',
+      targetLabel: r.targetLabel || '',
+      status: r.status,
+      notes: r.notes || '',
+      evidenceUrl: r.evidenceUrl || '',
+      evaluatedBy: r.evaluatedBy ? String(r.evaluatedBy) : null,
+      evaluatedAt: r.evaluatedAt || null,
+      updatedAt: r.updatedAt || null,
+      createdAt: r.createdAt || null,
+    })))
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to load evaluations' })
+  }
+})
+
+router.put('/link/evaluations', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+
+    const oprItemId = asString(req.body && req.body.oprItemId).trim()
+    const contextType = asString(req.body && req.body.contextType).trim()
+    const contextId = asString(req.body && req.body.contextId).trim()
+    const contextLabel = normalizeText(req.body && req.body.contextLabel, 200)
+    const targetType = asString(req.body && req.body.targetType).trim()
+    const targetIdRaw = asString(req.body && req.body.targetId).trim()
+    const targetKeyRaw = normalizeText(req.body && req.body.targetKey, 200)
+    const targetLabel = normalizeText(req.body && req.body.targetLabel, 200)
+    const status = asString(req.body && req.body.status).trim().toLowerCase()
+    const notes = normalizeText(req.body && req.body.notes, 5000)
+    const evidenceUrl = normalizeText(req.body && req.body.evidenceUrl, 1000)
+
+    if (!isValidObjectId(oprItemId)) return res.status(400).json({ error: 'Invalid oprItemId' })
+    if (!isValidObjectId(contextId)) return res.status(400).json({ error: 'Invalid contextId' })
+    if (!contextType) return res.status(400).json({ error: 'contextType is required' })
+    if (!targetType) return res.status(400).json({ error: 'targetType is required' })
+
+    const allowed = new Set(['unverified', 'pass', 'fail', 'na'])
+    if (!allowed.has(status)) return res.status(400).json({ error: 'Invalid status' })
+
+    let targetId = null
+    let targetKey = targetKeyRaw
+    if (targetIdRaw) {
+      if (!isValidObjectId(targetIdRaw)) return res.status(400).json({ error: 'Invalid targetId' })
+      targetId = targetIdRaw
+    } else if (targetKey) {
+      // If the client passes an ObjectId-like key, store it as targetId for consistency.
+      if (isHexObjectIdString(targetKey)) {
+        targetId = targetKey
+        targetKey = ''
+      }
+    } else {
+      return res.status(400).json({ error: 'targetId or targetKey is required' })
+    }
+
+    const now = new Date()
+    const filter = { orgId, projectId, oprItemId, contextType, contextId, targetType, targetId: targetId || null, targetKey: targetKey || '' }
+    const update = {
+      $set: {
+        contextLabel,
+        targetLabel,
+        status,
+        notes,
+        evidenceUrl,
+        evaluatedBy: req.user._id,
+        evaluatedAt: now,
+        updatedAt: now,
+      },
+      $setOnInsert: {
+        createdAt: now,
+      },
+    }
+
+    const doc = await OprLinkEvaluation.findOneAndUpdate(filter, update, { new: true, upsert: true }).lean()
+    return res.json({ ok: true, evaluation: doc ? { id: String(doc._id) } : null })
+  } catch (e) {
+    // Unique index races should be retriable client-side
+    return res.status(500).json({ error: 'Failed to save evaluation' })
+  }
+})
+
+router.get('/link/coverage', async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+
+    const idsRaw = req.query.ids
+    const ids = idsRaw
+      ? String(idsRaw)
+        .split(',')
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+      : []
+    if (ids.length && ids.some((id) => !isValidObjectId(id))) {
+      return res.status(400).json({ error: 'Invalid ids' })
+    }
+
+    // mongoose v8 / bson ObjectId requires `new`.
+    const match = { orgId: new mongoose.Types.ObjectId(orgId), projectId: new mongoose.Types.ObjectId(projectId) }
+    if (ids.length) match.oprItemId = { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) }
+
+    const rows = await OprLinkEvaluation.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { oprItemId: '$oprItemId', status: '$status' },
+          count: { $sum: 1 },
+          lastEvaluatedAt: { $max: '$evaluatedAt' },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.oprItemId',
+          counts: { $push: { status: '$_id.status', count: '$count' } },
+          lastEvaluatedAt: { $max: '$lastEvaluatedAt' },
+          total: { $sum: '$count' },
+        },
+      },
+      { $sort: { total: -1 } },
+    ])
+
+    const out = {}
+    for (const r of rows || []) {
+      const itemId = r && r._id ? String(r._id) : null
+      if (!itemId) continue
+      const counts = { unverified: 0, pass: 0, fail: 0, na: 0 }
+      for (const c of (r.counts || [])) {
+        const k = c && c.status ? String(c.status) : ''
+        if (k && Object.prototype.hasOwnProperty.call(counts, k)) counts[k] = Number(c.count || 0)
+      }
+      out[itemId] = {
+        counts,
+        total: Number(r.total || 0),
+        lastEvaluatedAt: r.lastEvaluatedAt || null,
+      }
+    }
+
+    return res.json({ ok: true, coverage: out })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute coverage' })
   }
 })
 

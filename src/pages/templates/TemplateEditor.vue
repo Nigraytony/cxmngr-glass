@@ -1360,6 +1360,13 @@ const tabIndex = computed(() => Math.max(0, tabs.indexOf(currentTab.value)))
 const tabWidth = computed(() => 100 / tabs.length)
 const tabLeft = computed(() => tabIndex.value * tabWidth.value)
 
+function setTabFromQuery() {
+  const q = String((route.query as any)?.tab || '')
+  if (q && (tabs as readonly string[]).includes(q)) currentTab.value = q as any
+}
+onMounted(() => setTabFromQuery())
+watch(() => route.query, () => setTabFromQuery())
+
 const systemSelectOptions = computed(() => {
   const arr: Array<any> = (lists as any)?.systemOptions || []
   return arr

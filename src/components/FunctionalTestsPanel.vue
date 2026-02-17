@@ -131,8 +131,12 @@
       <div
         v-for="(t, i) in filtered"
         :key="t.number || i"
-        class="rounded-md border border-white/10 bg-white/5"
-        :class="isOpen(t) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : ''"
+        :id="functionalTestDomId(t, i)"
+        :class="[
+          'rounded-md border border-white/10 bg-white/5',
+          isOpen(t) ? 'border-emerald-400/60 bg-emerald-500/10 shadow-md shadow-emerald-900/20 relative overflow-hidden' : '',
+          deepLinkedId && deepLinkedId === functionalTestDomId(t, i) ? 'ring-2 ring-amber-400/50 ring-offset-2 ring-offset-black/20' : ''
+        ]"
         :draggable="dragEnabled && !readOnly"
         @dragstart="onDragStart(t, $event)"
         @dragover.prevent="onDragOver(t, $event)"
@@ -337,6 +341,19 @@
                 :disabled="!props.projectId"
                 label="OPR items"
                 @update:model-value="notifyChange"
+              />
+
+              <OprLinkVerification
+                v-if="props.projectId && resolvedAssetId && functionalTestTargetIdOrKey(local[i], i).targetId"
+                :project-id="String(props.projectId || '')"
+                :opr-item-ids="(((local[i] as any).oprItemIds) || [])"
+                :context-type="resolvedAssetEntity"
+                :context-id="String(resolvedAssetId || '')"
+                :context-label="String(resolvedAssetTag || resolvedAssetKey || '')"
+                target-type="functional_test"
+                :target-id="functionalTestTargetIdOrKey(local[i], i).targetId"
+                :target-label="functionalTestTargetLabel(local[i], i)"
+                :disabled="Boolean(props.readOnly)"
               />
             </div>
 
@@ -1258,11 +1275,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { reactive, ref, computed, watch, onMounted, nextTick } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import Modal from './Modal.vue'
 import IssueForm from './IssueForm.vue'
 import OprItemPicker from './OprItemPicker.vue'
+import OprLinkVerification from './OprLinkVerification.vue'
 import { useUiStore } from '../stores/ui'
 import { useProjectStore } from '../stores/project'
 import { useIssuesStore } from '../stores/issues'
@@ -1313,6 +1331,32 @@ const ui = useUiStore()
 const projectStore = useProjectStore()
 const issuesStore = useIssuesStore()
 const authStore = useAuthStore()
+const route = useRoute()
+
+const deepLinkedId = ref('')
+let deepLinkTimer: any = null
+
+function domSafeId(raw: any) {
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 160)
+}
+
+function functionalTestDomId(t: FunctionalTestItem, idx: number) {
+  const targetId = functionalTestTargetIdOrKey(t, idx).targetId
+  const safe = domSafeId(targetId || '')
+  return safe ? `opr-ft-${safe}` : `opr-ft-idx-${idx}`
+}
+
+function setDeepLinked(id: string) {
+  deepLinkedId.value = id
+  try { if (deepLinkTimer) clearTimeout(deepLinkTimer) } catch { /* ignore */ }
+  deepLinkTimer = setTimeout(() => { deepLinkedId.value = '' }, 4000)
+}
 
 function oprItemCount(t: FunctionalTestItem): number {
   const ids = Array.isArray((t as any)?.oprItemIds) ? (t as any).oprItemIds : []
@@ -1361,6 +1405,19 @@ const resolvedAssetKey = computed(() => String(props.assetId || props.equipmentI
 const resolvedAssetId = computed(() => normalizeId(props.assetId ?? props.equipmentId))
 const resolvedAssetTag = computed(() => normalizeText(props.assetTag ?? props.equipmentTag))
 const resolvedAssetSpace = computed(() => normalizeText(props.assetSpace ?? props.equipmentSpace) || '')
+
+function functionalTestTargetIdOrKey(t: FunctionalTestItem, idx: number) {
+  const maybe = normalizeId((t as any)?._id || (t as any)?.id)
+  if (maybe) return { targetId: maybe, targetKey: '' }
+  // If the subdocument doesn't have a persisted id yet, avoid creating unstable evaluations.
+  return { targetId: '', targetKey: '' }
+}
+
+function functionalTestTargetLabel(t: FunctionalTestItem, idx: number) {
+  const n = (t && t.number != null) ? String(t.number) : String(idx + 1)
+  const name = String((t as any)?.name || '').trim()
+  return name ? `FT ${n}: ${name}` : `FT ${n}`
+}
 
 function isIssueDeleted(issue: any): boolean {
   if (!issue) return true
@@ -1452,6 +1509,9 @@ function normalize(v: any): FunctionalTestItem[] {
   else if (t?.kind === 'standard') kind = 'standard'
   else kind = 'standard'
     const result = ({
+      // Preserve ids if present so we can deep-link + store per-test evaluations.
+      _id: (t as any)?._id ?? null,
+      id: (t as any)?.id ?? null,
     number: (t?.number ?? null) as any,
     name: String(t?.name ?? ''),
     description: String(t?.description ?? ''),
@@ -1512,6 +1572,43 @@ watch(() => local.length, () => { writeOpenState(); writeFieldOpenState() })
 
 function expandAll() { local.forEach(t => openState.set(t, true)); openVersion.value++; writeOpenState() }
 function collapseAll() { local.forEach(t => openState.set(t, false)); openVersion.value++; writeOpenState() }
+
+async function applyOprDeepLinkFromRoute() {
+  const q: any = route.query || {}
+  const targetType = String(q.oprTargetType || '').trim()
+  const targetId = String(q.oprTargetId || '').trim()
+  if (targetType !== 'functional_test' || !targetId) return
+
+  for (let i = 0; i < local.length; i++) {
+    const t = local[i]
+    const id = normalizeId((t as any)?._id || (t as any)?.id)
+    if (!id || id !== targetId) continue
+
+    // Ensure accordion is open
+    if (!isOpen(t)) {
+      openState.set(t, true)
+      openVersion.value++
+      writeOpenState()
+    }
+
+    await nextTick()
+    const domId = `opr-ft-${domSafeId(targetId)}`
+    setDeepLinked(domId)
+    const el = document.getElementById(domId)
+    if (el && typeof (el as any).scrollIntoView === 'function') {
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch { el.scrollIntoView() }
+    }
+    return
+  }
+}
+
+onMounted(() => {
+  applyOprDeepLinkFromRoute()
+})
+
+watch(() => route.query, () => {
+  applyOprDeepLinkFromRoute()
+})
 
 const search = ref('')
 const filtered = computed(() => {

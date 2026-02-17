@@ -523,7 +523,7 @@
             <input
               v-model="responsibleFilter"
               type="text"
-              placeholder="name or email"
+              placeholder="name or company"
               class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
@@ -1644,7 +1644,7 @@
               v-model="responsibleFilter"
               type="text"
               class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
-              placeholder="name or email"
+              placeholder="name or company"
             >
           </div>
 

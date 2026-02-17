@@ -136,6 +136,36 @@
                   stroke-linejoin="round"
                 />
               </svg>
+              <!-- OPR -->
+              <svg
+                v-else-if="t === 'OPR'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4 text-white/90"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M9 6h10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 12h10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 18h10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M5 6h.01M5 12h.01M5 18h.01"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
               <span>{{ t }}</span>
               <span
                 v-if="countForTab(t) > 0"
@@ -491,15 +521,6 @@
               </div>
             </div>
 
-            <div class="md:col-span-2 mt-2">
-              <OprItemPicker
-                v-model="form.oprItemIds"
-                :project-id="projectId"
-                :disabled="isClosed"
-                label="OPR items"
-              />
-            </div>
-
             <div class="md:col-span-2">
               <div class="flex items-center gap-3 mt-2 justify-end md:justify-start">
                 <!-- Prev/Next navigation -->
@@ -628,6 +649,44 @@
                   </svg>
                   <span>Download PDF</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- OPR Tab -->
+          <div
+            v-else-if="currentTab === 'OPR'"
+            class="space-y-4"
+          >
+            <div
+              id="opr-section"
+              class="rounded-xl border border-white/10 bg-black/10 p-4"
+            >
+              <OprItemPicker
+                v-model="form.oprItemIds"
+                :project-id="projectId"
+                :disabled="isClosed"
+                label="OPR items"
+              />
+
+              <OprLinkVerification
+                v-if="projectId && !isNew"
+                :project-id="projectId"
+                :opr-item-ids="(form.oprItemIds || [])"
+                context-type="issue"
+                :context-id="id"
+                :context-label="issueOprLabel"
+                target-type="issue"
+                :target-id="id"
+                :target-label="issueOprLabel"
+                :disabled="isClosed"
+              />
+
+              <div
+                v-else-if="isNew"
+                class="mt-2 text-xs text-white/60"
+              >
+                Save the issue to enable OPR verification.
               </div>
             </div>
           </div>
@@ -1160,12 +1219,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, computed, ref, watch, onBeforeUnmount } from 'vue'
+import { onMounted, reactive, computed, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import OprItemPicker from '../../components/OprItemPicker.vue'
+import OprLinkVerification from '../../components/OprLinkVerification.vue'
 import Comments from '../../components/Comments.vue'
 import Modal from '../../components/Modal.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -1210,6 +1270,13 @@ const isNew = computed(() => id.value === 'new')
 const saving = ref(false)
 const loaded = ref(false)
 const notFound = ref(false)
+
+const issueOprLabel = computed(() => {
+  const n = (form as any)?.number
+  const num = (typeof n === 'number' && Number.isFinite(n) && n > 0) ? `#${n}` : ''
+  const title = String((form as any)?.title || '').trim()
+  return (num && title) ? `${num} ${title}` : (num || title || `Issue ${id.value}`)
+})
 
 // Options sourced from src/lists.js
 const issueTypeOptions = computed(() => (lists?.issueTypes || []))
@@ -2004,7 +2071,7 @@ async function saveAndGetId(): Promise<string> {
 }
 
 // Tabs logic
-const tabs = ['Info', 'Photos', 'Comments', 'Attachments', 'Logs']
+const tabs = ['Info', 'OPR', 'Photos', 'Comments', 'Attachments', 'Logs']
 const currentTab = ref('Info')
 const activeIndex = computed(() => {
   const i = tabs.indexOf(currentTab.value)
@@ -2012,6 +2079,33 @@ const activeIndex = computed(() => {
 })
 const tabLeft = computed(() => (activeIndex.value * 100) / tabs.length)
 const tabWidth = computed(() => 100 / tabs.length)
+
+function applyTabFromRoute() {
+  const tab = String(route.query.tab || '').trim()
+  if (tab && tabs.includes(tab)) currentTab.value = tab
+}
+
+async function maybeFocusOpr() {
+  const focus = String(route.query.focus || '').trim()
+  if (focus !== 'opr') return
+  currentTab.value = 'OPR'
+  if (!loaded.value && !isNew.value) return
+  await nextTick()
+  const el = document.getElementById('opr-section')
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+watch(
+  () => route.query.tab,
+  () => applyTabFromRoute(),
+  { immediate: true }
+)
+
+watch(
+  () => [route.query.focus, loaded.value, id.value],
+  () => { void maybeFocusOpr() },
+  { immediate: true }
+)
 
 // Logs tab
 const logsList = ref<any[]>([])
@@ -2259,6 +2353,7 @@ function countForTab(t: string): number {
   if (t === 'Photos') return azurePhotosCount.value
   if (t === 'Comments') return (form.comments || []).length
   if (t === 'Attachments') return azureAttachmentsCount.value
+  if (t === 'OPR') return (form.oprItemIds || []).length
   return 0
 }
 

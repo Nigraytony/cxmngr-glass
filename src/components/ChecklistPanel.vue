@@ -346,7 +346,11 @@
           <li
             v-for="(q, qi) in local[si].questions"
             :key="q.number || qi"
-            class="p-2 rounded-md bg-white/5 border border-white/10"
+            :id="questionDomId(si, qi)"
+            :class="[
+              'p-2 rounded-md bg-white/5 border border-white/10',
+              deepLinkedId && deepLinkedId === questionDomId(si, qi) ? 'ring-2 ring-amber-400/50 ring-offset-2 ring-offset-black/20' : ''
+            ]"
             draggable="true"
             @dragstart="onQDragStart(si, q, $event)"
             @dragover.prevent="onQDragOver(si, qi, $event)"
@@ -497,6 +501,19 @@
                   :disabled="!props.projectId"
                   label="OPR items"
                   @update:model-value="notifyChange"
+                />
+
+                <OprLinkVerification
+                  v-if="props.projectId && resolvedAssetId"
+                  :project-id="String(props.projectId || '')"
+                  :opr-item-ids="((local[si].questions[qi] as any).oprItemIds || [])"
+                  :context-type="resolvedAssetEntity"
+                  :context-id="String(resolvedAssetId || '')"
+                  :context-label="String(resolvedAssetTag || resolvedAssetKey || '')"
+                  target-type="checklist_question"
+                  :target-key="checklistQuestionTargetKey(local[si], si, local[si].questions[qi], qi)"
+                  :target-label="checklistQuestionTargetLabel(local[si], si, local[si].questions[qi], qi)"
+                  :disabled="!props.projectId"
                 />
               </div>
               <!-- Actions: Attach issue -->
@@ -994,22 +1011,26 @@
   </Modal>
 </template>
 
+
 <script setup lang="ts">
-	import { computed, reactive, watch, ref, onMounted } from 'vue'
+  import { computed, reactive, watch, ref, onMounted, nextTick } from 'vue'
 	import Modal from './Modal.vue'
 	import IssueForm from './IssueForm.vue'
   import OprItemPicker from './OprItemPicker.vue'
+  import OprLinkVerification from './OprLinkVerification.vue'
 	import { confirm as inlineConfirm } from '../utils/confirm'
 	import lists from '../lists'
 	import { useAuthStore } from '../stores/auth'
 	import { useProjectStore } from '../stores/project'
 	import { useIssuesStore } from '../stores/issues'
-	import { useRouter } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
 
 	type SelectOption = { value: any; text: string }
 	const roleOptions = ((lists as any)?.roleOptions as SelectOption[]) || []
 	const checklistTypeOptions = ((lists as any)?.checklistTypes as SelectOption[]) || []
 	const systemSelectOptions = ((lists as any)?.systemOptions as SelectOption[]) || []
+
+  const route = useRoute()
 
 export interface ChecklistQuestion {
   number?: number
@@ -1077,6 +1098,18 @@ const resolvedAssetEntity = computed(() => {
   const v = String(props.assetEntity || '').trim()
   return v ? v : 'equipment'
 })
+
+function checklistQuestionTargetKey(sec: any, si: number, q: any, qi: number) {
+  const sn = (sec && (sec.number ?? sec.title)) != null ? String(sec.number ?? (si + 1)).trim() : String(si + 1)
+  const qn = (q && (q.number ?? q.question_text)) != null ? String(q.number ?? (qi + 1)).trim() : String(qi + 1)
+  return `sec:${sn}:q:${qn}`
+}
+
+function checklistQuestionTargetLabel(sec: any, si: number, q: any, qi: number) {
+  const sn = (sec && sec.number != null) ? String(sec.number) : String(si + 1)
+  const qn = (q && q.number != null) ? String(q.number) : String(qi + 1)
+  return `Section ${sn} / Q${qn}`
+}
 
 const local = reactive<ChecklistSection[]>(normalize(props.modelValue))
 watch(() => props.modelValue, (v) => {
@@ -1493,6 +1526,78 @@ const openQDetails = ref<Record<string, boolean>>({})
 function qKey(si: number, qi: number) { return `${si}:${qi}` }
 function isQOpen(si: number, qi: number) { return !!openQDetails.value[qKey(si, qi)] }
 function toggleQ(si: number, qi: number) { openQDetails.value[qKey(si, qi)] = !isQOpen(si, qi) }
+
+// Deep-link support from OPR traceability (query params)
+const deepLinkedId = ref('')
+let deepLinkTimer: any = null
+
+function domSafeId(raw: any) {
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 160)
+}
+
+function questionDomIdFromTargetKey(targetKey: string) {
+  const safe = domSafeId(targetKey)
+  return safe ? `opr-checklist-${safe}` : ''
+}
+
+function questionDomId(si: number, qi: number) {
+  try {
+    const key = checklistQuestionTargetKey(local[si], si, local[si].questions[qi], qi)
+    return questionDomIdFromTargetKey(String(key || ''))
+  } catch {
+    return ''
+  }
+}
+
+function setDeepLinked(id: string) {
+  deepLinkedId.value = id
+  try { if (deepLinkTimer) clearTimeout(deepLinkTimer) } catch { /* ignore */ }
+  deepLinkTimer = setTimeout(() => { deepLinkedId.value = '' }, 4000)
+}
+
+async function applyOprDeepLinkFromRoute() {
+  const q: any = route.query || {}
+  const targetType = String(q.oprTargetType || '').trim()
+  const targetKey = String(q.oprTargetKey || '').trim()
+  if (targetType !== 'checklist_question' || !targetKey) return
+
+  for (let si = 0; si < local.length; si++) {
+    const sec: any = local[si]
+    const qs: any[] = Array.isArray(sec?.questions) ? sec.questions : []
+    for (let qi = 0; qi < qs.length; qi++) {
+      const key = String(checklistQuestionTargetKey(sec, si, qs[qi], qi) || '').trim()
+      if (key !== targetKey) continue
+
+      open.value[secKey(sec, si)] = true
+      openQDetails.value[qKey(si, qi)] = true
+
+      await nextTick()
+      const domId = questionDomIdFromTargetKey(targetKey)
+      if (domId) {
+        setDeepLinked(domId)
+        const el = document.getElementById(domId)
+        if (el && typeof (el as any).scrollIntoView === 'function') {
+          try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch { el.scrollIntoView() }
+        }
+      }
+      return
+    }
+  }
+}
+
+onMounted(() => {
+  applyOprDeepLinkFromRoute()
+})
+
+watch(() => route.query, () => {
+  applyOprDeepLinkFromRoute()
+})
 
 // Editing helpers
 function setAnswer(si: number, qi: number, ans: 'yes'|'no'|'na') {

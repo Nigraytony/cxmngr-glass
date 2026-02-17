@@ -31,6 +31,7 @@ const SystemEdit = () => import('../pages/systems/SystemEdit.vue')
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
 const Assistant = () => import('../pages/assistant/Assistant.vue')
 const OprWorkshop = () => import('../pages/opr/OprWorkshop.vue')
+const OprItems = () => import('../pages/opr/OprItems.vue')
 // Marketing/public homepage
 const HomePage = () => import('../pages/home/HomePage.vue')
 const Pricing = () => import('../pages/Pricing.vue')
@@ -51,6 +52,7 @@ const routes = [
       { path: '', name: 'dashboard', component: DashboardHome },
       { path: 'assistant', name: 'assistant', component: Assistant },
       { path: 'opr', name: 'opr', component: OprWorkshop },
+      { path: 'opr/items', name: 'opr-items', component: OprItems },
       { path: 'issues', name: 'issues', component: () => import(/* webpackChunkName: "issues" */ '../pages/issues/IssuesList.vue') },
     { path: 'issues/:id', name: 'issue-edit', component: IssueEdit, props: true },
   { path: 'activities', name: 'activities', component: () => import(/* webpackChunkName: "activities" */ '../pages/activities/ActivitiesList.vue') },
