@@ -391,58 +391,68 @@
 
     <div class="grid grid-cols-12 gap-4">
       <div class="col-span-12">
-        <div class="rounded-2xl bg-white/5 border border-white/10 overflow-hidden">
-          <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-2">
-            <div class="text-white/80 text-sm">
-              {{ displayTotal }} items
-            </div>
-            <div class="text-white/60 text-xs">
-              <span v-if="displayTotal > 0">{{ startItem }}–{{ endItem }} of {{ displayTotal }}</span>
-            </div>
-          </div>
+        <div
+          v-if="!loading && filtered.length === 0"
+          class="px-2 py-6 text-white/70 text-sm"
+        >
+          No OPR items found.
+        </div>
 
+        <div
+          v-else
+          class="mt-2 flex flex-col gap-3"
+        >
           <div
-            v-if="!loading && filtered.length === 0"
-            class="p-6 text-white/70 text-sm"
+            v-for="it in pagedItems"
+            :key="it.id"
+            :class="[
+              'rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm',
+              it.status === 'archived' ? 'opacity-60' : ''
+            ]"
           >
-            No OPR items found.
-          </div>
-
-          <div
-            v-else
-            class="divide-y divide-white/10"
-          >
-            <div
-              v-for="it in pagedItems"
-              :key="it.id"
-              class="p-4 flex gap-3 items-start"
-            >
-              <div class="shrink-0">
-                <div class="text-[11px] px-2 py-1 rounded bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 inline-block">
+            <!-- Left: Tag column -->
+            <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+              <div class="flex flex-col min-w-[70px] items-start">
+                <div class="text-xs text-white/60">
+                  Rank
+                </div>
+                <div class="text-lg font-bold text-white">
                   #{{ it.rank }}
                 </div>
-                <div
+                <span
                   v-if="it.status === 'archived'"
-                  class="mt-1 text-[10px] px-2 py-1 rounded bg-white/5 border border-white/10 text-white/60 inline-block"
+                  class="mt-1 text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/60"
                 >
                   Archived
-                </div>
+                </span>
               </div>
 
-              <div class="min-w-0 flex-1">
+              <!-- Middle: Main info -->
+              <div class="flex-1 min-w-0 space-y-1">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                  <span class="text-xs text-white/60">Category:</span>
+                  <span
+                    v-if="categoryName(it.categoryId)"
+                    class="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/80"
+                  >{{ categoryName(it.categoryId) }}</span>
+                  <span
+                    v-else
+                    class="text-xs text-white/40"
+                  >N/A</span>
+
+                  <span class="text-xs text-white/60 ml-4">Coverage:</span>
+                  <span
+                    :class="badgeClass(coverageFor(it.id))"
+                    class="text-xs px-2 py-0.5 rounded-full border whitespace-nowrap"
+                  >
+                    {{ coverageLabel(coverageFor(it.id)) }}
+                  </span>
+                </div>
+
+                <div class="w-full border-t border-dashed border-white/30 my-1" />
+
                 <div class="text-white/90 text-sm whitespace-pre-wrap">
                   {{ it.text }}
-                </div>
-                <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span class="text-white/60">{{ categoryName(it.categoryId) }}</span>
-                  <span class="text-white/40">•</span>
-                  <button
-                    type="button"
-                    class="px-2 py-0.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/80"
-                    @click="openTrace(it)"
-                  >
-                    Where addressed
-                  </button>
                 </div>
 
                 <div
@@ -489,15 +499,35 @@
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div class="shrink-0 ml-auto flex flex-col items-end gap-1 pt-0.5">
-                <span
-                  :class="badgeClass(coverageFor(it.id))"
-                  class="px-2 py-0.5 rounded-full border text-xs whitespace-nowrap"
+            <!-- Right: Actions -->
+            <div class="flex flex-col items-end min-w-[56px] justify-end gap-1">
+              <button
+                type="button"
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Where addressed"
+                title="Where addressed"
+                @click="openTrace(it)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
                 >
-                  {{ coverageLabel(coverageFor(it.id)) }}
-                </span>
-              </div>
+                  <path
+                    d="M10.5 4.5a6 6 0 1 0 0 12a6 6 0 0 0 0-12Z"
+                    stroke-width="1.5"
+                  />
+                  <path
+                    d="M16 16l4 4"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -864,6 +894,7 @@ function titleCase(s: string): string {
 
 function prettyTargetType(t: any): string {
   const v = String(t || '').trim()
+  if (v === 'checklist') return 'Checklist'
   if (v === 'checklist_question') return 'Checklist question'
   if (v === 'functional_test') return 'Functional test'
   if (v === 'functional_test_step') return 'Functional test step'
@@ -1419,6 +1450,7 @@ const traceRows = ref<any[]>([])
 
 function tabForTraceRow(row: any): string {
   const targetType = String(row?.targetType || '')
+  if (targetType === 'checklist') return 'Checklists'
   if (targetType === 'checklist_question') return 'Checklists'
   if (targetType === 'functional_test' || targetType === 'functional_test_step') return 'FPT'
   if (targetType === 'issue') return 'Issues'
