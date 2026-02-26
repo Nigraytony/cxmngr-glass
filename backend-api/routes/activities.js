@@ -13,6 +13,7 @@ const path = require('path');
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
 const Issue = require('../models/issue');
+const OprItem = require('../models/oprItem')
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
@@ -146,6 +147,7 @@ function pickActivityPayload(source) {
     'location',
     'spaceId',
     'systems',
+    'oprItemIds',
     'settings',
     'metadata',
     'labels',
@@ -182,6 +184,37 @@ function normalizeIssueIds(input) {
   return out
 }
 
+function normalizeObjectIdList(value, { max = 50 } = {}) {
+  if (value === undefined) return undefined
+  const list = Array.isArray(value) ? value : [value]
+  const out = []
+  const seen = new Set()
+  for (const v of list) {
+    const s = String(v || '').trim()
+    if (!s) continue
+    if (!mongoose.Types.ObjectId.isValid(s)) return null
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+    if (out.length > max) return null
+  }
+  return out
+}
+
+async function validateOprItemIds({ projectId, oprItemIds }) {
+  const ids = normalizeObjectIdList(oprItemIds, { max: 100 })
+  if (ids === undefined) return { ids: undefined }
+  if (ids === null) return { error: 'Invalid oprItemIds' }
+  if (ids.length === 0) return { ids: [] }
+
+  const orgId = String(projectId)
+  const rows = await OprItem.find({ _id: { $in: ids }, orgId, projectId, status: 'active' }).select('_id').lean()
+  const ok = new Set(rows.map((r) => String(r._id)))
+  if (ok.size !== ids.length) return { error: 'Invalid oprItemIds (must belong to this project)' }
+  return { ids }
+}
+
 // Create a new activity
 router.post(
   '/',
@@ -216,6 +249,12 @@ router.post(
           img: ['src', 'alt'],
         },
       });
+    }
+
+    if (payload.oprItemIds !== undefined) {
+      const oprValidation = await validateOprItemIds({ projectId: payload.projectId, oprItemIds: payload.oprItemIds })
+      if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
+      payload.oprItemIds = oprValidation.ids
     }
 
     const activity = new Activity(payload);
@@ -430,7 +469,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
-    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues'
+    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues oprItemIds'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos
@@ -457,6 +496,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
         {
           $project: {
             issuesCount: { $size: { $ifNull: ['$issues', []] } },
+            oprItemsCount: { $size: { $ifNull: ['$oprItemIds', []] } },
             photosCount: { $size: { $ifNull: ['$photos', []] } },
             commentsCount: { $size: { $ifNull: ['$comments', []] } },
             attachmentsCount: { $size: { $ifNull: ['$attachments', []] } },
@@ -472,6 +512,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const out = {
       ...activity,
       issuesCount: counts ? Number(counts.issuesCount || 0) : (Array.isArray(activity.issues) ? activity.issues.length : 0),
+      oprItemsCount: counts ? Number(counts.oprItemsCount || 0) : (Array.isArray(activity.oprItemIds) ? activity.oprItemIds.length : 0),
       photosCount: counts ? Number(counts.photosCount || 0) : (Array.isArray(activity.photos) ? activity.photos.length : 0),
       commentsCount: counts ? Number(counts.commentsCount || 0) : (Array.isArray(activity.comments) ? activity.comments.length : 0),
       attachmentsCount: counts ? Number(counts.attachmentsCount || 0) : (Array.isArray(activity.attachments) ? activity.attachments.length : 0),
@@ -741,6 +782,7 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, re
   try {
     const incoming = pickActivityPayload(req.body)
     const issuesInput = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'issues')) ? req.body.issues : undefined
+    const oprInput = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'oprItemIds')) ? req.body.oprItemIds : undefined
     // Never allow changing ownership or heavy arrays via generic patch
     delete incoming.projectId
     delete incoming.photos
@@ -786,6 +828,12 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, re
         }
       }
       incoming.issues = ids || []
+    }
+
+    if (typeof oprInput !== 'undefined') {
+      const oprValidation = await validateOprItemIds({ projectId: activity.projectId, oprItemIds: oprInput })
+      if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
+      incoming.oprItemIds = oprValidation.ids || []
     }
 
     const updated = await Activity.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });

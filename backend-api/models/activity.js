@@ -36,6 +36,8 @@ const activitySchema = new mongoose.Schema({
   // Creator of the activity (used for Draft visibility)
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   issues: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Issue' }],
+  // Linked OPR items for coverage/verification
+  oprItemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'OprItem' }],
   // comments include user identity and optional avatar for display
   comments: [{ userId: mongoose.Schema.Types.ObjectId, name: String, avatar: String, text: String, createdAt: { type: Date, default: Date.now } }],
   // photos stored in DB as base64 strings (note: keep sizes small)

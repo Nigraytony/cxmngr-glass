@@ -123,6 +123,36 @@
                   stroke-linecap="round"
                 />
               </svg>
+              <!-- OPR -->
+              <svg
+                v-else-if="t === 'OPR'"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4 text-white/90"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M9 6h10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 12h10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M9 18h10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M5 6h.01M5 12h.01M5 18h.01"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
               <!-- Comments -->
               <svg
                 v-else-if="t === 'Comments'"
@@ -775,6 +805,49 @@
               :show-unlink="true"
               @unlink="onUnlinkIssue"
             />
+          </div>
+
+          <!-- OPR Tab -->
+          <div
+            v-else-if="currentTab === 'OPR'"
+            class="space-y-4"
+          >
+            <div
+              id="opr-section"
+              class="space-y-3"
+            >
+              <OprItemPicker
+                v-model="form.oprItemIds"
+                :project-id="azureProjectId"
+                label="OPR items"
+                :show-selected="false"
+                :show-refresh="azureProjectId && !isNew"
+                @refresh="refreshOprVerification"
+              />
+
+              <OprLinkVerification
+                v-if="azureProjectId && !isNew"
+                ref="oprVerificationRef"
+                :project-id="azureProjectId"
+                :opr-item-ids="(form.oprItemIds || [])"
+                context-type="activity"
+                :context-id="id"
+                :context-label="activityOprLabel"
+                target-type="activity"
+                :target-id="id"
+                :target-label="activityOprLabel"
+                :show-header-refresh="false"
+                :allow-unlink="true"
+                @unlink="unlinkOprItem"
+              />
+
+              <div
+                v-else-if="isNew"
+                class="mt-2 text-xs text-white/60"
+              >
+                Save the activity to enable OPR verification.
+              </div>
+            </div>
           </div>
 
           <!-- Logs Tab -->
@@ -1999,6 +2072,8 @@ import { useProjectStore } from '../../stores/project'
 import { QuillEditor } from '@vueup/vue-quill'
   import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import OprItemPicker from '../../components/OprItemPicker.vue'
+import OprLinkVerification from '../../components/OprLinkVerification.vue'
 import Modal from '../../components/Modal.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
@@ -2029,10 +2104,49 @@ const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
 const ai = useAiStore()
 
+const oprVerificationRef = ref<any>(null)
+
+function refreshOprVerification() {
+  try {
+    if (oprVerificationRef.value && typeof oprVerificationRef.value.refresh === 'function') {
+      oprVerificationRef.value.refresh()
+      return
+    }
+  } catch { /* ignore */ }
+  try { ui.showWarning('Save the activity to enable OPR verification.') } catch { /* ignore */ }
+}
+
+async function unlinkOprItem(oprItemId: string) {
+  const id = String(oprItemId || '').trim()
+  if (!id) return
+
+  const ok = await inlineConfirm({
+    title: 'Unlink OPR item?'
+    , message: 'This removes the OPR item from this activity.'
+    , confirmText: 'Unlink'
+    , cancelText: 'Cancel'
+    , variant: 'danger'
+  })
+  if (!ok) return
+
+  const current = Array.isArray((form as any).oprItemIds) ? (form as any).oprItemIds : []
+  ;(form as any).oprItemIds = current.filter((x: any) => String(x || '').trim() !== id)
+  try { ui.showSuccess('OPR item unlinked') } catch { /* ignore */ }
+}
+
+const activityOprLabel = computed(() => {
+  const name = String((form as any)?.name || '').trim()
+  const type = String((form as any)?.type || '').trim()
+  if (name) return name
+  if (type && !isNew.value) return `${type} ${id.value}`
+  return `Activity ${id.value}`
+})
+
 const azureAttachmentsCount = ref(0)
 const azurePhotosCount = ref(0)
 const issuesCountHint = ref<number | null>(null)
 const commentsCountHint = ref<number | null>(null)
+const oprItemsCountHint = ref<number | null>(null)
 const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
 const id = computed(() => String(props.id || route.params.id || ''))
@@ -2205,6 +2319,7 @@ const form = reactive({
   comments: [] as any[],
   attachments: [] as any[],
   issues: [] as string[],
+  oprItemIds: [] as string[],
   settings: {} as any,
 })
 
@@ -2237,6 +2352,44 @@ function normalizeLabels(labels: any): string[] {
   }
   return out
 }
+
+function normalizeOprItemIds(value: any): string[] {
+  const arr = Array.isArray(value) ? value : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const id = String(raw || '').trim()
+    if (!id || id === 'undefined' || id === 'null') continue
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
+// Auto-save activity when OPR items change (so users don't have to switch tabs to click Save).
+const oprAutoSavePrimed = ref(false)
+const oprLastItemIdsKey = ref('')
+let oprAutoSaveTimer: ReturnType<typeof setTimeout> | null = null
+const oprItemIdsKey = computed(() => normalizeOprItemIds((form as any).oprItemIds).join('|'))
+
+function queueSaveOprItemIdsChange() {
+  if (isNew.value) return
+  if (oprAutoSaveTimer) clearTimeout(oprAutoSaveTimer)
+  oprAutoSaveTimer = setTimeout(async () => {
+    // Avoid dropping the change if a save is already running; retry shortly.
+    if (saving.value) { queueSaveOprItemIdsChange(); return }
+    await save()
+  }, 300)
+}
+
+watch(oprItemIdsKey, (next) => {
+  if (!oprAutoSavePrimed.value) return
+  if (next === oprLastItemIdsKey.value) return
+  oprLastItemIdsKey.value = next
+  if (currentTab.value !== 'OPR') return
+  queueSaveOprItemIdsChange()
+})
 
 function addLabelFromInput() {
   const raw = String(labelInput.value || '')
@@ -2614,6 +2767,7 @@ onMounted(async () => {
         systems: activityData?.systems || [],
         labels: normalizeLabels((activityData as any)?.labels),
         issues: Array.isArray((activityData as any)?.issues) ? (activityData as any).issues : [],
+        oprItemIds: normalizeOprItemIds((activityData as any)?.oprItemIds),
       })
       // Persisted settings bucket (e.g., report settings)
       ;(form as any).settings = ((activityData as any)?.settings && typeof (activityData as any).settings === 'object')
@@ -2642,6 +2796,9 @@ onMounted(async () => {
     pageLoading.value = false
   }
   try { await loadLinkedTasks() } catch (_) { /* ignore */ }
+  // Prime OPR autosave to ignore the initial hydration change.
+  oprLastItemIdsKey.value = oprItemIdsKey.value
+  oprAutoSavePrimed.value = true
 })
 
 const currentTab = ref('Info')
@@ -2830,6 +2987,7 @@ async function save() {
     return
   }
   const payload: any = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  payload.oprItemIds = normalizeOprItemIds((payload as any).oprItemIds)
   // Ensure projectId is always present (fallback to current project if needed)
   payload.projectId = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
   // Persist report settings into activity.settings.report on every activity save.
@@ -2873,7 +3031,8 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   if (isNew.value) {
     if (!pendingCreatedId.value) {
       // Create the activity without navigating yet to avoid unmount during batch
-  const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  const payload: any = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  payload.oprItemIds = normalizeOprItemIds((payload as any).oprItemIds)
   payload.projectId = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
       const created = await store.createActivity(payload)
       pendingCreatedId.value = String(created.id || created._id)
@@ -2908,6 +3067,7 @@ function finalizeNewActivityIfNeeded() {
 async function saveAndGetId(): Promise<string> {
   if (!isNew.value) return id.value
   const base: any = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() }
+  base.oprItemIds = normalizeOprItemIds((base as any).oprItemIds)
   const existingSettings = (base.settings && typeof base.settings === 'object') ? base.settings : {}
   base.settings = { ...existingSettings, report: activityReport.value }
   const created = await store.createActivity(base)
@@ -4151,7 +4311,7 @@ async function downloadActivityPdf() {
 }
 
 // Tabs logic
-const tabs = ['Info', 'Photos', 'Issues', 'Comments', 'Attachments', 'Equipment', 'Logs']
+const tabs = ['Info', 'Photos', 'Issues', 'OPR', 'Comments', 'Attachments', 'Equipment', 'Logs']
 const activeIndex = computed(() => {
   const i = tabs.indexOf(currentTab.value)
   return i >= 0 ? i : 0
@@ -4654,6 +4814,9 @@ function initTabBadgeCountsFromActivity(activityData: any) {
   const issuesCount = maybeNumber(activityData?.issuesCount)
   if (issuesCount !== null) issuesCountHint.value = issuesCount
 
+  const oprCount = maybeNumber(activityData?.oprItemsCount)
+  if (oprCount !== null) oprItemsCountHint.value = oprCount
+
   const commentsCount = maybeNumber(activityData?.commentsCount)
   if (commentsCount !== null) commentsCountHint.value = commentsCount
 }
@@ -4713,6 +4876,11 @@ function countForTab(t: string): number {
     if (Array.isArray((form as any).issues) && (form as any).issues.length) return (form as any).issues.length
     if (issuesCountHint.value !== null) return issuesCountHint.value
     return issuesForActivity.value.length
+  }
+  if (t === 'OPR') {
+    if (Array.isArray((form as any).oprItemIds) && (form as any).oprItemIds.length) return (form as any).oprItemIds.length
+    if (oprItemsCountHint.value !== null) return oprItemsCountHint.value
+    return Array.isArray((form as any).oprItemIds) ? (form as any).oprItemIds.length : 0
   }
   if (t === 'Comments') {
     if (commentsLoaded.value) return (form.comments || []).length

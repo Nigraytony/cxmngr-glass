@@ -379,13 +379,6 @@
                   </svg>
                   <span class="absolute text-[11px] leading-none font-semibold text-white">{{ issuesCount(si, qi) }}</span>
                 </span>
-                <span
-                  v-if="oprItemCount(local[si].questions[qi]) > 0"
-                  class="text-[10px] px-1.5 py-0.5 rounded border bg-white/10 border-white/20 text-white/80"
-                  :title="oprItemCount(local[si].questions[qi]) + ' OPR item' + (oprItemCount(local[si].questions[qi]) > 1 ? 's' : '') + ' linked'"
-                >
-                  OPR: {{ oprItemCount(local[si].questions[qi]) }}
-                </span>
                 <button
                   class="h-7 w-7 grid place-items-center rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
                   title="Show details"
@@ -495,26 +488,7 @@
               </div>
 
               <div class="pt-1">
-                <OprItemPicker
-                  v-model="(local[si].questions[qi] as any).oprItemIds"
-                  :project-id="String(props.projectId || '')"
-                  :disabled="!props.projectId"
-                  label="OPR items"
-                  @update:model-value="notifyChange"
-                />
-
-                <OprLinkVerification
-                  v-if="props.projectId && resolvedAssetId"
-                  :project-id="String(props.projectId || '')"
-                  :opr-item-ids="((local[si].questions[qi] as any).oprItemIds || [])"
-                  :context-type="resolvedAssetEntity"
-                  :context-id="String(resolvedAssetId || '')"
-                  :context-label="String(resolvedAssetTag || resolvedAssetKey || '')"
-                  target-type="checklist_question"
-                  :target-key="checklistQuestionTargetKey(local[si], si, local[si].questions[qi], qi)"
-                  :target-label="checklistQuestionTargetLabel(local[si], si, local[si].questions[qi], qi)"
-                  :disabled="!props.projectId"
-                />
+                <!-- OPR linking moved to the checklist-level rollup (below) -->
               </div>
               <!-- Actions: Attach issue -->
               <div class="pt-1">
@@ -559,6 +533,72 @@
             </div>
           </li>
         </ul>
+
+        <!-- OPR rollup (Checklist-level) -->
+        <div
+          :id="checklistDomId(si)"
+          :class="[
+            'mt-3 rounded-xl border border-white/10 bg-white/5 p-3 space-y-2',
+            deepLinkedId && deepLinkedId === checklistDomId(si) ? 'ring-2 ring-amber-400/50 ring-offset-2 ring-offset-black/20' : ''
+          ]"
+        >
+          <button
+            type="button"
+            class="w-full flex items-center justify-between gap-2"
+            @click="toggleOprForSection(local[si], si)"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4 text-white/70 transition-transform"
+                :class="isOprOpenForSection(local[si], si) ? 'rotate-180' : ''"
+              >
+                <path
+                  d="M18 15l-6-6-6 6"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <div class="text-sm text-white/85 truncate">
+                OPR Items
+              </div>
+            </div>
+            <div class="text-xs text-white/60 shrink-0">
+              {{ (Array.isArray(local[si].oprItemIds) ? local[si].oprItemIds.length : 0) }} linked
+            </div>
+          </button>
+
+          <div v-if="isOprOpenForSection(local[si], si)" class="space-y-2">
+            <OprItemPicker
+              v-model="(local[si] as any).oprItemIds"
+              :project-id="String(props.projectId || '')"
+              :disabled="!props.projectId"
+              label=""
+              :show-selected="false"
+              @update:model-value="notifyChange"
+            />
+
+            <OprLinkVerification
+              v-if="props.projectId && resolvedAssetId"
+              :project-id="String(props.projectId || '')"
+              :opr-item-ids="((local[si] as any).oprItemIds || [])"
+              :context-type="resolvedAssetEntity"
+              :context-id="String(resolvedAssetId || '')"
+              :context-label="String(resolvedAssetTag || resolvedAssetKey || '')"
+              target-type="checklist"
+              :target-key="checklistTargetKey(local[si], si)"
+              :target-label="checklistTargetLabel(local[si], si)"
+              :disabled="!props.projectId"
+              :show-header="false"
+              :allow-unlink="true"
+              @unlink="(oprItemId) => unlinkChecklistOprItem(si, oprItemId)"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1055,6 +1095,7 @@ export interface ChecklistSection {
   is_complete?: boolean
   responsible?: string | null
   notes?: string | null
+  oprItemIds?: string[]
   questions: ChecklistQuestion[]
   documents?: any[]
   photos?: any[]
@@ -1111,6 +1152,17 @@ function checklistQuestionTargetLabel(sec: any, si: number, q: any, qi: number) 
   return `Section ${sn} / Q${qn}`
 }
 
+function checklistTargetKey(sec: any, si: number) {
+  const sn = (sec && (sec.number ?? sec.title)) != null ? String(sec.number ?? (si + 1)).trim() : String(si + 1)
+  return `sec:${sn}`
+}
+
+function checklistTargetLabel(sec: any, si: number) {
+  const sn = (sec && sec.number != null) ? String(sec.number) : String(si + 1)
+  const title = String(sec?.title || '').trim()
+  return title ? `Checklist ${sn}: ${title}` : `Checklist ${sn}`
+}
+
 const local = reactive<ChecklistSection[]>(normalize(props.modelValue))
 watch(() => props.modelValue, (v) => {
   const next = normalize(v)
@@ -1128,11 +1180,25 @@ function normalize(v: any): ChecklistSection[] {
 	    is_complete: !!s?.is_complete,
 	    responsible: s?.responsible ?? '',
 	    notes: s?.notes ?? '',
+      oprItemIds: (() => {
+        const base = Array.isArray(s?.oprItemIds) ? s.oprItemIds.map((id: any) => String(id || '').trim()).filter(Boolean) : []
+        const merged = new Set<string>(base)
+        const qs = Array.isArray(s?.questions) ? s.questions : []
+        for (const q of qs) {
+          const ids = Array.isArray(q?.oprItemIds) ? q.oprItemIds : []
+          for (const raw of ids) {
+            const id = String(raw || '').trim()
+            if (id) merged.add(id)
+          }
+        }
+        return Array.from(merged)
+      })(),
 	    questions: Array.isArray(s?.questions) ? s.questions.map((q: any) => ({
 	      number: q?.number ?? null,
 	      question_text: String(q?.question_text || ''),
       answer: q?.answer ?? null,
-	      oprItemIds: Array.isArray(q?.oprItemIds) ? q.oprItemIds.map((id: any) => String(id || '').trim()).filter(Boolean) : [],
+        // OPR links are now stored at the Checklist (section) level via the OPR rollup card.
+        oprItemIds: [],
       cx_answer: q?.cx_answer ?? null,
       cx_answered_by: q?.cx_answered_by ?? null,
       cx_answered_at: q?.cx_answered_at ?? null,
@@ -1403,6 +1469,35 @@ function toggleSection(k: string) { open.value[k] = !open.value[k] }
 function expandAll() { local.forEach((s, i) => open.value[secKey(s, i)] = true) }
 function collapseAll() { open.value = {} }
 
+// OPR rollup open state (persisted per asset in sessionStorage)
+const oprOpen = ref<Record<string, boolean>>({})
+const OPR_OPEN_STATE_KEY = computed(() => `checklistsOprOpen:${resolvedAssetKey.value}`)
+function loadOprOpenState() {
+  try {
+    const raw = sessionStorage.getItem(OPR_OPEN_STATE_KEY.value)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') oprOpen.value = parsed
+  } catch (_) { /* ignore */ }
+}
+function saveOprOpenState() {
+  try { sessionStorage.setItem(OPR_OPEN_STATE_KEY.value, JSON.stringify(oprOpen.value)) } catch (_) { /* ignore */ }
+}
+onMounted(loadOprOpenState)
+watch(oprOpen, saveOprOpenState, { deep: true })
+function isOprOpenForSection(sec: ChecklistSection, si: number) {
+  const k = secKey(sec, si)
+  if (oprOpen.value[k] === undefined) {
+    const hasAny = Array.isArray((sec as any)?.oprItemIds) && (sec as any).oprItemIds.length > 0
+    oprOpen.value[k] = !!hasAny
+  }
+  return !!oprOpen.value[k]
+}
+function toggleOprForSection(sec: ChecklistSection, si: number) {
+  const k = secKey(sec, si)
+  oprOpen.value[k] = !isOprOpenForSection(sec, si)
+}
+
 // Counters and progress
 function counted(si: number) {
   const qs = local[si]?.questions || []
@@ -1511,14 +1606,14 @@ function issuesCount(si: number, qi: number) {
   return arr.filter((it: any) => it && it.questionIndex === qi).length
 }
 
-function oprItemCount(q: any): number {
-  const ids = Array.isArray(q?.oprItemIds) ? q.oprItemIds : []
-  const set = new Set<string>()
-  for (const raw of ids) {
-    const id = String(raw || '').trim()
-    if (id) set.add(id)
-  }
-  return set.size
+function unlinkChecklistOprItem(si: number, oprItemId: string) {
+  const sec: any = local[si]
+  if (!sec) return
+  const id = String(oprItemId || '').trim()
+  if (!id) return
+  const current = Array.isArray(sec.oprItemIds) ? sec.oprItemIds : []
+  sec.oprItemIds = current.filter((x: any) => String(x || '').trim() !== id)
+  notifyChange()
 }
 
 // Per-question advanced details toggle (notes, answered_by)
@@ -1546,10 +1641,24 @@ function questionDomIdFromTargetKey(targetKey: string) {
   return safe ? `opr-checklist-${safe}` : ''
 }
 
+function checklistDomIdFromTargetKey(targetKey: string) {
+  const safe = domSafeId(targetKey)
+  return safe ? `opr-checklist-rollup-${safe}` : ''
+}
+
 function questionDomId(si: number, qi: number) {
   try {
     const key = checklistQuestionTargetKey(local[si], si, local[si].questions[qi], qi)
     return questionDomIdFromTargetKey(String(key || ''))
+  } catch {
+    return ''
+  }
+}
+
+function checklistDomId(si: number) {
+  try {
+    const key = checklistTargetKey(local[si], si)
+    return checklistDomIdFromTargetKey(String(key || ''))
   } catch {
     return ''
   }
@@ -1565,7 +1674,33 @@ async function applyOprDeepLinkFromRoute() {
   const q: any = route.query || {}
   const targetType = String(q.oprTargetType || '').trim()
   const targetKey = String(q.oprTargetKey || '').trim()
-  if (targetType !== 'checklist_question' || !targetKey) return
+  if (!targetType || !targetKey) return
+
+  // Checklist-level deep-link (new)
+  if (targetType === 'checklist') {
+    for (let si = 0; si < local.length; si++) {
+      const sec: any = local[si]
+      const key = String(checklistTargetKey(sec, si) || '').trim()
+      if (key !== targetKey) continue
+
+      open.value[secKey(sec, si)] = true
+      oprOpen.value[secKey(sec, si)] = true
+      await nextTick()
+      const domId = checklistDomIdFromTargetKey(targetKey)
+      if (domId) {
+        setDeepLinked(domId)
+        const el = document.getElementById(domId)
+        if (el && typeof (el as any).scrollIntoView === 'function') {
+          try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } catch { el.scrollIntoView() }
+        }
+      }
+      return
+    }
+    return
+  }
+
+  // Checklist question deep-link (legacy)
+  if (targetType !== 'checklist_question') return
 
   for (let si = 0; si < local.length; si++) {
     const sec: any = local[si]

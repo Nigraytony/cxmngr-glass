@@ -1,15 +1,46 @@
 <template>
-  <div v-if="show" class="mt-2 rounded-xl bg-white/5 border border-white/10 p-3">
-    <div class="flex items-center justify-between gap-2">
+  <div v-if="show" class="mt-2">
+    <div v-if="showHeader" class="flex items-center justify-between gap-2">
       <div class="text-xs text-white/70">OPR verification</div>
-      <button
-        type="button"
-        class="text-xs px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/80"
-        :disabled="loading || disabled"
-        @click="refresh"
+      <div
+        v-if="showHeaderRefresh"
+        class="relative inline-block group shrink-0"
       >
-        Refresh
-      </button>
+        <button
+          type="button"
+          class="w-9 h-9 flex items-center justify-center rounded-full bg-white/0 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+          :disabled="loading || disabled"
+          aria-label="Refresh"
+          @click="refresh"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="M21 12a9 9 0 1 1-2.64-6.36"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M21 3v6h-6"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div
+          role="tooltip"
+          class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+        >
+          Refresh
+        </div>
+      </div>
     </div>
 
     <div v-if="loading" class="text-white/70 text-sm mt-2">Loading…</div>
@@ -19,7 +50,7 @@
       <div
         v-for="it in meta"
         :key="it.id"
-        class="rounded-lg border border-white/10 bg-black/10 p-2"
+        class="rounded-lg border border-white/10 bg-white/10 p-2 transition-colors hover:bg-white/15 hover:border-white/20 focus-within:bg-white/15 focus-within:border-white/25"
       >
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
@@ -28,6 +59,22 @@
                 #{{ it.rank }}
               </span>
               <span class="text-white/85 text-sm truncate">{{ it.text }}</span>
+            </div>
+
+            <div class="mt-1 flex items-center gap-2 min-w-0">
+              <span
+                v-if="(it.categoryName || '').trim()"
+                class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/70 shrink-0"
+              >
+                Category: {{ it.categoryName }}
+              </span>
+              <span
+                v-if="(it.questionPrompt || '').trim()"
+                class="text-xs text-white/60 truncate min-w-0"
+                :title="it.questionPrompt"
+              >
+                Question: {{ it.questionPrompt }}
+              </span>
             </div>
             <div v-if="(draftNotes[it.id] || '').trim()" class="text-white/60 text-xs mt-1 whitespace-pre-wrap">
               {{ draftNotes[it.id] }}
@@ -46,6 +93,44 @@
               <option value="fail">Fail</option>
               <option value="na">N/A</option>
             </select>
+
+            <div
+              v-if="allowUnlink"
+              class="relative inline-block group"
+            >
+              <button
+                type="button"
+                class="w-9 h-9 flex items-center justify-center rounded-full bg-white/0 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Unlink OPR item"
+                @click="emit('unlink', it.id)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M18 6L6 18"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M6 6l12 12"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+              <div
+                role="tooltip"
+                class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+              >
+                Unlink
+              </div>
+            </div>
           </div>
         </div>
 
@@ -77,6 +162,8 @@ type OprItemMeta = {
   id: string
   rank: number
   text: string
+  categoryName?: string
+  questionPrompt?: string
   status: 'active' | 'archived'
 }
 
@@ -91,12 +178,22 @@ const props = defineProps<{
   targetKey?: string
   targetLabel?: string
   disabled?: boolean
+  showHeader?: boolean
+  showHeaderRefresh?: boolean
+  allowUnlink?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'unlink', oprItemId: string): void
 }>()
 
 const store = useOprLinkEvaluationsStore()
 
 const disabled = computed(() => Boolean(props.disabled))
+const showHeader = computed(() => props.showHeader !== false)
 const show = computed(() => Boolean(props.projectId && props.contextType && props.contextId && props.targetType))
+const showHeaderRefresh = computed(() => props.showHeaderRefresh !== false)
+const allowUnlink = computed(() => props.allowUnlink === true && !disabled.value)
 
 const loading = ref(false)
 const error = ref('')
@@ -132,6 +229,8 @@ async function fetchMeta(ids: string[]) {
     id: String(i.id),
     rank: Number(i.rank || 0),
     text: String(i.text || ''),
+    categoryName: String(i.categoryName || ''),
+    questionPrompt: String(i.questionPrompt || ''),
     status: i.status === 'archived' ? 'archived' : 'active',
   })).sort((a: any, b: any) => (a.rank - b.rank) || String(a.id).localeCompare(String(b.id)))
 }
@@ -213,4 +312,6 @@ watch(
 )
 
 onMounted(() => refresh())
+
+defineExpose({ refresh })
 </script>

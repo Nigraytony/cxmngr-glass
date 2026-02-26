@@ -115,6 +115,62 @@ function normalizeMixedJsonArray(value) {
   return v;
 }
 
+function normalizeImportSystems(rows) {
+  const list = Array.isArray(rows) ? rows : null;
+  if (!list) return { ok: false, error: 'systems must be an array' };
+  if (list.length > 5000) return { ok: false, error: 'Too many systems (max 5000)' };
+
+  const out = [];
+  const errors = [];
+
+  for (let i = 0; i < list.length; i++) {
+    const r = list[i] || {};
+    const tag = asStr(r.tag, { maxLen: 80 }).trim();
+    const name = asStr(r.name, { maxLen: 160 }).trim();
+    const type = asStr(r.type, { maxLen: 120 }).trim();
+    const description = r.description !== undefined
+      ? sanitizeHtml(asStr(r.description), { allowedTags: [], allowedAttributes: {} }).trim()
+      : undefined;
+    const parentTag = asStr(r.parentTag, { maxLen: 80 }).trim();
+
+    if (!tag) {
+      errors.push({ row: i + 2, field: 'tag', error: 'tag is required' });
+      continue;
+    }
+    if (!name) {
+      errors.push({ row: i + 2, field: 'name', error: 'name is required' });
+      continue;
+    }
+
+    let tags;
+    if (r.tags !== undefined) {
+      const normalized = normalizeStringArray(r.tags, { maxItemLen: 80, maxItems: 200 });
+      if (normalized === null) {
+        errors.push({ row: i + 2, field: 'tags', error: 'Invalid tags' });
+        continue;
+      }
+      tags = normalized;
+    }
+
+    let attributes;
+    if (r.attributes !== undefined) {
+      const normalized = normalizeAttrPairs(r.attributes);
+      if (normalized === null) {
+        errors.push({ row: i + 2, field: 'attributes', error: 'Invalid attributes' });
+        continue;
+      }
+      attributes = normalized;
+    }
+
+    out.push({ tag, name, type, description, parentTag, tags, attributes });
+  }
+
+  if (errors.length) {
+    return { ok: false, error: 'Invalid rows', errors, systems: out };
+  }
+  return { ok: true, systems: out };
+}
+
 async function loadSystemProjectId(req, res, next) {
   try {
     const id = String(req.params.id || '').trim();
@@ -390,6 +446,94 @@ router.delete(
     } catch (err) {
       console.error('[systems] delete error', err && (err.stack || err.message || err));
       return res.status(500).json({ error: 'Failed to delete system' });
+    }
+  }
+);
+
+// Bulk upsert Systems by tag (project-scoped)
+// Intended for XLSX import from SystemsList export.
+router.post(
+  '/project/:projectId/bulk-upsert',
+  auth,
+  requireObjectIdParam('projectId'),
+  requireFeature('systems'),
+  requirePermission('systems.update', { projectParam: 'projectId' }),
+  requirePermission('systems.create', { projectParam: 'projectId' }),
+  requireActiveProject,
+  async (req, res) => {
+    try {
+      const projectId = new mongoose.Types.ObjectId(String(req.params.projectId));
+      const normalized = normalizeImportSystems(req.body?.systems);
+      if (!normalized.ok) {
+        return res.status(400).json({ error: normalized.error || 'Invalid import', details: normalized.errors || undefined });
+      }
+
+      const systems = normalized.systems || [];
+      if (!systems.length) return res.status(200).json({ ok: true, matched: 0, modified: 0, upserted: 0, parentsUpdated: 0 });
+
+      // First pass: upsert base records by tag.
+      const ops = systems.map((s) => {
+        const set = {
+          tag: s.tag,
+          name: s.name,
+          type: s.type || '',
+        };
+        if (s.description !== undefined) set.description = s.description;
+        if (s.tags !== undefined) set.tags = s.tags;
+        if (s.attributes !== undefined) set.attributes = s.attributes;
+
+        return {
+          updateOne: {
+            filter: { projectId, tag: s.tag },
+            update: { $set: set, $setOnInsert: { projectId } },
+            upsert: true,
+          }
+        };
+      });
+
+      const result = await System.bulkWrite(ops, { ordered: false });
+
+      // Second pass: resolve parentTag -> parentSystem id and apply.
+      const all = await System.find({ projectId }).select('_id tag').lean();
+      const byTag = new Map();
+      for (const s of all) {
+        const t = asStr(s.tag, { maxLen: 80 }).trim();
+        if (!t) continue;
+        const key = t.toLowerCase();
+        if (!byTag.has(key)) byTag.set(key, s._id);
+      }
+
+      const parentOps = [];
+      for (const row of systems) {
+        const selfId = byTag.get(String(row.tag || '').toLowerCase());
+        if (!selfId) continue;
+
+        const pt = String(row.parentTag || '').trim();
+        if (!pt) {
+          parentOps.push({ updateOne: { filter: { _id: selfId }, update: { $set: { parentSystem: null } } } });
+          continue;
+        }
+
+        const parentId = byTag.get(pt.toLowerCase());
+        if (!parentId) continue;
+        if (String(parentId) === String(selfId)) continue;
+        parentOps.push({ updateOne: { filter: { _id: selfId }, update: { $set: { parentSystem: parentId } } } });
+      }
+      let parentResult = null;
+      if (parentOps.length) {
+        parentResult = await System.bulkWrite(parentOps, { ordered: false });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        matched: result?.matchedCount || 0,
+        modified: result?.modifiedCount || 0,
+        upserted: result?.upsertedCount || 0,
+        parentsUpdated: parentResult?.modifiedCount || 0,
+      });
+    } catch (err) {
+      console.error('[systems] bulk-upsert error', err && (err.stack || err.message || err));
+      return res.status(500).json({ error: 'Failed to import systems' });
     }
   }
 );

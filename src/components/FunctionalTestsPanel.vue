@@ -335,26 +335,7 @@
             </div>
 
             <div class="md:col-span-2">
-              <OprItemPicker
-                v-model="(local[i] as any).oprItemIds"
-                :project-id="String(props.projectId || '')"
-                :disabled="!props.projectId"
-                label="OPR items"
-                @update:model-value="notifyChange"
-              />
-
-              <OprLinkVerification
-                v-if="props.projectId && resolvedAssetId && functionalTestTargetIdOrKey(local[i], i).targetId"
-                :project-id="String(props.projectId || '')"
-                :opr-item-ids="(((local[i] as any).oprItemIds) || [])"
-                :context-type="resolvedAssetEntity"
-                :context-id="String(resolvedAssetId || '')"
-                :context-label="String(resolvedAssetTag || resolvedAssetKey || '')"
-                target-type="functional_test"
-                :target-id="functionalTestTargetIdOrKey(local[i], i).targetId"
-                :target-label="functionalTestTargetLabel(local[i], i)"
-                :disabled="Boolean(props.readOnly)"
-              />
+              <!-- OPR linking moved to bottom-of-card rollup (below) -->
             </div>
 
             <template v-if="!(local[i] as any).kind || (local[i] as any).kind === 'standard'">
@@ -896,6 +877,68 @@
                   </RouterLink>
                 </li>
               </ul>
+            </div>
+
+            <!-- OPR rollup (Functional Test-level) -->
+            <div
+              class="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 space-y-2"
+            >
+              <button
+                type="button"
+                class="w-full flex items-center justify-between gap-2"
+                @click="toggleOprForTest(local[i], i)"
+              >
+                <div class="flex items-center gap-2 min-w-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4 text-white/70 transition-transform"
+                    :class="isOprOpenForTest(local[i], i) ? 'rotate-180' : ''"
+                  >
+                    <path
+                      d="M18 15l-6-6-6 6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <div class="text-sm text-white/85 truncate">
+                    OPR Items
+                  </div>
+                </div>
+                <div class="text-xs text-white/60 shrink-0">
+                  {{ oprItemCount(local[i]) }} linked
+                </div>
+              </button>
+
+              <div v-if="isOprOpenForTest(local[i], i)" class="space-y-2">
+                <OprItemPicker
+                  v-model="(local[i] as any).oprItemIds"
+                  :project-id="String(props.projectId || '')"
+                  :disabled="!props.projectId || Boolean(props.readOnly)"
+                  label=""
+                  :show-selected="false"
+                  @update:model-value="notifyChange"
+                />
+
+                <OprLinkVerification
+                  v-if="props.projectId && resolvedAssetId && functionalTestTargetIdOrKey(local[i], i).targetId"
+                  :project-id="String(props.projectId || '')"
+                  :opr-item-ids="(((local[i] as any).oprItemIds) || [])"
+                  :context-type="resolvedAssetEntity"
+                  :context-id="String(resolvedAssetId || '')"
+                  :context-label="String(resolvedAssetTag || resolvedAssetKey || '')"
+                  target-type="functional_test"
+                  :target-id="functionalTestTargetIdOrKey(local[i], i).targetId"
+                  :target-label="functionalTestTargetLabel(local[i], i)"
+                  :disabled="Boolean(props.readOnly)"
+                  :show-header="false"
+                  :allow-unlink="!props.readOnly"
+                  @unlink="(oprItemId) => unlinkFunctionalTestOprItem(i, oprItemId)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1573,6 +1616,56 @@ watch(() => local.length, () => { writeOpenState(); writeFieldOpenState() })
 function expandAll() { local.forEach(t => openState.set(t, true)); openVersion.value++; writeOpenState() }
 function collapseAll() { local.forEach(t => openState.set(t, false)); openVersion.value++; writeOpenState() }
 
+// OPR rollup open state (persisted per asset in sessionStorage)
+const oprOpen = ref<Record<string, boolean>>({})
+const OPR_OPEN_STATE_KEY = computed(() => `fptOprOpen:${resolvedAssetKey.value}`)
+
+function readOprOpenState() {
+  try {
+    const raw = sessionStorage.getItem(OPR_OPEN_STATE_KEY.value)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') oprOpen.value = parsed
+  } catch (_) { /* ignore */ }
+}
+
+function writeOprOpenState() {
+  try { sessionStorage.setItem(OPR_OPEN_STATE_KEY.value, JSON.stringify(oprOpen.value)) } catch (_) { /* ignore */ }
+}
+
+readOprOpenState()
+watch(oprOpen, writeOprOpenState, { deep: true })
+
+function functionalTestOprKey(t: FunctionalTestItem, idx: number) {
+  const id = functionalTestTargetIdOrKey(t, idx).targetId
+  if (id) return `id:${id}`
+  const n = (t && t.number != null) ? String(t.number) : String(idx + 1)
+  return `n:${n}`
+}
+
+function isOprOpenForTest(t: FunctionalTestItem, idx: number) {
+  const k = functionalTestOprKey(t, idx)
+  if (oprOpen.value[k] === undefined) {
+    oprOpen.value[k] = oprItemCount(t) > 0
+  }
+  return !!oprOpen.value[k]
+}
+
+function toggleOprForTest(t: FunctionalTestItem, idx: number) {
+  const k = functionalTestOprKey(t, idx)
+  oprOpen.value[k] = !isOprOpenForTest(t, idx)
+}
+
+function unlinkFunctionalTestOprItem(testIndex: number, oprItemId: string) {
+  const t: any = local[testIndex]
+  if (!t) return
+  const id = String(oprItemId || '').trim()
+  if (!id) return
+  const current = Array.isArray(t.oprItemIds) ? t.oprItemIds : []
+  t.oprItemIds = current.filter((x: any) => String(x || '').trim() !== id)
+  notifyChange()
+}
+
 async function applyOprDeepLinkFromRoute() {
   const q: any = route.query || {}
   const targetType = String(q.oprTargetType || '').trim()
@@ -1590,6 +1683,11 @@ async function applyOprDeepLinkFromRoute() {
       openVersion.value++
       writeOpenState()
     }
+
+    // Auto-open the OPR rollup when deep-linking to a functional test.
+    try {
+      oprOpen.value[functionalTestOprKey(t, i)] = true
+    } catch { /* ignore */ }
 
     await nextTick()
     const domId = `opr-ft-${domSafeId(targetId)}`

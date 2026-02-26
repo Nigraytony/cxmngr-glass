@@ -29,6 +29,8 @@ export interface Activity {
   projectId: string
   issues?: string[]
   issuesCount?: number
+  oprItemIds?: string[]
+  oprItemsCount?: number
   comments?: Array<{ userId: string; text: string; createdAt?: string }>
   commentsCount?: number
   photos?: ActivityPhoto[]

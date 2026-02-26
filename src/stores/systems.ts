@@ -172,5 +172,21 @@ export const useSystemsStore = defineStore('systems', () => {
     } catch (e) { /* non-blocking */ }
   }
 
-  return { items, loading, error, errorCode, byId, fetchByProject, fetchOne, create, update, updateFields, remove }
+  async function bulkUpsert(projectId: string, systems: Array<{
+    tag: string
+    name: string
+    type?: string
+    description?: string
+    parentTag?: string
+    tags?: string[]
+    attributes?: Array<{ key: string; value: string }>
+  }>) {
+    const pid = String(projectId || '').trim()
+    if (!pid) throw new Error('Missing projectId')
+    const payload = { systems: Array.isArray(systems) ? systems : [] }
+    const { data } = await axios.post(`${API_BASE}/project/${pid}/bulk-upsert`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+    return data
+  }
+
+  return { items, loading, error, errorCode, byId, fetchByProject, fetchOne, create, update, updateFields, remove, bulkUpsert }
 })

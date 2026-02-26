@@ -1,17 +1,83 @@
 <template>
   <div class="space-y-2">
     <div class="flex items-center justify-between gap-2">
-      <div class="text-sm text-white/70">
+      <div
+        v-if="String(label || '').trim()"
+        class="text-sm text-white/70"
+      >
         {{ label }}
       </div>
-      <button
-        type="button"
-        class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
-        :disabled="disabled || !projectId"
-        @click="openPicker"
-      >
-        Link OPR items
-      </button>
+      <div class="flex items-center gap-2 shrink-0">
+        <div
+          v-if="showRefresh"
+          class="relative inline-block group shrink-0"
+        >
+          <button
+            type="button"
+            class="w-9 h-9 flex items-center justify-center rounded-full bg-white/0 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="disabled || !projectId"
+            aria-label="Refresh"
+            @click="emit('refresh')"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M21 12a9 9 0 1 1-2.64-6.36"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M21 3v6h-6"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Refresh
+          </div>
+        </div>
+
+        <div class="relative inline-block group shrink-0">
+          <button
+            type="button"
+            class="w-9 h-9 flex items-center justify-center rounded-full bg-white/0 hover:bg-white/10 text-white border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="disabled || !projectId"
+            aria-label="Link OPR items"
+            @click="openPicker"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-5 h-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute right-0 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            Link OPR items
+          </div>
+        </div>
+      </div>
     </div>
 
     <div
@@ -21,48 +87,50 @@
       OPR Workshop add-on is required to link OPR items.
     </div>
 
-    <div
-      v-else-if="selectedMetaList.length === 0"
-      class="text-xs text-white/60"
-    >
-      No OPR items linked.
-    </div>
-
-    <div
-      v-else
-      class="flex flex-wrap gap-2"
-    >
-      <span
-        v-for="item in selectedMetaList"
-        :key="item.id"
-        class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85"
-        :title="item.status === 'archived' ? 'Archived OPR item' : ''"
+    <template v-else-if="showSelected">
+      <div
+        v-if="selectedMetaList.length === 0"
+        class="text-xs text-white/60"
       >
-        <span class="inline-flex items-center gap-2 min-w-0">
-          <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 shrink-0">
-            #{{ item.rank }}
-          </span>
-          <span
-            v-if="item.status === 'archived'"
-            class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/60 shrink-0"
-          >
-            Archived
-          </span>
-          <span class="truncate max-w-[22rem]">
-            {{ item.text }}
-          </span>
-        </span>
-        <button
-          type="button"
-          class="text-white/60 hover:text-white"
-          aria-label="Remove OPR item"
-          :disabled="disabled"
-          @click="removeOne(item.id)"
+        No OPR items linked.
+      </div>
+
+      <div
+        v-else
+        class="flex flex-wrap gap-2"
+      >
+        <span
+          v-for="item in selectedMetaList"
+          :key="item.id"
+          class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/85"
+          :title="item.status === 'archived' ? 'Archived OPR item' : ''"
         >
-          ×
-        </button>
-      </span>
-    </div>
+          <span class="inline-flex items-center gap-2 min-w-0">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/20 text-emerald-200 shrink-0">
+              #{{ item.rank }}
+            </span>
+            <span
+              v-if="item.status === 'archived'"
+              class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/60 shrink-0"
+            >
+              Archived
+            </span>
+            <span class="truncate max-w-[22rem]">
+              {{ item.text }}
+            </span>
+          </span>
+          <button
+            type="button"
+            class="text-white/60 hover:text-white"
+            aria-label="Remove OPR item"
+            :disabled="disabled"
+            @click="removeOne(item.id)"
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    </template>
 
     <Modal
       v-model="pickerOpen"
@@ -205,16 +273,21 @@ const props = defineProps<{
   modelValue: string[]
   disabled?: boolean
   label?: string
+  showSelected?: boolean
+  showRefresh?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', v: string[]): void
+  (e: 'refresh'): void
 }>()
 
 const ui = useUiStore()
 
 const disabled = computed(() => Boolean(props.disabled))
 const label = computed(() => props.label || 'OPR items')
+const showSelected = computed(() => props.showSelected !== false)
+const showRefresh = computed(() => props.showRefresh === true)
 
 const categories = ref<OprCategory[]>([])
 const items = ref<OprItem[]>([])

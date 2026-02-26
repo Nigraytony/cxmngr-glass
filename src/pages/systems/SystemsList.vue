@@ -173,6 +173,23 @@
           v-if="projectStore.currentProjectId"
           type="button"
           class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
+          :disabled="systemsStore.loading || uploadingXlsx"
+          :title="uploadingXlsx ? 'Uploading…' : 'Upload a modified Systems XLSX to bulk update/add'"
+          @click="triggerSystemsXlsxUpload"
+        >
+          Upload XLSX
+        </button>
+        <input
+          ref="systemsXlsxInputRef"
+          type="file"
+          accept=".xlsx,.xls"
+          class="hidden"
+          @change="onSystemsXlsxFileSelected"
+        >
+        <button
+          v-if="projectStore.currentProjectId"
+          type="button"
+          class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
           :disabled="systemsStore.loading"
           @click="refresh"
         >
@@ -752,6 +769,9 @@ const equipmentStore = useEquipmentStore()
 const oprStore = useOprStore()
 const ui = useUiStore()
 
+const systemsXlsxInputRef = ref<HTMLInputElement | null>(null)
+const uploadingXlsx = ref(false)
+
 const search = ref('')
 
 // Toolbar filters
@@ -1203,6 +1223,160 @@ async function downloadSystemsXlsx() {
     URL.revokeObjectURL(href)
   } catch (e: any) {
     ui.showError(e?.message || 'Failed to export Excel')
+  }
+}
+
+function normalizeHeaderKey(k: any) {
+  return String(k || '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim()
+}
+
+function getRowValue(row: any, key: string, keyMap: Map<string, string>) {
+  const actual = keyMap.get(normalizeHeaderKey(key))
+  if (actual && Object.prototype.hasOwnProperty.call(row, actual)) return row[actual]
+  if (Object.prototype.hasOwnProperty.call(row, key)) return row[key]
+  return ''
+}
+
+function parseCsvList(raw: any) {
+  const s = String(raw ?? '').trim()
+  if (!s) return []
+  const parts = s.split(',').map(p => p.trim()).filter(Boolean)
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const p of parts) {
+    const k = p.toLowerCase()
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(p)
+  }
+  return out
+}
+
+function parseAttributesMultiline(raw: any) {
+  const s = String(raw ?? '').trim()
+  if (!s) return [] as Array<{ key: string; value: string }>
+  const lines = s.split(/\r?\n/).map(l => String(l || '').trim()).filter(Boolean)
+  const out: Array<{ key: string; value: string }> = []
+  for (const line of lines) {
+    const idx = line.indexOf(':')
+    if (idx === -1) {
+      out.push({ key: line.trim(), value: '' })
+      continue
+    }
+    const key = line.slice(0, idx).trim()
+    const value = line.slice(idx + 1).trim()
+    if (!key) continue
+    out.push({ key, value })
+  }
+  return out
+}
+
+function triggerSystemsXlsxUpload() {
+  const pid = String(projectStore.currentProjectId || '')
+  if (!pid) {
+    ui.showWarning('Select a project first')
+    return
+  }
+  if (!systemsXlsxInputRef.value) return
+  systemsXlsxInputRef.value.value = ''
+  systemsXlsxInputRef.value.click()
+}
+
+async function onSystemsXlsxFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) return
+
+  try {
+    const pid = String(projectStore.currentProjectId || '')
+    if (!pid) {
+      ui.showWarning('Select a project first')
+      return
+    }
+
+    uploadingXlsx.value = true
+
+    const buf = await file.arrayBuffer()
+    const wb = XLSX.read(buf, { type: 'array' })
+    const systemsSheet = (wb as any)?.Sheets?.Systems || (wb as any)?.Sheets?.['Systems'] || (wb as any)?.Sheets?.[(wb as any)?.SheetNames?.[0]]
+    if (!systemsSheet) {
+      ui.showError('No Systems sheet found')
+      return
+    }
+
+    const rawRows: any[] = XLSX.utils.sheet_to_json(systemsSheet, { defval: '' }) as any[]
+    if (!rawRows.length) {
+      ui.showWarning('No rows found in Systems sheet')
+      return
+    }
+
+    const keyMap = new Map<string, string>()
+    try {
+      const sample = rawRows[0] || {}
+      for (const k of Object.keys(sample)) {
+        const nk = normalizeHeaderKey(k)
+        if (nk && !keyMap.has(nk)) keyMap.set(nk, k)
+      }
+    } catch { /* ignore */ }
+
+    const parsed: Array<{
+      tag: string
+      name: string
+      type?: string
+      description?: string
+      parentTag?: string
+      tags?: string[]
+      attributes?: Array<{ key: string; value: string }>
+    }> = []
+
+    const errors: string[] = []
+    for (let i = 0; i < rawRows.length; i++) {
+      const r = rawRows[i] || {}
+      const tag = String(getRowValue(r, 'tag', keyMap) ?? '').trim()
+      const name = String(getRowValue(r, 'name', keyMap) ?? '').trim()
+      const type = String(getRowValue(r, 'type', keyMap) ?? '').trim()
+      const parentTag = String(getRowValue(r, 'parentTag', keyMap) ?? getRowValue(r, 'parent tag', keyMap) ?? '').trim()
+      const description = String(getRowValue(r, 'description', keyMap) ?? '').trim()
+      const tags = parseCsvList(getRowValue(r, 'tags', keyMap))
+      const attributes = parseAttributesMultiline(getRowValue(r, 'attributes', keyMap))
+
+      if (!tag) {
+        errors.push(`Row ${i + 2}: missing tag`)
+        continue
+      }
+      if (!name) {
+        errors.push(`Row ${i + 2}: missing name (tag ${tag})`)
+        continue
+      }
+
+      parsed.push({ tag, name, type, parentTag, description, tags, attributes })
+    }
+
+    if (errors.length) {
+      ui.showError(`XLSX has ${errors.length} invalid row(s). First: ${errors[0]}`)
+      return
+    }
+
+    const confirmed = await inlineConfirm({
+      title: 'Import systems from XLSX',
+      message: `This will upsert ${parsed.length} system row(s) for the selected project (update existing by tag and add new). Continue?`,
+      confirmText: 'Import',
+      cancelText: 'Cancel',
+      variant: 'default'
+    })
+    if (!confirmed) return
+
+    const result = await systemsStore.bulkUpsert(pid, parsed)
+    ui.showSuccess(`Imported systems. Updated: ${result?.modified ?? 0}, Created: ${result?.upserted ?? 0}`)
+    await refresh()
+  } catch (err: any) {
+    ui.showError(err?.response?.data?.error || err?.message || 'Failed to import XLSX')
+  } finally {
+    uploadingXlsx.value = false
   }
 }
 

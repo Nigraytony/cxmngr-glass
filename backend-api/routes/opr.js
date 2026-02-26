@@ -633,18 +633,47 @@ router.get('/link/items', async (req, res) => {
       .select('_id categoryId questionId sourceAnswerId text score rank status createdAt updatedAt')
       .sort({ categoryId: 1, rank: 1 })
       .lean()
-    return res.json(rows.map((i) => ({
-      id: String(i._id),
-      categoryId: i.categoryId ? String(i.categoryId) : null,
-      questionId: i.questionId ? String(i.questionId) : null,
-      sourceAnswerId: i.sourceAnswerId ? String(i.sourceAnswerId) : null,
-      text: i.text,
-      score: i.score,
-      rank: i.rank,
-      status: i.status,
-      createdAt: i.createdAt,
-      updatedAt: i.updatedAt,
-    })))
+
+    // Best-effort: include category/question context for linked-item UIs.
+    const categoryIds = Array.from(new Set(rows.map((r) => (r && r.categoryId ? String(r.categoryId) : '')).filter(Boolean)))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    const questionIds = Array.from(new Set(rows.map((r) => (r && r.questionId ? String(r.questionId) : '')).filter(Boolean)))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+
+    const categoryNameById = {}
+    if (categoryIds.length) {
+      const cats = await OprCategory.find({ orgId, projectId, _id: { $in: categoryIds } }).select('_id name').lean()
+      for (const c of (Array.isArray(cats) ? cats : [])) {
+        categoryNameById[String(c._id)] = c.name
+      }
+    }
+
+    const questionPromptById = {}
+    if (questionIds.length) {
+      const qs = await OprQuestion.find({ orgId, projectId, _id: { $in: questionIds } }).select('_id prompt').lean()
+      for (const q of (Array.isArray(qs) ? qs : [])) {
+        questionPromptById[String(q._id)] = q.prompt
+      }
+    }
+
+    return res.json(rows.map((i) => {
+      const cid = i.categoryId ? String(i.categoryId) : null
+      const qid = i.questionId ? String(i.questionId) : null
+      return {
+        id: String(i._id),
+        categoryId: cid,
+        categoryName: cid ? (categoryNameById[cid] || '') : '',
+        questionId: qid,
+        questionPrompt: qid ? (questionPromptById[qid] || '') : '',
+        sourceAnswerId: i.sourceAnswerId ? String(i.sourceAnswerId) : null,
+        text: i.text,
+        score: i.score,
+        rank: i.rank,
+        status: i.status,
+        createdAt: i.createdAt,
+        updatedAt: i.updatedAt,
+      }
+    }))
   } catch (e) {
     return res.status(500).json({ error: 'Failed to load OPR items' })
   }

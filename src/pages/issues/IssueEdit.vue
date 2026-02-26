@@ -660,17 +660,21 @@
           >
             <div
               id="opr-section"
-              class="rounded-xl border border-white/10 bg-black/10 p-4"
+              class="space-y-3"
             >
               <OprItemPicker
                 v-model="form.oprItemIds"
                 :project-id="projectId"
                 :disabled="isClosed"
                 label="OPR items"
+                :show-selected="false"
+                :show-refresh="projectId && !isNew"
+                @refresh="refreshOprVerification"
               />
 
               <OprLinkVerification
                 v-if="projectId && !isNew"
+                ref="oprVerificationRef"
                 :project-id="projectId"
                 :opr-item-ids="(form.oprItemIds || [])"
                 context-type="issue"
@@ -680,6 +684,9 @@
                 :target-id="id"
                 :target-label="issueOprLabel"
                 :disabled="isClosed"
+                :show-header-refresh="false"
+                :allow-unlink="!isClosed"
+                @unlink="unlinkOprItem"
               />
 
               <div
@@ -1249,6 +1256,38 @@ const ui = useUiStore()
 const auth = useAuthStore()
 const ai = useAiStore()
 
+const oprVerificationRef = ref<any>(null)
+
+function refreshOprVerification() {
+  try {
+    if (oprVerificationRef.value && typeof oprVerificationRef.value.refresh === 'function') {
+      oprVerificationRef.value.refresh()
+      return
+    }
+  } catch { /* ignore */ }
+  try { ui.showWarning('Save the issue to enable OPR verification.') } catch { /* ignore */ }
+}
+
+async function unlinkOprItem(oprItemId: string) {
+  if (isClosed.value) return
+  const id = String(oprItemId || '').trim()
+  if (!id) return
+
+  const ok = await inlineConfirm({
+    title: 'Unlink OPR item?'
+    , message: 'This removes the OPR item from this issue. Remember to save the issue to persist the change.'
+    , confirmText: 'Unlink'
+    , cancelText: 'Cancel'
+    , variant: 'danger'
+  })
+  if (!ok) return
+
+  const current = Array.isArray(form.oprItemIds) ? form.oprItemIds : []
+  const next = current.filter((x: any) => String(x || '').trim() !== id)
+  form.oprItemIds = next
+  try { ui.showSuccess('OPR item unlinked (pending save)') } catch { /* ignore */ }
+}
+
 const azureAttachmentsCount = ref(0)
 const azurePhotosCount = ref(0)
 const azureProjectId = computed(() => String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
@@ -1590,6 +1629,10 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
 
 function formatDate(dt?: string): string {
   try { return dt ? new Date(dt).toLocaleDateString() : '' } catch (e) { return '' }
+}
+
+function formatDateTime(dt?: string): string {
+  try { return dt ? new Date(dt).toLocaleString() : '' } catch (e) { return '' }
 }
 
 function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {

@@ -3015,6 +3015,20 @@ const canEditFpt = computed(() => {
   return memberPermissions.value.includes('equipment.functionalTests.update')
 })
 
+function normalizeOprItemIds(value: any): string[] {
+  const arr = Array.isArray(value) ? value : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of arr) {
+    const id = String(raw || '').trim()
+    if (!id || id === 'undefined' || id === 'null') continue
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  return out
+}
+
 // Checklists and FPT lists
 const checklists = computed<any[]>({
   get() {
@@ -3037,6 +3051,41 @@ const functionalTests = computed<any[]>({
   set(v: any[]) {
     (form.value as any).functionalTests = Array.isArray(v) ? v : []
   }
+})
+
+// Auto-save equipment checklists when OPR items change (so OPR links persist without clicking Save).
+const checklistOprAutoSavePrimed = ref(false)
+const checklistLastOprKey = ref('')
+let checklistOprAutoSaveTimer: ReturnType<typeof setTimeout> | null = null
+const checklistOprKey = computed(() => {
+  try {
+    const sections: any[] = Array.isArray((form.value as any).checklists) ? (form.value as any).checklists : []
+    const keys = sections.map((sec: any, idx: number) => {
+      const sn = (sec && sec.number != null) ? String(sec.number).trim() : String(idx + 1)
+      const ids = normalizeOprItemIds(sec?.oprItemIds).slice().sort()
+      return `${sn}:${ids.join(',')}`
+    })
+    return keys.join('|')
+  } catch {
+    return ''
+  }
+})
+
+function queuePersistChecklistOprChange() {
+  if (currentTab.value !== 'Checklists') return
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid || eid === 'new') return
+  if (checklistOprAutoSaveTimer) clearTimeout(checklistOprAutoSaveTimer)
+  checklistOprAutoSaveTimer = setTimeout(async () => {
+    await persistChecklists(checklists.value)
+  }, 400)
+}
+
+watch(checklistOprKey, (next) => {
+  if (!checklistOprAutoSavePrimed.value) return
+  if (next === checklistLastOprKey.value) return
+  checklistLastOprKey.value = next
+  queuePersistChecklistOprChange()
 })
 
 async function persistFunctionalTests(tests: any[]) {
@@ -3149,6 +3198,7 @@ function onChecklistsChange(sections: any[]) {
 
 async function load() {
   loading.value = true
+  checklistOprAutoSavePrimed.value = false
   try {
     if (!id.value) return
     // Fetch full equipment including checklists/functionalTests/photos
@@ -3193,6 +3243,9 @@ async function load() {
   } finally {
     loading.value = false
   }
+  // Prime OPR autosave to ignore initial hydration.
+  checklistLastOprKey.value = checklistOprKey.value
+  checklistOprAutoSavePrimed.value = true
 }
 
 async function save() {
