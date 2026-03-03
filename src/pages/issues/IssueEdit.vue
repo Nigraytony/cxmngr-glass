@@ -1378,14 +1378,14 @@ function normalizeStatus(v: any) {
   if (byText) return byText.value
   const legacy: Record<string, string> = {
     'Open': 'open',
-    'In Progress': 'pending',
-    'Progress': 'pending',
+    'In Progress': 'progress',
+    'Progress': 'progress',
     'Pending': 'pending',
-    'Started': 'pending',
+    'Started': 'progress',
     'Closed': 'closed',
     'Resolved': 'resolved',
-    'Canceled': 'canceled',
-    'Cancelled': 'canceled',
+    'Canceled': 'cancelled',
+    'Cancelled': 'cancelled',
   }
   const mapped = legacy[val] || legacy[val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()] || val.toLowerCase()
   return opts.some(o => o.value === mapped) ? mapped : null
@@ -2447,11 +2447,12 @@ function toApiPriority(v: any): string | undefined {
 function toApiStatus(v: any): string | undefined {
   const m: Record<string, string> = {
     open: 'Open',
-    pending: 'In Progress',
+    pending: 'Pending',
+    progress: 'In Progress',
     closed: 'Closed',
     resolved: 'Resolved',
-    canceled: 'Canceled',
-    cancelled: 'Canceled',
+    canceled: 'Cancelled',
+    cancelled: 'Cancelled',
   }
   const k = String(v || '').toLowerCase()
   return m[k] || undefined
@@ -2628,6 +2629,103 @@ const isClosed = computed(() => {
   const s = String(form.status || '').toLowerCase()
   return s === 'closed' || s === 'canceled' || s === 'cancelled'
 })
+
+const statusAutoPersisting = ref(false)
+const suppressStatusAutoPersistOnce = ref(false)
+
+function statusKey(v: any): string {
+  return String(v || '').trim().toLowerCase()
+}
+
+function isDisablingStatusKey(k: string): boolean {
+  return k === 'closed' || k === 'cancelled' || k === 'canceled'
+}
+
+function ensureClosedMetaForDisabledStatus() {
+  const u = auth.user
+  const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || (u?.email || '')
+  if (!form.closedDate) form.closedDate = isoDate(new Date())
+  if (!form.closedBy) form.closedBy = name
+}
+
+function statusLabelForToast(k: string): string {
+  if (k === 'cancelled' || k === 'canceled') return 'Cancelled'
+  if (k === 'closed') return 'Closed'
+  return 'Updated'
+}
+
+async function persistStatusFromDropdown(nextStatusKey: string, prevStatusKey: string) {
+  if (statusAutoPersisting.value) return
+  try {
+    statusAutoPersisting.value = true
+
+    const nextIsDisabling = isDisablingStatusKey(nextStatusKey)
+    if (!nextIsDisabling) return
+
+    // For new issues, ensure we can create; if not, revert
+    if (isNew.value) {
+      if (!form.title && !form.type) {
+        ui.showError('Title is required to save')
+        form.status = prevStatusKey || 'open'
+        return
+      }
+      // Best-effort: stamp closed meta so the UI isn't blank when disabled
+      ensureClosedMetaForDisabledStatus()
+      await saveAndGetId()
+      ui.showSuccess(`Status set to ${statusLabelForToast(nextStatusKey)}`)
+      return
+    }
+
+    if (!loaded.value || notFound.value) {
+      ui.showError('Issue not found')
+      form.status = prevStatusKey || 'open'
+      return
+    }
+
+    const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
+    if (!isValidProjectId(pid)) {
+      ui.showError('Select a project')
+      form.status = prevStatusKey || 'open'
+      return
+    }
+
+    // Build minimal payload: status + closed metadata so disabled views show something.
+    const payload: any = {
+      projectId: pid,
+      status: (toApiStatus(form.status) as any) || undefined,
+    }
+    ensureClosedMetaForDisabledStatus()
+    payload.closedDate = form.closedDate || undefined
+    payload.closedBy = form.closedBy || undefined
+
+    // Reuse the shared update call (subscription guard needs projectId on payload).
+    await issues.updateIssue(id.value, payload)
+    ui.showSuccess(`Status set to ${statusLabelForToast(nextStatusKey)}`)
+  } catch (e: any) {
+    form.status = prevStatusKey || 'open'
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to update status')
+  } finally {
+    statusAutoPersisting.value = false
+  }
+}
+
+// Persist status transitions into a disabling state (Closed/Cancelled) immediately, because the Save button becomes disabled.
+watch(
+  () => statusKey(form.status),
+  (next, prev) => {
+    if (suppressStatusAutoPersistOnce.value) {
+      suppressStatusAutoPersistOnce.value = false
+      return
+    }
+    if (statusAutoPersisting.value) return
+    // Only act once the issue is loaded (existing issues). For new issues, allow the handler to run.
+    if (!loaded.value && !isNew.value) return
+    if (next === prev) return
+    if (!isDisablingStatusKey(next)) return
+    void persistStatusFromDropdown(next, prev)
+  }
+)
+
 async function persistClosedStatus(next: boolean, prev: boolean) {
   try {
     // For new issues, ensure we can save/create; if not, revert
@@ -2674,6 +2772,7 @@ const isClosedToggle = computed({
   get: () => isClosed.value,
   set: (v: boolean) => {
     const prev = isClosed.value
+    suppressStatusAutoPersistOnce.value = true
     form.status = v ? 'closed' : 'open'
     // Fire and forget persist; UI shows saving state and toasts
     persistClosedStatus(v, prev)

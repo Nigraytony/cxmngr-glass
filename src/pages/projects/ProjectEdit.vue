@@ -284,7 +284,10 @@
                         Edit member
                       </div>
                     </div>
-                    <div class="relative inline-block group">
+                    <div
+                      v-if="canRemoveProjectMembers"
+                      class="relative inline-block group"
+                    >
                       <button
                         aria-label="Remove member"
                         class="w-8 h-8 grid place-items-center rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-200 border border-red-500/30"
@@ -2185,6 +2188,7 @@ import { useRoute, useRouter } from 'vue-router'
 import http from '../../utils/http'
 import { apiUrl, getApiBase } from '../../utils/api'
 import { getAuthHeaders } from '../../utils/auth'
+import { confirm } from '../../utils/confirm'
 import PermissionsModal from '../../components/PermissionsModal.vue'
 import BillingCardForm from '../../components/BillingCardForm.vue'
 import Spinner from '../../components/Spinner.vue'
@@ -3201,7 +3205,7 @@ const isProjectAdmin = computed(() => {
   const m = currentProjectMember.value
   if (!m) return false
   const r = String(m.role || '').toLowerCase()
-  return r === 'admin' || r === 'cxa' || r === 'cxa' || r === 'cxa'
+  return r === 'admin' || r === 'cxa'
 })
 
 const isGlobalAdmin = computed(() => {
@@ -3210,6 +3214,7 @@ const isGlobalAdmin = computed(() => {
 })
 
 const canManageTeamRoles = computed(() => isProjectAdmin.value || isGlobalAdmin.value)
+const canRemoveProjectMembers = computed(() => isProjectAdmin.value || isGlobalAdmin.value)
 
 const defaultTeamRoleNames = computed(() => {
   const opts: any[] = (lists as any)?.roleOptions || []
@@ -3734,8 +3739,67 @@ watch(activeTab, (t) => {
 // Reload logs when type filter changes (server-side filter), reset to first page
 watch(selectedType, () => { logsPage.value = 1; loadLogs() })
 
-function removeMember(m: any) {
-  project.value.team = (project.value.team || []).filter((tm: any) => (tm._id || tm.email) !== (m._id || m.email))
+async function removeMember(m: any) {
+  if (!project.value) return
+  if (!canRemoveProjectMembers.value) {
+    ui.showError('Not authorized to remove members from this project')
+    return
+  }
+  const pid = projectId || (project.value && (project.value._id || project.value.id))
+  if (!pid) return ui.showError('No project selected')
+
+  const memberId = String(m && (m._id || m.id) || '').trim()
+  const memberEmail = String(m && m.email || '').trim().toLowerCase()
+  const memberLabel = ([String(m?.firstName || '').trim(), String(m?.lastName || '').trim()].filter(Boolean).join(' ') || memberEmail || memberId || 'this user').trim()
+
+  const ok = await confirm({
+    title: 'Remove member',
+    message: `Remove ${memberLabel} from this project?\n\nThey will lose access immediately.`,
+    confirmText: 'Remove',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
+
+  const key = memberId || memberEmail
+  if (!key) return ui.showError('Missing member id/email')
+
+  try {
+    await http.delete(`/api/projects/${String(pid)}/team/${encodeURIComponent(String(key))}`, { headers: getAuthHeaders() })
+    project.value.team = (project.value.team || []).filter((tm: any) => {
+      const tmId = String((tm && (tm._id || tm.id)) || '').trim()
+      const tmEmail = String((tm && tm.email) || '').trim().toLowerCase()
+      if (memberId && tmId && tmId === memberId) return false
+      if (memberEmail && tmEmail && tmEmail === memberEmail) return false
+      return true
+    })
+
+    // If the current user removed themselves, provide an in-app notice and bounce them out.
+    try {
+      const currentEmail = String(authStore?.user?.email || '').trim().toLowerCase()
+      if (currentEmail && memberEmail && currentEmail === memberEmail) {
+        const pname = String(project.value?.name || '').trim()
+        const payload = {
+          ts: new Date().toISOString(),
+          projectId: String(pid),
+          projectName: pname,
+          message: `You have been removed from ${pname || 'a project'}.`,
+        }
+        try { localStorage.setItem('projectAccessNotice', JSON.stringify(payload)) } catch (e) { /* ignore */ }
+        try { localStorage.removeItem('selectedProjectId') } catch (e) { /* ignore */ }
+        try { localStorage.removeItem('selectedProjectName') } catch (e) { /* ignore */ }
+        try { await projectStore.fetchProjects() } catch (e) { /* ignore */ }
+        router.push({ path: '/app/projects' })
+      }
+    } catch (e) { /* ignore */ }
+
+    ui.showSuccess('Member removed')
+    try { await refreshProject() } catch (e) { /* ignore */ }
+    try { await loadInvites() } catch (e) { /* ignore */ }
+  } catch (err: any) {
+    const msg = err?.response?.data?.error || err?.message || 'Failed to remove member'
+    ui.showError(msg)
+  }
 }
 
 function statusBadgeClass(status: any) {
@@ -3976,6 +4040,15 @@ async function removeCxaLogo() {
 const saving = ref(false)
 async function save() {
   if (saving.value) return
+  if (activeTab.value === 'info') {
+    const start = String(project.value?.startDate || '').trim()
+    const end = String(project.value?.endDate || '').trim()
+    const ymd = /^\d{4}-\d{2}-\d{2}$/
+    if (start && end && ymd.test(start) && ymd.test(end) && end < start) {
+      ui.showError('End Date cannot be earlier than Start Date')
+      return
+    }
+  }
   try {
     saving.value = true
     await ensureProjectLogosWithinLimit()

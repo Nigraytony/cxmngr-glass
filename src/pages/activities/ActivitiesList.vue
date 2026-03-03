@@ -935,6 +935,7 @@ const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const auth = useAuthStore()
 const q = ref('')
+const qTrimmed = computed(() => String(q.value || '').trim())
 const typeFilter = ref<string>('')
 const showAdvancedFilters = ref(false)
 const statusFilter = ref<'draft' | 'published' | 'completed' | ''>('')
@@ -1377,7 +1378,7 @@ const filtered = computed(() => {
     })
   }
 
-  const s = q.value.trim().toLowerCase()
+  const s = qTrimmed.value.toLowerCase()
   if (!s) return list as any
   const mode = searchMode.value
   return list.filter((a: any) => {

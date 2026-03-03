@@ -122,11 +122,12 @@ export default {
 
   issueStatuses: [
     { value: null, text: "Select a status" },
-    { value: "canceled", text: "Canceled" },
+    { value: "cancelled", text: "Cancelled" },
     { value: "closed", text: "Closed" },
     { value: "open", text: "Open" },
     { value: "pending", text: "Pending" },
     { value: "resolved", text: "Resolved" },
+    { value: "progress", text: "In Progress" },
   ],
 
   checklistStatuses: [

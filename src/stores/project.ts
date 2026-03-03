@@ -158,6 +158,29 @@ export const useProjectStore = defineStore('project', () => {
   const currentProject = ref<Project | null>(null);
   const logsCache = ref<Record<string, any[]>>({});
 
+  type ProjectAccessNotice = { ts: string; projectId?: string; projectName?: string; message: string }
+
+  function writeProjectAccessNotice(notice: ProjectAccessNotice) {
+    try {
+      if (typeof window === 'undefined') return
+      localStorage.setItem('projectAccessNotice', JSON.stringify(notice))
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearSelectedProjectStorage() {
+    try { if (typeof window !== 'undefined') localStorage.removeItem('selectedProjectId') } catch (e) { /* ignore */ }
+    try { if (typeof window !== 'undefined') localStorage.removeItem('selectedProjectName') } catch (e) { /* ignore */ }
+  }
+
+  function setSelectedProjectName(id: string, name?: string) {
+    try {
+      if (typeof window === 'undefined') return
+      const nm = String(name || '').trim()
+      if (!id || !nm) return
+      localStorage.setItem('selectedProjectName', nm)
+    } catch (e) { /* ignore */ }
+  }
+
   // Load selected project from localStorage on init
   if (typeof window !== 'undefined') {
     const storedId = localStorage.getItem('selectedProjectId');
@@ -190,6 +213,14 @@ export const useProjectStore = defineStore('project', () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('selectedProjectId', id);
     }
+    try {
+      // Keep a best-effort display name for UX (e.g., access-revoked notice).
+      const fromCurrent = (currentProject.value && (currentProject.value.id === id) && currentProject.value.name) ? currentProject.value.name : ''
+      const fromList = (!fromCurrent && Array.isArray(projects.value))
+        ? (projects.value.find((p) => String(p && p.id) === String(id)) as any)?.name
+        : ''
+      setSelectedProjectName(String(id), String(fromCurrent || fromList || ''))
+    } catch (e) { /* ignore */ }
     // eagerly fetch and populate the currentProject object
     if (id) {
       fetchProject(id).catch(() => {
@@ -214,6 +245,38 @@ export const useProjectStore = defineStore('project', () => {
       projects.value = Array.isArray(userProjects)
         ? userProjects.map((p: any) => ({ ...p, id: p._id || p.id }))
         : []
+
+      // If the currently selected project is no longer in the user's membership list,
+      // record a notice for the Topbar dropdown and clear selection.
+      try {
+        if (typeof window !== 'undefined') {
+          const storedId = localStorage.getItem('selectedProjectId')
+          if (storedId) {
+            const has = projects.value.some((p: any) => String(p && (p.id || (p as any)._id)) === String(storedId))
+            if (!has) {
+              const storedName = localStorage.getItem('selectedProjectName') || ''
+              writeProjectAccessNotice({
+                ts: new Date().toISOString(),
+                projectId: String(storedId),
+                projectName: String(storedName || ''),
+                message: `You have been removed from ${String(storedName || 'a project')}.`,
+              })
+              clearSelectedProjectStorage()
+              currentProjectId.value = null
+              currentProject.value = null
+
+              // Choose a new project if one exists (prefer default if present).
+              const next: any = (projects.value as any[]).find((p) => p && p.default) || (projects.value as any[])[0] || null
+              const nextId = next ? String(next.id || next._id || '') : ''
+              if (nextId) setCurrentProject(nextId)
+            } else {
+              // Keep selectedProjectName fresh when possible.
+              const p: any = (projects.value as any[]).find((pp) => String(pp && (pp.id || pp._id)) === String(storedId))
+              if (p && p.name) setSelectedProjectName(String(storedId), String(p.name))
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
     } catch (err) {
       // Optionally handle error
       projects.value = [];
@@ -243,14 +306,35 @@ export const useProjectStore = defineStore('project', () => {
   async function fetchProject(id: string) {
     if (!id) throw new Error('Missing project id')
     if (!getToken()) throw new Error('Not signed in. Please log in.')
-    const res = await http.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
-    const p = { ...res.data, id: res.data._id }
-    const idx = projects.value.findIndex(pr => pr.id === p.id)
-    if (idx !== -1) projects.value.splice(idx, 1, p)
-    else projects.value.push(p)
-    // set the currentProject ref so consumers can react to it
-    currentProject.value = p
-    return p
+    try {
+      const res = await http.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const p = { ...res.data, id: res.data._id }
+      const idx = projects.value.findIndex(pr => pr.id === p.id)
+      if (idx !== -1) projects.value.splice(idx, 1, p)
+      else projects.value.push(p)
+      // set the currentProject ref so consumers can react to it
+      currentProject.value = p
+      try { setSelectedProjectName(String(id), String((p as any).name || '')) } catch (e) { /* ignore */ }
+      return p
+    } catch (err: any) {
+      // If access is revoked, surface a durable notice in the Topbar dropdown.
+      try {
+        const status = err?.response?.status
+        if (typeof window !== 'undefined' && (status === 403 || status === 401)) {
+          const storedName = localStorage.getItem('selectedProjectName') || (currentProject.value && currentProject.value.name) || ''
+          writeProjectAccessNotice({
+            ts: new Date().toISOString(),
+            projectId: String(id),
+            projectName: String(storedName || ''),
+            message: `You no longer have access to ${String(storedName || 'this project')}.`,
+          })
+          clearSelectedProjectStorage()
+          currentProjectId.value = null
+          currentProject.value = null
+        }
+      } catch (e) { /* ignore */ }
+      throw err
+    }
   }
 
   async function updateProject(updated: Partial<Project> & { id?: string, _id?: string }) {

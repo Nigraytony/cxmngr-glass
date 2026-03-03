@@ -13,8 +13,8 @@ const issueSchema = new mongoose.Schema({
   foundBy: { type: String, required: false },
   dueDate: { type: String, required: false },
   assignedTo: { type: String, required: false },
-  severity: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
-  status: { type: String, enum: ['Open', 'In Progress', 'Closed'], default: 'Open' },
+  severity: { type: String, enum: ['Comment', 'Critical','Low', 'Medium', 'High'], default: 'Medium' },
+  status: { type: String, enum: ['Cancelled','Closed','Open','Pending', 'In Progress'], default: 'Open' },
   // Closed metadata: who closed it and when (ISO date string, e.g., 2025-10-29)
   closedDate: { type: String, required: false },
   closedBy: { type: String, required: false },

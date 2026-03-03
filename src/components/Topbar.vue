@@ -85,6 +85,29 @@
             class="w-72 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
           >
             <ul class="flex flex-col gap-1">
+              <li
+                v-if="projectAccessNotice"
+                class="px-3 py-2 rounded bg-red-500/10 border border-red-400/20 text-red-100"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold uppercase tracking-wide text-red-100/90">
+                      Access changed
+                    </div>
+                    <div class="text-sm text-red-50/90">
+                      {{ projectAccessNotice.message }}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="shrink-0 text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/15 border border-white/20 text-white/90"
+                    title="Dismiss"
+                    @click="dismissProjectAccessNotice"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </li>
               <li>
                 <button
                   class="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2"
@@ -317,10 +340,35 @@ const defaultProjectName = computed(() => {
 const menuOpen = ref(false)
 const userWrap = ref(null)
 const dropdownStyle = ref({ position: 'fixed', top: '3rem', left: 'auto', right: '1rem' })
+const projectAccessNotice = ref(null)
 
 // Logos from current project
 const clientLogo = computed(() => projectStore.currentProject?.logo || '')
 const cxaLogo = computed(() => projectStore.currentProject?.commissioning_agent?.logo || '')
+
+function readProjectAccessNotice() {
+  try {
+    const raw = localStorage.getItem('projectAccessNotice')
+    if (!raw) return null
+    const obj = JSON.parse(raw)
+    if (!obj || !obj.message) return null
+    return obj
+  } catch (e) {
+    return null
+  }
+}
+
+function refreshProjectAccessNotice() {
+  try {
+    if (typeof window === 'undefined') return
+    projectAccessNotice.value = readProjectAccessNotice()
+  } catch (e) { /* ignore */ }
+}
+
+function dismissProjectAccessNotice() {
+  try { localStorage.removeItem('projectAccessNotice') } catch (e) { /* ignore */ }
+  projectAccessNotice.value = null
+}
 
 function updateDropdownPosition() {
   if (!userWrap.value) return
@@ -373,7 +421,13 @@ function goProjects() {
   router.push({ path: '/app/projects' })
 }
 
-function toggleMenu() { menuOpen.value = !menuOpen.value; if (menuOpen.value) updateDropdownPosition() }
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value
+  if (menuOpen.value) {
+    updateDropdownPosition()
+    refreshProjectAccessNotice()
+  }
+}
 function emitLogout() { menuOpen.value = false; emit('logout') }
 
 function onClickOutside(e) {
@@ -386,6 +440,7 @@ onBeforeUnmount(() => window.removeEventListener('click', onClickOutside))
 
 // Ensure projects are loaded for the dropdown
 onMounted(async () => {
+  refreshProjectAccessNotice()
   try {
     if (!projectStore.projects || projectStore.projects.length === 0) {
       await projectStore.fetchProjects()

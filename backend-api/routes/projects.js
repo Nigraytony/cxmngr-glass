@@ -1449,6 +1449,111 @@ router.post('/:id/resend-invite', auth, requireObjectIdParam('id'), requirePermi
   }
 });
 
+// Remove a team member from a project (admin/globaladmin only).
+// This is atomic on the server (best-effort):
+// - removes the member from project.team
+// - removes the project entry from user.projects (if the user exists)
+// - cleans up any pending invitations for that email (if any)
+router.delete('/:id/team/:memberId', auth, requireObjectIdParam('id'), requirePermission('projects.users.manage', { projectParam: 'id' }), requireActiveProject, async (req, res) => {
+  try {
+    const projectId = String(req.params.id || '').trim()
+    const rawMember = req.params.memberId ? decodeURIComponent(String(req.params.memberId)) : ''
+    const memberKey = String(rawMember || '').trim()
+    if (!memberKey) return res.status(400).send({ error: 'memberId is required' })
+
+    const project = await Project.findById(projectId)
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+
+    const isEmail = memberKey.includes('@')
+    const memberId = (!isEmail && mongoose.Types.ObjectId.isValid(memberKey)) ? String(memberKey) : ''
+    const memberEmail = isEmail ? String(memberKey).trim().toLowerCase() : ''
+
+    const team = Array.isArray(project.team) ? project.team : []
+    const member = team.find((t) => {
+      if (!t) return false
+      const tid = t._id ? String(t._id) : (t.id ? String(t.id) : '')
+      const temail = t.email ? String(t.email).trim().toLowerCase() : ''
+      if (memberId && tid && tid === memberId) return true
+      if (memberEmail && temail && temail === memberEmail) return true
+      return false
+    })
+    if (!member) return res.status(404).send({ error: 'Member not found on project' })
+
+    // Prevent removing the last admin
+    const role = String(member.role || '').toLowerCase()
+    const isAdminRole = (role === 'admin' || role === 'globaladmin' || role === 'superadmin')
+    if (isAdminRole) {
+      const adminCount = team.reduce((acc, t) => {
+        const r = String((t && t.role) || '').toLowerCase()
+        return acc + ((r === 'admin' || r === 'globaladmin' || r === 'superadmin') ? 1 : 0)
+      }, 0)
+      if (adminCount <= 1) {
+        return res.status(400).send({ error: 'Cannot remove the last admin from a project' })
+      }
+    }
+
+    const removedId = member._id ? String(member._id) : null
+    const removedEmail = String(member.email || memberEmail || '').trim().toLowerCase()
+
+    project.team = team.filter((t) => {
+      if (!t) return false
+      const tid = t._id ? String(t._id) : (t.id ? String(t.id) : '')
+      const temail = t.email ? String(t.email).trim().toLowerCase() : ''
+      if (removedId && tid && tid === removedId) return false
+      if (removedEmail && temail && temail === removedEmail) return false
+      return true
+    })
+    project.updatedAt = new Date()
+    await project.save()
+
+    // Best-effort cleanup: remove project membership from user.projects if user exists
+    try {
+      let user = null
+      if (removedId && mongoose.Types.ObjectId.isValid(removedId)) {
+        user = await User.findById(removedId)
+      }
+      if (!user && removedEmail) {
+        user = await User.findOne({ email: removedEmail })
+      }
+      if (user) {
+        const before = Array.isArray(user.projects) ? user.projects.slice() : []
+        const after = before.filter((p) => {
+          const pid = String(typeof p === 'string' ? p : (p && (p._id || p.id) || '')).trim()
+          return pid !== String(projectId)
+        })
+        user.projects = after
+
+        // Ensure user still has a default if they have any projects left
+        try {
+          const hasDefault = Array.isArray(user.projects) && user.projects.some((p) => p && typeof p === 'object' && p.default === true)
+          if (Array.isArray(user.projects) && user.projects.length > 0 && !hasDefault) {
+            const first = user.projects.find((p) => p && typeof p === 'object')
+            if (first) first.default = true
+          }
+        } catch (e) { /* ignore */ }
+
+        await user.save()
+      }
+    } catch (e) {
+      console.warn('[projects.removeMember] failed to update user.projects', e && e.message ? e.message : e)
+    }
+
+    // Best-effort cleanup: delete any pending invites for this email on this project
+    try {
+      if (removedEmail) {
+        await Invitation.deleteMany({ projectId: project._id, email: removedEmail, accepted: false })
+      }
+    } catch (e) {
+      console.warn('[projects.removeMember] failed to delete pending invites', e && e.message ? e.message : e)
+    }
+
+    return res.status(200).send({ ok: true, projectId, removed: { id: removedId, email: removedEmail || null } })
+  } catch (err) {
+    console.error('remove project member error', err)
+    return res.status(500).send({ error: 'Failed to remove member' })
+  }
+})
+
 // Decline (delete) an invitation by ID for the logged-in user
 // Allows the invitee to remove an invite they do not want to accept.
 router.delete('/invitations/:id', auth, requireObjectIdParam('id'), async (req, res) => {
