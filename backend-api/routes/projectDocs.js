@@ -268,7 +268,7 @@ router.get(
   requireNotDisabled('uploads'),
   requireObjectIdParam('projectId'),
   requireActiveProject,
-  requirePermission('folders.read', { projectParam: 'projectId' }),
+  requirePermission('documents.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
@@ -325,7 +325,7 @@ router.post(
   requireNotDisabled('uploads'),
   requireObjectIdParam('projectId'),
   requireActiveProject,
-  requirePermission('folders.create', { projectParam: 'projectId' }),
+  requirePermission('documents.create', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
@@ -376,7 +376,7 @@ router.patch(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('folderId'),
   requireActiveProject,
-  requirePermission('folders.update', { projectParam: 'projectId' }),
+  requirePermission('documents.update', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFolder,
   async (req, res) => {
@@ -465,7 +465,7 @@ router.delete(
   requireObjectIdParam('projectId'),
   requireObjectIdParam('folderId'),
   requireActiveProject,
-  requirePermission('folders.delete', { projectParam: 'projectId' }),
+  requirePermission('documents.delete', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   loadFolder,
   async (req, res) => {
@@ -532,20 +532,21 @@ router.delete(
   }
 )
 
-// GET /api/projects/:projectId/docs/files?folderId=...
+// GET /api/projects/:projectId/docs/files?folderId=...&q=...
+// If folderId is omitted, q is required and results are searched across all folders.
 router.get(
   '/files',
   auth,
   requireNotDisabled('uploads'),
   requireObjectIdParam('projectId'),
-  requireObjectIdQuery('folderId'),
   requireActiveProject,
   requirePermission('documents.read', { projectParam: 'projectId' }),
   requireDocsProjectAccess,
   async (req, res) => {
     try {
       const projectId = req.params.projectId
-      const folderId = String(req.query.folderId)
+      const folderId = req.query.folderId != null ? String(req.query.folderId) : ''
+      const qRaw = asString(req.query.q).trim()
       const includePending = isTruthy(req.query.includePending)
       const includeDeleted = isTruthy(req.query.includeDeleted)
 
@@ -553,21 +554,57 @@ router.get(
         return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN_DEBUG_LISTING' })
       }
 
-      const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).select('_id').lean()
-      if (!folder) return res.status(404).json({ error: 'Folder not found' })
+      function escapeRegex(str) {
+        return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      }
+
+      const hasFolderId = !!folderId
+      const hasQuery = !!qRaw
+
+      if (!hasFolderId && !hasQuery) {
+        return res.status(400).json({ error: 'folderId or q is required' })
+      }
+
+      if (hasFolderId && !mongoose.Types.ObjectId.isValid(folderId)) {
+        return res.status(400).json({ error: 'Invalid folderId' })
+      }
+
+      if (hasFolderId) {
+        const folder = await DocFolder.findOne({ _id: folderId, projectId, deletedAt: null }).select('_id').lean()
+        if (!folder) return res.status(404).json({ error: 'Folder not found' })
+      }
 
       const status = includeDeleted
         ? (includePending ? { $in: ['pending', 'ready', 'deleted'] } : { $in: ['ready', 'deleted'] })
         : (includePending ? { $in: ['pending', 'ready'] } : 'ready')
 
-      const files = await DocFile.find({ projectId, folderId, status })
+      const match = {}
+      if (hasQuery) match.originalName = { $regex: escapeRegex(qRaw), $options: 'i' }
+
+      const baseQuery = { projectId, status, ...(hasFolderId ? { folderId } : {}), ...match }
+
+      const files = await DocFile.find(baseQuery)
         .sort({ updatedAt: -1 })
-        .select('originalName contentType sizeBytes status createdAt updatedAt')
+        .limit(hasFolderId ? 1000 : 200)
+        .select('originalName contentType sizeBytes status createdAt updatedAt folderId')
         .lean()
+
+      const folderIdSet = new Set(files.map((f) => String(f.folderId || '')).filter(Boolean))
+      const folderIds = Array.from(folderIdSet)
+      const folderRows = folderIds.length
+        ? await DocFolder.find({ projectId, _id: { $in: folderIds } }).select('_id path name deletedAt').lean()
+        : []
+      const folderById = new Map(folderRows.map((r) => [String(r._id), r]))
 
       return res.json({
         files: files.map((f) => ({
           id: String(f._id),
+          folderId: f.folderId ? String(f.folderId) : undefined,
+          folderPath: (() => {
+            const row = folderById.get(String(f.folderId || ''))
+            if (!row || row.deletedAt) return undefined
+            return asString(row.path) || asString(row.name) || undefined
+          })(),
           originalName: f.originalName,
           contentType: f.contentType,
           sizeBytes: f.sizeBytes,

@@ -311,7 +311,6 @@ import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 import { useInvitationsStore } from '../stores/invitations'
 // axios removed; use `http` helper instead when needed
-import { getAuthHeaders } from '../utils/auth'
 import http from '../utils/http'
 
 const emit = defineEmits(['toggleSidebar','logout'])
@@ -494,19 +493,13 @@ async function onSelectProject(p) {
   if (!p) return
   if (isDefaultProject(p)) return // already default
   try {
-    if (!getAuthHeaders()?.Authorization) { ui.showError('Not signed in'); return }
+    if (!auth.isAuthenticated) { ui.showError('Not signed in'); return }
     const projectId = p.id || p._id
-  const { data } = await http.post(`/api/projects/${projectId}/set-default`, {}, { headers: getAuthHeaders() })
-    // Update auth store's user while preserving token
+  const { data } = await http.post(`/api/projects/${projectId}/set-default`, {})
+    // Update auth store's user
     const incoming = (data && data.user) ? data.user : data
-    const preserveToken = auth.token || (auth.user && auth.user.token) || null
     if (incoming) {
       auth.user = Object.assign({}, auth.user || {}, incoming)
-      if (preserveToken && auth.user) {
-        auth.user.token = preserveToken
-      }
-      // persist
-        try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
     }
     // Switch current project in store
     if (projectId) projectStore.setCurrentProject(String(projectId))

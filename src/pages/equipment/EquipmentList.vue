@@ -1600,7 +1600,6 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import SearchPill from '../../components/SearchPill.vue'
 import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
@@ -2751,7 +2750,7 @@ async function fetchEquipmentAnalytics(projectId?: string) {
   if (analyticsForProjectId.value === pid && equipmentAnalytics.value) return
   analyticsLoading.value = true
   try {
-    const res = await http.get('/api/equipment/analytics', { params: { projectId: pid }, headers: getAuthHeaders() })
+    const res = await http.get('/api/equipment/analytics', { params: { projectId: pid } })
     equipmentAnalytics.value = (res && res.data) ? res.data : null
     analyticsForProjectId.value = pid
   } catch (e: any) {
@@ -3559,7 +3558,7 @@ async function fetchEquipmentPage(projectId?: string) {
 	    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
 	    if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
 	    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
-	    const res = await http.get('/api/equipment', { params, headers: getAuthHeaders() })
+	    const res = await http.get('/api/equipment', { params })
     const data = res && res.data ? res.data : {}
     const normalizeItem = (it: any) => {
       const obj: any = { ...(it || {}) }
@@ -4017,7 +4016,6 @@ async function downloadEquipmentList() {
 	  try {
 	    const res = await http.get('/api/equipment/export', {
 	      params,
-	      headers: getAuthHeaders(),
       responseType: 'blob'
     })
 	    const blob = res.data instanceof Blob

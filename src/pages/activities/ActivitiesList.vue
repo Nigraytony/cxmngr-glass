@@ -927,7 +927,6 @@ import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import ActivitiesListCharts from '../../components/charts/ActivitiesListCharts.vue'
 import type { ActivitiesAnalytics } from '../../components/charts/ActivitiesListCharts.vue'
 	import http from '../../utils/http'
-	import { getAuthHeaders } from '../../utils/auth'
 	import { runCoachmarkOnce } from '../../utils/coachmarks'
 
 const store = useActivitiesStore()
@@ -1152,7 +1151,7 @@ async function fetchAnalytics() {
   if (analyticsForProjectId.value === pid && activitiesAnalytics.value) return
   analyticsLoading.value = true
   try {
-    const res = await http.get('/api/activities/analytics', { params: { projectId: pid }, headers: getAuthHeaders() })
+    const res = await http.get('/api/activities/analytics', { params: { projectId: pid } })
     activitiesAnalytics.value = (res && res.data) ? res.data : null
     analyticsForProjectId.value = pid
   } catch (e: any) {

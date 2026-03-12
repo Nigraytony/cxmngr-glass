@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { useProjectStore } from './project'
 
 export interface AssistantChecklistItem {
@@ -39,7 +37,7 @@ export interface AssistantChecklist {
   items: AssistantChecklistItem[]
 }
 
-const API_BASE = `${getApiBase()}/api/assistant`
+const API_BASE = `/api/assistant`
 
 export const useAssistantChecklistStore = defineStore('assistantChecklist', () => {
   const checklist = ref<AssistantChecklist | null>(null)
@@ -63,7 +61,7 @@ export const useAssistantChecklistStore = defineStore('assistantChecklist', () =
     error.value = null
     errorCode.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/checklist`, { params: { projectId: pid }, headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/checklist`, { params: { projectId: pid } })
       checklist.value = data || null
     } catch (e: any) {
       const status = e?.response?.status
@@ -89,10 +87,10 @@ export const useAssistantChecklistStore = defineStore('assistantChecklist', () =
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.patch(
+      const { data } = await http.patch(
         `${API_BASE}/checklist/${current.id}/items/${encodeURIComponent(iid)}`,
         { completed },
-        { headers: getAuthHeaders() }
+        {}
       )
       checklist.value = data || null
     } catch (e: any) {
@@ -120,14 +118,14 @@ export const useAssistantChecklistStore = defineStore('assistantChecklist', () =
     error.value = null
     errorCode.value = null
     try {
-      const { data } = await axios.post(
+      const { data } = await http.post(
         `${API_BASE}/checklist/items`,
         {
           title,
           category: String(payload?.category || '').trim(),
           description: String(payload?.description || '').trim(),
         },
-        { params: { projectId: pid }, headers: getAuthHeaders() }
+        { params: { projectId: pid } }
       )
       checklist.value = data || null
     } catch (e: any) {
@@ -147,9 +145,9 @@ export const useAssistantChecklistStore = defineStore('assistantChecklist', () =
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.delete(
+      const { data } = await http.delete(
         `${API_BASE}/checklist/${encodeURIComponent(current.id)}/items/${encodeURIComponent(iid)}`,
-        { headers: getAuthHeaders() }
+        {}
       )
       checklist.value = data || null
     } catch (e: any) {

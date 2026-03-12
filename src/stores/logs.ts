@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
-import { getAuthHeaders } from '../utils/auth'
-import { getApiBase } from '../utils/api'
+import http from '../utils/http'
 
-const API_BASE = `${getApiBase()}/api`
+const API_BASE = `/api`
 
 export type LogEvent = { ts?: string | Date; by?: string | null; type: string; message?: string; [k: string]: any }
 
@@ -37,7 +35,7 @@ export const useLogsStore = defineStore('logs', () => {
       }
 
       // POST to /api/{resource}/{id}/logs
-      await axios.post(`${API_BASE}/${resource}/${id}/logs`, payload, { headers: getAuthHeaders() })
+      await http.post(`${API_BASE}/${resource}/${id}/logs`, payload)
 
       // optimistic cache update
       const k = keyFor(resource, id)
@@ -54,7 +52,7 @@ export const useLogsStore = defineStore('logs', () => {
       const params: any = {}
       if (opts?.limit) params.limit = opts.limit
       if (opts?.type) params.type = opts.type
-      const res = await axios.get(`${API_BASE}/${resource}/${id}/logs`, { params, headers: getAuthHeaders() })
+      const res = await http.get(`${API_BASE}/${resource}/${id}/logs`, { params })
       const list = Array.isArray(res.data) ? res.data : []
       const k = keyFor(resource, id)
       logsCache.value[k] = list

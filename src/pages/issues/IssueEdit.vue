@@ -1239,7 +1239,6 @@ import Spinner from '../../components/Spinner.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
-import { getAuthHeaders } from '../../utils/auth'
 import lists from '../../lists.js'
 import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
@@ -1247,6 +1246,7 @@ import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import { jsPDF } from 'jspdf'
+import http from '../../utils/http'
 
 const route = useRoute()
 const router = useRouter()
@@ -2355,7 +2355,7 @@ async function removeAttachment(i: number) {
   if (iid && iid !== 'new') {
     try {
       const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
-      await axios.delete(`${getApiBase()}/api/issues/${iid}/attachments/${i}?projectId=${encodeURIComponent(pid)}`, { headers: { ...getAuthHeaders() } })
+      await http.delete(`/api/issues/${iid}/attachments/${i}`, { params: { projectId: pid } })
       const updated = await issues.fetchIssue(String(iid)).catch(() => null)
       if (updated) form.attachments = Array.isArray((updated as any).attachments) ? (updated as any).attachments : (updated as any).documents || []
       ui.showSuccess('Attachment removed')
@@ -2369,18 +2369,17 @@ async function removeAttachment(i: number) {
 
 // Upload photos
 import axios from 'axios'
-import { getApiBase } from '../../utils/api'
 async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   // Ensure we have an issue id to target
   const iid = isNew.value ? await saveAndGetId() : id.value
   const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
-  const url = `${getApiBase()}/api/issues/${iid}/photos`
   const fd = new FormData()
   // include projectId in case middleware reads body (we also set server-side)
   fd.append('projectId', pid)
   fd.append('photos', file, file.name)
-  const res = await axios.post(url, fd, {
-    headers: { 'Content-Type': 'multipart/form-data', ...getAuthHeaders() },
+  const res = await http.post(`/api/issues/${iid}/photos`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    params: { projectId: pid },
     onUploadProgress: (ev) => {
       if (!ev.total) return
       const pct = Math.round((ev.loaded * 100) / ev.total)
@@ -2515,8 +2514,7 @@ async function removePhotoAt(idx: number) {
   try {
     const iid = isNew.value ? await saveAndGetId() : id.value
     const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
-    const delUrl = `${getApiBase()}/api/issues/${String(iid)}/photos/${idx}?projectId=${encodeURIComponent(pid)}`
-    await axios.delete(delUrl, { headers: { ...getAuthHeaders() } })
+    await http.delete(`/api/issues/${String(iid)}/photos/${idx}`, { params: { projectId: pid } })
     const arr = Array.isArray(form.photos) ? [...form.photos] : []
     arr.splice(idx, 1)
     form.photos = arr

@@ -80,7 +80,7 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { getApiBase } from '../../utils/api'
+import { api } from '../../utils/api'
 
 const email = ref('')
 const message = ref('')
@@ -92,20 +92,12 @@ async function submit() {
   message.value = ''
   loading.value = true
   try {
-    const res = await fetch(`${getApiBase()}/api/users/forgot-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.value }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      error.value = data?.error || data?.message || 'Failed to request reset'
-    } else {
-      message.value = data?.message || 'If that account exists, a reset email has been sent.'
-      email.value = ''
-    }
+    const res = await api.post('/api/users/forgot-password', { email: email.value })
+    const data = res?.data || {}
+    message.value = data?.message || 'If that account exists, a reset email has been sent.'
+    email.value = ''
   } catch (e) {
-    error.value = 'Network error'
+    error.value = e?.response?.data?.error || 'Network error'
   } finally { loading.value = false }
 }
 </script>

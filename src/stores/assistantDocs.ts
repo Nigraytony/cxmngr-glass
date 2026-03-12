@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { useProjectStore } from './project'
 
 export interface AssistantDocLink {
@@ -21,7 +19,7 @@ export interface AssistantDocsResponse {
   code?: string
 }
 
-const API_BASE = `${getApiBase()}/api/assistant`
+const API_BASE = `/api/assistant`
 
 export const useAssistantDocsStore = defineStore('assistantDocs', () => {
   const loading = ref(false)
@@ -39,9 +37,8 @@ export const useAssistantDocsStore = defineStore('assistantDocs', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/docs`, {
+      const { data } = await http.get(`${API_BASE}/docs`, {
         params: { projectId: pid, ...(itemId ? { itemId } : {}) },
-        headers: getAuthHeaders(),
       })
       docs.value = data || null
     } catch (e: any) {

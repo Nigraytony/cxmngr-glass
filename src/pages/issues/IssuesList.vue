@@ -2017,7 +2017,6 @@ import { useIssuesStore } from '../../stores/issues'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
@@ -2107,7 +2106,7 @@ async function fetchIssuesAnalytics(projectId?: string) {
   if (analyticsForProjectId.value === pid && issuesAnalytics.value) return
   analyticsLoading.value = true
   try {
-    const res = await http.get('/api/issues/analytics', { params: { projectId: pid }, headers: getAuthHeaders() })
+    const res = await http.get('/api/issues/analytics', { params: { projectId: pid } })
     issuesAnalytics.value = (res && res.data) ? res.data : null
     analyticsForProjectId.value = pid
   } catch (e: any) {
@@ -2940,7 +2939,7 @@ async function hydrateOprFilters(projectId: string) {
   oprAddonRequired.value = false
   oprFiltersLoading.value = true
   try {
-    const { data } = await http.get(`/api/projects/${pid}/opr/categories`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`/api/projects/${pid}/opr/categories`)
     const list = Array.isArray(data) ? data.map(normalizeOprCategoryRow).filter(Boolean) as OprCategoryMeta[] : []
     list.sort((a, b) => (Number(a.sortOrder ?? 9999) - Number(b.sortOrder ?? 9999)) || a.name.localeCompare(b.name))
     oprCategories.value = list
@@ -2976,7 +2975,7 @@ async function hydrateOprItemsForProject(projectId: string) {
   oprItemsLoading.value = true
   try {
     const { data } = await http.get(`/api/projects/${pid}/opr/items`, {
-      headers: getAuthHeaders(),
+      headers: {},
       params: { includeArchived: 1 },
     })
     const list = Array.isArray(data) ? data.map(normalizeOprMetaRow).filter(Boolean) as OprItemMeta[] : []
@@ -3019,7 +3018,7 @@ async function hydrateOprItemMeta(projectId: string, ids: string[]) {
   oprMetaLoading.value = true
   try {
     const { data } = await http.get(`/api/projects/${pid}/opr/items`, {
-      headers: getAuthHeaders(),
+      headers: {},
       params: { ids: ids.slice(0, 150).join(','), includeArchived: 1 },
     })
     const map: Record<string, OprItemMeta> = {}
@@ -3464,7 +3463,7 @@ function fetchIssuesPage(projectId?: string | null) {
       if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value).trim()
       params.includeFacets = true
 
-      const res = await http.get('/api/issues', { params, headers: getAuthHeaders() })
+      const res = await http.get('/api/issues', { params })
       const data = res && res.data ? res.data : {}
       const normalize = (i: any): IssueRow => {
         const obj = { ...(i || {}) }

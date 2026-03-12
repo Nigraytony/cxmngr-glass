@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { buildEquipmentLogDetails } from '../utils/equipmentLogDiff'
 
 export interface Equipment {
@@ -56,7 +54,7 @@ export interface Equipment {
   updatedAt?: string
 }
 
-const API_BASE = `${getApiBase()}/api/equipment`
+const API_BASE = `/api/equipment`
 
 export const useEquipmentStore = defineStore('equipment', () => {
   const items = ref<Equipment[]>([])
@@ -82,7 +80,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/project/${pid}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/project/${pid}`)
       items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
     } catch (e: any) {
       error.value = e?.response?.data?.error || e?.message || 'Failed to load equipment'
@@ -97,7 +95,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/${id}`)
       const eq = { ...data, id: data._id }
       const idx = items.value.findIndex(e => (e.id || (e as any)._id) === id)
       if (idx !== -1) items.value.splice(idx, 1, eq)
@@ -115,7 +113,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const payload: any = { ...e }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
-    const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}`, payload)
     const saved = { ...data, id: data._id }
     items.value.push(saved)
     try {
@@ -139,11 +137,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
     if (payload._id) delete payload._id
     let data: any
     try {
-      ({ data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+      ({ data } = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
     } catch (err: any) {
       // Fallback to PUT if PATCH is not supported by backend
       if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await axios.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+        ({ data } = await http.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
       } else {
         throw err
       }
@@ -170,10 +168,10 @@ export const useEquipmentStore = defineStore('equipment', () => {
     if (!id) throw new Error('Missing equipment id')
     let data: any
     try {
-      ({ data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+      ({ data } = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
     } catch (err: any) {
       if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await axios.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+        ({ data } = await http.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
       } else {
         throw err
       }
@@ -186,7 +184,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   }
 
   async function remove(id: string) {
-    await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+    await http.delete(`${API_BASE}/${id}`)
     items.value = items.value.filter(e => (e.id || (e as any)._id) !== id)
     try {
       const { useLogsStore } = await import('./logs')
@@ -201,7 +199,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const desiredTag = opts?.tag || ''
     // 1) Try server-side duplicate endpoint if available
     try {
-      const { data } = await axios.post(`${API_BASE}/${id}/duplicate`, { tag: desiredTag }, { headers: getAuthHeaders() })
+      const { data } = await http.post(`${API_BASE}/${id}/duplicate`, { tag: desiredTag })
       const saved = { ...data, id: (data as any)._id || (data as any).id }
       if (saved.id && !items.value.some(e => (e.id || (e as any)._id) === saved.id)) items.value.push(saved as Equipment)
       return saved as Equipment

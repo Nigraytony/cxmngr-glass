@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
 import { ref } from 'vue'
-import { getAuthHeaders } from '../utils/auth'
 import { useProjectStore } from './project'
+import http from '../utils/http'
 
 export interface ActivityPhoto {
   filename?: string
@@ -48,8 +47,7 @@ export interface Activity {
   updatedAt?: string
 }
 
-import { getApiBase } from '../utils/api'
-const API_BASE = `${getApiBase()}/api/activities`
+const API_BASE = `/api/activities`
 const API_PHOTOS = `${API_BASE}`
 
 export const useActivitiesStore = defineStore('activities', () => {
@@ -151,7 +149,7 @@ export const useActivitiesStore = defineStore('activities', () => {
         return activities.value
       }
 
-      const res = await axios.get(API_BASE, { params: { projectId: pid, light: true }, headers: getAuthHeaders() })
+      const res = await http.get(API_BASE, { params: { projectId: pid, light: true } })
       const list = (res.data || []).map(normalize).filter(a => !isDeletedActivity(a))
       activities.value = list
       return activities.value
@@ -185,7 +183,7 @@ export const useActivitiesStore = defineStore('activities', () => {
       const params: any = {}
       if (opts?.light) params.light = true
       if (opts?.includePhotos) params.includePhotos = true
-      const res = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders(), params })
+      const res = await http.get(`${API_BASE}/${id}`, { params })
       current.value = normalize(res.data)
       return current.value
     } catch (e: any) {
@@ -197,7 +195,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function fetchActivityPhotos(id: string) {
-    const res = await axios.get(`${API_PHOTOS}/${id}/photos`, { headers: getAuthHeaders() })
+    const res = await http.get(`${API_PHOTOS}/${id}/photos`)
     const photos = res.data || []
     if (current.value && (current.value.id === id || (current.value as any)._id === id)) {
       current.value = { ...(current.value as any), photos }
@@ -210,7 +208,7 @@ export const useActivitiesStore = defineStore('activities', () => {
     error.value = null
     try {
       if (!payload.projectId) throw new Error('projectId is required')
-      const res = await axios.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+      const res = await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })
       const created = normalize(res.data)
       activities.value.unshift(created)
       current.value = created
@@ -246,7 +244,7 @@ export const useActivitiesStore = defineStore('activities', () => {
       const prev = (current.value && String((current.value as any).id || (current.value as any)._id || '') === String(id))
         ? (current.value as any)
         : activities.value.find(a => String((a as any).id || (a as any)._id || '') === String(id))
-      const res = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+      const res = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } })
       const updated = normalize(res.data)
       current.value = updated
       const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
@@ -286,7 +284,7 @@ export const useActivitiesStore = defineStore('activities', () => {
     const fd = new FormData()
     const arr = Array.from(files as any)
     for (const f of arr) fd.append('photos', f as Blob)
-    const res = await axios.post(`${API_BASE}/${id}/photos`, fd, { headers: { ...getAuthHeaders() } })
+    const res = await http.post(`${API_BASE}/${id}/photos`, fd)
     const updated = normalize(res.data)
     current.value = updated
     const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
@@ -296,7 +294,7 @@ export const useActivitiesStore = defineStore('activities', () => {
 
   async function removePhoto(id: string, index: number) {
     // Prefer dedicated endpoint to avoid sending large base64 payloads
-    const res = await axios.delete(`${API_BASE}/${id}/photos/${index}`, { headers: { ...getAuthHeaders() } })
+    const res = await http.delete(`${API_BASE}/${id}/photos/${index}`)
     const updated = normalize(res.data)
     current.value = updated
     const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
@@ -305,7 +303,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function updatePhotoCaption(id: string, index: number, caption: string) {
-    const res = await axios.patch(`${API_BASE}/${id}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+    const res = await http.patch(`${API_BASE}/${id}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
     const updated = normalize(res.data)
     current.value = updated
     const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
@@ -314,7 +312,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function downloadReport(id: string) {
-    const res = await axios.get(`${API_BASE}/${id}/report`, { headers: getAuthHeaders(), responseType: 'blob' })
+    const res = await http.get(`${API_BASE}/${id}/report`, { responseType: 'blob' })
     const blob = new Blob([res.data], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -333,9 +331,9 @@ export const useActivitiesStore = defineStore('activities', () => {
       const existing = activities.value.find(a => String(a.id || a._id) === String(id)) || current.value
       let pid = existing ? String(existing.projectId || (existing as any).project || '') : ''
       const name = existing ? (existing.name || '') : ''
-      const config: any = { headers: getAuthHeaders() }
+      const config: any = {}
       if (pid) config.params = { projectId: pid }
-      await axios.delete(`${API_BASE}/${id}`, config)
+      await http.delete(`${API_BASE}/${id}`, config)
       activities.value = activities.value.filter(a => String(a.id || a._id) !== String(id))
       if (current.value && String(current.value.id || current.value?._id) === String(id)) current.value = null
 
@@ -351,7 +349,7 @@ export const useActivitiesStore = defineStore('activities', () => {
         if (!pid) {
           // best-effort: try to fetch the activity to get projectId
           try {
-            const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+            const { data } = await http.get(`${API_BASE}/${id}`)
             pid = String((data && (data.projectId || data.project)) || '')
           } catch (_) { /* ignore */ }
         }

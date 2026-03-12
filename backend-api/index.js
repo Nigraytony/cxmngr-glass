@@ -37,6 +37,7 @@ const oprRoutes = require('./routes/opr');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
+const { ensureCsrfCookieAndProtect } = require('./middleware/csrf');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -56,10 +57,12 @@ if (!process.env.MONGODB_URI) {
 // CORS_ALLOWED_ORIGINS can be a comma-separated list or "*" for any
 const allowedOriginsEnv = process.env.CORS_ALLOWED_ORIGINS;
 const appUrlEnv = process.env.APP_URL; // used for building links; include as allowed origin if present
+const frontendUrlEnv = process.env.FRONTEND_URL;
 const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production'
 let corsOptions = {
   origin: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   credentials: true,
   optionsSuccessStatus: 204
 };
@@ -132,6 +135,26 @@ if (isProd && (!allowedOriginsEnv || !String(allowedOriginsEnv).trim())) {
   }
 }
 
+// Requirement: enable CORS credentials for FRONTEND_URL when set.
+// This overrides the "reflect origin" default and ensures only the configured frontend origin is allowed.
+if (frontendUrlEnv && String(frontendUrlEnv).trim()) {
+  try {
+    const frontendOrigin = new URL(String(frontendUrlEnv)).origin;
+    corsOptions = {
+      ...corsOptions,
+      credentials: true,
+      origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (origin === frontendOrigin) return callback(null, true);
+        console.warn(`[cors] blocked origin: ${origin}; expected: ${frontendOrigin}`);
+        return callback(new Error('Not allowed by CORS'));
+      },
+    };
+  } catch (e) {
+    console.warn('[cors] FRONTEND_URL is set but not a valid URL; falling back to existing CORS config.');
+  }
+}
+
 // Middleware
 // Basic root for sanity
 app.get('/', (_req, res) => {
@@ -152,25 +175,25 @@ app.use(cors(corsOptions));
 // Handle preflight requests for all routes explicitly
 app.options('*', cors(corsOptions));
 
-// Capture raw body for Stripe webhook signature verification, then parse JSON normally
+// Stripe webhook: keep raw body verification working and do not apply JSON parsing to the webhook route.
 // Allow larger payloads for equipment and other rich payloads; configurable via BODY_PARSER_LIMIT
 const bodyParserLimit = process.env.BODY_PARSER_LIMIT || '10mb'
-app.use(express.json({
-  limit: bodyParserLimit,
-  verify: (req, res, buf) => {
-    // store raw buffer only for webhook endpoint
-    try {
-      if (req.originalUrl && req.originalUrl.startsWith('/api/stripe/webhook')) {
-        req.rawBody = buf;
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-}));
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json', limit: bodyParserLimit }));
 
-// Also accept urlencoded bodies with the same limit
-app.use(express.urlencoded({ extended: true, limit: bodyParserLimit }))
+// Parse JSON for all non-webhook routes
+app.use((req, res, next) => {
+  if (req.originalUrl && req.originalUrl.startsWith('/api/stripe/webhook')) return next();
+  return express.json({ limit: bodyParserLimit })(req, res, next);
+});
+
+// Also accept urlencoded bodies with the same limit (non-webhook)
+app.use((req, res, next) => {
+  if (req.originalUrl && req.originalUrl.startsWith('/api/stripe/webhook')) return next();
+  return express.urlencoded({ extended: true, limit: bodyParserLimit })(req, res, next);
+});
+
+// CSRF double-submit protection (skips webhook route)
+app.use(ensureCsrfCookieAndProtect);
 
 // Serve uploaded files (local storage)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

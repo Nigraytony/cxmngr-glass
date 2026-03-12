@@ -1215,7 +1215,6 @@ import AzureAttachmentsPanel from '../../components/attachments/AzureAttachments
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import Spinner from '../../components/Spinner.vue'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { RouterLink } from 'vue-router'
 import * as XLSX from 'xlsx'
@@ -1675,7 +1674,6 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   const fd = new FormData()
   fd.append('photos', file)
   const res = await http.post(`/api/templates/${tid}/photos`, fd, {
-    headers: { ...getAuthHeaders() },
     onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) }
   })
   const fresh = await templatesStore.fetchOne(tid)
@@ -1686,7 +1684,7 @@ async function updatePhotoMeta(index: number, caption: string) {
   const tid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!tid) return
   try {
-    await http.patch(`/api/templates/${tid}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+    await http.patch(`/api/templates/${tid}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
     const fresh = await templatesStore.fetchOne(tid)
     if (fresh) form.value = { ...fresh } as any
     ui.showSuccess('Caption saved')
@@ -1700,7 +1698,7 @@ async function removePhoto(index: number) {
   const tid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!tid) return
   try {
-    await http.delete(`/api/templates/${tid}/photos/${index}`, { headers: { ...getAuthHeaders() } })
+    await http.delete(`/api/templates/${tid}/photos/${index}`)
     const fresh = await templatesStore.fetchOne(tid)
     if (fresh) form.value = { ...fresh } as any
     ui.showSuccess('Photo removed')
@@ -1731,7 +1729,7 @@ async function removeAttachment(index: number) {
   const tid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!tid) return
   try {
-    await http.delete(`/api/templates/${tid}/attachments/${index}`, { headers: { ...getAuthHeaders() } })
+    await http.delete(`/api/templates/${tid}/attachments/${index}`)
     const fresh = await templatesStore.fetchOne(tid)
     if (fresh) form.value = { ...fresh } as any
     ui.showSuccess('Attachment removed')

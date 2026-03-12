@@ -1,7 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const assert = require('assert');
-const { clearDb } = require('./testUtils');
+const { clearDb, withCsrf } = require('./testUtils');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
@@ -42,15 +42,13 @@ describe('AI chat safety rails', function () {
   });
 
   async function setupProjectWithAiEnabled() {
-    const userRes = await request(app)
-      .post('/api/users/register')
+    const userRes = await withCsrf(request(app).post('/api/users/register'))
       .send({ email: 'owner@example.com', password: 'password123', firstName: 'Owner', lastName: 'User', company: 'TestCo' });
     assert(userRes.status === 201, `expected 201 from register, got ${userRes.status}`);
-    const token = userRes.body.token;
+    const token = userRes.body.accessToken;
     const user = userRes.body.user;
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app).post('/api/projects'))
       .set('Authorization', `Bearer ${token}`)
       .send({ userId: user._id, name: 'AI Project', client: 'Client' });
     assert(projectRes.status === 201, `expected 201 from create project, got ${projectRes.status}`);
@@ -71,8 +69,7 @@ describe('AI chat safety rails', function () {
 
   it('refuses billing/subscription change requests without calling a provider', async () => {
     const { token, projectId } = await setupProjectWithAiEnabled();
-    const res = await request(app)
-      .post('/api/ai/chat')
+    const res = await withCsrf(request(app).post('/api/ai/chat'))
       .set('Authorization', `Bearer ${token}`)
       .send({
         projectId,
@@ -84,8 +81,7 @@ describe('AI chat safety rails', function () {
 
   it('refuses destructive delete requests with a confirmation-style response', async () => {
     const { token, projectId } = await setupProjectWithAiEnabled();
-    const res = await request(app)
-      .post('/api/ai/chat')
+    const res = await withCsrf(request(app).post('/api/ai/chat'))
       .set('Authorization', `Bearer ${token}`)
       .send({
         projectId,

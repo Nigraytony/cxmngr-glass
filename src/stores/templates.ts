@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { useProjectStore } from './project'
 
 export interface Template {
@@ -52,7 +50,7 @@ export interface Template {
   updatedAt?: string
 }
 
-const API_BASE = `${getApiBase()}/api/templates`
+const API_BASE = `/api/templates`
 
 export const useTemplatesStore = defineStore('templates', () => {
   const items = ref<Template[]>([])
@@ -127,7 +125,7 @@ export const useTemplatesStore = defineStore('templates', () => {
         errorCode.value = 'FEATURE_NOT_IN_PLAN'
         return
       }
-      const { data } = await axios.get(`${API_BASE}/project/${projectId}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/project/${projectId}`)
       items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
     } catch (e: any) {
       if (e?.response?.status === 403 && (e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN')) {
@@ -155,7 +153,7 @@ export const useTemplatesStore = defineStore('templates', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/${id}`)
       const rec = { ...data, id: data._id }
       const idx = items.value.findIndex(e => (e.id || (e as any)._id) === id)
       if (idx !== -1) items.value.splice(idx, 1, rec)
@@ -173,7 +171,7 @@ export const useTemplatesStore = defineStore('templates', () => {
     const payload: any = { ...e }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
-    const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}`, payload)
     const saved = { ...data, id: data._id }
     items.value.push(saved)
     // Log to project logs (best-effort, non-blocking)
@@ -195,10 +193,10 @@ export const useTemplatesStore = defineStore('templates', () => {
     if (payload._id) delete payload._id
     let data: any
     try {
-      ({ data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+      ({ data } = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
     } catch (err: any) {
       if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await axios.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+        ({ data } = await http.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
       } else {
         throw err
       }
@@ -224,10 +222,10 @@ export const useTemplatesStore = defineStore('templates', () => {
     if (!id) throw new Error('Missing template id')
     let data: any
     try {
-      ({ data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+      ({ data } = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
     } catch (err: any) {
       if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await axios.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+        ({ data } = await http.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
       } else {
         throw err
       }
@@ -288,13 +286,13 @@ export const useTemplatesStore = defineStore('templates', () => {
     const existing = byId.value[String(id)]
     let pid = ''
     if (existing) pid = String((existing as any).projectId || (existing as any).project || '')
-    await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+    await http.delete(`${API_BASE}/${id}`)
     items.value = items.value.filter(e => (e.id || (e as any)._id) !== id)
     try {
       if (!pid) {
         // attempt to read from server (best-effort)
         try {
-          const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+          const { data } = await http.get(`${API_BASE}/${id}`)
           pid = String((data && (data.projectId || data.project)) || '')
         } catch (e) { /* ignore */ }
       }
@@ -310,7 +308,7 @@ export const useTemplatesStore = defineStore('templates', () => {
     const desiredTag = opts?.tag || ''
     // Try server-side duplicate if available (may not exist)
     try {
-      const { data } = await axios.post(`${API_BASE}/${id}/duplicate`, { tag: desiredTag }, { headers: getAuthHeaders() })
+      const { data } = await http.post(`${API_BASE}/${id}/duplicate`, { tag: desiredTag })
       const saved = { ...data, id: (data as any)._id || (data as any).id }
       if (saved.id && !items.value.some(e => (e.id || (e as any)._id) === saved.id)) items.value.push(saved as Template)
       return saved as Template

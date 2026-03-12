@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const { clearDb } = require('./testUtils');
+const { clearDb, withCsrf } = require('./testUtils');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
@@ -117,8 +117,8 @@ describe('Admin webhook replay - invoice fallback to Stripe by ID', function () 
     await we.save();
 
     // replay
-    const res = await request(app)
-      .post(`/api/admin/webhook-events/${we.eventId}/replay`)
+    const res = await withCsrf(request(app)
+      .post(`/api/admin/webhook-events/${we.eventId}/replay`))
       .set('Authorization', `Bearer ${token}`)
       .send();
 

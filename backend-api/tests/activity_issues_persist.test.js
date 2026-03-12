@@ -1,7 +1,7 @@
 const request = require('supertest')
 const mongoose = require('mongoose')
 const assert = require('assert')
-const { clearDb } = require('./testUtils')
+const { clearDb, withCsrf } = require('./testUtils')
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test'
 
@@ -36,38 +36,33 @@ describe('Activity issues persistence integration', function () {
   })
 
   it('persists linked issues on activity and reload', async () => {
-    const ownerRes = await request(app)
-      .post('/api/users/register')
+    const ownerRes = await withCsrf(request(app).post('/api/users/register'))
       .send({ email: 'owner-activity@example.com', password: 'password123', firstName: 'Own', lastName: 'Er', company: 'TestCo' })
     assert.strictEqual(ownerRes.status, 201)
-    const token = ownerRes.body.token
+    const token = ownerRes.body.accessToken
     assert(token, 'expected owner token')
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app).post('/api/projects'))
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Activity Project', client: 'Client' })
     assert.strictEqual(projectRes.status, 201)
     const projectId = String(projectRes.body._id)
 
-    const actRes = await request(app)
-      .post('/api/activities')
+    const actRes = await withCsrf(request(app).post('/api/activities'))
       .set('Authorization', `Bearer ${token}`)
       .send({ projectId, name: 'Site Visit', type: 'Site Visit Review' })
     assert.strictEqual(actRes.status, 201)
     const activityId = String(actRes.body._id || actRes.body.id)
     assert(activityId, 'expected activity id')
 
-    const issueRes = await request(app)
-      .post('/api/issues')
+    const issueRes = await withCsrf(request(app).post('/api/issues'))
       .set('Authorization', `Bearer ${token}`)
       .send({ projectId, title: 'Issue A', description: 'Desc', type: 'Activity' })
     assert.strictEqual(issueRes.status, 201)
     const issueId = String(issueRes.body._id || issueRes.body.id)
     assert(issueId, 'expected issue id')
 
-    const patchRes = await request(app)
-      .patch(`/api/activities/${activityId}`)
+    const patchRes = await withCsrf(request(app).patch(`/api/activities/${activityId}`))
       .set('Authorization', `Bearer ${token}`)
       .send({ issues: [issueId] })
     assert.strictEqual(patchRes.status, 200)
@@ -81,8 +76,7 @@ describe('Activity issues persistence integration', function () {
     const reloadedIssues = Array.isArray(getRes.body.issues) ? getRes.body.issues.map(String) : []
     assert(reloadedIssues.includes(issueId), 'expected reloaded activity to include issue id')
 
-    const unlinkRes = await request(app)
-      .patch(`/api/activities/${activityId}`)
+    const unlinkRes = await withCsrf(request(app).patch(`/api/activities/${activityId}`))
       .set('Authorization', `Bearer ${token}`)
       .send({ issues: [] })
     assert.strictEqual(unlinkRes.status, 200)
@@ -91,46 +85,39 @@ describe('Activity issues persistence integration', function () {
   })
 
   it('rejects linking issues from another project', async () => {
-    const ownerRes = await request(app)
-      .post('/api/users/register')
+    const ownerRes = await withCsrf(request(app).post('/api/users/register'))
       .send({ email: 'owner-activity2@example.com', password: 'password123', firstName: 'Own', lastName: 'Er', company: 'TestCo' })
     assert.strictEqual(ownerRes.status, 201)
-    const token = ownerRes.body.token
+    const token = ownerRes.body.accessToken
 
-    const projectARes = await request(app)
-      .post('/api/projects')
+    const projectARes = await withCsrf(request(app).post('/api/projects'))
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Project A', client: 'Client' })
     assert.strictEqual(projectARes.status, 201)
     const projectAId = String(projectARes.body._id)
 
-    const projectBRes = await request(app)
-      .post('/api/projects')
+    const projectBRes = await withCsrf(request(app).post('/api/projects'))
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Project B', client: 'Client' })
     assert.strictEqual(projectBRes.status, 201)
     const projectBId = String(projectBRes.body._id)
 
-    const actRes = await request(app)
-      .post('/api/activities')
+    const actRes = await withCsrf(request(app).post('/api/activities'))
       .set('Authorization', `Bearer ${token}`)
       .send({ projectId: projectAId, name: 'A Activity', type: 'Site Visit Review' })
     assert.strictEqual(actRes.status, 201)
     const activityId = String(actRes.body._id || actRes.body.id)
 
-    const issueRes = await request(app)
-      .post('/api/issues')
+    const issueRes = await withCsrf(request(app).post('/api/issues'))
       .set('Authorization', `Bearer ${token}`)
       .send({ projectId: projectBId, title: 'Issue B', description: 'Desc', type: 'Activity' })
     assert.strictEqual(issueRes.status, 201)
     const issueId = String(issueRes.body._id || issueRes.body.id)
 
-    const patchRes = await request(app)
-      .patch(`/api/activities/${activityId}`)
+    const patchRes = await withCsrf(request(app).patch(`/api/activities/${activityId}`))
       .set('Authorization', `Bearer ${token}`)
       .send({ issues: [issueId] })
     assert.strictEqual(patchRes.status, 400)
     assert.strictEqual(String(patchRes.body.error || '').includes('invalid for this project'), true)
   })
 })
-

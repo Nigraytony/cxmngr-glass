@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const { clearDb } = require('./testUtils');
+const { clearDb, withCsrf } = require('./testUtils');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
@@ -82,8 +82,8 @@ describe('Admin webhook replay - charge event', function () {
     await we.save();
 
     // Call the admin replay endpoint
-    const res = await request(app)
-      .post(`/api/admin/webhook-events/${we.eventId}/replay`)
+    const res = await withCsrf(request(app)
+      .post(`/api/admin/webhook-events/${we.eventId}/replay`))
       .set('Authorization', `Bearer ${token}`)
       .send();
 
@@ -124,8 +124,8 @@ describe('Admin webhook replay - charge event', function () {
     const we2 = new WebhookEvent({ eventId: event2.id, type: event2.type, meta: { raw: event2 }, status: 'processing' });
     await we2.save();
 
-    const res2 = await request(app)
-      .post(`/api/admin/webhook-events/${we2.eventId}/replay`)
+    const res2 = await withCsrf(request(app)
+      .post(`/api/admin/webhook-events/${we2.eventId}/replay`))
       .set('Authorization', `Bearer ${token2}`)
       .send();
 
@@ -161,15 +161,15 @@ describe('Admin webhook replay - charge event', function () {
     await we3.save();
 
     // First replay
-    const r1 = await request(app)
-      .post(`/api/admin/webhook-events/${we3.eventId}/replay`)
+    const r1 = await withCsrf(request(app)
+      .post(`/api/admin/webhook-events/${we3.eventId}/replay`))
       .set('Authorization', `Bearer ${token3}`)
       .send();
     expect(r1.status).to.equal(200);
 
     // Second replay
-    const r2 = await request(app)
-      .post(`/api/admin/webhook-events/${we3.eventId}/replay`)
+    const r2 = await withCsrf(request(app)
+      .post(`/api/admin/webhook-events/${we3.eventId}/replay`))
       .set('Authorization', `Bearer ${token3}`)
       .send();
     expect(r2.status).to.equal(200);

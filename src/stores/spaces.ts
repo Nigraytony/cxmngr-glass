@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { useProjectStore } from './project'
 
 export interface Space {
@@ -29,7 +27,7 @@ export interface Space {
   updatedAt?: string
 }
 
-const API_BASE = `${getApiBase()}/api/spaces`
+const API_BASE = `/api/spaces`
 
 export const useSpacesStore = defineStore('spaces', () => {
   const items = ref<Space[]>([])
@@ -57,7 +55,7 @@ export const useSpacesStore = defineStore('spaces', () => {
     error.value = null
     errorCode.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/project/${pid}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/project/${pid}`)
       // Support both legacy array response and new paginated shape { items, total, types, typeCounts }
       const payload = data || []
       const list = Array.isArray(payload)
@@ -90,7 +88,7 @@ export const useSpacesStore = defineStore('spaces', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/${id}`)
       const sp = { ...data, id: data._id }
       const idx = items.value.findIndex(s => (s.id || (s as any)._id) === id)
       if (idx !== -1) items.value.splice(idx, 1, sp)
@@ -125,7 +123,7 @@ export const useSpacesStore = defineStore('spaces', () => {
         payload.project = localStorage.getItem('selectedProjectId') || ''
       }
     }
-    const { data } = await axios.post(`${API_BASE}`, payload, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}`, payload)
     const saved = { ...data, id: data._id }
     items.value.push(saved)
     try {
@@ -146,7 +144,7 @@ export const useSpacesStore = defineStore('spaces', () => {
     if (payload.project && typeof payload.project === 'object') {
       payload.project = payload.project._id || payload.project.id || payload.projectId || ''
     }
-    const { data } = await axios.patch(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() })
+    const { data } = await http.patch(`${API_BASE}/${id}`, payload)
     const idx = items.value.findIndex(s => (s.id || (s as any)._id) === id)
     if (idx !== -1) items.value[idx] = { ...data, id: data._id }
     try {
@@ -158,7 +156,7 @@ export const useSpacesStore = defineStore('spaces', () => {
   }
 
   async function remove(id: string) {
-    await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+    await http.delete(`${API_BASE}/${id}`)
     items.value = items.value.filter(s => (s.id || (s as any)._id) !== id)
     try {
       const { useLogsStore } = await import('./logs')

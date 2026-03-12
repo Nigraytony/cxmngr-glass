@@ -1146,7 +1146,6 @@ import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
@@ -1555,7 +1554,7 @@ async function fetchSpacesPage(projectId?: string) {
     if (search.value) params.search = search.value
     if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
-    const res = await http.get('/api/spaces', { params, headers: getAuthHeaders() })
+    const res = await http.get('/api/spaces', { params })
     const data = res && res.data ? res.data : {}
     if (Array.isArray(data.items)) serverSpaces.value = data.items.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
     else if (Array.isArray(data)) serverSpaces.value = data.map((s: any) => ({ ...(s || {}), id: s._id || s.id }))
@@ -1992,7 +1991,6 @@ async function downloadSpacesXlsx() {
       if (pid && ids.length) {
         const res = await http.get('/api/spaces/export-details', {
           params: { projectId: pid, ids: ids.join(',') },
-          headers: getAuthHeaders()
         })
         const data = res && res.data ? res.data : {}
         exportDetailsBySpaceId = (data.bySpaceId && typeof data.bySpaceId === 'object') ? data.bySpaceId : {}

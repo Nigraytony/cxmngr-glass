@@ -824,9 +824,7 @@ import AzureAttachmentsPanel from '../../components/attachments/AzureAttachments
 import { useSpacesStore, type Space } from '../../stores/spaces'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
-import axios from 'axios'
-import { getApiBase } from '../../utils/api'
-import { getAuthHeaders } from '../../utils/auth'
+import http from '../../utils/http'
 import { useIssuesStore } from '../../stores/issues'
 import { useEquipmentStore } from '../../stores/equipment'
 import IssuesTable from '../../components/IssuesTable.vue'
@@ -1319,7 +1317,7 @@ async function deleteAttachment(i: number) {
   })
   if (!ok) return
   try {
-    await axios.delete(`${getApiBase()}/api/spaces/${sid}/attachments/${i}`, { headers: { ...getAuthHeaders() } })
+    await http.delete(`/api/spaces/${sid}/attachments/${i}`)
     await refreshAfterUpload()
     ui.showSuccess('Attachment removed')
     await appendSpaceLog({ type: 'attachment.remove', message: 'Attachment removed', details: { index: i } })

@@ -259,10 +259,8 @@
 
 <script setup lang="ts">
   import { computed, onMounted, ref, watch } from 'vue'
-  import axios from 'axios'
   import Modal from './Modal.vue'
-  import { getApiBase } from '../utils/api'
-  import { getAuthHeaders } from '../utils/auth'
+  import http from '../utils/http'
   import { useUiStore } from '../stores/ui'
 
 type OprCategory = { id: string; name: string; sortOrder?: number }
@@ -317,15 +315,14 @@ const filteredItems = computed(() => {
 
 async function fetchCategories() {
   if (!props.projectId) return
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/categories`, { headers: getAuthHeaders() })
+  const { data } = await http.get(`/api/projects/${props.projectId}/opr/link/categories`)
   categories.value = Array.isArray(data) ? data : []
   if (!categoryId.value) categoryId.value = String(categories.value[0]?.id || '')
 }
 
 async function fetchItems(category: string) {
   if (!props.projectId || !category) { items.value = []; return }
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/items`, {
-    headers: getAuthHeaders(),
+  const { data } = await http.get(`/api/projects/${props.projectId}/opr/link/items`, {
     params: { categoryId: category },
   })
   items.value = Array.isArray(data) ? data : []
@@ -334,8 +331,7 @@ async function fetchItems(category: string) {
 async function fetchSelectedMeta() {
   const ids = Array.isArray(props.modelValue) ? props.modelValue : []
   if (!props.projectId || ids.length === 0) { selectedMeta.value = {}; return }
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/items`, {
-    headers: getAuthHeaders(),
+  const { data } = await http.get(`/api/projects/${props.projectId}/opr/link/items`, {
     params: { ids: ids.join(','), includeArchived: 1 },
   })
   const map: Record<string, OprItem> = {}
@@ -441,4 +437,3 @@ watch(() => props.modelValue, async () => {
   }
 })
 </script>
-

@@ -273,7 +273,8 @@
                 Files
               </div>
               <div class="text-white/60 text-xs truncate">
-                <span v-if="selectedFolder">{{ selectedFolder.path || selectedFolder.name }}</span>
+                <span v-if="qTrimmed">Search results across all folders</span>
+                <span v-else-if="selectedFolder">{{ selectedFolder.path || selectedFolder.name }}</span>
                 <span v-else>Select a folder to view files</span>
               </div>
             </div>
@@ -281,7 +282,7 @@
 
           <div class="mt-4 flex-1 min-h-0">
             <div
-              v-if="!selectedFolder"
+              v-if="!selectedFolder && !qTrimmed"
               class="text-white/70 text-sm"
             >
               Choose a folder on the left to upload and manage files.
@@ -339,7 +340,7 @@
                     <td class="px-3 py-2">
                       <div
                         class="flex items-center gap-2 min-w-0"
-                        :title="`${prettyType(f.contentType)} • Uploaded: ${formatDate(f.createdAt)} • Updated: ${formatDate(f.updatedAt)}`"
+                        :title="`${f.folderPath && qTrimmed ? `${f.folderPath} • ` : ''}${prettyType(f.contentType)} • Uploaded: ${formatDate(f.createdAt)} • Updated: ${formatDate(f.updatedAt)}`"
                       >
                         <span
                           class="text-white/70"
@@ -777,10 +778,11 @@ const selectedFolder = computed(() => {
 })
 
 const filteredFiles = computed(() => {
+  if (qTrimmed.value) {
+    return Array.isArray(documents.searchResults) ? documents.searchResults : []
+  }
   const list = Array.isArray(documents.files) ? documents.files : []
-  const needle = qTrimmed.value
-  if (!needle) return list
-  return list.filter((f: any) => String(f?.originalName || '').toLowerCase().includes(needle))
+  return list
 })
 
 function toggleExpanded(id: string) {
@@ -802,8 +804,6 @@ async function refreshAll() {
   await nextTick()
   if (documents.selectedFolderId) {
     await documents.fetchFiles(projectId.value, documents.selectedFolderId)
-  } else if (documents.flatFolders.length > 0) {
-    documents.selectedFolderId = documents.flatFolders[0].id
   }
 }
 
@@ -822,9 +822,22 @@ function scheduleRefreshFiles() {
   }, 250)
 }
 
+let searchTimer: any = null
+function scheduleSearch() {
+  if (!projectId.value) return
+  const needle = qTrimmed.value
+  if (!needle) { documents.clearSearch(); return }
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    documents.searchFiles(projectId.value, needle)
+    searchTimer = null
+  }, 250)
+}
+
 watch(projectId, async (pid) => {
   documents.selectedFolderId = null
   documents.files = []
+  documents.clearSearch()
   if (!pid) return
   try {
     await documents.fetchFoldersTree(pid)
@@ -832,11 +845,11 @@ watch(projectId, async (pid) => {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to load folders')
     return
   }
-  if (documents.flatFolders.length > 0) documents.selectedFolderId = documents.flatFolders[0].id
 }, { immediate: true })
 
 watch(() => documents.selectedFolderId, async (fid) => {
   if (!projectId.value || !fid) { documents.files = []; return }
+  if (qTrimmed.value) return
   await documents.fetchFiles(projectId.value, fid)
 })
 
@@ -855,10 +868,20 @@ watch(qTrimmed, (now, prev) => {
       const c = Array.isArray(n.children) ? n.children : []
       for (const k of c) stack.push(k)
     }
+    if (projectId.value) {
+      scheduleSearch()
+    }
   } else if (leaving && expandedSnapshot.value) {
     for (const k of Object.keys(expanded)) delete expanded[k]
     Object.assign(expanded, expandedSnapshot.value)
     expandedSnapshot.value = null
+
+    documents.clearSearch()
+    if (documents.selectedFolderId && projectId.value) {
+      documents.fetchFiles(projectId.value, documents.selectedFolderId)
+    }
+  } else if (now) {
+    scheduleSearch()
   }
 })
 
@@ -1179,7 +1202,7 @@ function openRenameFile(file: DocFile) {
 function openMoveFile(file: DocFile) {
   fileModalMode.value = 'move'
   fileModalFileId.value = file.id
-  fileModalFolderId.value = documents.selectedFolderId || ''
+  fileModalFolderId.value = file.folderId || documents.selectedFolderId || ''
   fileModalName.value = ''
   fileModalOpen.value = true
 }
@@ -1189,7 +1212,7 @@ async function saveFileModal() {
   fileModalSaving.value = true
   try {
     if (fileModalMode.value === 'rename') {
-      if (filenameExistsInCurrentFolder(fileModalName.value, fileModalFileId.value)) {
+      if (!qTrimmed.value && filenameExistsInCurrentFolder(fileModalName.value, fileModalFileId.value)) {
         ui.showError('A file with that name already exists in this folder')
         return
       }
@@ -1200,7 +1223,11 @@ async function saveFileModal() {
       ui.showSuccess('File moved')
     }
     fileModalOpen.value = false
-    await refreshFiles()
+    if (qTrimmed.value) {
+      await documents.searchFiles(projectId.value, qTrimmed.value)
+    } else {
+      await refreshFiles()
+    }
   } catch (e: any) {
     const status = e?.response?.status
     const code = e?.response?.data?.code
@@ -1221,7 +1248,11 @@ async function deleteFile(file: DocFile) {
   try {
     await documents.deleteFile(projectId.value, file.id)
     ui.showSuccess('File deleted')
-    await refreshFiles()
+    if (qTrimmed.value) {
+      await documents.searchFiles(projectId.value, qTrimmed.value)
+    } else {
+      await refreshFiles()
+    }
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to delete file')
   }

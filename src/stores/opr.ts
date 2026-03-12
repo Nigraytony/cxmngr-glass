@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 
-const API_BASE = `${getApiBase()}/api/projects`
+const API_BASE = `/api/projects`
 
 export type OprCategory = {
   id: string
@@ -121,102 +119,101 @@ export const useOprStore = defineStore('opr', () => {
 
   async function fetchCategories(projectId: string) {
     if (!projectId) { categories.value = []; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/categories`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/categories`)
     categories.value = Array.isArray(data) ? data : []
   }
 
   async function fetchActive(projectId: string) {
     if (!projectId) { active.value = null; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/active`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/active`)
     active.value = data?.active || null
   }
 
   async function fetchQuestions(projectId: string) {
     if (!projectId) { questions.value = []; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/questions`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/questions`)
     questions.value = Array.isArray(data) ? data : []
   }
 
   async function createQuestion(projectId: string, payload: { categoryId: string; prompt: string; answerWindowMinutes?: number }) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions`, payload, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions`, payload, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data as { id: string }
   }
 
   async function openQuestion(projectId: string, questionId: string, durationMinutes?: number) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/open`, { durationMinutes }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/open`, { durationMinutes }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data
   }
 
   async function closeQuestion(projectId: string, questionId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/close`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/close`, {})
     return data
   }
 
   async function openVoting(projectId: string, questionId: string, durationMinutes?: number) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/open-voting`, { durationMinutes }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/open-voting`, { durationMinutes }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data
   }
 
   async function closeVoting(projectId: string, questionId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/close-voting`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/close-voting`, {})
     return data
   }
 
   async function updateQuestion(projectId: string, questionId: string, payload: { prompt?: string; categoryId?: string; answerWindowMinutes?: number }) {
-    const { data } = await axios.patch(`${API_BASE}/${projectId}/opr/questions/${questionId}`, payload, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.patch(`${API_BASE}/${projectId}/opr/questions/${questionId}`, payload, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data as { ok: boolean; question?: OprQuestion }
   }
 
   async function deleteQuestion(projectId: string, questionId: string) {
-    const { data } = await axios.delete(`${API_BASE}/${projectId}/opr/questions/${questionId}`, { headers: getAuthHeaders() })
+    const { data } = await http.delete(`${API_BASE}/${projectId}/opr/questions/${questionId}`)
     return data as { ok: boolean }
   }
 
   async function join(projectId: string, questionId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/join`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/join`, {})
     return data
   }
 
   async function heartbeat(projectId: string, questionId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/heartbeat`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/heartbeat`, {})
     return data
   }
 
   async function fetchAnswers(projectId: string, questionId: string, opts?: { includeMerged?: boolean }) {
     if (!projectId || !questionId) { answers.value = []; return }
     const includeMerged = Boolean(opts?.includeMerged)
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers`, {
-      headers: getAuthHeaders(),
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers`, {
       params: includeMerged ? { includeMerged: 1 } : undefined,
     })
     answers.value = Array.isArray(data) ? data : []
   }
 
   async function submitAnswer(projectId: string, questionId: string, text: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers`, { text }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers`, { text }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data as { id: string }
   }
 
   async function submitVote(projectId: string, questionId: string, rankings: Array<{ answerId: string; rank: number }>) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/votes`, { rankings }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/votes`, { rankings }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data
   }
 
   async function fetchResults(projectId: string, questionId: string) {
     if (!projectId || !questionId) { results.value = []; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/questions/${questionId}/results`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/questions/${questionId}/results`)
     results.value = Array.isArray(data?.results) ? data.results : []
   }
 
@@ -225,62 +222,62 @@ export const useOprStore = defineStore('opr', () => {
     const params: Record<string, any> = {}
     if (opts?.categoryId) params.categoryId = opts.categoryId
     if (opts?.includeArchived) params.includeArchived = 1
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/items`, { headers: getAuthHeaders(), params })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/items`, { params })
     items.value = Array.isArray(data) ? data : []
   }
 
   async function fetchWorkshop(projectId: string) {
     if (!projectId) { workshop.value = null; attendee.value = null; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/workshop`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/workshop`)
     workshop.value = (data && data.workshop) ? data.workshop : null
     attendee.value = (data && data.attendee) ? data.attendee : null
   }
 
   async function updateWorkshop(projectId: string, payload: Partial<OprWorkshopInfo> & { tags?: string[] }) {
-    const { data } = await axios.patch(`${API_BASE}/${projectId}/opr/workshop`, payload, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.patch(`${API_BASE}/${projectId}/opr/workshop`, payload, {
+      headers: { 'Content-Type': 'application/json' },
     })
     workshop.value = data?.workshop || workshop.value
     return data
   }
 
   async function startWorkshop(projectId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/start`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/workshop/start`, {})
     workshop.value = data?.workshop || workshop.value
     return data
   }
 
   async function endWorkshop(projectId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/end`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/workshop/end`, {})
     workshop.value = data?.workshop || workshop.value
     return data
   }
 
   async function checkIn(projectId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/checkin`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/workshop/checkin`, {})
     attendee.value = data?.attendee || attendee.value
     return data
   }
 
   async function fetchAttendees(projectId: string) {
     if (!projectId) { attendees.value = []; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/workshop/attendees`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/workshop/attendees`)
     attendees.value = Array.isArray(data?.items) ? data.items : []
   }
 
   async function approveAttendee(projectId: string, userId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/attendees/${userId}/approve`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/workshop/attendees/${userId}/approve`, {})
     return data
   }
 
   async function denyAttendee(projectId: string, userId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/workshop/attendees/${userId}/deny`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/workshop/attendees/${userId}/deny`, {})
     return data
   }
 
   async function fetchAllResults(projectId: string) {
     if (!projectId) { allResults.value = []; return }
-    const { data } = await axios.get(`${API_BASE}/${projectId}/opr/results/all`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`${API_BASE}/${projectId}/opr/results/all`)
     allResults.value = Array.isArray(data?.items) ? data.items : []
   }
 
@@ -294,26 +291,24 @@ export const useOprStore = defineStore('opr', () => {
   }
 
   async function startOprCheckout(projectId: string) {
-    const { data } = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/addons/opr/checkout`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`/api/stripe/project/${projectId}/addons/opr/checkout`, {})
     return data as { url: string }
   }
 
   async function reconcileOprPurchase(projectId: string) {
-    const { data } = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/addons/opr/reconcile`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`/api/stripe/project/${projectId}/addons/opr/reconcile`, {})
     return data as { ok: boolean; enabled: boolean }
   }
 
   async function mergeAnswers(projectId: string, questionId: string, payload: { answerIds: string[]; mergedText: string }) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers/merge`, payload, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers/merge`, payload, {
+      headers: { 'Content-Type': 'application/json' },
     })
     return data as { ok: boolean; canonicalId: string }
   }
 
   async function unmergeAnswer(projectId: string, questionId: string, answerId: string) {
-    const { data } = await axios.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers/${answerId}/unmerge`, {}, {
-      headers: getAuthHeaders(),
-    })
+    const { data } = await http.post(`${API_BASE}/${projectId}/opr/questions/${questionId}/answers/${answerId}/unmerge`, {})
     return data as { ok: boolean }
   }
 

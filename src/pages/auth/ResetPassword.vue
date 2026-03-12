@@ -89,7 +89,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { getApiBase } from '../../utils/api'
+import { api } from '../../utils/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,20 +111,12 @@ async function submit() {
   if (newPassword.value !== confirmPassword.value) return error.value = 'Passwords do not match'
   loading.value = true
   try {
-    const res = await fetch(`${getApiBase()}/api/users/reset-password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: token.value, newPassword: newPassword.value }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      error.value = data?.error || data?.message || 'Failed to reset password'
-    } else {
-      message.value = data?.message || 'Password reset successfully. You can now log in.'
-      setTimeout(() => router.push({ name: 'login' }), 1500)
-    }
+    const res = await api.post('/api/users/reset-password', { token: token.value, newPassword: newPassword.value })
+    const data = res?.data || {}
+    message.value = data?.message || 'Password reset successfully. You can now log in.'
+    setTimeout(() => router.push({ name: 'login' }), 1500)
   } catch (e) {
-    error.value = 'Network error'
+    error.value = e?.response?.data?.error || 'Network error'
   } finally { loading.value = false }
 }
 </script>

@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 
 export interface SystemRecord {
   id?: string
@@ -26,7 +24,7 @@ export interface SystemRecord {
   updatedAt?: string
 }
 
-const API_BASE = `${getApiBase()}/api/systems`
+const API_BASE = `/api/systems`
 
 export const useSystemsStore = defineStore('systems', () => {
   const items = ref<SystemRecord[]>([])
@@ -54,7 +52,7 @@ export const useSystemsStore = defineStore('systems', () => {
     error.value = null
     errorCode.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/project/${pid}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/project/${pid}`)
       const list = Array.isArray(data) ? data : []
       items.value = list.map((d: any) => ({ ...d, id: d._id }))
     } catch (e: any) {
@@ -83,7 +81,7 @@ export const useSystemsStore = defineStore('systems', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${API_BASE}/${id}`)
       const sys = { ...data, id: data._id }
       const idx = items.value.findIndex(s => (s.id || (s as any)._id) === id)
       if (idx !== -1) items.value.splice(idx, 1, sys)
@@ -101,7 +99,7 @@ export const useSystemsStore = defineStore('systems', () => {
     const body: any = { ...payload }
     if (body.id) delete body.id
     if (body._id) delete body._id
-    const { data } = await axios.post(`${API_BASE}`, body, { headers: getAuthHeaders() })
+    const { data } = await http.post(`${API_BASE}`, body)
     const saved = { ...data, id: data._id }
     items.value.push(saved)
     try {
@@ -121,10 +119,10 @@ export const useSystemsStore = defineStore('systems', () => {
 
     let data: any
     try {
-      ({ data } = await axios.patch(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+      ({ data } = await http.patch(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } }))
     } catch (err: any) {
       if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await axios.put(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } }))
+        ({ data } = await http.put(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } }))
       } else {
         throw err
       }
@@ -149,7 +147,7 @@ export const useSystemsStore = defineStore('systems', () => {
     const body: any = { ...payload }
     if (body.id) delete body.id
     if (body._id) delete body._id
-    const { data } = await axios.patch(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+    const { data } = await http.patch(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } })
     const saved = { ...data, id: data._id || id }
     const idx = items.value.findIndex(s => (s.id || (s as any)._id) === id)
     if (idx !== -1) items.value[idx] = saved
@@ -163,7 +161,7 @@ export const useSystemsStore = defineStore('systems', () => {
   }
 
   async function remove(id: string) {
-    await axios.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+    await http.delete(`${API_BASE}/${id}`)
     items.value = items.value.filter(s => (s.id || (s as any)._id) !== id)
     try {
       const { useLogsStore } = await import('./logs')
@@ -184,7 +182,7 @@ export const useSystemsStore = defineStore('systems', () => {
     const pid = String(projectId || '').trim()
     if (!pid) throw new Error('Missing projectId')
     const payload = { systems: Array.isArray(systems) ? systems : [] }
-    const { data } = await axios.post(`${API_BASE}/project/${pid}/bulk-upsert`, payload, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+    const { data } = await http.post(`${API_BASE}/project/${pid}/bulk-upsert`, payload, { headers: { 'Content-Type': 'application/json' } })
     return data
   }
 

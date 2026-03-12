@@ -2187,7 +2187,6 @@ import { useProjectStore, fetchBillingSummary, previewPlanChange, changePlan, ca
 import { useRoute, useRouter } from 'vue-router'
 import http from '../../utils/http'
 import { apiUrl, getApiBase } from '../../utils/api'
-import { getAuthHeaders } from '../../utils/auth'
 import { confirm } from '../../utils/confirm'
 import PermissionsModal from '../../components/PermissionsModal.vue'
 import BillingCardForm from '../../components/BillingCardForm.vue'
@@ -2323,7 +2322,7 @@ async function loadTransactions() {
     if (transactionsType.value && transactionsType.value !== 'all') params.type = transactionsType.value
     if (transactionsStart.value) params.start = transactionsStart.value
     if (transactionsEnd.value) params.end = transactionsEnd.value
-    const res = await http.get(`/api/stripe/project/${pid}/transactions`, { params, headers: getAuthHeaders() })
+    const res = await http.get(`/api/stripe/project/${pid}/transactions`, { params })
     const data = res.data || { items: [], total: 0 }
     transactions.value = Array.isArray(data.items) ? data.items : []
     transactionsTotal.value = Number(data.total || 0)
@@ -2592,7 +2591,7 @@ async function handleReconcileSubscription() {
     const pid = String(projectId || project.value?.id || (project.value as any)?._id || '')
     if (!pid) return
     reconcileLoading.value = true
-    await http.post(`/api/stripe/project/${pid}/reconcile-subscription`, {}, { headers: getAuthHeaders() })
+    await http.post(`/api/stripe/project/${pid}/reconcile-subscription`, {})
     ui.showSuccess('Subscription link reconciled')
     await refreshProject()
     await loadBillingSummary()
@@ -2630,7 +2629,7 @@ async function applyPromotionToSubscription() {
     applyingPromotion.value = true
     const pid = projectId || (project.value && (project.value._id || project.value.id))
     if (!pid) throw new Error('No project selected')
-    await http.post(`/api/stripe/project/${pid}/promotion`, { code: promotionCode.value }, { headers: getAuthHeaders() })
+    await http.post(`/api/stripe/project/${pid}/promotion`, { code: promotionCode.value })
     ui.showSuccess('Promotion applied')
     await refreshProject()
     await loadBillingSummary()
@@ -2908,7 +2907,7 @@ async function saveRoleInline(tpl: any) {
     const perms = Array.from(roleEdits.value[id] || [])
     const body = { permissions: perms }
     
-    const resp = await http.put(`/api/projects/${pid}/roles/${id}`, body, { headers: getAuthHeaders() })
+    const resp = await http.put(`/api/projects/${pid}/roles/${id}`, body)
     ui.showSuccess('Role template updated')
     // update local template
     try {
@@ -2996,7 +2995,7 @@ async function saveRoleTemplate() {
       permissions: Array.from(selectedRolePerms.value)
     }
     if (editingRoleTemplate.value._id) {
-      const resp = await http.put(`/api/projects/${pid}/roles/${editingRoleTemplate.value._id}`, body, { headers: getAuthHeaders() })
+      const resp = await http.put(`/api/projects/${pid}/roles/${editingRoleTemplate.value._id}`, body)
       ui.showSuccess('Role template updated')
       // Update local project roleTemplates so the UI reflects changes immediately
       try {
@@ -3047,7 +3046,7 @@ async function saveRoleTemplate() {
         console.warn('Local role template update failed:', e)
       }
     } else {
-      const resp = await http.post(`/api/projects/${pid}/roles`, body, { headers: getAuthHeaders() })
+      const resp = await http.post(`/api/projects/${pid}/roles`, body)
       ui.showSuccess('Role template created')
       // Insert created role into local project roleTemplates so it shows immediately
       try {
@@ -3108,7 +3107,7 @@ async function deleteRoleTemplate(tpl: any) {
     const id = tpl._id || tpl.id || editingRoleTemplate.value._id
     if (!id) return ui.showError('No template selected')
     if (!confirm('Delete this role template?')) return
-      await http.delete(`/api/projects/${pid}/roles/${id}`, { headers: getAuthHeaders() })
+      await http.delete(`/api/projects/${pid}/roles/${id}`)
       ui.showSuccess('Role template deleted')
       // remove locally so UI updates immediately
       try {
@@ -3154,11 +3153,11 @@ async function fetchRoleTemplates() {
     }
 
     const pid = projectId || (project.value && (project.value._id || project.value.id))
-    const globalResp = await http.get('/api/admin/roles?scope=global', { headers: getAuthHeaders(), validateStatus: (s) => s >= 200 && s < 300 })
+    const globalResp = await http.get('/api/admin/roles?scope=global', { validateStatus: (s) => s >= 200 && s < 300 })
     let list = Array.isArray(globalResp.data) ? globalResp.data : []
     if (pid) {
       try {
-        const resp = await http.get(`/api/admin/roles?scope=project&projectId=${pid}`, { headers: getAuthHeaders(), validateStatus: (s) => s >= 200 && s < 300 })
+        const resp = await http.get(`/api/admin/roles?scope=project&projectId=${pid}`, { validateStatus: (s) => s >= 200 && s < 300 })
         if (Array.isArray(resp.data)) list = list.concat(resp.data)
       } catch (e) {
         // ignore project-scoped fetch failures (likely permission)
@@ -3277,7 +3276,7 @@ async function seedMissingStandardRoleTemplates() {
   if (!pid) return
   seedRoleTemplatesBusy.value = true
   try {
-    const { data } = await http.post(`/api/projects/${pid}/roles/seed-defaults`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`/api/projects/${pid}/roles/seed-defaults`, {})
     const list = data && data.roleTemplates ? data.roleTemplates : null
     if (list && project.value) project.value = { ...project.value, roleTemplates: list }
     ui.showSuccess(`Added ${data && typeof data.added === 'number' ? data.added : 0} role templates`)
@@ -3371,7 +3370,7 @@ async function loadAiSettings() {
   aiError.value = ''
   aiNotInPlan.value = false
   try {
-    const res = await http.get(`/api/projects/${pid}/ai`, { headers: getAuthHeaders() })
+    const res = await http.get(`/api/projects/${pid}/ai`)
     const data = res.data || {}
     aiEnabled.value = !!data.enabled
     const p = String(data.provider || 'openai').toLowerCase()
@@ -3403,7 +3402,7 @@ async function saveAiSettings() {
       model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')),
     }
     if (String(aiKeyDraft.value || '').trim()) payload.apiKey = String(aiKeyDraft.value).trim()
-    const res = await http.put(`/api/projects/${pid}/ai`, payload, { headers: getAuthHeaders() })
+    const res = await http.put(`/api/projects/${pid}/ai`, payload)
     const data = res.data || {}
     aiEnabled.value = !!data.enabled
     {
@@ -3436,7 +3435,7 @@ async function clearAiKey() {
   aiError.value = ''
   try {
     const payload: any = { enabled: !!aiEnabled.value, provider: aiProvider.value, model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')), apiKey: '' }
-    const res = await http.put(`/api/projects/${pid}/ai`, payload, { headers: getAuthHeaders() })
+    const res = await http.put(`/api/projects/${pid}/ai`, payload)
     const data = res.data || {}
     aiHasKey.value = !!data.hasKey
     aiLastVerifiedAt.value = null
@@ -3456,7 +3455,7 @@ async function testAiSettings() {
   aiTesting.value = true
   aiError.value = ''
   try {
-    const res = await http.post(`/api/projects/${pid}/ai/test`, {}, { headers: getAuthHeaders() })
+    const res = await http.post(`/api/projects/${pid}/ai/test`, {})
     const data = res.data || {}
     aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : (aiLastVerifiedAt.value || null)
     ui.showSuccess('AI key verified')
@@ -3587,7 +3586,7 @@ async function loadInvites() {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return;
-    const { data } = await http.get(`/api/projects/${pid}/invites`, { headers: getAuthHeaders() })
+    const { data } = await http.get(`/api/projects/${pid}/invites`)
     invites.value = data || []
   } catch (err: any) {
     const status = err?.response?.status
@@ -3602,7 +3601,7 @@ async function resendInvite(inviteId: string) {
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
     if (!pid) return ui.showError('No project selected')
-  await http.post(`/api/projects/${pid}/resend-invite`, { inviteId }, { headers: getAuthHeaders() })
+  await http.post(`/api/projects/${pid}/resend-invite`, { inviteId })
     ui.showSuccess('Invitation resent')
     // reload invites to update timestamps
     await loadInvites()
@@ -3765,7 +3764,7 @@ async function removeMember(m: any) {
   if (!key) return ui.showError('Missing member id/email')
 
   try {
-    await http.delete(`/api/projects/${String(pid)}/team/${encodeURIComponent(String(key))}`, { headers: getAuthHeaders() })
+    await http.delete(`/api/projects/${String(pid)}/team/${encodeURIComponent(String(key))}`)
     project.value.team = (project.value.team || []).filter((tm: any) => {
       const tmId = String((tm && (tm._id || tm.id)) || '').trim()
       const tmEmail = String((tm && tm.email) || '').trim().toLowerCase()
@@ -3836,7 +3835,7 @@ async function addMember() {
       company: newMember.value.company || '',
       role: newMember.value.role || 'User'
     }
-    const { data } = await http.post('/api/projects/addUser', payload, { headers: getAuthHeaders() })
+    const { data } = await http.post('/api/projects/addUser', payload)
     // If backend added user directly or created an invite, refresh project and invites
     await refreshProject()
     await loadInvites()
@@ -4361,7 +4360,7 @@ async function startCheckout() {
       projectId: pid,
       priceId: resolvePriceId(String(selectedPrice.value)),
       promotionCode: promotionCode.value || undefined,
-    }, { headers: getAuthHeaders() });
+    });
     if (data && data.url) {
       ui.showSuccess('Redirecting to checkout...')
       window.location.href = data.url;
@@ -4381,7 +4380,7 @@ async function openBillingPortal() {
   try {
   console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
     const pid = String(project.value?.id || project.value?._id || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
-    const { data } = await http.post('/api/stripe/portal-session', { projectId: pid }, { headers: getAuthHeaders() });
+    const { data } = await http.post('/api/stripe/portal-session', { projectId: pid });
     if (data && data.url) {
       ui.showSuccess('Opening billing portal...')
       window.location.href = data.url;

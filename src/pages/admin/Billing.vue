@@ -609,7 +609,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 import { useUiStore } from '../../stores/ui'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import Modal from '../../components/Modal.vue'
@@ -675,7 +674,7 @@ const credit = ref({
 async function loadCodes() {
   try {
     loadingCodes.value = true
-    const { data } = await http.get('/api/admin/billing/promotion-codes', { headers: getAuthHeaders() })
+    const { data } = await http.get('/api/admin/billing/promotion-codes')
     codes.value = Array.isArray(data?.items) ? data.items : []
     applyFilters()
   } catch (e: any) {
@@ -734,7 +733,7 @@ async function createCode() {
       expires_at: form.value.expires_at || undefined,
       applies_to: form.value.priceId ? { priceId: form.value.priceId } : (products.length ? { products } : undefined),
     }
-    await http.post('/api/admin/billing/promotion-codes', payload, { headers: getAuthHeaders() })
+    await http.post('/api/admin/billing/promotion-codes', payload)
     ui.showSuccess('Promotion code created')
     await loadCodes()
     form.value = { code: '', name: '', amount_off: null, percent_off: null, currency: 'usd', duration: 'once', duration_in_months: null, max_redemptions: null, expires_at: '', priceId: '', productsCsv: '' }
@@ -762,7 +761,7 @@ async function issueCredit() {
       currency: credit.value.currency,
       description: credit.value.description,
     }
-    await http.post('/api/admin/billing/credits', payload, { headers: getAuthHeaders() })
+    await http.post('/api/admin/billing/credits', payload)
     ui.showSuccess('Credit issued')
     credit.value = { email: '', customerId: '', amount: null, currency: 'usd', description: '' }
   } catch (e: any) {
@@ -784,7 +783,7 @@ async function togglePromoActive(pc: any) {
     if (!ok) return
     updatingPromo.value = pc.id
     const nextActive = !pc.active
-    await http.patch(`/api/admin/billing/promotion-codes/${pc.id}`, { active: nextActive }, { headers: getAuthHeaders() })
+    await http.patch(`/api/admin/billing/promotion-codes/${pc.id}`, { active: nextActive })
     await loadCodes()
     ui.showSuccess(nextActive ? 'Promotion enabled' : 'Promotion disabled')
   } catch (e: any) {
@@ -803,7 +802,7 @@ async function expirePromo(pc: any, opts: { silent?: boolean } = {}) {
     }
     updatingPromo.value = pc.id
     const used = pc.times_redeemed || 0
-    await http.patch(`/api/admin/billing/promotion-codes/${pc.id}`, { active: false, max_redemptions: used }, { headers: getAuthHeaders() })
+    await http.patch(`/api/admin/billing/promotion-codes/${pc.id}`, { active: false, max_redemptions: used })
     await loadCodes()
     if (!opts.silent) ui.showSuccess('Promotion expired')
   } catch (e: any) {
@@ -839,7 +838,7 @@ async function onEmailInput() {
     if (!credit.value.email || String(credit.value.email).trim().length < 3) return
     emailLookupLoading.value = true
     const q = String(credit.value.email).trim()
-    const { data } = await http.get('/api/admin/users', { params: { q, limit: 5 }, headers: getAuthHeaders() })
+    const { data } = await http.get('/api/admin/users', { params: { q, limit: 5 } })
     const users = Array.isArray(data?.users) ? data.users : []
     emailSuggestions.value = users.map((u: any) => ({
       _id: u._id,
@@ -867,7 +866,7 @@ async function loadEvents() {
     if (eventsProjectId.value) params.projectId = eventsProjectId.value
     if (eventsFrom.value) params.date_from = eventsFrom.value
     if (eventsTo.value) params.date_to = eventsTo.value
-    const { data } = await http.get('/api/admin/webhook-events', { params, headers: getAuthHeaders() })
+    const { data } = await http.get('/api/admin/webhook-events', { params })
     const evs = Array.isArray(data?.events) ? data.events : []
     eventsTotal.value = Number(data?.total || evs.length || 0)
     webhookEvents.value = evs.map((ev: any) => ({
@@ -896,7 +895,7 @@ async function replayEvent(eventId: string) {
   if (!eventId) return
   try {
     replaying.value = eventId
-    await http.post(`/api/admin/webhook-events/${eventId}/replay`, {}, { headers: getAuthHeaders() })
+    await http.post(`/api/admin/webhook-events/${eventId}/replay`, {})
     ui.showSuccess('Replay triggered')
     await loadEvents()
   } catch (e: any) {
@@ -911,7 +910,7 @@ async function runBackfill() {
   try {
     backfilling.value = true
     backfillResult.value = ''
-    const { data } = await http.post(`/api/admin/billing/backfill/${backfillProjectId.value}`, {}, { headers: getAuthHeaders() })
+    const { data } = await http.post(`/api/admin/billing/backfill/${backfillProjectId.value}`, {})
     backfillResult.value = `Invoices: ${data?.invoices || 0}, Charges: ${data?.charges || 0}`
     ui.showSuccess('Backfill completed')
   } catch (e: any) {

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed, watch } from 'vue';
 import { useProjectStore } from './project';
+import { api } from '../utils/api';
 
 export type UserRole = 'admin' | 'manager' | 'viewer' | 'globaladmin' | 'superadmin' | 'user';
 
@@ -12,8 +13,7 @@ export interface User {
   lastName: string;
   email: string;
   role: UserRole;
-  projects?: string[]; // Optional, if user has projects
-  token?: string;
+  projects?: any[];
   contact: {
     company: string;
     phone: string;
@@ -27,18 +27,18 @@ export interface User {
     };
     bio: string;
     avatar: string;
-      signature?: {
-        title?: string;
-        person?: string;
-        block?: string;
-      };
-      perPage?: number;
-	      ui?: {
-	        equipmentListChartsDefault?: boolean;
-	        issuesListChartsDefault?: boolean;
-	        tasksListChartsDefault?: boolean;
-	      };
-	  },
+    signature?: {
+      title?: string;
+      person?: string;
+      block?: string;
+    };
+    perPage?: number;
+    ui?: {
+      equipmentListChartsDefault?: boolean;
+      issuesListChartsDefault?: boolean;
+      tasksListChartsDefault?: boolean;
+    };
+  };
   social_media?: {
     linkedin?: string;
     x?: string;
@@ -51,98 +51,130 @@ export interface User {
   };
 }
 
-import http from '../utils/http'
-import { getAuthHeaders } from '../utils/auth'
-// API_BASE not used; rely on relative endpoints
+function syncDefaultProject(user: any) {
+  try {
+    const projectStore = useProjectStore();
+    const projects = user && Array.isArray(user.projects) ? user.projects : [];
+    const dp = projects.find((p: any) => p && p.default);
+    if (!dp) return;
+    const id = typeof dp === 'string' ? dp : (dp._id || dp.id || null);
+    if (id) projectStore.setCurrentProject(id);
+  } catch (e) {
+    // ignore
+  }
+}
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
+  const accessToken = ref<string | null>(null);
   const authReady = ref(false);
-  const isAuthenticated = computed(() => !!user.value && !!user.value.token);
-  const token = ref<string | null>(null);
   const error = ref<string | null>(null);
 
-  // Rotate JWT before the 15-minute expiry (best-effort; logs out on persistent failures)
-  const TOKEN_ROTATE_EVERY_MS = 12 * 60 * 1000
-  let rotateTimer: any = null
+  const isAuthenticated = computed(() => !!user.value && !!accessToken.value);
 
-  function stopTokenRotation() {
-    if (rotateTimer) {
-      try { clearInterval(rotateTimer) } catch (e) { /* ignore */ }
-      rotateTimer = null
+  function setAccessToken(token: string | null) {
+    accessToken.value = token;
+    if (token) {
+      api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete (api.defaults.headers.common as any).Authorization;
     }
   }
 
-  async function rotateTokenOnce() {
-    const current = token.value || localStorage.getItem('token')
-    if (!current) return
-    try {
-      const r = await http.post('/api/users/refresh')
-      const data = r.data || {}
-      if (!data.token) return
-      token.value = data.token
-      if (user.value) user.value.token = data.token
-      try { localStorage.setItem('token', data.token) } catch (e) { /* ignore */ }
-      if (data.user) {
-        try {
-          // Keep the stored user in sync if server sends it
-          const nextUser = { ...data.user, token: data.token }
-          user.value = nextUser
-          localStorage.setItem('user', JSON.stringify(nextUser))
-        } catch (e) { /* ignore */ }
-      }
-    } catch (e: any) {
-      // If refresh fails (expired token / revoked), fall back to logout
-      logout()
-    }
+  function clearSession() {
+    user.value = null;
+    setAccessToken(null);
   }
 
-  function startTokenRotation() {
-    stopTokenRotation()
-    // Kick once shortly after login/load, then periodically
-    setTimeout(() => { rotateTokenOnce() }, 2_000)
-    rotateTimer = setInterval(() => { rotateTokenOnce() }, TOKEN_ROTATE_EVERY_MS)
-  }
-
-   async function login(email: string, password: string) {
+  async function login(email: string, password: string) {
     error.value = null;
     try {
-      const res = await http.post('/api/users/login', { email, password })
-      const data = res.data
-      user.value = {
-        _id: data.user._id,
-        id: data.user._id || data.user.id,
-        avatar: data.user.avatar || data.user.contact?.avatar || '',
-        firstName: data.user.firstName,
-        lastName: data.user.lastName,
-        email: data.user.email,
-        role: data.user.role,
-        token: data.token,
-        projects: data.user.projects || [],
-        contact: data.user.contact || { company: '', phone: '', address: { street: '', city: '', state: '', zip: '', country: '', taxId: '' }, bio: '', avatar: '' },
-        social_media: data.user.social_media || {},
-      };
-      token.value = data.token;
-      localStorage.setItem('user', JSON.stringify(user.value));
-      localStorage.setItem('token', data.token);
-      startTokenRotation()
-      // If user has a default project, set it in the project store
-      try {
-        const projectStore = useProjectStore()
-        if (user.value && Array.isArray(user.value.projects)) {
-          const dp = user.value.projects.find((p: any) => p && p.default)
-          if (dp) {
-            const dpa: any = dp
-            const id = typeof dp === 'string' ? dp : (dpa._id || dpa.id || null)
-            if (id) projectStore.setCurrentProject(id)
-          }
-        }
-      } catch (e) { /* ignore */ }
+      const res = await api.post('/api/users/login', { email, password });
+      const data = res.data || {};
+      if (!data.user || !data.accessToken) throw new Error('Invalid login response');
+
+      setAccessToken(String(data.accessToken));
+      user.value = data.user as User;
+      syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
-      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Login failed'
+      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Login failed';
+      clearSession();
       return false;
     }
+  }
+
+  async function refresh() {
+    error.value = null;
+    try {
+      const res = await api.post('/api/users/refresh');
+      const data = res.data || {};
+      if (!data.accessToken) return false;
+      setAccessToken(String(data.accessToken));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function fetchMe() {
+    error.value = null;
+    try {
+      const res = await api.get('/api/users/me');
+      const data = res.data || {};
+      if (!data.user) return false;
+      user.value = data.user as User;
+      syncDefaultProject(user.value);
+      return true;
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || 'Failed to load user';
+      return false;
+    }
+  }
+
+  async function logout() {
+    // Best-effort server-side session clear (cookie + refresh invalidation).
+    try {
+      await api.post('/api/users/logout');
+    } catch (e) {
+      // ignore
+    }
+    clearSession();
+    try { localStorage.removeItem('selectedProjectId'); } catch (e) { /* ignore */ }
+  }
+
+  async function bootstrap() {
+    authReady.value = false;
+    error.value = null;
+    try {
+      const ok = await refresh();
+      if (ok) await fetchMe();
+    } catch (e) {
+      // ignore
+    } finally {
+      // If we couldn't establish a valid access token + user, ensure clean state.
+      if (!user.value) setAccessToken(null);
+      authReady.value = true;
+    }
+  }
+
+  function waitForAuthReady(timeout = 3000) {
+    return new Promise((resolve) => {
+      if (authReady.value) return resolve(true);
+      const unwatch = watch(authReady, (v: boolean) => {
+        if (v) {
+          unwatch();
+          resolve(true);
+        }
+      });
+      if (timeout && timeout > 0) {
+        setTimeout(() => {
+          try { unwatch(); } catch (e) { /* ignore */ }
+          resolve(false);
+        }, timeout);
+      }
+    });
   }
 
   async function register(payload: {
@@ -156,151 +188,23 @@ export const useAuthStore = defineStore('auth', () => {
   }) {
     error.value = null;
     try {
-      const r = await http.post('/api/users/register', payload)
-      return { success: true, data: r.data }
+      const r = await api.post('/api/users/register', payload);
+      return { success: true, data: r.data };
     } catch (e: any) {
-      error.value = e?.response?.data?.message || e?.response?.data?.error || 'Signup failed.'
-      return { success: false, error: error.value }
+      error.value = e?.response?.data?.message || e?.response?.data?.error || 'Signup failed.';
+      return { success: false, error: error.value };
     }
-  }
-
-  function logout() {
-    // Best-effort server-side invalidation (logout everywhere)
-    try { http.post('/api/users/logout') } catch (e) { /* ignore */ }
-    stopTokenRotation()
-    user.value = null;
-    token.value = null;
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('selectedProjectId'); // Clear selected project on logout
-  }
-
-  function loadUser() {
-    const stored = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
-    // If a token exists in localStorage, set it immediately so route guards and other
-    // stores can treat the session as authenticated while we refresh the canonical user.
-    if (storedToken) {
-      token.value = storedToken
-      // optimistic local user from localStorage while /me refresh happens
-      if (stored) {
-        try { user.value = JSON.parse(stored) as User } catch (e) { user.value = null }
-      }
-
-      // Asynchronously refresh canonical user from server and update store when available
-      (async () => {
-        try {
-          const r = await http.get('/api/users/me', { headers: { Authorization: `Bearer ${storedToken}` } })
-          const data = r.data
-          const serverUser = data && data.user ? data.user : null
-          if (serverUser) {
-            user.value = {
-              _id: serverUser._id,
-              id: serverUser._id || serverUser.id,
-              avatar: serverUser.avatar || serverUser.contact?.avatar || '',
-              firstName: serverUser.firstName,
-              lastName: serverUser.lastName,
-              email: serverUser.email,
-              role: serverUser.role,
-              token: storedToken,
-              projects: serverUser.projects || [],
-              contact: serverUser.contact || { company: '', phone: '', address: { street: '', city: '', state: '', zip: '', country: '', taxId: '' }, bio: '', avatar: '' },
-              social_media: serverUser.social_media || {},
-            } as User
-            token.value = storedToken
-            try { localStorage.setItem('user', JSON.stringify(user.value)) } catch (e) { /* ignore */ }
-          } else {
-            // if refresh returned no user, keep optimistic local user/token if present
-            if (stored) {
-              try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) { /* ignore */ }
-            }
-          }
-        } catch (err) {
-          // network error: keep optimistic local user if available
-          if (stored) {
-            try { user.value = JSON.parse(stored); token.value = storedToken } catch (e) { /* ignore */ }
-          }
-        }
-
-        // mark authReady regardless of refresh outcome so router can proceed
-        authReady.value = true;
-
-        // Start token rotation for existing sessions
-        try { startTokenRotation() } catch (e) { /* ignore */ }
-
-        // sync default project into project store after refresh
-        try {
-          const projectStore = useProjectStore()
-          if (user.value && Array.isArray(user.value.projects)) {
-            const dp = user.value.projects.find((p: any) => p && p.default)
-            if (dp) {
-              const dpa: any = dp
-              const id = typeof dp === 'string' ? dp : (dpa._id || dpa.id || null)
-              if (id) projectStore.setCurrentProject(id)
-            }
-          }
-        } catch (e) { /* ignore */ }
-      })()
-    } else if (stored && !storedToken) {
-      // No token: restore stored user without auth (useful for dev flows), but clear token state
-      try { user.value = JSON.parse(stored); token.value = null } catch (e) { user.value = null }
-      // no token -> nothing to refresh; mark ready
-      authReady.value = true;
-    }
-  }
-
-  // Call on store init
-  loadUser();
-
-  // helper: wait for authReady (returns when ready or after optional timeout)
-  function waitForAuthReady(timeout = 3000) {
-    return new Promise((resolve) => {
-      if (authReady.value) return resolve(true)
-  const unwatch = watch(authReady, (v: boolean) => { if (v) { unwatch(); resolve(true) } })
-      if (timeout && timeout > 0) {
-        setTimeout(() => {
-          try { unwatch() } catch (e) { /* ignore */ }
-          resolve(false)
-        }, timeout)
-      }
-    })
   }
 
   async function updateUser(updated: Partial<User>) {
     if (!user.value) return false;
     try {
-      const uid = user.value._id || user.value.id
-      const res = await http.put(`/api/users/update/${uid}`, updated, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
-      const data = res.data
-      // backend may return { user } or the raw user object
+      const uid = user.value._id || user.value.id;
+      const res = await api.put(`/api/users/update/${uid}`, updated, { headers: { 'Content-Type': 'application/json' } });
+      const data = res.data;
       const returned = data && data.user ? data.user : data;
-
-      // merge returned fields into existing user but preserve token
-      const preservedToken = user.value.token || token.value || null;
       user.value = { ...user.value, ...returned } as User;
-      if (preservedToken) {
-        user.value.token = preservedToken;
-        token.value = preservedToken;
-      }
-      // also normalize avatar if backend returns nested contact.avatar
-      if (user.value) {
-        if ((data as any).avatar) user.value.avatar = (data as any).avatar
-        else if ((data as any).contact?.avatar) user.value.avatar = (data as any).contact.avatar
-      }
-      localStorage.setItem('user', JSON.stringify(user.value));
-
-      // If update returned projects with a default, sync selected project into project store/localStorage
-      try {
-        const projectStore = useProjectStore()
-        if (user.value && Array.isArray(user.value.projects)) {
-          const dp = user.value.projects.find((p: any) => p && p.default)
-          if (dp) {
-            const dpa: any = dp
-            const id = typeof dp === 'string' ? dp : (dpa._id || dpa.id || null)
-            if (id) projectStore.setCurrentProject(id)
-          }
-        }
-      } catch (e) { /* ignore */ }
+      syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
       error.value = e?.response?.data?.error || 'Network error';
@@ -308,18 +212,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // function to update just the avatar. This can be called from profile page when uploading new avatar.
   async function updateAvatar(avatarUrl: string, userId?: string) {
     if (!user.value && !userId) return false;
     try {
-      const uid = userId || user.value!._id || user.value!.id
-      const res = await http.put(`/api/users/update/${uid}`, { avatar: avatarUrl }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
-      const data = res.data
+      const uid = userId || user.value!._id || user.value!.id;
+      const res = await api.put(`/api/users/update/${uid}`, { avatar: avatarUrl }, { headers: { 'Content-Type': 'application/json' } });
+      const data = res.data;
       const returned = data && data.user ? data.user : data;
-      if (user.value) {
-        user.value.avatar = returned.avatar || (returned.contact?.avatar) || avatarUrl;
-        localStorage.setItem('user', JSON.stringify(user.value));
-      }
+      if (user.value) user.value.avatar = returned.avatar || (returned.contact?.avatar) || avatarUrl;
       return true;
     } catch (e: any) {
       error.value = e?.response?.data?.error || 'Network error';
@@ -327,18 +227,35 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // change password
   async function changePassword(currentPassword: string, newPassword: string) {
     if (!user.value) return { success: false, error: 'Not authenticated' };
     try {
-      // Server expects { email, currentPassword, newPassword }
-      await http.post('/api/users/change-password', { email: user.value.email, currentPassword, newPassword }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
-      return { success: true }
+      await api.post('/api/users/change-password', { email: user.value.email, currentPassword, newPassword }, { headers: { 'Content-Type': 'application/json' } });
+      return { success: true };
     } catch (e: any) {
-      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Failed to change password'
-      return { success: false, error: error.value }
+      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Failed to change password';
+      return { success: false, error: error.value };
     }
   }
 
-  return { user, isAuthenticated, token, error, authReady, waitForAuthReady, login, logout, updateUser, register, updateAvatar, changePassword };
+  return {
+    user,
+    accessToken,
+    isAuthenticated,
+    error,
+    authReady,
+    waitForAuthReady,
+    bootstrap,
+    setAccessToken,
+    clearSession,
+    login,
+    refresh,
+    fetchMe,
+    logout,
+    register,
+    updateUser,
+    updateAvatar,
+    changePassword,
+  };
 });
+

@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
 import { ref } from 'vue'
-import { getAuthHeaders } from '../utils/auth'
 import { useProjectStore } from './project'
+import http from '../utils/http'
 
 export interface Issue {
   _id?: string
@@ -38,17 +37,12 @@ export interface Issue {
   updatedAt?: string
 }
 
-import { getApiBase } from '../utils/api'
-const API_BASE = `${getApiBase()}/api/issues`
+const API_BASE = `/api/issues`
 
 export const useIssuesStore = defineStore('issues', () => {
   const issues = ref<Issue[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-
-  function authHeaders() {
-    return getAuthHeaders()
-  }
 
   function normalize(issue: any): Issue & any {
     if (!issue) return issue
@@ -77,7 +71,7 @@ export const useIssuesStore = defineStore('issues', () => {
         return issues.value
       }
 
-      const res = await axios.get(API_BASE, { params: { projectId: pid, page: 1, perPage: 200 }, headers: authHeaders() })
+      const res = await http.get(API_BASE, { params: { projectId: pid, page: 1, perPage: 200 } })
       const payload = res.data || []
       // Support both legacy array response and new paginated shape { items, total, ... }
       const items = Array.isArray(payload)
@@ -99,7 +93,7 @@ export const useIssuesStore = defineStore('issues', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await axios.get(`${API_BASE}/${id}`, { headers: authHeaders() })
+      const res = await http.get(`${API_BASE}/${id}`)
       const it = normalize(res.data)
       const key = String((it as any).id || (it as any)._id || id)
       if (key) {
@@ -121,7 +115,7 @@ export const useIssuesStore = defineStore('issues', () => {
     error.value = null
     try {
       if (!payload.projectId) throw new Error('projectId is required to create an issue')
-      const res = await axios.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json', ...authHeaders() } })
+      const res = await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })
       const ni = normalize(res.data)
       issues.value.unshift(ni)
       try {
@@ -150,7 +144,7 @@ export const useIssuesStore = defineStore('issues', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await axios.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json', ...authHeaders() } })
+      const res = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } })
       const updated = normalize(res.data)
       const idx = issues.value.findIndex(i => (i.id || i._id) === (updated.id || updated._id))
       if (idx !== -1) issues.value.splice(idx, 1, updated)
@@ -179,7 +173,7 @@ export const useIssuesStore = defineStore('issues', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await axios.delete(`${API_BASE}/${id}`, { headers: authHeaders() })
+      const res = await http.delete(`${API_BASE}/${id}`)
       const removed = normalize(res.data)
       issues.value = issues.value.filter(i => (i.id || i._id) !== (removed.id || removed._id) && (i.id || i._id) !== id)
       try {

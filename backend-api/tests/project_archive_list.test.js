@@ -1,7 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const assert = require('assert');
-const { clearDb } = require('./testUtils');
+const { clearDb, withCsrf } = require('./testUtils');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
@@ -36,22 +36,22 @@ describe('Project archive/list integration', function () {
   });
 
   it('hides archived projects by default and includes them when requested', async () => {
-    const ownerRes = await request(app)
-      .post('/api/users/register')
+    const ownerRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'arch@example.com', password: 'password123', firstName: 'A', lastName: 'B', company: 'TestCo' });
     assert.strictEqual(ownerRes.status, 201);
-    const token = ownerRes.body.token;
+    const token = ownerRes.body.accessToken;
     assert(token, 'expected token from register');
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Archive Me', client: 'Client' });
     assert.strictEqual(projectRes.status, 201);
     const projectId = String(projectRes.body._id);
 
-    const archiveRes = await request(app)
-      .post(`/api/projects/${projectId}/archive`)
+    const archiveRes = await withCsrf(request(app)
+      .post(`/api/projects/${projectId}/archive`))
       .set('Authorization', `Bearer ${token}`);
     assert.strictEqual(archiveRes.status, 200);
     assert.strictEqual(String(archiveRes.body.status || '').toLowerCase(), 'archived');
@@ -73,4 +73,3 @@ describe('Project archive/list integration', function () {
     assert.strictEqual(foundB, true, 'archived project should be returned when includeArchived=true');
   });
 });
-

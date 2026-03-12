@@ -634,7 +634,6 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useUiStore } from '../../stores/ui'
-import { getAuthHeaders } from '../../utils/auth'
 import http from '../../utils/http'
 
 const projectStore = useProjectStore()
@@ -690,7 +689,7 @@ async function fetchProjectsPage() {
       }
     } catch (e) { /* ignore */ }
 
-    const res = await http.get('/api/projects', { params, headers: getAuthHeaders() })
+    const res = await http.get('/api/projects', { params })
     const data = res && res.data ? res.data : {}
     if (Array.isArray(data.items)) {
       serverProjects.value = data.items.map(p => ({ ...(p || {}), id: p._id || p.id }))
@@ -1050,25 +1049,15 @@ async function confirmRestore(p) {
 async function makeDefault(project) {
   // Mirror working logic from Topbar: call backend with auth headers and update auth/user + store
   try {
-    if (!getAuthHeaders()?.Authorization) { ui.showError('Not signed in'); return }
+    if (!auth.isAuthenticated) { ui.showError('Not signed in'); return }
     const projectId = project && (project.id || project._id)
   if (!projectId) { ui.showError('Missing project id'); return }
 
-    const { data } = await http.post(
-      `/api/projects/${projectId}/set-default`,
-      {},
-      { headers: getAuthHeaders() }
-    )
+    const { data } = await http.post(`/api/projects/${projectId}/set-default`, {})
 
-    // Preserve existing token while updating returned user shape
     const incoming = (data && data.user) ? data.user : data
-    const preserveToken = auth.token || (auth.user && auth.user.token) || null
     if (incoming) {
       auth.user = Object.assign({}, auth.user || {}, incoming)
-      if (preserveToken && auth.user) {
-        auth.user.token = preserveToken
-      }
-  try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
     }
 
     if (projectId) projectStore.setCurrentProject(String(projectId))
@@ -1125,7 +1114,7 @@ async function createAndMaybeCheckout() {
           planKey: selectedPlan.value || undefined,
           priceId: chosenPriceId.value,
           projectId: created.id,
-        }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+        }, { headers: { 'Content-Type': 'application/json' } })
 
         const url = res?.data?.url
         if (url) {

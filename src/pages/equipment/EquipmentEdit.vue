@@ -1659,7 +1659,6 @@ import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import { useAuthStore } from '../../stores/auth'
 import lists from '../../lists.js'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { jsPDF } from 'jspdf'
 import { buildEquipmentLogDetails } from '../../utils/equipmentLogDiff'
@@ -2076,7 +2075,6 @@ async function loadPhotos() {
   try {
     const { data } = await http.get(`/api/equipment/${eid}`, {
       params: { includePhotos: true },
-      headers: { ...getAuthHeaders() }
     })
     if (data) {
       form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
@@ -2093,7 +2091,7 @@ async function loadComponents() {
   const eid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!eid) return
   try {
-    const { data } = await http.get(`/api/equipment/${eid}?includePhotos=true`, { headers: { ...getAuthHeaders() } })
+    const { data } = await http.get(`/api/equipment/${eid}?includePhotos=true`)
     if (data) {
       form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
       componentsList.value = Array.isArray((data as any).components) ? (data as any).components : componentsList.value
@@ -2112,7 +2110,6 @@ async function ensureReportData() {
   try {
     const { data } = await http.get(`/api/equipment/${eid}`, {
       params: { includePhotos: true },
-      headers: { ...getAuthHeaders() }
     })
     if (data) {
       form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
@@ -2127,7 +2124,6 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   const fd = new FormData()
   fd.append('photos', file)
   const res = await http.post(`/api/equipment/${eid}/photos`, fd, {
-    headers: { ...getAuthHeaders() },
     onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) }
   })
   const fresh = await equipmentStore.fetchOne(eid)
@@ -2139,7 +2135,7 @@ async function removePhotoAt(idx: number) {
   try {
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     if (!eid) return
-    await http.delete(`/api/equipment/${eid}/photos/${idx}`, { headers: { ...getAuthHeaders() } })
+    await http.delete(`/api/equipment/${eid}/photos/${idx}`)
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
     ui.showSuccess('Photo removed')
@@ -2181,7 +2177,7 @@ async function saveCaption() {
   try {
     savingCaption.value = true
     const caption = captionValue.value || ''
-    await http.patch(`/api/equipment/${eid}/photos/${viewerIndex.value}`, { caption }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+    await http.patch(`/api/equipment/${eid}/photos/${viewerIndex.value}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
     const fresh = await equipmentStore.fetchOne(eid)
     if (fresh) form.value = { ...fresh }
     ui.showSuccess('Caption saved')
@@ -2242,7 +2238,7 @@ async function removeAttachment(i: number) {
   const eid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (eid) {
     try {
-      await http.delete(`/api/equipment/${eid}/attachments/${i}`, { headers: { ...getAuthHeaders() } })
+      await http.delete(`/api/equipment/${eid}/attachments/${i}`)
       const fresh = await equipmentStore.fetchOne(eid)
       if (fresh) form.value = { ...fresh }
       ui.showSuccess('Attachment removed')
@@ -3139,7 +3135,7 @@ async function refreshComponentsFromServer() {
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     const pid = String(form.value.projectId || projectStore.currentProjectId || '')
     if (!eid || !pid) return
-    const res = await http.get(`/api/equipment/${eid}?includePhotos=true`, { headers: getAuthHeaders() })
+    const res = await http.get(`/api/equipment/${eid}?includePhotos=true`)
     const fresh = res?.data
     if (fresh) {
       form.value = { ...(fresh as any), id: fresh._id || fresh.id }
@@ -3204,7 +3200,6 @@ async function load() {
     // Fetch full equipment including checklists/functionalTests/photos
     const { data } = await http.get(`/api/equipment/${id.value}`, {
       params: { includePhotos: true, includeChecklists: true, includeFunctionalTests: true },
-      headers: { ...getAuthHeaders() }
     })
     const eq = data || (await equipmentStore.fetchOne(id.value))
     if (eq) {

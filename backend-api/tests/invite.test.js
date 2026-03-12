@@ -1,7 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const assert = require('assert');
-const { clearDb } = require('./testUtils');
+const { clearDb, withCsrf } = require('./testUtils');
 
 // Ensure test mode so mailer is short-circuited
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
@@ -52,20 +52,20 @@ describe('Invite flow integration', function () {
 
   it('creates an invite for a non-existing user and allows acceptance after registration', async () => {
     // 1) Register inviter
-    const inviterRes = await request(app)
-      .post('/api/users/register')
+    const inviterRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'inviter@example.com', password: 'password123', firstName: 'Inv', lastName: 'Iter', company: 'TestCo' });
     if (inviterRes.status !== 201) {
       console.error('inviter register failed:', inviterRes.status, inviterRes.body);
     }
     assert(inviterRes.status === 201, `expected 201 from register, got ${inviterRes.status}`);
-    const inviterToken = inviterRes.body.token;
+    const inviterToken = inviterRes.body.accessToken;
     const inviterUser = inviterRes.body.user;
     assert(inviterToken, 'inviter should receive a token');
 
     // 2) Create a project using inviter's userId
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'Test Project', client: 'TestClient' });
     if (projectRes.status !== 201) console.error('create project failed:', projectRes.status, projectRes.body);
@@ -73,8 +73,8 @@ describe('Invite flow integration', function () {
     const project = projectRes.body;
 
     // 3) Invite a new user (who does not yet exist)
-    const inviteRes = await request(app)
-      .post('/api/projects/addUser')
+    const inviteRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email: 'invitee@example.com', role: 'user', inviterName: 'Inviter' });
   if (inviteRes.status !== 200) throw new Error('addUser failed: ' + JSON.stringify(inviteRes.body));
@@ -95,11 +95,11 @@ describe('Invite flow integration', function () {
     const inviteObj = invitesList.body[0];
 
     // 4) Register the invitee
-    const invitee = await request(app)
-      .post('/api/users/register')
+    const invitee = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'invitee@example.com', password: 'password123', firstName: 'Invitee', lastName: 'Person', company: 'TestCo' });
     if (invitee.status !== 201) throw new Error('invitee register failed: ' + JSON.stringify(invitee.body));
-    const inviteeToken = invitee.body.token;
+    const inviteeToken = invitee.body.accessToken;
     const inviteeUser = invitee.body.user;
     assert(inviteeToken, 'invitee should receive a token');
 
@@ -113,8 +113,8 @@ describe('Invite flow integration', function () {
     assert(foundInvite, 'invite should be present in my-invites for the registered invitee');
 
     // 6) Accept the invite by token as the authenticated invitee
-    const acceptRes = await request(app)
-      .post('/api/projects/accept-invite')
+    const acceptRes = await withCsrf(request(app)
+      .post('/api/projects/accept-invite'))
       .set('Authorization', `Bearer ${inviteeToken}`)
       .send({ token: inviteObj.token });
     if (acceptRes.status !== 200) throw new Error('accept-invite failed: ' + JSON.stringify(acceptRes.body));
@@ -141,24 +141,24 @@ describe('Invite flow integration', function () {
 
   it('rejects acceptance by id when invite email does not match the authenticated user', async () => {
     // inviter
-    const inviter = await request(app)
-      .post('/api/users/register')
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'inviter2@example.com', password: 'password123', firstName: 'Inv2', lastName: 'Iter', company: 'TestCo' });
     assert(inviter.status === 201);
-    const inviterToken = inviter.body.token;
+    const inviterToken = inviter.body.accessToken;
     const inviterUser = inviter.body.user;
 
     // project
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'ProjMismatch', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
 
     // invite someone to 'target@example.com'
-    const inviteRes = await request(app)
-      .post('/api/projects/addUser')
+    const inviteRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email: 'target@example.com', role: 'user', inviterName: 'Inviter2' });
     assert(inviteRes.status === 200);
@@ -169,16 +169,16 @@ describe('Invite flow integration', function () {
     const inviteObj = invitesList.body[0];
 
     // register a different user
-    const other = await request(app)
-      .post('/api/users/register')
+    const other = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'otheruser@example.com', password: 'password123', firstName: 'Other', lastName: 'User', company: 'TestCo' });
     assert(other.status === 201);
-    const otherToken = other.body.token;
+    const otherToken = other.body.accessToken;
 
     // attempt to accept by id as the wrong user -> should be 403
     const inviteId = inviteObj.id || inviteObj._id || inviteObj;
-    const accept = await request(app)
-      .post(`/api/projects/invitations/${inviteId}/accept`)
+    const accept = await withCsrf(request(app)
+      .post(`/api/projects/invitations/${inviteId}/accept`))
       .set('Authorization', `Bearer ${otherToken}`)
       .send();
     assert(accept.status === 403, `expected 403 for email mismatch, got ${accept.status} ${JSON.stringify(accept.body)}`);
@@ -187,24 +187,24 @@ describe('Invite flow integration', function () {
 
   it('rejects accepting an already accepted invite', async () => {
     // inviter
-    const inviter = await request(app)
-      .post('/api/users/register')
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'inviter3@example.com', password: 'password123', firstName: 'Inv3', lastName: 'Iter', company: 'TestCo' });
     assert(inviter.status === 201);
-    const inviterToken = inviter.body.token;
+    const inviterToken = inviter.body.accessToken;
     const inviterUser = inviter.body.user;
 
     // project
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'ProjDuplicate', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
 
     // invite
-    const inviteRes = await request(app)
-      .post('/api/projects/addUser')
+    const inviteRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email: 'dup@example.com', role: 'user', inviterName: 'Inviter3' });
     assert(inviteRes.status === 200);
@@ -215,22 +215,22 @@ describe('Invite flow integration', function () {
     const inviteObj = invitesList.body[0];
 
     // register the invitee
-    const invitee = await request(app)
-      .post('/api/users/register')
+    const invitee = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'dup@example.com', password: 'password123', firstName: 'Dup', lastName: 'User', company: 'TestCo' });
     assert(invitee.status === 201);
-    const inviteeToken = invitee.body.token;
+    const inviteeToken = invitee.body.accessToken;
 
     // accept once (by token)
-    const accept1 = await request(app)
-      .post('/api/projects/accept-invite')
+    const accept1 = await withCsrf(request(app)
+      .post('/api/projects/accept-invite'))
       .set('Authorization', `Bearer ${inviteeToken}`)
       .send({ token: inviteObj.token });
     assert(accept1.status === 200);
 
     // accept again -> should be 400 (already accepted)
-    const accept2 = await request(app)
-      .post('/api/projects/accept-invite')
+    const accept2 = await withCsrf(request(app)
+      .post('/api/projects/accept-invite'))
       .set('Authorization', `Bearer ${inviteeToken}`)
       .send({ token: inviteObj.token });
     assert(accept2.status === 400 || accept2.status === 409, `expected 400/409 for already accepted, got ${accept2.status}`);
@@ -239,15 +239,15 @@ describe('Invite flow integration', function () {
 
   it('returns 404 for invalid invite token on accept-invite', async () => {
     // register a user
-    const user = await request(app)
-      .post('/api/users/register')
+    const user = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'someuser@example.com', password: 'password123', firstName: 'Some', lastName: 'User', company: 'TestCo' });
     assert(user.status === 201);
-    const token = user.body.token;
+    const token = user.body.accessToken;
 
     // attempt to accept with an invalid token
-    const res = await request(app)
-      .post('/api/projects/accept-invite')
+    const res = await withCsrf(request(app)
+      .post('/api/projects/accept-invite'))
       .set('Authorization', `Bearer ${token}`)
       .send({ token: 'this-token-does-not-exist' });
     assert(res.status === 404, `expected 404 for missing invite token, got ${res.status}`);
@@ -256,16 +256,16 @@ describe('Invite flow integration', function () {
 
   it('matches invites case-insensitively (invite created with mixed-case email)', async () => {
     // inviter
-    const inviter = await request(app)
-      .post('/api/users/register')
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'inviter-case@example.com', password: 'password123', firstName: 'InvCase', lastName: 'Iter', company: 'TestCo' });
     assert(inviter.status === 201);
-    const inviterToken = inviter.body.token;
+    const inviterToken = inviter.body.accessToken;
     const inviterUser = inviter.body.user;
 
     // project
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'ProjCase', client: 'TestClient' });
     assert(projectRes.status === 201);
@@ -273,18 +273,18 @@ describe('Invite flow integration', function () {
 
     // invite with mixed-case email
     const mixedEmail = 'InviteMixed@Example.COM';
-    const inviteRes = await request(app)
-      .post('/api/projects/addUser')
+    const inviteRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email: mixedEmail, role: 'user', inviterName: 'InvCase' });
     assert(inviteRes.status === 200);
 
     // register invitee with lowercase email
-    const invitee = await request(app)
-      .post('/api/users/register')
+    const invitee = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'invitemixed@example.com', password: 'password123', firstName: 'Case', lastName: 'Invite', company: 'TestCo' });
     assert(invitee.status === 201);
-    const inviteeToken = invitee.body.token;
+    const inviteeToken = invitee.body.accessToken;
 
     // my-invites should include the invitation even though case differs
     const myInvites = await request(app)
@@ -297,8 +297,8 @@ describe('Invite flow integration', function () {
 
   // Additional normalization tests for user emails
   it('stores user emails lowercased when registering via API', async () => {
-    const res = await request(app)
-      .post('/api/users/register')
+    const res = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'NormTest@Example.COM', password: 'password123', firstName: 'Norm', lastName: 'Test', company: 'TestCo' });
     assert(res.status === 201);
     const User = require('../models/user');
@@ -307,8 +307,8 @@ describe('Invite flow integration', function () {
   });
 
   it('normalizes email when updating user model directly', async () => {
-    const res = await request(app)
-      .post('/api/users/register')
+    const res = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'UpdateTest@Example.COM', password: 'password123', firstName: 'Upd', lastName: 'Test', company: 'TestCo' });
     assert(res.status === 201);
     const User = require('../models/user');
@@ -326,15 +326,15 @@ describe('Invite flow integration', function () {
     await Role.create({ name: 'tester', permissions: ['rbac.test'] });
 
     // create a user with default role via register, then set the role directly in DB
-    const reg = await request(app)
-      .post('/api/users/register')
+    const reg = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'rbac-user@example.com', password: 'password123', firstName: 'RBAC', lastName: 'User', company: 'TestCo' });
     assert(reg.status === 201, `register failed: ${reg.status} ${JSON.stringify(reg.body)}`);
     const User = require('../models/user');
     // Directly update underlying collection to set a custom role value that is not part of the enum
     await mongoose.connection.db.collection('users').updateOne({ _id: new mongoose.Types.ObjectId(reg.body.user._id) }, { $set: { role: 'tester' } });
     // perform a login (or reuse returned token) — register returned a token for the original role, but role is stored on the DB now
-    const token = reg.body.token;
+    const token = reg.body.accessToken;
 
     const res = await request(app)
       .get('/api/rbac/check')
@@ -347,12 +347,12 @@ describe('Invite flow integration', function () {
     const Role = require('../models/role');
     await Role.create({ name: 'nope', permissions: [] });
 
-    const reg = await request(app)
-      .post('/api/users/register')
+    const reg = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'rbac-nope@example.com', password: 'password123', firstName: 'No', lastName: 'Perm', company: 'TestCo' });
     assert(reg.status === 201);
     await mongoose.connection.db.collection('users').updateOne({ _id: new mongoose.Types.ObjectId(reg.body.user._id) }, { $set: { role: 'nope' } });
-    const token = reg.body.token;
+    const token = reg.body.accessToken;
 
     const res = await request(app)
       .get('/api/rbac/check')
@@ -362,15 +362,15 @@ describe('Invite flow integration', function () {
 
   // Project role templates and member permissions
   it('creates and lists project role templates', async () => {
-    const inviterRes = await request(app)
-      .post('/api/users/register')
+    const inviterRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'tpl-inviter@example.com', password: 'password123', firstName: 'Tpl', lastName: 'Inv', company: 'TestCo' });
     assert(inviterRes.status === 201);
-    const inviterToken = inviterRes.body.token;
+    const inviterToken = inviterRes.body.accessToken;
     const inviterUser = inviterRes.body.user;
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'TplProject', client: 'TestClient' });
     assert(projectRes.status === 201);
@@ -378,8 +378,8 @@ describe('Invite flow integration', function () {
 
     // create a template
     const tplPayload = { name: 'Viewer', description: 'Can view things', permissions: ['issues.read', 'activities.read'] };
-    const createRes = await request(app)
-      .post(`/api/projects/${project._id}/roles`)
+    const createRes = await withCsrf(request(app)
+      .post(`/api/projects/${project._id}/roles`))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send(tplPayload);
     assert(createRes.status === 201, `create template failed: ${createRes.status} ${JSON.stringify(createRes.body)}`);
@@ -396,15 +396,15 @@ describe('Invite flow integration', function () {
 
   it('adds existing user with roleTemplateId and copies permissions', async () => {
     // setup inviter + project
-    const inviter = await request(app)
-      .post('/api/users/register')
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'add-inviter@example.com', password: 'password123', firstName: 'Add', lastName: 'Inv', company: 'TestCo' });
     assert(inviter.status === 201);
-    const inviterToken = inviter.body.token;
+    const inviterToken = inviter.body.accessToken;
     const inviterUser = inviter.body.user;
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'AddProject', client: 'TestClient' });
     assert(projectRes.status === 201);
@@ -412,22 +412,22 @@ describe('Invite flow integration', function () {
 
     // create template
     const tpl = { name: 'Editor', permissions: ['issues.create', 'issues.update', 'activities.update'] };
-    const createTpl = await request(app)
-      .post(`/api/projects/${project._id}/roles`)
+    const createTpl = await withCsrf(request(app)
+      .post(`/api/projects/${project._id}/roles`))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send(tpl);
     assert(createTpl.status === 201);
     const tplId = createTpl.body.roleTemplate._id;
 
     // register an existing user to be added
-    const userRes = await request(app)
-      .post('/api/users/register')
+    const userRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'existing-user@example.com', password: 'password123', firstName: 'Exist', lastName: 'User', company: 'TestCo' });
     assert(userRes.status === 201);
 
     // add the existing user using roleTemplateId
-    const addRes = await request(app)
-      .post('/api/projects/addUser')
+    const addRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email: 'existing-user@example.com', roleTemplateId: tplId, inviterName: 'AddInv' });
     assert(addRes.status === 200);
@@ -445,15 +445,15 @@ describe('Invite flow integration', function () {
   });
 
   it('invites non-existing user with roleTemplateId and applies on accept', async () => {
-    const inviter = await request(app)
-      .post('/api/users/register')
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'invite-inviter@example.com', password: 'password123', firstName: 'Inv3', lastName: 'Tpl', company: 'TestCo' });
     assert(inviter.status === 201);
-    const inviterToken = inviter.body.token;
+    const inviterToken = inviter.body.accessToken;
     const inviterUser = inviter.body.user;
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'InviteTplProject', client: 'TestClient' });
     assert(projectRes.status === 201);
@@ -461,8 +461,8 @@ describe('Invite flow integration', function () {
 
     // create a template
     const tpl = { name: 'ViewerX', permissions: ['issues.read', 'activities.read'] };
-    const createTpl = await request(app)
-      .post(`/api/projects/${project._id}/roles`)
+    const createTpl = await withCsrf(request(app)
+      .post(`/api/projects/${project._id}/roles`))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send(tpl);
     assert(createTpl.status === 201);
@@ -470,8 +470,8 @@ describe('Invite flow integration', function () {
 
     // invite a new user with roleTemplateId
     const email = 'invitee-template@example.com';
-    const inviteRes = await request(app)
-      .post('/api/projects/addUser')
+    const inviteRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email, roleTemplateId: tplId, inviterName: 'TplInv' });
     assert(inviteRes.status === 200);
@@ -488,15 +488,15 @@ describe('Invite flow integration', function () {
     assert(inviteObj, 'expected invite in list');
 
     // register invitee
-    const reg = await request(app)
-      .post('/api/users/register')
+    const reg = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email, password: 'password123', firstName: 'Invtee', lastName: 'Tpl', company: 'TestCo' });
     assert(reg.status === 201);
-    const token = reg.body.token;
+    const token = reg.body.accessToken;
 
     // accept invite by token
-    const accept = await request(app)
-      .post('/api/projects/accept-invite')
+    const accept = await withCsrf(request(app)
+      .post('/api/projects/accept-invite'))
       .set('Authorization', `Bearer ${token}`)
       .send({ token: inviteObj.token });
     assert(accept.status === 200);
@@ -514,28 +514,28 @@ describe('Invite flow integration', function () {
 
   it('updates a team member permissions via endpoint', async () => {
     // setup inviter + project + member
-    const inviter = await request(app)
-      .post('/api/users/register')
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'perm-inviter@example.com', password: 'password123', firstName: 'Perm', lastName: 'Inv', company: 'TestCo' });
     assert(inviter.status === 201);
-    const inviterToken = inviter.body.token;
+    const inviterToken = inviter.body.accessToken;
     const inviterUser = inviter.body.user;
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ userId: inviterUser._id, name: 'PermProject', client: 'TestClient' });
     assert(projectRes.status === 201);
     const project = projectRes.body;
 
     // register a member and add them
-    const memberReg = await request(app)
-      .post('/api/users/register')
+    const memberReg = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'perm-member@example.com', password: 'password123', firstName: 'Perm', lastName: 'Member', company: 'TestCo' });
     assert(memberReg.status === 201);
 
-    const addRes = await request(app)
-      .post('/api/projects/addUser')
+    const addRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ projectId: project._id, email: 'perm-member@example.com', role: 'user', inviterName: 'PermInv' });
     assert(addRes.status === 200);
@@ -550,8 +550,8 @@ describe('Invite flow integration', function () {
 
     // update permissions
     const newPerms = ['issues.create', 'issues.delete'];
-    const upd = await request(app)
-      .put(`/api/projects/${project._id}/team/${memberId}/permissions`)
+    const upd = await withCsrf(request(app)
+      .put(`/api/projects/${project._id}/team/${memberId}/permissions`))
       .set('Authorization', `Bearer ${inviterToken}`)
       .send({ permissions: newPerms });
     assert(upd.status === 200, `update perms failed: ${upd.status} ${JSON.stringify(upd.body)}`);

@@ -1,5 +1,10 @@
 const mongoose = require('mongoose')
 
+const CSRF_TOKEN = 'test-csrf'
+function withCsrf(req) {
+  return req.set('X-CSRF-Token', CSRF_TOKEN)
+}
+
 async function clearDb() {
   try {
     if (!mongoose.connection || mongoose.connection.readyState !== 1) return
@@ -13,4 +18,4 @@ async function clearDb() {
   }
 }
 
-module.exports = { clearDb }
+module.exports = { clearDb, CSRF_TOKEN, withCsrf }

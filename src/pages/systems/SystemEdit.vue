@@ -1025,7 +1025,6 @@ import { useSpacesStore } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
 import { useSystemsStore, type SystemRecord } from '../../stores/systems'
 import http from '../../utils/http'
-import { getAuthHeaders } from '../../utils/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -1494,7 +1493,6 @@ async function fetchIssueSuggestions(qRaw: string, opts?: { page?: number; perPa
   try {
     const { data } = await http.get('/api/issues', {
       params: { projectId: pid, ...(q ? { search: q } : {}), page, perPage },
-      headers: { ...getAuthHeaders() }
     })
     const payload = (data && ((data as any).items || data)) || []
     const items: any[] = Array.isArray(payload) ? payload : []

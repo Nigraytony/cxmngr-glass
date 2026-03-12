@@ -823,14 +823,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import axios from 'axios'
 import * as XLSX from 'xlsx'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import SearchPill from '../../components/SearchPill.vue'
 import Modal from '../../components/Modal.vue'
 import OprItemsProgressCharts from '../../components/charts/OprItemsProgressCharts.vue'
-import { getApiBase } from '../../utils/api'
-import { getAuthHeaders } from '../../utils/auth'
+import http from '../../utils/http'
 import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
@@ -923,8 +921,7 @@ async function loadInlineTrace(oprItemId: string) {
   if (inlineTrace.value[oprItemId]) return
   inlineTraceLoading.value = { ...inlineTraceLoading.value, [oprItemId]: true }
   try {
-    const { data } = await axios.get(`${getApiBase()}/api/projects/${projectId.value}/opr/link/evaluations`, {
-      headers: getAuthHeaders(),
+    const { data } = await http.get(`/api/projects/${projectId.value}/opr/link/evaluations`, {
       params: { oprItemId, limit: INLINE_TRACE_LIMIT },
     })
     inlineTrace.value = { ...inlineTrace.value, [oprItemId]: Array.isArray(data) ? data : [] }
@@ -1250,7 +1247,7 @@ function badgeClassSimple(status: string) {
 
 async function fetchCategories() {
   if (!projectId.value) return
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${projectId.value}/opr/link/categories`, { headers: getAuthHeaders() })
+  const { data } = await http.get(`/api/projects/${projectId.value}/opr/link/categories`)
   categories.value = Array.isArray(data) ? data : []
   if (!importDefaultCategoryId.value) importDefaultCategoryId.value = String(categories.value[0]?.id || '')
 }
@@ -1258,7 +1255,7 @@ async function fetchCategories() {
 async function fetchItems() {
   if (!projectId.value) return
   const params: Record<string, any> = { includeArchived: 1 }
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${projectId.value}/opr/link/items`, { headers: getAuthHeaders(), params })
+  const { data } = await http.get(`/api/projects/${projectId.value}/opr/link/items`, { params })
   items.value = Array.isArray(data) ? data : []
 }
 
@@ -1308,8 +1305,8 @@ async function postImportedItems(newItems: Array<{ categoryId: string; text: str
   submitting.value = true
   importError.value = ''
   try {
-    await axios.post(`${getApiBase()}/api/projects/${projectId.value}/opr/link/items`, { items: newItems }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    await http.post(`/api/projects/${projectId.value}/opr/link/items`, { items: newItems }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     ui.showSuccess(`Imported ${newItems.length} OPR item${newItems.length === 1 ? '' : 's'}`, { duration: 3000 })
     await refreshAll()
@@ -1326,8 +1323,8 @@ async function upsertImportedItems(rows: Array<{ id?: string; categoryId: string
   submitting.value = true
   importError.value = ''
   try {
-    const { data } = await axios.post(`${getApiBase()}/api/projects/${projectId.value}/opr/link/items/upsert`, { items: rows }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    const { data } = await http.post(`/api/projects/${projectId.value}/opr/link/items/upsert`, { items: rows }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     const updated = Number(data?.updated || 0)
     const inserted = Number(data?.inserted || 0)
@@ -1500,8 +1497,7 @@ async function openTrace(it: OprItem) {
   traceLoading.value = true
   traceRows.value = []
   try {
-    const { data } = await axios.get(`${getApiBase()}/api/projects/${projectId.value}/opr/link/evaluations`, {
-      headers: getAuthHeaders(),
+    const { data } = await http.get(`/api/projects/${projectId.value}/opr/link/evaluations`, {
       params: { oprItemId: it.id },
     })
     traceRows.value = Array.isArray(data) ? data : []

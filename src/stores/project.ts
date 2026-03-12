@@ -90,69 +90,67 @@ export interface Project {
   searchMode?: 'substring' | 'exact' | 'fuzzy';
 }
 
-import { getApiBase } from '../utils/api'
 const API_BASE = '/api/projects'
 
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import axios from 'axios';
 import { useAuthStore } from './auth';
-import { getAuthHeaders, getToken } from '../utils/auth'
 import http from '../utils/http'
 
 // Billing API helpers
 export async function fetchBillingSummary(projectId: string) {
-  const res = await axios.get(`${getApiBase()}/api/stripe/project/${projectId}/summary`, { headers: getAuthHeaders() })
+  const res = await http.get(`/api/stripe/project/${projectId}/summary`)
   return res.data
 }
 
 export async function previewPlanChange(projectId: string, priceId: string, prorationBehavior?: string) {
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/plan/preview`, { priceId, proration_behavior: prorationBehavior }, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/plan/preview`, { priceId, proration_behavior: prorationBehavior })
   return res.data
 }
 
 export async function changePlan(projectId: string, priceId: string, prorationBehavior?: string) {
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/change-plan`, { priceId, proration_behavior: prorationBehavior }, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/change-plan`, { priceId, proration_behavior: prorationBehavior })
   return res.data
 }
 
 export async function cancelSubscription(projectId: string, atPeriodEnd = true) {
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/cancel`, { atPeriodEnd }, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/cancel`, { atPeriodEnd })
   return res.data
 }
 
 export async function resumeSubscription(projectId: string) {
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/resume`, {}, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/resume`, {})
   return res.data
 }
 
 export async function changeBillingAdmin(projectId: string, payload: { userId?: string, email?: string } | string) {
   const body = typeof payload === 'string' ? { userId: payload, email: payload && payload.includes('@') ? payload : undefined } : payload
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/billing-admin`, body, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/billing-admin`, body)
   return res.data
 }
 
 export async function createSetupIntent(projectId: string) {
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/setup-intent`, {}, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/setup-intent`, {})
   return res.data
 }
 
 export async function updatePaymentMethod(projectId: string, paymentMethodId: string) {
-  const res = await axios.post(`${getApiBase()}/api/stripe/project/${projectId}/payment-method`, { paymentMethodId }, { headers: getAuthHeaders() })
+  const res = await http.post(`/api/stripe/project/${projectId}/payment-method`, { paymentMethodId })
   return res.data
 }
 
 export async function listPaymentMethods(projectId: string) {
-  const res = await axios.get(`${getApiBase()}/api/stripe/project/${projectId}/payment-methods`, { headers: getAuthHeaders() })
+  const res = await http.get(`/api/stripe/project/${projectId}/payment-methods`)
   return res.data
 }
 
 export async function detachPaymentMethod(projectId: string, pmId: string) {
-  const res = await axios.delete(`${getApiBase()}/api/stripe/project/${projectId}/payment-methods/${pmId}`, { headers: getAuthHeaders() })
+  const res = await http.delete(`/api/stripe/project/${projectId}/payment-methods/${pmId}`)
   return res.data
 }
 
 export const useProjectStore = defineStore('project', () => {
+  const auth = useAuthStore();
   const projects = ref<Project[]>([]);
   const currentProjectId = ref<string | null>(null);
   const currentProject = ref<Project | null>(null);
@@ -234,13 +232,13 @@ export const useProjectStore = defineStore('project', () => {
   async function fetchProjects() {
     try {
       // Projects are always auth-scoped now; avoid noisy 401s when signed out.
-      if (!getToken()) {
+      if (!auth.accessToken) {
         projects.value = []
         return
       }
 
       // Prefer fetching the authenticated user's hydrated projects if available.
-      const resp = await http.get(`/api/users/me`, { headers: getAuthHeaders() })
+      const resp = await http.get(`/api/users/me`)
       const userProjects = resp?.data?.user?.projects || []
       projects.value = Array.isArray(userProjects)
         ? userProjects.map((p: any) => ({ ...p, id: p._id || p.id }))
@@ -285,8 +283,8 @@ export const useProjectStore = defineStore('project', () => {
 
 
   async function addProject(project: Partial<Project>) {
-    if (!getToken()) throw new Error('Not signed in. Please log in.')
-    const res = await http.post(API_BASE, project, { headers: getAuthHeaders() })
+    if (!auth.accessToken) throw new Error('Not signed in. Please log in.')
+    const res = await http.post(API_BASE, project)
     const newProject = { ...res.data, id: res.data._id };
     projects.value.push(newProject);
     // Set as current so the sidebar/features reflect the new project's plan immediately.
@@ -305,9 +303,9 @@ export const useProjectStore = defineStore('project', () => {
 
   async function fetchProject(id: string) {
     if (!id) throw new Error('Missing project id')
-    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    if (!auth.accessToken) throw new Error('Not signed in. Please log in.')
     try {
-      const res = await http.get(`${API_BASE}/${id}`, { headers: getAuthHeaders() })
+      const res = await http.get(`${API_BASE}/${id}`)
       const p = { ...res.data, id: res.data._id }
       const idx = projects.value.findIndex(pr => pr.id === p.id)
       if (idx !== -1) projects.value.splice(idx, 1, p)
@@ -340,7 +338,7 @@ export const useProjectStore = defineStore('project', () => {
   async function updateProject(updated: Partial<Project> & { id?: string, _id?: string }) {
     const id = (updated.id || (updated as any)._id)
     if (!id) throw new Error('Missing project id')
-    if (!getToken()) throw new Error('Not signed in. Please log in.')
+    if (!auth.accessToken) throw new Error('Not signed in. Please log in.')
     // avoid sending immutable _id or id in the update payload
     const payload: any = { ...updated };
     if (payload.id) delete payload.id;
@@ -348,7 +346,7 @@ export const useProjectStore = defineStore('project', () => {
     // Never send large read-only fields back to the API; they can exceed body limits (413)
     // and are managed by dedicated endpoints (e.g., /api/projects/:id/logs).
     if (payload.logs) delete payload.logs
-    const res = await http.put(`${API_BASE}/${id}`, payload, { headers: getAuthHeaders() });
+    const res = await http.put(`${API_BASE}/${id}`, payload);
     const idx = projects.value.findIndex(p => p.id === id);
     if (idx !== -1) {
       projects.value[idx] = { ...res.data, id: res.data._id };
@@ -365,8 +363,8 @@ export const useProjectStore = defineStore('project', () => {
 
   async function deleteProject(id: string) {
     if (!id) throw new Error('Missing project id')
-    if (!getToken()) throw new Error('Not signed in. Please log in.')
-    await http.delete(`${API_BASE}/${id}`, { headers: getAuthHeaders() });
+    if (!auth.accessToken) throw new Error('Not signed in. Please log in.')
+    await http.delete(`${API_BASE}/${id}`);
     projects.value = projects.value.filter(p => p.id !== id);
     try {
       await appendProjectLog(String(id), { type: 'delete', message: `Project deleted: ${id}` })
@@ -375,8 +373,8 @@ export const useProjectStore = defineStore('project', () => {
 
   async function archiveProject(id: string) {
     if (!id) throw new Error('Missing project id')
-    if (!getToken()) throw new Error('Not signed in. Please log in.')
-    await http.post(`${API_BASE}/${id}/archive`, {}, { headers: getAuthHeaders() });
+    if (!auth.accessToken) throw new Error('Not signed in. Please log in.')
+    await http.post(`${API_BASE}/${id}/archive`, {});
     try {
       await appendProjectLog(String(id), { type: 'archive', message: `Project archived: ${id}` })
     } catch (e) { /* non-blocking */ }
@@ -384,8 +382,8 @@ export const useProjectStore = defineStore('project', () => {
 
   async function restoreProject(id: string) {
     if (!id) throw new Error('Missing project id')
-    if (!getToken()) throw new Error('Not signed in. Please log in.')
-    const res = await http.post(`${API_BASE}/${id}/restore`, {}, { headers: getAuthHeaders() });
+    if (!auth.accessToken) throw new Error('Not signed in. Please log in.')
+    const res = await http.post(`${API_BASE}/${id}/restore`, {});
     try {
       await appendProjectLog(String(id), { type: 'restore', message: `Project restored: ${id}` })
     } catch (e) { /* non-blocking */ }
@@ -401,7 +399,6 @@ export const useProjectStore = defineStore('project', () => {
       // Ensure actor is captured; fall back to auth user if not provided by caller
       if (!('by' in payload) || payload.by == null || payload.by === '') {
         try {
-          const auth = useAuthStore()
           const u: any = auth?.user || null
           if (u) {
             const name = [u.firstName, u.lastName].filter(Boolean).join(' ')
@@ -409,8 +406,8 @@ export const useProjectStore = defineStore('project', () => {
           }
   } catch (e) { /* ignore */ }
       }
-      if (!getToken()) return
-      await http.post(`${API_BASE}/${projectId}/logs`, payload, { headers: getAuthHeaders() })
+      if (!auth.accessToken) return
+      await http.post(`${API_BASE}/${projectId}/logs`, payload)
       // optimistic cache update
       const arr = logsCache.value[projectId] || []
       const ts = payload.ts ? new Date(payload.ts).toISOString() : new Date().toISOString()
@@ -426,8 +423,8 @@ export const useProjectStore = defineStore('project', () => {
       if (opts?.limit) params.limit = opts.limit
       if (opts?.page) params.page = opts.page
       if (opts?.type) params.type = opts.type
-      if (!getToken()) return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
-      const res = await http.get(`${API_BASE}/${projectId}/logs`, { params, headers: getAuthHeaders() })
+      if (!auth.accessToken) return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
+      const res = await http.get(`${API_BASE}/${projectId}/logs`, { params })
       const data = res.data || { items: [], total: 0, page: 1, limit: opts?.limit || 0, totalPages: 0 }
       // cache the last fetched page of items (optimistic)
       try {
@@ -456,14 +453,13 @@ export const useProjectStore = defineStore('project', () => {
 
   // Watch auth user projects so we can sync selected project when user data changes
   try {
-    const auth = useAuthStore();
     watch(() => auth.user && auth.user.projects, (projectsVal) => {
       if (!projectsVal) return
       // If a project is already selected (from localStorage) but we haven't hydrated
       // `currentProject` yet (common during auth bootstrap), fetch it now so
       // feature-gated UI (e.g., Systems) can render correctly.
       try {
-        if (currentProjectId.value && !currentProject.value && getToken()) {
+        if (currentProjectId.value && !currentProject.value && auth.accessToken) {
           fetchProject(String(currentProjectId.value)).catch(() => {})
         }
       } catch (e) { /* ignore */ }
@@ -481,7 +477,7 @@ export const useProjectStore = defineStore('project', () => {
     watch(() => auth.authReady, (ready) => {
       if (!ready) return
       try {
-        if (currentProjectId.value && !currentProject.value && getToken()) {
+        if (currentProjectId.value && !currentProject.value && auth.accessToken) {
           fetchProject(String(currentProjectId.value)).catch(() => {})
         }
       } catch (e) { /* ignore */ }

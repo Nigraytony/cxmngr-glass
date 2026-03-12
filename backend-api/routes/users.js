@@ -1,18 +1,22 @@
-// Safe guard: if critical JWT secret missing, warn but allow server to start
-if (!process.env.JWT_SECRET) {
-  console.warn('[startup] JWT_SECRET not set; auth features may fail.');
+// Safe guard: if critical JWT secrets missing, warn but allow server to start
+if (!process.env.JWT_ACCESS_SECRET && !process.env.JWT_SECRET) {
+  console.warn('[startup] JWT_ACCESS_SECRET not set (and no legacy JWT_SECRET); access-token auth features may fail.');
+}
+if (!process.env.JWT_REFRESH_SECRET && !process.env.JWT_SECRET) {
+  console.warn('[startup] JWT_REFRESH_SECRET not set (and no legacy JWT_SECRET); refresh-token auth features may fail.');
 }
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
 const Project = require('../models/project');
-const { auth } = require('../middleware/auth');
 const crypto = require('crypto');
 const PasswordReset = require('../models/passwordReset');
 const { sendResetEmail } = require('../utils/mailer');
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireObjectIdParam } = require('../middleware/validate');
-const { signAccessToken } = require('../utils/jwt');
+const { auth } = require('../middleware/auth');
+const { parseCookies } = require('../utils/cookies');
+const { signAccessToken, signRefreshToken, verifyRefreshToken, verifyAccessToken } = require('../utils/jwt');
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
 const loginLimiter = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'login' })
@@ -34,6 +38,37 @@ function normalizePasswordResetToken(value) {
   // tokens are generated via `crypto.randomBytes(32).toString('hex')` (64 hex chars)
   if (!/^[a-f0-9]{64}$/i.test(s)) return null
   return s.toLowerCase()
+}
+
+const REFRESH_COOKIE_NAME = '__Host-rt';
+
+function isProd() {
+  return String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+}
+
+function refreshCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: isProd(),
+  };
+}
+
+function setRefreshCookie(res, token) {
+  res.cookie(REFRESH_COOKIE_NAME, token, refreshCookieOptions());
+}
+
+function clearRefreshCookie(res) {
+  res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions());
+}
+
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function newRefreshId() {
+  return crypto.randomBytes(32).toString('hex');
 }
 
 // Helper: hydrate user.projects from the Projects collection (avoid stale embedded fields)
@@ -151,18 +186,20 @@ async function hydrateUserProjects(userObj) {
       })
     }
     await user.save();
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('[users.register] JWT_SECRET is not set');
-      return res.status(500).send({ error: 'Server configuration error' });
-    }
-    const token = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
+    // Issue refresh cookie + access token
+    const refreshId = newRefreshId();
+    user.refreshTokenIdHash = sha256Hex(refreshId);
+    user.refreshTokenIssuedAt = new Date();
+    await user.save();
+    const accessToken = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
+    const refreshToken = signRefreshToken({ userId: user._id, refreshId });
+    setRefreshCookie(res, refreshToken);
     // Remove password from response
   const userObj = user.toObject();
     delete userObj.password;
   // Hydrate projects with live data
   const hydrated = await hydrateUserProjects(userObj)
-  res.status(201).send({ user: hydrated, token });
+  res.status(201).send({ user: hydrated, accessToken });
 
   } catch (error) {
     res.status(400).send({ error: error.message || error });
@@ -183,46 +220,117 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(400).send({ error: 'Invalid login credentials' });
     }
     const userDoc = user.toObject({ getters: true });
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('[users.login] JWT_SECRET is not set');
-      return res.status(500).send({ error: 'Server configuration error' });
-    }
-    const token = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
+    const refreshId = newRefreshId();
+    user.refreshTokenIdHash = sha256Hex(refreshId);
+    user.refreshTokenIssuedAt = new Date();
+    await user.save();
+
+    const accessToken = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
+    const refreshToken = signRefreshToken({ userId: user._id, refreshId });
+    setRefreshCookie(res, refreshToken);
     delete userDoc.password; // Remove password from response
     const hydrated = await hydrateUserProjects(userDoc)
-    res.send({ user: hydrated, token });
+    res.send({ user: hydrated, accessToken });
   } catch (error) {
     console.error('[users.login] error', error && (error.stack || error.message || error))
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Login failed' });
   }
 });
 
-// Rotate/refresh access token (requires a still-valid access token)
-router.post('/refresh', auth, async (req, res) => {
+// Rotate refresh cookie + issue new access token (requires refresh cookie)
+router.post('/refresh', async (req, res) => {
   try {
-    const u = req.user
-    if (!u) return res.status(401).send({ error: 'Please authenticate.' })
+    const cookies = parseCookies(req.headers && req.headers.cookie);
+    const raw = cookies[REFRESH_COOKIE_NAME] || null;
+    if (!raw) {
+      clearRefreshCookie(res);
+      return res.status(401).send({ error: 'Please authenticate.' });
+    }
 
-    const nextToken = signAccessToken({ userId: u._id, tokenVersion: u.tokenVersion || 0 })
-    const userObj = u.toObject ? u.toObject({ getters: true }) : JSON.parse(JSON.stringify(u))
-    if (userObj.password) delete userObj.password
-    const hydrated = await hydrateUserProjects(userObj)
-    return res.status(200).send({ user: hydrated, token: nextToken })
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(String(raw));
+    } catch (e) {
+      clearRefreshCookie(res);
+      return res.status(401).send({ error: 'Please authenticate.' });
+    }
+
+    const userId = decoded && (decoded.sub || decoded._id || decoded.userId || decoded.id);
+    const rid = decoded && decoded.rid;
+    if (!userId || !rid) {
+      clearRefreshCookie(res);
+      return res.status(401).send({ error: 'Please authenticate.' });
+    }
+
+    const u = await User.findById(userId);
+    if (!u) {
+      clearRefreshCookie(res);
+      return res.status(401).send({ error: 'Please authenticate.' });
+    }
+
+    const expected = u.refreshTokenIdHash || null;
+    const actual = sha256Hex(rid);
+    if (!expected || expected !== actual) {
+      clearRefreshCookie(res);
+      return res.status(401).send({ error: 'Please authenticate.' });
+    }
+
+    // rotate
+    const nextRid = newRefreshId();
+    u.refreshTokenIdHash = sha256Hex(nextRid);
+    u.refreshTokenIssuedAt = new Date();
+    await u.save();
+
+    const nextRefresh = signRefreshToken({ userId: u._id, refreshId: nextRid });
+    setRefreshCookie(res, nextRefresh);
+    const accessToken = signAccessToken({ userId: u._id, tokenVersion: u.tokenVersion || 0 });
+    return res.status(200).send({ accessToken });
   } catch (e) {
     console.error('[users.refresh] error', e && (e.stack || e.message || e))
     return res.status(400).send({ error: 'Refresh failed' })
   }
 })
 
-// Logout everywhere for this user by invalidating outstanding JWTs
-router.post('/logout', auth, async (req, res) => {
+// Logout: clear refresh cookie and invalidate stored refresh id hash
+router.post('/logout', async (req, res) => {
   try {
-    const u = req.user
-    if (!u) return res.status(401).send({ error: 'Please authenticate.' })
-    u.tokenVersion = Number(u.tokenVersion || 0) + 1
-    await u.save()
-    return res.status(204).send()
+    // Prefer refresh cookie identification; fall back to Authorization if provided.
+    const cookies = parseCookies(req.headers && req.headers.cookie);
+    const rawRefresh = cookies[REFRESH_COOKIE_NAME] || null;
+
+    let userId = null;
+    if (rawRefresh) {
+      try {
+        const decoded = verifyRefreshToken(String(rawRefresh));
+        userId = decoded && (decoded.sub || decoded._id || decoded.userId || decoded.id);
+      } catch (e) {
+        // ignore; we'll still clear cookie
+      }
+    }
+
+    if (!userId) {
+      const authz = req.header('Authorization') || '';
+      const token = authz.replace('Bearer ', '').trim();
+      if (token) {
+        try {
+          const decoded = verifyAccessToken(token);
+          userId = decoded && (decoded._id || decoded.sub || decoded.userId || decoded.id);
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    if (userId) {
+      try {
+        await User.findByIdAndUpdate(userId, { $set: { refreshTokenIdHash: null, refreshTokenIssuedAt: null } });
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    clearRefreshCookie(res);
+    return res.status(204).send();
   } catch (e) {
     console.error('[users.logout] error', e && (e.stack || e.message || e))
     return res.status(400).send({ error: 'Logout failed' })

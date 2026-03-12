@@ -2080,7 +2080,6 @@ import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import Comments from '../../components/Comments.vue'
 import { useAuthStore } from '../../stores/auth'
-import { getAuthHeaders } from '../../utils/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import IssuesTable from '../../components/IssuesTable.vue'
 import IssueForm from '../../components/IssueForm.vue'
@@ -2967,7 +2966,7 @@ async function fetchFullEquipmentForReport(equipId: string) {
   if (!equipId) return null
   if (fullEquipmentCache.has(equipId)) return fullEquipmentCache.get(equipId)
   try {
-    const { data } = await http.get(`/api/equipment/${equipId}?includePhotos=true`, { headers: { ...getAuthHeaders() } })
+    const { data } = await http.get(`/api/equipment/${equipId}?includePhotos=true`)
     const normalized = { ...data, id: data?._id || equipId }
     fullEquipmentCache.set(equipId, normalized)
     return normalized
@@ -3042,7 +3041,6 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   const fd = new FormData()
   fd.append('photos', file)
   const res = await http.post(`/api/activities/${targetId}/photos`, fd, {
-    headers: { ...getAuthHeaders() },
     onUploadProgress: (e: any) => {
       if (e.total) onProgress(Math.round((e.loaded / e.total) * 100))
     },
@@ -4528,7 +4526,7 @@ async function removeAttachment(i: number) {
   const aid = isNew.value ? (pendingCreatedId.value || id.value) : id.value
   if (aid && aid !== 'new') {
     try {
-      await http.delete(`/api/activities/${aid}/attachments/${i}`, { headers: { ...getAuthHeaders() } })
+      await http.delete(`/api/activities/${aid}/attachments/${i}`)
       const a = await store.fetchActivity(String(aid))
       if (a) form.attachments = a.attachments || []
       ui.showSuccess('Attachment removed')
@@ -4634,7 +4632,6 @@ async function fetchIssueSuggestions(qRaw: string, opts?: { page?: number; perPa
   try {
     const { data } = await http.get('/api/issues', {
       params: { projectId: pid, ...(q ? { search: q } : {}), page, perPage },
-      headers: { ...getAuthHeaders() }
     })
     const payload = (data && (data.items || data)) || []
     const items: any[] = Array.isArray(payload) ? payload : []
@@ -4988,7 +4985,7 @@ async function saveCaption() {
       await s.updatePhotoCaption(String(aid), viewerIndex.value, caption)
     } else {
       // Fallback: call API directly if store method isn't present yet (HMR race)
-  await http.patch(`/api/activities/${String(aid)}/photos/${viewerIndex.value}`, { caption }, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } })
+  await http.patch(`/api/activities/${String(aid)}/photos/${viewerIndex.value}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
     }
     try {
       const photos = await store.fetchActivityPhotos(String(aid))

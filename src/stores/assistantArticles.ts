@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { useProjectStore } from './project'
 
 export interface AssistantArticleListItem {
@@ -25,7 +23,7 @@ export interface AssistantArticle {
   updatedAt: string
 }
 
-const API_BASE = `${getApiBase()}/api/assistant`
+const API_BASE = `/api/assistant`
 
 export const useAssistantArticlesStore = defineStore('assistantArticles', () => {
   const loadingList = ref(false)
@@ -44,13 +42,12 @@ export const useAssistantArticlesStore = defineStore('assistantArticles', () => 
     loadingList.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/articles`, {
+      const { data } = await http.get(`${API_BASE}/articles`, {
         params: {
           projectId: pid,
           ...(opts?.q ? { q: String(opts.q) } : {}),
           ...(opts?.category ? { category: String(opts.category) } : {}),
         },
-        headers: getAuthHeaders(),
       })
       articles.value = Array.isArray(data?.articles) ? data.articles : []
     } catch (e: any) {
@@ -72,9 +69,8 @@ export const useAssistantArticlesStore = defineStore('assistantArticles', () => 
     loadingArticle.value = true
     error.value = null
     try {
-      const { data } = await axios.get(`${API_BASE}/articles/${encodeURIComponent(s)}`, {
+      const { data } = await http.get(`${API_BASE}/articles/${encodeURIComponent(s)}`, {
         params: { projectId: pid },
-        headers: getAuthHeaders(),
       })
       article.value = data || null
     } catch (e: any) {

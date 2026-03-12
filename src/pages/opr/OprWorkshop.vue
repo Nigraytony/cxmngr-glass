@@ -3009,7 +3009,6 @@
 
 <script setup lang="ts">
   import { computed, defineComponent, h, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-  import axios from 'axios'
   import { useRoute } from 'vue-router'
   import * as XLSX from 'xlsx'
   import BreadCrumbs from '../../components/BreadCrumbs.vue'
@@ -3020,8 +3019,7 @@
   import { useOprStore } from '../../stores/opr'
   import type { OprAnswer, OprCategory, OprItem, OprQuestion, OprResult, OprResultsRow, OprWorkshopAttendee, OprWorkshopInfo } from '../../stores/opr'
   import { confirm } from '../../utils/confirm'
-  import { getApiBase } from '../../utils/api'
-  import { getAuthHeaders } from '../../utils/auth'
+  import http from '../../utils/http'
 
 const TOOLTIP_CLASS = 'pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100'
 const TooltipWrap = defineComponent({
@@ -3046,7 +3044,7 @@ const ui = useUiStore()
 const opr = useOprStore()
 const route = useRoute()
 
-const OPR_API_BASE = `${getApiBase()}/api/projects`
+const OPR_API_BASE = `/api/projects`
 
 const projectId = computed(() => projectStore.currentProjectId)
 const project = computed(() => projectStore.currentProject as any)
@@ -3209,7 +3207,7 @@ async function generateWorkshopReportPdf() {
     // Best-effort loads that may be admin-only.
     let attendees: OprWorkshopAttendee[] = []
     try {
-      const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/workshop/attendees`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${OPR_API_BASE}/${projectId.value}/opr/workshop/attendees`)
       attendees = Array.isArray(data?.items) ? data.items : []
     } catch (e) { /* ignore */ }
 
@@ -3219,8 +3217,7 @@ async function generateWorkshopReportPdf() {
       const qid = String(q?.id || '')
       if (!qid) continue
       try {
-        const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/questions/${qid}/answers`, {
-          headers: getAuthHeaders(),
+        const { data } = await http.get(`${OPR_API_BASE}/${projectId.value}/opr/questions/${qid}/answers`, {
           params: isAdmin.value ? { includeMerged: 1 } : undefined,
         })
         answersByQuestionId[qid] = Array.isArray(data) ? data : []
@@ -3228,7 +3225,7 @@ async function generateWorkshopReportPdf() {
         answersByQuestionId[qid] = []
       }
       try {
-        const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/questions/${qid}/results`, { headers: getAuthHeaders() })
+        const { data } = await http.get(`${OPR_API_BASE}/${projectId.value}/opr/questions/${qid}/results`)
         resultsByQuestionId[qid] = Array.isArray(data?.results) ? data.results : []
       } catch (e) {
         resultsByQuestionId[qid] = []
@@ -3237,7 +3234,7 @@ async function generateWorkshopReportPdf() {
 
     let allResults: OprResultsRow[] = []
     try {
-      const { data } = await axios.get(`${OPR_API_BASE}/${projectId.value}/opr/results/all`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`${OPR_API_BASE}/${projectId.value}/opr/results/all`)
       allResults = Array.isArray(data?.items) ? data.items : []
     } catch (e) { /* ignore */ }
 
@@ -3416,8 +3413,8 @@ async function postImportedItems(items: Array<{ categoryId: string; text: string
   if (!items.length) return
   importSubmitting.value = true
   try {
-    await axios.post(`${OPR_API_BASE}/${projectId.value}/opr/items`, { items }, {
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    await http.post(`${OPR_API_BASE}/${projectId.value}/opr/items`, { items }, {
+      headers: { 'Content-Type': 'application/json' },
     })
     ui.showSuccess(`Imported ${items.length} OPR item${items.length === 1 ? '' : 's'}`, { duration: 3000 })
     // Best-effort refresh so the Register tab immediately shows the new items.

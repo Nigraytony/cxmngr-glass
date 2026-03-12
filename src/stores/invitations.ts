@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import http from '../utils/http'
-import { getAuthHeaders } from '../utils/auth'
 import { useAuthStore } from './auth'
 
 export interface PendingInvite {
@@ -21,7 +20,7 @@ export const useInvitationsStore = defineStore('invitations', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await http.get('/api/projects/my-invites', { headers: getAuthHeaders() })
+      const { data } = await http.get('/api/projects/my-invites')
       invites.value = Array.isArray(data) ? data : []
     } catch (e: any) {
       const status = e?.response?.status
@@ -40,21 +39,14 @@ export const useInvitationsStore = defineStore('invitations', () => {
   async function acceptInvite(id: string) {
     if (!id) return false
     try {
-      const { data } = await http.post(`/api/projects/invitations/${id}/accept`, {}, { headers: getAuthHeaders() })
+      const { data } = await http.post(`/api/projects/invitations/${id}/accept`, {})
       // remove from local list
       invites.value = invites.value.filter(i => i.id !== id)
 
       // Refresh canonical user from server and update auth store so UI (projects) reflect the accepted invite
       try {
         const auth = useAuthStore()
-        const me = await http.get('/api/users/me', { headers: getAuthHeaders() })
-        const serverUser = me && me.data && me.data.user ? me.data.user : null
-        if (serverUser) {
-          const preservedToken = auth.token || (auth.user && (auth.user as any).token) || null
-          auth.user = Object.assign({}, auth.user || {}, serverUser)
-          if (preservedToken && auth.user) auth.user.token = preservedToken
-          try { localStorage.setItem('user', JSON.stringify(auth.user)) } catch (e) { /* ignore */ }
-        }
+        await auth.fetchMe()
       } catch (e) {
         // ignore refresh failures
       }
@@ -70,7 +62,7 @@ export const useInvitationsStore = defineStore('invitations', () => {
   async function rejectInvite(id: string) {
     if (!id) return false
     try {
-      await http.delete(`/api/projects/invitations/${id}`, { headers: getAuthHeaders() })
+      await http.delete(`/api/projects/invitations/${id}`)
       invites.value = invites.value.filter(i => i.id !== id)
       return true
     } catch (e: any) {

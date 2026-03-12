@@ -153,9 +153,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import axios from 'axios'
-import { getApiBase } from '../utils/api'
-import { getAuthHeaders } from '../utils/auth'
+import http from '../utils/http'
 import { useOprLinkEvaluationsStore, type OprLinkEvaluationStatus } from '../stores/oprLinkEvaluations'
 
 type OprItemMeta = {
@@ -220,8 +218,7 @@ function normalizeIds(ids: any) {
 
 async function fetchMeta(ids: string[]) {
   if (!props.projectId || ids.length === 0) { meta.value = []; return }
-  const { data } = await axios.get(`${getApiBase()}/api/projects/${props.projectId}/opr/link/items`, {
-    headers: getAuthHeaders(),
+  const { data } = await http.get(`/api/projects/${props.projectId}/opr/link/items`, {
     params: { ids: ids.join(','), includeArchived: 1 },
   })
   const list = Array.isArray(data) ? data : []

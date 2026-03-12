@@ -48,7 +48,9 @@ router.post('/webhook', async (req, res) => {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) return res.status(500).send('Webhook secret not configured');
 
-    const payload = req.rawBody || (req.body ? Buffer.from(JSON.stringify(req.body)) : null);
+    const payload = Buffer.isBuffer(req.body)
+      ? req.body
+      : (req.rawBody || (req.body ? Buffer.from(JSON.stringify(req.body)) : null));
     if (!payload) return res.status(400).send('Webhook Error: raw body not available');
 
     event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);

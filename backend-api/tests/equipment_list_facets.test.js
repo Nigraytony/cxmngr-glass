@@ -1,7 +1,7 @@
 const request = require('supertest')
 const mongoose = require('mongoose')
 const assert = require('assert')
-const { clearDb } = require('./testUtils')
+const { clearDb, withCsrf } = require('./testUtils')
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test'
 
@@ -42,16 +42,16 @@ describe('Equipment list facets robustness', function () {
   it('returns 200 for includeFacets even with malformed checklist.system values', async () => {
     const Equipment = require('../models/equipment')
 
-    const inviterRes = await request(app)
-      .post('/api/users/register')
+    const inviterRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'equipfacets@example.com', password: 'password123', firstName: 'Equip', lastName: 'Facets', company: 'TestCo' })
     assert.strictEqual(inviterRes.status, 201, `expected 201 from register, got ${inviterRes.status}`)
-    const token = inviterRes.body.token
+    const token = inviterRes.body.accessToken
     const user = inviterRes.body.user
     assert(token, 'register should return token')
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${token}`)
       .send({ userId: user._id, name: 'Equipment Facets Project', client: 'Client' })
     assert.strictEqual(projectRes.status, 201, `expected 201 from create project, got ${projectRes.status}`)
@@ -117,4 +117,3 @@ describe('Equipment list facets robustness', function () {
     assert(!ahu1.checklistsBySystem.some((x) => x && x.system === '[object Object]'), 'AHU-1 should not count object systems')
   })
 })
-

@@ -876,7 +876,6 @@ import Spinner from '../../components/Spinner.vue'
 import Modal from '../../components/Modal.vue'
 import http from '../../utils/http'
 import { getApiBase } from '../../utils/api'
-import { getAuthHeaders } from '../../utils/auth'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
 import { useTemplatesStore, type Template } from '../../stores/templates'
@@ -1381,7 +1380,7 @@ async function fetchTemplatesPage(projectId?: string) {
     if (systemFilter.value) params.system = systemFilter.value
     if (statusFilter.value) params.status = statusFilter.value
     if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
-    const res = await http.get('/api/templates', { params, headers: getAuthHeaders() })
+    const res = await http.get('/api/templates', { params })
     const data = res && res.data ? res.data : {}
     const normalize = (t: any) => ({ ...(t || {}), id: t?._id || t?.id })
     if (Array.isArray(data.items)) serverTemplates.value = data.items.map(normalize)
@@ -1555,7 +1554,7 @@ async function fetchAllTemplatesForExport(projectId: string) {
   let total = 0
   const all: any[] = []
   for (;;) {
-    const { data } = await http.get('/api/templates', { params: { projectId, page, perPage }, headers: getAuthHeaders() })
+    const { data } = await http.get('/api/templates', { params: { projectId, page, perPage } })
     const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
     total = Number(data?.total ?? items.length)
     all.push(...items)
@@ -1568,7 +1567,7 @@ async function fetchAllTemplatesForExport(projectId: string) {
     const tid = String((t as any)._id || (t as any).id || '')
     if (!tid) continue
     try {
-      const { data } = await http.get(`/api/templates/${tid}`, { headers: getAuthHeaders() })
+      const { data } = await http.get(`/api/templates/${tid}`)
       enriched.push(data || t)
     } catch (e) {
       enriched.push(t)
@@ -1608,7 +1607,6 @@ async function downloadTemplatesXlsx() {
 
     const res = await http.get('/api/templates/export', {
       params,
-      headers: getAuthHeaders(),
       responseType: 'blob'
     })
 

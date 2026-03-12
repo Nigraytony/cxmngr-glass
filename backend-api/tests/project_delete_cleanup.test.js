@@ -1,7 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const assert = require('assert');
-const { clearDb } = require('./testUtils');
+const { clearDb, withCsrf } = require('./testUtils');
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
@@ -38,22 +38,22 @@ describe('Project delete cleanup integration', function () {
   it('removes deleted project from all user project lists', async () => {
     const User = require('../models/user');
 
-    const ownerRes = await request(app)
-      .post('/api/users/register')
+    const ownerRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'owner@example.com', password: 'password123', firstName: 'Own', lastName: 'Er', company: 'TestCo' });
     assert.strictEqual(ownerRes.status, 201);
-    const ownerToken = ownerRes.body.token;
+    const ownerToken = ownerRes.body.accessToken;
     const ownerId = ownerRes.body.user._id;
     assert(ownerToken, 'owner should receive token');
 
-    const otherRes = await request(app)
-      .post('/api/users/register')
+    const otherRes = await withCsrf(request(app)
+      .post('/api/users/register'))
       .send({ email: 'other@example.com', password: 'password123', firstName: 'Oth', lastName: 'Er', company: 'TestCo' });
     assert.strictEqual(otherRes.status, 201);
     const otherId = otherRes.body.user._id;
 
-    const projectRes = await request(app)
-      .post('/api/projects')
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ name: 'Delete Me', client: 'Client' });
     assert.strictEqual(projectRes.status, 201);
@@ -67,8 +67,8 @@ describe('Project delete cleanup integration', function () {
       $addToSet: { projects: { _id: projectId, role: 'user', default: false } },
     });
 
-    const delRes = await request(app)
-      .delete(`/api/projects/${projectId}`)
+    const delRes = await withCsrf(request(app)
+      .delete(`/api/projects/${projectId}`))
       .set('Authorization', `Bearer ${ownerToken}`);
     assert.strictEqual(delRes.status, 200, `expected 200 delete, got ${delRes.status}: ${JSON.stringify(delRes.body)}`);
 
@@ -81,4 +81,3 @@ describe('Project delete cleanup integration', function () {
     assert.strictEqual(otherHas, false, 'other user should not still reference deleted project');
   });
 });
-

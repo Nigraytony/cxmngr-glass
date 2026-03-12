@@ -89,7 +89,6 @@
 import Modal from './Modal.vue'
 import { ref, computed, watch } from 'vue'
 import http from '../utils/http'
-import { getAuthHeaders } from '../utils/auth'
 import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
@@ -195,7 +194,7 @@ async function save() {
     } catch (e) {
       // ignore
     }
-    const resp = await http.put(`/api/projects/${pid}/team/${memberId}/permissions`, body, { headers: getAuthHeaders() })
+    const resp = await http.put(`/api/projects/${pid}/team/${memberId}/permissions`, body)
     ui.showSuccess('Permissions saved')
     // If backend returned the updated member, emit it so parent can update immediately
     const updatedMember = resp && resp.data && resp.data.member ? resp.data.member : null
