@@ -4,6 +4,22 @@ import { useAuthStore } from '../stores/auth'
 
 export const http = api
 
+// Single-flight refresh to avoid multiple concurrent refresh calls.
+let refreshInFlight: Promise<boolean> | null = null
+async function refreshOnce(auth: any): Promise<boolean> {
+  if (!auth || typeof auth.refresh !== 'function') return false
+  if (!refreshInFlight) {
+    refreshInFlight = Promise.resolve()
+      .then(() => auth.refresh())
+      .then((ok: any) => Boolean(ok))
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null
+      })
+  }
+  return refreshInFlight
+}
+
 let lastPlanLimitToastAt = 0
 function maybeShowPlanLimitToast(payload?: any) {
   const now = Date.now()
@@ -48,19 +64,43 @@ function isAuthEndpoint(url: string) {
 
 http.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
     try {
       const status = err?.response?.status
       const payload = err?.response?.data
       const url = String(err?.config?.url || '')
+      const originalRequest = err?.config || {}
 
       // If the API says we're not authorized and we currently have a token,
-      // treat it as a session expiry: clear in-memory auth and redirect to login.
+      // attempt a refresh and retry once before treating it as session expiry.
       if (status === 401 && !isAuthEndpoint(url)) {
         const auth = (() => {
           try { return useAuthStore() } catch (e) { return null }
         })()
-        if (auth && auth.accessToken) {
+
+        const alreadyRetried = Boolean((originalRequest as any)._retry)
+        const hasToken = Boolean(auth && (auth.accessToken || auth.isAuthenticated))
+
+        if (auth && hasToken && !alreadyRetried) {
+          ;(originalRequest as any)._retry = true
+
+          const ok = await refreshOnce(auth)
+          if (ok) {
+            try {
+              // Ensure the retried request uses the latest token.
+              const token = auth.accessToken
+              if (token) {
+                originalRequest.headers = { ...(originalRequest.headers || {}), Authorization: `Bearer ${token}` }
+              }
+            } catch (e) {
+              // ignore
+            }
+            return http.request(originalRequest)
+          }
+        }
+
+        // Refresh failed (or we couldn't refresh): treat it as a real session expiry.
+        if (auth && hasToken) {
           markSessionExpired()
           try { auth.clearSession() } catch (e) { /* ignore */ }
           try {
@@ -72,6 +112,7 @@ http.interceptors.response.use(
           }
         }
       }
+
       if (status === 402 || payload?.code === 'PLAN_LIMIT_REACHED') {
         maybeShowPlanLimitToast(payload)
       }

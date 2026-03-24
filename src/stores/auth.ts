@@ -66,7 +66,14 @@ function syncDefaultProject(user: any) {
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  const accessToken = ref<string | null>(null);
+  const accessToken = ref<string | null>((() => {
+    try {
+      const t = sessionStorage.getItem('auth.accessToken')
+      return t && String(t).trim() ? String(t) : null
+    } catch (e) {
+      return null
+    }
+  })());
   const authReady = ref(false);
   const error = ref<string | null>(null);
 
@@ -76,9 +83,11 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = token;
     if (token) {
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
+      try { sessionStorage.setItem('auth.accessToken', token) } catch (e) { /* ignore */ }
     } else {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete (api.defaults.headers.common as any).Authorization;
+      try { sessionStorage.removeItem('auth.accessToken') } catch (e) { /* ignore */ }
     }
   }
 
@@ -148,6 +157,19 @@ export const useAuthStore = defineStore('auth', () => {
     authReady.value = false;
     error.value = null;
     try {
+      // If we have a (tab-scoped) stored access token, try it first.
+      // This prevents logging out on browser refresh when refresh cookies are blocked.
+      if (accessToken.value) {
+        try {
+          // Ensure axios has the header after reload.
+          api.defaults.headers.common.Authorization = `Bearer ${accessToken.value}`
+        } catch (e) {
+          // ignore
+        }
+        const meOk = await fetchMe()
+        if (meOk) return
+      }
+
       const ok = await refresh();
       if (ok) await fetchMe();
     } catch (e) {

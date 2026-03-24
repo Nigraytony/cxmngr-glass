@@ -25,7 +25,40 @@ app.use(router)
 // Auth bootstrap: refresh cookie -> access token -> /me
 try {
 	const auth = useAuthStore(pinia)
-	auth.bootstrap()
+	// Never allow bootstrap failures (e.g., 401 on refresh when logged out)
+	// to surface as unhandled promise rejections.
+	Promise.resolve(auth.bootstrap()).catch(() => {})
+
+	// Keep the session alive while the user is actively using the app.
+	// This is intentionally lightweight + throttled to avoid extra load.
+	let lastKeepAliveAt = 0
+	let keepAliveTimer = null
+	const KEEPALIVE_MIN_INTERVAL_MS = 5 * 60 * 1000
+	const ACTIVITY_DEBOUNCE_MS = 750
+
+	function scheduleKeepAlive() {
+		if (keepAliveTimer) return
+		keepAliveTimer = setTimeout(async () => {
+			keepAliveTimer = null
+			try {
+				const now = Date.now()
+				if (now - lastKeepAliveAt < KEEPALIVE_MIN_INTERVAL_MS) return
+				// Only attempt refresh if we believe there is a session to extend.
+				if (!auth || !auth.accessToken) return
+				lastKeepAliveAt = now
+				await Promise.resolve(auth.refresh())
+			} catch (e) {
+				// ignore: refresh failures are handled when real API calls occur
+			}
+		}, ACTIVITY_DEBOUNCE_MS)
+	}
+
+	if (typeof window !== 'undefined') {
+		const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+		for (const ev of events) {
+			window.addEventListener(ev, scheduleKeepAlive, { passive: true })
+		}
+	}
 } catch (e) {
 	// ignore
 }

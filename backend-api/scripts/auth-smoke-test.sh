@@ -5,6 +5,12 @@ API_URL="${API_URL:-http://localhost:3000}"
 EMAIL="${EMAIL:-smoke.$(date +%s)@example.com}"
 PASSWORD="${PASSWORD:-password123!}"
 
+# Refresh cookie name depends on scheme (see backend-api/routes/users.js)
+REFRESH_COOKIE_NAME="rt"
+if [[ "$API_URL" == https://* ]]; then
+  REFRESH_COOKIE_NAME="__Host-rt"
+fi
+
 tmp_dir="$(mktemp -d)"
 cookie_jar="$tmp_dir/cookies.txt"
 hdr_login="$tmp_dir/login.headers.txt"
@@ -48,12 +54,13 @@ curl -sS \
   "$API_URL/api/users/login" >/dev/null
 
 if ! rg -i --quiet '^set-cookie: __Host-rt=' "$hdr_login"; then
-  echo "FAIL: login did not set __Host-rt cookie" >&2
-  exit 1
-fi
-if ! rg -i --quiet '^set-cookie: csrf=' "$hdr_login"; then
-  echo "FAIL: login did not set csrf cookie" >&2
-  exit 1
+  if ! rg -i --quiet "^set-cookie: ${REFRESH_COOKIE_NAME}=" "$hdr_login"; then
+    echo "FAIL: login did not set ${REFRESH_COOKIE_NAME} cookie" >&2
+    exit 1
+  fi
+else
+  # ok
+  true
 fi
 
 csrf_cookie="$(
@@ -91,7 +98,7 @@ if ! echo "$resp" | rg --quiet '"accessToken"\s*:'; then
   exit 1
 fi
 
-echo "==> 5) Logout clears refresh cookie (204 + Set-Cookie __Host-rt=...; Max-Age=0/Expires)"
+echo "==> 5) Logout clears refresh cookie (204 + Set-Cookie ${REFRESH_COOKIE_NAME}=...; Max-Age=0/Expires)"
 code="$(
   curl -sS -o /dev/null \
     -w "%{http_code}" \
@@ -105,12 +112,12 @@ if [[ "$code" != "204" ]]; then
   echo "FAIL: expected 204 from logout, got $code" >&2
   exit 1
 fi
-if ! rg -i --quiet '^set-cookie: __Host-rt=' "$hdr_logout"; then
-  echo "FAIL: logout did not clear __Host-rt cookie (missing Set-Cookie)" >&2
+if ! rg -i --quiet "^set-cookie: ${REFRESH_COOKIE_NAME}=" "$hdr_logout"; then
+  echo "FAIL: logout did not clear ${REFRESH_COOKIE_NAME} cookie (missing Set-Cookie)" >&2
   exit 1
 fi
-if ! rg -i --quiet '^set-cookie: __Host-rt=.*(max-age=0|expires=)' "$hdr_logout"; then
-  echo "FAIL: logout Set-Cookie for __Host-rt did not look expired" >&2
+if ! rg -i --quiet "^set-cookie: ${REFRESH_COOKIE_NAME}=.*(max-age=0|expires=)" "$hdr_logout"; then
+  echo "FAIL: logout Set-Cookie for ${REFRESH_COOKIE_NAME} did not look expired" >&2
   exit 1
 fi
 

@@ -40,7 +40,11 @@ function normalizePasswordResetToken(value) {
   return s.toLowerCase()
 }
 
-const REFRESH_COOKIE_NAME = '__Host-rt';
+// Refresh token cookie name:
+// - In production, use a __Host- cookie (requires Secure + Path=/ and no Domain)
+// - In local dev (often HTTP), avoid __Host- prefix because modern user agents may reject
+//   non-Secure __Host- cookies, breaking refresh in dev.
+const REFRESH_COOKIE_NAME = isProd() ? '__Host-rt' : 'rt';
 
 function isProd() {
   return String(process.env.NODE_ENV || '').toLowerCase() === 'production';
@@ -49,7 +53,10 @@ function isProd() {
 function refreshCookieOptions() {
   return {
     httpOnly: true,
-    sameSite: 'lax',
+    // In production deployments where the frontend and API are on different origins,
+    // SameSite must be 'none' for cookies to be sent with XHR/fetch (withCredentials).
+    // Keep 'lax' for local dev to avoid requiring HTTPS.
+    sameSite: isProd() ? 'none' : 'lax',
     path: '/',
     secure: isProd(),
   };
@@ -244,7 +251,10 @@ router.post('/refresh', async (req, res) => {
     const raw = cookies[REFRESH_COOKIE_NAME] || null;
     if (!raw) {
       clearRefreshCookie(res);
-      return res.status(401).send({ error: 'Please authenticate.' });
+      // Logged-out state: treat as a no-op rather than an error.
+      // This endpoint is called during SPA bootstrap; returning 204 avoids noisy
+      // console/network errors while still indicating "no session".
+      return res.status(204).send();
     }
 
     let decoded;
@@ -252,27 +262,27 @@ router.post('/refresh', async (req, res) => {
       decoded = verifyRefreshToken(String(raw));
     } catch (e) {
       clearRefreshCookie(res);
-      return res.status(401).send({ error: 'Please authenticate.' });
+      return res.status(204).send();
     }
 
     const userId = decoded && (decoded.sub || decoded._id || decoded.userId || decoded.id);
     const rid = decoded && decoded.rid;
     if (!userId || !rid) {
       clearRefreshCookie(res);
-      return res.status(401).send({ error: 'Please authenticate.' });
+      return res.status(204).send();
     }
 
     const u = await User.findById(userId);
     if (!u) {
       clearRefreshCookie(res);
-      return res.status(401).send({ error: 'Please authenticate.' });
+      return res.status(204).send();
     }
 
     const expected = u.refreshTokenIdHash || null;
     const actual = sha256Hex(rid);
     if (!expected || expected !== actual) {
       clearRefreshCookie(res);
-      return res.status(401).send({ error: 'Please authenticate.' });
+      return res.status(204).send();
     }
 
     // rotate

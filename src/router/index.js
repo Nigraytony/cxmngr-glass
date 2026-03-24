@@ -164,7 +164,7 @@ router.beforeEach(async (to) => {
     // Ensure plans are loaded for gating decisions
     try { await ensurePlansLoaded() } catch (e) { /* ignore gating init errors */ }
   // wait briefly for auth bootstrap to complete so guards don't flash unauthenticated
-  try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(2500) } catch (e) { /* ignore auth bootstrap timeout */ }
+  try { if (typeof auth.waitForAuthReady === 'function') await auth.waitForAuthReady(8000) } catch (e) { /* ignore auth bootstrap timeout */ }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     // Unauthenticated users visiting app routes: send to homepage; login retains redirect

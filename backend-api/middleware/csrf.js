@@ -19,7 +19,10 @@ function normalizeCsrfToken(value) {
 function cookieOptions() {
   return {
     httpOnly: false,
-    sameSite: 'lax',
+    // For cross-origin SPA->API deployments (e.g., app.cxma.io -> *.azurewebsites.net),
+    // cookies must be SameSite=None;Secure to be included in credentialed XHR/fetch.
+    // Keep Lax for local dev so HTTPS isn't required.
+    sameSite: isProd() ? 'none' : 'lax',
     path: '/',
     secure: isProd(),
   };

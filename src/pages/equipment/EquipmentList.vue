@@ -1138,7 +1138,7 @@
                 @blur="hideModalTypeDropdown"
                 @wheel.prevent="(e) => onModalTypeArrow(e.deltaY > 0 ? 1 : -1)"
               >
-                <span>{{ modalTypeOptions.find(opt => opt.value === form.type)?.text || form.type }}</span>
+                <span>{{ (!form.type ? 'Select type' : (modalTypeOptions.find(opt => !opt.disabled && opt.value === form.type)?.text || form.type)) }}</span>
                 <svg
                   class="w-4 h-4 text-white/50"
                   fill="none"
@@ -1159,16 +1159,23 @@
                 class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
               >
                 <div class="py-1">
-                  <button
-                    v-for="(opt, i) in modalTypeOptions"
-                    :key="opt.value"
-                    type="button"
-                    class="w-full px-3 py-2 text-left text-white/90"
-                    :class="i === highlightedModalTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                    @click="selectModalType(opt.value)"
-                  >
-                    {{ opt.text }}
-                  </button>
+                  <template v-for="(opt, i) in modalTypeOptions" :key="opt.key">
+                    <div
+                      v-if="opt.separator"
+                      class="px-3 py-2 text-[11px] uppercase tracking-wider text-white/55 bg-white/5 border-t border-white/10"
+                    >
+                      {{ opt.text }}
+                    </div>
+                    <button
+                      v-else
+                      type="button"
+                      class="w-full px-3 py-2 text-left text-white/90"
+                      :class="i === highlightedModalTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                      @click="selectModalType(opt.value)"
+                    >
+                      {{ opt.text }}
+                    </button>
+                  </template>
                 </div>
               </div>
             </div>
@@ -2025,7 +2032,25 @@ const filterTypeOptions = computed(() => {
 
 const modalTypeOptions = computed(() => {
   const arr: Array<any> = (lists as any)?.equipmentTypes || []
-  return arr.filter((opt: any) => opt && opt.value).map((opt: any) => ({ value: String(opt.value), text: String(opt.text ?? opt.value) }))
+  const out: Array<any> = []
+  for (const opt of arr) {
+    if (!opt) continue
+    const value = opt.value !== undefined && opt.value !== null ? String(opt.value) : ''
+    const text = String(opt.text ?? opt.value ?? '')
+
+    // Keep discipline separators (e.g. "-- mechanical --") as non-selectable headers.
+    const isSeparator = !value && /^\s*--/.test(text) && /--\s*$/.test(text)
+    if (isSeparator) {
+      out.push({ key: `sep:${text}`, value: '', text, disabled: true, separator: true })
+      continue
+    }
+
+    // Ignore empty values like "All" in the create/edit modal.
+    if (!value) continue
+
+    out.push({ key: `opt:${value}`, value, text: text || value, disabled: false, separator: false })
+  }
+  return out
 })
 
 const modalSystemOptions = computed(() => {
@@ -2221,7 +2246,10 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 // Modal Type dropdown functions
 function showModalTypeOptions() {
   showModalTypeDropdown.value = true
-  highlightedModalTypeIndex.value = modalTypeOptions.value.findIndex(opt => opt.value === form.value.type)
+  highlightedModalTypeIndex.value = modalTypeOptions.value.findIndex(opt => !opt.disabled && opt.value === form.value.type)
+  if (highlightedModalTypeIndex.value < 0) {
+    highlightedModalTypeIndex.value = modalTypeOptions.value.findIndex(opt => !opt.disabled)
+  }
 }
 
 function hideModalTypeDropdown() {
@@ -2236,17 +2264,35 @@ function onModalTypeArrow(direction: number) {
     showModalTypeOptions()
     return
   }
-  const newIndex = Math.max(0, Math.min(modalTypeOptions.value.length - 1, highlightedModalTypeIndex.value + direction))
-  highlightedModalTypeIndex.value = newIndex
-}
+  const opts = modalTypeOptions.value || []
+  if (!opts.length) return
 
-function chooseHighlightedModalType() {
-  if (highlightedModalTypeIndex.value >= 0 && highlightedModalTypeIndex.value < modalTypeOptions.value.length) {
-    selectModalType(modalTypeOptions.value[highlightedModalTypeIndex.value].value)
+  let idx = highlightedModalTypeIndex.value
+  if (idx < 0) idx = opts.findIndex(o => !o.disabled)
+  const start = idx
+
+  for (let tries = 0; tries < opts.length; tries++) {
+    idx = idx + direction
+    if (idx < 0) idx = opts.length - 1
+    if (idx >= opts.length) idx = 0
+    if (!opts[idx]?.disabled) {
+      highlightedModalTypeIndex.value = idx
+      return
+    }
+    if (idx === start) break
   }
 }
 
+function chooseHighlightedModalType() {
+  if (highlightedModalTypeIndex.value < 0) return
+  const opt = modalTypeOptions.value[highlightedModalTypeIndex.value]
+  if (!opt || opt.disabled) return
+  selectModalType(opt.value)
+}
+
 function selectModalType(type: string) {
+  const match = modalTypeOptions.value.find(o => !o.disabled && o.value === type)
+  if (!match) return
   form.value.type = type
   hideModalTypeDropdown()
 }
