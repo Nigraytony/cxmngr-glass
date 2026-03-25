@@ -13,6 +13,16 @@
           class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 cursor-pointer select-none"
           :class="(uploadingNow || disabled) ? 'opacity-60 cursor-not-allowed' : ''"
         >{{ buttonLabel }}</label>
+
+        <button
+          v-if="enableCapture"
+          type="button"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 select-none"
+          :class="(uploadingNow || disabled || remainingCount <= 0) ? 'opacity-60 cursor-not-allowed' : ''"
+          :disabled="uploadingNow || disabled || remainingCount <= 0"
+          @click="openCapture"
+        >{{ captureLabel }}</button>
+
         <input
           :id="inputId"
           type="file"
@@ -21,6 +31,17 @@
           class="sr-only"
           :disabled="uploadingNow || disabled"
           @change="onFiles"
+        >
+
+        <input
+          v-if="enableCapture"
+          ref="captureInputEl"
+          type="file"
+          :accept="accept"
+          capture="environment"
+          class="sr-only"
+          :disabled="uploadingNow || disabled || remainingCount <= 0"
+          @change="onCaptureFiles"
         >
       </div>
       <div
@@ -72,6 +93,8 @@ interface UploadFn {
 const props = defineProps<{
   upload: UploadFn
   buttonLabel?: string
+  captureLabel?: string
+  enableCapture?: boolean
   accept?: string
   multiple?: boolean
   maxCount?: number
@@ -88,6 +111,8 @@ const emit = defineEmits<{
 }>()
 
 const buttonLabel = computed(() => props.buttonLabel ?? 'Upload Photos')
+const captureLabel = computed(() => props.captureLabel ?? 'Take Photo')
+const enableCapture = computed(() => props.enableCapture ?? false)
 const accept = computed(() => props.accept ?? 'image/*')
 const multiple = computed(() => props.multiple ?? true)
 const maxCount = computed(() => props.maxCount ?? 16)
@@ -118,6 +143,7 @@ onBeforeUnmount(() => {
   removalTimers.clear()
 })
 const inputId = `photo-uploader-${Math.random().toString(36).slice(2, 8)}`
+const captureInputEl = ref<HTMLInputElement | null>(null)
 
 const remainingCount = computed(() => Math.max(0, maxCount.value - existingCount.value))
 const remainingInfo = computed(() => remainingCount.value >= 0 ? `You can upload ${remainingCount.value} more photo${remainingCount.value === 1 ? '' : 's'}.` : '')
@@ -139,10 +165,24 @@ function updateUpload(item: UploadItem, patch: Partial<UploadItem>) {
 
 async function onFiles(ev: Event) {
   const input = ev.target as HTMLInputElement
+  await handleInputFiles(input)
+}
+
+async function onCaptureFiles(ev: Event) {
+  const input = ev.target as HTMLInputElement
+  await handleInputFiles(input)
+}
+
+async function handleInputFiles(input: HTMLInputElement) {
   if (!input.files || !input.files.length || uploadingNow.value || disabled.value) return
 
   await processFiles(Array.from(input.files))
   input.value = ''
+}
+
+function openCapture() {
+  if (uploadingNow.value || disabled.value || remainingCount.value <= 0) return
+  captureInputEl.value?.click()
 }
 
 async function processFiles(files: File[]) {

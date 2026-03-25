@@ -59,6 +59,8 @@
     <div v-else>
       <PhotoUploader
         button-label="Upload Photos"
+        capture-label="Take Photo"
+        :enable-capture="true"
         accept="image/*"
         :multiple="true"
         :max-count="maxCount"
