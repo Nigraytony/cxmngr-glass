@@ -192,7 +192,7 @@
                     @blur="hideTypeDropdown"
                     @wheel.prevent="(e) => onTypeArrow(e.deltaY > 0 ? 1 : -1)"
                   >
-                    <span>{{ typeOptions.find(opt => opt.value === form.type)?.text || form.type }}</span>
+                    <span>{{ (!form.type ? 'Select type' : (typeOptions.find(opt => !opt.disabled && opt.value === form.type)?.text || form.type)) }}</span>
                     <svg
                       class="w-4 h-4 text-white/50"
                       fill="none"
@@ -213,16 +213,23 @@
                     class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
                   >
                     <div class="py-1">
-                      <button
-                        v-for="(opt, i) in typeOptions"
-                        :key="opt.value"
-                        type="button"
-                        class="w-full px-3 py-2 text-left text-white/90"
-                        :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
-                        @click="selectType(opt.value)"
-                      >
-                        {{ opt.text }}
-                      </button>
+                      <template v-for="(opt, i) in typeOptions" :key="opt.key">
+                        <div
+                          v-if="opt.separator"
+                          class="px-3 py-2 text-[11px] uppercase tracking-wider text-white/55 bg-white/5 border-t border-white/10"
+                        >
+                          {{ opt.text }}
+                        </div>
+                        <button
+                          v-else
+                          type="button"
+                          class="w-full px-3 py-2 text-left text-white/90"
+                          :class="i === highlightedTypeIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                          @click="selectType(opt.value)"
+                        >
+                          {{ opt.text }}
+                        </button>
+                      </template>
                     </div>
                   </div>
                 </div>
@@ -1901,9 +1908,26 @@ const systemSelectOptions = computed(() => {
     .map((opt: any) => ({ value: opt.value === null ? '' : String(opt.value), text: String(opt.text ?? opt.value) }))
 })
 
-const typeOptions = computed(() => {
+type EquipmentTypeOption = { key: string, value: string, text: string, disabled: boolean, separator: boolean }
+const typeOptions = computed<EquipmentTypeOption[]>(() => {
   const arr: Array<any> = (lists as any)?.equipmentTypes || []
-  return arr.filter((opt: any) => opt && opt.value).map((opt: any) => ({ value: String(opt.value), text: String(opt.text ?? opt.value) }))
+  const out: EquipmentTypeOption[] = []
+  for (const opt of arr) {
+    if (!opt) continue
+    const value = opt.value === null || opt.value === undefined ? '' : String(opt.value)
+    const text = String(opt.text ?? opt.value ?? '')
+
+    // Keep discipline separators (e.g. "-- mechanical --") as non-selectable headers.
+    const isSeparator = !value && /^\s*--/.test(text) && /--\s*$/.test(text)
+    if (isSeparator) {
+      out.push({ key: `sep:${text}`, value: '', text, disabled: true, separator: true })
+      continue
+    }
+
+    if (!value) continue
+    out.push({ key: `opt:${value}`, value, text: text || value, disabled: false, separator: false })
+  }
+  return out
 })
 
 // Styled dropdown state (Info tab)
@@ -1917,24 +1941,36 @@ const highlightedStatusIndex = ref(-1)
 const highlightedSpaceIndex = ref(-1)
 
 // Type dropdown handlers
+function nextSelectableTypeIndex(startIndex: number, direction: number): number {
+  const opts = typeOptions.value
+  if (!opts.length) return -1
+  let idx = startIndex
+  for (let step = 0; step < opts.length; step++) {
+    idx = (idx + direction + opts.length) % opts.length
+    const opt = opts[idx]
+    if (opt && !opt.disabled && !opt.separator) return idx
+  }
+  return -1
+}
 function showTypeOptions() {
   showTypeDropdown.value = true
-  highlightedTypeIndex.value = typeOptions.value.findIndex(opt => opt.value === form.value.type)
+  const selected = typeOptions.value.findIndex(opt => !opt.disabled && opt.value === form.value.type)
+  highlightedTypeIndex.value = selected >= 0 ? selected : nextSelectableTypeIndex(-1, 1)
 }
 function hideTypeDropdown() {
   setTimeout(() => { showTypeDropdown.value = false; highlightedTypeIndex.value = -1 }, 150)
 }
 function onTypeArrow(direction: number) {
   if (!showTypeDropdown.value) { showTypeOptions(); return }
-  const newIndex = Math.max(0, Math.min(typeOptions.value.length - 1, highlightedTypeIndex.value + direction))
-  highlightedTypeIndex.value = newIndex
+  const next = nextSelectableTypeIndex(highlightedTypeIndex.value, direction)
+  if (next !== -1) highlightedTypeIndex.value = next
 }
 function chooseHighlightedType() {
-  if (highlightedTypeIndex.value >= 0 && highlightedTypeIndex.value < typeOptions.value.length) {
-    selectType(typeOptions.value[highlightedTypeIndex.value].value)
-  }
+  const opt = typeOptions.value[highlightedTypeIndex.value]
+  if (opt && !opt.disabled && !opt.separator && opt.value) selectType(opt.value)
 }
 function selectType(type: string) {
+  if (!type) return
   form.value.type = type
   hideTypeDropdown()
 }
