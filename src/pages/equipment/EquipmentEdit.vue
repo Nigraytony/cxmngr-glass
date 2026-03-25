@@ -213,7 +213,10 @@
                     class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
                   >
                     <div class="py-1">
-                      <template v-for="(opt, i) in typeOptions" :key="opt.key">
+                      <template
+                        v-for="(opt, i) in typeOptions"
+                        :key="opt.key"
+                      >
                         <div
                           v-if="opt.separator"
                           class="px-3 py-2 text-[11px] uppercase tracking-wider text-white/55 bg-white/5 border-t border-white/10"
@@ -809,7 +812,7 @@
                     <button
                       class="w-7 h-7 grid place-items-center rounded-md bg-white/10 border border-white/20 shrink-0 hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
                       title="Preview"
-                      @click="openAttachment(i)"
+                      @click="openAttachment(Number(i))"
                     >
                       <!-- PDF -->
                       <svg
@@ -1004,7 +1007,7 @@
                   <div class="flex items-center gap-2">
                     <button
                       class="h-8 px-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
-                      @click="openAttachment(i)"
+                      @click="openAttachment(Number(i))"
                     >
                       Preview
                     </button>
@@ -1012,7 +1015,7 @@
                       class="h-8 w-8 grid place-items-center rounded-md bg-red-500/20 border border-red-400/40 text-red-200 hover:bg-red-500/30"
                       title="Remove"
                       aria-label="Remove"
-                      @click="removeAttachment(i)"
+                      @click="removeAttachment(Number(i))"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -2154,19 +2157,6 @@ async function ensureReportData() {
   } catch (e) { /* best-effort */ }
   try { await loadIssues() } catch (e) { /* ignore */ }
 }
-async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
-  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
-  if (!eid) throw new Error('Missing equipment id')
-  const fd = new FormData()
-  fd.append('photos', file)
-  const res = await http.post(`/api/equipment/${eid}/photos`, fd, {
-    onUploadProgress: (e: any) => { if (e.total) onProgress(Math.round((e.loaded / e.total) * 100)) }
-  })
-  const fresh = await equipmentStore.fetchOne(eid)
-  if (fresh) form.value = { ...fresh }
-  appendLog('photo.upload', 'Uploaded photo', { filename: file?.name || null })
-  return res.data
-}
 async function removePhotoAt(idx: number) {
   try {
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
@@ -2180,12 +2170,6 @@ async function removePhotoAt(idx: number) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove photo')
   }
 }
-async function confirmRemove(idx: number) {
-  await new Promise(r => setTimeout(r))
-  const confirmed = await inlineConfirm({ title: 'Delete photo', message: 'Delete this photo? This cannot be undone.', confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' })
-  if (!confirmed) return
-  await removePhotoAt(idx)
-}
 // Photo viewer modal
 const viewerOpen = ref(false)
 const viewerIndex = ref(0)
@@ -2193,7 +2177,6 @@ const zoom = ref(1)
 const rotation = ref(0)
 const captionValue = ref('')
 const savingCaption = ref(false)
-function openViewer(i: number) { viewerIndex.value = i; viewerOpen.value = true }
 function closeViewer() { viewerOpen.value = false; zoom.value = 1; rotation.value = 0 }
 function nextPhoto() { if (photos.value.length) viewerIndex.value = (viewerIndex.value + 1) % photos.value.length }
 function prevPhoto() { if (photos.value.length) viewerIndex.value = (viewerIndex.value - 1 + photos.value.length) % photos.value.length }
