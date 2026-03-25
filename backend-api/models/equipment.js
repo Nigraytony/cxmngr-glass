@@ -9,7 +9,7 @@ const equipmentSchema = new mongoose.Schema({
     responsible: { type: String, required: false },
     template: { type: mongoose.Schema.Types.ObjectId, ref: 'Template', required: false },
     status: { type: String, 
-        enum: ['Ordered', 'Shipped', 'In Storage', 'Installed', 'Tested', 'Operational', 'Not Started'], 
+        enum: ['Delivered', 'Installed', 'In Storage', 'No Action', 'On Order', 'Ready for FPT', 'Set', 'Shipped', 'Tested', 'Trained'], 
         default: 'Not Started' 
     },
     attributes: {
