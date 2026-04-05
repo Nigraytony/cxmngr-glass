@@ -216,31 +216,59 @@ async function hydrateUserProjects(userObj) {
 
 // Login a user
 router.post('/login', loginLimiter, async (req, res) => {
-  // console.log(req.body);
-   try {
+  let step = 'start'
+  try {
+    step = 'normalize-input'
     const email = String(req.body && req.body.email || '').trim().toLowerCase()
     const password = String(req.body && req.body.password || '')
     if (!email || !password) return res.status(400).send({ error: 'email and password are required' })
 
+    step = 'find-user'
     const user = await User.findOne({ email });
+    step = 'compare-password'
     if (!user || !(await user.comparePassword(req.body.password))) {
       return res.status(400).send({ error: 'Invalid login credentials' });
     }
+
+    step = 'serialize-user'
     const userDoc = user.toObject({ getters: true });
+
+    step = 'issue-refresh-id'
     const refreshId = newRefreshId();
     user.refreshTokenIdHash = sha256Hex(refreshId);
     user.refreshTokenIssuedAt = new Date();
+
+    step = 'persist-refresh-state'
     await user.save();
 
+    step = 'sign-access-token'
     const accessToken = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
+
+    step = 'sign-refresh-token'
     const refreshToken = signRefreshToken({ userId: user._id, refreshId });
+
+    step = 'set-refresh-cookie'
     setRefreshCookie(res, refreshToken);
+
+    step = 'remove-password'
     delete userDoc.password; // Remove password from response
+
+    step = 'hydrate-projects'
     const hydrated = await hydrateUserProjects(userDoc)
+
+    step = 'send-response'
     res.send({ user: hydrated, accessToken });
   } catch (error) {
-    console.error('[users.login] error', error && (error.stack || error.message || error))
-    res.status(400).send({ error: error && error.message ? String(error.message) : 'Login failed' });
+    console.error('[users.login] error', {
+      step,
+      message: error && error.message ? String(error.message) : String(error),
+      stack: error && error.stack ? String(error.stack) : undefined,
+    })
+    res.status(500).send({
+      error: 'Login failed',
+      code: 'LOGIN_FAILED',
+      step,
+    });
   }
 });
 

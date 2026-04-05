@@ -76,6 +76,12 @@ if (allowedOriginsEnv && allowedOriginsEnv.trim() && allowedOriginsEnv !== '*') 
       if (!list.includes(origin)) list.push(origin);
     }
   } catch (_) { /* ignore invalid APP_URL */ }
+  try {
+    if (frontendUrlEnv) {
+      const origin = new URL(frontendUrlEnv).origin;
+      if (!list.includes(origin)) list.push(origin);
+    }
+  } catch (_) { /* ignore invalid FRONTEND_URL */ }
 
   corsOptions = {
     ...corsOptions,
@@ -136,8 +142,8 @@ if (isProd && (!allowedOriginsEnv || !String(allowedOriginsEnv).trim())) {
 }
 
 // Requirement: enable CORS credentials for FRONTEND_URL when set.
-// This overrides the "reflect origin" default and ensures only the configured frontend origin is allowed.
-if (frontendUrlEnv && String(frontendUrlEnv).trim()) {
+// Only use this narrower rule when no explicit CORS_ALLOWED_ORIGINS allowlist is configured.
+if (frontendUrlEnv && String(frontendUrlEnv).trim() && (!allowedOriginsEnv || !String(allowedOriginsEnv).trim())) {
   try {
     const frontendOrigin = new URL(String(frontendUrlEnv)).origin;
     corsOptions = {
