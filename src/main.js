@@ -29,14 +29,32 @@ try {
 	// to surface as unhandled promise rejections.
 	Promise.resolve(auth.bootstrap()).catch(() => {})
 
-	// Keep the session alive while the user is actively using the app.
-	// This is intentionally lightweight + throttled to avoid extra load.
+	// Keep the session alive while the user is actively using the app,
+	// and require re-login only after 15 minutes of inactivity.
 	let lastKeepAliveAt = 0
 	let keepAliveTimer = null
+	let idleTimer = null
 	const KEEPALIVE_MIN_INTERVAL_MS = 5 * 60 * 1000
+	const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
 	const ACTIVITY_DEBOUNCE_MS = 750
 
-	function scheduleKeepAlive() {
+	const scheduleIdleLogout = () => {
+		if (idleTimer) clearTimeout(idleTimer)
+		idleTimer = setTimeout(async () => {
+			try {
+				if (!auth || !auth.isAuthenticated) return
+				if (typeof auth.isInactiveExceeded === 'function' && !auth.isInactiveExceeded()) return
+				if (typeof auth.expireSession === 'function') await auth.expireSession('inactive')
+				if (window.location && window.location.pathname !== '/login') {
+					window.location.assign('/login')
+				}
+			} catch (e) {
+				// ignore
+			}
+		}, INACTIVITY_TIMEOUT_MS)
+	}
+
+	const scheduleKeepAlive = () => {
 		if (keepAliveTimer) return
 		keepAliveTimer = setTimeout(async () => {
 			keepAliveTimer = null
@@ -53,11 +71,22 @@ try {
 		}, ACTIVITY_DEBOUNCE_MS)
 	}
 
-	if (typeof window !== 'undefined') {
-		const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
-		for (const ev of events) {
-			window.addEventListener(ev, scheduleKeepAlive, { passive: true })
+	const handleActivity = () => {
+		try {
+			if (auth && typeof auth.markActivity === 'function') auth.markActivity()
+		} catch (e) {
+			// ignore
 		}
+		scheduleIdleLogout()
+		scheduleKeepAlive()
+	}
+
+	if (typeof window !== 'undefined') {
+		const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'focus']
+		for (const ev of events) {
+			window.addEventListener(ev, handleActivity, { passive: true })
+		}
+		scheduleIdleLogout()
 	}
 } catch (e) {
 	// ignore

@@ -13,7 +13,7 @@ export interface Equipment {
   system?: string
   responsible?: string
   template?: string
-  status?: 'Ordered' | 'Shipped' | 'In Storage' | 'Installed' | 'Tested' | 'Operational' | 'Not Started'
+  status?: string
   attributes?: any
   description?: string
   spaceId?: string | null

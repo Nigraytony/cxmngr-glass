@@ -51,6 +51,38 @@ export interface User {
   };
 }
 
+const AUTH_LAST_ACTIVITY_KEY = 'auth.lastActivityAt'
+const AUTH_SESSION_EXPIRED_KEY = 'auth.sessionExpired'
+const AUTH_SESSION_EXPIRED_REASON_KEY = 'auth.sessionExpiredReason'
+const AUTH_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
+
+function readStoredActivityAt(): number {
+  try {
+    const raw = sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY)
+    const value = Number(raw)
+    return Number.isFinite(value) && value > 0 ? value : 0
+  } catch (e) {
+    return 0
+  }
+}
+
+function storeActivityAt(value: number) {
+  try { sessionStorage.setItem(AUTH_LAST_ACTIVITY_KEY, String(value)) } catch (e) { /* ignore */ }
+}
+
+function clearStoredActivityAt() {
+  try { sessionStorage.removeItem(AUTH_LAST_ACTIVITY_KEY) } catch (e) { /* ignore */ }
+}
+
+function markExpiredReason(reason: 'expired' | 'inactive' = 'expired') {
+  try {
+    sessionStorage.setItem(AUTH_SESSION_EXPIRED_KEY, '1')
+    sessionStorage.setItem(AUTH_SESSION_EXPIRED_REASON_KEY, reason)
+  } catch (e) {
+    // ignore
+  }
+}
+
 function syncDefaultProject(user: any) {
   try {
     const projectStore = useProjectStore();
@@ -66,6 +98,7 @@ function syncDefaultProject(user: any) {
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
+  const lastActivityAt = ref<number>(readStoredActivityAt());
   const accessToken = ref<string | null>((() => {
     try {
       const t = sessionStorage.getItem('auth.accessToken')
@@ -78,6 +111,12 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null);
 
   const isAuthenticated = computed(() => !!user.value && !!accessToken.value);
+  const idleMs = computed(() => {
+    const at = Number(lastActivityAt.value || 0)
+    if (!at) return Number.POSITIVE_INFINITY
+    return Math.max(0, Date.now() - at)
+  })
+  const isInactive = computed(() => idleMs.value >= AUTH_INACTIVITY_TIMEOUT_MS)
 
   function setAccessToken(token: string | null) {
     accessToken.value = token;
@@ -94,6 +133,32 @@ export const useAuthStore = defineStore('auth', () => {
   function clearSession() {
     user.value = null;
     setAccessToken(null);
+    lastActivityAt.value = 0
+    clearStoredActivityAt()
+  }
+
+  function markActivity(timestamp = Date.now()) {
+    const ts = Number(timestamp)
+    if (!Number.isFinite(ts) || ts <= 0) return
+    lastActivityAt.value = ts
+    storeActivityAt(ts)
+  }
+
+  function isInactiveExceeded(now = Date.now()) {
+    const at = Number(lastActivityAt.value || 0)
+    if (!at) return true
+    return now - at >= AUTH_INACTIVITY_TIMEOUT_MS
+  }
+
+  async function expireSession(reason: 'expired' | 'inactive' = 'expired', opts?: { announce?: boolean }) {
+    if (opts?.announce !== false) markExpiredReason(reason)
+    try {
+      await api.post('/api/users/logout')
+    } catch (e) {
+      // ignore
+    }
+    clearSession()
+    try { localStorage.removeItem('selectedProjectId'); } catch (e) { /* ignore */ }
   }
 
   async function login(email: string, password: string) {
@@ -105,6 +170,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       setAccessToken(String(data.accessToken));
       user.value = data.user as User;
+      markActivity();
       syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
@@ -121,6 +187,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.accessToken) return false;
       setAccessToken(String(data.accessToken));
+      markActivity();
       return true;
     } catch (e) {
       return false;
@@ -134,6 +201,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.user) return false;
       user.value = data.user as User;
+      markActivity();
       syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
@@ -143,20 +211,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    // Best-effort server-side session clear (cookie + refresh invalidation).
-    try {
-      await api.post('/api/users/logout');
-    } catch (e) {
-      // ignore
-    }
-    clearSession();
-    try { localStorage.removeItem('selectedProjectId'); } catch (e) { /* ignore */ }
+    await expireSession('expired', { announce: false })
   }
 
   async function bootstrap() {
     authReady.value = false;
     error.value = null;
     try {
+      if (lastActivityAt.value && isInactiveExceeded()) {
+        markExpiredReason('inactive')
+        clearSession()
+        return
+      }
       // If we have a (tab-scoped) stored access token, try it first.
       // This prevents logging out on browser refresh when refresh cookies are blocked.
       if (accessToken.value) {
@@ -267,6 +333,12 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     authReady,
     waitForAuthReady,
+    lastActivityAt,
+    idleMs,
+    isInactive,
+    markActivity,
+    isInactiveExceeded,
+    expireSession,
     bootstrap,
     setAccessToken,
     clearSession,
@@ -280,4 +352,3 @@ export const useAuthStore = defineStore('auth', () => {
     changePassword,
   };
 });
-

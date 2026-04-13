@@ -1,5 +1,24 @@
 const mongoose = require('mongoose');
 
+const equipmentStatuses = [
+    'Delivered',
+    'Has Issues',
+    'Installed',
+    'In Storage',
+    'No Action',
+    'Not Working',
+    'On Order',
+    'Operational',
+    'Ready for FPT',
+    'Set',
+    'Shipped',
+    'Tested',
+    'Trained',
+    'Not Started',
+    'Ordered',
+    'Decommissioned',
+];
+
 const equipmentSchema = new mongoose.Schema({
     number: { type: String, required: false },
     tag: { type: String, required: true },
@@ -9,7 +28,7 @@ const equipmentSchema = new mongoose.Schema({
     responsible: { type: String, required: false },
     template: { type: mongoose.Schema.Types.ObjectId, ref: 'Template', required: false },
     status: { type: String, 
-        enum: ['Delivered', 'Installed', 'In Storage', 'No Action', 'On Order', 'Ready for FPT', 'Set', 'Shipped', 'Tested', 'Trained'], 
+        enum: equipmentStatuses, 
         default: 'Not Started' 
     },
     attributes: {

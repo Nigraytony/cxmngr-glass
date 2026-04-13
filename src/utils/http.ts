@@ -43,11 +43,14 @@ function maybeShowPlanLimitToast(payload?: any) {
 }
 
 let lastSessionExpiredToastAt = 0
-function markSessionExpired() {
+function markSessionExpired(reason: 'expired' | 'inactive' = 'expired') {
   const now = Date.now()
   if (now - lastSessionExpiredToastAt < 10_000) return
   lastSessionExpiredToastAt = now
-  try { sessionStorage.setItem('auth.sessionExpired', '1') } catch (e) { /* ignore */ }
+  try {
+    sessionStorage.setItem('auth.sessionExpired', '1')
+    sessionStorage.setItem('auth.sessionExpiredReason', reason)
+  } catch (e) { /* ignore */ }
 }
 
 function isAuthEndpoint(url: string) {
@@ -82,7 +85,7 @@ http.interceptors.response.use(
         const hasToken = Boolean(auth && (auth.accessToken || auth.isAuthenticated))
 
         if (auth && hasToken && !alreadyRetried) {
-          ;(originalRequest as any)._retry = true
+          (originalRequest as any)._retry = true
 
           const ok = await refreshOnce(auth)
           if (ok) {
@@ -99,16 +102,25 @@ http.interceptors.response.use(
           }
         }
 
-        // Refresh failed (or we couldn't refresh): treat it as a real session expiry.
+        // Refresh failed (or we couldn't refresh): only force re-login after inactivity.
         if (auth && hasToken) {
-          markSessionExpired()
-          try { auth.clearSession() } catch (e) { /* ignore */ }
-          try {
-            if (typeof window !== 'undefined' && window.location && window.location.pathname !== '/login') {
-              window.location.assign('/login')
+          const inactive = typeof auth.isInactiveExceeded === 'function'
+            ? Boolean(auth.isInactiveExceeded())
+            : true
+
+          if (inactive) {
+            markSessionExpired('inactive')
+            try {
+              if (typeof auth.expireSession === 'function') await auth.expireSession('inactive')
+              else auth.clearSession()
+            } catch (e) { /* ignore */ }
+            try {
+              if (typeof window !== 'undefined' && window.location && window.location.pathname !== '/login') {
+                window.location.assign('/login')
+              }
+            } catch (e) {
+              // ignore
             }
-          } catch (e) {
-            // ignore
           }
         }
       }

@@ -255,6 +255,46 @@
 
           <div class="relative inline-block group">
             <button
+              class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+              aria-label="Download tasks CSV"
+              :disabled="downloadingTasksCsv || !filtered.length"
+              @click="downloadTasksCsv"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 4v10"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M8 10l4 4 4-4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M5 18h14"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <div
+              role="tooltip"
+              class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+            >
+              Download tasks CSV
+            </div>
+          </div>
+
+          <div class="relative inline-block group">
+            <button
               class="h-8 w-8 inline-grid place-items-center rounded-md bg-white/6 border border-white/10 text-white/80 hover:bg-white/10"
               aria-label="Import tasks"
               @click="openImportModal"
@@ -1149,7 +1189,7 @@
             @change="onCsvFileSelected"
           >
           <p class="text-xs text-white/60 break-words">
-            Uploading will import tasks into the current project. Header suggestions:
+            Uploading will import tasks into the current project. Rows with matching <span class="font-mono">taskId</span> update existing tasks. Header suggestions:
             <span class="font-mono break-all block">
               taskId,wbs,name,description,start,finish,duration,percentComplete,status,notes,tags,dependencies
             </span>
@@ -1257,7 +1297,7 @@
           <button
             type="button"
             class="px-3 py-2 rounded-md border text-sm"
-            :class="settingsTab === 'list' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            :class="settingsTab === 'list' ? 'bg-white/10 border-white/20 text-gray-300' : 'bg-transparent border-white/10 text-gray-300 hover:text-white hover:bg-white/5'"
             @click="settingsTab = 'list'"
           >
             List
@@ -1265,7 +1305,7 @@
           <button
             type="button"
             class="px-3 py-2 rounded-md border text-sm"
-            :class="settingsTab === 'report' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            :class="settingsTab === 'report' ? 'bg-white/10 border-white/20 text-gray-300' : 'bg-transparent border-white/10 text-gray-300 hover:text-white hover:bg-white/5'"
             @click="settingsTab = 'report'"
           >
             Report
@@ -1273,7 +1313,7 @@
           <button
             type="button"
             class="px-3 py-2 rounded-md border text-sm"
-            :class="settingsTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
+            :class="settingsTab === 'cover' ? 'bg-white/10 border-white/20 text-gray-300' : 'bg-transparent border-white/10 text-gray-300 hover:text-white hover:bg-white/5'"
             @click="settingsTab = 'cover'"
           >
             Cover Page
@@ -1502,25 +1542,40 @@
         </div>
       </div>
       <template #footer>
-        <div class="flex items-center justify-between w-full">
-          <button
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-            @click="resetTasksReportSettings"
+        <div class="flex w-full flex-wrap items-center justify-between gap-3">
+          <div
+            v-if="settingsTab === 'list'"
+            class="text-xs text-white/60"
           >
-            Reset report settings
-          </button>
-          <div class="flex items-center gap-2">
+            List settings save automatically.
+          </div>
+          <div
+            v-else
+            class="text-xs text-white/60"
+          >
+            Save changes to keep these report settings for this project.
+          </div>
+
+          <div class="flex items-center justify-end gap-2 ml-auto">
             <button
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              v-if="settingsTab !== 'list'"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-gray-300"
+              @click="resetTasksReportSettings"
+            >
+              Reset
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-gray-300"
               @click="showSettingsModal = false"
             >
               Close
             </button>
             <button
-              class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35"
+              v-if="settingsTab !== 'list'"
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 text-gray-300"
               @click="saveTasksReportSettings"
             >
-              Save report settings
+              Save
             </button>
           </div>
         </div>
@@ -2019,6 +2074,7 @@ const showAutoTagModal = ref(false)
 const settingsTab = ref('list')
 
 const downloadingTasksPdf = ref(false)
+const downloadingTasksCsv = ref(false)
 const renderTasksReport = ref(false)
 const tasksReportRoot = ref(null)
 
@@ -2452,6 +2508,91 @@ async function downloadTasksPdf() {
   } finally {
     renderTasksReport.value = false
     downloadingTasksPdf.value = false
+  }
+}
+
+function csvEscape(value) {
+  const s = String(value ?? '')
+  if (/[",\r\n]/.test(s) || /^\s|\s$/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  return s
+}
+
+function taskCsvDate(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  const isoMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (isoMatch) return isoMatch[1]
+  const d = new Date(raw)
+  if (!Number.isFinite(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function exportTaskId(value, fallback = '') {
+  const raw = String(value ?? '').trim()
+  if (!raw) return String(fallback ?? '').trim()
+  return raw.replace(/^t-/i, '')
+}
+
+function exportTaskDependencies(value) {
+  const deps = Array.isArray(value) ? value : []
+  return deps.map(v => String(v || '').trim()).filter(Boolean).join(', ')
+}
+
+async function downloadTasksCsv() {
+  if (downloadingTasksCsv.value) return
+  downloadingTasksCsv.value = true
+  try {
+    const rows = Array.isArray(filtered.value) ? filtered.value : []
+    if (!rows.length) {
+      ui.showInfo('No tasks to export')
+      return
+    }
+
+    const headers = ['taskId', 'wbs', 'name', 'description', 'start', 'finish', 'duration', 'percentComplete', 'status', 'notes', 'tags', 'dependencies']
+    const lines = [headers.map(csvEscape).join(',')]
+
+    for (const task of rows) {
+      const line = [
+        exportTaskId(task?.taskId, task?._id),
+        String(task?.wbs || '').trim(),
+        String(task?.name || task?.title || '').trim(),
+        String(task?.description || '').trim(),
+        taskCsvDate(task?.start || task?.startDate || task?.start_date),
+        taskCsvDate(task?.end || task?.finish || task?.endDate || task?.finish_date),
+        task?.duration ?? '',
+        Number.isFinite(Number(task?.percentComplete)) ? Number(task.percentComplete) : '',
+        String(task?.status || '').trim(),
+        String(task?.notes || '').trim(),
+        Array.isArray(task?.tags) ? task.tags.map(v => String(v || '').trim()).filter(Boolean).join(', ') : '',
+        exportTaskDependencies(task?.dependencies),
+      ]
+      lines.push(line.map(csvEscape).join(','))
+    }
+
+    const safeName = projectNameResolved.value.replace(/[^a-z0-9\-_]+/gi, '-').replace(/-+/g, '-').replace(/(^-|-$)/g, '')
+    const stamp = new Date().toISOString().slice(0, 10)
+    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    try {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `tasks${safeName ? `-${safeName}` : ''}${stamp ? `-${stamp}` : ''}.csv`
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+    try { ui.showInfo(`Downloaded ${rows.length} tasks as CSV`) } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.error('downloadTasksCsv error', e)
+    try { ui.showError('Failed to export CSV') } catch (err) { /* ignore */ }
+  } finally {
+    downloadingTasksCsv.value = false
   }
 }
 

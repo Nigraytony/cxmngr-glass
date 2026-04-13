@@ -99,10 +99,12 @@ const ui = useUiStore()
 onMounted(() => {
   try {
     const flagged = sessionStorage.getItem('auth.sessionExpired')
+    const reason = sessionStorage.getItem('auth.sessionExpiredReason')
     if (flagged) {
       sessionStorage.removeItem('auth.sessionExpired')
+      sessionStorage.removeItem('auth.sessionExpiredReason')
       ui.showToast({
-        message: 'Session expired, please log in again',
+        message: reason === 'inactive' ? 'Session ended after 15 minutes of inactivity. Please log in again.' : 'Session expired, please log in again',
         variant: 'warning',
         duration: 7000,
         actionLabel: 'Log in again',

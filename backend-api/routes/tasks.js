@@ -521,6 +521,13 @@ function normalizeDependenciesCell(value) {
   })
 }
 
+function normalizeImportedTaskId(value, fallback = '') {
+  const raw = String(value || '').trim() || String(fallback || '').trim()
+  if (!raw) return null
+  if (/^t-/i.test(raw)) return `T-${String(raw).replace(/^t-/i, '').trim()}`
+  return `T-${raw}`
+}
+
 async function importCsvTasks({ projectId, csv }) {
   const text = String(csv || '')
   if (!text.trim()) {
@@ -549,11 +556,12 @@ async function importCsvTasks({ projectId, csv }) {
     return r[idx]
   }
 
-  const created = []
+  const saved = []
+  const createdIds = []
   let i = 0
   for (const r of dataRows) {
     i++
-    const uid = String(get(r, 'taskid') || get(r, 'uid') || '').trim() || String(i)
+    const taskId = normalizeImportedTaskId(get(r, 'taskid') || get(r, 'uid'), String(i))
     const name = String(get(r, 'name') || '').trim()
     const wbs = String(get(r, 'wbs') || get(r, 'outlinenumber') || '').trim() || null
     const start = safeParseDate(get(r, 'start'))
@@ -575,9 +583,8 @@ async function importCsvTasks({ projectId, csv }) {
         : (durationFromCsv && durationFromCsv > 0 ? Math.round(durationFromCsv) : undefined)
 
     const doc = {
-      projectId,
-      taskId: uid ? `T-${uid}` : undefined,
-      name: String(name || `Task ${uid || ''}`).trim(),
+      taskId,
+      name: String(name || `Task ${taskId || i}`).trim(),
       description,
       notes,
       start,
@@ -588,9 +595,7 @@ async function importCsvTasks({ projectId, csv }) {
       wbs,
       parentId: wbs,
       dependencies,
-      assignee: null,
       tags,
-      activityId: null,
       deleted: false,
     }
 
@@ -606,26 +611,39 @@ async function importCsvTasks({ projectId, csv }) {
     } catch (_) { /* ignore */ }
 
     try {
-      const t = new Task(doc)
+      let t = null
+      if (taskId) t = await Task.findOne({ projectId, taskId })
+      const isCreate = !t
+      if (isCreate) {
+        t = new Task({
+          projectId,
+          assignee: null,
+          activityId: null,
+          ...doc,
+        })
+      } else {
+        Object.assign(t, doc)
+      }
       await t.save()
-      created.push(t)
+      saved.push(t)
+      if (isCreate && t && t._id) createdIds.push(t._id)
     } catch (e) {
       console.error('task import save err', e && e.message ? e.message : e)
     }
   }
 
   try {
-    if (created.length > 0) {
+    if (createdIds.length > 0) {
       const project = await Project.findById(projectId)
       if (project) {
         project.tasks = project.tasks || []
-        for (const c of created) project.tasks.push(c._id)
+        for (const id of createdIds) project.tasks.push(id)
         await project.save()
       }
     }
   } catch (e) { /* ignore */ }
 
-  return created
+  return saved
 }
 
 function parseWbs(wbs) {

@@ -1121,7 +1121,7 @@
               v-model="form.tag"
               type="text"
               required
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             >
           </div>
           <div>
@@ -1129,7 +1129,7 @@
             <div class="relative">
               <button
                 type="button"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-gray-300"
                 @click="showModalTypeOptions"
                 @keydown.down.prevent="onModalTypeArrow(1)"
                 @keydown.up.prevent="onModalTypeArrow(-1)"
@@ -1186,7 +1186,7 @@
               v-model="form.title"
               type="text"
               required
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             >
           </div>
           <div>
@@ -1194,7 +1194,7 @@
             <div class="relative">
               <button
                 type="button"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-gray-300"
                 @click="showModalSystemOptions"
                 @keydown.down.prevent="onModalSystemArrow(1)"
                 @keydown.up.prevent="onModalSystemArrow(-1)"
@@ -1243,7 +1243,7 @@
             <div class="relative">
               <button
                 type="button"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-gray-300"
                 @click="showModalStatusOptions"
                 @keydown.down.prevent="onModalStatusArrow(1)"
                 @keydown.up.prevent="onModalStatusArrow(-1)"
@@ -1292,7 +1292,7 @@
             <div class="relative">
               <button
                 type="button"
-                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-white/90"
+                class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-left flex items-center justify-between text-gray-300"
                 @click="showModalSpaceOptions"
                 @keydown.down.prevent="onModalSpaceArrow(1)"
                 @keydown.up.prevent="onModalSpaceArrow(-1)"
@@ -1349,7 +1349,7 @@
             <textarea
               v-model="form.description"
               rows="3"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             />
           </div>
         </div>
@@ -1640,7 +1640,11 @@ const canAutoTagEquipmentPage = computed(() => {
   return tier === 'premium' || hasFeature
 })
 
-const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Started']
+const assetStatusValues = Array.isArray(lists.assetStatuses)
+  ? lists.assetStatuses
+    .map((opt: any) => String(opt?.value || '').trim())
+    .filter(Boolean)
+  : []
 
 	const search = ref('')
 	const typeFilter = ref('')
@@ -1664,6 +1668,12 @@ const serverSystemCounts = ref<Record<string, number>>({})
 const modalOpen = ref(false)
 const editing = ref(false)
 const form = ref<Equipment>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '' })
+const statuses = computed(() => {
+  const base = [...assetStatusValues]
+  const current = String(form.value.status || '').trim()
+  if (current && !base.includes(current)) base.unshift(current)
+  return base
+})
 const creating = ref(false)
 const duplicateMode = ref<'update' | 'skip'>('update')
 
@@ -2333,7 +2343,7 @@ function selectModalSystem(system: string) {
 // Modal Status dropdown functions
 function showModalStatusOptions() {
   showModalStatusDropdown.value = true
-  highlightedModalStatusIndex.value = statuses.findIndex(status => status === form.value.status)
+  highlightedModalStatusIndex.value = statuses.value.findIndex(status => status === form.value.status)
 }
 
 function hideModalStatusDropdown() {
@@ -2348,13 +2358,13 @@ function onModalStatusArrow(direction: number) {
     showModalStatusOptions()
     return
   }
-  const newIndex = Math.max(0, Math.min(statuses.length - 1, highlightedModalStatusIndex.value + direction))
+  const newIndex = Math.max(0, Math.min(statuses.value.length - 1, highlightedModalStatusIndex.value + direction))
   highlightedModalStatusIndex.value = newIndex
 }
 
 function chooseHighlightedModalStatus() {
-  if (highlightedModalStatusIndex.value >= 0 && highlightedModalStatusIndex.value < statuses.length) {
-    selectModalStatus(statuses[highlightedModalStatusIndex.value])
+  if (highlightedModalStatusIndex.value >= 0 && highlightedModalStatusIndex.value < statuses.value.length) {
+    selectModalStatus(statuses.value[highlightedModalStatusIndex.value])
   }
 }
 
@@ -2557,7 +2567,7 @@ const statusOptions = computed<Array<{ name: string; count: number }>>(() => {
     opts.push({ name, count })
   }
   // Sort by our known statuses order if present, else alpha
-  const order = statuses.slice()
+  const order = statuses.value.slice()
   opts.sort((a, b) => {
     const ia = order.indexOf(a.name)
     const ib = order.indexOf(b.name)
@@ -2730,18 +2740,23 @@ function closeModal() {
 async function save() {
   try {
     if (!form.value.title || !form.value.tag || !form.value.type) throw new Error('Tag, Title and Type are required')
-    if (!form.value.projectId) form.value.projectId = projectStore.currentProjectId || ''
+    const projectId = String(form.value.projectId || projectStore.currentProjectId || '')
+    if (!form.value.projectId) form.value.projectId = projectId
     if (editing.value && form.value.id) {
       await equipmentStore.update(form.value as Equipment & { id: string })
+      if (projectId) await fetchEquipmentPage(projectId)
       ui.showSuccess('Equipment updated')
     } else {
       await equipmentStore.create(form.value as Equipment)
+      if (page.value !== 1) page.value = 1
+      if (projectId) await fetchEquipmentPage(projectId)
       ui.showSuccess('Equipment created')
     }
-    modalOpen.value = false
+    closeModal()
   } catch (e: any) {
     // You can hook into a toast here if desired
     console.error(e)
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to save equipment')
   }
 }
 
@@ -3730,7 +3745,7 @@ const plannedSkipCount = computed(() => validUploadRows.value.filter(r => rowAct
 function resolveStatus(s?: string): string {
   const v = String(s || '').trim()
   if (!v) return 'Not Started'
-  const m = statuses.find(x => x.toLowerCase() === v.toLowerCase())
+  const m = statuses.value.find(x => x.toLowerCase() === v.toLowerCase())
   return m || 'Not Started'
 }
 function resolveSystem(s?: string): string {

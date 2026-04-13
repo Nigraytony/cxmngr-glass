@@ -259,10 +259,13 @@ export default {
   assetStatuses: [
     { value: null, text: "Please select an option" },
     { value: "Delivered", text: "Delivered" },
+    { value: "Has Issues", text: "Has Issues" },
     { value: "Installed", text: "Installed" },
     { value: "In Storage", text: "In Storage" },
     { value: "No Action", text: "No Action" },
+    { value: "Not Working", text: "Not Working" },
     { value: "On Order", text: "On Order" },
+    { value: "Operational", text: "Operational" },
     { value: "Ready for FPT", text: "Ready for FPT" },
     { value: "Set", text: "Set" },
     { value: "Shipped", text: "Shipped" },
@@ -270,5 +273,4 @@ export default {
     { value: "Trained", text: "Trained" }
   ],
 }
-
 

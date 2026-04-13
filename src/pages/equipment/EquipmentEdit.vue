@@ -733,16 +733,101 @@
         </div>
 
         <!-- Photos Tab -->
-        <div v-else-if="currentTab === 'Photos'">
-          <AzurePhotosPanel
-            :project-id="azureProjectId"
-            entity-type="Equipment"
-            :entity-id="String((form as any).id || (form as any)._id || id || '')"
+        <div
+          v-else-if="currentTab === 'Photos'"
+          class="space-y-4"
+        >
+          <PhotoUploader
+            button-label="Upload Photos"
+            capture-label="Take Photo"
+            :enable-capture="true"
+            accept="image/*"
+            :multiple="true"
             :max-count="16"
-            :max-bytes="256 * 1024"
+            :existing-count="photos.length"
+            :compress-target-bytes="250 * 1024"
             :concurrency="3"
-            @update:count="azurePhotosCount = $event"
+            :upload="uploadPhoto"
           />
+
+          <div class="rounded-xl border border-white/10 bg-white/5 backdrop-blur p-3 min-w-0 overflow-x-auto">
+            <div
+              v-if="!photosLoaded"
+              class="p-3 text-white/70 text-sm"
+            >
+              Loading…
+            </div>
+            <div
+              v-else-if="photos.length === 0"
+              class="p-3 text-white/70 text-sm"
+            >
+              No photos uploaded yet.
+            </div>
+            <div
+              v-else
+              class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+            >
+              <div
+                v-for="(photo, idx) in photos"
+                :key="`${photo?.filename || 'photo'}-${photo?.createdAt || idx}-${idx}`"
+                class="relative group aspect-square rounded-md overflow-hidden border border-white/10 bg-black/20"
+              >
+                <button
+                  type="button"
+                  class="absolute top-1 right-1 z-10 h-7 w-7 grid place-items-center rounded-md bg-black/60 hover:bg-black/75 border border-white/20 text-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Delete photo"
+                  aria-label="Delete photo"
+                  @click.stop="confirmRemovePhoto(idx)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M3 6h18"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M8 6l1-2h6l1 2"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                    <rect
+                      x="6"
+                      y="6"
+                      width="12"
+                      height="14"
+                      rx="1.5"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M10 10v6M14 10v6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  class="relative w-full h-full focus:outline-none focus:ring-2 focus:ring-white/40"
+                  @click="openPhotoViewer(idx)"
+                >
+                  <img
+                    :src="photo?.data"
+                    :alt="photo?.filename || `Photo ${idx + 1}`"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  >
+                  <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Attachments Tab -->
@@ -1655,10 +1740,10 @@ import Modal from '../../components/Modal.vue'
 import ChecklistPanel from '../../components/ChecklistPanel.vue'
 import FunctionalTestsPanel from '../../components/FunctionalTestsPanel.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
-import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import ComponentsPanel from '../../components/ComponentsPanel.vue'
 import IssuesTable from '../../components/IssuesTable.vue'
 import LogsPanel from '../../components/LogsPanel.vue'
+import PhotoUploader from '../../components/PhotoUploader.vue'
 import axios from 'axios'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
@@ -1684,9 +1769,19 @@ const ui = useUiStore()
 const ai = useAiStore()
 const authStore = useAuthStore()
 
-const statuses = ['Not Started', 'Ordered','Shipped','In Storage','Installed','Tested','Operational','Not Working','Has Issues','Decommissioned']
+const assetStatusValues = Array.isArray(lists.assetStatuses)
+  ? lists.assetStatuses
+    .map((opt: any) => String(opt?.value || '').trim())
+    .filter(Boolean)
+  : []
 
 const form = ref<Equipment>({ tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: '', attachments: [], images: [], attributes: [] as any, tags: [] })
+const statuses = computed(() => {
+  const base = [...assetStatusValues]
+  const current = String(form.value.status || '').trim()
+  if (current && !base.includes(current)) base.unshift(current)
+  return base
+})
 const loading = ref(true)
 const tagsInput = ref('')
 const suggestingEquipmentTags = ref(false)
@@ -2004,19 +2099,19 @@ function selectSystem(system: string) {
 // Status dropdown handlers
 function showStatusOptions() {
   showStatusDropdown.value = true
-  highlightedStatusIndex.value = statuses.findIndex(s => s === form.value.status)
+  highlightedStatusIndex.value = statuses.value.findIndex(s => s === form.value.status)
 }
 function hideStatusDropdown() {
   setTimeout(() => { showStatusDropdown.value = false; highlightedStatusIndex.value = -1 }, 150)
 }
 function onStatusArrow(direction: number) {
   if (!showStatusDropdown.value) { showStatusOptions(); return }
-  const newIndex = Math.max(0, Math.min(statuses.length - 1, highlightedStatusIndex.value + direction))
+  const newIndex = Math.max(0, Math.min(statuses.value.length - 1, highlightedStatusIndex.value + direction))
   highlightedStatusIndex.value = newIndex
 }
 function chooseHighlightedStatus() {
-  if (highlightedStatusIndex.value >= 0 && highlightedStatusIndex.value < statuses.length) {
-    selectStatus(statuses[highlightedStatusIndex.value])
+  if (highlightedStatusIndex.value >= 0 && highlightedStatusIndex.value < statuses.value.length) {
+    selectStatus(statuses.value[highlightedStatusIndex.value])
   }
 }
 function selectStatus(status: string) {
@@ -2124,6 +2219,34 @@ async function loadPhotos() {
   }
 }
 
+async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid) throw new Error('Save this equipment first before uploading photos')
+
+  const body = new FormData()
+  body.append('photos', file, file.name || 'photo')
+
+  const { data } = await http.post(`/api/equipment/${eid}/photos`, body, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (evt) => {
+      const total = evt.total || file.size || 0
+      if (!total) return
+      const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / total) * 100)))
+      onProgress(pct)
+    },
+  })
+
+  if (data) {
+    form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
+  } else {
+    const fresh = await equipmentStore.fetchOne(eid)
+    if (fresh) form.value = { ...fresh }
+  }
+  photosLoaded.value = true
+  appendLog('photo.upload', 'Uploaded photo', { filename: file.name || '' })
+  return data
+}
+
 // Load components (fetch full record so components are included)
 async function loadComponents() {
   if (componentsLoaded.value) return
@@ -2169,6 +2292,22 @@ async function removePhotoAt(idx: number) {
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove photo')
   }
+}
+function openPhotoViewer(idx: number) {
+  viewerIndex.value = Math.max(0, Math.min(idx, Math.max(photos.value.length - 1, 0)))
+  viewerOpen.value = true
+}
+async function confirmRemovePhoto(idx: number) {
+  await new Promise(r => setTimeout(r))
+  const confirmed = await inlineConfirm({
+    title: 'Delete photo',
+    message: 'Delete this photo? This cannot be undone.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel',
+    variant: 'danger'
+  })
+  if (!confirmed) return
+  await removePhotoAt(idx)
 }
 // Photo viewer modal
 const viewerOpen = ref(false)
@@ -2346,6 +2485,9 @@ const selectedAttachmentUrl = computed<string>(() => {
 })
 const selectedKind = computed(() => selectedAttachment.value ? attachmentKind(selectedAttachment.value) : 'file')
 const viewerMaxH = computed(() => attachmentFullscreen.value ? '82vh' : '70vh')
+watch(photos, (list) => {
+  azurePhotosCount.value = Array.isArray(list) ? list.length : 0
+}, { immediate: true })
 const viewerInnerH = computed(() => attachmentFullscreen.value ? '80vh' : '68vh')
 
 function openAttachment(i: number) { selectedAttachmentIndex.value = i; attachmentViewerOpen.value = true }
