@@ -208,7 +208,7 @@
             <input
               v-model="compDraft.tag"
               placeholder="SF-01-FAN"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             >
           </div>
           <div>
@@ -216,7 +216,7 @@
             <input
               v-model="compDraft.type"
               placeholder="fan, damper, sensor, vfd, ..."
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             >
           </div>
           <div>
@@ -224,7 +224,7 @@
             <input
               v-model="compDraft.title"
               placeholder="Supply Fan, OA Damper, ..."
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             >
           </div>
           <div>
@@ -232,7 +232,7 @@
             <div class="relative">
               <select
                 v-model="compDraft.status"
-                class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none"
+                class="w-full px-3 pr-10 py-2 rounded-md bg-white/10 border border-white/20 appearance-none text-gray-300"
               >
                 <option :value="''">
                   —
@@ -283,12 +283,12 @@
               <template v-if="compAttrEditingIndex === i">
                 <input
                   v-model="compAttrKey"
-                  class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
                   placeholder="Key"
                 >
                 <input
                   v-model="compAttrValue"
-                  class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
                   placeholder="Value"
                 >
                 <button
@@ -406,12 +406,12 @@
           <div class="mt-3 flex items-center gap-2">
             <input
               v-model="compAttrKey"
-              class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
               placeholder="Key"
             >
             <input
               v-model="compAttrValue"
-              class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+              class="flex-1 min-w-0 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
               placeholder="Value"
             >
             <button
@@ -444,7 +444,7 @@
           <textarea
             v-model="compDraft.notes"
             rows="3"
-            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-gray-300 placeholder-gray-400"
             placeholder="Notes about this component..."
           />
           <div
