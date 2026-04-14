@@ -35,10 +35,12 @@ try {
 	let keepAliveInFlight = false
 	let keepAliveInterval = null
 	let idleTimer = null
+	let sessionWarningTimer = null
 	const KEEPALIVE_CHECK_INTERVAL_MS = 30 * 1000
 	const KEEPALIVE_FALLBACK_INTERVAL_MS = 2 * 60 * 1000
 	const KEEPALIVE_EXPIRY_BUFFER_MS = 90 * 1000
 	const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
+	const SESSION_WARNING_LEAD_MS = 60 * 1000
 
 	const scheduleIdleLogout = () => {
 		if (idleTimer) clearTimeout(idleTimer)
@@ -54,6 +56,35 @@ try {
 				// ignore
 			}
 		}, INACTIVITY_TIMEOUT_MS)
+	}
+
+	const scheduleSessionWarning = () => {
+		if (sessionWarningTimer) clearTimeout(sessionWarningTimer)
+		try {
+			if (!auth || !auth.isAuthenticated) {
+				if (typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
+				return
+			}
+			const last = Number(auth.lastActivityAt || 0)
+			if (!last) return
+			const deadlineAt = last + INACTIVITY_TIMEOUT_MS
+			const warnAt = deadlineAt - SESSION_WARNING_LEAD_MS
+			const delay = Math.max(0, warnAt - Date.now())
+			sessionWarningTimer = setTimeout(() => {
+				try {
+					if (!auth || !auth.isAuthenticated) return
+					const latestLast = Number(auth.lastActivityAt || 0)
+					const latestDeadline = latestLast + INACTIVITY_TIMEOUT_MS
+					const remaining = latestDeadline - Date.now()
+					if (remaining <= 0) return
+					if (typeof auth.showSessionWarning === 'function') auth.showSessionWarning(latestDeadline)
+				} catch (e) {
+					// ignore
+				}
+			}, delay)
+		} catch (e) {
+			// ignore
+		}
 	}
 
 	const isDocumentVisible = () => {
@@ -103,25 +134,29 @@ try {
 	const handleActivity = () => {
 		try {
 			if (auth && typeof auth.markActivity === 'function') auth.markActivity()
+			if (auth && typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
 		} catch (e) {
 			// ignore
 		}
 		scheduleIdleLogout()
+		scheduleSessionWarning()
 		runKeepAlive().catch(() => {})
 	}
 
 	if (typeof window !== 'undefined') {
-		const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'focus']
+		const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'focus', 'pointerdown', 'input', 'change']
 		for (const ev of events) {
 			window.addEventListener(ev, handleActivity, { passive: true })
 		}
 		document.addEventListener('visibilitychange', () => {
 			if (isDocumentVisible()) {
 				scheduleIdleLogout()
+				scheduleSessionWarning()
 				runKeepAlive().catch(() => {})
 			}
 		})
 		scheduleIdleLogout()
+		scheduleSessionWarning()
 		ensureKeepAliveLoop()
 	}
 } catch (e) {

@@ -115,6 +115,8 @@ function syncDefaultProject(user: any) {
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const lastActivityAt = ref<number>(readStoredActivityAt());
+  const sessionWarningOpen = ref(false)
+  const sessionWarningDeadlineAt = ref(0)
   const accessToken = ref<string | null>((() => {
     try {
       const t = sessionStorage.getItem('auth.accessToken')
@@ -151,6 +153,8 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
     setAccessToken(null);
     lastActivityAt.value = 0
+    sessionWarningOpen.value = false
+    sessionWarningDeadlineAt.value = 0
     clearStoredActivityAt()
   }
 
@@ -171,6 +175,16 @@ export const useAuthStore = defineStore('auth', () => {
     const exp = Number(accessTokenExpiresAt.value || 0)
     if (!exp) return true
     return exp - now <= Math.max(0, Number(withinMs) || 0)
+  }
+
+  function showSessionWarning(deadlineAt = Date.now() + 60_000) {
+    sessionWarningDeadlineAt.value = Number(deadlineAt) || 0
+    sessionWarningOpen.value = true
+  }
+
+  function hideSessionWarning() {
+    sessionWarningOpen.value = false
+    sessionWarningDeadlineAt.value = 0
   }
 
   async function expireSession(reason: 'expired' | 'inactive' = 'expired', opts?: { announce?: boolean }) {
@@ -194,6 +208,7 @@ export const useAuthStore = defineStore('auth', () => {
       setAccessToken(String(data.accessToken));
       user.value = data.user as User;
       markActivity();
+      hideSessionWarning()
       syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
@@ -210,6 +225,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.accessToken) return false;
       setAccessToken(String(data.accessToken));
+      hideSessionWarning()
       return true;
     } catch (e) {
       return false;
@@ -223,6 +239,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.user) return false;
       user.value = data.user as User;
+      hideSessionWarning()
       syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
@@ -233,6 +250,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     await expireSession('expired', { announce: false })
+  }
+
+  async function staySignedIn() {
+    hideSessionWarning()
+    markActivity()
+    const ok = await refresh()
+    if (!ok) return false
+    if (!user.value) await fetchMe()
+    return true
   }
 
   async function bootstrap() {
@@ -356,11 +382,15 @@ export const useAuthStore = defineStore('auth', () => {
     authReady,
     waitForAuthReady,
     lastActivityAt,
+    sessionWarningOpen,
+    sessionWarningDeadlineAt,
     idleMs,
     isInactive,
     markActivity,
     isInactiveExceeded,
     willAccessTokenExpireSoon,
+    showSessionWarning,
+    hideSessionWarning,
     expireSession,
     bootstrap,
     setAccessToken,
@@ -369,6 +399,7 @@ export const useAuthStore = defineStore('auth', () => {
     refresh,
     fetchMe,
     logout,
+    staySignedIn,
     register,
     updateUser,
     updateAvatar,
