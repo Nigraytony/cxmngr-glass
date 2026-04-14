@@ -139,8 +139,17 @@ onBeforeUnmount(() => {
   if (workshopCheckTimer) clearTimeout(workshopCheckTimer)
 })
 
-function handleLogout() {
-  auth.logout()
-  router.push({ name: 'home' })
+async function handleLogout() {
+  try {
+    await auth.logout()
+  } finally {
+    try {
+      await router.replace({ name: 'login' })
+    } catch (e) {
+      try {
+        if (typeof window !== 'undefined' && window.location) window.location.assign('/login')
+      } catch (_) { /* ignore */ }
+    }
+  }
 }
 </script>
