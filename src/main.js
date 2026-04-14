@@ -32,11 +32,13 @@ try {
 	// Keep the session alive while the user is actively using the app,
 	// and require re-login only after 15 minutes of inactivity.
 	let lastKeepAliveAt = 0
-	let keepAliveTimer = null
+	let keepAliveInFlight = false
+	let keepAliveInterval = null
 	let idleTimer = null
-	const KEEPALIVE_MIN_INTERVAL_MS = 5 * 60 * 1000
+	const KEEPALIVE_CHECK_INTERVAL_MS = 30 * 1000
+	const KEEPALIVE_FALLBACK_INTERVAL_MS = 2 * 60 * 1000
+	const KEEPALIVE_EXPIRY_BUFFER_MS = 90 * 1000
 	const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
-	const ACTIVITY_DEBOUNCE_MS = 750
 
 	const scheduleIdleLogout = () => {
 		if (idleTimer) clearTimeout(idleTimer)
@@ -54,21 +56,48 @@ try {
 		}, INACTIVITY_TIMEOUT_MS)
 	}
 
-	const scheduleKeepAlive = () => {
-		if (keepAliveTimer) return
-		keepAliveTimer = setTimeout(async () => {
-			keepAliveTimer = null
-			try {
-				const now = Date.now()
-				if (now - lastKeepAliveAt < KEEPALIVE_MIN_INTERVAL_MS) return
-				// Only attempt refresh if we believe there is a session to extend.
-				if (!auth || !auth.accessToken) return
-				lastKeepAliveAt = now
-				await Promise.resolve(auth.refresh())
-			} catch (e) {
-				// ignore: refresh failures are handled when real API calls occur
-			}
-		}, ACTIVITY_DEBOUNCE_MS)
+	const isDocumentVisible = () => {
+		try {
+			return typeof document === 'undefined' || document.visibilityState !== 'hidden'
+		} catch (e) {
+			return true
+		}
+	}
+
+	const shouldRefreshSession = (now = Date.now()) => {
+		try {
+			if (!auth || !auth.isAuthenticated || !auth.accessToken) return false
+			if (!isDocumentVisible()) return false
+			if (typeof auth.isInactiveExceeded === 'function' && auth.isInactiveExceeded(now)) return false
+			if (typeof auth.willAccessTokenExpireSoon === 'function' && auth.willAccessTokenExpireSoon(KEEPALIVE_EXPIRY_BUFFER_MS, now)) return true
+			return now - lastKeepAliveAt >= KEEPALIVE_FALLBACK_INTERVAL_MS
+		} catch (e) {
+			return false
+		}
+	}
+
+	const runKeepAlive = async () => {
+		if (keepAliveInFlight) return
+		const now = Date.now()
+		if (!shouldRefreshSession(now)) return
+		keepAliveInFlight = true
+		try {
+			lastKeepAliveAt = now
+			const ok = await Promise.resolve(auth.refresh())
+			if (!ok) lastKeepAliveAt = 0
+		} catch (e) {
+			lastKeepAliveAt = 0
+			// ignore: refresh failures are handled by the 401 interceptor on real API calls
+		} finally {
+			keepAliveInFlight = false
+		}
+	}
+
+	const ensureKeepAliveLoop = () => {
+		if (keepAliveInterval) return
+		keepAliveInterval = setInterval(() => {
+			runKeepAlive().catch(() => {})
+		}, KEEPALIVE_CHECK_INTERVAL_MS)
 	}
 
 	const handleActivity = () => {
@@ -78,7 +107,7 @@ try {
 			// ignore
 		}
 		scheduleIdleLogout()
-		scheduleKeepAlive()
+		runKeepAlive().catch(() => {})
 	}
 
 	if (typeof window !== 'undefined') {
@@ -86,7 +115,14 @@ try {
 		for (const ev of events) {
 			window.addEventListener(ev, handleActivity, { passive: true })
 		}
+		document.addEventListener('visibilitychange', () => {
+			if (isDocumentVisible()) {
+				scheduleIdleLogout()
+				runKeepAlive().catch(() => {})
+			}
+		})
 		scheduleIdleLogout()
+		ensureKeepAliveLoop()
 	}
 } catch (e) {
 	// ignore

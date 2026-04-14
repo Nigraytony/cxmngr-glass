@@ -56,6 +56,22 @@ const AUTH_SESSION_EXPIRED_KEY = 'auth.sessionExpired'
 const AUTH_SESSION_EXPIRED_REASON_KEY = 'auth.sessionExpiredReason'
 const AUTH_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000
 
+function decodeJwtExpMs(token: string | null | undefined): number {
+  try {
+    const raw = String(token || '').trim()
+    if (!raw) return 0
+    const parts = raw.split('.')
+    if (parts.length < 2 || !parts[1]) return 0
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    const decoded = JSON.parse(atob(padded))
+    const exp = Number(decoded?.exp || 0)
+    return Number.isFinite(exp) && exp > 0 ? exp * 1000 : 0
+  } catch (e) {
+    return 0
+  }
+}
+
 function readStoredActivityAt(): number {
   try {
     const raw = sessionStorage.getItem(AUTH_LAST_ACTIVITY_KEY)
@@ -111,6 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
   const error = ref<string | null>(null);
 
   const isAuthenticated = computed(() => !!user.value && !!accessToken.value);
+  const accessTokenExpiresAt = computed(() => decodeJwtExpMs(accessToken.value))
   const idleMs = computed(() => {
     const at = Number(lastActivityAt.value || 0)
     if (!at) return Number.POSITIVE_INFINITY
@@ -150,6 +167,12 @@ export const useAuthStore = defineStore('auth', () => {
     return now - at >= AUTH_INACTIVITY_TIMEOUT_MS
   }
 
+  function willAccessTokenExpireSoon(withinMs = 60_000, now = Date.now()) {
+    const exp = Number(accessTokenExpiresAt.value || 0)
+    if (!exp) return true
+    return exp - now <= Math.max(0, Number(withinMs) || 0)
+  }
+
   async function expireSession(reason: 'expired' | 'inactive' = 'expired', opts?: { announce?: boolean }) {
     if (opts?.announce !== false) markExpiredReason(reason)
     try {
@@ -187,7 +210,6 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.accessToken) return false;
       setAccessToken(String(data.accessToken));
-      markActivity();
       return true;
     } catch (e) {
       return false;
@@ -201,7 +223,6 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.user) return false;
       user.value = data.user as User;
-      markActivity();
       syncDefaultProject(user.value);
       return true;
     } catch (e: any) {
@@ -330,6 +351,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     accessToken,
     isAuthenticated,
+    accessTokenExpiresAt,
     error,
     authReady,
     waitForAuthReady,
@@ -338,6 +360,7 @@ export const useAuthStore = defineStore('auth', () => {
     isInactive,
     markActivity,
     isInactiveExceeded,
+    willAccessTokenExpireSoon,
     expireSession,
     bootstrap,
     setAccessToken,
