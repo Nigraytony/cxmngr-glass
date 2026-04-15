@@ -1133,6 +1133,45 @@ router.patch('/projects/:id', requireObjectIdParam('id'), async (req, res) => {
   }
 });
 
+// POST /api/admin/projects/:id/unlink-stripe
+// Clears all Stripe billing fields from a project so it can be re-linked to a
+// live-mode subscription. Used when test-mode IDs were stored and need clearing.
+router.post('/projects/:id/unlink-stripe', requireObjectIdParam('id'), async (req, res) => {
+  try {
+    const before = await Project.findById(req.params.id).lean();
+    if (!before) return res.status(404).json({ error: 'Project not found' });
+
+    const unset = {
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      stripeSubscriptionStatus: null,
+      stripeCurrentPeriodEnd: null,
+      stripeIsPastDue: null,
+      stripeLastInvoiceStatus: null,
+      stripeLastPaymentStatus: null,
+    };
+    const updated = await Project.findByIdAndUpdate(req.params.id, { $set: unset }, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Project not found' });
+
+    try {
+      const actorId = req.user && (req.user._id || req.user.id) ? (req.user._id || req.user.id) : null;
+      const actorEmail = req.user && req.user.email ? req.user.email : null;
+      await AdminAudit.create({
+        actorId, actorEmail,
+        targetUserId: updated._id,
+        actionType: 'project.unlink-stripe',
+        details: { before, unset },
+        ip: req.ip,
+        userAgent: req.get('user-agent') || null,
+      });
+    } catch (logErr) { console.error('audit log error', logErr); }
+
+    res.json({ ok: true, project: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to unlink Stripe data' });
+  }
+});
+
     // -- Admin: Tasks CRUD ---------------------------------------------------
     // GET /api/admin/tasks?projectId=...&limit=50&skip=0&q=...&status=...
     router.get('/tasks', async (req, res) => {

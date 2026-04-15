@@ -343,6 +343,20 @@
               </router-link>
 
               <button
+                v-if="isGlobalAdmin() && (p.stripeSubscriptionId || p.stripePriceId)"
+                class="h-8 w-8 inline-grid place-items-center rounded-md bg-yellow-500/20 border border-yellow-500/40 text-yellow-200 hover:bg-yellow-500/30"
+                title="Unlink Stripe test data"
+                aria-label="Unlink Stripe test data"
+                @click="unlinkStripe(p)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="w-4 h-4" aria-hidden>
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 4l16 16" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+
+              <button
                 v-if="isGlobalAdmin()"
                 class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30"
                 title="Delete"
@@ -534,6 +548,24 @@ function statusBadgeClass(p) {
     if (p && (!p.isActive || s === 'Inactive')) return 'bg-white/10 text-white/80'
     return 'bg-yellow-500 text-black'
   } catch (e) { return 'bg-white/10 text-white/80' }
+}
+
+async function unlinkStripe(p) {
+  const ok = await inlineConfirm({
+    title: 'Unlink Stripe data',
+    message: `Clear test-mode Stripe subscription and price IDs from "${p.name || p.title || p._id}"? The project will need to go through checkout again to get a live subscription.`,
+    confirmText: 'Unlink',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
+  try {
+    await http.post(`/api/admin/projects/${encodeURIComponent(p._id)}/unlink-stripe`)
+    ui.showSuccess('Stripe test data cleared — project can now subscribe in live mode')
+    await load()
+  } catch (err) {
+    ui.showError(err?.response?.data?.error || 'Failed to unlink Stripe data')
+  }
 }
 
 async function confirmSoftDelete(p) {
