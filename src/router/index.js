@@ -35,6 +35,7 @@ const OprItems = () => import('../pages/opr/OprItems.vue')
 // Marketing/public homepage
 const HomePage = () => import('../pages/home/HomePage.vue')
 const Pricing = () => import('../pages/Pricing.vue')
+const BillingReturn = () => import('../pages/account/BillingReturn.vue')
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { guestOnly: true } },
@@ -87,6 +88,8 @@ const routes = [
       { path: 'profile', name: 'profile', component: Profile },
     ]
   },
+  // Billing portal return URL — Stripe redirects here after the customer closes the portal
+  { path: '/account/billing-return', name: 'billing-return', component: BillingReturn, meta: { requiresAuth: true } },
   // Fallback to homepage; avoid redirecting to non-existent /home
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
