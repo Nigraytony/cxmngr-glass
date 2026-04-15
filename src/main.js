@@ -150,6 +150,13 @@ try {
 		}
 		document.addEventListener('visibilitychange', () => {
 			if (isDocumentVisible()) {
+				// Treat returning to the tab as activity so the inactivity clock
+				// resets from now, not from whenever the user last interacted
+				// before backgrounding the tab.
+				try {
+					if (auth && typeof auth.markActivity === 'function') auth.markActivity()
+					if (auth && typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
+				} catch (e) {}
 				scheduleIdleLogout()
 				scheduleSessionWarning()
 				runKeepAlive().catch(() => {})

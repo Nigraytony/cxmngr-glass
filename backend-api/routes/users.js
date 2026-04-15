@@ -313,14 +313,10 @@ router.post('/refresh', async (req, res) => {
       return res.status(204).send();
     }
 
-    // rotate
-    const nextRid = newRefreshId();
-    u.refreshTokenIdHash = sha256Hex(nextRid);
-    u.refreshTokenIssuedAt = new Date();
-    await u.save();
-
-    const nextRefresh = signRefreshToken({ userId: u._id, refreshId: nextRid });
-    setRefreshCookie(res, nextRefresh);
+    // Do not rotate the refresh cookie — rotation causes a multi-tab race condition
+    // where a second tab sending the old cookie invalidates the first tab's session.
+    // The cookie has a 30-day JWT TTL and the refreshTokenIdHash is cleared on logout,
+    // which is sufficient for revocation.
     const accessToken = signAccessToken({ userId: u._id, tokenVersion: u.tokenVersion || 0 });
     return res.status(200).send({ accessToken });
   } catch (e) {
