@@ -3783,7 +3783,21 @@ function addIssue() {
     location: newIssue.value.location || undefined,
     system: newIssue.value.system || undefined
   }
-  issuesStore.createIssue(payload).then(() => {
+  issuesStore.createIssue(payload).then((created) => {
+    // Prepend the new issue into serverIssues so it appears immediately.
+    // filteredIssues uses serverIssues when it is non-empty (server/API mode),
+    // so updating issuesStore.issues alone is not enough.
+    if (created) {
+      const row: IssueRow = {
+        ...(created as any),
+        id: (created as any)._id || (created as any).id,
+        priority: (created as any).priority || (created as any).severity || 'Medium',
+        responsible_person: (created as any).responsible_person || (created as any).assignedTo || '',
+      }
+      serverIssues.value = [row, ...serverIssues.value]
+      serverTotal.value = (serverTotal.value || 0) + 1
+      serverTotalAll.value = (serverTotalAll.value || 0) + 1
+    }
     newIssue.value = { number: null, title: '', description: '', type: '', priority: 'Medium', status: 'Open', foundBy: '', dateFound: '', assignedTo: '', dueDate: '', location: '', system: '' }
     showAddModal.value = false
     formErrors.value = {}
