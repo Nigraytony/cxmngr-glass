@@ -225,7 +225,10 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.accessToken) return false;
       setAccessToken(String(data.accessToken));
-      hideSessionWarning()
+      // Do NOT call hideSessionWarning() here — refresh() is called automatically
+      // by the keepalive loop every ~2 minutes. Hiding the warning on every
+      // keepalive means users never see it long enough to respond.
+      // hideSessionWarning() is intentionally kept only in staySignedIn() and login().
       return true;
     } catch (e) {
       return false;
@@ -239,7 +242,8 @@ export const useAuthStore = defineStore('auth', () => {
       const data = res.data || {};
       if (!data.user) return false;
       user.value = data.user as User;
-      hideSessionWarning()
+      // Do NOT call hideSessionWarning() here for the same reason as refresh():
+      // fetchMe() is called automatically during bootstrap and keepalive flows.
       syncDefaultProject(user.value);
       return true;
     } catch (e: any) {

@@ -48,6 +48,19 @@ try {
 			try {
 				if (!auth || !auth.isAuthenticated) return
 				if (typeof auth.isInactiveExceeded === 'function' && !auth.isInactiveExceeded()) return
+				// Default: auto-extend the session silently rather than force-logging out.
+				// Only redirect to /login if the refresh token itself has expired (i.e.
+				// staySignedIn returns false because the server rejected the refresh).
+				if (typeof auth.staySignedIn === 'function') {
+					const extended = await auth.staySignedIn()
+					if (extended) {
+						// Session refreshed — reschedule timers for the next inactivity window.
+						scheduleIdleLogout()
+						scheduleSessionWarning()
+						return
+					}
+				}
+				// Refresh token gone (30-day expiry) — log out cleanly.
 				if (typeof auth.expireSession === 'function') await auth.expireSession('inactive')
 				if (window.location && window.location.pathname !== '/login') {
 					window.location.assign('/login')
@@ -65,8 +78,10 @@ try {
 				if (typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
 				return
 			}
-			const last = Number(auth.lastActivityAt || 0)
-			if (!last) return
+				// Fall back to now when lastActivityAt hasn't been set yet (e.g. fresh
+			// browser session where sessionStorage was cleared). Without this, the
+			// warning would silently never schedule while the idle-logout timer still runs.
+			const last = Number(auth.lastActivityAt || 0) || Date.now()
 			const deadlineAt = last + INACTIVITY_TIMEOUT_MS
 			const warnAt = deadlineAt - SESSION_WARNING_LEAD_MS
 			const delay = Math.max(0, warnAt - Date.now())
