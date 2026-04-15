@@ -48,23 +48,17 @@ try {
 			try {
 				if (!auth || !auth.isAuthenticated) return
 				if (typeof auth.isInactiveExceeded === 'function' && !auth.isInactiveExceeded()) return
-				// Default: auto-extend the session silently rather than force-logging out.
-				// Only redirect to /login if the refresh token itself has expired (i.e.
-				// staySignedIn returns false because the server rejected the refresh).
+				// Always try to extend the session. If the refresh token is still valid
+				// (up to 30 days), silently renew and reschedule. Only a genuine network
+				// or server error should land here — in that case, reschedule anyway and
+				// let the 401 interceptor handle actual session expiry on the next API call.
+				// We intentionally never call expireSession() from this timer: forced logout
+				// is only triggered by a real 401 from the server, not by a client-side clock.
 				if (typeof auth.staySignedIn === 'function') {
-					const extended = await auth.staySignedIn()
-					if (extended) {
-						// Session refreshed — reschedule timers for the next inactivity window.
-						scheduleIdleLogout()
-						scheduleSessionWarning()
-						return
-					}
+					try { await auth.staySignedIn() } catch (e) { /* ignore */ }
 				}
-				// Refresh token gone (30-day expiry) — log out cleanly.
-				if (typeof auth.expireSession === 'function') await auth.expireSession('inactive')
-				if (window.location && window.location.pathname !== '/login') {
-					window.location.assign('/login')
-				}
+				scheduleIdleLogout()
+				scheduleSessionWarning()
 			} catch (e) {
 				// ignore
 			}
@@ -88,7 +82,12 @@ try {
 			sessionWarningTimer = setTimeout(() => {
 				try {
 					if (!auth || !auth.isAuthenticated) return
-					const latestLast = Number(auth.lastActivityAt || 0)
+					// Use the latest recorded activity time if available, but fall back to
+					// the `last` value captured at schedule time (which itself falls back to
+					// Date.now()). Without this fallback, a fresh session where
+					// lastActivityAt is still 0 would compute a 1970-era deadline, making
+					// `remaining` hugely negative and silently suppressing the warning.
+					const latestLast = Number(auth.lastActivityAt || 0) || last
 					const latestDeadline = latestLast + INACTIVITY_TIMEOUT_MS
 					const remaining = latestDeadline - Date.now()
 					if (remaining <= 0) return
@@ -114,7 +113,9 @@ try {
 		try {
 			if (!auth || !auth.isAuthenticated || !auth.accessToken) return false
 			if (!isDocumentVisible()) return false
-			if (typeof auth.isInactiveExceeded === 'function' && auth.isInactiveExceeded(now)) return false
+			// Do NOT gate on isInactiveExceeded() — when lastActivityAt is 0 (fresh session or
+			// sessionStorage cleared), isInactiveExceeded() returns true and blocks the keepalive
+			// from ever running, causing the access token to expire and the user to be logged out.
 			if (typeof auth.willAccessTokenExpireSoon === 'function' && auth.willAccessTokenExpireSoon(KEEPALIVE_EXPIRY_BUFFER_MS, now)) return true
 			return now - lastKeepAliveAt >= KEEPALIVE_FALLBACK_INTERVAL_MS
 		} catch (e) {

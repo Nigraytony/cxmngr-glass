@@ -269,11 +269,13 @@ export const useAuthStore = defineStore('auth', () => {
     authReady.value = false;
     error.value = null;
     try {
-      if (lastActivityAt.value && isInactiveExceeded()) {
-        markExpiredReason('inactive')
-        clearSession()
-        return
-      }
+      // Do NOT clear the session based on the inactivity clock here. The client-side
+      // clock is unreliable (tab suspended, system sleep, sessionStorage cleared) and
+      // would cause silent logouts on page reload even when the refresh token is still
+      // valid. Let the server be the source of truth: if the refresh token has genuinely
+      // expired the /refresh call below will return 401 and clearSession() is called in
+      // the finally block.
+      //
       // If we have a (tab-scoped) stored access token, try it first.
       // This prevents logging out on browser refresh when refresh cookies are blocked.
       if (accessToken.value) {
