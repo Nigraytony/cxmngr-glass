@@ -1,11 +1,9 @@
 name: Deploy Backend API to Azure Web App
 
+# This workflow has been superseded by the deploy-backend job in ci.yml,
+# which gates deployment on the backend-integration tests passing.
+# Keeping this file for reference / manual re-enable via workflow_dispatch only.
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'backend-api/**'
-      - '.github/workflows/azure-webapp-backend.yml'
   workflow_dispatch:
 
 jobs:
