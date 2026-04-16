@@ -415,7 +415,7 @@
               </div>
             </div>
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label
               for="hasOprChk"
@@ -434,7 +434,7 @@
               >
             </label>
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">OPR</label>
             <div
@@ -507,7 +507,7 @@
               </div>
             </div>
           </div>
-		
+    
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">Location</label>
             <input
@@ -517,7 +517,7 @@
               class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">Assigned To</label>
             <input
@@ -528,7 +528,7 @@
             >
           </div>
         </div>
-	
+  
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">System</label>
@@ -539,7 +539,7 @@
               class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 focus:bg-white/15 text-white text-sm border border-white/15 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
             >
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">Date Found</label>
             <div class="grid grid-cols-2 gap-2">
@@ -563,7 +563,7 @@
               >
             </div>
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">Due Date</label>
             <div class="grid grid-cols-2 gap-2">
@@ -587,7 +587,7 @@
               >
             </div>
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">Tags</label>
             <input
@@ -1522,7 +1522,7 @@
               </option>
             </select>
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label
               for="hasOprChkMobile"
@@ -1541,7 +1541,7 @@
               >
             </label>
           </div>
-	
+  
           <div class="flex flex-col gap-1 items-start">
             <label
               for="myIssuesChkMobile"
@@ -1554,7 +1554,7 @@
               class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80 checked:bg-white/10 checked:border-white/30 mt-1"
             >
           </div>
-	
+  
           <div class="flex flex-col gap-1">
             <label class="text-white/70 text-sm">OPR</label>
             <div
@@ -2577,33 +2577,33 @@ const _issuesSource = computed(() => serverIssues.value)
 const priorityFilter = ref('All')
 const typeFilter = ref('All')
 const statusFilter = ref('All')
-	const oprCategoryFilter = ref('All')
-	const oprItemFilter = ref('All')
-	const hasOprFilter = ref(false)
-	const locationFilter = ref('')
-	const responsibleFilter = ref('')
-	const systemFilter = ref('')
-	const dateFoundFrom = ref('')
-	const dateFoundTo = ref('')
-		const dueDateFrom = ref('')
-		const dueDateTo = ref('')
-		const tagsFilter = ref('')
-		const showAdvancedFilters = ref(false)
-		const showFiltersModal = ref(false)
-		const isDesktop = ref(false)
-		const searchQuery = ref('')
+  const oprCategoryFilter = ref('All')
+  const oprItemFilter = ref('All')
+  const hasOprFilter = ref(false)
+  const locationFilter = ref('')
+  const responsibleFilter = ref('')
+  const systemFilter = ref('')
+  const dateFoundFrom = ref('')
+  const dateFoundTo = ref('')
+    const dueDateFrom = ref('')
+    const dueDateTo = ref('')
+    const tagsFilter = ref('')
+    const showAdvancedFilters = ref(false)
+    const showFiltersModal = ref(false)
+    const isDesktop = ref(false)
+    const searchQuery = ref('')
 const searchMode = computed(() => {
   try {
     const p: any = (projectStore as any).currentProject || null
     const m = p && p.searchMode ? String(p.searchMode).toLowerCase() : ''
     return m || 'substring'
   } catch (e) { return 'substring' }
-	})
-	const hideClosed = ref(false)
-	const myIssuesOnly = ref(false)
-		// Sorting state (used in persistence below; defined here to avoid temporal use)
-		const sortKey = ref('')
-		const sortDir = ref(1) // 1 = asc, -1 = desc
+  })
+  const hideClosed = ref(false)
+  const myIssuesOnly = ref(false)
+    // Sorting state (used in persistence below; defined here to avoid temporal use)
+    const sortKey = ref('')
+    const sortDir = ref(1) // 1 = asc, -1 = desc
 
 function updateIsDesktop() {
   try {
@@ -2640,11 +2640,11 @@ const listStateKey = computed(() => `issuesListState:${projectStore.currentProje
 function hasSessionStorage() {
   try { return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' } catch (e) { return false }
 }
-	function loadListState() {
-	  if (!hasSessionStorage()) return
-	  try {
-	    const raw = sessionStorage.getItem(listStateKey.value)
-	    if (!raw) return
+  function loadListState() {
+    if (!hasSessionStorage()) return
+    try {
+      const raw = sessionStorage.getItem(listStateKey.value)
+      if (!raw) return
     const data = JSON.parse(raw)
     if (data && typeof data === 'object') {
       if (typeof data.searchQuery === 'string') searchQuery.value = data.searchQuery
@@ -2661,14 +2661,14 @@ function hasSessionStorage() {
       if (typeof data.dateFoundTo === 'string') dateFoundTo.value = data.dateFoundTo
       if (typeof data.dueDateFrom === 'string') dueDateFrom.value = data.dueDateFrom
       if (typeof data.dueDateTo === 'string') dueDateTo.value = data.dueDateTo
-	      if (typeof data.tagsFilter === 'string') tagsFilter.value = data.tagsFilter
-	      if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
-	      if (typeof data.myIssuesOnly === 'boolean') myIssuesOnly.value = data.myIssuesOnly
-	      if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
-	      if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
-	    }
-	  } catch (e) { /* ignore */ }
-	}
+        if (typeof data.tagsFilter === 'string') tagsFilter.value = data.tagsFilter
+        if (typeof data.hideClosed === 'boolean') hideClosed.value = data.hideClosed
+        if (typeof data.myIssuesOnly === 'boolean') myIssuesOnly.value = data.myIssuesOnly
+        if (typeof data.sortKey === 'string') sortKey.value = data.sortKey
+        if (data.sortDir === 1 || data.sortDir === -1) sortDir.value = data.sortDir
+      }
+    } catch (e) { /* ignore */ }
+  }
 function persistListState() {
   if (!hasSessionStorage()) return
   try {
@@ -2683,18 +2683,18 @@ function persistListState() {
       locationFilter: locationFilter.value,
       responsibleFilter: responsibleFilter.value,
       systemFilter: systemFilter.value,
-	      dateFoundFrom: dateFoundFrom.value,
-	      dateFoundTo: dateFoundTo.value,
-	      dueDateFrom: dueDateFrom.value,
-	      dueDateTo: dueDateTo.value,
-	      tagsFilter: tagsFilter.value,
-	      hideClosed: hideClosed.value,
-	      myIssuesOnly: myIssuesOnly.value,
-	      sortKey: sortKey.value,
-	      sortDir: sortDir.value
-	    }))
-	  } catch (e) { /* ignore */ }
-	}
+        dateFoundFrom: dateFoundFrom.value,
+        dateFoundTo: dateFoundTo.value,
+        dueDateFrom: dueDateFrom.value,
+        dueDateTo: dueDateTo.value,
+        tagsFilter: tagsFilter.value,
+        hideClosed: hideClosed.value,
+        myIssuesOnly: myIssuesOnly.value,
+        sortKey: sortKey.value,
+        sortDir: sortDir.value
+      }))
+    } catch (e) { /* ignore */ }
+  }
 
 // Debounce helper (small local utility)
 function debounce<T extends (...args: any[]) => any>(fn: T, wait = 200): (...args: Parameters<T>) => void {
@@ -3445,11 +3445,11 @@ function fetchIssuesPage(projectId?: string | null) {
         params.sortBy = sortKey.value
         params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
       }
-	      if (hideClosed.value) params.hideClosed = 1
-	      if (myIssuesOnly.value) params.mine = 1
-	      if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
-	      if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
-	      if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
+        if (hideClosed.value) params.hideClosed = 1
+        if (myIssuesOnly.value) params.mine = 1
+        if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
+        if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
+        if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
       if (hasOprFilter.value) params.hasOpr = 1
       if (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') params.oprCategoryId = oprCategoryFilter.value
       if (oprItemFilter.value && oprItemFilter.value !== 'All') params.oprItemId = oprItemFilter.value
@@ -3539,12 +3539,12 @@ function fetchIssuesPage(projectId?: string | null) {
             if (pid) {
             await issuesStore.fetchIssues(String(pid))
             const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
-	              const filteredByProject = (all as any[]).filter((i: any) => String(i?.projectId || i?.project || '') === String(pid))
-	              const mapped = filteredByProject.map((i: any) => ({ ...(i || {}), id: i?._id || i?.id }))
-	              const mineFiltered = myIssuesOnly.value ? mapped.filter((i) => isMyIssueRow(i)) : mapped
-	              serverIssues.value = mineFiltered
-	              serverTotal.value = mineFiltered.length
-	              serverTotalAll.value = serverTotal.value
+                const filteredByProject = (all as any[]).filter((i: any) => String(i?.projectId || i?.project || '') === String(pid))
+                const mapped = filteredByProject.map((i: any) => ({ ...(i || {}), id: i?._id || i?.id }))
+                const mineFiltered = myIssuesOnly.value ? mapped.filter((i) => isMyIssueRow(i)) : mapped
+                serverIssues.value = mineFiltered
+                serverTotal.value = mineFiltered.length
+                serverTotalAll.value = serverTotal.value
             serverTypes.value = []
             serverTypeCounts.value = {}
             serverPriorities.value = []

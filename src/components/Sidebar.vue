@@ -440,18 +440,18 @@ const props = defineProps({ open: { type: Boolean, default: true } })
 const emit = defineEmits(['toggle'])
 import { useRoute } from 'vue-router'
   import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-	import { useProjectStore } from '../stores/project'
-	import { useAuthStore } from '../stores/auth'
-	import { useAiStore } from '../stores/ai'
-	import { useOprStore } from '../stores/opr'
+  import { useProjectStore } from '../stores/project'
+  import { useAuthStore } from '../stores/auth'
+  import { useAiStore } from '../stores/ai'
+  import { useOprStore } from '../stores/opr'
 import AiChatSidebar from './AiChatSidebar.vue'
 import http from '../utils/http'
 
 const route = useRoute()
-	const projectStore = useProjectStore()
-	const authStore = useAuthStore()
-	const ai = useAiStore()
-	const opr = useOprStore()
+  const projectStore = useProjectStore()
+  const authStore = useAuthStore()
+  const ai = useAiStore()
+  const opr = useOprStore()
 const currentProject = computed(() =>
   projectStore.currentProject ||
   (projectStore.projects || []).find(p => String(p.id || p._id) === currentProjectId.value) ||
@@ -558,13 +558,13 @@ const hasOprTaskForProject = computed(() => {
   return list.some((t) => String(t?.name || t?.title || '').trim().toLowerCase() === 'opr')
 })
 
-	const showStandaloneOprWorkshopLink = computed(() => {
-	  if (!currentProjectId.value) return false
-	  if (opr.workshopIsActive) return true
-	  // If tasks aren't enabled, there is no task tree entry to host the Workshop link.
-	  if (!featureEnabled('tasks')) return true
-	  return !hasOprTaskForProject.value
-	})
+  const showStandaloneOprWorkshopLink = computed(() => {
+    if (!currentProjectId.value) return false
+    if (opr.workshopIsActive) return true
+    // If tasks aren't enabled, there is no task tree entry to host the Workshop link.
+    if (!featureEnabled('tasks')) return true
+    return !hasOprTaskForProject.value
+  })
 
   const showOprWorkshopLink = computed(() => {
     if (!currentProjectId.value) return false
@@ -623,14 +623,14 @@ function buildProcessTree(tasks) {
     const parts = wbs.split('.').map((p) => String(p).trim()).filter(Boolean)
     if (!parts.length) continue
 
-	    let prefix = ''
-	    for (let i = 0; i < parts.length; i += 1) {
-	      prefix = prefix ? `${prefix}.${parts[i]}` : parts[i]
+      let prefix = ''
+      for (let i = 0; i < parts.length; i += 1) {
+        prefix = prefix ? `${prefix}.${parts[i]}` : parts[i]
       if (!nodes[prefix]) nodes[prefix] = { key: prefix, wbs: prefix, name: `WBS ${prefix}`, taskId: null, percentComplete: null, rollupPercentComplete: null, children: [] }
-	      const parent = prefix.includes('.') ? prefix.slice(0, prefix.lastIndexOf('.')) : '__root'
-	      const parentNode = nodes[parent] || nodes.__root
-	      if (!parentNode.children.includes(prefix)) parentNode.children.push(prefix)
-	    }
+        const parent = prefix.includes('.') ? prefix.slice(0, prefix.lastIndexOf('.')) : '__root'
+        const parentNode = nodes[parent] || nodes.__root
+        if (!parentNode.children.includes(prefix)) parentNode.children.push(prefix)
+      }
 
     const id = String(t._id || t.id || '').trim()
     const name = String(t.name || t.title || '').trim()
@@ -643,9 +643,9 @@ function buildProcessTree(tasks) {
     }
   }
 
-	  for (const k of Object.keys(nodes)) {
-	    nodes[k].children = (nodes[k].children || []).slice().sort(compareWbs)
-	  }
+    for (const k of Object.keys(nodes)) {
+      nodes[k].children = (nodes[k].children || []).slice().sort(compareWbs)
+    }
 
   // Roll up progress for parent nodes so the tree shows completion at every level.
   const rollupMemo = {}

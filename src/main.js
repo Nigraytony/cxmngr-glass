@@ -172,7 +172,7 @@ try {
 				try {
 					if (auth && typeof auth.markActivity === 'function') auth.markActivity()
 					if (auth && typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
-				} catch (e) {}
+				} catch (e) { /* ignore */ }
 				scheduleIdleLogout()
 				scheduleSessionWarning()
 				runKeepAlive().catch(() => {})

@@ -512,7 +512,7 @@
             </div>
           </div>
         </div>
-	
+  
         <div class="mt-3 flex items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-2">
             <div class="relative inline-block group shrink-0">
@@ -1159,7 +1159,10 @@
                 class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
               >
                 <div class="py-1">
-                  <template v-for="(opt, i) in modalTypeOptions" :key="opt.key">
+                  <template
+                    v-for="(opt, i) in modalTypeOptions"
+                    :key="opt.key"
+                  >
                     <div
                       v-if="opt.separator"
                       class="px-3 py-2 text-[11px] uppercase tracking-wider text-white/55 bg-white/5 border-t border-white/10"
@@ -1646,19 +1649,19 @@ const assetStatusValues = Array.isArray(lists.assetStatuses)
     .filter(Boolean)
   : []
 
-	const search = ref('')
-	const typeFilter = ref('')
-	const statusFilter = ref('')
-		const systemFilter = ref('')
-		const onlyWithChecklists = ref(false)
-		const myChecklistsOnly = ref(false)
-		const onlyWithFpt = ref(false)
-		const onlyWithIssues = ref(false)
-		const checklistSystemFilter = ref('')
+  const search = ref('')
+  const typeFilter = ref('')
+  const statusFilter = ref('')
+    const systemFilter = ref('')
+    const onlyWithChecklists = ref(false)
+    const myChecklistsOnly = ref(false)
+    const onlyWithFpt = ref(false)
+    const onlyWithIssues = ref(false)
+    const checklistSystemFilter = ref('')
   const locationFilter = ref('')
   const tagsFilter = ref('')
-	const showAdvancedFilters = ref(false)
-	const showFiltersModal = ref(false)
+  const showAdvancedFilters = ref(false)
+  const showFiltersModal = ref(false)
 const serverTypes = ref<string[]>([])
 const serverStatuses = ref<string[]>([])
 const serverSystems = ref<string[]>([])
@@ -1706,49 +1709,49 @@ function countNum(n: any): number {
   return Number.isFinite(v) && v >= 0 ? v : 0
 }
 
-	function normalizeKey(s: any): string {
-	  return String(s || '').trim().toLowerCase()
-	}
+  function normalizeKey(s: any): string {
+    return String(s || '').trim().toLowerCase()
+  }
 
-	const currentProjectRole = computed(() => {
-	  const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
-	  const candidates: any[] = []
-	  if ((auth as any)?.user) candidates.push((auth as any).user)
-	  try {
-	    const raw = localStorage.getItem('user')
-	    if (raw) candidates.push(JSON.parse(raw))
-	  } catch (e) { /* ignore */ }
+  const currentProjectRole = computed(() => {
+    const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+    const candidates: any[] = []
+    if ((auth as any)?.user) candidates.push((auth as any).user)
+    try {
+      const raw = localStorage.getItem('user')
+      if (raw) candidates.push(JSON.parse(raw))
+    } catch (e) { /* ignore */ }
 
-	  for (const u of candidates) {
-	    const direct = String(u?.project?.role || '').trim()
-	    if (direct) return direct
-	    const list = Array.isArray(u?.projects) ? u.projects : []
-	    if (!pid || !list.length) continue
-	    const found = list.find((p: any) => {
-	      if (!p) return false
-	      if (typeof p === 'string') return String(p) === pid
-	      return String(p._id || p.id || '') === pid
-	    })
-	    const role = String(found?.role || '').trim()
-	    if (role) return role
-	  }
-	  return ''
-	})
+    for (const u of candidates) {
+      const direct = String(u?.project?.role || '').trim()
+      if (direct) return direct
+      const list = Array.isArray(u?.projects) ? u.projects : []
+      if (!pid || !list.length) continue
+      const found = list.find((p: any) => {
+        if (!p) return false
+        if (typeof p === 'string') return String(p) === pid
+        return String(p._id || p.id || '') === pid
+      })
+      const role = String(found?.role || '').trim()
+      if (role) return role
+    }
+    return ''
+  })
 
-	function toggleMyChecklists() {
-	  const role = String(currentProjectRole.value || '').trim()
-	  if (!myChecklistsOnly.value) {
-	    if (!role) {
-	      ui.showError('No project role found for this user')
-	      return
-	    }
-	    myChecklistsOnly.value = true
-	    onlyWithChecklists.value = true
-	  } else {
-	    myChecklistsOnly.value = false
-	  }
-	  page.value = 1
-	}
+  function toggleMyChecklists() {
+    const role = String(currentProjectRole.value || '').trim()
+    if (!myChecklistsOnly.value) {
+      if (!role) {
+        ui.showError('No project role found for this user')
+        return
+      }
+      myChecklistsOnly.value = true
+      onlyWithChecklists.value = true
+    } else {
+      myChecklistsOnly.value = false
+    }
+    page.value = 1
+  }
 
 function hasChecklistSystem(e: any, sys: string): boolean {
   const want = normalizeKey(sys)
@@ -1879,43 +1882,43 @@ function isoDateOnly(value: any): string {
 }
 
 // Use server-provided page when available; otherwise fall back to full store list
-	const filtered = computed(() => {
-	  const q = search.value.trim().toLowerCase()
-	  const t = typeFilter.value
-	  const s = statusFilter.value
-	  const sys = systemFilter.value
-	  const reqChecklists = onlyWithChecklists.value
-	  const myRole = String(currentProjectRole.value || '').trim()
-	  const requireMyChecklists = myChecklistsOnly.value && !!myRole
-	  const reqFpt = onlyWithFpt.value
-	  const reqIssues = onlyWithIssues.value
-	  const checklistSys = checklistSystemFilter.value
-	  const loc = String(locationFilter.value || '').trim().toLowerCase()
-	  
+  const filtered = computed(() => {
+    const q = search.value.trim().toLowerCase()
+    const t = typeFilter.value
+    const s = statusFilter.value
+    const sys = systemFilter.value
+    const reqChecklists = onlyWithChecklists.value
+    const myRole = String(currentProjectRole.value || '').trim()
+    const requireMyChecklists = myChecklistsOnly.value && !!myRole
+    const reqFpt = onlyWithFpt.value
+    const reqIssues = onlyWithIssues.value
+    const checklistSys = checklistSystemFilter.value
+    const loc = String(locationFilter.value || '').trim().toLowerCase()
+    
   const wantTags = String(tagsFilter.value || '')
     .split(',')
     .map(s => String(s || '').trim().toLowerCase())
     .filter(Boolean)
     .slice(0, 30)
 
-	  const baseList = serverFetchedOnce.value ? listEquipment.value : equipment.value
-	  return (baseList || []).filter(e => {
-	    if (t && e.type !== t) return false
-	    if (s && e.status !== s) return false
-	    if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
-	    if (reqChecklists && countNum((e as any).checklistsCount) <= 0) return false
-	    if (reqChecklists && checklistSys && !hasChecklistSystem(e, checklistSys)) return false
-	    // Only enforce locally before the first server fetch; once server paging is active, rely on server-side filtering.
-	    if (!serverFetchedOnce.value && requireMyChecklists) {
-	      const sections: any[] = Array.isArray((e as any)?.checklists) ? (e as any).checklists : []
-	      const ok = sections.some((sec: any) => String(sec?.responsible || '').trim() === myRole)
-	      if (!ok) return false
-	    }
-	    if (reqFpt && countNum((e as any).fptCount) <= 0) return false
-	    if (reqIssues && countNum((e as any).issuesCount) <= 0) return false
-	    if (loc) {
-	      const chain = String(equipmentSpaceChain(e) || '').toLowerCase()
-	      if (!chain.includes(loc)) return false
+    const baseList = serverFetchedOnce.value ? listEquipment.value : equipment.value
+    return (baseList || []).filter(e => {
+      if (t && e.type !== t) return false
+      if (s && e.status !== s) return false
+      if (sys && String(e.system || '').toLowerCase() !== String(sys)) return false
+      if (reqChecklists && countNum((e as any).checklistsCount) <= 0) return false
+      if (reqChecklists && checklistSys && !hasChecklistSystem(e, checklistSys)) return false
+      // Only enforce locally before the first server fetch; once server paging is active, rely on server-side filtering.
+      if (!serverFetchedOnce.value && requireMyChecklists) {
+        const sections: any[] = Array.isArray((e as any)?.checklists) ? (e as any).checklists : []
+        const ok = sections.some((sec: any) => String(sec?.responsible || '').trim() === myRole)
+        if (!ok) return false
+      }
+      if (reqFpt && countNum((e as any).fptCount) <= 0) return false
+      if (reqIssues && countNum((e as any).issuesCount) <= 0) return false
+      if (loc) {
+        const chain = String(equipmentSpaceChain(e) || '').toLowerCase()
+        if (!chain.includes(loc)) return false
     }
     if (wantTags.length) {
       const tagsArr: any[] = Array.isArray((e as any)?.tags) ? (e as any).tags : []
@@ -1970,10 +1973,10 @@ function loadListState() {
       if (typeof data.typeFilter === 'string') typeFilter.value = data.typeFilter
       if (typeof data.statusFilter === 'string') statusFilter.value = data.statusFilter
       if (typeof data.systemFilter === 'string') systemFilter.value = data.systemFilter
-	      if (typeof data.onlyWithChecklists === 'boolean') onlyWithChecklists.value = data.onlyWithChecklists
-	      if (typeof data.myChecklistsOnly === 'boolean') myChecklistsOnly.value = data.myChecklistsOnly
-	      if (typeof data.onlyWithFpt === 'boolean') onlyWithFpt.value = data.onlyWithFpt
-	      if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
+        if (typeof data.onlyWithChecklists === 'boolean') onlyWithChecklists.value = data.onlyWithChecklists
+        if (typeof data.myChecklistsOnly === 'boolean') myChecklistsOnly.value = data.myChecklistsOnly
+        if (typeof data.onlyWithFpt === 'boolean') onlyWithFpt.value = data.onlyWithFpt
+        if (typeof data.onlyWithIssues === 'boolean') onlyWithIssues.value = data.onlyWithIssues
       if (typeof data.checklistSystemFilter === 'string') checklistSystemFilter.value = data.checklistSystemFilter
       if (typeof data.locationFilter === 'string') locationFilter.value = data.locationFilter
       if (typeof data.tagsFilter === 'string') tagsFilter.value = data.tagsFilter
@@ -3613,13 +3616,13 @@ async function fetchEquipmentPage(projectId?: string) {
     if (statusFilter.value) params.status = statusFilter.value
     if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value || '').trim()
     if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value || '').trim()
-	    if (onlyWithChecklists.value) params.hasChecklists = '1'
-	    if (onlyWithFpt.value) params.hasFpt = '1'
-	    if (onlyWithIssues.value) params.hasIssues = '1'
-	    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
-	    if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
-	    if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
-	    const res = await http.get('/api/equipment', { params })
+      if (onlyWithChecklists.value) params.hasChecklists = '1'
+      if (onlyWithFpt.value) params.hasFpt = '1'
+      if (onlyWithIssues.value) params.hasIssues = '1'
+      if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
+      if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
+      if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+      const res = await http.get('/api/equipment', { params })
     const data = res && res.data ? res.data : {}
     const normalizeItem = (it: any) => {
       const obj: any = { ...(it || {}) }
@@ -3708,23 +3711,23 @@ function debounce(fn: (...args: any[]) => any, wait = 200) {
 }
 
 const debouncedFetch = debounce(() => { fetchEquipmentPage().catch(() => {}) }, 150)
-	watch([
-	  () => page.value,
-	  () => pageSize.value,
-	  () => sortKey.value,
-	  () => sortDir.value,
-	  () => search.value,
-	  () => typeFilter.value,
-	  () => systemFilter.value,
-	  () => statusFilter.value,
-	  () => locationFilter.value,
-	  () => tagsFilter.value,
-	  () => onlyWithChecklists.value,
-	  () => myChecklistsOnly.value,
-	  () => onlyWithFpt.value,
-	  () => onlyWithIssues.value,
-	  () => checklistSystemFilter.value,
-	], () => debouncedFetch(), { immediate: false })
+  watch([
+    () => page.value,
+    () => pageSize.value,
+    () => sortKey.value,
+    () => sortDir.value,
+    () => search.value,
+    () => typeFilter.value,
+    () => systemFilter.value,
+    () => statusFilter.value,
+    () => locationFilter.value,
+    () => tagsFilter.value,
+    () => onlyWithChecklists.value,
+    () => myChecklistsOnly.value,
+    () => onlyWithFpt.value,
+    () => onlyWithIssues.value,
+    () => checklistSystemFilter.value,
+  ], () => debouncedFetch(), { immediate: false })
 const validUploadRows = computed(() => (uploadRows.value || []).filter(r => r.tag && r.type && r.title))
 const uploadInvalidRowsCount = computed(() => (uploadRows.value || []).length - validUploadRows.value.length)
 const uploadDuplicateTags = computed<string[]>(() => {
@@ -4069,17 +4072,17 @@ async function downloadEquipmentList() {
   }
   if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value || '').trim()
   if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value || '').trim()
-	  if (onlyWithChecklists.value) params.hasChecklists = '1'
-	  if (onlyWithFpt.value) params.hasFpt = '1'
-	  if (onlyWithIssues.value) params.hasIssues = '1'
-	  if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
-	  if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
-	  try {
-	    const res = await http.get('/api/equipment/export', {
-	      params,
+    if (onlyWithChecklists.value) params.hasChecklists = '1'
+    if (onlyWithFpt.value) params.hasFpt = '1'
+    if (onlyWithIssues.value) params.hasIssues = '1'
+    if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
+    if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
+    try {
+      const res = await http.get('/api/equipment/export', {
+        params,
       responseType: 'blob'
     })
-	    const blob = res.data instanceof Blob
+      const blob = res.data instanceof Blob
         ? res.data
         : new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
@@ -4089,7 +4092,7 @@ async function downloadEquipmentList() {
     const today = new Date().toISOString().slice(0, 10)
     const a = document.createElement('a')
     a.href = url
-	    a.download = `${safeName}-equipment-${today}.xlsx`
+      a.download = `${safeName}-equipment-${today}.xlsx`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

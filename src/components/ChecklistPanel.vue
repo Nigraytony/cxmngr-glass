@@ -345,8 +345,8 @@
         <ul class="space-y-2">
           <li
             v-for="(q, qi) in local[si].questions"
-            :key="q.number || qi"
             :id="questionDomId(si, qi)"
+            :key="q.number || qi"
             :class="[
               'p-2 rounded-md bg-white/5 border border-white/10',
               deepLinkedId && deepLinkedId === questionDomId(si, qi) ? 'ring-2 ring-amber-400/50 ring-offset-2 ring-offset-black/20' : ''
@@ -572,7 +572,10 @@
             </div>
           </button>
 
-          <div v-if="isOprOpenForSection(local[si], si)" class="space-y-2">
+          <div
+            v-if="isOprOpenForSection(local[si], si)"
+            class="space-y-2"
+          >
             <OprItemPicker
               v-model="(local[si] as any).oprItemIds"
               :project-id="String(props.projectId || '')"
@@ -1054,21 +1057,21 @@
 
 <script setup lang="ts">
   import { computed, reactive, watch, ref, onMounted, nextTick } from 'vue'
-	import Modal from './Modal.vue'
-	import IssueForm from './IssueForm.vue'
+  import Modal from './Modal.vue'
+  import IssueForm from './IssueForm.vue'
   import OprItemPicker from './OprItemPicker.vue'
   import OprLinkVerification from './OprLinkVerification.vue'
-	import { confirm as inlineConfirm } from '../utils/confirm'
-	import lists from '../lists'
-	import { useAuthStore } from '../stores/auth'
-	import { useProjectStore } from '../stores/project'
-	import { useIssuesStore } from '../stores/issues'
+  import { confirm as inlineConfirm } from '../utils/confirm'
+  import lists from '../lists'
+  import { useAuthStore } from '../stores/auth'
+  import { useProjectStore } from '../stores/project'
+  import { useIssuesStore } from '../stores/issues'
   import { useRoute, useRouter } from 'vue-router'
 
-	type SelectOption = { value: any; text: string }
-	const roleOptions = ((lists as any)?.roleOptions as SelectOption[]) || []
-	const checklistTypeOptions = ((lists as any)?.checklistTypes as SelectOption[]) || []
-	const systemSelectOptions = ((lists as any)?.systemOptions as SelectOption[]) || []
+  type SelectOption = { value: any; text: string }
+  const roleOptions = ((lists as any)?.roleOptions as SelectOption[]) || []
+  const checklistTypeOptions = ((lists as any)?.checklistTypes as SelectOption[]) || []
+  const systemSelectOptions = ((lists as any)?.systemOptions as SelectOption[]) || []
 
   const route = useRoute()
 
@@ -1175,11 +1178,11 @@ function normalize(v: any): ChecklistSection[] {
     number: s?.number ?? null,
     title: s?.title ?? '',
     type: s?.type ?? '',
-	    system: s?.system ?? '',
-	    status: s?.status ?? 'not started',
-	    is_complete: !!s?.is_complete,
-	    responsible: s?.responsible ?? '',
-	    notes: s?.notes ?? '',
+      system: s?.system ?? '',
+      status: s?.status ?? 'not started',
+      is_complete: !!s?.is_complete,
+      responsible: s?.responsible ?? '',
+      notes: s?.notes ?? '',
       oprItemIds: (() => {
         const base = Array.isArray(s?.oprItemIds) ? s.oprItemIds.map((id: any) => String(id || '').trim()).filter(Boolean) : []
         const merged = new Set<string>(base)
@@ -1193,9 +1196,9 @@ function normalize(v: any): ChecklistSection[] {
         }
         return Array.from(merged)
       })(),
-	    questions: Array.isArray(s?.questions) ? s.questions.map((q: any) => ({
-	      number: q?.number ?? null,
-	      question_text: String(q?.question_text || ''),
+      questions: Array.isArray(s?.questions) ? s.questions.map((q: any) => ({
+        number: q?.number ?? null,
+        question_text: String(q?.question_text || ''),
       answer: q?.answer ?? null,
         // OPR links are now stored at the Checklist (section) level via the OPR rollup card.
         oprItemIds: [],
@@ -1909,25 +1912,25 @@ function moveSection(si: number, delta: -1 | 1) {
   notifyChange()
 }
 
-	// Edit / Delete section
-	const editOpen = ref(false)
-	const editIndex = ref<number | null>(null)
-	const editDraft = reactive<{ number: number | null; title: string; type: string; system: string; status: string; responsible: string; notes: string; questions: Array<{ number?: number; question_text: string }> }>({
-	  number: null, title: '', type: '', system: '', status: 'not started', responsible: '', notes: '', questions: []
-	})
-	function startEdit(si: number) {
-	  const s = local[si]
-	  editIndex.value = si
-	  editDraft.number = (s.number as any) ?? (si + 1)
-	  editDraft.title = s.title || ''
-	  editDraft.type = s.type || ''
-	  editDraft.system = s.system || ''
-	  editDraft.status = s.status || 'not started'
-	  editDraft.responsible = (s as any)?.responsible ?? ''
-	  editDraft.notes = s.notes || ''
-	  editDraft.questions = (s.questions || []).map((q: any) => ({ number: q?.number, question_text: q?.question_text || '' }))
-	  editOpen.value = true
-	}
+  // Edit / Delete section
+  const editOpen = ref(false)
+  const editIndex = ref<number | null>(null)
+  const editDraft = reactive<{ number: number | null; title: string; type: string; system: string; status: string; responsible: string; notes: string; questions: Array<{ number?: number; question_text: string }> }>({
+    number: null, title: '', type: '', system: '', status: 'not started', responsible: '', notes: '', questions: []
+  })
+  function startEdit(si: number) {
+    const s = local[si]
+    editIndex.value = si
+    editDraft.number = (s.number as any) ?? (si + 1)
+    editDraft.title = s.title || ''
+    editDraft.type = s.type || ''
+    editDraft.system = s.system || ''
+    editDraft.status = s.status || 'not started'
+    editDraft.responsible = (s as any)?.responsible ?? ''
+    editDraft.notes = s.notes || ''
+    editDraft.questions = (s.questions || []).map((q: any) => ({ number: q?.number, question_text: q?.question_text || '' }))
+    editOpen.value = true
+  }
 function cancelEdit() { editOpen.value = false; editIndex.value = null }
 function addEditQuestion() { editDraft.questions.push({ question_text: '' }) }
 function removeEditQuestion(i: number) { editDraft.questions.splice(i, 1) }
@@ -1949,26 +1952,26 @@ function saveEditSection() {
     is_complete: local[si].questions?.[idx]?.is_complete ?? null,
     notes: local[si].questions?.[idx]?.notes ?? null,
   }))
-	  local[si] = {
-	    ...local[si],
-	    number: (editDraft.number as any) ?? local[si].number,
-	    title: editDraft.title.trim(),
-	    type: editDraft.type.trim(),
-	    system: editDraft.system.trim(),
-	    status: editDraft.status || 'not started',
-	    is_complete: editDraft.status === 'complete',
-	    responsible: editDraft.responsible || '',
-	    notes: editDraft.notes || '',
-	    questions,
-	  }
+    local[si] = {
+      ...local[si],
+      number: (editDraft.number as any) ?? local[si].number,
+      title: editDraft.title.trim(),
+      type: editDraft.type.trim(),
+      system: editDraft.system.trim(),
+      status: editDraft.status || 'not started',
+      is_complete: editDraft.status === 'complete',
+      responsible: editDraft.responsible || '',
+      notes: editDraft.notes || '',
+      questions,
+    }
   // Log key field edits (minimal)
   const after = local[si]
   const changed: Record<string, { from: any; to: any }> = {}
-	  ;(['number','title','type','system','status','is_complete','responsible','notes'] as const).forEach((k) => {
-	    const fromV = (before as any)?.[k]
-	    const toV = (after as any)?.[k]
-	    if (JSON.stringify(fromV) !== JSON.stringify(toV)) changed[k] = { from: fromV ?? null, to: toV ?? null }
-	  })
+    ;(['number','title','type','system','status','is_complete','responsible','notes'] as const).forEach((k) => {
+      const fromV = (before as any)?.[k]
+      const toV = (after as any)?.[k]
+      if (JSON.stringify(fromV) !== JSON.stringify(toV)) changed[k] = { from: fromV ?? null, to: toV ?? null }
+    })
   logEvent(si, 'section_edited', { changed, questionsCount: questions.length })
   notifyChange()
   emit('persist', snapshotPayload())
