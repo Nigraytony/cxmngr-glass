@@ -1520,7 +1520,7 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, r
     const wantsFpt = wantsFunctionalTests || wantsFptSignatures
 
     const otherKeys = Object.keys(incoming || {}).filter((k) => !['checklists', 'functionalTests', 'fptSignatures'].includes(k))
-    if (!wantsChecklists && otherKeys.length === 0) {
+    if (!wantsChecklists && !wantsFpt && otherKeys.length === 0) {
       return res.status(400).send({ error: 'No fields to update' })
     }
 

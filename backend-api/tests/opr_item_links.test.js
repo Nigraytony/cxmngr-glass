@@ -140,7 +140,7 @@ describe('OPR item linking (issues + functional tests)', function () {
     const eqRes = await withCsrf(request(app)
       .post('/api/equipment'))
       .set('Authorization', `Bearer ${token}`)
-      .send({ projectId, tag: 'AHU-1', name: 'AHU-1', system: 'HVAC', status: 'Not Started' })
+      .send({ projectId, tag: 'AHU-1', name: 'AHU-1', title: 'AHU-1', type: 'Air Handler', system: 'HVAC', status: 'Not Started' })
     assert.strictEqual(eqRes.status, 201)
     const equipmentId = String(eqRes.body._id)
 
@@ -175,7 +175,7 @@ describe('OPR item linking (issues + functional tests)', function () {
     const eqRes = await withCsrf(request(app)
       .post('/api/equipment'))
       .set('Authorization', `Bearer ${a.token}`)
-      .send({ projectId: a.projectId, tag: 'AHU-2', name: 'AHU-2', system: 'HVAC', status: 'Not Started' })
+      .send({ projectId: a.projectId, tag: 'AHU-2', name: 'AHU-2', title: 'AHU-2', type: 'Air Handler', system: 'HVAC', status: 'Not Started' })
     assert.strictEqual(eqRes.status, 201)
     const equipmentId = String(eqRes.body._id)
 

@@ -702,18 +702,28 @@ router.get('/project/:id/payment-methods', auth, async (req, res) => {
     if (!canManageBilling(req.user, project)) return res.status(403).json({ error: 'Not authorized to view billing for this project' });
 
     const customerId = await resolveBillingCustomerId(project, req.user);
-    if (!customerId) return res.status(400).json({ error: 'No billing customer found' });
+    // No customer yet (pre-subscription) — return empty list rather than an error.
+    if (!customerId) return res.json({ items: [], defaultPaymentMethodId: null });
 
-    const pmList = await stripe.paymentMethods.list({ customer: customerId, type: 'card', limit: 20 });
+    let pmData = [];
     let defaultPmId = null;
     try {
-      const cust = await stripe.customers.retrieve(customerId);
-      defaultPmId = cust && cust.invoice_settings ? cust.invoice_settings.default_payment_method : null;
-    } catch (e) {
-      // ignore
+      const pmList = await stripe.paymentMethods.list({ customer: customerId, type: 'card', limit: 20 });
+      pmData = Array.isArray(pmList.data) ? pmList.data : [];
+      try {
+        const cust = await stripe.customers.retrieve(customerId);
+        defaultPmId = cust && cust.invoice_settings ? cust.invoice_settings.default_payment_method : null;
+      } catch (e) {
+        // ignore — default PM is best-effort
+      }
+    } catch (stripeErr) {
+      // Customer may not exist in the current Stripe mode (e.g. test vs live key mismatch).
+      // Log for diagnostics but return empty list so the UI shows a clean empty state.
+      const msg = stripeErr && (stripeErr.raw ? stripeErr.raw.message : stripeErr.message);
+      console.warn('[payment-methods] Stripe error, returning empty list:', msg);
     }
 
-    const items = Array.isArray(pmList.data) ? pmList.data.map((pm) => ({
+    const items = pmData.map((pm) => ({
       id: pm.id,
       brand: pm.card && pm.card.brand,
       last4: pm.card && pm.card.last4,
@@ -722,7 +732,7 @@ router.get('/project/:id/payment-methods', auth, async (req, res) => {
       funding: pm.card && pm.card.funding,
       isDefault: defaultPmId ? String(defaultPmId) === String(pm.id) : false,
       billing_details: pm.billing_details || {},
-    })) : [];
+    }));
 
     return res.json({ items, defaultPaymentMethodId: defaultPmId || null });
   } catch (err) {
