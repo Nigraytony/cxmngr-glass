@@ -84,7 +84,20 @@ router.use('/project/:id', requireObjectIdParam('id'));
 
 async function ensureStripeCustomer(user) {
   if (!stripe) throw new Error('Stripe not configured');
-  if (user.stripeCustomerId) return user.stripeCustomerId;
+  if (user.stripeCustomerId) {
+    // Validate the stored customer ID against Stripe. If it belongs to the wrong
+    // mode (e.g. a test-mode cus_ stored when now running in live mode), Stripe
+    // returns a 'no such customer' error — in that case, clear and create a fresh one.
+    try {
+      const existing = await stripe.customers.retrieve(String(user.stripeCustomerId));
+      if (existing && !existing.deleted) return user.stripeCustomerId;
+    } catch (e) {
+      // Invalid or wrong-mode customer — fall through to create a new one
+      console.warn('[stripe] stored stripeCustomerId invalid, creating new customer:', user.stripeCustomerId, e && e.message);
+      user.stripeCustomerId = null;
+      await user.save();
+    }
+  }
   const customer = await stripe.customers.create({ email: user.email, metadata: { userId: String(user._id) } });
   user.stripeCustomerId = customer.id;
   await user.save();
@@ -97,11 +110,8 @@ async function resolveBillingCustomerId(project, requester) {
   // Prefer explicit billing admin user
   if (project.billingAdminUserId) {
     const billingUser = await User.findById(project.billingAdminUserId);
-    if (billingUser) {
-      customerId = billingUser.stripeCustomerId || null;
-      if (!customerId && stripe) {
-        try { customerId = await ensureStripeCustomer(billingUser); } catch (e) {}
-      }
+    if (billingUser && stripe) {
+      try { customerId = await ensureStripeCustomer(billingUser); } catch (e) {}
     }
   }
   // If not found, inspect subscription for its customer
@@ -114,12 +124,8 @@ async function resolveBillingCustomerId(project, requester) {
     }
   }
   // Fallback: use requester
-  if (!customerId && requester) {
-    const u = requester;
-    customerId = u.stripeCustomerId || null;
-    if (!customerId && stripe) {
-      try { customerId = await ensureStripeCustomer(u); } catch (e) {}
-    }
+  if (!customerId && requester && stripe) {
+    try { customerId = await ensureStripeCustomer(requester); } catch (e) {}
   }
   return customerId;
 }
