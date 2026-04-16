@@ -59,6 +59,10 @@ jobs:
     env:
       # Prefer real MongoDB service in CI to avoid memory-server downloads
       MONGODB_URI: mongodb://localhost:27017/test
+      # Prevent binary downloads that hang CI (also set in backend-api/.npmrc)
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+      MONGOMS_DISABLE_POSTINSTALL: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,14 +84,7 @@ jobs:
       - name: Install backend dependencies
         # Only install when cache missed — npm ci always wipes node_modules so
         # running it on a cache hit would discard the restored cache.
-        # Skip binary downloads that hang CI:
-        #   PUPPETEER_SKIP_DOWNLOAD   — prevents puppeteer downloading Chromium (~150 MB)
-        #   MONGOMS_DISABLE_POSTINSTALL — prevents mongodb-memory-server downloading a
-        #                                 MongoDB binary (real mongo service is used instead)
         if: steps.cache-backend-node-modules.outputs.cache-hit != 'true'
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: 'true'
-          MONGOMS_DISABLE_POSTINSTALL: '1'
         run: npm ci
 
       - name: Run backend integration tests
