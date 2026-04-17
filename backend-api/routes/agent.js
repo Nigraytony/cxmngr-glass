@@ -17,6 +17,7 @@
  */
 
 const express = require('express')
+const multer = require('multer')
 const router = express.Router()
 const { auth } = require('../middleware/auth')
 const { requireFeature, getPlan } = require('../middleware/planGuard')
@@ -40,6 +41,17 @@ const {
 const MAX_TOOL_ITERATIONS = 8
 const MAX_HISTORY_MESSAGES = 20 // how many prior turns to include in context
 const MAX_TOKENS = 8192
+const MAX_PDF_FILES = 3
+const MAX_PDF_BYTES = 10 * 1024 * 1024 // 10 MB per file
+
+const uploadPdfs = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_PDF_BYTES, files: MAX_PDF_FILES },
+  fileFilter: (_req, file, cb) => {
+    const ok = (file.mimetype === 'application/pdf') || /\.pdf$/i.test(file.originalname || '')
+    cb(ok ? null : new Error('Only PDF files are accepted'), ok)
+  },
+})
 
 // ---------------------------------------------------------------------------
 // Helpers (shared with ai.js pattern)
@@ -84,7 +96,12 @@ function hasServerKeyForProvider(provider) {
 
 function resolveModel(provider, projectAi) {
   if (provider === 'gemini') return asString(projectAi.model || process.env.GEMINI_MODEL || 'gemini-1.5-pro').trim() || 'gemini-1.5-pro'
-  if (provider === 'claude') return asString(projectAi.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest'
+  if (provider === 'claude') {
+    const raw = asString(projectAi.model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5').trim() || 'claude-sonnet-4-5'
+    // Auto-upgrade retired Claude 3.x IDs to the current Sonnet
+    if (/^claude-3/i.test(raw)) return 'claude-sonnet-4-5'
+    return raw
+  }
   return asString(projectAi.model || process.env.OPENAI_MODEL || 'gpt-4o').trim() || 'gpt-4o'
 }
 
@@ -103,6 +120,25 @@ function buildSystemPrompt(project) {
     '  • Templates — reusable equipment templates with full commissioning content',
     '  • Systems — mechanical, electrical, and other building systems',
     '',
+    'PDF drawing analysis & project scaffolding:',
+    '  When the user uploads drawings (floor plans, equipment schedules, P&IDs, mechanical plans):',
+    '  1. EXTRACT first — identify space hierarchy (building → floors → rooms/zones), all equipment with',
+    '     tags and types, system groupings (HVAC, Plumbing, Electrical, Controls, etc.), and design parameters.',
+    '  2. SUMMARISE your reading back to the user before building — confirm your interpretation in plain English.',
+    '  3. CHECK current state with get_project_summary first. If records already exist, ASK before bulk-creating.',
+    '  4. BUILD in this order:',
+    '     a. Spaces — building first, then floors, then rooms/areas (set parentSpace to nest).',
+    '     b. Systems — one per major system family.',
+    '     c. Templates — call list_templates first; only create new ones for types not already defined.',
+    '     d. Equipment — use apply_template_to_equipment for each item so checklists and FPTs are inherited;',
+    '        link spaceId and system; set a free-text location for convenience.',
+    '     e. Tasks — standard Cx phase tasks (Design Review, Submittal Review, Prefunctional, Functional Testing,',
+    '        Seasonal Testing, Training, Closeout).',
+    '  5. GAPS — if a tag is illegible, a system is ambiguous, or a drawing is incomplete, stop and ask one',
+    '     focused question before proceeding.',
+    '  6. BATCH sensibly — create all spaces first, then systems, then templates, then equipment. Tell the user',
+    '     what you are about to do and how many records before a large batch.',
+    '',
     'Template creation guidance:',
     '  When asked to create an equipment template, use your commissioning knowledge to populate it fully:',
     '  • attributes: nameplate and design parameters (e.g., Airflow CFM, Motor HP, Coil Entering/Leaving Conditions, Voltage, Serial No.)',
@@ -113,6 +149,17 @@ function buildSystemPrompt(project) {
     '    Occupied/Unoccupied Changeover, Freeze Protection, Low-Limit Shutoff, etc. Each test has ordered steps with expected results.',
     '  Draw on ASHRAE Guideline 0, ASHRAE 202, and typical Cx commissioning protocols for question content and test sequences.',
     '  For complex equipment like AHUs, create the template fully populated — the user can then edit/refine it.',
+    '',
+    'Functional test structure — IMPORTANT:',
+    '  Every test MUST set kind to either "sequence" or "standard".',
+    '  • kind = "sequence" — for CONTROL SEQUENCE tests (Cooling Mode, Heating Mode, Economizer, Occupied/Unoccupied',
+    '    Changeover, Freeze Protection, Low-Limit Shutoff, Smoke/Fire Response, VAV Reset, etc.).',
+    '    Provide rows: [{ step, expected, actual }]. This is the common kind — when in doubt, use sequence.',
+    '  • kind = "standard" — only for POINTS / TABULAR verification (BAS Points Verification, Sensor Calibration,',
+    '    Nameplate vs Design Table, Damper Stroke Test, etc.).',
+    '    Provide columns: ["System Point","BAS","Field","Offset","Pass"] (or a custom header list) and',
+    '    tableRows: [{ "System Point":"...", "BAS":"...", ... }] keyed by column name.',
+    '  NEVER provide rows in sequence format on a standard test (and vice-versa) — the UI will render empty.',
     '',
     'Behaviour rules:',
     '  1. Always confirm with the user before calling any delete tool.',
@@ -462,11 +509,26 @@ router.get(
 )
 
 // POST /api/agent/chat
-// Body: { projectId, message: string }
+// Accepts both application/json and multipart/form-data.
+// JSON body:      { projectId, message }
+// multipart form: projectId, message, pdf[] (up to 3 PDFs, 10 MB each)
 router.post(
   '/chat',
   auth,
   requireNotDisabled('ai'),
+  (req, res, next) => {
+    const ct = asString(req.headers && req.headers['content-type']).toLowerCase()
+    if (ct.startsWith('multipart/form-data')) {
+      return uploadPdfs.array('pdf', MAX_PDF_FILES)(req, res, (err) => {
+        if (err) {
+          const msg = err && err.message ? err.message : 'Upload failed'
+          return res.status(400).json({ error: msg })
+        }
+        return next()
+      })
+    }
+    return next()
+  },
   requireBodyField('projectId'),
   requireObjectIdBody('projectId'),
   requireActiveProject,
@@ -476,8 +538,9 @@ router.post(
     try {
       const projectId = asString(req.body && req.body.projectId).trim()
       const userMessage = asString(req.body && req.body.message).trim().slice(0, 4000)
+      const pdfFiles = Array.isArray(req.files) ? req.files.filter((f) => f && f.buffer) : []
 
-      if (!userMessage) return res.status(400).json({ error: 'message is required' })
+      if (!userMessage && !pdfFiles.length) return res.status(400).json({ error: 'message is required' })
 
       const project = await Project.findById(projectId)
         .select('name team users ai.enabled ai.provider ai.model ai.hasKey +ai.apiKey.enc +ai.apiKey.iv +ai.apiKey.tag')
@@ -506,6 +569,10 @@ router.post(
       const model = resolveModel(provider, ai)
       const systemPrompt = buildSystemPrompt(project)
 
+      if (pdfFiles.length && provider !== 'claude') {
+        return res.status(400).json({ error: 'PDF upload requires the Claude provider. Switch AI provider in Project Settings → AI.' })
+      }
+
       // Load recent history for context
       const historyDocs = await AssistantChatMessage.find({ projectId })
         .sort({ createdAt: -1 })
@@ -513,10 +580,26 @@ router.post(
         .lean()
       historyDocs.reverse()
 
-      // Build messages array: history + new user message
+      // Build the new user turn. With PDFs attached, content is an array of
+      // document blocks followed by the text message (Claude-only path).
+      const messageText = userMessage || 'Please analyse the attached drawing(s).'
+      const newUserContent = pdfFiles.length
+        ? [
+            ...pdfFiles.map((f) => ({
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: f.buffer.toString('base64'),
+              },
+            })),
+            { type: 'text', text: messageText },
+          ]
+        : messageText
+
       const messages = [
         ...historyDocs.map((m) => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userMessage },
+        { role: 'user', content: newUserContent },
       ]
 
       // Run the agentic loop for the configured provider
@@ -536,9 +619,16 @@ router.post(
 
       const replyText = result.text || 'Done.'
 
-      // Persist user message and assistant reply
+      // Persist user message and assistant reply. PDF content blocks are not
+      // stored — we keep only the text portion so history stays compact.
       const userId = req.user && (req.user._id || req.user.id)
-      await AssistantChatMessage.create({ projectId, userId, role: 'user', content: userMessage })
+      const attachmentSuffix = pdfFiles.length ? ` (📎 ${pdfFiles.length} PDF${pdfFiles.length === 1 ? '' : 's'} attached)` : ''
+      await AssistantChatMessage.create({
+        projectId,
+        userId,
+        role: 'user',
+        content: (userMessage || messageText) + attachmentSuffix,
+      })
       await AssistantChatMessage.create({ projectId, userId: null, role: 'assistant', content: replyText })
 
       // Prune to 300 messages per project

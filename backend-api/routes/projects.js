@@ -145,7 +145,7 @@ function normalizeAiProvider(v) {
 
 function defaultAiModel(provider) {
   if (provider === 'gemini') return 'gemini-1.5-flash'
-  if (provider === 'claude') return 'claude-3-5-sonnet-latest'
+  if (provider === 'claude') return 'claude-sonnet-4-5'
   return 'gpt-4o-mini'
 }
 

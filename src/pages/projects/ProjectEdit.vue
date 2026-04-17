@@ -3375,7 +3375,7 @@ async function loadAiSettings() {
     aiEnabled.value = !!data.enabled
     const p = String(data.provider || 'openai').toLowerCase()
     aiProvider.value = (p === 'gemini' ? 'gemini' : (p === 'claude' ? 'claude' : 'openai'))
-    aiModel.value = String(data.model || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')))
+    aiModel.value = String(data.model || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-sonnet-4-5' : 'gpt-4o-mini')))
     aiHasKey.value = !!data.hasKey
     aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : null
     aiLoaded.value = true
@@ -3399,7 +3399,7 @@ async function saveAiSettings() {
     const payload: any = {
       enabled: !!aiEnabled.value,
       provider: aiProvider.value,
-      model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')),
+      model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-sonnet-4-5' : 'gpt-4o-mini')),
     }
     if (String(aiKeyDraft.value || '').trim()) payload.apiKey = String(aiKeyDraft.value).trim()
     const res = await http.put(`/api/projects/${pid}/ai`, payload)
@@ -3409,7 +3409,7 @@ async function saveAiSettings() {
       const p = String(data.provider || aiProvider.value || 'openai').toLowerCase()
       aiProvider.value = (p === 'gemini' ? 'gemini' : (p === 'claude' ? 'claude' : 'openai'))
     }
-    aiModel.value = String(data.model || aiModel.value || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')))
+    aiModel.value = String(data.model || aiModel.value || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-sonnet-4-5' : 'gpt-4o-mini')))
     aiHasKey.value = !!data.hasKey
     aiLastVerifiedAt.value = data.lastVerifiedAt ? String(data.lastVerifiedAt) : null
     aiKeyDraft.value = ''
@@ -3434,7 +3434,7 @@ async function clearAiKey() {
   aiSaving.value = true
   aiError.value = ''
   try {
-    const payload: any = { enabled: !!aiEnabled.value, provider: aiProvider.value, model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-3-5-sonnet-latest' : 'gpt-4o-mini')), apiKey: '' }
+    const payload: any = { enabled: !!aiEnabled.value, provider: aiProvider.value, model: String(aiModel.value || '').trim() || (aiProvider.value === 'gemini' ? 'gemini-1.5-flash' : (aiProvider.value === 'claude' ? 'claude-sonnet-4-5' : 'gpt-4o-mini')), apiKey: '' }
     const res = await http.put(`/api/projects/${pid}/ai`, payload)
     const data = res.data || {}
     aiHasKey.value = !!data.hasKey
@@ -3488,7 +3488,7 @@ watch(project, () => {
 watch(aiProvider, (p) => {
   const next = String(p || '').toLowerCase()
   if (next === 'gemini' && (!aiModel.value || aiModel.value === 'gpt-4o-mini' || aiModel.value.startsWith('claude'))) aiModel.value = 'gemini-1.5-flash'
-  if (next === 'claude' && (!aiModel.value || aiModel.value === 'gpt-4o-mini' || aiModel.value.startsWith('gemini'))) aiModel.value = 'claude-3-5-sonnet-latest'
+  if (next === 'claude' && (!aiModel.value || aiModel.value === 'gpt-4o-mini' || aiModel.value.startsWith('gemini'))) aiModel.value = 'claude-sonnet-4-5'
   if (next === 'openai' && (!aiModel.value || aiModel.value.startsWith('gemini') || aiModel.value.startsWith('claude'))) aiModel.value = 'gpt-4o-mini'
 })
 

@@ -36,6 +36,7 @@ const equipmentSchema = new mongoose.Schema({
         default: [],
     },
     description: { type: String, required: false },
+    location: { type: String, required: false },
     spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space', required: false },
     orderDate: { type: Date, required: false },
     installationDate: { type: Date, required: false },

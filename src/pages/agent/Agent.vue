@@ -201,12 +201,49 @@
 
       <!-- Input bar -->
       <div class="shrink-0 px-4 pb-4 pt-2 border-t border-white/10">
+        <!-- Attached file chips -->
+        <div v-if="attachedFiles.length" class="flex flex-wrap gap-1.5 mb-2">
+          <div
+            v-for="(f, i) in attachedFiles"
+            :key="i"
+            class="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30 text-indigo-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span class="truncate max-w-[160px]">{{ f.name }}</span>
+            <span class="text-indigo-300/60">{{ formatFileSize(f.size) }}</span>
+            <button type="button" class="hover:text-white" @click="removeFile(i)">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        <p v-if="attachError" class="text-amber-300 text-[11px] mb-2">{{ attachError }}</p>
         <form class="flex gap-2 items-end" @submit.prevent="handleSend">
+          <input
+            ref="fileInputEl"
+            type="file"
+            accept="application/pdf,.pdf"
+            multiple
+            class="hidden"
+            @change="onFileChange"
+          />
+          <button
+            type="button"
+            :disabled="agent.sending || aiStatus !== 'ready' || attachedFiles.length >= MAX_FILES"
+            class="shrink-0 w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            title="Attach PDF drawings (max 3, 10 MB each)"
+            @click="fileInputEl?.click()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+            </svg>
+          </button>
           <textarea
             ref="inputEl"
             v-model="draft"
             rows="2"
-            placeholder="Ask me anything about this project…"
+            :placeholder="attachedFiles.length ? 'Tell me what to build from these drawings (or press Send to analyse)…' : 'Ask me anything about this project…'"
             :disabled="agent.sending || aiStatus !== 'ready'"
             class="flex-1 resize-none rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25
                    text-sm px-4 py-3 focus:outline-none focus:border-white/25 focus:bg-white/8 transition
@@ -218,7 +255,7 @@
           />
           <button
             type="submit"
-            :disabled="!draft.trim() || agent.sending || aiStatus !== 'ready'"
+            :disabled="(!draft.trim() && !attachedFiles.length) || agent.sending || aiStatus !== 'ready'"
             class="shrink-0 w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40
                    disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
             title="Send (Enter)"
@@ -229,7 +266,7 @@
             </svg>
           </button>
         </form>
-        <p class="text-white/25 text-[11px] mt-1.5 px-1">Enter to send · Shift+Enter for new line</p>
+        <p class="text-white/25 text-[11px] mt-1.5 px-1">Enter to send · Shift+Enter for new line · Attach PDFs to build from drawings</p>
       </div>
     </template>
 
@@ -251,8 +288,14 @@ const agent = useAgentStore()
 const draft = ref('')
 const messagesEl = ref(null)
 const inputEl = ref(null)
+const fileInputEl = ref(null)
+const attachedFiles = ref([])
+const attachError = ref('')
 const aiStatus = ref('loading') // 'loading' | 'ready' | 'unavailable'
 const unavailableReason = ref('')
+
+const MAX_FILES = 3
+const MAX_FILE_BYTES = 10 * 1024 * 1024
 
 const currentProjectId = computed(() =>
   projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
@@ -268,10 +311,10 @@ const userInitial = computed(() => {
 })
 
 const examplePrompts = [
+  'Analyse the attached drawings and build out the project',
   'List all open issues on this project',
   'Create a task called Pre-functional walkthrough',
   'Show me all equipment in the HVAC system',
-  'Create an issue: AHU-1 supply air temperature out of spec',
 ]
 
 // ---------------------------------------------------------------------------
@@ -307,11 +350,38 @@ async function checkAiStatus() {
 
 async function handleSend() {
   const text = draft.value.trim()
-  if (!text || agent.sending || aiStatus.value !== 'ready') return
+  const files = attachedFiles.value.slice()
+  if (!text && !files.length) return
+  if (agent.sending || aiStatus.value !== 'ready') return
   draft.value = ''
+  attachedFiles.value = []
+  attachError.value = ''
   resetInputHeight()
-  await agent.send(currentProjectId.value, text)
+  await agent.send(currentProjectId.value, text, files)
   await scrollToBottom()
+}
+
+function onFileChange(e) {
+  const picked = Array.from(e.target.files || [])
+  e.target.value = '' // allow re-selecting the same file
+  attachError.value = ''
+  for (const f of picked) {
+    if (attachedFiles.value.length >= MAX_FILES) { attachError.value = `Max ${MAX_FILES} PDFs per message.`; break }
+    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { attachError.value = `${f.name} is not a PDF.`; continue }
+    if (f.size > MAX_FILE_BYTES) { attachError.value = `${f.name} exceeds 10 MB.`; continue }
+    attachedFiles.value.push(f)
+  }
+}
+
+function removeFile(i) {
+  attachedFiles.value.splice(i, 1)
+  if (!attachedFiles.value.length) attachError.value = ''
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function useHint(hint) {

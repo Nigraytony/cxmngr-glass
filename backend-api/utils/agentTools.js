@@ -26,11 +26,103 @@ function str(v, max) {
   return String(v || '').slice(0, max)
 }
 
+// Generate a short random key for table columns (matches the UI's _colKey shape).
+function colKey() { return 'c' + Math.random().toString(36).slice(2, 8) }
+
+// Default column preset — used when an agent creates a standard/Points test
+// without specifying columns. Mirrors the UI's "Points Verification" preset.
+const DEFAULT_POINTS_COLUMNS = ['System Point', 'BAS', 'Field', 'Offset', 'Pass']
+
+// Normalize an agent-provided functional test into the shape FunctionalTestsPanel expects.
+// Supports both kind='sequence' (step/expected/actual rows) and kind='standard'
+// (Points/Tabular with columns[] + tableRows[]).
+function normalizeFunctionalTest(t, index) {
+  const raw = (t && typeof t === 'object') ? t : {}
+  const rawRows = Array.isArray(raw.rows) ? raw.rows : []
+  const rawCols = Array.isArray(raw.columns) ? raw.columns
+    : (raw.table && Array.isArray(raw.table.columns) ? raw.table.columns : null)
+  const rawTableRows = Array.isArray(raw.tableRows) ? raw.tableRows
+    : (raw.table && Array.isArray(raw.table.rows) ? raw.table.rows : null)
+
+  // Infer kind when not set: rows with step/expected → sequence; columns or tableRows → standard.
+  let kind = (raw.kind === 'standard' || raw.kind === 'sequence') ? raw.kind : null
+  if (!kind) {
+    if (rawCols || rawTableRows) kind = 'standard'
+    else if (rawRows.some((r) => r && (r.step || r.expected))) kind = 'sequence'
+    else kind = 'sequence'
+  }
+
+  const base = {
+    number: raw.number != null ? raw.number : (index + 1),
+    name: str(raw.name, 200),
+    description: str(raw.description, 2000),
+    notes: str(raw.notes, 2000),
+    pass: typeof raw.pass === 'boolean' ? raw.pass : null,
+    issues: [],
+    kind,
+  }
+
+  if (kind === 'sequence') {
+    return {
+      ...base,
+      rows: rawRows.length ? rawRows.map((r) => ({
+        step: str(r && r.step, 500),
+        expected: str(r && r.expected, 500),
+        actual: str(r && r.actual, 500),
+        pass: typeof (r && r.pass) === 'boolean' ? r.pass : null,
+        notes: str(r && r.notes, 500),
+      })) : [{ step: '', expected: '', actual: '', pass: null, notes: '' }],
+    }
+  }
+
+  // kind === 'standard' (Points / Tabular)
+  const colNames = (rawCols && rawCols.length)
+    ? rawCols.slice(0, 12).map((c, i) => {
+        if (typeof c === 'string') return c.trim() || `Column ${i + 1}`
+        return str((c && c.name) || `Column ${i + 1}`, 100)
+      })
+    : DEFAULT_POINTS_COLUMNS.slice()
+  const columns = colNames.map((name) => ({ key: colKey(), name }))
+  const nameToKey = {}
+  for (const c of columns) nameToKey[c.name.toLowerCase()] = c.key
+  const srcRows = rawTableRows || []
+  const rows = srcRows.map((r) => {
+    const row = {}
+    for (const c of columns) row[c.key] = ''
+    if (r && typeof r === 'object') {
+      for (const [k, v] of Object.entries(r)) {
+        const key = nameToKey[String(k).toLowerCase()]
+        if (key) row[key] = str(v, 500)
+      }
+    }
+    return row
+  })
+  if (!rows.length) {
+    const blank = {}
+    for (const c of columns) blank[c.key] = ''
+    rows.push(blank)
+  }
+  return { ...base, rows: [], table: { columns, rows } }
+}
+
+function normalizeFunctionalTests(arr) {
+  if (!Array.isArray(arr)) return []
+  return arr.map((t, i) => normalizeFunctionalTest(t, i))
+}
+
 // ---------------------------------------------------------------------------
 // Tool definitions (provider-agnostic)
 // ---------------------------------------------------------------------------
 
 const TOOLS = [
+  // ── PROJECT OVERVIEW ───────────────────────────────────────────────────
+  {
+    name: 'get_project_summary',
+    description: 'Get counts of all record types in the current project (spaces, systems, templates, equipment, tasks, activities, issues). Useful before a big build to see what already exists.',
+    properties: {},
+    required: [],
+  },
+
   // ── TASKS ──────────────────────────────────────────────────────────────
   {
     name: 'list_tasks',
@@ -141,7 +233,7 @@ const TOOLS = [
   },
   {
     name: 'create_equipment',
-    description: 'Create new equipment in the current project.',
+    description: 'Create new equipment in the current project. For templated equipment (AHUs, chillers, pumps), prefer apply_template_to_equipment instead so the equipment inherits full Cx content.',
     properties: {
       tag: { type: 'string', description: 'Equipment tag/identifier (e.g., AHU-1). Required.' },
       title: { type: 'string', description: 'Equipment title/display name. Required.' },
@@ -149,6 +241,9 @@ const TOOLS = [
       system: { type: 'string', description: 'System name (e.g., HVAC, Plumbing, Electrical)' },
       status: { type: 'string', description: 'Status: Not Started, In Progress, Complete. Defaults to Not Started.' },
       description: { type: 'string', description: 'Equipment description or notes' },
+      spaceId: { type: 'string', description: 'Space _id to link this equipment to a building/floor/room' },
+      location: { type: 'string', description: 'Free-text location (e.g., "Mechanical Room B-12", "Roof")' },
+      templateId: { type: 'string', description: 'Template _id for reference only (no content copy). Use apply_template_to_equipment to copy template content.' },
     },
     required: ['tag', 'title', 'type'],
   },
@@ -163,8 +258,23 @@ const TOOLS = [
       system: { type: 'string', description: 'New system name' },
       status: { type: 'string', description: 'New status' },
       description: { type: 'string', description: 'New description' },
+      spaceId: { type: 'string', description: 'New Space _id link' },
+      location: { type: 'string', description: 'New free-text location' },
     },
     required: ['id'],
+  },
+  {
+    name: 'apply_template_to_equipment',
+    description: 'Create new equipment by deep-copying a template. This is the preferred way to scaffold equipment from drawings — attributes, components, checklists, and functional tests are all copied from the template.',
+    properties: {
+      templateId: { type: 'string', description: 'Template _id to copy from (required)' },
+      tag: { type: 'string', description: 'Equipment tag for the new record (e.g., AHU-1). Required.' },
+      title: { type: 'string', description: 'Equipment title. Required.' },
+      spaceId: { type: 'string', description: 'Space _id to link this equipment to' },
+      location: { type: 'string', description: 'Free-text location (e.g., "Roof", "Mechanical Room 3")' },
+      description: { type: 'string', description: 'Override description (defaults to template description)' },
+    },
+    required: ['templateId', 'tag', 'title'],
   },
   {
     name: 'delete_equipment',
@@ -334,18 +444,18 @@ const TOOLS = [
       },
       functionalTests: {
         type: 'array',
-        description: 'Functional performance tests. Each test: { number: string, name: string, description: string, pass: boolean|null, notes: string, rows: [{ step: string, expected: string, actual: string }] }. Include tests for each operating mode and control sequence.',
+        description: 'Functional performance tests. Each test has a kind: "sequence" (step-by-step control sequence tests) or "standard" (tabular Points Verification / Sensor Readings). PICK THE RIGHT KIND: sequence for control-sequence tests like Cooling Mode, Freeze Protection, Changeover; standard for point-by-point BAS verification or sensor calibration lists.',
         items: {
           type: 'object',
           properties: {
             number: { type: 'string', description: 'Test number (e.g., FPT-1, FPT-2)' },
-            name: { type: 'string', description: 'Test name (e.g., Cooling Mode Operation, Occupied/Unoccupied Changeover, Freeze Protection)' },
+            name: { type: 'string', description: 'Test name (e.g., Cooling Mode Operation, Occupied/Unoccupied Changeover, Points Verification)' },
             description: { type: 'string', description: 'Test objective and pre-conditions' },
-            pass: { type: 'boolean', description: 'Pass/fail result — leave null for blank template' },
+            kind: { type: 'string', description: 'REQUIRED. Either "sequence" (step-by-step control test) or "standard" (points/tabular verification list). Default to "sequence" for any control sequence test — most tests are sequence.' },
             notes: { type: 'string', description: 'Test notes or observations' },
             rows: {
               type: 'array',
-              description: 'Ordered test steps',
+              description: 'For kind="sequence" ONLY: ordered test steps. Ignored for kind="standard".',
               items: {
                 type: 'object',
                 properties: {
@@ -354,6 +464,16 @@ const TOOLS = [
                   actual: { type: 'string', description: 'Actual result — leave blank for field entry' },
                 },
               },
+            },
+            columns: {
+              type: 'array',
+              description: 'For kind="standard" ONLY: list of column headers as strings. Common preset for Points Verification: ["System Point","BAS","Field","Offset","Pass"]. For Sensor Readings: ["Point Name","Point ID","Design Value","Measured Value","Units","Pass"]. Omit to get the Points Verification preset by default.',
+              items: { type: 'string' },
+            },
+            tableRows: {
+              type: 'array',
+              description: 'For kind="standard" ONLY: list of row objects keyed by column name (not key). Example: [{"System Point":"Supply Air Temp","BAS":"55°F","Field":"","Offset":"","Pass":""}]. Leave blank fields empty for field entry.',
+              items: { type: 'object' },
             },
           },
         },
@@ -487,9 +607,10 @@ function getGeminiTools() {
 /** Return a short human-readable label for a tool result (used in UI chips). */
 function getToolLabel(toolName) {
   const labels = {
+    get_project_summary: 'Project summary',
     list_tasks: 'Listed tasks', create_task: 'Created task', update_task: 'Updated task', delete_task: 'Deleted task',
     list_activities: 'Listed activities', create_activity: 'Created activity', update_activity: 'Updated activity', delete_activity: 'Deleted activity',
-    list_equipment: 'Listed equipment', create_equipment: 'Created equipment', update_equipment: 'Updated equipment', delete_equipment: 'Deleted equipment',
+    list_equipment: 'Listed equipment', create_equipment: 'Created equipment', update_equipment: 'Updated equipment', delete_equipment: 'Deleted equipment', apply_template_to_equipment: 'Created equipment from template',
     list_issues: 'Listed issues', create_issue: 'Created issue', update_issue: 'Updated issue', delete_issue: 'Deleted issue',
     list_spaces: 'Listed spaces', create_space: 'Created space', update_space: 'Updated space', delete_space: 'Deleted space',
     list_templates: 'Listed templates', create_template: 'Created template', update_template: 'Updated template', delete_template: 'Deleted template',
@@ -502,6 +623,7 @@ function getToolLabel(toolName) {
 function getRecordLink(toolName, record) {
   if (!record || !record._id) return null
   const id = String(record._id)
+  if (toolName === 'apply_template_to_equipment') return `/app/equipment/${id}`
   const module = toolName.replace(/^(create|update|delete|list)_/, '')
   const map = {
     task: `/app/tasks/${id}`,
@@ -534,6 +656,23 @@ async function executeTool(toolName, toolInput, context) {
 
   try {
     switch (toolName) {
+
+      // ── PROJECT OVERVIEW ────────────────────────────────────────────
+      case 'get_project_summary': {
+        const [spaces, systems, templates, equipment, tasks, activities, issues] = await Promise.all([
+          Space.countDocuments({ project: projectId }),
+          System.countDocuments({ projectId }),
+          Template.countDocuments({ projectId }),
+          Equipment.countDocuments({ projectId }),
+          Task.countDocuments({ projectId, deleted: { $ne: true } }),
+          Activity.countDocuments({ projectId }),
+          Issue.countDocuments({ projectId }),
+        ])
+        return {
+          success: true,
+          record: { spaces, systems, templates, equipment, tasks, activities, issues },
+        }
+      }
 
       // ── TASKS ────────────────────────────────────────────────────────
       case 'list_tasks': {
@@ -639,7 +778,7 @@ async function executeTool(toolName, toolInput, context) {
         if (!input.tag) return { success: false, error: 'tag is required' }
         if (!input.title) return { success: false, error: 'title is required' }
         if (!input.type) return { success: false, error: 'type is required' }
-        const item = await Equipment.create({
+        const doc = {
           projectId,
           tag: str(input.tag, 80),
           title: str(input.title, 160),
@@ -648,7 +787,11 @@ async function executeTool(toolName, toolInput, context) {
           system: str(input.system, 120),
           status: input.status || 'Not Started',
           description: str(input.description, 2000),
-        })
+          location: str(input.location, 200),
+        }
+        if (input.spaceId && isObjectId(input.spaceId)) doc.spaceId = input.spaceId
+        if (input.templateId && isObjectId(input.templateId)) doc.template = input.templateId
+        const item = await Equipment.create(doc)
         return { success: true, record: item.toObject() }
       }
       case 'update_equipment': {
@@ -662,8 +805,38 @@ async function executeTool(toolName, toolInput, context) {
         if (input.system !== undefined) fields.system = str(input.system, 120)
         if (input.status) fields.status = input.status
         if (input.description !== undefined) fields.description = str(input.description, 2000)
+        if (input.location !== undefined) fields.location = str(input.location, 200)
+        if (input.spaceId !== undefined) {
+          fields.spaceId = (input.spaceId && isObjectId(input.spaceId)) ? input.spaceId : null
+        }
         const updated = await Equipment.findByIdAndUpdate(input.id, { $set: fields }, { new: true }).lean()
         return { success: true, record: updated }
+      }
+      case 'apply_template_to_equipment': {
+        if (!input.templateId || !isObjectId(input.templateId)) return { success: false, error: 'Valid templateId is required' }
+        if (!input.tag) return { success: false, error: 'tag is required' }
+        if (!input.title) return { success: false, error: 'title is required' }
+        const template = await Template.findOne({ _id: input.templateId, projectId }).lean()
+        if (!template) return { success: false, error: 'Template not found in this project' }
+        const doc = {
+          projectId,
+          tag: str(input.tag, 80),
+          title: str(input.title, 160),
+          name: str(input.title, 160),
+          type: str(template.type || '', 120),
+          system: str(template.system || '', 120),
+          status: 'Not Started',
+          description: str(input.description !== undefined ? input.description : template.description, 2000),
+          location: str(input.location, 200),
+          template: template._id,
+          attributes: Array.isArray(template.attributes) ? JSON.parse(JSON.stringify(template.attributes)) : [],
+          components: Array.isArray(template.components) ? JSON.parse(JSON.stringify(template.components)) : [],
+          checklists: Array.isArray(template.checklists) ? JSON.parse(JSON.stringify(template.checklists)) : [],
+          functionalTests: normalizeFunctionalTests(Array.isArray(template.functionalTests) ? JSON.parse(JSON.stringify(template.functionalTests)) : []),
+        }
+        if (input.spaceId && isObjectId(input.spaceId)) doc.spaceId = input.spaceId
+        const item = await Equipment.create(doc)
+        return { success: true, record: item.toObject() }
       }
       case 'delete_equipment': {
         if (!input.id || !isObjectId(input.id)) return { success: false, error: 'Valid id is required' }
@@ -726,24 +899,24 @@ async function executeTool(toolName, toolInput, context) {
 
       // ── SPACES ───────────────────────────────────────────────────────
       case 'list_spaces': {
-        const q = { projectId }
+        const q = { project: projectId }
         if (input.search) {
           const re = { $regex: str(input.search, 100), $options: 'i' }
-          q.$or = [{ name: re }, { tag: re }]
+          q.$or = [{ title: re }, { tag: re }]
         }
         if (input.parentSpace && input.parentSpace !== 'root') {
           if (isObjectId(input.parentSpace)) q.parentSpace = input.parentSpace
         } else if (input.parentSpace === 'root') {
           q.parentSpace = { $in: [null, undefined, ''] }
         }
-        const items = await Space.find(q).select('_id tag name type parentSpace').limit(limit).lean()
+        const items = await Space.find(q).select('_id tag title type parentSpace').limit(limit).lean()
         return { success: true, count: items.length, records: items }
       }
       case 'create_space': {
         if (!input.name) return { success: false, error: 'name is required' }
         const item = await Space.create({
-          projectId,
-          name: str(input.name, 200),
+          project: projectId,
+          title: str(input.name, 200),
           tag: input.tag ? str(input.tag, 80) : undefined,
           type: input.type ? str(input.type, 100) : undefined,
           parentSpace: (input.parentSpace && isObjectId(input.parentSpace)) ? input.parentSpace : null,
@@ -752,10 +925,10 @@ async function executeTool(toolName, toolInput, context) {
       }
       case 'update_space': {
         if (!input.id || !isObjectId(input.id)) return { success: false, error: 'Valid id is required' }
-        const existing = await Space.findOne({ _id: input.id, projectId }).lean()
+        const existing = await Space.findOne({ _id: input.id, project: projectId }).lean()
         if (!existing) return { success: false, error: 'Space not found in this project' }
         const fields = {}
-        if (input.name) fields.name = str(input.name, 200)
+        if (input.name) fields.title = str(input.name, 200)
         if (input.tag !== undefined) fields.tag = str(input.tag, 80)
         if (input.type !== undefined) fields.type = str(input.type, 100)
         const updated = await Space.findByIdAndUpdate(input.id, { $set: fields }, { new: true }).lean()
@@ -763,10 +936,10 @@ async function executeTool(toolName, toolInput, context) {
       }
       case 'delete_space': {
         if (!input.id || !isObjectId(input.id)) return { success: false, error: 'Valid id is required' }
-        const existing = await Space.findOne({ _id: input.id, projectId }).lean()
+        const existing = await Space.findOne({ _id: input.id, project: projectId }).lean()
         if (!existing) return { success: false, error: 'Space not found in this project' }
         await Space.findByIdAndDelete(input.id)
-        return { success: true, deleted: true, name: existing.name, id: input.id }
+        return { success: true, deleted: true, name: existing.title, id: input.id }
       }
 
       // ── TEMPLATES ────────────────────────────────────────────────────
@@ -795,7 +968,7 @@ async function executeTool(toolName, toolInput, context) {
           attributes: Array.isArray(input.attributes) ? input.attributes : [],
           components: Array.isArray(input.components) ? input.components : [],
           checklists: Array.isArray(input.checklists) ? input.checklists : [],
-          functionalTests: Array.isArray(input.functionalTests) ? input.functionalTests : [],
+          functionalTests: normalizeFunctionalTests(input.functionalTests),
         })
         return { success: true, record: item.toObject() }
       }
@@ -812,7 +985,7 @@ async function executeTool(toolName, toolInput, context) {
         if (Array.isArray(input.attributes)) fields.attributes = input.attributes
         if (Array.isArray(input.components)) fields.components = input.components
         if (Array.isArray(input.checklists)) fields.checklists = input.checklists
-        if (Array.isArray(input.functionalTests)) fields.functionalTests = input.functionalTests
+        if (Array.isArray(input.functionalTests)) fields.functionalTests = normalizeFunctionalTests(input.functionalTests)
         const updated = await Template.findByIdAndUpdate(input.id, { $set: fields }, { new: true }).lean()
         return { success: true, record: updated }
       }

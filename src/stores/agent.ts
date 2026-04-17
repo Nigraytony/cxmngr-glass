@@ -60,16 +60,21 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  async function send(projectId: string, content: string) {
-    if (!projectId || !content.trim() || sending.value) return
+  async function send(projectId: string, content: string, files?: File[]) {
+    const trimmed = content.trim()
+    const hasFiles = Array.isArray(files) && files.length > 0
+    if (!projectId || sending.value) return
+    if (!trimmed && !hasFiles) return
 
     error.value = ''
 
-    // Optimistically add the user message
+    // Optimistically add the user message (with a lightweight attachment marker)
+    const attachSuffix = hasFiles ? ` (📎 ${files!.length} PDF${files!.length === 1 ? '' : 's'} attached)` : ''
+    const displayText = trimmed || 'Please analyse the attached drawing(s).'
     const userMsg: AgentMessage = {
       id: generateId(),
       role: 'user',
-      content: content.trim(),
+      content: displayText + attachSuffix,
       createdAt: new Date(),
     }
     messages.value = [...messages.value, userMsg]
@@ -87,7 +92,18 @@ export const useAgentStore = defineStore('agent', () => {
 
     sending.value = true
     try {
-      const { data } = await http.post('/api/agent/chat', { projectId, message: content.trim() })
+      let data: { message?: string; toolResults?: ToolResult[] }
+      if (hasFiles) {
+        const form = new FormData()
+        form.append('projectId', projectId)
+        form.append('message', trimmed)
+        for (const f of files!) form.append('pdf', f)
+        const resp = await http.post('/api/agent/chat', form)
+        data = resp.data
+      } else {
+        const resp = await http.post('/api/agent/chat', { projectId, message: trimmed })
+        data = resp.data
+      }
 
       // Replace the pending message with the real reply
       messages.value = messages.value.map((m) =>
