@@ -121,7 +121,20 @@ const submit = async () => {
   loading.value = true
   try {
     const ok = await authStore.login(email.value, password.value)
-    if (ok) router.push('/app')
+    if (ok) {
+      // Honour a saved return path — set by requireReAuth() when a refresh
+      // failure interrupted the user mid-session — so they land back where
+      // they were instead of the default dashboard.
+      let dest = '/app'
+      try {
+        const saved = sessionStorage.getItem('auth.returnTo')
+        if (saved && saved.startsWith('/') && !saved.startsWith('//') && saved !== '/login') {
+          dest = saved
+        }
+        sessionStorage.removeItem('auth.returnTo')
+      } catch (e) { /* ignore */ }
+      router.push(dest)
+    }
   } finally {
     loading.value = false
   }

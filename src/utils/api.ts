@@ -58,45 +58,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 response interceptor: attempt one silent token refresh, then redirect to login.
-// Uses a lazy import to avoid a circular dependency (auth store imports api).
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const status = error?.response?.status;
-    const config = error?.config as any;
-    // Only handle 401 on authenticated app requests; skip login/refresh/logout endpoints
-    // to avoid infinite loops.
-    if (
-      status === 401 &&
-      config &&
-      !config.__retried401 &&
-      !config.url?.includes('/api/users/login') &&
-      !config.url?.includes('/api/users/refresh') &&
-      !config.url?.includes('/api/users/logout')
-    ) {
-      config.__retried401 = true;
-      try {
-        const { useAuthStore } = await import('../stores/auth');
-        const auth = useAuthStore();
-        const ok = await auth.refresh();
-        if (ok) {
-          // Retry the original request with the new access token.
-          config.headers = {
-            ...config.headers,
-            Authorization: `Bearer ${auth.accessToken}`,
-          };
-          return api.request(config);
-        }
-        // Refresh failed — expire the session and redirect.
-        await auth.expireSession('expired');
-      } catch (e) {
-        // ignore
-      }
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.assign('/login');
-      }
-    }
-    return Promise.reject(error);
-  }
-);
+// All 401 handling lives in http.ts, which is activity-aware: it only forces
+// a logout when the user has been idle past the inactivity threshold.
+// Previously a second interceptor here unconditionally called expireSession
+// on any refresh failure, which forced /login on active users whenever a
+// refresh-cookie race left the server-side refreshTokenIdHash stale.
