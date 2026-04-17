@@ -102,7 +102,10 @@ http.interceptors.response.use(
           }
         }
 
-        // Refresh failed (or we couldn't refresh): only force re-login after inactivity.
+        // Refresh failed. If the user has been idle past the inactivity window,
+        // treat this as a true timeout and force them back to /login. If they
+        // are still actively working, surface a modal asking them to re-sign
+        // in — don't blow away the page they're on (and any unsaved work).
         if (auth && hasToken) {
           const inactive = typeof auth.isInactiveExceeded === 'function'
             ? Boolean(auth.isInactiveExceeded())
@@ -121,6 +124,8 @@ http.interceptors.response.use(
             } catch (e) {
               // ignore
             }
+          } else if (typeof (auth as any).requireReAuth === 'function') {
+            try { (auth as any).requireReAuth() } catch (e) { /* ignore */ }
           }
         }
       }

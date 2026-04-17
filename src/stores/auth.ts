@@ -117,6 +117,10 @@ export const useAuthStore = defineStore('auth', () => {
   const lastActivityAt = ref<number>(readStoredActivityAt());
   const sessionWarningOpen = ref(false)
   const sessionWarningDeadlineAt = ref(0)
+  // Shown when the server has rejected a refresh while the user is still
+  // actively working — the session is gone but we don't want to nuke their
+  // current page and lose in-flight work. A modal nudges them to re-sign in.
+  const reAuthRequired = ref(false)
   const accessToken = ref<string | null>((() => {
     try {
       const t = sessionStorage.getItem('auth.accessToken')
@@ -185,6 +189,20 @@ export const useAuthStore = defineStore('auth', () => {
   function hideSessionWarning() {
     sessionWarningOpen.value = false
     sessionWarningDeadlineAt.value = 0
+  }
+
+  function requireReAuth() {
+    reAuthRequired.value = true
+    try {
+      const here = typeof window !== 'undefined' && window.location
+        ? window.location.pathname + window.location.search
+        : ''
+      if (here && here !== '/login') sessionStorage.setItem('auth.returnTo', here)
+    } catch (e) { /* ignore */ }
+  }
+
+  function clearReAuthRequired() {
+    reAuthRequired.value = false
   }
 
   async function expireSession(reason: 'expired' | 'inactive' = 'expired', opts?: { announce?: boolean }) {
@@ -390,6 +408,7 @@ export const useAuthStore = defineStore('auth', () => {
     lastActivityAt,
     sessionWarningOpen,
     sessionWarningDeadlineAt,
+    reAuthRequired,
     idleMs,
     isInactive,
     markActivity,
@@ -397,6 +416,8 @@ export const useAuthStore = defineStore('auth', () => {
     willAccessTokenExpireSoon,
     showSessionWarning,
     hideSessionWarning,
+    requireReAuth,
+    clearReAuthRequired,
     expireSession,
     bootstrap,
     setAccessToken,

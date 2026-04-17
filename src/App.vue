@@ -40,6 +40,35 @@
       </div>
     </template>
   </Modal>
+  <!-- One-way binding only: dismissing via backdrop/ESC/✕ emits update:modelValue
+       but we don't listen for it, so reAuthRequired stays true and the modal
+       remains visible until the user clicks "Sign in". -->
+  <Modal
+    :model-value="auth.reAuthRequired"
+    panel-class="max-w-md"
+  >
+    <template #header>
+      <div class="text-lg font-semibold text-white">
+        Sign in again to continue
+      </div>
+    </template>
+    <div class="space-y-3 text-white/90">
+      <p>Your session has ended on the server.</p>
+      <p class="text-sm text-white/70">
+        Sign in again to pick up where you left off. Any work already saved is safe.
+      </p>
+    </div>
+    <template #footer>
+      <div class="flex items-center justify-end">
+        <button
+          class="px-3 py-2 rounded-md bg-indigo-600/70 border border-indigo-400/30 hover:bg-indigo-600/80 text-white"
+          @click="reAuthNow"
+        >
+          Sign in
+        </button>
+      </div>
+    </template>
+  </Modal>
   <Toast
     :message="ui.toast.message"
     :show="ui.toast.show"
@@ -107,6 +136,12 @@ async function staySignedIn() {
 
 async function logoutNow() {
   await auth.expireSession('inactive')
+  await router.replace({ name: 'login' })
+}
+
+async function reAuthNow() {
+  auth.clearReAuthRequired()
+  await auth.expireSession('expired', { announce: true })
   await router.replace({ name: 'login' })
 }
 
