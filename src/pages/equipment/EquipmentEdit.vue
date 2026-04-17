@@ -2890,8 +2890,14 @@ async function persistComponents(): Promise<boolean> {
       }
       return out
     })
-    await equipmentStore.updateFields(eid, { components: payloadList } as any)
+    const saved: any = await equipmentStore.updateFields(eid, { components: payloadList } as any)
     appendLog('component.update', 'Components updated', { count: payloadList.length })
+    // Apply server response, but only if no newer local edit landed while we were
+    // waiting — otherwise the dirty flag will trigger another save that captures it.
+    if (saved && Array.isArray(saved.components) && !componentsSaveDirty) {
+      componentsList.value = saved.components
+      componentsLoaded.value = true
+    }
     return true
   } catch (err: any) {
     console.error('Failed to persist components', err)
@@ -2900,19 +2906,34 @@ async function persistComponents(): Promise<boolean> {
   }
 }
 
-// Persist components when ComponentsPanel emits a change (debounced)
-let componentsSaveTimer: any = null
-function onComponentsChange(list: any[]) {
-  if (componentsSaveTimer) clearTimeout(componentsSaveTimer)
-  componentsSaveTimer = setTimeout(async () => {
-    componentsList.value = Array.isArray(list) ? list : []
-    const ok = await persistComponents()
-    if (ok) {
-      ui.showSuccess('Components saved')
-      await refreshComponentsFromServer()
+// Persist components immediately when ComponentsPanel emits a change.
+// A debounce here previously opened a ~1.3s window where rapid adds could be
+// lost if the session expired before the PATCH fired. If another change lands
+// while a save is in flight we set a dirty flag; the save loop re-runs with
+// the latest list before declaring success. We rely on updateFields's own
+// response to sync server-assigned fields — no separate GET, no race where a
+// refresh overwrites a local edit made mid-flight.
+let componentsSaving = false
+let componentsSaveDirty = false
+async function onComponentsChange(list: any[]) {
+  componentsList.value = Array.isArray(list) ? list : []
+  if (componentsSaving) {
+    componentsSaveDirty = true
+    return
+  }
+  componentsSaving = true
+  try {
+    let lastOk = false
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      componentsSaveDirty = false
+      lastOk = await persistComponents()
+      if (!componentsSaveDirty) break
     }
-    componentsSaveTimer = null
-  }, 700)
+    if (lastOk) ui.showSuccess('Components saved')
+  } finally {
+    componentsSaving = false
+  }
 }
 
 // Drag-and-drop reordering for components

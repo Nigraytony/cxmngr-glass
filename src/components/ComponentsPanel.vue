@@ -610,10 +610,8 @@ function normalizeAttrs(attrs: any): Record<string, any> {
 function notifyChange() {
   const payload = local.map(c => ({ ...c, attributes: { ...(c.attributes as any) } }))
   emit('update:modelValue', payload)
-  if (notifyTimer) clearTimeout(notifyTimer)
-  notifyTimer = setTimeout(() => emit('change', payload), 600)
+  emit('change', payload)
 }
-let notifyTimer: any = null
 
 // Attribute helpers
 type CompAttrPair = { key: string; value: string }
