@@ -1207,26 +1207,143 @@
         <!-- Issues Tab -->
         <div
           v-else-if="currentTab === 'Issues'"
-          class="space-y-4"
+          class="space-y-3"
         >
-          <!-- Equipment-related issues -->
-          <div>
-            <h4 class="text-sm font-medium text-white/90 mb-2">
-              Equipment-related
-            </h4>
-            <IssuesTable :issues="issuesForEquipment" />
-          </div>
-
-          
-
-          <div class="pt-2">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="text-white/80">
+              Issues linked to this equipment
+            </div>
             <RouterLink
               to="/app/issues"
-              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-block"
+              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
             >
               Manage Issues
             </RouterLink>
           </div>
+          <!-- Link existing Issue -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+            <div>
+              <label class="block text-sm text-white/70">Link existing issue</label>
+              <div class="relative">
+                <input
+                  v-model="issueSearch"
+                  type="text"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  placeholder="Search issues by number, title, type..."
+                  @focus="openIssueSuggestions"
+                  @input="openIssueSuggestions"
+                  @keydown.down.prevent="onIssueArrowDown"
+                  @keydown.up.prevent="onIssueArrowUp"
+                  @keydown.enter.prevent="addHighlightedIssue"
+                  @keydown.esc.prevent="closeIssueSuggestions"
+                  @blur="onIssueInputBlur"
+                >
+                <div
+                  v-if="showIssueSuggestions"
+                  class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                >
+                  <div
+                    v-if="issueSuggestionsLoading"
+                    class="px-3 py-2 text-xs text-white/60"
+                  >
+                    Searching…
+                  </div>
+                  <button
+                    v-for="(iss, idx) in issueSuggestions"
+                    :key="iss.id"
+                    type="button"
+                    class="w-full px-3 py-2 text-left inline-flex flex-col gap-0.5 text-sm"
+                    :class="idx === issueHighlightedIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                    @mousedown.prevent="linkExistingIssue(iss)"
+                  >
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-medium text-white truncate">
+                        {{ iss.title || iss.type || ('Issue #' + (iss.number ?? '')) }}
+                      </span>
+                      <span class="text-xs text-white/60 whitespace-nowrap">
+                        #{{ iss.number ?? '—' }}
+                      </span>
+                    </div>
+                    <div class="text-xs text-white/60 truncate">
+                      {{ iss.type || '—' }} • {{ iss.status || 'Open' }}
+                    </div>
+                  </button>
+                  <div
+                    v-if="!issueSuggestions.length && !issueSuggestionsLoading"
+                    class="px-3 py-2 text-xs text-white/60"
+                  >
+                    No matching issues
+                  </div>
+                  <div class="sticky bottom-0 border-t border-white/10 bg-black/70 backdrop-blur px-3 py-2 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="text-xs text-white/60 whitespace-nowrap">
+                        <span v-if="issueSuggestTotal">Total {{ issueSuggestTotal }}</span>
+                        <span v-else>—</span>
+                      </div>
+                      <div class="text-xs text-white/60 whitespace-nowrap">
+                        <span v-if="issueSuggestTotal">Showing {{ issueSuggestStart }}–{{ issueSuggestEnd }}</span>
+                      </div>
+                      <div class="text-xs text-white/60 whitespace-nowrap">
+                        <span v-if="issueSuggestTotal">Page {{ issueSuggestPage }} / {{ issueSuggestTotalPages }}</span>
+                      </div>
+                      <div class="flex items-center gap-2 whitespace-nowrap">
+                        <label class="text-xs text-white/60">Per page</label>
+                        <select
+                          v-model.number="issueSuggestPerPage"
+                          class="px-2 py-1 rounded bg-white/10 border border-white/20 text-xs text-white/80"
+                          @change="onIssueSuggestPerPageChange"
+                        >
+                          <option :value="10">10</option>
+                          <option :value="12">12</option>
+                          <option :value="25">25</option>
+                          <option :value="50">50</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                        :disabled="!issueSuggestHasPrev"
+                        @mousedown.prevent="issueSuggestFirst"
+                      >
+                        First
+                      </button>
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                        :disabled="!issueSuggestHasPrev"
+                        @mousedown.prevent="issueSuggestPrev"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                        :disabled="!issueSuggestHasNext"
+                        @mousedown.prevent="issueSuggestNext"
+                      >
+                        Next
+                      </button>
+                      <button
+                        type="button"
+                        class="px-2 py-1 rounded bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/80 disabled:opacity-40"
+                        :disabled="!issueSuggestHasNext"
+                        @mousedown.prevent="issueSuggestLast"
+                      >
+                        Last
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <IssuesTable
+            :issues="issuesForEquipment"
+            :show-unlink="true"
+            @unlink="onUnlinkIssue"
+          />
         </div>
         <!-- Logs Tab -->
         <div v-else-if="currentTab === 'Logs'">
@@ -3117,6 +3234,198 @@ const issuesById = computed(() => {
   }
   return map
 })
+
+// ---------------------------------------------------------------------------
+// Link / unlink existing issues (mirrors ActivityEdit.vue Issues tab)
+// ---------------------------------------------------------------------------
+
+function issueRefToId(ref: any): string {
+  return String((ref && (ref.id || ref._id)) || ref || '').trim()
+}
+
+const issueSearch = ref('')
+const issueSuggestionsOpen = ref(false)
+const issueHighlightedIndex = ref(-1)
+const issueSuggestions = ref<any[]>([])
+const issueSuggestionsLoading = ref(false)
+const issueSuggestPage = ref(1)
+const issueSuggestPerPage = ref(12)
+const issueSuggestTotal = ref(0)
+let issueSuggestTimer: any = null
+
+const issueSuggestHasPrev = computed(() => issueSuggestPage.value > 1)
+const issueSuggestHasNext = computed(() => issueSuggestPage.value * issueSuggestPerPage.value < issueSuggestTotal.value)
+const issueSuggestTotalPages = computed(() => {
+  const total = Number(issueSuggestTotal.value) || 0
+  const pp = Math.max(1, Number(issueSuggestPerPage.value) || 12)
+  return total ? Math.max(1, Math.ceil(total / pp)) : 1
+})
+const issueSuggestStart = computed(() => {
+  if (!issueSuggestTotal.value) return 0
+  return (issueSuggestPage.value - 1) * issueSuggestPerPage.value + 1
+})
+const issueSuggestEnd = computed(() => {
+  if (!issueSuggestTotal.value) return 0
+  return (issueSuggestPage.value - 1) * issueSuggestPerPage.value + issueSuggestions.value.length
+})
+
+async function fetchIssueSuggestions(qRaw: string, opts?: { page?: number; perPage?: number }) {
+  const q = String(qRaw || '').trim()
+  const pid = String(form.value.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  if (!pid) { issueSuggestions.value = []; issueSuggestTotal.value = 0; return }
+
+  const page = Math.max(1, Number(opts?.page ?? issueSuggestPage.value) || 1)
+  const perPage = Math.max(1, Number(opts?.perPage ?? issueSuggestPerPage.value) || 12)
+  issueSuggestPage.value = page
+  issueSuggestPerPage.value = perPage
+
+  issueSuggestionsLoading.value = true
+  try {
+    const { data } = await http.get('/api/issues', {
+      params: { projectId: pid, ...(q ? { search: q } : {}), page, perPage },
+    })
+    const payload = (data && (data.items || data)) || []
+    const items: any[] = Array.isArray(payload) ? payload : []
+    issueSuggestTotal.value = Number((data && (data.total ?? data.count)) ?? items.length)
+    const linkedIds = new Set<string>(linkedIssueIds.value)
+    issueSuggestions.value = items
+      .map((it: any) => ({ ...(it || {}), id: it?._id || it?.id }))
+      .filter((it: any) => {
+        const iid = String(it?.id || '')
+        return iid && !linkedIds.has(iid)
+      })
+  } catch (e) {
+    // Fallback to store-based filtering (may be incomplete if server paginates)
+    const ql = q.toLowerCase()
+    const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+    const linkedIds = new Set<string>(linkedIssueIds.value)
+    const filtered = all.filter((it: any) => {
+      const iid = String(it.id || it._id || '')
+      if (!iid || linkedIds.has(iid)) return false
+      if (!ql) return true
+      const num = (it.number != null) ? String(it.number) : ''
+      const title = String(it.title || '').toLowerCase()
+      const type = String(it.type || '').toLowerCase()
+      const status = String(it.status || '').toLowerCase()
+      const loc = String(it.location || '').toLowerCase()
+      const sys = String(it.system || '').toLowerCase()
+      return num.includes(ql) || title.includes(ql) || type.includes(ql) || status.includes(ql) || loc.includes(ql) || sys.includes(ql)
+    })
+    issueSuggestTotal.value = filtered.length
+    issueSuggestions.value = filtered
+      .slice((page - 1) * perPage, (page - 1) * perPage + perPage)
+      .map((it: any) => ({ ...(it || {}), id: it?._id || it?.id }))
+  } finally {
+    issueSuggestionsLoading.value = false
+  }
+}
+
+watch(issueSearch, (q) => {
+  if (issueSuggestTimer) { clearTimeout(issueSuggestTimer); issueSuggestTimer = null }
+  issueSuggestPage.value = 1
+  issueSuggestTimer = setTimeout(() => { fetchIssueSuggestions(String(q || ''), { page: 1 }).catch(() => {}) }, 150)
+})
+
+const showIssueSuggestions = computed<boolean>(() => issueSuggestionsOpen.value)
+function openIssueSuggestions() {
+  issueSuggestionsOpen.value = true
+  if (!issueSearch.value && !issueSuggestions.value.length && !issueSuggestionsLoading.value) {
+    issueSuggestPage.value = 1
+    fetchIssueSuggestions('', { page: 1 }).catch(() => {})
+  }
+}
+function closeIssueSuggestions() { issueSuggestionsOpen.value = false }
+function onIssueInputBlur() {
+  setTimeout(() => { closeIssueSuggestions() }, 120)
+}
+watch(issueSuggestions, (list) => {
+  issueHighlightedIndex.value = list.length ? 0 : -1
+})
+function onIssueArrowDown() {
+  const n = issueSuggestions.value.length
+  if (!n) return
+  issueHighlightedIndex.value = (issueHighlightedIndex.value + 1 + n) % n
+}
+function onIssueArrowUp() {
+  const n = issueSuggestions.value.length
+  if (!n) return
+  issueHighlightedIndex.value = (issueHighlightedIndex.value - 1 + n) % n
+}
+function onIssueSuggestPerPageChange() {
+  issueSuggestPage.value = 1
+  fetchIssueSuggestions(String(issueSearch.value || ''), { page: 1, perPage: issueSuggestPerPage.value }).catch(() => {})
+}
+async function issueSuggestFirst() {
+  if (!issueSuggestHasPrev.value) return
+  issueSuggestPage.value = 1
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: 1 }).catch(() => {})
+}
+async function issueSuggestPrev() {
+  if (!issueSuggestHasPrev.value) return
+  issueSuggestPage.value = Math.max(1, issueSuggestPage.value - 1)
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: issueSuggestPage.value }).catch(() => {})
+}
+async function issueSuggestNext() {
+  if (!issueSuggestHasNext.value) return
+  issueSuggestPage.value = issueSuggestPage.value + 1
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: issueSuggestPage.value }).catch(() => {})
+}
+async function issueSuggestLast() {
+  if (!issueSuggestHasNext.value) return
+  const last = issueSuggestTotalPages.value
+  issueSuggestPage.value = last
+  await fetchIssueSuggestions(String(issueSearch.value || ''), { page: last }).catch(() => {})
+}
+async function addHighlightedIssue() {
+  const idx = issueHighlightedIndex.value
+  if (idx >= 0 && issueSuggestions.value[idx]) {
+    await linkExistingIssue(issueSuggestions.value[idx])
+    closeIssueSuggestions()
+  }
+}
+
+async function linkExistingIssue(issue: any) {
+  try {
+    const issueId = String(issue?.id || issue?._id || '').trim()
+    const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+    if (!issueId || !eid) return
+    // Normalize current equipment.issues to id strings + dedupe
+    const existing = Array.isArray((form.value as any).issues) ? (form.value as any).issues as any[] : []
+    const ids = existing.map(issueRefToId).filter(Boolean)
+    if (!ids.includes(issueId)) ids.push(issueId)
+    ;(form.value as any).issues = ids
+    await equipmentStore.updateFields(eid, { issues: ids } as any)
+    // Stamp the issue's assetId so the reverse lookup keeps working.
+    try { await issuesStore.updateIssue(issueId, { assetId: eid } as any) } catch (e) { /* non-blocking */ }
+    issueSearch.value = ''
+    ui.showSuccess('Issue linked to equipment')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to link issue')
+  }
+}
+
+async function onUnlinkIssue(issue: any) {
+  try {
+    const issueId = String(issue?.id || issue?._id || '').trim()
+    const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+    if (!issueId || !eid) return
+    const existing = Array.isArray((form.value as any).issues) ? (form.value as any).issues as any[] : []
+    const next = existing.filter((ref: any) => issueRefToId(ref) !== issueId)
+    ;(form.value as any).issues = next
+    await equipmentStore.updateFields(eid, { issues: next } as any)
+    // If the issue still points at this equipment via assetId, clear it so the
+    // reverse lookup doesn't keep it in the list after the explicit unlink.
+    try {
+      const current = issuesById.value[issueId]
+      if (current && String((current as any).assetId || '') === eid) {
+        await issuesStore.updateIssue(issueId, { assetId: undefined } as any)
+      }
+    } catch (e) { /* non-blocking */ }
+    ui.showSuccess('Issue unlinked from equipment')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to unlink issue')
+  }
+}
 
 const issuesHydrating = ref(false)
 async function hydrateLinkedIssues() {
