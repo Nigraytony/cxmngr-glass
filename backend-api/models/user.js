@@ -57,7 +57,21 @@ const userSchema = new mongoose.Schema({
   stripeCustomerId: { type: String, default: null },
   // Increment to invalidate all previously issued JWTs for the user (e.g., logout everywhere)
   tokenVersion: { type: Number, default: 0 },
-  // Refresh token rotation: store sha256(refreshId) (not the raw refresh id)
+  // Active refresh sessions. Each login appends an entry; each logout or
+  // refresh-token expiry removes one. Allows multiple concurrent devices/tabs
+  // without one login invalidating the others. Capped and pruned in users.js.
+  refreshTokens: {
+    type: [{
+      hash: { type: String, required: true },
+      issuedAt: { type: Date, default: Date.now },
+      lastUsedAt: { type: Date, default: Date.now },
+      userAgent: { type: String, default: '', maxlength: 300 },
+    }],
+    default: [],
+  },
+  // Legacy single-slot refresh hash — retained so existing sessions keep
+  // working through their first post-upgrade refresh, which migrates them
+  // into refreshTokens. Safe to drop once all active sessions have rolled.
   refreshTokenIdHash: { type: String, default: null },
   refreshTokenIssuedAt: { type: Date, default: null },
   // Support soft-delete and a simple status enum for frontend display

@@ -78,6 +78,30 @@ function newRefreshId() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// Refresh sessions are capped so a runaway device can't fill a user doc
+// indefinitely. 30-day TTL mirrors the JWT refresh-token lifetime.
+const MAX_REFRESH_SESSIONS = 10
+const REFRESH_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+// Append a new refresh-session entry to a user doc. Prunes expired entries
+// and caps the list. Clears the legacy single-slot fields so we don't keep
+// two sources of truth once a user has moved to the array model.
+function addRefreshSession(user, refreshId, userAgent) {
+  if (!Array.isArray(user.refreshTokens)) user.refreshTokens = []
+  const cutoff = Date.now() - REFRESH_SESSION_TTL_MS
+  user.refreshTokens = user.refreshTokens
+    .filter((t) => t && t.hash && t.issuedAt && new Date(t.issuedAt).getTime() >= cutoff)
+    .slice(-(MAX_REFRESH_SESSIONS - 1))
+  user.refreshTokens.push({
+    hash: sha256Hex(refreshId),
+    issuedAt: new Date(),
+    lastUsedAt: new Date(),
+    userAgent: String(userAgent || '').slice(0, 300),
+  })
+  user.refreshTokenIdHash = null
+  user.refreshTokenIssuedAt = null
+}
+
 // Helper: hydrate user.projects from the Projects collection (avoid stale embedded fields)
 async function hydrateUserProjects(userObj) {
   try {
@@ -195,8 +219,7 @@ async function hydrateUserProjects(userObj) {
     await user.save();
     // Issue refresh cookie + access token
     const refreshId = newRefreshId();
-    user.refreshTokenIdHash = sha256Hex(refreshId);
-    user.refreshTokenIssuedAt = new Date();
+    addRefreshSession(user, refreshId, req.get('User-Agent'));
     await user.save();
     const accessToken = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
     const refreshToken = signRefreshToken({ userId: user._id, refreshId });
@@ -235,8 +258,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     step = 'issue-refresh-id'
     const refreshId = newRefreshId();
-    user.refreshTokenIdHash = sha256Hex(refreshId);
-    user.refreshTokenIssuedAt = new Date();
+    addRefreshSession(user, refreshId, req.get('User-Agent'));
 
     step = 'persist-refresh-state'
     await user.save();
@@ -306,17 +328,54 @@ router.post('/refresh', async (req, res) => {
       return res.status(204).send();
     }
 
-    const expected = u.refreshTokenIdHash || null;
-    const actual = sha256Hex(rid);
-    if (!expected || expected !== actual) {
+    const hash = sha256Hex(rid);
+    const now = Date.now();
+
+    // Prune expired sessions before matching — keeps lookups bounded even if
+    // a user never logs out.
+    if (Array.isArray(u.refreshTokens) && u.refreshTokens.length) {
+      const cutoff = now - REFRESH_SESSION_TTL_MS;
+      const kept = u.refreshTokens.filter((t) => t && t.hash && t.issuedAt && new Date(t.issuedAt).getTime() >= cutoff);
+      if (kept.length !== u.refreshTokens.length) {
+        u.refreshTokens = kept;
+      }
+    }
+
+    let entry = Array.isArray(u.refreshTokens) ? u.refreshTokens.find((t) => t && t.hash === hash) : null;
+
+    // Migration fallback: pre-upgrade sessions still live in the single-slot
+    // fields. On first refresh we copy them into the array and clear the legacy
+    // fields so they can't be matched twice.
+    if (!entry && u.refreshTokenIdHash && u.refreshTokenIdHash === hash) {
+      const issued = u.refreshTokenIssuedAt || new Date();
+      if (!Array.isArray(u.refreshTokens)) u.refreshTokens = [];
+      u.refreshTokens.push({
+        hash,
+        issuedAt: issued,
+        lastUsedAt: new Date(),
+        userAgent: String(req.get('User-Agent') || '').slice(0, 300),
+      });
+      u.refreshTokenIdHash = null;
+      u.refreshTokenIssuedAt = null;
+      entry = u.refreshTokens[u.refreshTokens.length - 1];
+    } else if (entry) {
+      entry.lastUsedAt = new Date();
+      u.markModified('refreshTokens');
+    }
+
+    if (!entry) {
+      // Persist any pruning we did above even when the specific session is gone.
+      try { await u.save(); } catch (e) { /* ignore */ }
       clearRefreshCookie(res);
       return res.status(204).send();
     }
 
-    // Do not rotate the refresh cookie — rotation causes a multi-tab race condition
-    // where a second tab sending the old cookie invalidates the first tab's session.
-    // The cookie has a 30-day JWT TTL and the refreshTokenIdHash is cleared on logout,
-    // which is sufficient for revocation.
+    await u.save();
+
+    // Do not rotate the refresh cookie — rotation causes a multi-tab race
+    // condition where a second tab sending the old cookie invalidates the first
+    // tab's session. The cookie carries its own 30-day JWT TTL and sessions are
+    // pruned from refreshTokens on logout / TTL.
     const accessToken = signAccessToken({ userId: u._id, tokenVersion: u.tokenVersion || 0 });
     return res.status(200).send({ accessToken });
   } catch (e) {
@@ -332,11 +391,19 @@ router.post('/logout', async (req, res) => {
     const cookies = parseCookies(req.headers && req.headers.cookie);
     const rawRefresh = cookies[REFRESH_COOKIE_NAME] || null;
 
+    // Logout only revokes THIS session. Other tabs/devices keep working until
+    // they hit their own logout, TTL, or a password change. If we can identify
+    // the session via the refresh cookie we pull just that entry from the
+    // array. The access-token fallback only lets us identify the user, not
+    // which session — in that case we clear nothing server-side and let the
+    // stale entry age out naturally (30-day TTL).
     let userId = null;
+    let sessionHash = null;
     if (rawRefresh) {
       try {
         const decoded = verifyRefreshToken(String(rawRefresh));
         userId = decoded && (decoded.sub || decoded._id || decoded.userId || decoded.id);
+        if (decoded && decoded.rid) sessionHash = sha256Hex(decoded.rid);
       } catch (e) {
         // ignore; we'll still clear cookie
       }
@@ -355,9 +422,19 @@ router.post('/logout', async (req, res) => {
       }
     }
 
-    if (userId) {
+    if (userId && sessionHash) {
       try {
-        await User.findByIdAndUpdate(userId, { $set: { refreshTokenIdHash: null, refreshTokenIssuedAt: null } });
+        const u = await User.findById(userId);
+        if (u) {
+          if (Array.isArray(u.refreshTokens)) {
+            u.refreshTokens = u.refreshTokens.filter((t) => t && t.hash !== sessionHash);
+          }
+          if (u.refreshTokenIdHash && u.refreshTokenIdHash === sessionHash) {
+            u.refreshTokenIdHash = null;
+            u.refreshTokenIssuedAt = null;
+          }
+          await u.save();
+        }
       } catch (e) {
         // ignore
       }
@@ -536,7 +613,13 @@ router.post('/change-password', auth, changePasswordLimiter, async (req, res) =>
     // Assign raw new password; the User model pre-save hook will hash it
     user.password = newPassword;
 
-    // Optional: invalidate tokens / rotate session version here
+    // Revoke all refresh sessions on password change — including the legacy
+    // single-slot fields — so every other device is forced to re-authenticate
+    // with the new password. The current tab also gets kicked, which the SPA
+    // handles gracefully via the re-auth modal on the next 401.
+    user.refreshTokens = [];
+    user.refreshTokenIdHash = null;
+    user.refreshTokenIssuedAt = null;
 
     await user.save();
     res.send({ message: 'Password updated successfully' });
