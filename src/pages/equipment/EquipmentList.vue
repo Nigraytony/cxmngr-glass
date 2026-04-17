@@ -3345,6 +3345,7 @@ function onUploadFileChange(e: Event) {
           const tdoc = ensureFpt(t, idx)
           const nraw = (m['functionaltestnumber'] ?? m['testnumber'])
           tdoc.number = nraw === '' ? null : (toNum(nraw) ?? nraw)
+          if (m['kind']) tdoc.kind = String(m['kind'] || '').trim()
           tdoc.name = String(m['name'] || '').trim()
           const pass = String(m['pass'] || '').trim().toLowerCase()
           tdoc.pass = pass === 'pass' ? true : (pass === 'fail' ? false : null)
@@ -3364,14 +3365,15 @@ function onUploadFileChange(e: Event) {
             const step = String(m['step'] || '').trim()
             const expected = String(m['expected'] || '').trim()
             const actual = String(m['actual'] || '').trim()
+            const rowPassRaw = String(m['rowpass'] || '').trim().toLowerCase()
+            const rowPass = rowPassRaw === 'pass' ? true : (rowPassRaw === 'fail' ? false : undefined)
+            const rowNotes = String(m['rownotes'] || '').trim()
             // Only add a step row if it has an index (exported) or any content.
             if (stepIndex !== null || step || expected || actual) {
-              tdoc.rows.push({
-                __index: stepIndex ?? tdoc.rows.length,
-                step,
-                expected,
-                actual,
-              })
+              const row: any = { __index: stepIndex ?? tdoc.rows.length, step, expected, actual }
+              if (rowPass !== undefined) row.pass = rowPass
+              if (rowNotes) row.notes = rowNotes
+              tdoc.rows.push(row)
             }
           }
 
@@ -4026,6 +4028,7 @@ function downloadUploadTemplate() {
       equipmentTag: 'EQ-001',
       functionalTestIndex: 0,
       functionalTestNumber: 1,
+      kind: 'sequence',
       name: 'Spin Test',
       pass: '',
       notes: '',
@@ -4035,7 +4038,9 @@ function downloadUploadTemplate() {
       step: 'Start motor',
       expected: 'Motor spins',
       actual: '',
-      results: '# | Amps [amps]\n1 | 12.3',
+      rowPass: '',
+      rowNotes: '',
+      results: '',
     },
   ]
 

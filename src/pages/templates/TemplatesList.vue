@@ -552,15 +552,15 @@
                     <span>Instances</span>
                   </span>
                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-                    <span class="font-semibold">{{ countArray((t as any).components) }}</span>
+                    <span class="font-semibold">{{ Number((t as any).componentsCount || 0) }}</span>
                     <span>Components</span>
                   </span>
                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-                    <span class="font-semibold">{{ countArray((t as any).checklists) }}</span>
+                    <span class="font-semibold">{{ Number((t as any).checklistsCount || 0) }}</span>
                     <span>Checklists</span>
                   </span>
                   <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-                    <span class="font-semibold">{{ countArray((t as any).functionalTests) }}</span>
+                    <span class="font-semibold">{{ Number((t as any).functionalTestsCount || 0) }}</span>
                     <span>FPT</span>
                   </span>
                 </div>
@@ -763,7 +763,7 @@
               v-model="form.tag"
               type="text"
               required
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
           </div>
           <div>
@@ -771,7 +771,7 @@
             <select
               v-model="form.type"
               required
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
               <option
                 v-for="opt in modalTypeOptions"
@@ -788,14 +788,14 @@
               v-model="form.title"
               type="text"
               required
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
           </div>
           <div>
             <label class="text-sm text-white/70">System</label>
             <select
               v-model="form.system"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
               <option
                 v-for="opt in modalSystemOptions"
@@ -810,7 +810,7 @@
             <label class="text-sm text-white/70">Status</label>
             <select
               v-model="form.status"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
               <option
                 v-for="s in statuses"
@@ -825,7 +825,7 @@
             <label class="text-sm text-white/70">Space</label>
             <select
               v-model="form.spaceId"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
               <option :value="''">
                 None
@@ -844,7 +844,7 @@
             <textarea
               v-model="form.description"
               rows="3"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             />
           </div>
         </div>
@@ -2090,6 +2090,7 @@ async function handleImportFile(e: Event) {
         const tdoc = ensureFpt(t, idx)
         const nraw = (m['functionaltestnumber'] ?? m['testnumber'])
         tdoc.number = nraw === '' ? null : (toNum(nraw) ?? nraw)
+        if (m['kind']) tdoc.kind = String(m['kind'] || '').trim()
         tdoc.name = String(m['name'] || '').trim()
         const pass = String(m['pass'] || '').trim().toLowerCase()
         tdoc.pass = pass === 'pass' ? true : (pass === 'fail' ? false : null)
@@ -2108,13 +2109,14 @@ async function handleImportFile(e: Event) {
           const step = String(m['step'] || '').trim()
           const expected = String(m['expected'] || '').trim()
           const actual = String(m['actual'] || '').trim()
+          const rowPassRaw = String(m['rowpass'] || '').trim().toLowerCase()
+          const rowPass = rowPassRaw === 'pass' ? true : (rowPassRaw === 'fail' ? false : undefined)
+          const rowNotes = String(m['rownotes'] || '').trim()
           if (stepIndex !== null || step || expected || actual) {
-            tdoc.rows.push({
-              __index: stepIndex ?? tdoc.rows.length,
-              step,
-              expected,
-              actual,
-            })
+            const row: any = { __index: stepIndex ?? tdoc.rows.length, step, expected, actual }
+            if (rowPass !== undefined) row.pass = rowPass
+            if (rowNotes) row.notes = rowNotes
+            tdoc.rows.push(row)
           }
         }
 

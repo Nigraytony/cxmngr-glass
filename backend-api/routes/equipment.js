@@ -1297,6 +1297,7 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
             equipmentTag: tag,
             functionalTestIndex: ti,
             functionalTestNumber: t.number ?? '',
+            kind: asStr(t.kind || ''),
             name: asStr(t.name || ''),
             pass: t.pass === true ? 'pass' : (t.pass === false ? 'fail' : (asStr(t.pass || '') || '')),
             notes: asStr(t.notes || ''),
@@ -1354,6 +1355,8 @@ router.get('/export', auth, requireFeature('equipment'), requirePermission('equi
                 step: asStr(s.step || ''),
                 expected: asStr(s.expected || ''),
                 actual: asStr(s.actual || ''),
+                rowPass: s.pass === true ? 'pass' : (s.pass === false ? 'fail' : ''),
+                rowNotes: asStr(s.notes || ''),
                 results: si === 0 ? resultsText : '',
               })
             }

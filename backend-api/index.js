@@ -32,6 +32,7 @@ const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
 const aiRoutes = require('./routes/ai');
 const assistantRoutes = require('./routes/assistant');
+const agentRoutes = require('./routes/agent');
 const projectDocsRoutes = require('./routes/projectDocs');
 const oprRoutes = require('./routes/opr');
 const { securityHeaders } = require('./middleware/securityHeaders');
@@ -257,6 +258,8 @@ app.use('/api/plans', plansRoutes);
 app.use('/api/ai', aiRoutes);
 // Assistant endpoints (project-scoped; AI gated separately)
 app.use('/api/assistant', assistantRoutes);
+// Agent endpoints (agentic CRUD loop; premium-only)
+app.use('/api/agent', agentRoutes);
 
 // Central error handler (always last)
 app.use(errorHandler);

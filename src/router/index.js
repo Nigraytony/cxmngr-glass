@@ -29,7 +29,7 @@ const EquipmentEdit = () => import('../pages/equipment/EquipmentEdit.vue')
 const SystemEdit = () => import('../pages/systems/SystemEdit.vue')
 // Use the cleaned up editor component to avoid malformed legacy file
 const TemplateEdit = () => import('../pages/templates/TemplateEditor.vue')
-const Assistant = () => import('../pages/assistant/Assistant.vue')
+const Agent = () => import('../pages/agent/Agent.vue')
 const OprWorkshop = () => import('../pages/opr/OprWorkshop.vue')
 const OprItems = () => import('../pages/opr/OprItems.vue')
 // Marketing/public homepage
@@ -51,7 +51,7 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       { path: '', name: 'dashboard', component: DashboardHome },
-      { path: 'assistant', name: 'assistant', component: Assistant },
+      { path: 'agent', name: 'agent', component: Agent },
       { path: 'opr', name: 'opr', component: OprWorkshop },
       { path: 'opr/items', name: 'opr-items', component: OprItems },
       { path: 'issues', name: 'issues', component: () => import(/* webpackChunkName: "issues" */ '../pages/issues/IssuesList.vue') },

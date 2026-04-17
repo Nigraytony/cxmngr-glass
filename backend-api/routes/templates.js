@@ -253,6 +253,23 @@ router.get('/', auth, requireFeature('templates'), requirePermission('templates.
         ...t,
         instancesCount: instancesById.get(String(t && t._id)) || 0,
       }))
+
+      // Component/Checklist/FPT counts — use $size at DB level to avoid fetching full arrays
+      const countAgg = await Template.aggregate([
+        { $match: { _id: { $in: templateIds } } },
+        { $project: {
+          componentsCount: { $size: { $ifNull: ['$components', []] } },
+          checklistsCount: { $size: { $ifNull: ['$checklists', []] } },
+          functionalTestsCount: { $size: { $ifNull: ['$functionalTests', []] } },
+        } },
+      ])
+      const countById = new Map(countAgg.map(a => [String(a._id), a]))
+      items = items.map(t => ({
+        ...t,
+        componentsCount: countById.get(String(t._id))?.componentsCount || 0,
+        checklistsCount: countById.get(String(t._id))?.checklistsCount || 0,
+        functionalTestsCount: countById.get(String(t._id))?.functionalTestsCount || 0,
+      }))
     }
 
     let facets = {}
@@ -478,6 +495,7 @@ router.get('/export', auth, requireFeature('templates'), requirePermission('temp
           templateTag: tag,
           functionalTestIndex: ti,
           functionalTestNumber: ft.number ?? '',
+          kind: asStr(ft.kind || ''),
           name: asStr(ft.name || ''),
           pass: ft.pass === true ? 'pass' : (ft.pass === false ? 'fail' : (asStr(ft.pass || '') || '')),
           notes: asStr(ft.notes || ''),
@@ -535,6 +553,8 @@ router.get('/export', auth, requireFeature('templates'), requirePermission('temp
               step: asStr(s.step || ''),
               expected: asStr(s.expected || ''),
               actual: asStr(s.actual || ''),
+              rowPass: s.pass === true ? 'pass' : (s.pass === false ? 'fail' : ''),
+              rowNotes: asStr(s.notes || ''),
               results: si === 0 ? resultsText : '',
             })
           }
@@ -574,17 +594,31 @@ router.get('/project/:projectId', auth, requireObjectIdParam('projectId'), requi
 
     const templateIds = list.map(t => t && t._id).filter(Boolean)
     let instancesById = new Map()
+    let countById = new Map()
     if (templateIds.length) {
       const instancesAgg = await Equipment.aggregate([
         { $match: { projectId: new mongoose.Types.ObjectId(projectId), template: { $in: templateIds } } },
         { $group: { _id: '$template', count: { $sum: 1 } } },
       ])
       instancesById = new Map(instancesAgg.map(a => [String(a && a._id), a && a.count ? a.count : 0]))
+
+      const countAgg = await Template.aggregate([
+        { $match: { _id: { $in: templateIds } } },
+        { $project: {
+          componentsCount: { $size: { $ifNull: ['$components', []] } },
+          checklistsCount: { $size: { $ifNull: ['$checklists', []] } },
+          functionalTestsCount: { $size: { $ifNull: ['$functionalTests', []] } },
+        } },
+      ])
+      countById = new Map(countAgg.map(a => [String(a._id), a]))
     }
 
     res.status(200).send(list.map(t => ({
       ...toPlainTemplate(t),
       instancesCount: instancesById.get(String(t && t._id)) || 0,
+      componentsCount: countById.get(String(t && t._id))?.componentsCount || 0,
+      checklistsCount: countById.get(String(t && t._id))?.checklistsCount || 0,
+      functionalTestsCount: countById.get(String(t && t._id))?.functionalTestsCount || 0,
     })));
   } catch (error) {
     console.error('[templates] list by project error', error && (error.stack || error.message || error))

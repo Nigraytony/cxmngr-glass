@@ -67,6 +67,7 @@ P1 (Revenue + support readiness)
 
 P2 (Operational hygiene)
 - [x] Add basic structured logging (request id, route, status; avoid PII) (Owner: Backend, Effort: M) (started: request-id + JSON request logs; removed verbose activity-create body logging).
+- [x] Wire up automated backend CI/CD deploy — Azure App Service deploys automatically on push to main after integration tests pass (`deploy-backend` job in `ci.yml` gates on `needs: backend-integration`).
 - [ ] Add backups/retention plan for Mongo + uploads (Owner: DevOps, Effort: M).
 - [ ] Add monitoring/alerting (errors + performance) (Owner: DevOps, Effort: M).
 
@@ -107,7 +108,7 @@ Notes
 31. Email: Create an Email module where the app can create/modify email templates for the different emails.
 ✅ 32. Stripe: Update the implementation so that it is accurate and complete for what is needed for the project subscriptions.
 ✅ 32: Stripe: Add a transactions tab for each project to view all the past transactions on that particular project. More description when we start this task.
-33. Stripe: Add live account with features-based subscriptions, coupons, and discounts.
+✅ 33. Stripe: Add live account with features-based subscriptions, coupons, and discounts.
 34. Admin: build out the admin pages more. Give super/global admins window into projects and billing using consent token/key
 ✅ 35. Administration: All new users get a "user" role on registration - admin role is granted by global/super admins only. Project-based roles are separate.
 ✅ 36. Administration: Setup email/smtp service on Azure. (Mailtrap)
@@ -304,4 +305,4 @@ Polish (button overlap fixes)
 - [x] Avoid "Ask Assistant" covering pagination controls (SpacesList/EquipmentList/IssuesList).
 
 OPR Workshop / OPR Register
-- [ ] Add OPR item linking to Issues + FPT (traceability + reporting).
+- [x] Add OPR item linking to Issues + FPT (traceability + reporting).

@@ -98,6 +98,7 @@ This document combines the high-level application specification from `cxma_app_s
 - [x] Fix the Equipment list for Activities when there are assets with the same tag on a project so selection is deterministic. (TODO #10)
 - [ ] Add pagination to the Activities page and provide a list view mode. (TODO #11)
 - [ ] Confirm Activities support photos, many Equipment, Issues, comments, attachments, settings, logs, metadata, and sub-activities (action items). (Spec 3.4)
+- [x] OPR Workshop activity type: add OPR Items tab for capturing OPR register items; link OPR items to Issues and Equipment FPTs for traceability and reporting. (TODO #81)
 - [ ] Add analytics or dashboard views for Activities with the most issues/equipment. (Spec 2, Spec 3.4)
 
 ---
@@ -155,7 +156,7 @@ This document combines the high-level application specification from `cxma_app_s
 
 - [x] Update Stripe implementation so that it is accurate and complete for project subscriptions. (TODO #32)
 - [x] Add a Transactions tab for each project to view all past transactions on that project. (TODO #32 duplicate – transactions tab)
-- [ ] Configure live Stripe account with feature-based subscriptions, coupons, and discounts. (TODO #33)
+- [x] Configure live Stripe account with feature-based subscriptions, coupons, and discounts. (TODO #33)
 - [x] Enable features based on subscription level. (TODO #51)
 - [ ] Confirm pricing models (Standard: \$29/basic, \$49/project, Pro: \$79/project) and ensure they align with plan features and UI copy. (Spec 5.3)
 - [ ] Ensure admin pages provide a window into projects and billing with appropriate access control (consent token/key, roles). (TODO #34, Spec 4, Spec 5.3)
@@ -170,6 +171,7 @@ This document combines the high-level application specification from `cxma_app_s
 - [ ] Purchase and configure a production domain name (e.g., `cxma.io`) and tie it to the app hosting environment. (TODO #37)
 - [ ] Create a CxMa legal entity and document compliance requirements for billing and data handling. (TODO #38)
 - [ ] Offload photo and file storage from the server to a cloud object storage service (e.g., S3 or Azure blob equivalent) and update the app to use it. (TODO #52)
+- [x] Wire up automated backend CI/CD: `deploy-backend` job in `ci.yml` deploys to Azure App Service on push to main, gated on `backend-integration` tests passing.
 - [ ] Ensure Node.js/Express backend and MongoDB deployment are production-ready (backups, monitoring, environment variables, secrets management). (Spec 5.1–5.2)
 - [ ] Implement local caching/offline support where appropriate to support PWA behavior. (Spec 5.2, Spec 6)
 - [ ] Confirm PWA installability (manifest, service worker) and define expected offline behavior for main flows. (Spec 6)

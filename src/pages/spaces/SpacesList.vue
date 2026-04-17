@@ -1054,14 +1054,14 @@
             <input
               v-model="form.tag"
               type="text"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
           </div>
           <div>
             <label class="text-sm text-white/70">Type</label>
             <select
               v-model="form.type"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
               <option
                 v-for="t in spaceTypes"
@@ -1078,14 +1078,14 @@
               v-model="form.title"
               type="text"
               required
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
           </div>
           <div class="col-span-2">
             <label class="text-sm text-white/70">Parent Space</label>
             <select
               v-model="form.parentSpace"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             >
               <option :value="''">
                 None
@@ -1104,7 +1104,7 @@
             <textarea
               v-model="form.description"
               rows="3"
-              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20"
+              class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-gray-100"
             />
           </div>
         </div>

@@ -17,9 +17,9 @@
         />
         <main
           class="flex-1 p-6 min-w-0"
-          :class="isAssistantRoute ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'"
+          :class="isAgentRoute ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'"
         >
-          <template v-if="isAssistantRoute">
+          <template v-if="isAgentRoute">
             <div class="flex-1 min-h-0">
               <Suspense>
                 <template #default>
@@ -51,7 +51,6 @@
       </div>
     </div>
 
-    <AssistantModal />
   </div>
 </template>
 
@@ -60,7 +59,6 @@ import Sidebar from '../components/Sidebar.vue'
 import Topbar from '../components/Topbar.vue'
 import Spinner from '../components/Spinner.vue'
 import AppFooter from '../components/AppFooter.vue'
-import AssistantModal from '../components/assistant/AssistantModal.vue'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
 import { computed, watch, onBeforeUnmount } from 'vue'
@@ -74,7 +72,7 @@ const projectStore = useProjectStore()
 const opr = useOprStore()
 const router = useRouter()
 const route = useRoute()
-const isAssistantRoute = computed(() => route.name === 'assistant')
+const isAgentRoute = computed(() => route.name === 'agent')
 
 const resolvedProjectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 

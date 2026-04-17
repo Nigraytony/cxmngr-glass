@@ -172,6 +172,14 @@
             /></svg>
             <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 border border-white/20">#{{ t.number ?? (i+1) }}</span>
             <span
+              v-if="(t as any).kind === 'sequence'"
+              class="text-[10px] px-1.5 py-0.5 rounded border border-sky-400/40 bg-sky-500/10 text-sky-200 shrink-0"
+            >Sequence</span>
+            <span
+              v-else-if="(t as any).kind === 'standard' || (t as any).kind === 'table'"
+              class="text-[10px] px-1.5 py-0.5 rounded border border-violet-400/40 bg-violet-500/10 text-violet-200 shrink-0"
+            >Points</span>
+            <span
               class="truncate"
               :class="isOpen(t) ? 'text-white font-medium' : ''"
             >{{ t.name || 'Test' }}</span>
@@ -496,39 +504,45 @@
                 </div>
               </div>
             </template>
-            <template v-else-if="(local[i] as any).kind === 'sheet'">
+            <template v-else-if="(local[i] as any).kind === 'sequence'">
               <div class="md:col-span-2 space-y-2">
                 <div class="flex items-center justify-between">
-                  <label class="block text-sm text-white/70">Spreadsheet</label>
-                  <div class="flex items-center gap-2">
-                    <button
-                      class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
-                      @click="addRow(i)"
-                    >
-                      Add Row
-                    </button>
-                    <button
-                      class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-sm"
-                      @click="clearRows(i)"
-                    >
-                      Clear
-                    </button>
-                  </div>
+                  <label class="block text-sm text-white/70">Test Steps</label>
+                  <button
+                    class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm"
+                    @click="addSequenceRow(i)"
+                  >
+                    Add Row
+                  </button>
                 </div>
-                <div class="overflow-auto rounded-md border border-white/10">
-                  <table class="min-w-full text-sm">
-                    <thead class="bg-white/5 text-white/70">
+                <div class="overflow-x-auto rounded-md border border-white/10">
+                  <table class="w-full text-sm" style="min-width: 680px;">
+                    <colgroup>
+                      <col style="width: 2rem">
+                      <col style="width: 28%">
+                      <col style="width: 24%">
+                      <col style="width: 22%">
+                      <col style="width: 7rem">
+                      <col style="width: 2.5rem">
+                    </colgroup>
+                    <thead class="bg-white/5 text-white/80">
                       <tr>
-                        <th class="text-left px-2 py-1 font-medium">
-                          Step
+                        <th class="px-1 py-1.5 text-xs font-medium text-left text-white/60">
+                          #
                         </th>
-                        <th class="text-left px-2 py-1 font-medium">
-                          Expected
+                        <th class="px-2 py-1.5 text-xs font-medium text-left">
+                          Step / Action
                         </th>
-                        <th class="text-left px-2 py-1 font-medium">
-                          Actual
+                        <th class="px-2 py-1.5 text-xs font-medium text-left">
+                          Expected Result
                         </th>
-                        <th class="px-2 py-1" />
+                        <th class="px-2 py-1.5 text-xs font-medium text-left">
+                          Actual Result
+                        </th>
+                        <th class="px-2 py-1.5 text-xs font-medium text-center">
+                          Pass
+                        </th>
+                        <th class="w-9" />
                       </tr>
                     </thead>
                     <tbody>
@@ -537,45 +551,90 @@
                         :key="ri"
                         class="border-t border-white/10"
                       >
-                        <td class="px-2 py-1 align-top w-1/4">
-                          <input
-                            v-model="(local[i] as any).rows[ri].step"
-                            type="text"
-                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
-                            @change="notifyChange"
-                          >
+                        <td class="px-1 py-1 text-white/50 text-xs align-top pt-2.5">
+                          {{ ri + 1 }}
                         </td>
-                        <td class="px-2 py-1 align-top">
+                        <td class="px-1 py-1 align-top">
+                          <textarea
+                            v-model="(local[i] as any).rows[ri].step"
+                            v-autogrow
+                            rows="2"
+                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 resize-none overflow-hidden"
+                            @change="notifyChange"
+                          />
+                        </td>
+                        <td class="px-1 py-1 align-top">
                           <textarea
                             v-model="(local[i] as any).rows[ri].expected"
+                            v-autogrow
                             rows="2"
-                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
+                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 resize-none overflow-hidden"
                             @change="notifyChange"
                           />
                         </td>
-                        <td class="px-2 py-1 align-top">
+                        <td class="px-1 py-1 align-top">
                           <textarea
                             v-model="(local[i] as any).rows[ri].actual"
+                            v-autogrow
                             rows="2"
-                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20"
+                            class="w-full px-2 py-1 rounded bg-white/10 border border-white/20 resize-none overflow-hidden"
                             @change="notifyChange"
                           />
                         </td>
-                        <td class="px-2 py-1 align-top text-right">
+                        <td class="px-1 py-1 align-top">
+                          <div class="flex flex-col items-center gap-1 pt-1">
+                            <button
+                              type="button"
+                              role="switch"
+                              :aria-checked="ariaChecked(passCellState((local[i] as any).rows[ri].pass))"
+                              :title="passLabel(passCellState((local[i] as any).rows[ri].pass))"
+                              class="relative inline-flex h-6 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+                              :class="passBgClass(passCellState((local[i] as any).rows[ri].pass))"
+                              @click="cycleSequenceRowPass(i, ri)"
+                              @keydown.space.prevent="cycleSequenceRowPass(i, ri)"
+                              @keydown.enter.prevent="cycleSequenceRowPass(i, ri)"
+                            >
+                              <span class="sr-only">Pass/Fail</span>
+                              <span
+                                class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                                :style="{ transform: knobTransform(passCellState((local[i] as any).rows[ri].pass)) }"
+                              />
+                            </button>
+                            <span
+                              class="text-[10px] leading-none"
+                              :class="passTextClass(passCellState((local[i] as any).rows[ri].pass))"
+                            >
+                              {{ passText(passCellState((local[i] as any).rows[ri].pass)) }}
+                            </span>
+                          </div>
+                        </td>
+                        <td class="px-1 py-1 align-top text-right">
                           <button
-                            class="px-2 py-1 rounded-md bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30 text-xs"
-                            @click="removeRow(i, ri)"
+                            class="h-7 w-7 grid place-items-center rounded-full bg-red-500/20 border border-red-400/40 text-red-100 hover:bg-red-500/30"
+                            title="Remove row"
+                            aria-label="Remove row"
+                            @click="removeSequenceRow(i, ri)"
                           >
-                            Remove
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-4 h-4"
+                            ><path
+                              d="M5 12h14"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                            /></svg>
                           </button>
                         </td>
                       </tr>
                       <tr v-if="!(local[i] as any).rows || !(local[i] as any).rows.length">
                         <td
-                          colspan="4"
-                          class="px-2 py-2 text-center text-white/60"
+                          colspan="6"
+                          class="px-2 py-4 text-center text-white/60"
                         >
-                          No rows yet
+                          No steps yet. Click "Add Row" to add test steps.
                         </td>
                       </tr>
                     </tbody>
@@ -1243,56 +1302,120 @@
     <!-- New FPT Modal -->
     <Modal v-model="newOpen">
       <template #header>
-        <div class="flex items-center justify-between">
-          <div class="font-medium">
-            New FPT
-          </div>
-          <div class="text-white/70 text-sm">
-            Choose the test type
-          </div>
+        <div class="font-medium">
+          New Functional Test
         </div>
       </template>
       <template #default>
-        <div class="space-y-4">
+        <div class="space-y-5">
+          <!-- Type selector cards -->
           <div>
-            <label class="block text-sm text-white/70 mb-1">Type</label>
-            <div class="flex items-center gap-3">
-              <label class="inline-flex items-center gap-2">
-                <input
-                  v-model="newType"
-                  type="radio"
-                  class="accent-emerald-400"
-                  value="standard"
-                >
-                <span>Standard</span>
-              </label>
-              <label class="inline-flex items-center gap-2">
-                <input
-                  v-model="newType"
-                  type="radio"
-                  class="accent-emerald-400"
-                  value="table"
-                >
-                <span>Table</span>
-              </label>
+            <label class="block text-sm text-white/70 mb-2">Test Type</label>
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                :class="newType === 'sequence'
+                  ? 'border-emerald-400/70 bg-emerald-500/15 ring-1 ring-emerald-400/40'
+                  : 'border-white/15 bg-white/5 hover:bg-white/10'"
+                class="p-4 rounded-xl border text-left transition-all"
+                @click="newType = 'sequence'; newPreset = ''"
+              >
+                <div class="font-medium text-white text-sm mb-1.5 flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4 text-white/70"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><path
+                    d="M4 6h16M4 10h16M4 14h8M4 18h8"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  /></svg>
+                  Sequence Test
+                </div>
+                <div class="text-xs text-white/60 leading-relaxed">
+                  Step-by-step test. Fixed columns: <span class="text-white/80">Step / Action · Expected · Actual · Pass</span>. Ideal for control sequences, mode transitions, and interlocks.
+                </div>
+              </button>
+              <button
+                type="button"
+                :class="newType === 'standard'
+                  ? 'border-emerald-400/70 bg-emerald-500/15 ring-1 ring-emerald-400/40'
+                  : 'border-white/15 bg-white/5 hover:bg-white/10'"
+                class="p-4 rounded-xl border text-left transition-all"
+                @click="newType = 'standard'; newPreset = 'Points Verification'"
+              >
+                <div class="font-medium text-white text-sm mb-1.5 flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="w-4 h-4 text-white/70"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  ><rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="2"
+                    stroke-width="1.5"
+                  /><path
+                    d="M3 9h18M3 15h18M9 3v18"
+                    stroke-width="1.5"
+                  /></svg>
+                  Points / Tabular
+                </div>
+                <div class="text-xs text-white/60 leading-relaxed">
+                  Custom columns and rows. Ideal for <span class="text-white/80">sensor readings, BAS point verification</span>, and any tabular measurement data.
+                </div>
+              </button>
             </div>
           </div>
+
+          <!-- Column preset (Points type only) -->
+          <div
+            v-if="newType === 'standard'"
+          >
+            <label class="block text-sm text-white/70 mb-2">Column Preset</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="p in pointsPresets"
+                :key="p.name"
+                type="button"
+                :class="newPreset === p.name
+                  ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-100'
+                  : 'border-white/20 text-white/75 hover:bg-white/10'"
+                class="px-3 py-1.5 rounded-lg border text-sm transition-colors"
+                @click="newPreset = p.name"
+              >
+                {{ p.name }}
+              </button>
+            </div>
+            <div
+              v-if="newPreset && newPreset !== 'Blank'"
+              class="mt-2 text-xs text-white/50"
+            >
+              Columns: {{ (pointsPresets.find(p => p.name === newPreset)?.columns || []).map(c => c.name).join(' · ') }}
+            </div>
+          </div>
+
           <div>
-            <label class="block text-sm text-white/70">Name (optional)</label>
+            <label class="block text-sm text-white/70">Name <span class="text-white/40">(optional)</span></label>
             <input
               v-model="newName"
               type="text"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              placeholder="e.g. Supply Fan Start/Stop"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 mt-1"
+              :placeholder="newType === 'sequence' ? 'e.g. Cooling Mode, Supply Fan Start/Stop' : 'e.g. Points Verification, BAS Sensor Calibration'"
             >
           </div>
           <div>
-            <label class="block text-sm text-white/70">Description (optional)</label>
+            <label class="block text-sm text-white/70">Description <span class="text-white/40">(optional)</span></label>
             <textarea
               v-model="newDesc"
               rows="2"
-              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
-              placeholder="Short description"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 mt-1"
+              :placeholder="newType === 'sequence' ? 'Pre-conditions and test objective' : 'What points or measurements this test covers'"
             />
           </div>
         </div>
@@ -1343,8 +1466,8 @@ export interface FunctionalTestItem {
   issues?: Array<any>
   oprItemIds?: string[]
   // New optional fields for typed tests
-  kind?: 'standard' | 'sheet' | 'table'
-  rows?: Array<{ step: string; expected: string; actual: string }>
+  kind?: 'standard' | 'sheet' | 'table' | 'sequence' | 'points'
+  rows?: Array<{ step: string; expected: string; actual: string; pass?: boolean | null; notes?: string }>
   table?: { columns: Array<{ key: string; name: string }>; rows: Array<Record<string, any>> }
 }
 
@@ -1546,9 +1669,9 @@ function normalize(v: any): FunctionalTestItem[] {
   // - If a test explicitly declares kind, use it.
   // - If kind is missing, default to 'standard' (even if a table exists) so
   //   existing tests render textarea cells and auto-grow works as requested.
-  let kind: 'standard' | 'sheet' | 'table'
-  if (t?.kind === 'sheet') kind = 'sheet'
-  else if (t?.kind === 'table') kind = 'table'
+  let kind: 'standard' | 'sheet' | 'table' | 'sequence'
+  if (t?.kind === 'sequence' || t?.kind === 'sheet') kind = 'sequence'
+  else if (t?.kind === 'table' || t?.kind === 'points') kind = 'table'
   else if (t?.kind === 'standard') kind = 'standard'
   else kind = 'standard'
     const result = ({
@@ -1565,7 +1688,7 @@ function normalize(v: any): FunctionalTestItem[] {
     issues: Array.isArray(t?.issues) ? t.issues : [],
     oprItemIds: Array.isArray(t?.oprItemIds) ? t.oprItemIds.map((id: any) => String(id || '').trim()).filter(Boolean) : [],
       kind,
-    rows: Array.isArray(t?.rows) ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? '') })) : [],
+    rows: Array.isArray(t?.rows) ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? ''), pass: (r?.pass === true || r?.pass === false) ? r.pass : null, notes: String(r?.notes ?? '') })) : [],
       table: useTable || (Array.isArray((t as any).columns) || Array.isArray((t as any).rows)) ? (
         useTable || {
           // very old shape fallback
@@ -2102,15 +2225,49 @@ function formatDateTime(d?: any) { if (!d) return ''; try { return new Date(d).t
 
 // New FPT creation modal state
 const newOpen = ref(false)
-const newType = ref<'standard'|'table'>('standard')
+const newType = ref<'standard'|'sequence'>('sequence')
 const newName = ref('')
 const newDesc = ref('')
+const newPreset = ref('Points Verification')
+
+function _colKey() { return 'c' + Math.random().toString(36).slice(2, 8) }
+
+// Column presets for Points / Tabular type
+const pointsPresets = [
+  { name: 'Points Verification', columns: [
+    { key: _colKey(), name: 'System Point' },
+    { key: _colKey(), name: 'BAS' },
+    { key: _colKey(), name: 'Field' },
+    { key: _colKey(), name: 'Offset' },
+    { key: _colKey(), name: 'Pass' },
+  ]},
+  { name: 'Sensor Readings', columns: [
+    { key: _colKey(), name: 'Point Name' },
+    { key: _colKey(), name: 'Point ID' },
+    { key: _colKey(), name: 'Design Value' },
+    { key: _colKey(), name: 'Measured Value' },
+    { key: _colKey(), name: 'Units' },
+    { key: _colKey(), name: 'Pass' },
+  ]},
+  { name: 'Blank', columns: [] },
+]
 
 function openNewFpt() { newOpen.value = true }
-function closeNewFpt() { newOpen.value = false; newType.value = 'standard'; newName.value = ''; newDesc.value = '' }
+function closeNewFpt() {
+  newOpen.value = false
+  newType.value = 'sequence'
+  newName.value = ''
+  newDesc.value = ''
+  newPreset.value = 'Points Verification'
+}
 
-function addTestOfType(kind: 'standard'|'sheet'|'table', name?: string, description?: string) {
+function addTestOfType(kind: 'standard'|'sequence', name?: string, description?: string, presetName?: string) {
   const nextNum = (local.length ? Number(local[local.length-1].number || local.length) + 1 : 1)
+  let presetColumns: Array<{ key: string; name: string }> = []
+  if (kind === 'standard' && presetName && presetName !== 'Blank') {
+    const found = pointsPresets.find(p => p.name === presetName)
+    if (found) presetColumns = found.columns.map(c => ({ key: _colKey(), name: c.name }))
+  }
   const base: FunctionalTestItem = {
     number: isFinite(nextNum) ? nextNum : local.length + 1,
     name: name || '',
@@ -2120,9 +2277,9 @@ function addTestOfType(kind: 'standard'|'sheet'|'table', name?: string, descript
     notes: '',
     pass: null,
     issues: [],
-    kind: kind,
-    rows: kind === 'sheet' ? [{ step: '', expected: '', actual: '' }] : [],
-    table: (kind === 'table' || kind === 'standard') ? { columns: [], rows: [] } : undefined
+    kind,
+    rows: kind === 'sequence' ? [{ step: '', expected: '', actual: '', pass: null, notes: '' }] : [],
+    table: kind === 'standard' ? { columns: presetColumns, rows: presetColumns.length ? [presetColumns.reduce((r, c) => ({ ...r, [c.key]: '' }), {})] : [] } : undefined,
   }
   local.push(base)
   // Auto-open the newly created test for immediate visibility
@@ -2133,15 +2290,37 @@ function addTestOfType(kind: 'standard'|'sheet'|'table', name?: string, descript
 }
 
 function createNewFpt() {
-  addTestOfType(newType.value, newName.value.trim(), newDesc.value.trim())
+  addTestOfType(newType.value, newName.value.trim(), newDesc.value.trim(), newPreset.value)
   closeNewFpt()
 }
 
-// Spreadsheet (legacy sheet) row helpers
+// Sequence row helpers
+function addSequenceRow(i: number) {
+  const t = local[i] as any
+  if (!Array.isArray(t.rows)) t.rows = []
+  t.rows.push({ step: '', expected: '', actual: '', pass: null, notes: '' })
+  notifyChange()
+}
+function removeSequenceRow(i: number, ri: number) {
+  const t = local[i] as any
+  if (!Array.isArray(t.rows)) return
+  t.rows.splice(ri, 1)
+  notifyChange()
+}
+function cycleSequenceRowPass(i: number, ri: number) {
+  const t = local[i] as any
+  if (!Array.isArray(t.rows)) return
+  const curr: PassState = passCellState(t.rows[ri].pass)
+  const next: PassState = curr === 'none' ? 'pass' : (curr === 'pass' ? 'fail' : 'none')
+  t.rows[ri].pass = next === 'pass' ? true : next === 'fail' ? false : null
+  notifyChange()
+}
+
+// Legacy sheet row helpers (kept for backward compat with old data migrations)
 function addRow(i: number) {
   const t = local[i] as any
   if (!Array.isArray(t.rows)) t.rows = []
-  t.rows.push({ step: '', expected: '', actual: '' })
+  t.rows.push({ step: '', expected: '', actual: '', pass: null, notes: '' })
   notifyChange()
 }
 function removeRow(i: number, ri: number) {

@@ -59,17 +59,18 @@
             <span class="i">🏠</span>
             <span v-if="open">Dashboard</span>
           </RouterLink>
-          <!-- Assistant -->
+          <!-- Agent (premium-only) -->
           <RouterLink
-            to="/app/assistant"
+            v-if="featureEnabled('ai')"
+            to="/app/agent"
             :class="[
               'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
-              isActive('/app/assistant') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+              isActive('/app/agent') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
             ]"
-            :aria-current="isActive('/app/assistant') ? 'page' : null"
+            :aria-current="isActive('/app/agent') ? 'page' : null"
           >
-            <span class="i">🤖</span>
-            <span v-if="open">Assistant</span>
+            <span class="i">👷‍♀️</span>
+            <span v-if="open">Agent</span>
           </RouterLink>
           <!-- OPR Workshop (paid add-on; only shown when a session is active) -->
           <RouterLink
@@ -374,15 +375,6 @@
             <span class="i">🐞</span>
             <span v-if="open">Issues</span>
           </RouterLink>
-          <button
-            v-if="currentProjectId && featureEnabled('ai')"
-            type="button"
-            class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10 hover:bg-white/20"
-            @click="openAiChat"
-          >
-            <span class="i">✨</span>
-            <span v-if="open">AI</span>
-          </button>
         </nav>
       </div>
 
@@ -425,13 +417,6 @@
       <span v-else>›</span>
     </button>
 
-    <!-- AI Chat overlay (only when sidebar is expanded) -->
-    <div
-      v-if="open && ai.open"
-      class="absolute inset-x-0 top-16 bottom-0 bg-black/70 backdrop-blur-xl border-t border-white/10"
-    >
-      <AiChatSidebar />
-    </div>
   </aside>
 </template>
 
@@ -442,15 +427,12 @@ import { useRoute } from 'vue-router'
   import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
   import { useProjectStore } from '../stores/project'
   import { useAuthStore } from '../stores/auth'
-  import { useAiStore } from '../stores/ai'
   import { useOprStore } from '../stores/opr'
-import AiChatSidebar from './AiChatSidebar.vue'
 import http from '../utils/http'
 
 const route = useRoute()
   const projectStore = useProjectStore()
   const authStore = useAuthStore()
-  const ai = useAiStore()
   const opr = useOprStore()
 const currentProject = computed(() =>
   projectStore.currentProject ||
@@ -519,8 +501,9 @@ const activeFeatures = computed(() => {
   else merged.documents = true
 
   // Legacy projects: subscriptionTier may be stale (e.g. still "basic") while
-  // premium-only feature flags are enabled. In that case, enable Systems too.
+  // premium-only feature flags are enabled. In that case, enable Systems and AI too.
   if (inferredPremium) merged.systems = true
+  if (inferredPremium) merged.ai = true
   return merged
 })
 
@@ -574,11 +557,6 @@ const hasOprTaskForProject = computed(() => {
   const showOprItemsLink = computed(() => {
     return Boolean(currentProjectId.value)
   })
-
-function openAiChat() {
-  if (!props.open) emit('toggle')
-  ai.toggleOpen(true)
-}
 
 // -----------------------------
 // Process nav (Tasks WBS tree)
