@@ -344,7 +344,7 @@ router.get(
         provider === 'gemini'
           ? (asString(ai.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim() || 'gemini-1.5-flash')
           : provider === 'claude'
-            ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest')
+            ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5').trim() || 'claude-sonnet-4-5')
             : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
       const enabled = ai.enabled === true
       const hasProjectKey = ai.hasKey === true
@@ -553,7 +553,7 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
       provider === 'gemini'
         ? (asString(ai.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim() || 'gemini-1.5-flash')
         : provider === 'claude'
-          ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest')
+          ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5').trim() || 'claude-sonnet-4-5')
         : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
     const context = (req.body && typeof req.body.context === 'object' && req.body.context) ? req.body.context : null
 
@@ -639,7 +639,7 @@ router.post('/suggest-tags', auth, requireNotDisabled('ai'), requireBodyField('p
       provider === 'gemini'
         ? (asString(ai.model || process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim() || 'gemini-1.5-flash')
         : provider === 'claude'
-          ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest').trim() || 'claude-3-5-sonnet-latest')
+          ? (asString(ai.model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5').trim() || 'claude-sonnet-4-5')
           : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
 
     const rawEntity = (req.body && typeof req.body.entity === 'object' && req.body.entity) ? req.body.entity : {}
