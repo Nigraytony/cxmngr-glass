@@ -2777,6 +2777,11 @@ async function confirmRemove(e: Equipment) {
   if (!confirmed) return
   await equipmentStore.remove(String(e.id))
   ui.showSuccess('Equipment deleted')
+  // Refetch the current page so the deleted row disappears from the paginated
+  // view — the view renders serverEquipment, which is populated by the fetch,
+  // not the store's items array.
+  const pid = String(projectStore.currentProjectId || '')
+  if (pid) await fetchEquipmentPage(pid)
 }
 
 watch(() => projectStore.currentProjectId, async (id) => {
@@ -2885,6 +2890,9 @@ async function duplicateEquipment(e: Equipment) {
       created = await equipmentStore.create(payload as Equipment)
     }
     if (created) ui.showSuccess(`Duplicated as ${created.tag}`)
+    // Refetch so the duplicated row shows up in the current page.
+    const pid = String(projectStore.currentProjectId || '')
+    if (pid) await fetchEquipmentPage(pid)
   } catch (err: any) {
     ui.showError(err?.response?.data?.error || err?.message || 'Failed to duplicate')
   }

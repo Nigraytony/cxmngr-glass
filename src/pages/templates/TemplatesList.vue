@@ -1295,13 +1295,18 @@ async function save() {
   try {
     if (!form.value.title || !form.value.tag || !form.value.type) throw new Error('Tag, Title and Type are required')
     if (!form.value.projectId) form.value.projectId = projectStore.currentProjectId || ''
+    const pid = String(form.value.projectId || projectStore.currentProjectId || '')
     if (editing.value && form.value.id) {
       await templatesStore.update(form.value as Template & { id: string })
       ui.showSuccess('Template updated')
     } else {
       await templatesStore.create(form.value as Template)
+      if (page.value !== 1) page.value = 1
       ui.showSuccess('Template created')
     }
+    // Refetch so the list reflects the mutation — the view renders a server
+    // pagination buffer, not the store's items array.
+    if (pid) await fetchTemplatesPage(pid)
     modalOpen.value = false
   } catch (e: any) {
     console.error(e)
@@ -1322,6 +1327,8 @@ async function confirmRemove(e: Template) {
   if (!confirmed) return
   await templatesStore.remove(String(e.id))
   ui.showSuccess('Template deleted')
+  const pid = String(projectStore.currentProjectId || '')
+  if (pid) await fetchTemplatesPage(pid)
 }
 
 watch(() => projectStore.currentProjectId, async (id) => {
@@ -1540,6 +1547,8 @@ async function duplicateTemplate(e: Template) {
       created = await templatesStore.create(payload as Template)
     }
     if (created) ui.showSuccess(`Duplicated as ${created.tag}`)
+    const pid = String(projectStore.currentProjectId || '')
+    if (pid) await fetchTemplatesPage(pid)
   } catch (err: any) {
     ui.showError(err?.response?.data?.error || err?.message || 'Failed to duplicate')
   }

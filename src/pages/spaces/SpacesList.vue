@@ -1680,13 +1680,18 @@ async function save() {
     if (!form.value.project) form.value.project = currentPid
     if (!form.value.projectId) form.value.projectId = form.value.project || currentPid
     if (!form.value.title) throw new Error('Title is required')
+    const pid = String(form.value.projectId || form.value.project || projectStore.currentProjectId || '')
     if (editing.value && form.value.id) {
       await spacesStore.update(form.value as Space & { id: string })
       ui.showSuccess('Space updated')
     } else {
       await spacesStore.create(form.value as Space)
+      if (page.value !== 1) page.value = 1
       ui.showSuccess('Space created')
     }
+    // List view renders serverSpaces (a paginated fetch buffer), not the
+    // spacesStore.items array, so it wouldn't otherwise reflect the change.
+    if (pid) await fetchSpacesPage(pid)
     modalOpen.value = false
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save space')
@@ -1707,6 +1712,8 @@ async function confirmRemove(s: Space) {
     if (!confirmed) return
     await spacesStore.remove(String(s.id))
     ui.showSuccess('Space deleted')
+    const pid = String(projectStore.currentProjectId || '')
+    if (pid) await fetchSpacesPage(pid)
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to delete space')
   }
