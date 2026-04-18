@@ -3729,6 +3729,11 @@ async function onDelete(issue: IssueRow) {
   try {
     await issuesStore.deleteIssue(id)
     ui.showSuccess('Issue deleted')
+    // List view renders serverIssues (a paginated fetch buffer); refetch so
+    // the deleted row disappears without a manual reload. Create already
+    // prepends to serverIssues manually so no refetch is needed there.
+    const pid = String(projectStore.currentProjectId || '')
+    if (pid) await fetchIssuesPage(pid)
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || 'Failed to delete issue')
   }
