@@ -149,6 +149,12 @@ try {
 
 	const handleActivity = () => {
 		try {
+			// While the session-expiring-soon modal is open, require an explicit
+			// click on "Stay signed in" or "Log out" to dismiss it. Any passive
+			// activity (a stray mousemove / keydown / focus change) must NOT
+			// silently reset the inactivity clock or hide the modal — otherwise
+			// the user never gets a chance to make the decision.
+			if (auth && auth.sessionWarningOpen) return
 			if (auth && typeof auth.markActivity === 'function') auth.markActivity()
 			if (auth && typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
 		} catch (e) {
@@ -168,8 +174,10 @@ try {
 			if (isDocumentVisible()) {
 				// Treat returning to the tab as activity so the inactivity clock
 				// resets from now, not from whenever the user last interacted
-				// before backgrounding the tab.
+				// before backgrounding the tab — unless the session warning is
+				// already open, in which case keep it visible until they click.
 				try {
+					if (auth && auth.sessionWarningOpen) return
 					if (auth && typeof auth.markActivity === 'function') auth.markActivity()
 					if (auth && typeof auth.hideSessionWarning === 'function') auth.hideSessionWarning()
 				} catch (e) { /* ignore */ }
