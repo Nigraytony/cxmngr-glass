@@ -27,6 +27,7 @@
     "chart.js": "^4.5.1",
     "dayjs": "^1.11.9",
     "dejavu-sans": "^1.0.0",
+    "echarts": "^6.0.0",
     "frappe-gantt": "^0.5.0",
     "jspdf": "^3.0.3",
     "moment": "^2.29.4",
@@ -37,6 +38,7 @@
     "typeface-roboto": "^1.1.13",
     "vue": "^3.5.0",
     "vue-chartjs": "^5.3.3",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.4.5",
     "xlsx": "^0.18.5"
   },
