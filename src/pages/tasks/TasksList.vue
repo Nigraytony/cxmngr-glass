@@ -1042,36 +1042,10 @@
 
             <div
               v-else
-              class="task-gantt rounded-xl overflow-auto bg-slate-950 border border-white/10"
+              ref="ganttContainerRef"
+              class="task-gantt frappe-gantt-theme rounded-xl overflow-auto bg-slate-950 border border-white/10"
               style="max-height: 70vh;"
-            >
-              <GGanttChart
-                :chart-start="ganttChartStart"
-                :chart-end="ganttChartEnd"
-                :precision="ganttPrecision"
-                bar-start="start"
-                bar-end="end"
-                color-scheme="dark"
-                :grid="true"
-                label-column-title=""
-                :label-column-width="ganttLabelColumnWidth"
-                width="100%"
-                @click-bar="onGanttBarClick"
-              >
-                <template #label-column-row="{ label }">
-                  <div class="text-white/90 truncate">
-                    {{ label }}
-                  </div>
-                </template>
-
-                <GGanttRow
-                  v-for="row in ganttRows"
-                  :key="row.id"
-                  :label="row.label"
-                  :bars="[row.bar]"
-                />
-              </GGanttChart>
-            </div>
+            />
           </div>
         </template>
       </div>
@@ -1935,7 +1909,10 @@ import TasksListCharts from '../../components/charts/TasksListCharts.vue'
   import { http } from '../../utils/http'
   import { runCoachmarkOnce } from '../../utils/coachmarks'
   import { useRoute, useRouter } from 'vue-router'
-import { GGanttChart, GGanttRow, extendDayjs } from '@infectoone/vue-ganttastic'
+// frappe-gantt's src/ entry imports its own SCSS, which Vite resolves via
+// the sass dep. A postinstall script (scripts/patch-frappe-gantt.cjs) fixes
+// the deprecated `darken()` calls in that SCSS for modern Sass compatibility.
+import Gantt from 'frappe-gantt'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 ;(window).html2canvas = (window).html2canvas || html2canvas
@@ -1958,31 +1935,7 @@ const deletingCount = ref(0)
 const viewMode = ref('list')
 
 const ganttViewMode = ref('Week')
-extendDayjs()
-
-const ganttPrecision = computed(() => {
-  const m = String(ganttViewMode.value || '').trim().toLowerCase()
-  if (m === 'day') return 'day'
-  if (m === 'week') return 'week'
-  if (m === 'month') return 'month'
-  return 'week'
-})
-
-const ganttLabelColumnWidth = computed(() => {
-  // Wider column helps keep names readable on larger screens.
-  return '340px'
-})
-
-function toGanttDate(d) {
-  if (!d) return null
-  try {
-    const ms = new Date(d).getTime()
-    if (!Number.isFinite(ms)) return null
-    return new Date(ms)
-  } catch (e) {
-    return null
-  }
-}
+const ganttContainerRef = ref(null)
 
 const taskById = computed(() => {
   const out = {}
@@ -1993,78 +1946,148 @@ const taskById = computed(() => {
   return out
 })
 
-const ganttRows = computed(() => {
-  const rows = Array.isArray(filtered.value) ? filtered.value : []
-  return rows
-    .filter(t => t && t._id)
-    .map(t => {
-      const start = toGanttDate(startVal(t))
-      const end = toGanttDate(endVal(t) || startVal(t))
-      if (!start || !end) return null
-      const id = String(t._id)
-      const w = t.wbs ? String(t.wbs) : ''
-      const n = t.name ? String(t.name) : ''
-      const depth = w ? wbsDepth(w) : 0
-      const indent = depth > 0 ? '\u00A0'.repeat(depth * 5) : ''
-      const label = (`${indent}${w ? w + ' ' : ''}${n}`).trimEnd() || w || id
-      return {
-        id,
-        label,
-        bar: {
-          start,
-          end,
-          taskId: id,
-          progress: Number(pct(t) || 0),
-          ganttBarConfig: {
-            id,
-            label: '',
-            hasHandles: false,
-            immobile: true,
-            style: {
-              background: 'rgba(59, 130, 246, 0.35)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-            },
-          }
-        }
-      }
-    })
-    .filter(Boolean)
-})
-
-const ganttNoTasks = computed(() => ganttRows.value.length === 0)
-
-const ganttChartStart = computed(() => {
-  const rows = ganttRows.value
-  let min = Infinity
-  for (const r of rows) {
-    const ms = r?.bar?.start ? new Date(r.bar.start).getTime() : NaN
-    if (Number.isFinite(ms)) min = Math.min(min, ms)
-  }
-  if (!Number.isFinite(min)) return new Date()
-  // padding
-  return new Date(min - 24 * 60 * 60 * 1000)
-})
-
-const ganttChartEnd = computed(() => {
-  const rows = ganttRows.value
-  let max = -Infinity
-  for (const r of rows) {
-    const ms = r?.bar?.end ? new Date(r.bar.end).getTime() : NaN
-    if (Number.isFinite(ms)) max = Math.max(max, ms)
-  }
-  if (!Number.isFinite(max)) return new Date()
-  // padding
-  return new Date(max + 24 * 60 * 60 * 1000)
-})
-
-function onGanttBarClick({ bar }) {
+function toIsoDate(d) {
+  if (!d) return null
   try {
-    const id = bar?.taskId || bar?.ganttBarConfig?.id ? String(bar.taskId || bar.ganttBarConfig.id) : ''
-    if (!id) return
-    const t = taskById.value[id]
-    if (t) openTask(t, null)
+    const ms = new Date(d).getTime()
+    if (!Number.isFinite(ms)) return null
+    const iso = new Date(ms).toISOString()
+    return iso.slice(0, 10)
+  } catch (e) {
+    return null
+  }
+}
+
+// Normalize a task to the shape frappe-gantt expects.
+// Returns null if the task has no valid date range.
+function toFrappeTask(t) {
+  if (!t || !t._id) return null
+  const startIso = toIsoDate(startVal(t))
+  const endIsoRaw = toIsoDate(endVal(t) || startVal(t))
+  if (!startIso || !endIsoRaw) return null
+  // Milestone rendering: if start === end, frappe treats it as a 1-day bar.
+  // Detect that and tag with a custom class so we can style it as a diamond.
+  const isMilestone = startIso === endIsoRaw
+  const w = t.wbs ? String(t.wbs) : ''
+  const n = t.name ? String(t.name) : ''
+  const depth = w ? wbsDepth(w) : 0
+  const indent = depth > 0 ? '\u00A0'.repeat(depth * 3) : ''
+  const name = (`${indent}${w ? w + ' ' : ''}${n}`).trimEnd() || w || String(t._id)
+  const statusClass = statusToClass(t.status, pct(t))
+  return {
+    id: String(t._id),
+    name,
+    start: startIso,
+    end: endIsoRaw,
+    progress: Math.max(0, Math.min(100, Number(pct(t) || 0))),
+    dependencies: normalizeDependencies(t),
+    custom_class: [statusClass, isMilestone ? 'fg-milestone' : ''].filter(Boolean).join(' '),
+  }
+}
+
+function statusToClass(status, percent) {
+  const s = String(status || '').toLowerCase()
+  if (s.includes('complete') || Number(percent) >= 100) return 'fg-complete'
+  if (s.includes('block') || s.includes('hold') || s.includes('cancel')) return 'fg-blocked'
+  if (s.includes('progress')) return 'fg-progress'
+  return 'fg-pending'
+}
+
+function normalizeDependencies(t) {
+  // Accept either a comma-separated string of task _ids (what frappe-gantt
+  // expects) or an array of wbs codes / ids. We map wbs → _id where possible
+  // so arrows connect the correct bars.
+  const raw = t?.dependencies
+  if (!raw) return ''
+  const pieces = Array.isArray(raw)
+    ? raw
+    : String(raw).split(',').map((s) => s.trim()).filter(Boolean)
+  const ids = []
+  for (const ref of pieces) {
+    const key = String(ref || '').trim()
+    if (!key) continue
+    // If it already looks like a Mongo ObjectId, use it verbatim.
+    if (/^[a-f0-9]{24}$/i.test(key)) { ids.push(key); continue }
+    // Otherwise, try resolving by WBS code.
+    const match = (tasks.value || []).find((x) => String(x?.wbs || '') === key)
+    if (match && match._id) ids.push(String(match._id))
+  }
+  return ids.join(', ')
+}
+
+const ganttTasks = computed(() => {
+  const rows = Array.isArray(filtered.value) ? filtered.value : []
+  return rows.map(toFrappeTask).filter(Boolean)
+})
+
+const ganttNoTasks = computed(() => ganttTasks.value.length === 0)
+
+function destroyGantt() {
+  try {
+    if (ganttContainerRef.value) ganttContainerRef.value.innerHTML = ''
   } catch (e) { /* ignore */ }
 }
+
+function renderGantt() {
+  const el = ganttContainerRef.value
+  if (!el) return
+  const tasks = ganttTasks.value
+  if (!tasks.length) { destroyGantt(); return }
+  // frappe-gantt renders by appending an SVG + container divs. We destroy
+  // and recreate on data changes because the `refresh()` API skips header
+  // width recalculations when the date range shifts.
+  destroyGantt()
+  // eslint-disable-next-line no-new
+  new Gantt(el, tasks, {
+    view_mode: ganttViewMode.value,
+    bar_height: 22,
+    bar_corner_radius: 4,
+    padding: 14,
+    header_height: 52,
+    column_width: ganttViewMode.value === 'Day' ? 32 : ganttViewMode.value === 'Week' ? 140 : 200,
+    arrow_curve: 6,
+    date_format: 'YYYY-MM-DD',
+    popup_trigger: 'mouseover',
+    custom_popup_html: renderGanttPopup,
+    on_click: (task) => {
+      const t = taskById.value[String(task?.id || '')]
+      if (t) openTask(t, null)
+    },
+    on_date_change: () => { /* read-only */ },
+    on_progress_change: () => { /* read-only */ },
+  })
+}
+
+function renderGanttPopup(task) {
+  const start = task?._start ? new Date(task._start).toLocaleDateString() : '—'
+  const end = task?._end ? new Date(task._end).toLocaleDateString() : '—'
+  const name = String(task?.name || '').trim() || 'Task'
+  const pctVal = Math.round(Number(task?.progress || 0))
+  return `
+    <div class="title">${escapeHtml(name)}</div>
+    <div class="subtitle">
+      ${escapeHtml(start)} &rarr; ${escapeHtml(end)}<br/>
+      <strong>${pctVal}%</strong> complete
+    </div>
+  `
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+// Rebuild when the data or view mode changes, or when the user switches to
+// the gantt tab (the container only exists once it's mounted in the DOM).
+watch([ganttTasks, ganttViewMode, () => viewMode.value], async () => {
+  if (viewMode.value !== 'gantt') return
+  await nextTick()
+  renderGantt()
+}, { flush: 'post' })
 const showEditModal = ref(false)
 const editingId = ref(null)
 const showSettingsModal = ref(false)
@@ -2991,7 +3014,8 @@ const filtered = computed(() => {
 
 // Re-render Gantt when switching views, changing scale, or updating the visible task set.
 // These watchers must be declared after `filtered` to avoid TDZ errors during setup.
-// (No watchers needed for GGanttChart; it re-renders reactively.)
+// Frappe-gantt is re-rendered on data / view-mode / tab changes by the
+// watcher near the top of this block.
 
 const autoTagTaskItems = computed(() => {
   const list = Array.isArray(filtered.value) ? filtered.value : []
@@ -3962,32 +3986,128 @@ async function doDelete() {
   height: 1.125rem !important;
 }
 
-.task-gantt :deep(.g-gantt-chart) {
-  background: transparent !important;
+/* ---------------------------------------------------------------------------
+ * Frappe-gantt dark-theme skin. The library ships a bright-white default
+ * palette; these overrides tint the grid, header, bars, arrows, and popup
+ * to match the rest of the glass-dark UI. Styles are scoped to the
+ * .frappe-gantt-theme class so they don't leak into anything else.
+ * Also hides the drag handles (render-only view — edits happen in the modal).
+ * ------------------------------------------------------------------------- */
+.frappe-gantt-theme {
+  color-scheme: dark;
 }
-
-.task-gantt :deep(.g-timeaxis) {
-  background: transparent !important;
+.frappe-gantt-theme :deep(.gantt-container) {
+  overflow: auto;
 }
-
-.task-gantt :deep(.g-grid-line) {
-  border-left-width: 0.5px;
-  border-left-color: rgba(255, 255, 255, 0.06);
+.frappe-gantt-theme :deep(.gantt .grid-background) {
+  fill: transparent;
 }
-
-.task-gantt :deep(.g-gantt-row > .g-gantt-row-bars-container) {
-  border-top-width: 0.75px;
-  border-bottom-width: 0.75px;
-  border-top-color: rgba(255, 255, 255, 0.08);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+.frappe-gantt-theme :deep(.gantt .grid-header) {
+  fill: rgba(15, 23, 42, 0.7);
+  stroke: rgba(255, 255, 255, 0.08);
 }
-
-.task-gantt :deep(.g-label-column-row) {
-  border-bottom: 0.75px solid rgba(255, 255, 255, 0.08);
+.frappe-gantt-theme :deep(.gantt .grid-row) {
+  fill: rgba(255, 255, 255, 0.02);
 }
-
-.task-gantt :deep(.g-timeaxis-hour-pin) {
-  width: 0.5px;
-  opacity: 0.5;
+.frappe-gantt-theme :deep(.gantt .grid-row:nth-child(even)) {
+  fill: rgba(255, 255, 255, 0.04);
+}
+.frappe-gantt-theme :deep(.gantt .row-line) {
+  stroke: rgba(255, 255, 255, 0.06);
+}
+.frappe-gantt-theme :deep(.gantt .tick) {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+.frappe-gantt-theme :deep(.gantt .tick.thick) {
+  stroke: rgba(255, 255, 255, 0.2);
+}
+.frappe-gantt-theme :deep(.gantt .today-highlight) {
+  fill: rgba(96, 165, 250, 0.18);
+}
+.frappe-gantt-theme :deep(.gantt .upper-text),
+.frappe-gantt-theme :deep(.gantt .lower-text) {
+  fill: rgba(255, 255, 255, 0.75);
+}
+.frappe-gantt-theme :deep(.gantt .arrow) {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1.2;
+}
+/* Default bar (pending) */
+.frappe-gantt-theme :deep(.gantt .bar) {
+  fill: rgba(148, 163, 184, 0.35);
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.75;
+}
+.frappe-gantt-theme :deep(.gantt .bar-progress) {
+  fill: rgba(96, 165, 250, 0.85);
+}
+.frappe-gantt-theme :deep(.gantt .bar-label) {
+  fill: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+}
+.frappe-gantt-theme :deep(.gantt .bar-label.big) {
+  fill: rgba(255, 255, 255, 0.9);
+}
+/* Status-specific backgrounds + progress colours */
+.frappe-gantt-theme :deep(.fg-pending .bar) {
+  fill: rgba(148, 163, 184, 0.35);
+}
+.frappe-gantt-theme :deep(.fg-pending .bar-progress) {
+  fill: rgba(96, 165, 250, 0.85);
+}
+.frappe-gantt-theme :deep(.fg-progress .bar) {
+  fill: rgba(251, 191, 36, 0.22);
+}
+.frappe-gantt-theme :deep(.fg-progress .bar-progress) {
+  fill: rgba(251, 191, 36, 0.95);
+}
+.frappe-gantt-theme :deep(.fg-complete .bar) {
+  fill: rgba(34, 197, 94, 0.3);
+}
+.frappe-gantt-theme :deep(.fg-complete .bar-progress) {
+  fill: rgba(34, 197, 94, 0.95);
+}
+.frappe-gantt-theme :deep(.fg-blocked .bar) {
+  fill: rgba(251, 113, 133, 0.3);
+}
+.frappe-gantt-theme :deep(.fg-blocked .bar-progress) {
+  fill: rgba(251, 113, 133, 0.95);
+}
+/* Read-only: hide the drag handles (they're opacity:0 until hover; the
+ * wrapper still sets cursor:pointer so clicks open the task modal) */
+.frappe-gantt-theme :deep(.gantt .handle) {
+  display: none;
+}
+.frappe-gantt-theme :deep(.gantt .bar-wrapper:hover .bar) {
+  filter: brightness(1.15);
+}
+.frappe-gantt-theme :deep(.gantt .bar-wrapper:hover .bar-progress) {
+  filter: brightness(1.1);
+}
+/* Popup tooltip */
+.frappe-gantt-theme :deep(.popup-wrapper) {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  padding: 0;
+  min-width: 180px;
+}
+.frappe-gantt-theme :deep(.popup-wrapper .title) {
+  border-bottom: 2px solid rgba(96, 165, 250, 0.6);
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+}
+.frappe-gantt-theme :deep(.popup-wrapper .subtitle) {
+  padding: 8px 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.frappe-gantt-theme :deep(.popup-wrapper .pointer) {
+  border-top-color: rgba(15, 23, 42, 0.95);
 }
 </style>
