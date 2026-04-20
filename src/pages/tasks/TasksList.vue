@@ -1042,10 +1042,72 @@
 
             <div
               v-else
-              ref="ganttContainerRef"
-              class="task-gantt frappe-gantt-theme rounded-xl overflow-auto bg-slate-950 border border-white/10"
+              class="task-gantt frappe-gantt-theme rounded-xl bg-slate-950 border border-white/10"
               style="max-height: 70vh;"
-            />
+            >
+              <div class="gantt-grid-flex">
+                <!-- Sidebar: WBS | caret | task name (rows align 1:1 with gantt rows) -->
+                <div class="gantt-sidebar">
+                  <div
+                    class="gantt-sidebar-header"
+                    :style="sidebarHeaderStyle"
+                  >
+                    <span class="col-wbs">WBS</span>
+                    <span class="col-name">Task</span>
+                  </div>
+                  <div
+                    v-for="row in visibleGanttRows"
+                    :key="row.id"
+                    class="gantt-sidebar-row"
+                    :style="sidebarRowStyle"
+                    :title="row.name"
+                    @click="openTaskById(row.id)"
+                  >
+                    <span class="col-wbs">{{ row.wbs }}</span>
+                    <button
+                      v-if="row.hasChildren"
+                      type="button"
+                      class="col-caret"
+                      :aria-label="isWbsExpanded(row.wbs) ? 'Collapse' : 'Expand'"
+                      :aria-expanded="isWbsExpanded(row.wbs) ? 'true' : 'false'"
+                      @click.stop="toggleWbs(row.wbs)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        class="caret-svg"
+                        :class="{ expanded: isWbsExpanded(row.wbs) }"
+                      >
+                        <path
+                          d="M9 6l6 6-6 6"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          fill="none"
+                        />
+                      </svg>
+                    </button>
+                    <span
+                      v-else
+                      class="col-caret caret-spacer"
+                    />
+                    <span
+                      class="col-name"
+                      :style="{ paddingLeft: (row.depth * 14) + 'px' }"
+                    >
+                      {{ row.name }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Gantt chart area -->
+                <div
+                  ref="ganttContainerRef"
+                  class="gantt-chart-area"
+                />
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -1937,6 +1999,58 @@ const viewMode = ref('list')
 const ganttViewMode = ref('Week')
 const ganttContainerRef = ref(null)
 
+// Frappe-gantt geometry — needs to match the options passed to new Gantt()
+// below so the sidebar rows line up with the bars.
+const GANTT_BAR_HEIGHT = 22
+const GANTT_ROW_PADDING = 14
+const GANTT_HEADER_HEIGHT = 52
+const GANTT_ROW_HEIGHT = GANTT_BAR_HEIGHT + GANTT_ROW_PADDING // 36
+
+const sidebarRowStyle = { height: `${GANTT_ROW_HEIGHT}px` }
+const sidebarHeaderStyle = { height: `${GANTT_HEADER_HEIGHT}px` }
+
+// Hierarchy expand/collapse state — keyed by WBS code. Defaults to every
+// parent expanded so the initial view matches the flat list the old gantt
+// rendered; users collapse from there.
+const expandedWbs = ref(new Set())
+
+function wbsParent(wbs) {
+  const parts = String(wbs || '').split('.')
+  return parts.length > 1 ? parts.slice(0, -1).join('.') : ''
+}
+
+function wbsHasChildren(wbs, all) {
+  if (!wbs) return false
+  const prefix = wbs + '.'
+  return all.some((t) => String(t?.wbs || '').startsWith(prefix))
+}
+
+function wbsVisibleUnder(wbs, expanded) {
+  // Visible if every ancestor is expanded (or we're a root).
+  let p = wbsParent(wbs)
+  while (p) {
+    if (!expanded.has(p)) return false
+    p = wbsParent(p)
+  }
+  return true
+}
+
+function isWbsExpanded(wbs) {
+  return expandedWbs.value.has(wbs)
+}
+
+function toggleWbs(wbs) {
+  const next = new Set(expandedWbs.value)
+  if (next.has(wbs)) next.delete(wbs)
+  else next.add(wbs)
+  expandedWbs.value = next
+}
+
+function openTaskById(id) {
+  const t = taskById.value[String(id)]
+  if (t) openTask(t, null)
+}
+
 const taskById = computed(() => {
   const out = {}
   for (const t of (tasks.value || [])) {
@@ -1959,24 +2073,19 @@ function toIsoDate(d) {
 }
 
 // Normalize a task to the shape frappe-gantt expects.
-// Returns null if the task has no valid date range.
+// Returns null if the task has no valid date range. The sidebar renders
+// WBS and name, so we pass only the raw name here (and hide the on-bar
+// label via CSS so it doesn't repeat).
 function toFrappeTask(t) {
   if (!t || !t._id) return null
   const startIso = toIsoDate(startVal(t))
   const endIsoRaw = toIsoDate(endVal(t) || startVal(t))
   if (!startIso || !endIsoRaw) return null
-  // Milestone rendering: if start === end, frappe treats it as a 1-day bar.
-  // Detect that and tag with a custom class so we can style it as a diamond.
   const isMilestone = startIso === endIsoRaw
-  const w = t.wbs ? String(t.wbs) : ''
-  const n = t.name ? String(t.name) : ''
-  const depth = w ? wbsDepth(w) : 0
-  const indent = depth > 0 ? '\u00A0'.repeat(depth * 3) : ''
-  const name = (`${indent}${w ? w + ' ' : ''}${n}`).trimEnd() || w || String(t._id)
   const statusClass = statusToClass(t.status, pct(t))
   return {
     id: String(t._id),
-    name,
+    name: String(t.name || t.wbs || t._id),
     start: startIso,
     end: endIsoRaw,
     progress: Math.max(0, Math.min(100, Number(pct(t) || 0))),
@@ -2015,12 +2124,69 @@ function normalizeDependencies(t) {
   return ids.join(', ')
 }
 
-const ganttTasks = computed(() => {
+// Sorted list of tasks with valid dates, ordered by WBS so the tree reads
+// top-down. Used as the source of truth for both the sidebar and the chart.
+const ganttAllTasksSorted = computed(() => {
   const rows = Array.isArray(filtered.value) ? filtered.value : []
-  return rows.map(toFrappeTask).filter(Boolean)
+  return rows
+    .filter((t) => t && t._id)
+    .filter((t) => toIsoDate(startVal(t)) && toIsoDate(endVal(t) || startVal(t)))
+    .slice()
+    .sort((a, b) => String(a?.wbs || '').localeCompare(String(b?.wbs || ''), undefined, { numeric: true, sensitivity: 'base' }))
 })
 
-const ganttNoTasks = computed(() => ganttTasks.value.length === 0)
+// Rows visible in the sidebar given the current expand/collapse state.
+// Each row carries the metadata the template needs (wbs, name, depth,
+// hasChildren) so the sidebar render stays presentational.
+const visibleGanttRows = computed(() => {
+  const all = ganttAllTasksSorted.value
+  const expanded = expandedWbs.value
+  return all
+    .filter((t) => wbsVisibleUnder(String(t?.wbs || ''), expanded))
+    .map((t) => {
+      const wbs = String(t?.wbs || '')
+      return {
+        id: String(t._id),
+        wbs,
+        name: String(t?.name || ''),
+        depth: wbs ? wbsDepth(wbs) : 0,
+        hasChildren: wbsHasChildren(wbs, all),
+      }
+    })
+})
+
+// Tasks fed to frappe-gantt — only the currently visible rows.
+const ganttTasks = computed(() => {
+  return visibleGanttRows.value
+    .map((row) => {
+      const t = taskById.value[row.id]
+      return t ? toFrappeTask(t) : null
+    })
+    .filter(Boolean)
+})
+
+const ganttNoTasks = computed(() => ganttAllTasksSorted.value.length === 0)
+
+// On first population (or when a brand-new task set loads), expand every
+// parent wbs so the sidebar starts in the "all visible" state matching the
+// previous behaviour. Subsequent data changes respect the user's toggles.
+// Registered inside onMounted for the same TDZ reason as the render watcher
+// below — ganttAllTasksSorted reads filtered.value and filtered is declared
+// later in <script setup>.
+let ganttExpandDefaultsApplied = false
+onMounted(() => {
+  watch(ganttAllTasksSorted, (rows) => {
+    if (ganttExpandDefaultsApplied) return
+    if (!rows.length) return
+    const next = new Set()
+    for (const t of rows) {
+      const w = String(t?.wbs || '')
+      if (w && wbsHasChildren(w, rows)) next.add(w)
+    }
+    expandedWbs.value = next
+    ganttExpandDefaultsApplied = true
+  }, { immediate: true })
+})
 
 function destroyGantt() {
   try {
@@ -4000,8 +4166,121 @@ async function doDelete() {
 .frappe-gantt-theme {
   color-scheme: dark;
 }
-.frappe-gantt-theme :deep(.gantt-container) {
-  overflow: auto;
+
+/* Outer .task-gantt owns the vertical scroll for the whole grid. The gantt
+ * SVG container keeps its own horizontal scroll; sidebar stays in place
+ * horizontally via position: sticky. */
+.task-gantt {
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+.gantt-grid-flex {
+  display: flex;
+  align-items: flex-start;
+  min-height: 100%;
+}
+.gantt-sidebar {
+  flex: 0 0 340px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: rgb(2 6 23 / 0.98); /* matches bg-slate-950 */
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+.gantt-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+  background: rgba(15, 23, 42, 0.7);
+}
+.gantt-sidebar-header .col-wbs {
+  flex: 0 0 80px;
+}
+.gantt-sidebar-header .col-name {
+  flex: 1 1 auto;
+  padding-left: 30px; /* reserve caret width */
+}
+.gantt-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+}
+.gantt-sidebar-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.gantt-sidebar-row .col-wbs {
+  flex: 0 0 80px;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gantt-sidebar-row .col-caret {
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  width: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  border-radius: 4px;
+}
+.gantt-sidebar-row .col-caret:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+.gantt-sidebar-row .col-caret.caret-spacer {
+  cursor: default;
+  pointer-events: none;
+}
+.gantt-sidebar-row .caret-svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
+}
+.gantt-sidebar-row .caret-svg.expanded {
+  transform: rotate(90deg);
+}
+.gantt-sidebar-row .col-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Gantt chart area — flex-grow, with its inner .gantt-container owning
+ * horizontal scroll only. Vertical overflow bubbles to .task-gantt. */
+.gantt-chart-area {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gantt-chart-area :deep(.gantt-container) {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+/* Sidebar already shows the task name — suppress the on-bar label so we
+ * don't repeat. Popup still uses task.name on hover. */
+.frappe-gantt-theme :deep(.gantt .bar-label) {
+  display: none;
 }
 .frappe-gantt-theme :deep(.gantt .grid-background) {
   fill: transparent;
