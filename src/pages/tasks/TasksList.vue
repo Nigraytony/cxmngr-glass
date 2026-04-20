@@ -1056,9 +1056,10 @@
                     <span class="col-name">Task</span>
                   </div>
                   <div
-                    v-for="row in visibleGanttRows"
+                    v-for="(row, i) in visibleGanttRows"
                     :key="row.id"
                     class="gantt-sidebar-row"
+                    :class="{ 'row-even': i % 2 === 1 }"
                     :style="sidebarRowStyle"
                     :title="row.name"
                     @click="openTaskById(row.id)"
@@ -2072,26 +2073,31 @@ function toIsoDate(d) {
   }
 }
 
-// Normalize a task to the shape frappe-gantt expects.
-// Returns null if the task has no valid date range. The sidebar renders
+// Normalize a task to the shape frappe-gantt expects. The sidebar renders
 // WBS and name, so we pass only the raw name here (and hide the on-bar
-// label via CSS so it doesn't repeat).
+// label via CSS so it doesn't repeat). Tasks without valid dates are
+// emitted *without* start/end — frappe-gantt marks them `invalid`,
+// renders a placeholder row (aligned with the sidebar) but skips the
+// progress fill and label. We style invalid bars transparent via CSS.
 function toFrappeTask(t) {
   if (!t || !t._id) return null
   const startIso = toIsoDate(startVal(t))
   const endIsoRaw = toIsoDate(endVal(t) || startVal(t))
-  if (!startIso || !endIsoRaw) return null
-  const isMilestone = startIso === endIsoRaw
-  const statusClass = statusToClass(t.status, pct(t))
-  return {
+  const hasDates = Boolean(startIso && endIsoRaw)
+  const isMilestone = hasDates && startIso === endIsoRaw
+  const statusClass = hasDates ? statusToClass(t.status, pct(t)) : 'fg-invalid'
+  const base = {
     id: String(t._id),
     name: String(t.name || t.wbs || t._id),
-    start: startIso,
-    end: endIsoRaw,
     progress: Math.max(0, Math.min(100, Number(pct(t) || 0))),
     dependencies: normalizeDependencies(t),
     custom_class: [statusClass, isMilestone ? 'fg-milestone' : ''].filter(Boolean).join(' '),
   }
+  if (hasDates) {
+    return { ...base, start: startIso, end: endIsoRaw }
+  }
+  // Omit start/end → frappe-gantt sets task.invalid = true internally.
+  return base
 }
 
 function statusToClass(status, percent) {
@@ -2124,13 +2130,15 @@ function normalizeDependencies(t) {
   return ids.join(', ')
 }
 
-// Sorted list of tasks with valid dates, ordered by WBS so the tree reads
-// top-down. Used as the source of truth for both the sidebar and the chart.
+// Sorted list of tasks ordered by WBS so the tree reads top-down. Tasks
+// without explicit dates are kept in the list so the hierarchy renders
+// with carets — toFrappeTask() below flags them invalid so frappe-gantt
+// draws no visible bar but still renders the grid row (keeping row counts
+// aligned between the sidebar and the chart).
 const ganttAllTasksSorted = computed(() => {
   const rows = Array.isArray(filtered.value) ? filtered.value : []
   return rows
     .filter((t) => t && t._id)
-    .filter((t) => toIsoDate(startVal(t)) && toIsoDate(endVal(t) || startVal(t)))
     .slice()
     .sort((a, b) => String(a?.wbs || '').localeCompare(String(b?.wbs || ''), undefined, { numeric: true, sensitivity: 'base' }))
 })
@@ -4193,13 +4201,17 @@ async function doDelete() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  /* 7px bottom padding = frappe-gantt's padding/2 gap between the header
+   * and the first grid row. Without this, every sidebar row sits 7px
+   * above the corresponding bar. */
+  padding: 0 12px 7px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.55);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-size: 10px;
   background: rgba(15, 23, 42, 0.7);
+  box-sizing: content-box;
 }
 .gantt-sidebar-header .col-wbs {
   flex: 0 0 80px;
@@ -4216,9 +4228,17 @@ async function doDelete() {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
+  /* Match frappe-gantt's alternating .grid-row fills (see .gantt .grid-row
+   * override further down). Row-even class is added by the template on
+   * every second row — can't use :nth-child because the header counts as
+   * a sibling. */
+  background: rgba(255, 255, 255, 0.02);
+}
+.gantt-sidebar-row.row-even {
+  background: rgba(255, 255, 255, 0.04);
 }
 .gantt-sidebar-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(96, 165, 250, 0.08);
 }
 .gantt-sidebar-row .col-wbs {
   flex: 0 0 80px;
@@ -4281,6 +4301,15 @@ async function doDelete() {
  * don't repeat. Popup still uses task.name on hover. */
 .frappe-gantt-theme :deep(.gantt .bar-label) {
   display: none;
+}
+/* Tasks without valid dates render a row but no visible bar. Frappe adds
+ * a dashed placeholder by default — hide it entirely so the row reads as
+ * a summary/header row on the chart side. */
+.frappe-gantt-theme :deep(.gantt .bar-invalid),
+.frappe-gantt-theme :deep(.fg-invalid .bar),
+.frappe-gantt-theme :deep(.fg-invalid .bar-progress) {
+  fill: transparent;
+  stroke: none;
 }
 .frappe-gantt-theme :deep(.gantt .grid-background) {
   fill: transparent;
