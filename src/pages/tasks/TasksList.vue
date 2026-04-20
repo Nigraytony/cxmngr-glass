@@ -2082,12 +2082,16 @@ function escapeHtml(s) {
 }
 
 // Rebuild when the data or view mode changes, or when the user switches to
-// the gantt tab (the container only exists once it's mounted in the DOM).
-watch([ganttTasks, ganttViewMode, () => viewMode.value], async () => {
-  if (viewMode.value !== 'gantt') return
-  await nextTick()
-  renderGantt()
-}, { flush: 'post' })
+// the gantt tab. Registered inside onMounted because ganttTasks references
+// `filtered` (declared later in this <script setup>) — binding the watcher
+// at setup time would hit the TDZ when Vue reads the initial source values.
+onMounted(() => {
+  watch([ganttTasks, ganttViewMode, () => viewMode.value], async () => {
+    if (viewMode.value !== 'gantt') return
+    await nextTick()
+    renderGantt()
+  }, { flush: 'post' })
+})
 const showEditModal = ref(false)
 const editingId = ref(null)
 const showSettingsModal = ref(false)
