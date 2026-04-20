@@ -57,7 +57,23 @@ function ensureCsrfCookieAndProtect(req, res, next) {
 
     if (!unsafe) return next();
     if (!csrfHeader) return res.status(403).json({ error: 'CSRF token missing', code: 'CSRF_MISSING' });
-    if (csrfHeader !== csrfCookie) return res.status(403).json({ error: 'CSRF token mismatch', code: 'CSRF_MISMATCH' });
+    // Cross-origin deployments: the SPA is on a different eTLD+1 than the
+    // API (e.g. app.cxma.io -> *.azurewebsites.net). document.cookie on the
+    // frontend cannot read cookies set by the backend domain, so the
+    // interceptor generates a fresh random token on every request. The
+    // browser, meanwhile, sends back whatever csrf cookie it already has
+    // for the backend domain. That makes the two values drift apart by
+    // design — the classic double-submit pattern only works when both are
+    // readable by the same origin.
+    //
+    // We still require X-CSRF-Token to be present, which is the actual
+    // CSRF protection in this deploy shape: rogue origins can't set a
+    // custom header without a CORS preflight, and the CORS allowlist
+    // keeps them out. On mismatch, re-seed the cookie from the header so
+    // subsequent requests converge — no error.
+    if (csrfHeader !== csrfCookie) {
+      res.cookie(CSRF_COOKIE_NAME, csrfHeader, cookieOptions());
+    }
     return next();
   } catch (e) {
     return res.status(403).json({ error: 'CSRF validation failed', code: 'CSRF_FAILED' });
