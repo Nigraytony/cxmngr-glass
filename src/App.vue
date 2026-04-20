@@ -124,8 +124,17 @@ async function staySignedIn() {
   try {
     const ok = await auth.staySignedIn()
     if (!ok) {
-      ui.showError('Session could not be extended. Please log in again.')
-      await router.replace({ name: 'login' })
+      // The refresh token was rejected (evicted session, dropped cookie,
+      // network flake). The user just clicked a button so they're clearly
+      // still there — surface the re-auth modal that preserves their
+      // current page, rather than force-navigating to /login and losing
+      // whatever they were working on.
+      if (typeof auth.requireReAuth === 'function') {
+        auth.requireReAuth()
+      } else {
+        ui.showError('Session could not be extended. Please log in again.')
+        await router.replace({ name: 'login' })
+      }
       return
     }
     ui.showInfo('Session extended', { duration: 2000 })
