@@ -1,7 +1,13 @@
 <template>
+  <!-- Background uses an opaque slate fill rather than bg-white/10 so the
+       sidebar keeps a consistent dark tone when the browser re-rasterises
+       the layer (happens whenever a teleported element like a dropdown or
+       modal enters/leaves the DOM). backdrop-filter stays for a subtle
+       glass feel against the page gradient, but it no longer has to carry
+       the bulk of the visual fill. -->
   <aside
     class="group fixed md:sticky md:top-0 md:left-0 z-40 h-full md:h-screen transition-all duration-300
-           bg-white/10 dark:bg-white/10 backdrop-blur-xl border-r border-white/20
+           bg-slate-900/90 backdrop-blur-xl border-r border-white/15
            shadow-[0_10px_40px_rgba(0,0,0,0.25)] ring-1 ring-white/10
            overflow-hidden"
     :class="[ open ? 'w-64' : 'w-16' ]"
