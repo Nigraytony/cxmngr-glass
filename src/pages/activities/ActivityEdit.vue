@@ -2220,7 +2220,6 @@ const pendingCreatedId = ref<string | null>(null)
 // -----------------------------
 // Activity Report Settings
 // -----------------------------
-const ACTIVITY_REPORT_SESSION_KEY = 'activityReportSettings'
 interface ActivityReportSettings {
   include: {
     coverPage: boolean
@@ -2262,26 +2261,6 @@ function openReportSettings() {
   reportSettingsTab.value = 'general'
   showActivityReportDialog.value = true
 }
-function loadActivityReportSettingsFromSession() {
-  try {
-    const raw = sessionStorage.getItem(ACTIVITY_REPORT_SESSION_KEY)
-    if (!raw) return false
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') {
-      activityReport.value = {
-        include: { ...activityReport.value.include, ...(parsed.include || {}) },
-        issuesColumns: { ...activityReport.value.issuesColumns, ...(parsed.issuesColumns || {}) },
-        photoLimit: Math.max(0, Number(parsed.photoLimit ?? activityReport.value.photoLimit)),
-        coverTitle: typeof parsed.coverTitle === 'string' ? parsed.coverTitle : activityReport.value.coverTitle,
-        coverSubtitle: typeof parsed.coverSubtitle === 'string' ? parsed.coverSubtitle : activityReport.value.coverSubtitle,
-        coverByLine: typeof parsed.coverByLine === 'string' ? parsed.coverByLine : activityReport.value.coverByLine,
-        coverJumbotronDataUrl: typeof parsed.coverJumbotronDataUrl === 'string' ? parsed.coverJumbotronDataUrl : activityReport.value.coverJumbotronDataUrl,
-      }
-      return true
-    }
-  } catch (e) { /* ignore sessionStorage read errors */ }
-  return false
-}
 function loadActivityReportSettingsFromActivitySettings() {
   try {
     const settings = (form as any).settings
@@ -2302,8 +2281,9 @@ function loadActivityReportSettingsFromActivitySettings() {
   }
 }
 async function saveActivityReportSettings() {
-  try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ }
-  // Persist to the activity record (best-effort)
+  // Persist to the activity record (best-effort) — the activity record is the
+  // source of truth so settings travel with the activity and are visible to
+  // every user with access.
   try {
     const aid = isNew.value ? await saveAndGetId() : id.value
     if (aid && aid !== 'new') {
@@ -2329,8 +2309,6 @@ function resetActivityReportSettings() {
     coverJumbotronDataUrl: '',
   }
 }
-watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
-
 async function onCoverJumbotronSelected(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input?.files?.[0]
@@ -2759,7 +2737,6 @@ const crumbs = computed(() => [
 onMounted(async () => {
   pageLoading.value = true
   try {
-    loadActivityReportSettingsFromSession()
     const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
     if (pid) form.projectId = String(pid)
     const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()+0).padStart(2,'0')
@@ -2845,10 +2822,9 @@ onMounted(async () => {
       ;(form as any).settings = ((activityData as any)?.settings && typeof (activityData as any).settings === 'object')
         ? (activityData as any).settings
         : {}
-      // Hydrate report settings: prefer session (in-progress UI state), otherwise load persisted settings.
-      if (!loadActivityReportSettingsFromSession()) {
-        loadActivityReportSettingsFromActivitySettings()
-      }
+      // Hydrate report settings from the activity record so they travel with
+      // the activity and are consistent across users with access.
+      loadActivityReportSettingsFromActivitySettings()
       try {
         if (form.spaceId) {
           const sid = String((form.spaceId as any) || '')
@@ -3266,7 +3242,6 @@ function htmlToText(html?: string): string {
 async function downloadActivityPdf() {
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
-  loadActivityReportSettingsFromSession()
   const generatingToast = 'Generating PDF… this can take up to 5 minutes for large reports.'
   ui.showInfo(generatingToast, { duration: 10000 })
   try {
