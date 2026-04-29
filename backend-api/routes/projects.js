@@ -870,12 +870,12 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
           await project.save({ session });
           // Persist an Invitation document as well so the invitee can accept/decline
           // via the standard invitations API. Avoid creating duplicate invites.
+          let existingInvite = null
           try {
             const emailRegex = buildExactCaseInsensitiveRegex(req.body.email)
             if (!emailRegex) throw new Error('Invalid invite email')
-            let existingInvite = await Invitation.findOne({ projectId: project._id, email: { $regex: emailRegex }, accepted: false }).session(session);
+            existingInvite = await Invitation.findOne({ projectId: project._id, email: { $regex: emailRegex }, accepted: false }).session(session);
             if (!existingInvite) {
-              let created = null
               for (let attempt = 0; attempt < 5; attempt++) {
                 const token = crypto.randomBytes(20).toString('hex')
                 const invitePayload = { email: req.body.email, projectId: project._id, inviterId: (req.user && (req.user._id || req.user.id)), token }
@@ -893,8 +893,7 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
                 const invDoc = new Invitation(invitePayload)
                 try {
                   await invDoc.save({ session })
-                  created = invDoc
-                  existingInvite = created
+                  existingInvite = invDoc
                   break
                 } catch (saveErr) {
                   if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) {
@@ -907,6 +906,16 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
             }
           } catch (invErr) {
             console.error('failed to create Invitation for existing user (transaction)', invErr)
+          }
+          // Send invite email so the existing user can accept. Match the
+          // new-user path: best-effort, do not fail the request if delivery fails.
+          if (existingInvite && existingInvite.token) {
+            const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${existingInvite.token}`;
+            try {
+              await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
+            } catch (mailErr) {
+              console.error('sendInviteEmail (existing user, transaction) error', mailErr);
+            }
           }
           // Do NOT add the project to the user's `projects` list yet — that should
           // happen when they accept the invitation.
@@ -1028,12 +1037,12 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
         });
         await project.save();
         // Create an Invitation document so the invited user sees a pending invite
+        let existingInvite = null
         try {
           const emailRegex = buildExactCaseInsensitiveRegex(req.body.email)
           if (!emailRegex) throw new Error('Invalid invite email')
-          let existingInvite = await Invitation.findOne({ projectId: project._id, email: { $regex: emailRegex }, accepted: false });
+          existingInvite = await Invitation.findOne({ projectId: project._id, email: { $regex: emailRegex }, accepted: false });
           if (!existingInvite) {
-            let created = null
             for (let attempt = 0; attempt < 5; attempt++) {
               const token = crypto.randomBytes(20).toString('hex')
               const invitePayload = { email: req.body.email, projectId: project._id, inviterId: (req.user && (req.user._id || req.user.id)), token }
@@ -1051,7 +1060,7 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
               const invDoc = new Invitation(invitePayload);
               try {
                 await invDoc.save();
-                created = invDoc; existingInvite = created; break;
+                existingInvite = invDoc; break;
               } catch (saveErr) {
                 if (saveErr && saveErr.code === 11000 && /token/.test(String(saveErr.message))) { if (attempt === 4) throw saveErr; continue }
                 throw saveErr;
@@ -1060,6 +1069,16 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
           }
         } catch (invErr) {
           console.error('failed to create Invitation for existing user', invErr);
+        }
+        // Send invite email so the existing user can accept. Best-effort —
+        // do not fail the request if delivery fails.
+        if (existingInvite && existingInvite.token) {
+          const acceptUrl = `${process.env.APP_URL || 'http://localhost:5173'}/register?invite=${existingInvite.token}`;
+          try {
+            await sendInviteEmail({ to: req.body.email, inviterName: req.body.inviterName || 'A colleague', projectName: project.name, acceptUrl });
+          } catch (mailErr) {
+            console.error('sendInviteEmail (existing user) error', mailErr);
+          }
         }
         return res.status(200).send({ message: 'User invited to project' })
       }

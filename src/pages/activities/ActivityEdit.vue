@@ -1918,14 +1918,75 @@
               >
               <span class="text-gray-300">Photos</span>
             </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.issues"
-                type="checkbox"
-                class="rounded"
+            <div class="flex flex-col gap-2">
+              <label class="inline-flex items-center gap-2">
+                <input
+                  v-model="activityReport.include.issues"
+                  type="checkbox"
+                  class="rounded"
+                >
+                <span class="text-gray-300">Issues</span>
+              </label>
+              <div
+                v-if="activityReport.include.issues"
+                class="px-3 py-2 rounded-md bg-white/5 border border-white/10"
               >
-              <span class="text-gray-300">Issues</span>
-            </label>
+                <div class="text-[11px] uppercase tracking-wide text-white/50 mb-2">
+                  Issues table columns
+                  <span class="normal-case tracking-normal text-white/40">(# is always shown)</span>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                  <label class="inline-flex items-center gap-2">
+                    <input
+                      v-model="activityReport.issuesColumns.type"
+                      type="checkbox"
+                      class="rounded"
+                    >
+                    <span class="text-gray-300">Type</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input
+                      v-model="activityReport.issuesColumns.source"
+                      type="checkbox"
+                      class="rounded"
+                    >
+                    <span class="text-gray-300">Source</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input
+                      v-model="activityReport.issuesColumns.title"
+                      type="checkbox"
+                      class="rounded"
+                    >
+                    <span class="text-gray-300">Title</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input
+                      v-model="activityReport.issuesColumns.description"
+                      type="checkbox"
+                      class="rounded"
+                    >
+                    <span class="text-gray-300">Description</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input
+                      v-model="activityReport.issuesColumns.recommendation"
+                      type="checkbox"
+                      class="rounded"
+                    >
+                    <span class="text-gray-300">Recommendation</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input
+                      v-model="activityReport.issuesColumns.status"
+                      type="checkbox"
+                      class="rounded"
+                    >
+                    <span class="text-gray-300">Status</span>
+                  </label>
+                </div>
+              </div>
+            </div>
             <label class="inline-flex items-center gap-2">
               <input
                 v-model="activityReport.include.attachments"
@@ -1951,13 +2012,13 @@
               <span class="text-gray-300">Append Equipment Reports</span>
             </label>
           </div>
-          <div class="grid grid-cols-2 gap-3 items-center">
+          <div class="flex items-center gap-3">
             <label class="text-white/80">Photo limit</label>
             <input
               v-model.number="activityReport.photoLimit"
               type="number"
               min="0"
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28 text-gray-300"
             >
           </div>
         </div>
@@ -2031,14 +2092,14 @@
       <template #footer>
         <div class="flex items-center justify-between w-full">
           <button
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-gray-300"
             @click="resetActivityReportSettings"
           >
             Reset
           </button>
           <div class="flex items-center gap-2">
             <button
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-gray-300"
               @click="showActivityReportDialog = false"
             >
               Cancel
@@ -2159,7 +2220,6 @@ const pendingCreatedId = ref<string | null>(null)
 // -----------------------------
 // Activity Report Settings
 // -----------------------------
-const ACTIVITY_REPORT_SESSION_KEY = 'activityReportSettings'
 interface ActivityReportSettings {
   include: {
     coverPage: boolean
@@ -2172,6 +2232,14 @@ interface ActivityReportSettings {
     equipmentList: boolean
     equipmentReports: boolean
   }
+  issuesColumns: {
+    type: boolean
+    source: boolean
+    title: boolean
+    description: boolean
+    recommendation: boolean
+    status: boolean
+  }
   photoLimit: number
   coverTitle: string
   coverSubtitle: string
@@ -2180,6 +2248,7 @@ interface ActivityReportSettings {
 }
 const activityReport = ref<ActivityReportSettings>({
   include: { coverPage: false, toc: false, info: true, description: true, photos: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
+  issuesColumns: { type: true, source: true, title: true, description: true, recommendation: true, status: true },
   photoLimit: 6,
   coverTitle: 'Activity Report',
   coverSubtitle: '',
@@ -2192,25 +2261,6 @@ function openReportSettings() {
   reportSettingsTab.value = 'general'
   showActivityReportDialog.value = true
 }
-function loadActivityReportSettingsFromSession() {
-  try {
-    const raw = sessionStorage.getItem(ACTIVITY_REPORT_SESSION_KEY)
-    if (!raw) return false
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') {
-      activityReport.value = {
-        include: { ...activityReport.value.include, ...(parsed.include || {}) },
-        photoLimit: Math.max(0, Number(parsed.photoLimit ?? activityReport.value.photoLimit)),
-        coverTitle: typeof parsed.coverTitle === 'string' ? parsed.coverTitle : activityReport.value.coverTitle,
-        coverSubtitle: typeof parsed.coverSubtitle === 'string' ? parsed.coverSubtitle : activityReport.value.coverSubtitle,
-        coverByLine: typeof parsed.coverByLine === 'string' ? parsed.coverByLine : activityReport.value.coverByLine,
-        coverJumbotronDataUrl: typeof parsed.coverJumbotronDataUrl === 'string' ? parsed.coverJumbotronDataUrl : activityReport.value.coverJumbotronDataUrl,
-      }
-      return true
-    }
-  } catch (e) { /* ignore sessionStorage read errors */ }
-  return false
-}
 function loadActivityReportSettingsFromActivitySettings() {
   try {
     const settings = (form as any).settings
@@ -2218,6 +2268,7 @@ function loadActivityReportSettingsFromActivitySettings() {
     if (!persisted || typeof persisted !== 'object') return false
     activityReport.value = {
       include: { ...activityReport.value.include, ...(persisted.include || {}) },
+      issuesColumns: { ...activityReport.value.issuesColumns, ...(persisted.issuesColumns || {}) },
       photoLimit: Math.max(0, Number(persisted.photoLimit ?? activityReport.value.photoLimit)),
       coverTitle: typeof persisted.coverTitle === 'string' ? persisted.coverTitle : activityReport.value.coverTitle,
       coverSubtitle: typeof persisted.coverSubtitle === 'string' ? persisted.coverSubtitle : activityReport.value.coverSubtitle,
@@ -2230,8 +2281,9 @@ function loadActivityReportSettingsFromActivitySettings() {
   }
 }
 async function saveActivityReportSettings() {
-  try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ }
-  // Persist to the activity record (best-effort)
+  // Persist to the activity record (best-effort) — the activity record is the
+  // source of truth so settings travel with the activity and are visible to
+  // every user with access.
   try {
     const aid = isNew.value ? await saveAndGetId() : id.value
     if (aid && aid !== 'new') {
@@ -2249,6 +2301,7 @@ async function saveActivityReportSettings() {
 function resetActivityReportSettings() {
   activityReport.value = {
     include: { coverPage: false, toc: false, info: true, description: true, photos: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
+    issuesColumns: { type: true, source: true, title: true, description: true, recommendation: true, status: true },
     photoLimit: 6,
     coverTitle: 'Activity Report',
     coverSubtitle: '',
@@ -2256,8 +2309,6 @@ function resetActivityReportSettings() {
     coverJumbotronDataUrl: '',
   }
 }
-watch(activityReport, () => { try { sessionStorage.setItem(ACTIVITY_REPORT_SESSION_KEY, JSON.stringify(activityReport.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
-
 async function onCoverJumbotronSelected(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input?.files?.[0]
@@ -2686,7 +2737,6 @@ const crumbs = computed(() => [
 onMounted(async () => {
   pageLoading.value = true
   try {
-    loadActivityReportSettingsFromSession()
     const pid = projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
     if (pid) form.projectId = String(pid)
     const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()+0).padStart(2,'0')
@@ -2772,10 +2822,9 @@ onMounted(async () => {
       ;(form as any).settings = ((activityData as any)?.settings && typeof (activityData as any).settings === 'object')
         ? (activityData as any).settings
         : {}
-      // Hydrate report settings: prefer session (in-progress UI state), otherwise load persisted settings.
-      if (!loadActivityReportSettingsFromSession()) {
-        loadActivityReportSettingsFromActivitySettings()
-      }
+      // Hydrate report settings from the activity record so they travel with
+      // the activity and are consistent across users with access.
+      loadActivityReportSettingsFromActivitySettings()
       try {
         if (form.spaceId) {
           const sid = String((form.spaceId as any) || '')
@@ -3193,7 +3242,6 @@ function htmlToText(html?: string): string {
 async function downloadActivityPdf() {
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
-  loadActivityReportSettingsFromSession()
   const generatingToast = 'Generating PDF… this can take up to 5 minutes for large reports.'
   ui.showInfo(generatingToast, { duration: 10000 })
   try {
@@ -3674,7 +3722,7 @@ async function downloadActivityPdf() {
       } catch (e) { /* ignore */ }
       const issues = aggregated
       if (issues.length) {
-        const iDoc = new jsPDF({ unit: 'mm', format: 'a4' })
+        const iDoc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
         // Helvetica is default; SourceSansPro removed
         setZeroCharSpace(iDoc)
         setBodyFont(iDoc, 'normal')
@@ -3728,18 +3776,38 @@ async function downloadActivityPdf() {
         }
         const ensureISpace = (h:number) => { if (iy + h > iBottom) { drawIFooter(); iDoc.addPage(); iPageNo++; drawIHeader(); return true } return false }
         drawIHeader()
-        // --- Updated Issues Table: with Recommendation column ---
+        // --- Issues Table: column-aware widths driven by activityReport.issuesColumns ---
         const totalW = iPW - margin*2 - 2;
-        const numW = 14;
-        const typeW = Math.round(22 * 0.75); // 25% reduction
-        const sourceW = 20; // compact
-        const titleW = Math.round(40 * 0.75); // 25% reduction
-        const descW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.45);
-        const recW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.35);
-        const statusW = Math.round(22 * 0.75);
-        const restW = totalW - numW - typeW - sourceW - titleW - descW - recW - statusW;
-        const finalDescW = descW + restW;
         const tableX = margin + 1;
+        const issuesColCfg = activityReport.value.issuesColumns;
+        type IssueColKey = 'number' | 'type' | 'source' | 'title' | 'description' | 'recommendation' | 'status';
+        const fixedW: Partial<Record<IssueColKey, number>> = { number: 16, type: 26, source: 32, status: 24 };
+        const flexWeights: Partial<Record<IssueColKey, number>> = { title: 1.0, description: 2.4, recommendation: 1.8 };
+        const labelMap: Record<IssueColKey, string> = { number: '#', type: 'Type', source: 'Source', title: 'Title', description: 'Description', recommendation: 'Recommendation', status: 'Status' };
+        const colOrder: IssueColKey[] = ['number','type','source','title','description','recommendation','status'];
+        const isVisible = (k: IssueColKey) => k === 'number' ? true : Boolean((issuesColCfg as any)[k]);
+        const visibleKeys = colOrder.filter(isVisible);
+        const fixedSum = visibleKeys.filter(k => k in fixedW).reduce((s, k) => s + (fixedW[k] || 0), 0);
+        const flexKeys = visibleKeys.filter(k => k in flexWeights);
+        const flexWeightSum = flexKeys.reduce((s, k) => s + (flexWeights[k] || 0), 0);
+        const flexAvail = Math.max(0, totalW - fixedSum);
+        const widths: Record<IssueColKey, number> = { number: 0, type: 0, source: 0, title: 0, description: 0, recommendation: 0, status: 0 };
+        for (const k of visibleKeys) {
+          if (k in fixedW) widths[k] = fixedW[k] || 0;
+          else if (flexWeightSum > 0) widths[k] = Math.round(flexAvail * (flexWeights[k] || 0) / flexWeightSum);
+          else widths[k] = 0;
+        }
+        // No flex columns visible: distribute spare width evenly among visible fixed columns.
+        if (flexKeys.length === 0 && fixedSum < totalW && visibleKeys.length > 0) {
+          const extra = (totalW - fixedSum) / visibleKeys.length;
+          for (const k of visibleKeys) widths[k] += extra;
+        }
+        // Patch rounding gap so columns sum exactly to totalW.
+        const sumW = visibleKeys.reduce((s, k) => s + widths[k], 0);
+        if (visibleKeys.length > 0 && sumW !== totalW) {
+          widths[visibleKeys[visibleKeys.length - 1]] += (totalW - sumW);
+        }
+        const colsDef = visibleKeys.map(k => ({ key: k, label: labelMap[k], w: widths[k] }));
         const drawIssuesHeader = () => {
           ensureISpace(8);
           setBodyFont(iDoc, 'bold');
@@ -3747,81 +3815,55 @@ async function downloadActivityPdf() {
           iDoc.setFillColor(250,236,236);
           iDoc.rect(tableX, iy, totalW, headerH, 'F');
           iDoc.rect(tableX, iy, totalW, headerH);
-          const colXs = [
-            tableX,
-            tableX+numW,
-            tableX+numW+typeW,
-            tableX+numW+typeW+sourceW,
-            tableX+numW+typeW+sourceW+titleW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW+statusW
-          ];
-          for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; iDoc.line(vx, iy, vx, iy+headerH) }
-          iDoc.text('#', tableX+1.5, iy+5);
-          iDoc.text('Type', tableX+numW+1.5, iy+5);
-          iDoc.text('Source', tableX+numW+typeW+1.5, iy+5);
-          iDoc.text('Title', tableX+numW+typeW+sourceW+1.5, iy+5);
-          iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+5);
-          iDoc.text('Recommendation', tableX+numW+typeW+sourceW+titleW+finalDescW+1.5, iy+5);
-          iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+finalDescW+recW+1.5, iy+5);
-          iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(12)
+          let cx = tableX;
+          for (let i = 0; i < colsDef.length; i++) {
+            iDoc.text(colsDef[i].label, cx + 1.5, iy + 5);
+            cx += colsDef[i].w;
+            if (i < colsDef.length - 1) iDoc.line(cx, iy, cx, iy + headerH);
+          }
+          iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(12);
         };
         drawIssuesHeader();
+        const cellTextFor = (col: { key: IssueColKey; w: number }, it: any) => {
+          switch (col.key) {
+            case 'number': return { text: '#' + (it.number ?? '—'), wrap: false };
+            case 'type': return { text: String(it.type || '—'), wrap: true };
+            case 'source': return { text: String(it.__source || it.assetTag || it.asset || '—'), wrap: true };
+            case 'title': return { text: String(it.title || '—'), wrap: true };
+            case 'description': return { text: htmlToText(it.description || it.descriptionHtml || '') || '—', wrap: true };
+            case 'recommendation': return { text: String(it.recommendation || it.recommendationText || it.recommendation_text || '—'), wrap: true };
+            case 'status': return { text: String(it.status || 'Open'), wrap: true };
+            default: return { text: '—', wrap: false };
+          }
+        };
         for (const it of issues) {
-          const numTxt = '#' + (it.number ?? '—');
-          const typeTxt = String(it.type||'—');
-          const sourceTxt = String((it as any).__source || (it as any).assetTag || (it as any).asset || '—');
-          const titleLines = iDoc.splitTextToSize(String(it.title||'—'), titleW - 3) as string[];
-          const descText = htmlToText((it as any).description || (it as any).descriptionHtml || '') || '—';
-          const descLines = iDoc.splitTextToSize(descText, finalDescW - 3) as string[];
-          const recTxt = String(it.recommendation || it.recommendationText || it.recommendation_text || '—');
-          const recLines = iDoc.splitTextToSize(recTxt, recW - 3) as string[];
-          const statusTxt = String(it.status || 'Open');
-          const statusLines = iDoc.splitTextToSize(statusTxt, statusW - 3) as string[];
-          const hLines = Math.max(1, titleLines.length, descLines.length, recLines.length, statusLines.length);
-          const rowH = Math.max(8, hLines*5 + 2);
+          const cells = colsDef.map(col => {
+            const { text, wrap } = cellTextFor(col, it);
+            const lines = wrap ? (iDoc.splitTextToSize(text, col.w - 3) as string[]) : [text];
+            return { col, lines };
+          });
+          const hLines = Math.max(1, ...cells.map(c => c.lines.length));
+          const rowH = Math.max(8, hLines * 5 + 2);
           if (ensureISpace(rowH + 2)) drawIssuesHeader();
-          // Fill closed rows with a light gray background
           const isClosedRow = String(it.status || '').toLowerCase().startsWith('closed');
           if (isClosedRow) {
             iDoc.setFillColor(230, 230, 230);
             iDoc.rect(tableX, iy, totalW, rowH, 'F');
           }
-          // Draw row borders
           iDoc.setDrawColor(0, 0, 0);
           iDoc.rect(tableX, iy, totalW, rowH);
-          const colXs = [
-            tableX,
-            tableX+numW,
-            tableX+numW+typeW,
-            tableX+numW+typeW+sourceW,
-            tableX+numW+typeW+sourceW+titleW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW+statusW
-          ];
-          for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; iDoc.line(vx, iy, vx, iy+rowH) }
-          // Ensure text is black on all rows (especially closed ones)
+          let sepX = tableX;
+          for (let i = 0; i < colsDef.length - 1; i++) {
+            sepX += colsDef[i].w;
+            iDoc.line(sepX, iy, sepX, iy + rowH);
+          }
           iDoc.setTextColor(0, 0, 0);
-          let cx = tableX + 1.5;
-          iDoc.text(numTxt, cx, iy+5);
-          cx += numW;
-          iDoc.text(typeTxt.slice(0,16), cx+1.5, iy+5);
-          cx += typeW;
-          iDoc.text(sourceTxt.slice(0,18), cx+1.5, iy+5);
-          cx += sourceW;
-          let tlY = iy+5;
-          for (const l of titleLines) { iDoc.text(l, cx+1.5, tlY); tlY += 5 }
-          cx += titleW;
-          let dlY = iy+5;
-          for (const l of descLines) { iDoc.text(l, cx+1.5, dlY); dlY += 5 }
-          cx += finalDescW;
-          let rlY = iy+5;
-          for (const l of recLines) { iDoc.text(l, cx+1.5, rlY); rlY += 5 }
-          cx += recW;
-          let slY = iy+5;
-          for (const l of statusLines) { iDoc.text(l, cx+1.5, slY); slY += 5 }
+          let cx = tableX;
+          for (const cell of cells) {
+            let lY = iy + 5;
+            for (const l of cell.lines) { iDoc.text(l, cx + 1.5, lY); lY += 5; }
+            cx += cell.col.w;
+          }
           iy += rowH;
         }
         drawIFooter();
