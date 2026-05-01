@@ -38,7 +38,11 @@ const {
   getToolLabel,
 } = require('../utils/agentTools')
 
-const MAX_TOOL_ITERATIONS = 8
+// Bumped from 8 — full-project scaffolds from a PDF (spaces → systems →
+// templates → equipment → tasks) routinely need 12–20 iterations; 8 was
+// silently truncating mid-build, leaving records partially created and
+// the model's final text claiming it had finished when it hadn't.
+const MAX_TOOL_ITERATIONS = 25
 const MAX_HISTORY_MESSAGES = 20 // how many prior turns to include in context
 const MAX_TOKENS = 8192
 const MAX_PDF_FILES = 3
@@ -170,6 +174,15 @@ function buildSystemPrompt(project) {
     '  6. Never invent IDs or make up record names — always use actual data from tool results.',
     '  7. For large templates, it is fine to create_template first then immediately call update_template to add checklists',
     '     and functional tests if the full payload is large — break it into two tool calls.',
+    '  8. CRITICAL: Never describe a record as "created", "added", or "saved" unless the corresponding create_* /',
+    '     apply_template_to_equipment tool actually returned success in this conversation. Do NOT compose a',
+    '     summary that claims artifacts exist before the tool calls have actually been issued. If you announce',
+    '     a build plan, the very next assistant turn must be the tool calls — not more prose.',
+    '  9. Prefer batching: when you need to create N spaces, emit N tool_use blocks in a single response so they',
+    '     all run in parallel. Same for systems, templates, equipment, and tasks. Sequential one-per-turn calls',
+    '     can exhaust the iteration budget on large projects.',
+    '  10. If you genuinely run out of room, end the turn with a clear status: "I created A, B, C. Reply',
+    '      \'continue\' to keep going with D, E, F." — never pretend the work is finished.',
     '',
     'Safety rules:',
     '  - Do NOT reveal, accept, or handle API keys, passwords, or tokens.',
@@ -183,87 +196,6 @@ function buildSystemPrompt(project) {
 // Claude agentic loop
 // ---------------------------------------------------------------------------
 
-async function runClaudeAgentLoop({ apiKey, model, systemPrompt, messages }) {
-  const tools = getClaudeTools()
-  const toolResults = []
-  let currentMessages = messages.slice()
-  let finalText = ''
-
-  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    const body = {
-      model,
-      max_tokens: MAX_TOKENS,
-      system: systemPrompt,
-      tools,
-      messages: currentMessages,
-    }
-
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify(body),
-    })
-
-    const data = await r.json().catch(() => null)
-    if (!r.ok) {
-      const msg = (data && data.error && data.error.message) ? data.error.message : `Anthropic error (${r.status})`
-      const err = new Error(msg)
-      err.status = 502
-      throw err
-    }
-
-    const contentBlocks = Array.isArray(data && data.content) ? data.content : []
-    const stopReason = asString(data && data.stop_reason)
-
-    // Collect any text blocks for the final reply
-    const textBlocks = contentBlocks.filter((b) => b && b.type === 'text')
-    if (textBlocks.length) finalText = textBlocks.map((b) => asString(b.text)).join('\n').trim()
-
-    // Check for tool use
-    const toolUseBlocks = contentBlocks.filter((b) => b && b.type === 'tool_use')
-
-    if (stopReason !== 'tool_use' || !toolUseBlocks.length) break
-
-    // Append the assistant turn (with tool_use blocks) to messages
-    currentMessages = [...currentMessages, { role: 'assistant', content: contentBlocks }]
-
-    // Execute all tool calls and collect results
-    const toolResultBlocks = []
-    for (const block of toolUseBlocks) {
-      const result = await executeTool(block.name, block.input, { projectId: body._projectId })
-      const resultStr = JSON.stringify(result)
-      toolResultBlocks.push({
-        type: 'tool_result',
-        tool_use_id: block.id,
-        content: resultStr,
-      })
-      toolResults.push({
-        tool: block.name,
-        label: getToolLabel(block.name),
-        success: result.success,
-        record: result.record || null,
-        records: result.records || null,
-        count: result.count ?? null,
-        link: result.record ? getRecordLink(block.name, result.record) : null,
-        name: result.record ? getRecordName(result.record) : (result.name || null),
-        deleted: result.deleted || false,
-        error: result.error || null,
-      })
-    }
-
-    // Append the tool results as a user turn
-    currentMessages = [...currentMessages, { role: 'user', content: toolResultBlocks }]
-  }
-
-  return { text: finalText, toolResults }
-}
-
-// We need to pass projectId through to executeTool inside the loop.
-// Patch the loop to carry context.
 async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId }) {
   const tools = getClaudeTools()
   const toolResults = []
