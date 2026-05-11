@@ -357,6 +357,39 @@
               </button>
 
               <button
+                v-if="isGlobalAdmin() && canToggleActive(p)"
+                :class="[
+                  'h-8 w-8 inline-grid place-items-center rounded-md border',
+                  projectIsActive(p)
+                    ? 'bg-yellow-500/20 border-yellow-500/40 text-yellow-200 hover:bg-yellow-500/30'
+                    : 'bg-green-500/20 border-green-500/40 text-green-200 hover:bg-green-500/30',
+                ]"
+                :title="projectIsActive(p) ? 'Deactivate' : 'Activate'"
+                :aria-label="projectIsActive(p) ? 'Deactivate' : 'Activate'"
+                @click="toggleActive(p)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                  aria-hidden
+                >
+                  <path
+                    d="M12 2v10"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="M16.24 7.76a6 6 0 1 1-8.49 0"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+
+              <button
                 v-if="isGlobalAdmin()"
                 class="h-8 w-8 inline-grid place-items-center rounded-md bg-red-500/20 border border-red-500/40 text-red-200 hover:bg-red-500/30"
                 title="Delete"
@@ -565,6 +598,40 @@ async function unlinkStripe(p) {
     await load()
   } catch (err) {
     ui.showError(err?.response?.data?.error || 'Failed to unlink Stripe data')
+  }
+}
+
+function projectIsActive(p) {
+  if (!p) return false
+  if (p.deleted || p.status === 'Deleted' || p.status === 'Archived') return false
+  return !!p.isActive && p.status !== 'Inactive'
+}
+
+function canToggleActive(p) {
+  if (!p) return false
+  return !p.deleted && p.status !== 'Deleted' && p.status !== 'Archived'
+}
+
+async function toggleActive(p) {
+  const willActivate = !projectIsActive(p)
+  const verb = willActivate ? 'Activate' : 'Deactivate'
+  const ok = await inlineConfirm({
+    title: `${verb} project`,
+    message: `${verb} project "${p.name || p.title || p._id}"?`,
+    confirmText: verb,
+    cancelText: 'Cancel',
+  })
+  if (!ok) return
+  try {
+    await http.patch(`/api/admin/projects/${encodeURIComponent(p._id)}`, {
+      isActive: willActivate,
+      status: willActivate ? 'Active' : 'Inactive',
+    })
+    ui.showSuccess(`Project ${willActivate ? 'activated' : 'deactivated'}`)
+    await load()
+  } catch (err) {
+    console.error('toggle project active error', err)
+    ui.showError(err?.response?.data?.error || `Failed to ${verb.toLowerCase()} project`)
   }
 }
 
