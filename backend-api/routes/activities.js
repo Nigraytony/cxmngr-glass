@@ -821,13 +821,40 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, re
       if (ids && ids.length > limit) {
         return res.status(400).send({ error: `Too many issues (max ${limit})` })
       }
-      if (ids) {
-        const count = await Issue.countDocuments({ _id: { $in: ids }, projectId: activity.projectId })
-        if (count !== ids.length) {
-          return res.status(400).send({ error: 'One or more issues are invalid for this project' })
+      if (!ids) {
+        incoming.issues = []
+      } else {
+        // Pre-validation legacy data (before this projectId check existed)
+        // may include cross-project orphan IDs in activity.issues. Validate
+        // only the *added* IDs against the project; for IDs already on the
+        // activity, drop any whose Issue no longer belongs to this project
+        // (auto-heal) instead of rejecting the whole request.
+        const previousIds = new Set(
+          (Array.isArray(activity.issues) ? activity.issues : [])
+            .map(v => String(v && (v._id || v.id || v)))
+        )
+        const addedIds = ids.filter(id => !previousIds.has(id))
+        if (addedIds.length) {
+          const count = await Issue.countDocuments({
+            _id: { $in: addedIds },
+            projectId: activity.projectId,
+          })
+          if (count !== addedIds.length) {
+            return res.status(400).send({ error: 'One or more issues are invalid for this project' })
+          }
         }
+        const keptPrev = ids.filter(id => previousIds.has(id))
+        let validKept = new Set()
+        if (keptPrev.length) {
+          const docs = await Issue.find(
+            { _id: { $in: keptPrev }, projectId: activity.projectId },
+            { _id: 1 }
+          ).lean()
+          validKept = new Set(docs.map(d => String(d._id)))
+        }
+        const addedSet = new Set(addedIds)
+        incoming.issues = ids.filter(id => addedSet.has(id) || validKept.has(id))
       }
-      incoming.issues = ids || []
     }
 
     if (typeof oprInput !== 'undefined') {
