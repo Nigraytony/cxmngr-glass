@@ -196,11 +196,28 @@ function buildSystemPrompt(project) {
 // Claude agentic loop
 // ---------------------------------------------------------------------------
 
+// Regex over the final assistant text to spot claims of mutation (created /
+// added / saved / etc). Used by the hallucination guard below — if the
+// model wraps up with this kind of language but its current turn issued
+// no successful mutation tool calls, we make it try again.
+const MUTATION_CLAIM_RE = /\b(creat|add(?:ed|ing)?|sav(?:ed|ing)?|made|generat(?:ed|ing)?|set\s+up|insert(?:ed)?|register(?:ed)?)\b/i
+const MUTATION_TOOLS = new Set([
+  'create_task', 'update_task',
+  'create_activity', 'update_activity',
+  'create_equipment', 'update_equipment', 'apply_template_to_equipment',
+  'create_issue', 'update_issue',
+  'create_space', 'update_space',
+  'create_template', 'update_template',
+  'create_system', 'update_system',
+])
+const MAX_HALLUCINATION_RETRIES = 3
+
 async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId }) {
   const tools = getClaudeTools()
   const toolResults = []
   let currentMessages = messages.slice()
   let finalText = ''
+  let hallucinationRetries = 0
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const body = {
@@ -233,19 +250,52 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
     const stopReason = asString(data && data.stop_reason)
 
     const textBlocks = contentBlocks.filter((b) => b && b.type === 'text')
-    if (textBlocks.length) finalText = textBlocks.map((b) => asString(b.text)).join('\n').trim()
+    const turnText = textBlocks.map((b) => asString(b.text)).join('\n').trim()
+    if (turnText) finalText = turnText
 
     const toolUseBlocks = contentBlocks.filter((b) => b && b.type === 'tool_use')
+
+    // Hallucination guard: the model is ending the turn (no tool calls) but
+    // its text claims it just created / added / saved something. Reject the
+    // turn, push a corrective user message back into the conversation, and
+    // let the loop continue so the model can actually issue the tool calls.
+    if (
+      (stopReason !== 'tool_use' || !toolUseBlocks.length)
+      && turnText
+      && MUTATION_CLAIM_RE.test(turnText)
+      && hallucinationRetries < MAX_HALLUCINATION_RETRIES
+    ) {
+      hallucinationRetries++
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: contentBlocks },
+        {
+          role: 'user',
+          content: [{
+            type: 'text',
+            text: 'STOP. Your last reply described records as created/added/saved but you did NOT call any create_* or apply_template_to_equipment tool in that response. Do not claim work that was not performed by a tool call. Either (a) call the appropriate tools now to actually perform the work, or (b) rewrite your reply without the claim. Do this immediately.',
+          }],
+        },
+      ]
+      continue
+    }
+
     if (stopReason !== 'tool_use' || !toolUseBlocks.length) break
 
     currentMessages = [...currentMessages, { role: 'assistant', content: contentBlocks }]
 
     const toolResultBlocks = []
+    let successfulMutationsThisTurn = 0
     for (const block of toolUseBlocks) {
       const result = await executeTool(block.name, block.input, { projectId })
       toolResultBlocks.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) })
       toolResults.push(buildToolResultEntry(block.name, result))
+      if (result && result.success && MUTATION_TOOLS.has(block.name)) successfulMutationsThisTurn++
     }
+    // Successful mutation work resets the hallucination budget so a model
+    // that occasionally slips at the very end of a long, otherwise-correct
+    // run doesn't get falsely accused.
+    if (successfulMutationsThisTurn > 0) hallucinationRetries = 0
 
     currentMessages = [...currentMessages, { role: 'user', content: toolResultBlocks }]
   }
