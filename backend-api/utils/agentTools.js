@@ -10,6 +10,8 @@
  * access is structurally impossible here.
  */
 
+const sanitizeHtml = require('sanitize-html')
+
 const Task = require('../models/task')
 const Activity = require('../models/activity')
 const Equipment = require('../models/equipment')
@@ -24,6 +26,49 @@ function isObjectId(v) {
 
 function str(v, max) {
   return String(v || '').slice(0, max)
+}
+
+// Same allow-list the /api/activities POST/PATCH routes use, mirrored here
+// because the agent's executor writes via Mongoose directly and skips the
+// route middleware. Keep the two in sync if either side widens its policy.
+function sanitizeRichHtml(html) {
+  return sanitizeHtml(String(html || ''), {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'img']),
+    allowedAttributes: {
+      a: ['href', 'name', 'target'],
+      img: ['src', 'alt'],
+    },
+  })
+}
+
+// Resolve a plain-text `description` and/or a rich `descriptionHtml` into
+// the single descriptionHtml string the Activity model stores. Plain text
+// is wrapped in <p> tags so the editor renders it cleanly. Returns
+// undefined when neither field is provided (caller should leave the
+// current value untouched in update paths).
+function resolveDescriptionHtml(input) {
+  if (input && typeof input.descriptionHtml === 'string') {
+    return sanitizeRichHtml(input.descriptionHtml)
+  }
+  if (input && typeof input.description === 'string') {
+    const text = input.description.trim()
+    if (!text) return ''
+    const html = text
+      .split(/\n{2,}/)
+      .map((para) => `<p>${escapeHtml(para).replace(/\n/g, '<br/>')}</p>`)
+      .join('')
+    return sanitizeRichHtml(html)
+  }
+  return undefined
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 // Generate a short random key for table columns (matches the UI's _colKey shape).
@@ -192,6 +237,8 @@ const TOOLS = [
       startDate: { type: 'string', description: 'Start date (ISO 8601)' },
       endDate: { type: 'string', description: 'End date (ISO 8601)' },
       location: { type: 'string', description: 'Location or venue' },
+      description: { type: 'string', description: 'Plain-text description. Will be wrapped in paragraphs and saved as rich-text HTML.' },
+      descriptionHtml: { type: 'string', description: 'Rich-text description as HTML (e.g., <p>, <ul>, <strong>, <a>). Use this when you need formatting; otherwise pass description. The HTML is sanitised before save.' },
     },
     required: ['name'],
   },
@@ -206,6 +253,8 @@ const TOOLS = [
       startDate: { type: 'string', description: 'New start date (ISO 8601)' },
       endDate: { type: 'string', description: 'New end date (ISO 8601)' },
       location: { type: 'string', description: 'New location' },
+      description: { type: 'string', description: 'New plain-text description. Will be wrapped in paragraphs and saved as rich-text HTML, replacing the existing description.' },
+      descriptionHtml: { type: 'string', description: 'New rich-text description as HTML, replacing the existing description. The HTML is sanitised before save. Prefer this when formatting matters.' },
     },
     required: ['id'],
   },
@@ -728,7 +777,7 @@ async function executeTool(toolName, toolInput, context) {
       }
       case 'create_activity': {
         if (!input.name) return { success: false, error: 'name is required' }
-        const item = await Activity.create({
+        const doc = {
           projectId,
           name: str(input.name, 200),
           type: str(input.type || 'General', 100),
@@ -736,7 +785,10 @@ async function executeTool(toolName, toolInput, context) {
           startDate: input.startDate ? new Date(input.startDate) : new Date(),
           endDate: input.endDate ? new Date(input.endDate) : new Date(),
           location: str(input.location, 200),
-        })
+        }
+        const html = resolveDescriptionHtml(input)
+        if (html !== undefined) doc.descriptionHtml = html
+        const item = await Activity.create(doc)
         return { success: true, record: item.toObject() }
       }
       case 'update_activity': {
@@ -750,6 +802,8 @@ async function executeTool(toolName, toolInput, context) {
         if (input.startDate) fields.startDate = new Date(input.startDate)
         if (input.endDate) fields.endDate = new Date(input.endDate)
         if (input.location !== undefined) fields.location = str(input.location, 200)
+        const html = resolveDescriptionHtml(input)
+        if (html !== undefined) fields.descriptionHtml = html
         const updated = await Activity.findByIdAndUpdate(input.id, { $set: fields }, { new: true }).lean()
         return { success: true, record: updated }
       }
