@@ -409,10 +409,29 @@
               </div>
             </div>
 
-            <div class="flex flex-col gap-3 min-w-0">
+            <div class="flex flex-col gap-3 min-w-0" :class="{ 'md:col-span-2': isCxPlan }">
               <div>
-                <label class="block text-sm text-white/70">Description</label>
-                <div class="rounded-md border border-white/20 bg-white/10">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <label class="text-sm text-white/70">Description</label>
+                  <div
+                    v-if="isCxPlan"
+                    class="flex items-center gap-2"
+                  >
+                    <button
+                      type="button"
+                      :disabled="insertingCxPlanStarter"
+                      class="px-3 py-1.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 hover:bg-indigo-500/30 text-indigo-100 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                      :title="(form.descriptionHtml || '').trim() ? 'Replace description with a fresh Cx Plan starter generated from project team, tasks, and equipment' : 'Generate a Cx Plan starter from project team, tasks, and equipment'"
+                      @click="insertCxPlanStarter"
+                    >
+                      {{ insertingCxPlanStarter ? 'Generating…' : ((form.descriptionHtml || '').trim() ? 'Regenerate Cx Plan starter' : 'Insert Cx Plan starter') }}
+                    </button>
+                  </div>
+                </div>
+                <div
+                  class="rounded-md border border-white/20 bg-white/10"
+                  :class="{ 'cx-plan-doc-editor': isCxPlan }"
+                >
                   <QuillEditor
                     v-model:content="form.descriptionHtml"
                     theme="snow"
@@ -2089,6 +2108,7 @@ import { useEquipmentStore } from '../../stores/equipment'
 import Spinner from '../../components/Spinner.vue'
 import { useAiStore } from '../../stores/ai'
 import type { SuggestedTag } from '../../stores/ai'
+import { buildCxPlanHtml } from '../../utils/cxPlanTemplate'
 
 // Accept route params passed as attrs to avoid extraneous attribute warnings when rendering fragments
 const props = defineProps<{ id?: string }>()
@@ -2322,6 +2342,70 @@ const form = reactive({
   settings: {} as any,
 })
 
+
+// Cx Plan mode — when the activity type is "Cx Plan", the description card
+// reflows to span the full width and a button appears to drop a fully-
+// populated starter into the editor (built from project team, tasks, and
+// equipment). See src/utils/cxPlanTemplate.ts for the generator.
+const isCxPlan = computed(() => String(form.type || '').trim().toLowerCase() === 'cx plan')
+const insertingCxPlanStarter = ref(false)
+
+async function insertCxPlanStarter() {
+  if (insertingCxPlanStarter.value) return
+  const existing = String(form.descriptionHtml || '').trim()
+  if (existing) {
+    const ok = await inlineConfirm({
+      title: 'Replace existing description?',
+      message: 'This will replace the current description with a freshly generated Cx Plan starter. Any edits to the existing text will be lost.',
+      confirmText: 'Replace',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    })
+    if (!ok) return
+  }
+
+  insertingCxPlanStarter.value = true
+  try {
+    const pid = resolvedProjectId() || String(form.projectId || projectStore.currentProjectId || '')
+    let projectData: any = projectStore.currentProject || null
+    let tasks: any[] = []
+    let equipment: any[] = []
+
+    if (pid) {
+      try {
+        const [pRes, tRes, eRes] = await Promise.all([
+          // Project (covers team + commissioning_agent + name fields). The
+          // project store may already have the current project loaded, but
+          // re-fetching is cheap and avoids stale team rosters.
+          http.get(`/api/projects/${pid}`).catch(() => null),
+          http.get('/api/tasks', { params: { projectId: pid, limit: 500, deleted: false } }).catch(() => null),
+          http.get('/api/equipment', { params: { projectId: pid, perPage: 500 } }).catch(() => null),
+        ])
+        if (pRes && pRes.data) projectData = pRes.data
+        const tBody = tRes && tRes.data ? tRes.data : null
+        if (tBody && Array.isArray(tBody.tasks)) tasks = tBody.tasks
+        else if (Array.isArray(tBody)) tasks = tBody
+        const eBody = eRes && eRes.data ? eRes.data : null
+        if (eBody && Array.isArray(eBody.items)) equipment = eBody.items
+        else if (Array.isArray(eBody)) equipment = eBody
+      } catch (e) {
+        // Soft-fail — generator handles missing inputs with placeholder text.
+      }
+    }
+
+    const html = buildCxPlanHtml({
+      project: projectData,
+      tasks,
+      equipment,
+    })
+    form.descriptionHtml = html
+    ui.showSuccess('Cx Plan starter inserted — edit as needed, then save the activity.')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate Cx Plan starter')
+  } finally {
+    insertingCxPlanStarter.value = false
+  }
+}
 
 const systemsText = ref('')
 const labelInput = ref('')
@@ -5467,5 +5551,62 @@ watch(() => form.projectId, async (pid) => {
   /* Tailwind gray-400 */
   color: #9CA3AF;
   opacity: 1; /* ensure full opacity */
+}
+
+/* Cx Plan "document" mode — when the activity type is Cx Plan, the
+ * description editor reflows to span the full width (handled in the
+ * template via md:col-span-2) and the editor body grows to roughly
+ * page height so it reads like a word processor. The toolbar stays
+ * sticky at the top while the user scrolls long content. */
+.cx-plan-doc-editor :deep(.ql-toolbar) {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.cx-plan-doc-editor :deep(.ql-container) {
+  min-height: 70vh;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.cx-plan-doc-editor :deep(.ql-editor) {
+  min-height: 70vh;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.cx-plan-doc-editor :deep(.ql-editor h1) {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem;
+}
+.cx-plan-doc-editor :deep(.ql-editor h2) {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.25rem;
+}
+.cx-plan-doc-editor :deep(.ql-editor h3) {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1rem 0 0.35rem;
+}
+.cx-plan-doc-editor :deep(.ql-editor table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+}
+.cx-plan-doc-editor :deep(.ql-editor table th),
+.cx-plan-doc-editor :deep(.ql-editor table td) {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+.cx-plan-doc-editor :deep(.ql-editor table th) {
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
 }
 </style>

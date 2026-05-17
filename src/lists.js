@@ -83,6 +83,7 @@ export default {
     { value: "Assessment", text: "Assessment" },
     { value: "BOD Review", text: "BOD Review" },
     { value: "Construction Checklist", text: "Construction Checklist" },
+    { value: "Cx Plan", text: "Cx Plan" },
     { value: "Design Review", text: "Design Review" },
     { value: "Equipment Startup Review", text: "Equipment Startup Review" },
     { value: "Functional Test", text: "Functional Test" },
