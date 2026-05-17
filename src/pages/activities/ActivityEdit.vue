@@ -2300,22 +2300,23 @@ function clearCoverJumbotron() {
   activityReport.value.coverJumbotronDataUrl = ''
 }
 
-const types = [ 
+const types = [
   'Assessment',
   'BOD Review',
   'Construction Checklist',
-  'Cx Meeting', 
-  'Design Review', 
+  'Cx Meeting',
+  'Cx Plan',
+  'Design Review',
   'Functional Test',
   'Installation Review',
-  'OPR Review', 
+  'OPR Review',
   'Owners Manual Review',
-  'Schedule Integration', 
+  'Schedule Integration',
   'Seasonal Test',
-  'Site Visit Review', 
-  'Startup Review', 
-  'Submittal Review', 
-  'Training Review', 
+  'Site Visit Review',
+  'Startup Review',
+  'Submittal Review',
+  'Training Review',
   'Test and Balance Review',
   'Other'
 ]
