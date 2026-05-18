@@ -220,7 +220,10 @@
             v-if="currentTab === 'Info'"
             class="grid md:grid-cols-2 gap-4 items-start"
           >
-            <div class="flex flex-col gap-3 min-w-0">
+            <div
+              class="min-w-0"
+              :class="isCxPlan ? 'grid md:grid-cols-2 gap-3 items-start md:col-span-2' : 'flex flex-col gap-3'"
+            >
               <div>
                 <label class="block text-sm text-white/70">Name</label>
                 <input
@@ -407,44 +410,15 @@
                   type="hidden"
                 >
               </div>
-            </div>
 
-            <div class="flex flex-col gap-3 min-w-0" :class="{ 'md:col-span-2': isCxPlan }">
+              <!-- Tags — moved from the right column so the Description can fill
+                   the full height of the left column. Matches IssueEdit's layout:
+                   above-row has the tip + Suggest tags button, then label + input
+                   + Add on one row, then applied chips below. -->
               <div>
                 <div class="flex items-center justify-between gap-2 mb-1">
-                  <label class="text-sm text-white/70">Description</label>
-                  <div
-                    v-if="isCxPlan"
-                    class="flex items-center gap-2"
-                  >
-                    <button
-                      type="button"
-                      :disabled="insertingCxPlanStarter"
-                      class="px-3 py-1.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 hover:bg-indigo-500/30 text-indigo-100 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
-                      :title="(form.descriptionHtml || '').trim() ? 'Replace description with a fresh Cx Plan starter generated from project team, tasks, and equipment' : 'Generate a Cx Plan starter from project team, tasks, and equipment'"
-                      @click="insertCxPlanStarter"
-                    >
-                      {{ insertingCxPlanStarter ? 'Generating…' : ((form.descriptionHtml || '').trim() ? 'Regenerate Cx Plan starter' : 'Insert Cx Plan starter') }}
-                    </button>
-                  </div>
-                </div>
-                <div
-                  class="rounded-md border border-white/20 bg-white/10"
-                  :class="{ 'cx-plan-doc-editor': isCxPlan }"
-                >
-                  <QuillEditor
-                    v-model:content="form.descriptionHtml"
-                    theme="snow"
-                    content-type="html"
-                    class="rounded-md"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div class="flex items-center gap-3">
-                  <div class="text-sm text-white/70 shrink-0">
-                    Tags
+                  <div class="text-xs text-white/60">
+                    Tip: use commas or Enter to add multiple tags.
                   </div>
                   <button
                     v-if="canSuggestActivityTags"
@@ -455,43 +429,44 @@
                   >
                     {{ suggestingActivityTags ? 'Suggesting…' : 'Suggest tags' }}
                   </button>
-                  <div class="flex flex-wrap gap-2">
-                    <span
-                      v-for="t in form.labels"
-                      :key="t"
-                      class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
-                    >
-                      <span>{{ t }}</span>
-                      <button
-                        type="button"
-                        class="text-white/60 hover:text-white"
-                        aria-label="Remove tag"
-                        @click="removeLabel(t)"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  </div>
                 </div>
-                <div class="flex items-center gap-2 mt-2">
+                <div class="flex items-center gap-2">
+                  <label class="text-sm text-white/70 shrink-0">Tags</label>
                   <input
                     v-model="labelInput"
                     type="text"
                     placeholder="Add a tag and press Enter…"
-                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
                     @keydown.enter.prevent="addLabelFromInput"
                     @keydown.,.prevent="addLabelFromInput"
                   >
                   <button
                     type="button"
-                    class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80"
+                    class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80 shrink-0"
                     @click="addLabelFromInput"
                   >
                     Add
                   </button>
                 </div>
-                <div class="text-xs text-white/60 mt-1">
-                  Tip: use commas or Enter to add multiple tags.
+                <div
+                  v-if="form.labels && form.labels.length"
+                  class="flex flex-wrap gap-2 mt-2"
+                >
+                  <span
+                    v-for="t in form.labels"
+                    :key="t"
+                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                  >
+                    <span>{{ t }}</span>
+                    <button
+                      type="button"
+                      class="text-white/60 hover:text-white"
+                      aria-label="Remove tag"
+                      @click="removeLabel(t)"
+                    >
+                      ×
+                    </button>
+                  </span>
                 </div>
                 <div
                   v-if="suggestedActivityTagsFiltered.length"
@@ -535,6 +510,64 @@
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Right column: Description only. Editor uses a fixed 24rem
+                 height in normal mode so the page stays compact and scrolls
+                 internally. In Cx Plan mode the editor's own docMode styles
+                 (70-80vh) drive sizing instead — see RichTextEditor.vue. -->
+            <div
+              class="flex flex-col gap-3 min-w-0"
+              :class="{ 'md:col-span-2': isCxPlan }"
+            >
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-1">
+                  <label class="text-sm text-white/70">Description</label>
+                  <div
+                    v-if="isCxPlan"
+                    class="flex items-center gap-2 flex-wrap"
+                  >
+                    <!-- Insert starter (empty editor only) -->
+                    <button
+                      v-if="!descriptionHasContent"
+                      type="button"
+                      :disabled="insertingCxPlanStarter"
+                      class="px-3 py-1.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 hover:bg-indigo-500/30 text-indigo-100 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Generate a Cx Plan starter from project team, tasks, and equipment"
+                      @click="insertCxPlanStarter"
+                    >
+                      {{ insertingCxPlanStarter ? 'Generating…' : 'Insert Cx Plan starter' }}
+                    </button>
+                    <!-- Refresh data tables (markers present — non-destructive) -->
+                    <button
+                      v-if="descriptionHasContent && descriptionHasCxPlanMarkers"
+                      type="button"
+                      :disabled="refreshingCxPlanSections"
+                      class="px-3 py-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/40 hover:bg-emerald-500/30 text-emerald-100 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Re-pull Team / Milestones / Systems tables from the current project. Leaves your edits to other sections untouched."
+                      @click="refreshCxPlanDataTables"
+                    >
+                      {{ refreshingCxPlanSections ? 'Refreshing…' : 'Refresh data tables' }}
+                    </button>
+                    <!-- Regenerate full plan (any non-empty editor — destructive, confirms) -->
+                    <button
+                      v-if="descriptionHasContent"
+                      type="button"
+                      :disabled="insertingCxPlanStarter"
+                      class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/80 text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Replace the entire description with a freshly generated Cx Plan. Asks before overwriting your edits."
+                      @click="insertCxPlanStarter"
+                    >
+                      Regenerate full plan
+                    </button>
+                  </div>
+                </div>
+                <RichTextEditor
+                  v-model="form.descriptionHtml"
+                  :doc-mode="isCxPlan"
+                  :class="isCxPlan ? '' : 'h-96'"
+                />
               </div>
             </div>
 
@@ -2088,8 +2121,7 @@ import http from '../../utils/http'
 import { useRoute, useRouter } from 'vue-router'
 import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
-import { QuillEditor } from '@vueup/vue-quill'
-  import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import RichTextEditor from '../../components/RichTextEditor.vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import OprItemPicker from '../../components/OprItemPicker.vue'
 import OprLinkVerification from '../../components/OprLinkVerification.vue'
@@ -2108,7 +2140,7 @@ import { useEquipmentStore } from '../../stores/equipment'
 import Spinner from '../../components/Spinner.vue'
 import { useAiStore } from '../../stores/ai'
 import type { SuggestedTag } from '../../stores/ai'
-import { buildCxPlanHtml } from '../../utils/cxPlanTemplate'
+import { buildCxPlanHtml, refreshCxPlanSections, hasCxPlanMarkers } from '../../utils/cxPlanTemplate'
 
 // Accept route params passed as attrs to avoid extraneous attribute warnings when rendering fragments
 const props = defineProps<{ id?: string }>()
@@ -2345,16 +2377,48 @@ const form = reactive({
 
 
 // Cx Plan mode — when the activity type is "Cx Plan", the description card
-// reflows to span the full width and a button appears to drop a fully-
-// populated starter into the editor (built from project team, tasks, and
-// equipment). See src/utils/cxPlanTemplate.ts for the generator.
+// reflows to span the full width and a small toolbar appears next to the
+// description label:
+//
+//   - Insert Cx Plan starter   → empty editor only, drops the full doc in
+//   - Refresh data tables      → editor has cx-plan:* markers, surgically
+//                                  refreshes Team / Milestones / Systems /
+//                                  Title and leaves everything else alone
+//   - Regenerate full plan     → confirms, then replaces the entire body
+//
+// See src/utils/cxPlanTemplate.ts for the generator + the marker contract.
 const isCxPlan = computed(() => String(form.type || '').trim().toLowerCase() === 'cx plan')
 const insertingCxPlanStarter = ref(false)
+const refreshingCxPlanSections = ref(false)
+const descriptionHasContent = computed(() => Boolean(String(form.descriptionHtml || '').trim()))
+const descriptionHasCxPlanMarkers = computed(() => hasCxPlanMarkers(form.descriptionHtml))
+
+async function loadCxPlanInputs(): Promise<{ project: any; tasks: any[]; equipment: any[] }> {
+  const pid = resolvedProjectId() || String(form.projectId || projectStore.currentProjectId || '')
+  let projectData: any = projectStore.currentProject || null
+  let tasks: any[] = []
+  let equipment: any[] = []
+  if (!pid) return { project: projectData, tasks, equipment }
+  try {
+    const [pRes, tRes, eRes] = await Promise.all([
+      http.get(`/api/projects/${pid}`).catch(() => null),
+      http.get('/api/tasks', { params: { projectId: pid, limit: 500, deleted: false } }).catch(() => null),
+      http.get('/api/equipment', { params: { projectId: pid, perPage: 500 } }).catch(() => null),
+    ])
+    if (pRes && pRes.data) projectData = pRes.data
+    const tBody = tRes && tRes.data ? tRes.data : null
+    if (tBody && Array.isArray(tBody.tasks)) tasks = tBody.tasks
+    else if (Array.isArray(tBody)) tasks = tBody
+    const eBody = eRes && eRes.data ? eRes.data : null
+    if (eBody && Array.isArray(eBody.items)) equipment = eBody.items
+    else if (Array.isArray(eBody)) equipment = eBody
+  } catch (e) { /* soft-fail; generator handles missing inputs */ }
+  return { project: projectData, tasks, equipment }
+}
 
 async function insertCxPlanStarter() {
   if (insertingCxPlanStarter.value) return
-  const existing = String(form.descriptionHtml || '').trim()
-  if (existing) {
+  if (descriptionHasContent.value) {
     const ok = await inlineConfirm({
       title: 'Replace existing description?',
       message: 'This will replace the current description with a freshly generated Cx Plan starter. Any edits to the existing text will be lost.',
@@ -2364,47 +2428,38 @@ async function insertCxPlanStarter() {
     })
     if (!ok) return
   }
-
   insertingCxPlanStarter.value = true
   try {
-    const pid = resolvedProjectId() || String(form.projectId || projectStore.currentProjectId || '')
-    let projectData: any = projectStore.currentProject || null
-    let tasks: any[] = []
-    let equipment: any[] = []
-
-    if (pid) {
-      try {
-        const [pRes, tRes, eRes] = await Promise.all([
-          // Project (covers team + commissioning_agent + name fields). The
-          // project store may already have the current project loaded, but
-          // re-fetching is cheap and avoids stale team rosters.
-          http.get(`/api/projects/${pid}`).catch(() => null),
-          http.get('/api/tasks', { params: { projectId: pid, limit: 500, deleted: false } }).catch(() => null),
-          http.get('/api/equipment', { params: { projectId: pid, perPage: 500 } }).catch(() => null),
-        ])
-        if (pRes && pRes.data) projectData = pRes.data
-        const tBody = tRes && tRes.data ? tRes.data : null
-        if (tBody && Array.isArray(tBody.tasks)) tasks = tBody.tasks
-        else if (Array.isArray(tBody)) tasks = tBody
-        const eBody = eRes && eRes.data ? eRes.data : null
-        if (eBody && Array.isArray(eBody.items)) equipment = eBody.items
-        else if (Array.isArray(eBody)) equipment = eBody
-      } catch (e) {
-        // Soft-fail — generator handles missing inputs with placeholder text.
-      }
-    }
-
-    const html = buildCxPlanHtml({
-      project: projectData,
-      tasks,
-      equipment,
-    })
-    form.descriptionHtml = html
+    const { project, tasks, equipment } = await loadCxPlanInputs()
+    form.descriptionHtml = buildCxPlanHtml({ project, tasks, equipment })
     ui.showSuccess('Cx Plan starter inserted — edit as needed, then save the activity.')
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate Cx Plan starter')
   } finally {
     insertingCxPlanStarter.value = false
+  }
+}
+
+async function refreshCxPlanDataTables() {
+  if (refreshingCxPlanSections.value) return
+  if (!descriptionHasCxPlanMarkers.value) {
+    ui.showWarning('No Cx Plan section markers found in the description. Use Insert Cx Plan starter (or Regenerate) to install them first.')
+    return
+  }
+  refreshingCxPlanSections.value = true
+  try {
+    const { project, tasks, equipment } = await loadCxPlanInputs()
+    const result = refreshCxPlanSections(String(form.descriptionHtml || ''), { project, tasks, equipment })
+    form.descriptionHtml = result.html
+    if (result.refreshed.length) {
+      ui.showSuccess(`Refreshed: ${result.refreshed.join(', ')}. Save the activity to persist.`)
+    } else {
+      ui.showWarning('No sections were refreshed — markers may have been edited or removed.')
+    }
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to refresh Cx Plan data tables')
+  } finally {
+    refreshingCxPlanSections.value = false
   }
 }
 
@@ -3275,6 +3330,29 @@ function htmlToText(html?: string): string {
   }
 }
 
+function sanitizeFilenamePart(v: any): string {
+  return String(v || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[^a-zA-Z0-9 _\-.()]+/g, '')
+    .replace(/\s/g, '_')
+    .slice(0, 80)
+}
+
+function buildActivityPdfFilename(): string {
+  const parts: string[] = []
+  const projectName = sanitizeFilenamePart((projectStore.currentProject as any)?.name || '')
+  if (projectName) parts.push(projectName)
+  const activityType = sanitizeFilenamePart(form.type || '')
+  if (activityType) parts.push(activityType)
+  const activityName = sanitizeFilenamePart(form.name || '')
+  if (activityName) parts.push(activityName)
+  const ymd = new Date().toISOString().slice(0, 10)
+  parts.push(ymd)
+  const base = parts.filter(Boolean).join('_') || `activity-${id.value}`
+  return `${base}.pdf`
+}
+
 async function downloadActivityPdf() {
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
@@ -3528,6 +3606,23 @@ async function downloadActivityPdf() {
         .replace(/<ul/gi,'<ul style="margin:4px 0; padding-left:18px; list-style-type:disc; list-style-position:outside;"')
         .replace(/<ol/gi,'<ol style="margin:4px 0; padding-left:18px; list-style-type:decimal; list-style-position:outside;"')
         .replace(/<li/gi,'<li style="font-size:16px; margin:1px 0;"')
+        // Tables — the rich-text editor (TipTap) now lets the user add tables,
+        // and the Cx Plan starter emits several. Without explicit borders /
+        // padding here, html2canvas paints them as a single jammed line of
+        // text with no grid. Apply print-safe styles for the four table tags.
+        .replace(/<table/gi,'<table style="width:100%; border-collapse:collapse; margin:6px 0 10px; font-size:13px; table-layout:auto;"')
+        .replace(/<thead/gi,'<thead style="background:#f3f4f6;"')
+        .replace(/<tr/gi,'<tr style="page-break-inside:avoid;"')
+        .replace(/<th/gi,'<th style="border:1px solid #4b5563; padding:5px 7px; text-align:left; vertical-align:top; background:#f3f4f6; font-weight:600; font-size:13px;"')
+        .replace(/<td/gi,'<td style="border:1px solid #4b5563; padding:5px 7px; text-align:left; vertical-align:top; font-size:13px;"')
+        // Misc block tags that the editor produces.
+        .replace(/<hr/gi,'<hr style="border:0; border-top:1px solid #9ca3af; margin:8px 0;"')
+        .replace(/<blockquote/gi,'<blockquote style="margin:4px 0 4px 8px; padding:0 0 0 10px; border-left:3px solid #9ca3af; color:#374151; font-size:15px;"')
+        .replace(/<a /gi,'<a style="color:#2563eb; text-decoration:underline;" ')
+        // The Cx Plan section-marker sentinels (<div data-cx-plan-marker="…">)
+        // are invisible in the editor but render as a blank line of default
+        // div height in print. Squash them.
+        .replace(/<div\s+data-cx-plan-marker=/gi,'<div style="display:none;" data-cx-plan-marker=')
       document.body.appendChild(container)
       const pxPerMm = 3.7795275591
       const mmPerPx = 1 / pxPerMm
@@ -4383,7 +4478,7 @@ async function downloadActivityPdf() {
     }
     // Download merged
     const blob = new Blob([baseBytes], { type: 'application/pdf' })
-    const fname = `activity-${id.value}.pdf`
+    const fname = buildActivityPdfFilename()
       const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 60000)
     }
   } catch (e:any) {
@@ -5481,71 +5576,6 @@ watch(() => form.projectId, async (pid) => {
   </script>
 
 <style scoped>
-/* Glassy theme for Quill to match other inputs */
-:deep(.ql-toolbar.ql-snow) {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.9);
-  border-top-left-radius: 0.5rem;
-  border-top-right-radius: 0.5rem;
-}
-:deep(.ql-container.ql-snow) {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  /* Fixed-height editor: keep layout stable; scroll inside. */
-  height: 18rem;
-  max-height: 50vh;
-}
-:deep(.ql-editor) {
-  color: #fff;
-  /* Scroll content inside the fixed container */
-  height: 100%;
-  overflow-y: auto;
-}
-:deep(.ql-editor.ql-blank::before) {
-  /* Tailwind gray-400 for better readability on glass background */
-  color: #9CA3AF;
-}
-/* Quill icons (strokes/fills) */
-:deep(.ql-snow .ql-stroke) {
-  stroke: rgba(255, 255, 255, 0.9);
-}
-:deep(.ql-snow .ql-fill),
-:deep(.ql-snow .ql-stroke.ql-fill) {
-  fill: rgba(255, 255, 255, 0.9);
-}
-:deep(.ql-picker),
-:deep(.ql-picker-label),
-:deep(.ql-picker-item) {
-  color: rgba(255, 255, 255, 0.9);
-}
-/* Darken hover/active backgrounds so white icons/text remain visible */
-:deep(.ql-snow .ql-toolbar button:hover),
-:deep(.ql-snow .ql-toolbar button:focus),
-:deep(.ql-snow .ql-toolbar button.ql-active),
-:deep(.ql-snow .ql-picker-label:hover),
-:deep(.ql-snow .ql-picker-label:focus),
-:deep(.ql-snow .ql-picker-label.ql-active),
-:deep(.ql-snow .ql-picker-item:hover),
-:deep(.ql-snow .ql-picker-item.ql-selected) {
-  background-color: rgba(0, 0, 0, 0.28);
-  color: #fff;
-}
-/* Dark picker dropdown panel to avoid white-on-white */
-:deep(.ql-snow .ql-picker-options) {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-/* Tooltip (links, etc.) */
-:deep(.ql-tooltip) {
-  background-color: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
 /* Placeholder color for inputs and textareas to improve contrast */
 :deep(input::placeholder),
 :deep(textarea::placeholder) {
@@ -5553,61 +5583,7 @@ watch(() => form.projectId, async (pid) => {
   color: #9CA3AF;
   opacity: 1; /* ensure full opacity */
 }
-
-/* Cx Plan "document" mode — when the activity type is Cx Plan, the
- * description editor reflows to span the full width (handled in the
- * template via md:col-span-2) and the editor body grows to roughly
- * page height so it reads like a word processor. The toolbar stays
- * sticky at the top while the user scrolls long content. */
-.cx-plan-doc-editor :deep(.ql-toolbar) {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-.cx-plan-doc-editor :deep(.ql-container) {
-  min-height: 70vh;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-.cx-plan-doc-editor :deep(.ql-editor) {
-  min-height: 70vh;
-  font-size: 14px;
-  line-height: 1.55;
-}
-.cx-plan-doc-editor :deep(.ql-editor h1) {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0.75rem 0 0.5rem;
-}
-.cx-plan-doc-editor :deep(.ql-editor h2) {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin: 1.25rem 0 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 0.25rem;
-}
-.cx-plan-doc-editor :deep(.ql-editor h3) {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin: 1rem 0 0.35rem;
-}
-.cx-plan-doc-editor :deep(.ql-editor table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.5rem 0 1rem;
-}
-.cx-plan-doc-editor :deep(.ql-editor table th),
-.cx-plan-doc-editor :deep(.ql-editor table td) {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  padding: 0.4rem 0.6rem;
-  text-align: left;
-  vertical-align: top;
-}
-.cx-plan-doc-editor :deep(.ql-editor table th) {
-  background: rgba(255, 255, 255, 0.06);
-  font-weight: 600;
-}
+/* The rich-text editor brings its own styles — including a doc-mode
+ * variant that grows the body to ~70vh for the Cx Plan word-processor
+ * experience. See src/components/RichTextEditor.vue. */
 </style>
