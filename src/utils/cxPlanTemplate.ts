@@ -280,6 +280,95 @@ function samplingMethodologiesHtml(): string {
 // Dynamic sections
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Section markers
+//
+// Sections that are derived from live project data (title, team, milestones,
+// systems) are wrapped in invisible <div data-cx-plan-marker="<name>-(start|end)">
+// sentinels so a later "Refresh data tables" action — or the AI Agent —
+// can find them and replace just that block without disturbing user edits
+// elsewhere in the document.
+//
+// Marker shape:
+//   <div data-cx-plan-marker="<name>-start"></div>
+//     …content…
+//   <div data-cx-plan-marker="<name>-end"></div>
+//
+// We use div sentinels (not HTML comments) because the TipTap editor
+// strips HTML comments through its ProseMirror schema. The
+// RichTextEditor component registers a CxPlanMarker node extension so
+// these divs round-trip through the editor.
+//
+// Backwards compatibility: refreshCxPlanSections + hasCxPlanMarkers also
+// recognise the older <!-- cx-plan:* --> comment form for any Cx Plan
+// generated before this change. New plans always use the div form.
+//
+// Static sections (Purpose / Cx Scope / Roles / Activity Overviews /
+// Sampling) carry no markers because there's nothing to refresh from data.
+// ---------------------------------------------------------------------------
+
+export type CxPlanSectionName = 'title' | 'systems' | 'milestones' | 'team'
+const SECTION_NAMES: CxPlanSectionName[] = ['title', 'systems', 'milestones', 'team']
+
+function wrapSection(name: CxPlanSectionName, html: string): string {
+  return [
+    `<div data-cx-plan-marker="${name}-start"></div>`,
+    html,
+    `<div data-cx-plan-marker="${name}-end"></div>`,
+  ].join('\n')
+}
+
+function buildSectionRegex(name: CxPlanSectionName): RegExp {
+  // Match either the new div form or the legacy HTML-comment form.
+  // start marker → content → end marker, lazy in between.
+  const escName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const startPat = `(?:<div\\s+data-cx-plan-marker=["']${escName}-start["']\\s*>\\s*</div>|<!--\\s*cx-plan:${escName}-start\\s*-->)`
+  const endPat = `(?:<div\\s+data-cx-plan-marker=["']${escName}-end["']\\s*>\\s*</div>|<!--\\s*cx-plan:${escName}-end\\s*-->)`
+  return new RegExp(`${startPat}[\\s\\S]*?${endPat}`, 'i')
+}
+
+/**
+ * Surgically replace the contents of named cx-plan section markers in an
+ * existing description HTML. Returns the updated HTML and a list of sections
+ * actually found (so the caller can warn the user when nothing matched —
+ * e.g. an old Cx Plan generated before markers existed).
+ *
+ * Static sections (purpose, scope, roles, etc.) are never touched.
+ */
+export function refreshCxPlanSections(
+  currentHtml: string,
+  input: CxPlanInput,
+): { html: string; refreshed: CxPlanSectionName[]; missing: CxPlanSectionName[] } {
+  const project: CxPlanProject = (input && input.project) || {}
+  const fresh: Record<CxPlanSectionName, string> = {
+    title: wrapSection('title', titleAndCoverInner(project)),
+    systems: wrapSection('systems', systemsTableInner(input?.equipment || null)),
+    milestones: wrapSection('milestones', milestonesTableInner(input?.tasks || null)),
+    team: wrapSection('team', commissioningTeamInner(project)),
+  }
+  let out = String(currentHtml || '')
+  const refreshed: CxPlanSectionName[] = []
+  const missing: CxPlanSectionName[] = []
+  for (const name of SECTION_NAMES) {
+    const re = buildSectionRegex(name)
+    if (re.test(out)) {
+      out = out.replace(re, fresh[name])
+      refreshed.push(name)
+    } else {
+      missing.push(name)
+    }
+  }
+  return { html: out, refreshed, missing }
+}
+
+/** Returns true if any cx-plan section marker is present in the HTML.
+ *  Recognises both the new div sentinel form and the legacy comment form. */
+export function hasCxPlanMarkers(html: string | null | undefined): boolean {
+  const s = String(html || '')
+  return /<div\s+data-cx-plan-marker=["'][a-z-]+-(start|end)["']\s*>\s*<\/div>/i.test(s)
+      || /<!--\s*cx-plan:[a-z-]+-(start|end)\s*-->/i.test(s)
+}
+
 function projectDescriptionHtml(project: CxPlanProject): string {
   const name = String(project.name || 'this project').trim() || 'this project'
   return `
@@ -289,7 +378,7 @@ function projectDescriptionHtml(project: CxPlanProject): string {
   `
 }
 
-function systemsTableHtml(equipment: CxPlanEquipment[] | null | undefined): string {
+function systemsTableInner(equipment: CxPlanEquipment[] | null | undefined): string {
   const rows: Array<{ name: string; count: number }> = []
   const counts = new Map<string, number>()
   for (const e of equipment || []) {
@@ -333,7 +422,7 @@ function systemsTableHtml(equipment: CxPlanEquipment[] | null | undefined): stri
   `
 }
 
-function milestonesTableHtml(tasks: CxPlanTask[] | null | undefined): string {
+function milestonesTableInner(tasks: CxPlanTask[] | null | undefined): string {
   const list = (tasks || []).slice()
   // Prefer top-level WBS tasks as project-level milestones. If none exist
   // (project has only flat tasks), fall back to all tasks sorted by start.
@@ -373,7 +462,7 @@ function milestonesTableHtml(tasks: CxPlanTask[] | null | undefined): string {
   `
 }
 
-function commissioningTeamHtml(project: CxPlanProject): string {
+function commissioningTeamInner(project: CxPlanProject): string {
   const team = Array.isArray(project.team) ? project.team : []
   const cxa = project.commissioning_agent || null
   if (!team.length && !cxa) {
@@ -413,7 +502,7 @@ function commissioningTeamHtml(project: CxPlanProject): string {
   `
 }
 
-function titleAndCoverHtml(project: CxPlanProject): string {
+function titleAndCoverInner(project: CxPlanProject): string {
   const name = String(project.name || 'Project').trim() || 'Project'
   return `
     <h1>Commissioning Plan</h1>
@@ -432,14 +521,14 @@ export function buildCxPlanHtml(input: CxPlanInput): string {
   const tasks = input?.tasks || null
   const equipment = input?.equipment || null
   return [
-    titleAndCoverHtml(project),
+    wrapSection('title', titleAndCoverInner(project)),
     purposeHtml(),
     revisionsHtml(),
     projectDescriptionHtml(project),
     cxScopeHtml(),
-    systemsTableHtml(equipment),
-    milestonesTableHtml(tasks),
-    commissioningTeamHtml(project),
+    wrapSection('systems', systemsTableInner(equipment)),
+    wrapSection('milestones', milestonesTableInner(tasks)),
+    wrapSection('team', commissioningTeamInner(project)),
     rolesAndResponsibilitiesHtml(),
     activitiesOverviewHtml(),
     samplingMethodologiesHtml(),

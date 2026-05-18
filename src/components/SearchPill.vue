@@ -26,7 +26,7 @@
           :value="modelValue"
           type="text"
           :placeholder="placeholder"
-          class="bg-transparent border-0 outline-none text-sm text-white placeholder-white/50 w-full min-w-0"
+          class="search-pill-input bg-transparent border-0 text-sm text-white placeholder-white/50 w-full min-w-0"
           @input="onInput"
           @keydown.enter="emit('enter')"
         >
@@ -87,3 +87,20 @@ defineExpose({
 })
 </script>
 
+<style scoped>
+/* Kill the inner-input focus indicator on every browser: Tailwind's
+   `outline-none` leaves a transparent 2px outline, and some browsers
+   (Chrome/Edge focus-visible, Firefox accent ring) still paint a
+   rectangular focus ring on text inputs. The outer pill already shows
+   focus via focus-within:ring-2, so the input itself should be silent. */
+.search-pill-input {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.search-pill-input:focus,
+.search-pill-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+</style>

@@ -228,6 +228,14 @@ const TOOLS = [
     required: [],
   },
   {
+    name: 'get_activity',
+    description: 'Fetch the full record for a single activity, INCLUDING the rich-text descriptionHtml. Use this before update_activity when you need to edit only part of the description (e.g., adjust one section of a Cx Plan) — read the current HTML, modify it, then send the modified full HTML back via update_activity.',
+    properties: {
+      id: { type: 'string', description: 'Activity _id (required)' },
+    },
+    required: ['id'],
+  },
+  {
     name: 'create_activity',
     description: 'Create a new activity (meeting, site visit, workshop, etc.) in the current project.',
     properties: {
@@ -658,7 +666,7 @@ function getToolLabel(toolName) {
   const labels = {
     get_project_summary: 'Project summary',
     list_tasks: 'Listed tasks', create_task: 'Created task', update_task: 'Updated task', delete_task: 'Deleted task',
-    list_activities: 'Listed activities', create_activity: 'Created activity', update_activity: 'Updated activity', delete_activity: 'Deleted activity',
+    list_activities: 'Listed activities', get_activity: 'Read activity', create_activity: 'Created activity', update_activity: 'Updated activity', delete_activity: 'Deleted activity',
     list_equipment: 'Listed equipment', create_equipment: 'Created equipment', update_equipment: 'Updated equipment', delete_equipment: 'Deleted equipment', apply_template_to_equipment: 'Created equipment from template',
     list_issues: 'Listed issues', create_issue: 'Created issue', update_issue: 'Updated issue', delete_issue: 'Deleted issue',
     list_spaces: 'Listed spaces', create_space: 'Created space', update_space: 'Updated space', delete_space: 'Deleted space',
@@ -774,6 +782,12 @@ async function executeTool(toolName, toolInput, context) {
         if (input.search) q.name = { $regex: str(input.search, 100), $options: 'i' }
         const items = await Activity.find(q).select('_id name type status startDate endDate').sort({ startDate: -1 }).limit(limit).lean()
         return { success: true, count: items.length, records: items }
+      }
+      case 'get_activity': {
+        if (!input.id || !isObjectId(input.id)) return { success: false, error: 'Valid id is required' }
+        const item = await Activity.findOne({ _id: input.id, projectId }).lean()
+        if (!item) return { success: false, error: 'Activity not found in this project' }
+        return { success: true, record: item }
       }
       case 'create_activity': {
         if (!input.name) return { success: false, error: 'name is required' }

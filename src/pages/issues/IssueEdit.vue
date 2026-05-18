@@ -382,18 +382,21 @@
             </div>
 
             <!-- Right column: Description -->
-            <div class="md:row-span-4">
+            <!--
+              The outer grid uses `items-start`, so this cell would normally
+              sit at its natural height. `md:self-stretch` overrides that and
+              lets the cell match the left column's full height (down to Due
+              Date). `min-h-0` + flex column + `flex-1` on the editor make it
+              fill that cell exactly, and the editor's own overflow-y: auto
+              handles scrolling when content exceeds the fixed height.
+            -->
+            <div class="flex flex-col min-h-0 md:self-stretch">
               <label class="block text-sm text-white/70">Description</label>
-              <div class="rounded-md border border-white/20 bg-white/10">
-                <QuillEditor
-                  :key="isClosed ? 'ro' : 'rw'"
-                  v-model:content="form.description"
-                  theme="snow"
-                  content-type="html"
-                  :read-only="isClosed"
-                  class="rounded-md"
-                />
-              </div>
+              <RichTextEditor
+                v-model="form.description"
+                :editable="!isClosed"
+                class="flex-1 min-h-0"
+              />
             </div>
 
             <!-- Recommendation and Resolution side by side below Description -->
@@ -421,9 +424,10 @@
             </div>
 
             <div class="md:col-span-2 mt-2">
-              <div class="flex items-center gap-3">
-                <div class="text-sm text-white/70 shrink-0">
-                  Tags
+              <!-- Above-row: tip on the left, Suggest tags on the right. -->
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <div class="text-xs text-white/60">
+                  Tip: use commas or Enter to add multiple tags.
                 </div>
                 <button
                   v-if="canSuggestIssueTags"
@@ -434,46 +438,49 @@
                 >
                   {{ suggestingTags ? 'Suggesting…' : 'Suggest tags' }}
                 </button>
-                <div class="flex flex-wrap gap-2">
-                  <span
-                    v-for="t in form.labels"
-                    :key="t"
-                    class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
-                  >
-                    <span>{{ t }}</span>
-                    <button
-                      type="button"
-                      class="text-white/60 hover:text-white"
-                      aria-label="Remove tag"
-                      :disabled="isClosed"
-                      @click="!isClosed && removeLabel(t)"
-                    >
-                      ×
-                    </button>
-                  </span>
-                </div>
               </div>
-              <div class="flex items-center gap-2 mt-2">
+              <!-- Main entry row: label, input, Add button on one line. -->
+              <div class="flex items-center gap-2">
+                <label class="text-sm text-white/70 shrink-0">Tags</label>
                 <input
                   v-model="labelInput"
                   type="text"
                   placeholder="Add a tag and press Enter…"
-                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 disabled:opacity-60"
+                  class="flex-1 min-w-0 px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 disabled:opacity-60"
                   :disabled="isClosed"
                   @keydown.enter.prevent="!isClosed && addLabelFromInput()"
                   @keydown.,.prevent="!isClosed && addLabelFromInput()"
                 >
                 <button
                   type="button"
-                  class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80 disabled:opacity-60 disabled:cursor-not-allowed"
+                  class="h-10 px-3 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-sm text-white/80 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
                   :disabled="isClosed"
                   @click="addLabelFromInput()"
                 >
                   Add
                 </button>
               </div>
-              <div class="text-xs text-white/60 mt-1">
-                Tip: use commas or Enter to add multiple tags.
+              <!-- Applied tag chips below the entry row. -->
+              <div
+                v-if="form.labels && form.labels.length"
+                class="flex flex-wrap gap-2 mt-2"
+              >
+                <span
+                  v-for="t in form.labels"
+                  :key="t"
+                  class="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-white/80"
+                >
+                  <span>{{ t }}</span>
+                  <button
+                    type="button"
+                    class="text-white/60 hover:text-white"
+                    aria-label="Remove tag"
+                    :disabled="isClosed"
+                    @click="!isClosed && removeLabel(t)"
+                  >
+                    ×
+                  </button>
+                </span>
               </div>
               <div
                 v-if="suggestedTagsFiltered.length"
@@ -1228,8 +1235,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, computed, ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { QuillEditor } from '@vueup/vue-quill'
-import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import RichTextEditor from '../../components/RichTextEditor.vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import OprItemPicker from '../../components/OprItemPicker.vue'
 import OprLinkVerification from '../../components/OprLinkVerification.vue'
@@ -2779,71 +2785,6 @@ const isClosedToggle = computed({
 </script>
 
 <style scoped>
-/* Glassy theme for Quill to match other inputs (copied from ActivityEdit.vue) */
-:deep(.ql-toolbar.ql-snow) {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.9);
-  border-top-left-radius: 0.5rem;
-  border-top-right-radius: 0.5rem;
-}
-:deep(.ql-container.ql-snow) {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  /* Fixed-height editor: keep layout stable; scroll inside. */
-  height: 18rem;
-  max-height: 50vh;
-}
-:deep(.ql-editor) {
-  color: #fff;
-  /* Scroll content inside the fixed container */
-  height: 100%;
-  overflow-y: auto;
-}
-:deep(.ql-editor.ql-blank::before) {
-  /* Tailwind gray-400 for better readability on glass background */
-  color: #9CA3AF;
-}
-/* Quill icons (strokes/fills) */
-:deep(.ql-snow .ql-stroke) {
-  stroke: rgba(255, 255, 255, 0.9);
-}
-:deep(.ql-snow .ql-fill),
-:deep(.ql-snow .ql-stroke.ql-fill) {
-  fill: rgba(255, 255, 255, 0.9);
-}
-:deep(.ql-picker),
-:deep(.ql-picker-label),
-:deep(.ql-picker-item) {
-  color: rgba(255, 255, 255, 0.9);
-}
-/* Darken hover/active backgrounds so white icons/text remain visible */
-:deep(.ql-snow .ql-toolbar button:hover),
-:deep(.ql-snow .ql-toolbar button:focus),
-:deep(.ql-snow .ql-toolbar button.ql-active),
-:deep(.ql-snow .ql-picker-label:hover),
-:deep(.ql-snow .ql-picker-label:focus),
-:deep(.ql-snow .ql-picker-label.ql-active),
-:deep(.ql-snow .ql-picker-item:hover),
-:deep(.ql-snow .ql-picker-item.ql-selected) {
-  background-color: rgba(0, 0, 0, 0.28);
-  color: #fff;
-}
-/* Dark picker dropdown panel to avoid white-on-white */
-:deep(.ql-snow .ql-picker-options) {
-  background-color: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-/* Tooltip (links, etc.) */
-:deep(.ql-tooltip) {
-  background-color: rgba(0, 0, 0, 0.9);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
 /* Placeholder color for inputs and textareas to improve contrast */
 :deep(input::placeholder),
 :deep(textarea::placeholder) {
