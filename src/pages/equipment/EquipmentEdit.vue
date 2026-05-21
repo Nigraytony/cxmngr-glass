@@ -1356,8 +1356,12 @@
         </div>
       </div>
 
-      <!-- Bottom navigation: Report actions + Previous/Next across equipment -->
-      <div class="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-start gap-2 sticky bottom-0 z-20 bg-white/6 backdrop-blur-xl">
+      <!-- Bottom navigation: Report actions + Previous/Next across equipment.
+           Uses the app's slate-900 background at high opacity so form content
+           behind the sticky bar gets visually obscured (bg-white/6 alone was
+           too transparent over form text — backdrop blur was working but had
+           nothing solid to mask against). -->
+      <div class="mt-6 py-4 border-t border-white/10 flex flex-wrap items-center justify-start gap-2 sticky bottom-0 z-20 bg-slate-900/80 backdrop-blur-xl backdrop-saturate-150">
         <div class="flex items-center flex-wrap gap-2">
           <button
             v-if="prevEquipmentId"
