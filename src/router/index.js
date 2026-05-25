@@ -160,7 +160,41 @@ function normalizeFeatureFlags(raw) {
   return out
 }
 
+// Canonical-host redirect.
+//
+// cxma.io / cxma.ai (plus their www subdomains) are marketing-only hosts.
+// They show the public HomePage / Pricing pages directly. Anything else —
+// /login, /register, /app/*, /account/* — bounces the visitor to the
+// canonical app host so auth cookies live in one place and we never end up
+// with three valid app URLs floating around.
+const MARKETING_HOSTS = new Set([
+  'cxma.io', 'www.cxma.io',
+  'cxma.ai', 'www.cxma.ai',
+])
+const CANONICAL_APP_HOST = 'app.cxma.io'
+const PUBLIC_MARKETING_ROUTE_NAMES = new Set(['home', 'pricing'])
+
+function redirectUrlForCanonicalAppHost(to) {
+  if (typeof window === 'undefined') return null
+  const host = String(window.location.hostname || '').toLowerCase()
+  if (!MARKETING_HOSTS.has(host)) return null
+  // Public marketing pages: stay on the marketing host.
+  const name = to.name ? String(to.name) : ''
+  if (PUBLIC_MARKETING_ROUTE_NAMES.has(name)) return null
+  // Anything else: hop over to app.cxma.io and preserve the path/query/hash.
+  return `https://${CANONICAL_APP_HOST}${to.fullPath}`
+}
+
 router.beforeEach(async (to) => {
+  // Bounce to the canonical app host BEFORE any auth/gating logic runs.
+  // Using location.replace so the browser actually navigates to the new
+  // origin (the SPA can't move you across hostnames on its own).
+  const canonicalUrl = redirectUrlForCanonicalAppHost(to)
+  if (canonicalUrl) {
+    window.location.replace(canonicalUrl)
+    return false
+  }
+
   const auth = useAuthStore()
   const projectStore = useProjectStore()
   const ui = useUiStore()
