@@ -106,6 +106,12 @@ finalReportSchema.statics.DEFAULT_SECTIONS = [
   { key: 'basis-of-design', title: 'Basis of Design Summary', type: 'prose', order: 30 },
   { key: 'schedule-milestones', title: 'Cx Schedule & Milestones', type: 'data', dataSource: 'tasks', order: 40 },
   { key: 'activities-performed', title: 'Cx Activities Performed', type: 'data', dataSource: 'activities', order: 50 },
+  // Scoped Systems — flat table of every equipment with checklist/FPT counts
+  // and a derived progress status (Complete / In Progress / Not Started).
+  // Sits between Activities and the OPR-deviation sections because it
+  // answers "what was in scope and how far along is each piece" — a useful
+  // executive snapshot before drilling into deviations or condition specifics.
+  { key: 'scoped-systems', title: 'Scoped Systems', type: 'data', dataSource: 'scoped-systems', order: 55 },
   { key: 'systems-not-meeting-opr', title: 'Systems/Assemblies Not Meeting OPR', type: 'prose', order: 60 },
   { key: 'operating-condition', title: 'Operating Condition of Systems', type: 'data', dataSource: 'equipment', order: 70 },
   { key: 'issues-log', title: 'Issues & Resolution Log', type: 'data', dataSource: 'issues', order: 80 },

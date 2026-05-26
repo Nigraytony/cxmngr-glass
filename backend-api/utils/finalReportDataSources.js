@@ -114,6 +114,84 @@ async function fetchActivities({ projectId }) {
 }
 
 /**
+ * Scoped Systems — flat table of every piece of equipment in the project scope,
+ * with checklist/FPT counts and a derived 3-state progress status.
+ *
+ * This is the high-level "what work is left" view (vs Operating Condition,
+ * which is a status-per-equipment snapshot). The status is computed from
+ * checklist section completion and FPT item status:
+ *   - Not Started: nothing defined OR nothing yet completed
+ *   - In Progress: some work done, not all
+ *   - Complete:    every checklist section and FPT item has been signed off
+ *
+ * Returns { rows: [{ tag, name, system, checklistsCount, fptsCount, status }], totalCount }
+ */
+async function fetchScopedSystems({ projectId }) {
+  const list = await Equipment.find({ projectId })
+    .select('tag title type system status checklists functionalTests')
+    .sort({ system: 1, tag: 1 })
+    .lean()
+  return {
+    rows: list.map((e) => {
+      const checklists = Array.isArray(e.checklists) ? e.checklists : []
+      const fpts = Array.isArray(e.functionalTests) ? e.functionalTests : []
+      return {
+        tag: e.tag || '',
+        name: e.title || '',
+        system: e.system || '',
+        type: e.type || '',
+        equipmentStatus: e.status || '',
+        checklistsCount: checklists.length,
+        fptsCount: fpts.length,
+        status: deriveScopedSystemProgress(checklists, fpts),
+      }
+    }),
+    totalCount: list.length,
+  }
+}
+
+/**
+ * Map equipment's checklist + FPT completion into one of three buckets.
+ * Exported for tests via _providers if we need to assert the heuristic.
+ */
+function deriveScopedSystemProgress(checklists, fpts) {
+  const cTotal = checklists.length
+  const fTotal = fpts.length
+  if (cTotal === 0 && fTotal === 0) return 'Not Started'
+
+  let cDone = 0
+  for (const s of checklists) {
+    if (!s) continue
+    if (s.is_complete === true) {
+      cDone++
+      continue
+    }
+    // Treat a section as done if every question has an answer or is_complete flag.
+    const qs = Array.isArray(s.questions) ? s.questions : []
+    if (qs.length > 0) {
+      const allAnswered = qs.every(
+        (q) => q && (q.is_complete === true || (q.answer != null && q.answer !== '')),
+      )
+      if (allAnswered) cDone++
+    }
+  }
+
+  let fDone = 0
+  for (const t of fpts) {
+    if (!t) continue
+    // FPT items expose a `status` (pass/fail/na) once they've been signed off.
+    const st = t.status == null ? '' : String(t.status).trim().toLowerCase()
+    if (st && st !== 'pending' && st !== 'open') fDone++
+  }
+
+  const done = cDone + fDone
+  const total = cTotal + fTotal
+  if (done === 0) return 'Not Started'
+  if (done >= total) return 'Complete'
+  return 'In Progress'
+}
+
+/**
  * Equipment — grouped by system. Each group includes tag/title/type/status/location
  * for the rows belonging to that system. Equipment without a system goes into a
  * synthetic "Unassigned" group.
@@ -156,7 +234,7 @@ async function fetchEquipment({ projectId }) {
 async function fetchIssues({ projectId }) {
   const issues = await Issue.find({ projectId })
     .select(
-      'number title severity status system location foundBy dateFound assignedTo resolution dueDate',
+      'number title severity status system location dateFound closedDate assignedTo resolution dueDate',
     )
     // Sort by numeric `number` asc; nulls go last
     .sort({ number: 1 })
@@ -169,8 +247,10 @@ async function fetchIssues({ projectId }) {
       status: i.status || '',
       system: i.system || '',
       location: i.location || '',
-      foundBy: i.foundBy || '',
+      // 'Found By' dropped per user feedback — replaced by closed-date in the
+      // final report; foundBy is still visible on the issue detail page.
       dateFound: i.dateFound || '',
+      closedDate: i.closedDate || '',
       assignedTo: i.assignedTo || '',
       dueDate: i.dueDate || '',
       resolution: i.resolution || '',
@@ -238,6 +318,9 @@ const PROVIDERS = {
   opr: fetchOpr,
   tasks: fetchTasks,
   activities: fetchActivities,
+  // 'scoped-systems' = high-level project scope progress (counts + 3-state status).
+  // 'equipment' = grouped roster used for the Operating Condition section.
+  'scoped-systems': fetchScopedSystems,
   equipment: fetchEquipment,
   issues: fetchIssues,
   team: fetchTeam,

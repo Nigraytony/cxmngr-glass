@@ -138,7 +138,7 @@ describe('Final Report routes', function () {
     }
   }
 
-  it('lazy-creates the report with 11 default sections on first GET', async () => {
+  it('lazy-creates the report with the default sections on first GET', async () => {
     const { ownerToken, projectId } = await setupProject()
 
     const res = await request(app)
@@ -148,11 +148,17 @@ describe('Final Report routes', function () {
     assert.strictEqual(res.body.status, 'draft')
     assert.strictEqual(res.body.currentVersion, 0)
     assert(Array.isArray(res.body.sections))
-    assert.strictEqual(res.body.sections.length, 11)
-    // Spot-check the lifecycle ordering and a representative data section.
+    // 12 lifecycle-ordered defaults: pre-design → design → construction →
+    // closeout. If the canonical list changes, update model + this assertion
+    // together.
+    assert.strictEqual(res.body.sections.length, 12)
     const keys = res.body.sections.map((s) => s.key)
     assert.deepStrictEqual(keys[0], 'project-charter')
     assert.deepStrictEqual(keys[keys.length - 1], 'sign-offs')
+    // Scoped Systems section + issues data source are wired correctly.
+    const scoped = res.body.sections.find((s) => s.key === 'scoped-systems')
+    assert.strictEqual(scoped.type, 'data')
+    assert.strictEqual(scoped.dataSource, 'scoped-systems')
     const issues = res.body.sections.find((s) => s.key === 'issues-log')
     assert.strictEqual(issues.type, 'data')
     assert.strictEqual(issues.dataSource, 'issues')
@@ -206,6 +212,65 @@ describe('Final Report routes', function () {
       .set('Authorization', `Bearer ${tokens.member}`)
       .send({ sections: [] })
     assert.strictEqual(put.status, 403)
+  })
+
+  it('refreshes the scoped-systems data source with derived progress status', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const Equipment = require('../models/equipment')
+    await Equipment.create([
+      {
+        projectId,
+        tag: 'AHU-1',
+        title: 'Air Handler 1',
+        type: 'AHU',
+        system: 'HVAC',
+        // Nothing started yet → Not Started
+        checklists: [],
+        functionalTests: [],
+      },
+      {
+        projectId,
+        tag: 'AHU-2',
+        title: 'Air Handler 2',
+        type: 'AHU',
+        system: 'HVAC',
+        // 2 checklist sections, one complete; 1 FPT with no status → In Progress
+        checklists: [
+          { is_complete: true, questions: [] },
+          { is_complete: false, questions: [{ answer: null }] },
+        ],
+        functionalTests: [{ status: null }],
+      },
+      {
+        projectId,
+        tag: 'P-1',
+        title: 'Pump 1',
+        type: 'Pump',
+        system: 'HVAC',
+        // 1 checklist section complete, 1 FPT pass → Complete
+        checklists: [{ is_complete: true, questions: [] }],
+        functionalTests: [{ status: 'pass' }],
+      },
+    ])
+
+    await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    const res = await withCsrf(
+      request(app).post(
+        `/api/projects/${projectId}/final-report/sections/scoped-systems/refresh`,
+      ),
+    ).set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    assert.strictEqual(res.body.dataSource, 'scoped-systems')
+    assert.strictEqual(res.body.data.rows.length, 3)
+    const byTag = Object.fromEntries(res.body.data.rows.map((r) => [r.tag, r]))
+    assert.strictEqual(byTag['AHU-1'].status, 'Not Started')
+    assert.strictEqual(byTag['AHU-2'].status, 'In Progress')
+    assert.strictEqual(byTag['P-1'].status, 'Complete')
+    assert.strictEqual(byTag['AHU-2'].checklistsCount, 2)
+    assert.strictEqual(byTag['AHU-2'].fptsCount, 1)
   })
 
   it('refreshes the issues data source with current data', async () => {
