@@ -381,6 +381,19 @@
             <span class="i">🐞</span>
             <span v-if="open">Issues</span>
           </RouterLink>
+          <!-- Final Report — project-scoped (route requires a project id) -->
+          <RouterLink
+            v-if="currentProjectId"
+            :to="{ name: 'final-report', params: { id: currentProjectId } }"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isRouteName('final-report') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isRouteName('final-report') ? 'page' : null"
+          >
+            <span class="i">📄</span>
+            <span v-if="open">Final Report</span>
+          </RouterLink>
         </nav>
       </div>
 
@@ -422,7 +435,6 @@
       <span v-if="open">‹</span>
       <span v-else>›</span>
     </button>
-
   </aside>
 </template>
 

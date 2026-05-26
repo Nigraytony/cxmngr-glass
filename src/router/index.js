@@ -71,6 +71,10 @@ const routes = [
       { path: 'tasks', name: 'tasks', component: () => import('../pages/tasks/TasksList.vue') },
       { path: 'tasks/:id', name: 'task-edit', component: () => import('../pages/tasks/TaskEdit.vue'), props: true },
       { path: 'projects/edit/:id?', name: 'project-settings', component: ProjectEdit },
+      // Cx Final Report — one per project (ASHRAE G0 §7.2.15 + §8.2.5).
+      // The route lives under /app so it shares the DashboardLayout chrome.
+      // :id is the project id (matches the existing project-settings pattern).
+      { path: 'projects/:id/final-report', name: 'final-report', component: () => import('../pages/projects/FinalReport.vue'), props: true },
       { path: 'admin/webhooks', name: 'admin-webhooks', component: WebhookEvents, meta: { adminOnly: true } },
   { path: 'admin/roles', name: 'admin-roles', component: AdminRoles, meta: { adminOnly: true } },
         { path: 'admin', name: 'admin', component: AdminDashboard, meta: { adminOnly: true } },
