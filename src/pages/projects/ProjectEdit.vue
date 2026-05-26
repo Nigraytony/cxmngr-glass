@@ -108,6 +108,163 @@
             v-model="project"
             :errors="formErrors"
           />
+
+          <!--
+            Commissioning Scope & LEED — drives the Final Report's Cx Scope
+            of Work boilerplate, the LEED-aware section templates, and the
+            "Designation Date" evidence required by LEED v5 FCx.
+
+            All fields are optional; non-LEED projects can leave LEED target
+            null and the report omits LEED-specific language.
+          -->
+          <div class="mt-6 rounded-xl p-4 bg-white/5 border border-white/10 space-y-4">
+            <div>
+              <h3 class="text-md font-medium">
+                Commissioning Scope &amp; LEED
+              </h3>
+              <p class="text-xs text-white/60 mt-1">
+                Sets the LEED-target context used by the Final Report and Cx Plan generators. Optional — leave LEED target blank for non-LEED projects.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm text-white/70">LEED target</label>
+                <select
+                  v-model="project.leedTarget"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+                >
+                  <option :value="null">
+                    Not pursuing LEED
+                  </option>
+                  <option value="v4">
+                    LEED v4
+                  </option>
+                  <option value="v4.1">
+                    LEED v4.1
+                  </option>
+                  <option value="v5">
+                    LEED v5
+                  </option>
+                  <option value="other">
+                    Other green standard
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-white/70">Certification level (target)</label>
+                <select
+                  v-model="project.leedCertificationLevel"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+                  :disabled="!project.leedTarget || project.leedTarget === 'none'"
+                >
+                  <option :value="null">
+                    (None / not applicable)
+                  </option>
+                  <option value="certified">
+                    Certified
+                  </option>
+                  <option value="silver">
+                    Silver
+                  </option>
+                  <option value="gold">
+                    Gold
+                  </option>
+                  <option value="platinum">
+                    Platinum
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm text-white/70 mb-2">Cx scope checkboxes</label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="inline-flex items-center gap-2 text-white/85">
+                  <input
+                    v-model="project.cxScope.fundamentalCx"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Fundamental Commissioning (FCx)</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-white/85">
+                  <input
+                    v-model="project.cxScope.enhancedCxMep"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Enhanced Cx — MEP Systems</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-white/85">
+                  <input
+                    v-model="project.cxScope.enhancedCxEnvelope"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Enhanced Cx — Building Enclosure</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-white/85">
+                  <input
+                    v-model="project.cxScope.envelopeCx"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Envelope Commissioning (LEED v5 FCx)</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-white/85">
+                  <input
+                    v-model="project.cxScope.mbcxBasic"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Monitoring-Based Cx (Basic Software)</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-white/85">
+                  <input
+                    v-model="project.cxScope.mbcxEnhanced"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Monitoring-Based Cx (Enhanced Software / FDD)</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-white/85 sm:col-span-2">
+                  <input
+                    v-model="project.cxScope.ongoingCx"
+                    type="checkbox"
+                    class="rounded"
+                  >
+                  <span>Ongoing Commissioning Plan (required in LEED v5 FCx)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm text-white/70">CxP designated date</label>
+                <input
+                  v-model="cxaDesignatedDateInput"
+                  type="date"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20"
+                >
+                <p class="text-[11px] text-white/50 mt-1">
+                  LEED v5 FCx requires the CxP to be designated by end of design development.
+                </p>
+              </div>
+              <div>
+                <label class="block text-sm text-white/70">CxP qualifications</label>
+                <textarea
+                  v-model="(project.commissioning_agent || {}).qualifications"
+                  rows="2"
+                  placeholder="e.g. QCxP, BCxP, 12+ years; 30+ similar projects (sample: Boston Scientific Arbor Lakes, Emory University Roberto C. Goizueta MBA)"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 text-sm"
+                />
+                <p class="text-[11px] text-white/50 mt-1">
+                  Two+ projects of equal scope per LEED v5.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div v-show="activeTab === 'team'">
@@ -3483,6 +3640,11 @@ watch(project, () => {
   aiError.value = ''
   aiKeyDraft.value = ''
   aiLastVerifiedAt.value = null
+  // Initialise the LEED/cx-scope sub-doc for legacy projects loaded from
+  // MongoDB that pre-date the schema defaults. Without this the v-model
+  // checkboxes can't bind to nested keys.
+  ensureCxScopeDefaults()
+  ensureCommissioningAgent()
 }, { deep: false })
 
 watch(aiProvider, (p) => {
@@ -3854,6 +4016,50 @@ function ensureCommissioningAgent() {
   if (!project.value) return
   if (!project.value.commissioning_agent) project.value.commissioning_agent = {}
 }
+
+/**
+ * Make sure Project.cxScope exists with the v5 default flags before the
+ * checkboxes are rendered — Mongo will lazily attach defaults on a new
+ * project but legacy projects loaded from the DB might not have it.
+ */
+function ensureCxScopeDefaults() {
+  if (!project.value) return
+  if (!project.value.cxScope) {
+    project.value.cxScope = {
+      fundamentalCx: true,
+      enhancedCxMep: false,
+      enhancedCxEnvelope: false,
+      mbcxBasic: false,
+      mbcxEnhanced: false,
+      envelopeCx: false,
+      ongoingCx: false,
+    }
+  }
+}
+
+/**
+ * Two-way bridge between the date input (YYYY-MM-DD string) and
+ * Project.commissioning_agent.designatedDate (Date / ISO string).
+ */
+const cxaDesignatedDateInput = computed({
+  get() {
+    const v = (project.value && project.value.commissioning_agent && project.value.commissioning_agent.designatedDate) || ''
+    if (!v) return ''
+    try {
+      return new Date(v).toISOString().slice(0, 10)
+    } catch (_) {
+      return ''
+    }
+  },
+  set(next: string) {
+    ensureCommissioningAgent()
+    if (!next) {
+      (project.value as any).commissioning_agent.designatedDate = null
+    } else {
+      (project.value as any).commissioning_agent.designatedDate = new Date(next).toISOString()
+    }
+  },
+})
 
 async function fileToResizedDataUrl(
   file: File,

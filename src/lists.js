@@ -83,7 +83,9 @@ export default {
     { value: "Assessment", text: "Assessment" },
     { value: "BOD Review", text: "BOD Review" },
     { value: "Construction Checklist", text: "Construction Checklist" },
+    { value: "Construction Milestone Meeting", text: "Construction Milestone Meeting" },
     { value: "Cx Plan", text: "Cx Plan" },
+    { value: "Design Coordination Meeting", text: "Design Coordination Meeting" },
     { value: "Design Review", text: "Design Review" },
     { value: "Equipment Startup Review", text: "Equipment Startup Review" },
     { value: "Functional Test", text: "Functional Test" },
@@ -94,6 +96,7 @@ export default {
     { value: "Submittal Review", text: "Submittal Review" },
     { value: "Test and Balance Review", text: "Test and Balance Review" },
     { value: "Training Review", text: "Training Review" },
+    { value: "Warranty Review", text: "Warranty Review" },
   ],
 
   issueTypes: [

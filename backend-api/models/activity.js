@@ -5,25 +5,36 @@ const activitySchema = new mongoose.Schema({
   // rich-text HTML description stored as string
   descriptionHtml: { type: String, default: '' },
   // activity type choices
-  type: { type: String, 
+  //
+  // Type strings here mirror LEED Cx + ASHRAE G0 deliverables so the Final
+  // Report's `activities-by-phase` data source can group Activities into
+  // Predesign / Design / Construction / Occupancy buckets. New types added
+  // for Phase 1 of the Final Report work: Construction Milestone Meeting
+  // (LEED v5 FCx 50%/100% meeting attendance), Design Coordination Meeting
+  // (LEED v5 ECx 2-meeting minimum), Warranty Review (LEED v4 ECx 10-month
+  // post-occupancy review — explicit type rather than overloading Site Visit).
+  type: { type: String,
     enum: [
       'Assessment',
       'BOD Review',
       'Construction Checklist',
+      'Construction Milestone Meeting',
       'Cx Meeting',
       'Cx Plan',
+      'Design Coordination Meeting',
       'Design Review',
       'Functional Test',
       'Installation Review',
-      'OPR Review', 
+      'OPR Review',
       'Owners Manual Review',
-      'Schedule Integration', 
+      'Schedule Integration',
       'Seasonal Test',
-      'Site Visit Review', 
-      'Startup Review', 
-      'Submittal Review', 
-      'Training Review', 
+      'Site Visit Review',
+      'Startup Review',
+      'Submittal Review',
+      'Training Review',
       'Test and Balance Review',
+      'Warranty Review',
       'Other'
     ], default: 'Site Visit Review' },
   status: {
@@ -53,6 +64,44 @@ const activitySchema = new mongoose.Schema({
   spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space' },
   // list of systems/equipment inspected
   systems: [{ type: String }],
+  // -------------------------------------------------------------------------
+  // Cx-process tagging — used by the Final Report data sources.
+  //
+  // `phase` lets the report group Activities into the four ASHRAE G0 phases
+  // (predesign / design / construction / occupancy) for the "Cx Activities
+  // by Phase" section. When null, the renderer derives a default from
+  // `type` (e.g. Design Review → design, Functional Test → construction).
+  //
+  // The remaining fields cover specific LEED v4/v5 audit deliverables:
+  //   - milestone:        which design or construction milestone this is
+  //                       (e.g. "50% CD", "100% CD", "100% Backcheck")
+  //   - samplePercentage: for sample reviews (LEED v5 FCx asks for 10% of
+  //                       contractor docs)
+  //   - backcheckComplete: design-review backcheck closeout
+  //   - attendees:        meeting attendees (training sign-in sheets,
+  //                       Cx meeting rosters); the Training Verification
+  //                       section reads from this
+  // -------------------------------------------------------------------------
+  phase: {
+    type: String,
+    enum: ['predesign', 'design', 'construction', 'occupancy', null],
+    default: null,
+  },
+  milestone: { type: String, default: '' },
+  samplePercentage: { type: Number, default: null },
+  backcheckComplete: { type: Boolean, default: false },
+  attendees: {
+    type: [
+      {
+        name: { type: String, default: '' },
+        company: { type: String, default: '' },
+        email: { type: String, default: '' },
+        role: { type: String, default: '' },
+        signedIn: { type: Boolean, default: true },
+      },
+    ],
+    default: [],
+  },
   // Flexible settings bucket (e.g., report settings) persisted per activity
   settings: { type: mongoose.Schema.Types.Mixed, default: {} },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },

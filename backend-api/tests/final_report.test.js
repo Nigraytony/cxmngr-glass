@@ -148,20 +148,29 @@ describe('Final Report routes', function () {
     assert.strictEqual(res.body.status, 'draft')
     assert.strictEqual(res.body.currentVersion, 0)
     assert(Array.isArray(res.body.sections))
-    // 12 lifecycle-ordered defaults: pre-design → design → construction →
-    // closeout. If the canonical list changes, update model + this assertion
+    // 22 lifecycle-ordered defaults (Phase 1 expansion): predesign →
+    // design → construction → occupancy → closeout. If the canonical list
+    // changes, update DEFAULT_SECTIONS in the model and this assertion
     // together.
-    assert.strictEqual(res.body.sections.length, 12)
+    assert.strictEqual(res.body.sections.length, 22)
     const keys = res.body.sections.map((s) => s.key)
-    assert.deepStrictEqual(keys[0], 'project-charter')
+    assert.deepStrictEqual(keys[0], 'revisions')
     assert.deepStrictEqual(keys[keys.length - 1], 'sign-offs')
-    // Scoped Systems section + issues data source are wired correctly.
+    // Spot-check representative sections + data sources.
     const scoped = res.body.sections.find((s) => s.key === 'scoped-systems')
     assert.strictEqual(scoped.type, 'data')
     assert.strictEqual(scoped.dataSource, 'scoped-systems')
     const issues = res.body.sections.find((s) => s.key === 'issues-log')
     assert.strictEqual(issues.type, 'data')
     assert.strictEqual(issues.dataSource, 'issues')
+    // OPR Coverage is the headline LEED-audit section; verify it's wired.
+    const oprCov = res.body.sections.find((s) => s.key === 'opr-coverage')
+    assert.strictEqual(oprCov.type, 'data')
+    assert.strictEqual(oprCov.dataSource, 'opr-coverage')
+    // Project Description is a data section (renders project.description).
+    const desc = res.body.sections.find((s) => s.key === 'project-description')
+    assert.strictEqual(desc.type, 'data')
+    assert.strictEqual(desc.dataSource, 'project-description')
   })
 
   it('is idempotent — second GET does not duplicate sections', async () => {
@@ -351,6 +360,159 @@ describe('Final Report routes', function () {
       .send({ sections: [] })
     assert.strictEqual(put.status, 409)
     assert.strictEqual(put.body.code, 'FINAL_REPORT_LOCKED')
+  })
+
+  // --------------------------------------------------------------------
+  // Phase 1 data source coverage
+  // --------------------------------------------------------------------
+
+  it('renders project description directly from the Project model', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const Project = require('../models/project')
+    await Project.findByIdAndUpdate(projectId, {
+      $set: {
+        description: 'Three-story lab + office building, 80,000 sqft.',
+        building_type: 'Lab',
+      },
+    })
+    await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    const res = await withCsrf(
+      request(app).post(
+        `/api/projects/${projectId}/final-report/sections/project-description/refresh`,
+      ),
+    ).set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    assert.strictEqual(res.body.data.description, 'Three-story lab + office building, 80,000 sqft.')
+    assert.strictEqual(res.body.data.buildingType, 'Lab')
+  })
+
+  it('groups activities into ASHRAE phases by type when phase is not set', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const Activity = require('../models/activity')
+    await Activity.create([
+      { projectId, name: 'OPR Kickoff', type: 'OPR Review' },
+      { projectId, name: '50% CD Review', type: 'Design Review' },
+      { projectId, name: 'CWS FPT', type: 'Functional Test' },
+      { projectId, name: '10-month Warranty', type: 'Warranty Review' },
+    ])
+    await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    const res = await withCsrf(
+      request(app).post(
+        `/api/projects/${projectId}/final-report/sections/activities-by-phase/refresh`,
+      ),
+    ).set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    const by = Object.fromEntries(res.body.data.groups.map((g) => [g.phase, g.rows]))
+    assert.strictEqual(by.predesign.length, 1)
+    assert.strictEqual(by.design.length, 1)
+    assert.strictEqual(by.construction.length, 1)
+    assert.strictEqual(by.occupancy.length, 1)
+  })
+
+  it('rolls up OPR coverage with overall pass/fail/na/unverified status', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const OprItem = require('../models/oprItem')
+    const OprCategory = require('../models/oprCategory')
+    const OprLinkEvaluation = require('../models/oprLinkEvaluation')
+
+    // Build a small category + 3 OPR items (pass / fail / unverified).
+    const cat = await OprCategory.create({
+      orgId: projectId,
+      projectId,
+      name: 'Thermal Comfort',
+      sortOrder: 1,
+      createdBy: new mongoose.Types.ObjectId(),
+    })
+    const items = await OprItem.create([
+      { orgId: projectId, projectId, categoryId: cat._id, text: 'Temps 68–74F', score: 30, rank: 1, createdBy: new mongoose.Types.ObjectId() },
+      { orgId: projectId, projectId, categoryId: cat._id, text: 'RH 50–65%', score: 25, rank: 2, createdBy: new mongoose.Types.ObjectId() },
+      { orgId: projectId, projectId, categoryId: cat._id, text: 'No odors', score: 20, rank: 3, createdBy: new mongoose.Types.ObjectId() },
+    ])
+    // Item 1: 2 pass links → overall pass
+    // Item 2: 1 fail link → overall fail
+    // Item 3: no links → overall unverified
+    await OprLinkEvaluation.create([
+      { orgId: projectId, projectId, oprItemId: items[0]._id, contextType: 'equipment', contextId: new mongoose.Types.ObjectId(), targetType: 'functional_test_step', status: 'pass' },
+      { orgId: projectId, projectId, oprItemId: items[0]._id, contextType: 'equipment', contextId: new mongoose.Types.ObjectId(), targetType: 'checklist_question', status: 'pass' },
+      { orgId: projectId, projectId, oprItemId: items[1]._id, contextType: 'issue', contextId: new mongoose.Types.ObjectId(), targetType: 'issue', status: 'fail' },
+    ])
+
+    await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    const res = await withCsrf(
+      request(app).post(
+        `/api/projects/${projectId}/final-report/sections/opr-coverage/refresh`,
+      ),
+    ).set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    const data = res.body.data
+    assert.strictEqual(data.totalCount, 3)
+    assert.strictEqual(data.verifiedCount, 1)
+    assert.strictEqual(data.failedCount, 1)
+    assert.strictEqual(data.unverifiedCount, 1)
+    const byRank = Object.fromEntries(data.rows.map((r) => [r.rank, r]))
+    assert.strictEqual(byRank[1].overallStatus, 'pass')
+    assert.strictEqual(byRank[1].passLinks, 2)
+    assert.strictEqual(byRank[2].overallStatus, 'fail')
+    assert.strictEqual(byRank[3].overallStatus, 'unverified')
+  })
+
+  it('returns only issues with a non-empty recommendation', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const Issue = require('../models/issue')
+    await Issue.create([
+      { projectId, number: 1, title: 'A', description: 'd', system: 'HVAC', recommendation: 'Replace fan motor' },
+      { projectId, number: 2, title: 'B', description: 'd', system: 'HVAC', recommendation: '' },
+      { projectId, number: 3, title: 'C', description: 'd', system: 'Plumbing', recommendation: 'Install isolation valve' },
+    ])
+    await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    const res = await withCsrf(
+      request(app).post(
+        `/api/projects/${projectId}/final-report/sections/recommendations/refresh`,
+      ),
+    ).set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    assert.strictEqual(res.body.data.totalCount, 2)
+    const systems = res.body.data.groups.map((g) => g.system).sort()
+    assert.deepStrictEqual(systems, ['HVAC', 'Plumbing'])
+  })
+
+  it('returns training sessions with attendee counts', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const Activity = require('../models/activity')
+    await Activity.create({
+      projectId,
+      name: 'HVAC O&M Training',
+      type: 'Training Review',
+      startDate: new Date('2025-09-15'),
+      attendees: [
+        { name: 'Bob', company: 'BSC', email: 'b@x.com', role: 'Operator', signedIn: true },
+        { name: 'Alice', company: 'BSC', email: 'a@x.com', role: 'Operator', signedIn: true },
+      ],
+    })
+    await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+
+    const res = await withCsrf(
+      request(app).post(
+        `/api/projects/${projectId}/final-report/sections/training-verification/refresh`,
+      ),
+    ).set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    assert.strictEqual(res.body.data.totalCount, 1)
+    assert.strictEqual(res.body.data.rows[0].attendeeCount, 2)
   })
 
   it('only allows a global admin to unlock', async () => {
