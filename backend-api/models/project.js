@@ -38,6 +38,12 @@ const projectSchema = new mongoose.Schema({
     logo: { type: String },
     // Optional phone number for the commissioning agent contact
     phone: { type: String },
+    // LEED v5 EAp Fundamental Cx requires the CxP to be designated "by the
+    // end of the design development phase" with documented experience on at
+    // least two projects of equal or larger scope. Capture both here so the
+    // Final Report can prove FCx eligibility without manual paperwork.
+    qualifications: { type: String, default: '' },
+    designatedDate: { type: Date, default: null },
   },
   logo: { type: String },
   meta: [{ type: String }],
@@ -118,6 +124,37 @@ const projectSchema = new mongoose.Schema({
   // Plan/tier metadata to drive feature gating
   subscriptionTier: { type: String, default: 'basic', enum: ['basic', 'standard', 'premium'] },
   subscriptionFeatures: { type: mongoose.Schema.Types.Mixed, default: null },
+  // ---------------------------------------------------------------------
+  // Commissioning scope / LEED target
+  //
+  // These drive the Final Report's "Cx Scope of Work" section and the
+  // LEED-aware boilerplate templates. They live on Project (not on the
+  // FinalReport) so they're stable across multiple reports (interim,
+  // final, post-occupancy) and so other features (Cx Plan generator,
+  // OPR Workshop, etc.) can read them too.
+  //
+  // `leedTarget` is null for non-LEED projects; the report just omits
+  // LEED-specific language in that case.
+  // ---------------------------------------------------------------------
+  leedTarget: {
+    type: String,
+    enum: ['none', 'v4', 'v4.1', 'v5', 'other', null],
+    default: null,
+  },
+  leedCertificationLevel: {
+    type: String,
+    enum: ['certified', 'silver', 'gold', 'platinum', null],
+    default: null,
+  },
+  cxScope: {
+    fundamentalCx: { type: Boolean, default: true },
+    enhancedCxMep: { type: Boolean, default: false },
+    enhancedCxEnvelope: { type: Boolean, default: false },
+    mbcxBasic: { type: Boolean, default: false },
+    mbcxEnhanced: { type: Boolean, default: false },
+    envelopeCx: { type: Boolean, default: false },
+    ongoingCx: { type: Boolean, default: false },
+  },
   // One-time paid add-ons (project-scoped)
   addons: {
     oprWorkshop: {

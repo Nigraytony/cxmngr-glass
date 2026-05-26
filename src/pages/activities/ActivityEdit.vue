@@ -511,6 +511,138 @@
                   </div>
                 </div>
               </div>
+
+              <!--
+                Cx Tracking — LEED-specific fields the Final Report data
+                sources read from. These are optional; leave blank if the
+                project isn't pursuing LEED. The "phase" field is the only
+                one that affects every project (the Final Report groups
+                activities by phase). The others surface in specific LEED
+                deliverables (Construction Milestone Meetings, Sample
+                Reviews, Design Backcheck, Training Verification).
+              -->
+              <details class="rounded-md border border-white/10 bg-white/5 p-3 text-sm">
+                <summary class="cursor-pointer text-white/80 select-none">
+                  Cx Tracking <span class="text-xs text-white/50 font-normal">(LEED / Cx process metadata)</span>
+                </summary>
+                <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-white/60">Cx Phase</label>
+                    <select
+                      v-model="form.phase"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+                    >
+                      <option :value="null">
+                        Auto (from type)
+                      </option>
+                      <option value="predesign">
+                        Predesign
+                      </option>
+                      <option value="design">
+                        Design
+                      </option>
+                      <option value="construction">
+                        Construction
+                      </option>
+                      <option value="occupancy">
+                        Occupancy &amp; Operations
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-white/60">Milestone</label>
+                    <input
+                      v-model="form.milestone"
+                      type="text"
+                      placeholder="e.g. 50% CD, 100% CD, 100% Backcheck"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    >
+                  </div>
+                  <div>
+                    <label class="block text-xs text-white/60">Sample %</label>
+                    <input
+                      v-model.number="form.samplePercentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="e.g. 10"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                    >
+                  </div>
+                  <div class="flex items-end">
+                    <label class="inline-flex items-center gap-2 text-white/80">
+                      <input
+                        v-model="form.backcheckComplete"
+                        type="checkbox"
+                        class="rounded"
+                      >
+                      <span>Backcheck complete</span>
+                    </label>
+                  </div>
+                </div>
+                <!-- Attendees — surfaces Training Verification roster + Cx Meeting attendees -->
+                <div class="mt-4">
+                  <div class="flex items-center justify-between gap-2 mb-1">
+                    <label class="text-xs text-white/60">Attendees</label>
+                    <button
+                      type="button"
+                      class="px-2 py-1 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-xs text-white/85"
+                      @click="addAttendee"
+                    >
+                      + Add attendee
+                    </button>
+                  </div>
+                  <div
+                    v-if="!(form.attendees || []).length"
+                    class="text-xs text-white/50 italic"
+                  >
+                    No attendees recorded. Add rows here (or attach a scanned sign-in sheet) for Training Reviews and Cx Meetings.
+                  </div>
+                  <div
+                    v-else
+                    class="space-y-2"
+                  >
+                    <div
+                      v-for="(a, ai) in form.attendees"
+                      :key="ai"
+                      class="grid grid-cols-12 gap-2 items-center"
+                    >
+                      <input
+                        v-model="a.name"
+                        type="text"
+                        placeholder="Name"
+                        class="col-span-3 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs placeholder-gray-400"
+                      >
+                      <input
+                        v-model="a.company"
+                        type="text"
+                        placeholder="Company"
+                        class="col-span-3 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs placeholder-gray-400"
+                      >
+                      <input
+                        v-model="a.email"
+                        type="text"
+                        placeholder="Email"
+                        class="col-span-3 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs placeholder-gray-400"
+                      >
+                      <input
+                        v-model="a.role"
+                        type="text"
+                        placeholder="Role"
+                        class="col-span-2 px-2 py-1 rounded-md bg-white/10 border border-white/20 text-xs placeholder-gray-400"
+                      >
+                      <button
+                        type="button"
+                        class="col-span-1 px-2 py-1 rounded-md text-white/60 hover:text-red-300 hover:bg-red-500/10"
+                        title="Remove attendee"
+                        @click="removeAttendee(ai)"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <!-- Right column: Description only. Editor uses a fixed 24rem
@@ -2373,7 +2505,24 @@ const form = reactive({
   issues: [] as string[],
   oprItemIds: [] as string[],
   settings: {} as any,
+  // Cx tracking — LEED / ASHRAE G0 deliverable tagging consumed by the
+  // Final Report's activities-by-phase / training-verification /
+  // warranty-review data sources. See backend-api/models/activity.js.
+  phase: null as 'predesign' | 'design' | 'construction' | 'occupancy' | null,
+  milestone: '' as string,
+  samplePercentage: null as number | null,
+  backcheckComplete: false as boolean,
+  attendees: [] as Array<{ name: string; company: string; email: string; role: string; signedIn?: boolean }>,
 })
+
+function addAttendee() {
+  form.attendees.push({ name: '', company: '', email: '', role: '', signedIn: true })
+}
+
+function removeAttendee(index: number) {
+  if (index < 0 || index >= form.attendees.length) return
+  form.attendees.splice(index, 1)
+}
 
 
 // Cx Plan mode — when the activity type is "Cx Plan", the description card

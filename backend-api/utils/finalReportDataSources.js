@@ -20,10 +20,13 @@ const mongoose = require('mongoose')
 const Project = require('../models/project')
 const OprItem = require('../models/oprItem')
 const OprCategory = require('../models/oprCategory')
+const OprLinkEvaluation = require('../models/oprLinkEvaluation')
 const Task = require('../models/task')
 const Activity = require('../models/activity')
 const Equipment = require('../models/equipment')
 const Issue = require('../models/issue')
+const System = require('../models/system')
+const FinalReport = require('../models/finalReport')
 
 function asString(v) {
   return typeof v === 'string' ? v : v == null ? '' : String(v)
@@ -294,6 +297,568 @@ async function fetchTeam({ projectId }) {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 1 additions — LEED v4/v4.1/v5 + ASHRAE G0 deliverable views.
+//
+// These providers turn data already captured elsewhere in the app
+// (Activity, Equipment, System, OprLinkEvaluation, Project) into the
+// structured tables a LEED-compliant Final Cx Report needs. No new
+// per-section data store — every row comes from existing models.
+// ---------------------------------------------------------------------------
+
+/**
+ * Project Description — renders the existing `project.description` field
+ * as a single prose block. Lives behind a data source rather than a
+ * prose section so the user can't accidentally edit a project-level
+ * field through the Final Report editor.
+ * Returns { description, name, client, location, buildingType }
+ */
+async function fetchProjectDescription({ projectId }) {
+  const p = await Project.findById(projectId)
+    .select('name client location building_type description startDate endDate')
+    .lean()
+  return {
+    name: (p && p.name) || '',
+    client: (p && p.client) || '',
+    location: (p && p.location) || '',
+    buildingType: (p && p.building_type) || '',
+    description: (p && p.description) || '',
+    startDate: safeISO(p && p.startDate),
+    endDate: safeISO(p && p.endDate),
+  }
+}
+
+/**
+ * Revisions — merges the manual revision log (FinalReport.revisions) with
+ * auto-entries derived from each release event. Sorted by date desc.
+ * Returns { rows: [{ versionLabel, summary, reviser, date, kind }] }
+ */
+async function fetchRevisions({ projectId }) {
+  const report = await FinalReport.findOne({ projectId })
+    .select('revisions releases')
+    .lean()
+  const manual = Array.isArray(report && report.revisions) ? report.revisions : []
+  const releases = Array.isArray(report && report.releases) ? report.releases : []
+  const rows = [
+    ...manual.map((r) => ({
+      versionLabel: r.versionLabel || '',
+      summary: r.summary || '',
+      reviser: r.reviserName || '',
+      date: safeISO(r.date),
+      kind: r.kind || 'manual',
+    })),
+    ...releases.map((r) => ({
+      versionLabel: `v${r.version}`,
+      summary: r.note || `Locked as ${r.version === 1 ? 'final' : 'release'}`,
+      reviser: '',
+      date: safeISO(r.releasedAt),
+      kind: 'release',
+    })),
+  ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  return { rows, totalCount: rows.length }
+}
+
+/**
+ * Commissioned Systems / Sampling Methodology — aggregates by System
+ * with quantity counts + verification %s. Mirrors the shape of the
+ * "Commissioned Systems" table in the ASHRAE G0 sample report
+ * (Commissioned System / Quantity / PFPT% / BAS% / TAB% / FPT%).
+ *
+ * The verification %s are derived from each System's linked equipment:
+ *   PFPT  = % of equipment with at least one is_complete checklist section
+ *   FPT   = % of equipment with at least one functionalTest item that has
+ *           a status (pass/fail/na)
+ *   BAS   = % of equipment with system non-empty AND status indicating
+ *           commissioned (Operational / Tested / Trained); proxy for "BAS
+ *           integration verified" since BAS-specific flags don't exist yet
+ *   TAB   = % of equipment with a non-null balanceDate (proxies T&AB
+ *           completion)
+ *
+ * Returns { rows: [{ system, quantity, pfptPct, basPct, tabPct, fptPct }] }
+ */
+async function fetchCommissionedSystems({ projectId }) {
+  const equipment = await Equipment.find({ projectId })
+    .select('system status checklists functionalTests balanceDate')
+    .lean()
+  const systems = await System.find({ projectId })
+    .select('name type')
+    .lean()
+
+  // Build a map of system name -> set of equipment. Equipment.system is a
+  // free-text string; we group on the trimmed value.
+  const groups = new Map()
+  const ensure = (key) => {
+    if (!groups.has(key)) {
+      groups.set(key, {
+        system: key,
+        equipmentList: [],
+      })
+    }
+    return groups.get(key)
+  }
+  for (const e of equipment) {
+    const sys = asString(e.system).trim() || 'Unassigned'
+    ensure(sys).equipmentList.push(e)
+  }
+  // Include any System records that don't yet have linked equipment — they
+  // still belong on the "commissioned systems" inventory.
+  for (const s of systems) {
+    const key = asString(s.name).trim()
+    if (key && !groups.has(key)) ensure(key)
+  }
+
+  const rows = [...groups.values()]
+    .sort((a, b) => {
+      if (a.system === 'Unassigned') return 1
+      if (b.system === 'Unassigned') return -1
+      return a.system.localeCompare(b.system)
+    })
+    .map((g) => {
+      const list = g.equipmentList
+      const n = list.length || 1 // avoid divide-by-zero in the % calc
+      let pfptDone = 0
+      let fptDone = 0
+      let basDone = 0
+      let tabDone = 0
+      for (const e of list) {
+        const cl = Array.isArray(e.checklists) ? e.checklists : []
+        if (cl.some((s) => s && s.is_complete === true)) pfptDone++
+        const fpts = Array.isArray(e.functionalTests) ? e.functionalTests : []
+        if (
+          fpts.some((t) => {
+            const st = asString(t && t.status).trim().toLowerCase()
+            return st && st !== 'pending' && st !== 'open'
+          })
+        ) {
+          fptDone++
+        }
+        const status = asString(e.status).trim().toLowerCase()
+        if (['operational', 'tested', 'trained'].includes(status)) basDone++
+        if (e.balanceDate) tabDone++
+      }
+      return {
+        system: g.system,
+        quantity: list.length,
+        pfptPct: list.length ? Math.round((pfptDone / n) * 100) : 0,
+        basPct: list.length ? Math.round((basDone / n) * 100) : 0,
+        tabPct: list.length ? Math.round((tabDone / n) * 100) : 0,
+        fptPct: list.length ? Math.round((fptDone / n) * 100) : 0,
+      }
+    })
+
+  return { rows, totalCount: rows.length }
+}
+
+/**
+ * Map an Activity.type to a default ASHRAE phase when the activity hasn't
+ * been explicitly tagged with `phase`. Hand-curated from the type enum.
+ */
+function defaultPhaseForType(type) {
+  const t = asString(type).trim().toLowerCase()
+  switch (t) {
+    case 'opr review':
+    case 'cx plan':
+    case 'assessment':
+    case 'schedule integration':
+      return 'predesign'
+    case 'bod review':
+    case 'design review':
+    case 'design coordination meeting':
+    case 'submittal review':
+      return 'design'
+    case 'site visit review':
+    case 'cx meeting':
+    case 'construction checklist':
+    case 'construction milestone meeting':
+    case 'installation review':
+    case 'startup review':
+    case 'functional test':
+    case 'test and balance review':
+    case 'training review':
+    case 'owners manual review':
+      return 'construction'
+    case 'seasonal test':
+    case 'warranty review':
+      return 'occupancy'
+    default:
+      return 'construction'
+  }
+}
+
+/**
+ * Cx Activities by Phase — every project Activity grouped into the four
+ * ASHRAE G0 phases (Predesign / Design / Construction / Occupancy).
+ *
+ * Returns { groups: [{ phase, label, rows: [{ name, type, status, startDate, location, descriptionPreview, attendeeCount, milestone, issueCount }] }] }
+ */
+async function fetchActivitiesByPhase({ projectId }) {
+  const activities = await Activity.find({ projectId })
+    .sort({ startDate: 1 })
+    .lean()
+  const buckets = {
+    predesign: [],
+    design: [],
+    construction: [],
+    occupancy: [],
+  }
+  for (const a of activities) {
+    const phase = (a.phase && buckets[a.phase])
+      ? a.phase
+      : defaultPhaseForType(a.type)
+    buckets[phase].push({
+      _id: a._id,
+      name: a.name || '',
+      type: a.type || '',
+      status: a.status || 'draft',
+      startDate: safeISO(a.startDate),
+      endDate: safeISO(a.endDate),
+      location: a.location || '',
+      descriptionPreview: stripHtmlPreview(a.descriptionHtml, 220),
+      attendeeCount: Array.isArray(a.attendees) ? a.attendees.length : 0,
+      milestone: a.milestone || '',
+      issueCount: Array.isArray(a.issues) ? a.issues.length : 0,
+    })
+  }
+  const groups = [
+    { phase: 'predesign', label: 'Predesign Phase', rows: buckets.predesign },
+    { phase: 'design', label: 'Design Phase', rows: buckets.design },
+    { phase: 'construction', label: 'Construction Phase', rows: buckets.construction },
+    { phase: 'occupancy', label: 'Occupancy & Operations Phase', rows: buckets.occupancy },
+  ]
+  return { groups, totalCount: activities.length }
+}
+
+/**
+ * OPR Coverage — pulls every OPR item on the project and joins it with
+ * any OprLinkEvaluation records the team built. Each link evaluation is
+ * a tuple of (OPR item, what verified it, pass/fail/na status), so this
+ * provider answers: "For each OPR item, how was it verified during Cx?"
+ *
+ * Used as the headline LEED-audit artifact in the report.
+ *
+ * Returns { rows: [{ rank, text, category, totalLinks, passLinks, failLinks,
+ *           naLinks, unverifiedLinks, overallStatus, links: [...] }], totalCount }
+ */
+async function fetchOprCoverage({ projectId }) {
+  const items = await OprItem.find({ projectId, status: 'active' })
+    .sort({ rank: 1 })
+    .lean()
+  const categoryIds = [...new Set(items.map((i) => String(i.categoryId)).filter(Boolean))]
+  const cats = await OprCategory.find({ _id: { $in: categoryIds } })
+    .select('name')
+    .lean()
+  const catName = new Map(cats.map((c) => [String(c._id), c.name]))
+
+  const links = await OprLinkEvaluation.find({ projectId })
+    .select('oprItemId contextType contextLabel targetType targetLabel status notes evaluatedAt')
+    .lean()
+  const linksByItem = new Map()
+  for (const l of links) {
+    const key = String(l.oprItemId)
+    if (!linksByItem.has(key)) linksByItem.set(key, [])
+    linksByItem.get(key).push(l)
+  }
+
+  const rows = items.map((i) => {
+    const itemLinks = linksByItem.get(String(i._id)) || []
+    const counts = { pass: 0, fail: 0, na: 0, unverified: 0 }
+    for (const l of itemLinks) {
+      const st = asString(l.status).trim().toLowerCase()
+      if (counts[st] != null) counts[st]++
+    }
+    // Overall: any fail → fail; only pass → pass; only na → na; no links → unverified
+    let overall = 'unverified'
+    if (counts.fail > 0) overall = 'fail'
+    else if (counts.pass > 0) overall = 'pass'
+    else if (counts.na > 0 && itemLinks.length > 0) overall = 'na'
+    return {
+      rank: i.rank,
+      text: i.text || '',
+      category: catName.get(String(i.categoryId)) || '',
+      totalLinks: itemLinks.length,
+      passLinks: counts.pass,
+      failLinks: counts.fail,
+      naLinks: counts.na,
+      unverifiedLinks: counts.unverified,
+      overallStatus: overall,
+      links: itemLinks.map((l) => ({
+        contextType: l.contextType,
+        contextLabel: l.contextLabel || '',
+        targetType: l.targetType,
+        targetLabel: l.targetLabel || '',
+        status: l.status,
+        notes: l.notes || '',
+        evaluatedAt: safeISO(l.evaluatedAt),
+      })),
+    }
+  })
+
+  return {
+    rows,
+    totalCount: rows.length,
+    verifiedCount: rows.filter((r) => r.overallStatus === 'pass').length,
+    failedCount: rows.filter((r) => r.overallStatus === 'fail').length,
+    naCount: rows.filter((r) => r.overallStatus === 'na').length,
+    unverifiedCount: rows.filter((r) => r.overallStatus === 'unverified').length,
+  }
+}
+
+/**
+ * OPR Deviations — narrower view, only OPR items where at least one link
+ * evaluation is `fail`. Feeds the "Systems/Assemblies Not Meeting OPR"
+ * section directly.
+ *
+ * Returns { rows: [{ rank, text, category, failLinks, failures: [...] }] }
+ */
+async function fetchOprDeviations({ projectId }) {
+  const coverage = await fetchOprCoverage({ projectId })
+  const rows = coverage.rows
+    .filter((r) => r.failLinks > 0)
+    .map((r) => ({
+      rank: r.rank,
+      text: r.text,
+      category: r.category,
+      failLinks: r.failLinks,
+      failures: r.links.filter((l) => String(l.status).toLowerCase() === 'fail'),
+    }))
+  return { rows, totalCount: rows.length }
+}
+
+/**
+ * FPT Results — rolls up Equipment.functionalTests + System.functionalTests
+ * into a per-equipment summary. Each row shows the FPT pass/fail/na/pending
+ * counts, last test date, and signature presence so the report reader can
+ * see which systems have a completed FPT package.
+ *
+ * Returns { rows: [{ tag, name, system, total, pass, fail, na, pending,
+ *           hasSignatures, lastTestedAt }], totalCount }
+ */
+async function fetchFptResults({ projectId }) {
+  const equipment = await Equipment.find({ projectId })
+    .select('tag title system functionalTests fptSignatures testDate')
+    .sort({ system: 1, tag: 1 })
+    .lean()
+  const systems = await System.find({ projectId })
+    .select('name functionalTests fptSignatures')
+    .lean()
+
+  const rows = []
+  const countItems = (items) => {
+    const c = { total: 0, pass: 0, fail: 0, na: 0, pending: 0 }
+    if (!Array.isArray(items)) return c
+    for (const t of items) {
+      c.total++
+      const st = asString(t && t.status).trim().toLowerCase()
+      if (st === 'pass') c.pass++
+      else if (st === 'fail') c.fail++
+      else if (st === 'na' || st === 'n/a') c.na++
+      else c.pending++
+    }
+    return c
+  }
+  for (const e of equipment) {
+    const c = countItems(e.functionalTests)
+    if (c.total === 0) continue
+    rows.push({
+      tag: e.tag || '',
+      name: e.title || '',
+      system: e.system || '',
+      kind: 'equipment',
+      total: c.total,
+      pass: c.pass,
+      fail: c.fail,
+      na: c.na,
+      pending: c.pending,
+      hasSignatures: Array.isArray(e.fptSignatures) && e.fptSignatures.length > 0,
+      lastTestedAt: safeISO(e.testDate),
+    })
+  }
+  for (const s of systems) {
+    const c = countItems(s.functionalTests)
+    if (c.total === 0) continue
+    rows.push({
+      tag: '',
+      name: s.name || '',
+      system: s.name || '',
+      kind: 'system',
+      total: c.total,
+      pass: c.pass,
+      fail: c.fail,
+      na: c.na,
+      pending: c.pending,
+      hasSignatures: Array.isArray(s.fptSignatures) && s.fptSignatures.length > 0,
+      lastTestedAt: null,
+    })
+  }
+  return { rows, totalCount: rows.length }
+}
+
+/**
+ * Construction Checklist Summary — rolls up Equipment.checklists +
+ * System.checklists. Each row shows total / complete / partial / not
+ * started checklist sections per equipment item.
+ *
+ * Returns { rows: [{ tag, name, system, totalSections, completeSections,
+ *           partialSections, notStarted, completionPct }], totalCount }
+ */
+async function fetchChecklistSummary({ projectId }) {
+  const equipment = await Equipment.find({ projectId })
+    .select('tag title system checklists')
+    .sort({ system: 1, tag: 1 })
+    .lean()
+  const systems = await System.find({ projectId })
+    .select('name checklists')
+    .lean()
+  const summarise = (sections) => {
+    const s = { totalSections: 0, completeSections: 0, partialSections: 0, notStarted: 0 }
+    if (!Array.isArray(sections)) return s
+    for (const sec of sections) {
+      s.totalSections++
+      if (sec && sec.is_complete === true) {
+        s.completeSections++
+        continue
+      }
+      const qs = Array.isArray(sec && sec.questions) ? sec.questions : []
+      const anyAnswered = qs.some(
+        (q) => q && (q.is_complete === true || (q.answer != null && q.answer !== '')),
+      )
+      if (anyAnswered) s.partialSections++
+      else s.notStarted++
+    }
+    return s
+  }
+  const rows = []
+  for (const e of equipment) {
+    const s = summarise(e.checklists)
+    if (s.totalSections === 0) continue
+    rows.push({
+      tag: e.tag || '',
+      name: e.title || '',
+      system: e.system || '',
+      kind: 'equipment',
+      ...s,
+      completionPct: Math.round((s.completeSections / s.totalSections) * 100),
+    })
+  }
+  for (const sys of systems) {
+    const s = summarise(sys.checklists)
+    if (s.totalSections === 0) continue
+    rows.push({
+      tag: '',
+      name: sys.name || '',
+      system: sys.name || '',
+      kind: 'system',
+      ...s,
+      completionPct: Math.round((s.completeSections / s.totalSections) * 100),
+    })
+  }
+  return { rows, totalCount: rows.length }
+}
+
+/**
+ * Training Verification — Activities of type "Training Review" with their
+ * attendee rosters. Sign-in sheets live as Activity attachments and don't
+ * need to be surfaced here — the renderer just notes their presence.
+ *
+ * Returns { rows: [{ name, topic, date, instructor, attendees: [...],
+ *           attendeeCount, attachmentCount }], totalCount }
+ */
+async function fetchTrainingSessions({ projectId }) {
+  const sessions = await Activity.find({
+    projectId,
+    type: 'Training Review',
+  })
+    .sort({ startDate: 1 })
+    .lean()
+  return {
+    rows: sessions.map((s) => ({
+      _id: s._id,
+      name: s.name || '',
+      topic: s.name || '',
+      date: safeISO(s.startDate),
+      location: s.location || '',
+      status: s.status || 'draft',
+      attendees: Array.isArray(s.attendees) ? s.attendees : [],
+      attendeeCount: Array.isArray(s.attendees) ? s.attendees.length : 0,
+      attachmentCount: Array.isArray(s.attachments) ? s.attachments.length : 0,
+      descriptionPreview: stripHtmlPreview(s.descriptionHtml, 200),
+    })),
+    totalCount: sessions.length,
+  }
+}
+
+/**
+ * Recommendations for Optimization — Issues where `recommendation` is
+ * non-empty, grouped by system. The CxA writes recommendations on
+ * individual issues as they go (existing Issue.recommendation field);
+ * the Final Report aggregates them into the LEED-required Recommendations
+ * section without re-authoring.
+ *
+ * Returns { groups: [{ system, rows: [{ number, title, recommendation,
+ *           severity, status, location }] }] }
+ */
+async function fetchRecommendations({ projectId }) {
+  const issues = await Issue.find({
+    projectId,
+    recommendation: { $exists: true, $ne: '' },
+  })
+    .select('number title recommendation severity status system location closedDate')
+    .sort({ system: 1, number: 1 })
+    .lean()
+  const groupsMap = new Map()
+  for (const i of issues) {
+    const sys = asString(i.system).trim() || 'General'
+    if (!groupsMap.has(sys)) groupsMap.set(sys, [])
+    groupsMap.get(sys).push({
+      number: typeof i.number === 'number' ? i.number : null,
+      title: i.title || '',
+      recommendation: i.recommendation || '',
+      severity: i.severity || '',
+      status: i.status || '',
+      location: i.location || '',
+      closedDate: i.closedDate || '',
+    })
+  }
+  const groups = [...groupsMap.entries()]
+    .sort(([a], [b]) => (a === 'General' ? 1 : b === 'General' ? -1 : a.localeCompare(b)))
+    .map(([system, rows]) => ({ system, rows }))
+  return { groups, totalCount: issues.length }
+}
+
+/**
+ * 10-Month Warranty Review — Activities tagged with phase='occupancy' or
+ * of type "Warranty Review". Each row shows the review date, narrative,
+ * and linked issues (which captures findings during the review).
+ *
+ * Returns { rows: [{ name, date, location, status, descriptionPreview,
+ *           issueCount, attachmentCount }], totalCount }
+ */
+async function fetchWarrantyReview({ projectId }) {
+  const reviews = await Activity.find({
+    projectId,
+    $or: [
+      { phase: 'occupancy' },
+      { type: 'Warranty Review' },
+    ],
+  })
+    .sort({ startDate: 1 })
+    .lean()
+  return {
+    rows: reviews.map((a) => ({
+      _id: a._id,
+      name: a.name || '',
+      type: a.type || '',
+      date: safeISO(a.startDate),
+      location: a.location || '',
+      status: a.status || 'draft',
+      descriptionPreview: stripHtmlPreview(a.descriptionHtml, 280),
+      issueCount: Array.isArray(a.issues) ? a.issues.length : 0,
+      attachmentCount: Array.isArray(a.attachments) ? a.attachments.length : 0,
+    })),
+    totalCount: reviews.length,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -315,6 +880,7 @@ function stripHtmlPreview(html, maxLen = 280) {
 // ---------------------------------------------------------------------------
 
 const PROVIDERS = {
+  // Existing (PR A) ---------------------------------------------------------
   opr: fetchOpr,
   tasks: fetchTasks,
   activities: fetchActivities,
@@ -324,6 +890,18 @@ const PROVIDERS = {
   equipment: fetchEquipment,
   issues: fetchIssues,
   team: fetchTeam,
+  // Phase 1 additions -------------------------------------------------------
+  'project-description': fetchProjectDescription,
+  revisions: fetchRevisions,
+  'commissioned-systems': fetchCommissionedSystems,
+  'activities-by-phase': fetchActivitiesByPhase,
+  'opr-coverage': fetchOprCoverage,
+  'opr-deviations': fetchOprDeviations,
+  'fpt-results': fetchFptResults,
+  'checklist-summary': fetchChecklistSummary,
+  'training-sessions': fetchTrainingSessions,
+  recommendations: fetchRecommendations,
+  'warranty-review': fetchWarrantyReview,
 }
 
 /**

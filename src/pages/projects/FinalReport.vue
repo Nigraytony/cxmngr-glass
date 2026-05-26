@@ -199,6 +199,28 @@
 
           <!-- Prose editor -->
           <div v-if="selectedSection.type === 'prose'">
+            <!--
+              "Insert template" — same UX as the Cx Plan starter. Only shows
+              for prose sections that have a registered LEED-aware template
+              (Purpose, Cx Scope of Work, Roles & Responsibilities,
+              Transition to Ongoing Cx, Sign-offs) AND when the section is
+              currently empty, so a CxA can't accidentally overwrite their
+              custom narrative.
+            -->
+            <div
+              v-if="canEdit && showTemplateButton"
+              class="mb-2 flex items-center justify-end"
+            >
+              <button
+                type="button"
+                class="px-3 py-1.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 hover:bg-indigo-500/30 text-indigo-100 text-xs inline-flex items-center gap-2"
+                :title="'Insert a LEED-aware boilerplate for ' + selectedSection.title"
+                @click="onInsertTemplate"
+              >
+                <span>✦</span>
+                <span>Insert template</span>
+              </button>
+            </div>
             <RichTextEditor
               v-model="selectedSection.contentHtml"
               :editable="canEdit"
@@ -315,6 +337,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
+import { hasTemplate, renderTemplate, type TemplateContext } from '../../utils/finalReportTemplates'
 import DataSectionTable from '../../components/finalReport/DataSectionTable.vue'
 import { useFinalReportStore, type FinalReportSection } from '../../stores/finalReport'
 import { useProjectStore } from '../../stores/project'
@@ -349,6 +372,50 @@ const selectedSection = computed(() => {
 const hasDataSections = computed(() =>
   workingSections.value.some((s) => s.type === 'data' && s.enabled),
 )
+
+/**
+ * Show the "Insert template" button only when:
+ *   1. A prose section is selected
+ *   2. We have a registered template for that section key (see
+ *      src/utils/finalReportTemplates.ts)
+ *   3. The section is currently empty (so a CxA can't accidentally
+ *      overwrite hand-written narrative)
+ */
+const showTemplateButton = computed(() => {
+  const s = selectedSection.value
+  if (!s || s.type !== 'prose') return false
+  if (!hasTemplate(s.key)) return false
+  const html = String(s.contentHtml || '').replace(/<[^>]*>/g, '').trim()
+  return html.length === 0
+})
+
+/** Build the template context from the current project. */
+function buildTemplateContext(): TemplateContext {
+  const p: any = project.value || {}
+  return {
+    projectName: p.name || '',
+    client: p.client || '',
+    buildingType: p.building_type || '',
+    leedTarget: p.leedTarget || null,
+    leedCertificationLevel: p.leedCertificationLevel || null,
+    cxScope: p.cxScope || {},
+    cxaName:
+      p.commissioning_agent
+        ? [p.commissioning_agent.firstName, p.commissioning_agent.lastName].filter(Boolean).join(' ')
+        : '',
+    cxaCompany: (p.commissioning_agent && p.commissioning_agent.company) || '',
+  }
+}
+
+function onInsertTemplate() {
+  const s = selectedSection.value
+  if (!s) return
+  const html = renderTemplate(s.key, buildTemplateContext())
+  if (!html) return
+  s.contentHtml = html
+  markDirty()
+  ui.showSuccess('Template inserted — edit as needed, then save.')
+}
 
 const statusLabel = computed(() => {
   const s = report.value?.status

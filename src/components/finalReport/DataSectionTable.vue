@@ -500,6 +500,737 @@
     </div>
   </div>
 
+  <!-- =====================================================================
+       Phase 1 renderers — LEED-aware sections sourced from project data.
+       Each maps 1:1 to a provider in backend-api/utils/finalReportDataSources.
+       ===================================================================== -->
+
+  <!-- Project Description — render project.description as a single block,
+       with light building metadata as a header. -->
+  <div v-else-if="dataSource === 'project-description'">
+    <div class="rounded-lg border border-white/10 bg-white/5 p-4 space-y-3">
+      <div
+        class="flex flex-wrap gap-4 text-xs text-white/60"
+      >
+        <span v-if="data.client">Client: <span class="text-white/85">{{ data.client }}</span></span>
+        <span v-if="data.location">Location: <span class="text-white/85">{{ data.location }}</span></span>
+        <span v-if="data.buildingType">Building type: <span class="text-white/85">{{ data.buildingType }}</span></span>
+        <span v-if="data.startDate">Start: <span class="text-white/85">{{ formatDate(data.startDate) }}</span></span>
+        <span v-if="data.endDate">End: <span class="text-white/85">{{ formatDate(data.endDate) }}</span></span>
+      </div>
+      <div
+        v-if="data.description"
+        class="text-sm text-white/85 whitespace-pre-wrap"
+      >
+        {{ data.description }}
+      </div>
+      <div
+        v-else
+        class="text-sm text-white/50 italic"
+      >
+        No project description yet — set it in Project Settings → Info.
+      </div>
+    </div>
+  </div>
+
+  <!-- Revisions — table of manual + release-derived entries. -->
+  <div
+    v-else-if="dataSource === 'revisions'"
+    class="overflow-x-auto rounded-lg border border-white/10"
+  >
+    <table class="w-full text-sm">
+      <thead :class="theadClass">
+        <tr>
+          <th :class="thClass + ' w-28'">
+            Version
+          </th>
+          <th :class="thClass">
+            Summary
+          </th>
+          <th :class="thClass + ' w-32'">
+            Reviser
+          </th>
+          <th :class="thClass + ' w-28'">
+            Date
+          </th>
+          <th :class="thClass + ' w-24'">
+            Kind
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(r, i) in (data.rows || [])"
+          :key="i"
+          :class="trClass"
+        >
+          <td :class="tdClass + ' font-medium'">
+            {{ r.versionLabel || '—' }}
+          </td>
+          <td :class="tdClass">
+            {{ r.summary || '—' }}
+          </td>
+          <td :class="tdClass + ' text-white/70'">
+            {{ r.reviser || '—' }}
+          </td>
+          <td :class="tdClass + ' text-white/70'">
+            {{ formatDate(r.date) }}
+          </td>
+          <td :class="tdClass">
+            <span
+              class="px-2 py-0.5 rounded-full text-xs border"
+              :class="r.kind === 'release' ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100' : 'bg-white/10 border-white/20 text-white/70'"
+            >{{ r.kind }}</span>
+          </td>
+        </tr>
+        <tr v-if="!(data.rows || []).length">
+          <td
+            colspan="5"
+            :class="emptyClass"
+          >
+            No revisions yet — add a manual entry or lock a release.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Commissioned Systems / Sampling Methodology — system rollups with verification %s. -->
+  <div
+    v-else-if="dataSource === 'commissioned-systems'"
+    class="overflow-x-auto rounded-lg border border-white/10"
+  >
+    <table class="w-full text-sm">
+      <thead :class="theadClass">
+        <tr>
+          <th :class="thClass">
+            Commissioned System
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            Quantity
+          </th>
+          <th :class="thClass + ' w-24 text-right'">
+            PFPT %
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            BAS %
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            TAB %
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            FPT %
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(r, i) in (data.rows || [])"
+          :key="i"
+          :class="trClass"
+        >
+          <td :class="tdClass + ' font-medium'">
+            {{ r.system }}
+          </td>
+          <td :class="tdClass + ' text-right'">
+            {{ r.quantity }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.pfptPct }}%
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.basPct }}%
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.tabPct }}%
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.fptPct }}%
+          </td>
+        </tr>
+        <tr v-if="!(data.rows || []).length">
+          <td
+            colspan="6"
+            :class="emptyClass"
+          >
+            No systems or equipment yet — add them to the project to populate this table.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Cx Activities by Phase — grouped by ASHRAE phase. -->
+  <div v-else-if="dataSource === 'activities-by-phase'">
+    <div
+      v-for="g in (data.groups || []).filter((x) => (x.rows || []).length)"
+      :key="g.phase"
+      class="rounded-lg border border-white/10 overflow-hidden mb-3"
+    >
+      <div class="px-3 py-2 bg-white/5 text-white/85 text-sm font-medium border-b border-white/10">
+        {{ g.label }} <span class="text-white/50">· {{ g.rows.length }}</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead :class="theadClass">
+            <tr>
+              <th :class="thClass + ' w-28'">
+                Date
+              </th>
+              <th :class="thClass + ' w-36'">
+                Type
+              </th>
+              <th :class="thClass">
+                Activity
+              </th>
+              <th :class="thClass + ' w-28'">
+                Milestone
+              </th>
+              <th :class="thClass + ' w-16 text-right'">
+                Issues
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(r, i) in g.rows"
+              :key="r._id || i"
+              :class="trClass"
+            >
+              <td :class="tdClass + ' text-white/70'">
+                {{ formatDate(r.startDate) }}
+              </td>
+              <td :class="tdClass">
+                {{ r.type }}
+              </td>
+              <td :class="tdClass">
+                <div class="font-medium">
+                  {{ r.name }}
+                </div>
+                <div
+                  v-if="r.descriptionPreview"
+                  class="text-xs text-white/55 mt-0.5"
+                >
+                  {{ r.descriptionPreview }}
+                </div>
+              </td>
+              <td :class="tdClass + ' text-white/70'">
+                {{ r.milestone || '—' }}
+              </td>
+              <td :class="tdClass + ' text-right text-white/80'">
+                {{ r.issueCount }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div
+      v-if="!(data.groups || []).some((g) => (g.rows || []).length)"
+      class="text-sm text-white/50 italic"
+    >
+      No activities recorded yet.
+    </div>
+  </div>
+
+  <!-- OPR Coverage — verification rollup per OPR item. -->
+  <div v-else-if="dataSource === 'opr-coverage'">
+    <div class="flex flex-wrap gap-3 mb-3 text-xs">
+      <span class="px-2 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-100">
+        ✓ Verified · {{ data.verifiedCount }}
+      </span>
+      <span class="px-2 py-1 rounded-full bg-red-500/20 border border-red-400/40 text-red-100">
+        ✗ Failed · {{ data.failedCount }}
+      </span>
+      <span class="px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white/70">
+        N/A · {{ data.naCount }}
+      </span>
+      <span class="px-2 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-100">
+        Unverified · {{ data.unverifiedCount }}
+      </span>
+    </div>
+    <div class="overflow-x-auto rounded-lg border border-white/10">
+      <table class="w-full text-sm">
+        <thead :class="theadClass">
+          <tr>
+            <th :class="thClass + ' w-12 text-right'">
+              Rank
+            </th>
+            <th :class="thClass">
+              OPR Item
+            </th>
+            <th :class="thClass + ' w-32'">
+              Category
+            </th>
+            <th :class="thClass + ' w-20 text-right'">
+              Links
+            </th>
+            <th :class="thClass + ' w-28'">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="(r, i) in (data.rows || [])"
+            :key="i"
+            :class="trClass"
+          >
+            <td :class="tdClass + ' text-right text-white/60'">
+              {{ r.rank }}
+            </td>
+            <td :class="tdClass">
+              <div class="font-medium">
+                {{ r.text }}
+              </div>
+              <div
+                v-if="r.links && r.links.length"
+                class="text-xs text-white/55 mt-0.5"
+              >
+                Verified by: <span
+                  v-for="(l, li) in r.links"
+                  :key="li"
+                >
+                  {{ l.contextLabel || l.contextType }}<span v-if="l.targetLabel"> → {{ l.targetLabel }}</span><span v-if="li < r.links.length - 1">, </span>
+                </span>
+              </div>
+            </td>
+            <td :class="tdClass + ' text-white/70'">
+              {{ r.category }}
+            </td>
+            <td :class="tdClass + ' text-right text-white/80'">
+              {{ r.totalLinks }}
+            </td>
+            <td :class="tdClass">
+              <span
+                class="px-2 py-0.5 rounded-full text-xs border"
+                :class="oprStatusBadge(r.overallStatus)"
+              >{{ oprStatusLabel(r.overallStatus) }}</span>
+            </td>
+          </tr>
+          <tr v-if="!(data.rows || []).length">
+            <td
+              colspan="5"
+              :class="emptyClass"
+            >
+              No active OPR items. Run an OPR Workshop session to populate.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- OPR Deviations — narrower view of OPR items with any failed link. -->
+  <div
+    v-else-if="dataSource === 'opr-deviations'"
+    class="overflow-x-auto rounded-lg border border-red-400/30 bg-red-500/5"
+  >
+    <table class="w-full text-sm">
+      <thead :class="theadClass">
+        <tr>
+          <th :class="thClass + ' w-12 text-right'">
+            Rank
+          </th>
+          <th :class="thClass">
+            OPR Item Not Meeting Requirements
+          </th>
+          <th :class="thClass + ' w-32'">
+            Category
+          </th>
+          <th :class="thClass + ' w-24 text-right'">
+            Failures
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(r, i) in (data.rows || [])"
+          :key="i"
+          :class="trClass"
+        >
+          <td :class="tdClass + ' text-right text-white/60'">
+            {{ r.rank }}
+          </td>
+          <td :class="tdClass">
+            <div class="font-medium">
+              {{ r.text }}
+            </div>
+            <div
+              v-for="(f, fi) in (r.failures || [])"
+              :key="fi"
+              class="text-xs text-red-200 mt-0.5"
+            >
+              {{ f.contextLabel || f.contextType }} — {{ f.targetLabel || f.targetType }}<span v-if="f.notes"> · {{ f.notes }}</span>
+            </div>
+          </td>
+          <td :class="tdClass + ' text-white/70'">
+            {{ r.category }}
+          </td>
+          <td :class="tdClass + ' text-right text-red-200'">
+            {{ r.failLinks }}
+          </td>
+        </tr>
+        <tr v-if="!(data.rows || []).length">
+          <td
+            colspan="4"
+            :class="emptyClass"
+          >
+            No OPR deviations recorded — every linked verification is pass or N/A.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FPT Results — pass/fail/na/pending counts per equipment. -->
+  <div
+    v-else-if="dataSource === 'fpt-results'"
+    class="overflow-x-auto rounded-lg border border-white/10"
+  >
+    <table class="w-full text-sm">
+      <thead :class="theadClass">
+        <tr>
+          <th :class="thClass + ' w-28'">
+            Tag
+          </th>
+          <th :class="thClass">
+            Name
+          </th>
+          <th :class="thClass + ' w-28'">
+            System
+          </th>
+          <th :class="thClass + ' w-16 text-right'">
+            Total
+          </th>
+          <th :class="thClass + ' w-16 text-right'">
+            Pass
+          </th>
+          <th :class="thClass + ' w-16 text-right'">
+            Fail
+          </th>
+          <th :class="thClass + ' w-16 text-right'">
+            N/A
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            Pending
+          </th>
+          <th :class="thClass + ' w-20'">
+            Signed
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(r, i) in (data.rows || [])"
+          :key="i"
+          :class="trClass"
+        >
+          <td :class="tdClass + ' font-medium'">
+            {{ r.tag || (r.kind === 'system' ? '—' : '') }}
+          </td>
+          <td :class="tdClass">
+            {{ r.name }}
+          </td>
+          <td :class="tdClass + ' text-white/70'">
+            {{ r.system || '—' }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.total }}
+          </td>
+          <td :class="tdClass + ' text-right text-emerald-200'">
+            {{ r.pass }}
+          </td>
+          <td :class="tdClass + ' text-right text-red-200'">
+            {{ r.fail }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/60'">
+            {{ r.na }}
+          </td>
+          <td :class="tdClass + ' text-right text-amber-200'">
+            {{ r.pending }}
+          </td>
+          <td :class="tdClass + ' text-white/85'">
+            {{ r.hasSignatures ? '✓' : '—' }}
+          </td>
+        </tr>
+        <tr v-if="!(data.rows || []).length">
+          <td
+            colspan="9"
+            :class="emptyClass"
+          >
+            No FPTs recorded. Add functional tests to Equipment or Systems.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Construction Checklist Summary — per-equipment section completion. -->
+  <div
+    v-else-if="dataSource === 'checklist-summary'"
+    class="overflow-x-auto rounded-lg border border-white/10"
+  >
+    <table class="w-full text-sm">
+      <thead :class="theadClass">
+        <tr>
+          <th :class="thClass + ' w-28'">
+            Tag
+          </th>
+          <th :class="thClass">
+            Name
+          </th>
+          <th :class="thClass + ' w-28'">
+            System
+          </th>
+          <th :class="thClass + ' w-16 text-right'">
+            Total
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            Complete
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            Partial
+          </th>
+          <th :class="thClass + ' w-24 text-right'">
+            Not Started
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            %
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(r, i) in (data.rows || [])"
+          :key="i"
+          :class="trClass"
+        >
+          <td :class="tdClass + ' font-medium'">
+            {{ r.tag || (r.kind === 'system' ? '—' : '') }}
+          </td>
+          <td :class="tdClass">
+            {{ r.name }}
+          </td>
+          <td :class="tdClass + ' text-white/70'">
+            {{ r.system || '—' }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.totalSections }}
+          </td>
+          <td :class="tdClass + ' text-right text-emerald-200'">
+            {{ r.completeSections }}
+          </td>
+          <td :class="tdClass + ' text-right text-amber-200'">
+            {{ r.partialSections }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/60'">
+            {{ r.notStarted }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/85'">
+            {{ r.completionPct }}%
+          </td>
+        </tr>
+        <tr v-if="!(data.rows || []).length">
+          <td
+            colspan="8"
+            :class="emptyClass"
+          >
+            No construction checklists recorded yet.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Training Verification — sessions with attendee counts + attachment indicator. -->
+  <div
+    v-else-if="dataSource === 'training-sessions'"
+    class="space-y-3"
+  >
+    <div
+      v-for="(s, si) in (data.rows || [])"
+      :key="s._id || si"
+      class="rounded-lg border border-white/10 overflow-hidden"
+    >
+      <div class="px-3 py-2 bg-white/5 border-b border-white/10 flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <div class="text-white/90 font-medium">
+            {{ s.topic || s.name }}
+          </div>
+          <div class="text-xs text-white/60">
+            {{ formatDate(s.date) }}<span v-if="s.location"> · {{ s.location }}</span>
+          </div>
+        </div>
+        <div class="text-xs text-white/60 flex items-center gap-3">
+          <span>{{ s.attendeeCount }} attendee{{ s.attendeeCount === 1 ? '' : 's' }}</span>
+          <span v-if="s.attachmentCount">
+            📎 {{ s.attachmentCount }} sign-in sheet{{ s.attachmentCount === 1 ? '' : 's' }}
+          </span>
+        </div>
+      </div>
+      <div
+        v-if="s.attendees && s.attendees.length"
+        class="overflow-x-auto"
+      >
+        <table class="w-full text-sm">
+          <thead :class="theadClass">
+            <tr>
+              <th :class="thClass">
+                Name
+              </th>
+              <th :class="thClass + ' w-36'">
+                Company
+              </th>
+              <th :class="thClass + ' w-40'">
+                Email
+              </th>
+              <th :class="thClass + ' w-28'">
+                Role
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(a, ai) in s.attendees"
+              :key="ai"
+              :class="trClass"
+            >
+              <td :class="tdClass">
+                {{ a.name || '—' }}
+              </td>
+              <td :class="tdClass + ' text-white/70'">
+                {{ a.company || '—' }}
+              </td>
+              <td :class="tdClass + ' text-white/70'">
+                {{ a.email || '—' }}
+              </td>
+              <td :class="tdClass + ' text-white/70'">
+                {{ a.role || '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div
+        v-else
+        class="px-3 py-3 text-xs text-white/50 italic"
+      >
+        No attendees recorded — see the linked sign-in sheet attachment{{ s.attachmentCount > 1 ? 's' : '' }}.
+      </div>
+    </div>
+    <div
+      v-if="!(data.rows || []).length"
+      class="text-sm text-white/50 italic"
+    >
+      No training sessions recorded yet. Add Activities of type "Training Review".
+    </div>
+  </div>
+
+  <!-- Recommendations — grouped by system, drawn from Issue.recommendation. -->
+  <div v-else-if="dataSource === 'recommendations'">
+    <div
+      v-for="g in (data.groups || [])"
+      :key="g.system"
+      class="rounded-lg border border-white/10 overflow-hidden mb-3"
+    >
+      <div class="px-3 py-2 bg-white/5 text-white/85 text-sm font-medium border-b border-white/10">
+        {{ g.system }} <span class="text-white/50">· {{ g.rows.length }}</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead :class="theadClass">
+            <tr>
+              <th :class="thClass + ' w-12 text-right'">
+                #
+              </th>
+              <th :class="thClass + ' w-48'">
+                Issue
+              </th>
+              <th :class="thClass">
+                Recommendation
+              </th>
+              <th :class="thClass + ' w-24'">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(r, i) in g.rows"
+              :key="i"
+              :class="trClass"
+            >
+              <td :class="tdClass + ' text-right text-white/60'">
+                {{ r.number ?? '—' }}
+              </td>
+              <td :class="tdClass + ' font-medium'">
+                {{ r.title }}
+              </td>
+              <td :class="tdClass">
+                {{ r.recommendation }}
+              </td>
+              <td :class="tdClass">
+                <span
+                  class="px-2 py-0.5 rounded-full text-xs border"
+                  :class="issueStatusBadge(r.status)"
+                >{{ r.status || '—' }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div
+      v-if="!(data.groups || []).length"
+      class="text-sm text-white/50 italic"
+    >
+      No recommendations yet. Fill in the Recommendation field on issues as they're worked.
+    </div>
+  </div>
+
+  <!-- 10-Month Warranty Review — Activities tagged with phase=occupancy. -->
+  <div
+    v-else-if="dataSource === 'warranty-review'"
+    class="space-y-3"
+  >
+    <div
+      v-for="(r, i) in (data.rows || [])"
+      :key="r._id || i"
+      class="rounded-lg border border-white/10 overflow-hidden"
+    >
+      <div class="px-3 py-2 bg-white/5 border-b border-white/10 flex items-center justify-between gap-2">
+        <div>
+          <div class="text-white/90 font-medium">
+            {{ r.name }}
+          </div>
+          <div class="text-xs text-white/60">
+            {{ r.type }} · {{ formatDate(r.date) }}<span v-if="r.location"> · {{ r.location }}</span>
+          </div>
+        </div>
+        <div class="text-xs text-white/60">
+          <span v-if="r.issueCount">🐞 {{ r.issueCount }}</span>
+          <span
+            v-if="r.attachmentCount"
+            class="ml-2"
+          >📎 {{ r.attachmentCount }}</span>
+        </div>
+      </div>
+      <div
+        v-if="r.descriptionPreview"
+        class="px-3 py-2 text-sm text-white/80"
+      >
+        {{ r.descriptionPreview }}
+      </div>
+    </div>
+    <div
+      v-if="!(data.rows || []).length"
+      class="text-sm text-white/50 italic"
+    >
+      No occupancy-phase activities yet — typically added 10 months after substantial completion.
+    </div>
+  </div>
+
   <!-- Unknown source — never crash, just nudge -->
   <div
     v-else
@@ -582,6 +1313,34 @@ function progressBadge(status: string | null | undefined) {
     case 'not started':
     default:
       return 'bg-white/10 border-white/20 text-white/70'
+  }
+}
+
+/**
+ * OPR coverage rollup uses four overall statuses that combine all the
+ * individual link evaluations. Pill color + label centralised here.
+ */
+function oprStatusBadge(status: string | null | undefined) {
+  switch (String(status || '').toLowerCase()) {
+    case 'pass':
+      return 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+    case 'fail':
+      return 'bg-red-500/20 border-red-400/40 text-red-100'
+    case 'na':
+      return 'bg-white/10 border-white/20 text-white/70'
+    case 'unverified':
+    default:
+      return 'bg-amber-500/20 border-amber-400/40 text-amber-100'
+  }
+}
+
+function oprStatusLabel(status: string | null | undefined) {
+  switch (String(status || '').toLowerCase()) {
+    case 'pass': return 'Verified'
+    case 'fail': return 'Deviation'
+    case 'na': return 'N/A'
+    case 'unverified':
+    default: return 'Unverified'
   }
 }
 
