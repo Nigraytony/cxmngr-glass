@@ -206,6 +206,76 @@
     </table>
   </div>
 
+  <!-- Scoped Systems — flat table of all equipment with checklist/FPT counts
+       and a derived 3-state progress status (Not Started / In Progress /
+       Complete). Status comes from the backend's deriveScopedSystemProgress. -->
+  <div
+    v-else-if="dataSource === 'scoped-systems'"
+    class="overflow-x-auto rounded-lg border border-white/10"
+  >
+    <table class="w-full text-sm">
+      <thead :class="theadClass">
+        <tr>
+          <th :class="thClass + ' w-32'">
+            Tag
+          </th>
+          <th :class="thClass">
+            Name
+          </th>
+          <th :class="thClass + ' w-28'">
+            System
+          </th>
+          <th :class="thClass + ' w-24 text-right'">
+            # Checklists
+          </th>
+          <th :class="thClass + ' w-20 text-right'">
+            # FPTs
+          </th>
+          <th :class="thClass + ' w-32'">
+            Status
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(r, i) in (data.rows || [])"
+          :key="i"
+          :class="trClass"
+        >
+          <td :class="tdClass + ' font-medium'">
+            {{ r.tag || '—' }}
+          </td>
+          <td :class="tdClass">
+            {{ r.name || '—' }}
+          </td>
+          <td :class="tdClass + ' text-white/70'">
+            {{ r.system || '—' }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/80'">
+            {{ r.checklistsCount }}
+          </td>
+          <td :class="tdClass + ' text-right text-white/80'">
+            {{ r.fptsCount }}
+          </td>
+          <td :class="tdClass">
+            <span
+              class="px-2 py-0.5 rounded-full text-xs border"
+              :class="progressBadge(r.status)"
+            >{{ r.status }}</span>
+          </td>
+        </tr>
+        <tr v-if="!(data.rows || []).length">
+          <td
+            colspan="6"
+            :class="emptyClass"
+          >
+            No equipment in project scope.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
   <!-- Equipment — grouped by system -->
   <div v-else-if="dataSource === 'equipment'">
     <div
@@ -294,11 +364,11 @@
           <th :class="thClass + ' w-28'">
             System
           </th>
-          <th :class="thClass + ' w-32'">
-            Found by
+          <th :class="thClass + ' w-28'">
+            Date Found
           </th>
           <th :class="thClass + ' w-28'">
-            Date
+            Closed
           </th>
         </tr>
       </thead>
@@ -338,10 +408,10 @@
             {{ r.system || '—' }}
           </td>
           <td :class="tdClass + ' text-white/70'">
-            {{ r.foundBy || '—' }}
+            {{ r.dateFound || '—' }}
           </td>
           <td :class="tdClass + ' text-white/70'">
-            {{ r.dateFound || '—' }}
+            {{ r.closedDate || '—' }}
           </td>
         </tr>
         <tr v-if="!(data.rows || []).length">
@@ -495,6 +565,23 @@ function issueStatusBadge(status: string | null | undefined) {
     case 'open':
     default:
       return 'bg-blue-500/20 border-blue-400/40 text-blue-100'
+  }
+}
+
+/**
+ * 3-state pill for the Scoped Systems table.
+ * Values are produced by the backend's deriveScopedSystemProgress() — keep
+ * the cases in sync if the heuristic learns more states.
+ */
+function progressBadge(status: string | null | undefined) {
+  switch (String(status || '').toLowerCase()) {
+    case 'complete':
+      return 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+    case 'in progress':
+      return 'bg-indigo-500/20 border-indigo-400/40 text-indigo-100'
+    case 'not started':
+    default:
+      return 'bg-white/10 border-white/20 text-white/70'
   }
 }
 
