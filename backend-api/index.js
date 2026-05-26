@@ -35,6 +35,7 @@ const assistantRoutes = require('./routes/assistant');
 const agentRoutes = require('./routes/agent');
 const projectDocsRoutes = require('./routes/projectDocs');
 const oprRoutes = require('./routes/opr');
+const finalReportRoutes = require('./routes/finalReports');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -222,6 +223,8 @@ app.use('/api/projects',
 app.use('/api/projects/:projectId/docs', projectDocsRoutes);
 // Project-scoped OPR Workshop (paid add-on)
 app.use('/api/projects/:projectId/opr', oprRoutes);
+// Project-scoped Final Cx Report (ASHRAE G0 §7.2.15 / §8.2.5)
+app.use('/api/projects/:projectId/final-report', finalReportRoutes);
 app.use('/api/issues', 
   issueRoutes
 );
