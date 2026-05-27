@@ -377,39 +377,35 @@ async function fetchRevisions({ projectId }) {
  */
 async function fetchCommissionedSystems({ projectId }) {
   const equipment = await Equipment.find({ projectId })
-    .select('system status checklists functionalTests balanceDate')
-    .lean()
-  const systems = await System.find({ projectId })
-    .select('name type')
+    .select('type system status checklists functionalTests balanceDate')
     .lean()
 
-  // Build a map of system name -> set of equipment. Equipment.system is a
-  // free-text string; we group on the trimmed value.
+  // Group by Equipment.type — this matches both the Cx Plan generator
+  // (cxPlanTemplate.ts systemsTableInner) and the LEED sample report's
+  // "Commissioned Systems / Sampling Methodology" table (rows like "Air
+  // Handling Units", "VAV Terminal Units" — equipment categories, not
+  // high-level system buckets). Aligning here so the Cx Plan table and
+  // the Final Report table are visually identical.
   const groups = new Map()
   const ensure = (key) => {
     if (!groups.has(key)) {
-      groups.set(key, {
-        system: key,
-        equipmentList: [],
-      })
+      groups.set(key, { system: key, equipmentList: [] })
     }
     return groups.get(key)
   }
   for (const e of equipment) {
-    const sys = asString(e.system).trim() || 'Unassigned'
-    ensure(sys).equipmentList.push(e)
-  }
-  // Include any System records that don't yet have linked equipment — they
-  // still belong on the "commissioned systems" inventory.
-  for (const s of systems) {
-    const key = asString(s.name).trim()
-    if (key && !groups.has(key)) ensure(key)
+    const key = asString(e.type).trim() || 'Unspecified'
+    ensure(key).equipmentList.push(e)
   }
 
   const rows = [...groups.values()]
     .sort((a, b) => {
-      if (a.system === 'Unassigned') return 1
-      if (b.system === 'Unassigned') return -1
+      // Unspecified row last; otherwise descending by quantity (most
+      // populous types first, matching the Cx Plan template's ordering).
+      if (a.system === 'Unspecified') return 1
+      if (b.system === 'Unspecified') return -1
+      const diff = b.equipmentList.length - a.equipmentList.length
+      if (diff !== 0) return diff
       return a.system.localeCompare(b.system)
     })
     .map((g) => {

@@ -12,10 +12,25 @@
 
 export interface CxPlanProject {
   name?: string
+  client?: string
   startDate?: string | Date | null
   endDate?: string | Date | null
   team?: Array<CxPlanTeamMember> | null
   commissioning_agent?: { firstName?: string; lastName?: string; email?: string; company?: string; role?: string } | null
+  // LEED + Cx scope fields used by the Cx Scope of Work generator (shared
+  // with the Final Report so both documents read identically). Optional;
+  // when missing the template falls back to a Fundamental-Cx default.
+  leedTarget?: 'none' | 'v4' | 'v4.1' | 'v5' | 'other' | null
+  leedCertificationLevel?: 'certified' | 'silver' | 'gold' | 'platinum' | null
+  cxScope?: {
+    fundamentalCx?: boolean
+    enhancedCxMep?: boolean
+    enhancedCxEnvelope?: boolean
+    mbcxBasic?: boolean
+    mbcxEnhanced?: boolean
+    envelopeCx?: boolean
+    ongoingCx?: boolean
+  } | null
 }
 
 export interface CxPlanTeamMember {
@@ -122,29 +137,27 @@ function revisionsHtml(): string {
   `
 }
 
-function cxScopeHtml(): string {
-  return `
-    <h2>Cx Scope of Work</h2>
-    <ol>
-      <li>Review the OPR, BOD, and project design.</li>
-      <li>Develop and implement a Cx plan.</li>
-      <li>Confirm incorporation of Cx requirements into the construction documents.</li>
-      <li>Develop construction checklists.</li>
-      <li>Develop a system test procedure (Functional Performance Tests).</li>
-      <li>Verify system test execution.</li>
-      <li>Maintain an issues and benefits log throughout the Cx process.</li>
-      <li>Prepare a final Cx process report.</li>
-      <li>Document all findings, recommendations, and report directly to the owner throughout the process.</li>
-      <li>Review contractor submittals.</li>
-      <li>Verify inclusion of systems manual requirements in construction documents.</li>
-      <li>Verify inclusion of operator and occupant training requirements in construction documents.</li>
-      <li>Verify systems manual updates and delivery.</li>
-      <li>Verify operator and occupant training delivery and effectiveness.</li>
-      <li>Verify seasonal testing.</li>
-      <li>Review building operations 10 months after substantial completion.</li>
-      <li>Develop an on-going commissioning plan.</li>
-    </ol>
-  `
+/**
+ * Cx Scope of Work — shares logic with the Final Report so both documents
+ * show the same scope list for a given project. Pulls from the project's
+ * `cxScope` checkboxes (set in Project Settings → Info → Commissioning
+ * Scope & LEED) and the LEED target. When no scope is configured we fall
+ * back to a sensible default covering G0 Fundamental Cx tasks.
+ *
+ * The shared template lives in `finalReportTemplates.ts` so a single
+ * source of truth drives both the Cx Plan and Final Report renderings.
+ */
+function cxScopeHtml(project: CxPlanProject): string {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { cxScopeOfWorkTemplate } = require('./finalReportTemplates')
+  const ctx = {
+    projectName: project.name || '',
+    client: project.client || '',
+    leedTarget: project.leedTarget || null,
+    leedCertificationLevel: project.leedCertificationLevel || null,
+    cxScope: project.cxScope || { fundamentalCx: true },
+  }
+  return `<h2>Cx Scope of Work</h2>${cxScopeOfWorkTemplate(ctx)}`
 }
 
 function rolesAndResponsibilitiesHtml(): string {
@@ -424,10 +437,10 @@ function systemsTableInner(equipment: CxPlanEquipment[] | null | undefined): str
 
 function milestonesTableInner(tasks: CxPlanTask[] | null | undefined): string {
   const list = (tasks || []).slice()
-  // Prefer top-level WBS tasks as project-level milestones. If none exist
-  // (project has only flat tasks), fall back to all tasks sorted by start.
-  const topLevel = list.filter((t) => wbsDepth(t.wbs) === 0)
-  const chosen = (topLevel.length ? topLevel : list)
+  // Include every task on the project in WBS order — the Cx Plan milestones
+  // table is meant to be a comprehensive schedule view, not a roll-up.
+  // Sort by WBS first (numeric-aware), then by start date as a tiebreaker.
+  const chosen = list
     .slice()
     .sort((a, b) => {
       const aw = String(a.wbs || '').localeCompare(String(b.wbs || ''), undefined, { numeric: true })
@@ -525,7 +538,7 @@ export function buildCxPlanHtml(input: CxPlanInput): string {
     purposeHtml(),
     revisionsHtml(),
     projectDescriptionHtml(project),
-    cxScopeHtml(),
+    cxScopeHtml(project),
     wrapSection('systems', systemsTableInner(equipment)),
     wrapSection('milestones', milestonesTableInner(tasks)),
     wrapSection('team', commissioningTeamInner(project)),

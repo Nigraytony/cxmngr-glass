@@ -2551,8 +2551,15 @@ async function loadCxPlanInputs(): Promise<{ project: any; tasks: any[]; equipme
   try {
     const [pRes, tRes, eRes] = await Promise.all([
       http.get(`/api/projects/${pid}`).catch(() => null),
-      http.get('/api/tasks', { params: { projectId: pid, limit: 500, deleted: false } }).catch(() => null),
-      http.get('/api/equipment', { params: { projectId: pid, perPage: 500 } }).catch(() => null),
+      // Bumped from 500 → 5000 so the Cx Plan milestones table includes
+      // every task (per user request — was missing tasks beyond the first
+      // 500 on large projects).
+      http.get('/api/tasks', { params: { projectId: pid, limit: 5000, deleted: false } }).catch(() => null),
+      // Bumped from 500 → 5000 so the systems-to-be-commissioned table
+      // covers every equipment type on the project (previously truncated
+      // on projects with >500 items, dropping less-common equipment
+      // types from the aggregation).
+      http.get('/api/equipment', { params: { projectId: pid, perPage: 5000 } }).catch(() => null),
     ])
     if (pRes && pRes.data) projectData = pRes.data
     const tBody = tRes && tRes.data ? tRes.data : null

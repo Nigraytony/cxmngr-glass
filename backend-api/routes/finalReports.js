@@ -131,6 +131,30 @@ async function loadOrCreateReport(req, res, next) {
     if (!report) {
       report = FinalReport.buildDefault(projectId)
       await report.save()
+    } else {
+      // Backfill — Final Reports created before Phase 1 ship without the
+      // new default sections (project-description, OPR Coverage, etc).
+      // On every GET, compare existing keys vs DEFAULT_SECTIONS and append
+      // anything missing. Idempotent and preserves user-customised content.
+      const existingKeys = new Set((report.sections || []).map((s) => s.key))
+      const missing = (FinalReport.DEFAULT_SECTIONS || []).filter((d) => !existingKeys.has(d.key))
+      if (missing.length) {
+        for (const d of missing) {
+          report.sections.push({
+            key: d.key,
+            title: d.title,
+            order: d.order,
+            type: d.type,
+            enabled: true,
+            contentHtml: '',
+            dataSource: d.type === 'data' ? d.dataSource || null : null,
+            dataConfig: {},
+            pageBreakBefore: false,
+            includeInToc: true,
+          })
+        }
+        try { await report.save() } catch (_) { /* best-effort */ }
+      }
     }
     req.finalReport = report
     return next()
