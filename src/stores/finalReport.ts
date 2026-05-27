@@ -187,6 +187,50 @@ export const useFinalReportStore = defineStore('finalReport', () => {
     }
   }
 
+  /**
+   * Generate a preview PDF for the current draft. Returns a short-lived
+   * SAS URL the caller can open in a new tab to download. Synchronous on
+   * the wire — the backend can take 30-60 seconds for a large report.
+   */
+  async function generatePdf(): Promise<{ url: string; sizeBytes: number; generatedAt: string }> {
+    const projectId = report.value?.projectId
+    if (!projectId) throw new Error('Report not loaded')
+    saving.value = true
+    error.value = null
+    try {
+      const { data } = await http.post<{ url: string; sizeBytes: number; generatedAt: string }>(
+        `/api/projects/${projectId}/final-report/pdf`,
+        {},
+        { timeout: 180_000 }, // 3 min — Puppeteer + Azure can be slow
+      )
+      return data
+    } catch (e) {
+      setError(e, 'Failed to generate PDF')
+      throw e
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /**
+   * Sign the PDF for a specific released version (immutable, generated at
+   * lock-final time). Used for "Download released PDF" on locked reports.
+   */
+  async function getReleasePdfUrl(version: number): Promise<string> {
+    const projectId = report.value?.projectId
+    if (!projectId) throw new Error('Report not loaded')
+    error.value = null
+    try {
+      const { data } = await http.get<{ url: string }>(
+        `/api/projects/${projectId}/final-report/releases/${version}/pdf`,
+      )
+      return data.url
+    } catch (e) {
+      setError(e, 'Failed to fetch release PDF')
+      throw e
+    }
+  }
+
   async function unlock(): Promise<FinalReport> {
     const projectId = report.value?.projectId
     if (!projectId) throw new Error('Report not loaded')
@@ -228,6 +272,8 @@ export const useFinalReportStore = defineStore('finalReport', () => {
     refreshAllSections,
     lock,
     unlock,
+    generatePdf,
+    getReleasePdfUrl,
     reset,
   }
 })

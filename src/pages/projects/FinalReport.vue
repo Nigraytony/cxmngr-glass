@@ -79,12 +79,22 @@
           🔓 Unlock
         </button>
 
+        <!--
+          Download PDF.
+          - Locked reports with a released PDF: link straight to the
+            immutable Release.pdfBlobUrl (signed on demand).
+          - Drafts or locks without a stored PDF: synchronously generate
+            a fresh PDF via Puppeteer on the backend.
+        -->
         <button
-          disabled
-          class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-white/40 text-sm cursor-not-allowed"
-          title="PDF generation lands in PR C"
+          :disabled="generatingPdf"
+          class="px-3 py-1.5 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/85 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          :title="generatingPdf ? 'Generating PDF — this can take 30-60 seconds for large reports' : 'Generate a PDF of the current report state'"
+          @click="onDownloadPdf"
         >
-          ⬇ Download PDF
+          <span v-if="generatingPdf">⏳</span>
+          <span v-else>⬇</span>
+          <span>{{ generatingPdf ? 'Generating PDF…' : 'Download PDF' }}</span>
         </button>
       </div>
     </div>
@@ -520,6 +530,38 @@ async function onLock() {
     ui.showSuccess(lockChoice.value === 'final' ? 'Report finalized' : 'Report locked for review')
   } catch (e: any) {
     ui.showError(store.error || 'Failed to lock report')
+  }
+}
+
+const generatingPdf = ref(false)
+
+/**
+ * Download a PDF of the report. For locked-final reports with an
+ * existing released PDF on the latest release, we just sign that and
+ * open it. Otherwise we trigger a fresh server-side render.
+ */
+async function onDownloadPdf() {
+  if (generatingPdf.value) return
+  generatingPdf.value = true
+  try {
+    // If the latest release has a stored PDF, prefer it (immutable).
+    const latest = report.value?.releases && report.value.releases.length
+      ? report.value.releases[report.value.releases.length - 1]
+      : null
+    if (report.value?.status === 'final' && latest && latest.pdfBlobUrl) {
+      const url = await store.getReleasePdfUrl(latest.version)
+      window.open(url, '_blank', 'noopener,noreferrer')
+      ui.showSuccess('Released PDF opened in a new tab.')
+      return
+    }
+    ui.showInfo('Generating PDF — this can take 30-60 seconds for large reports.', { duration: 4000 })
+    const result = await store.generatePdf()
+    window.open(result.url, '_blank', 'noopener,noreferrer')
+    ui.showSuccess('PDF ready.')
+  } catch (e: any) {
+    ui.showError(store.error || 'Failed to generate PDF')
+  } finally {
+    generatingPdf.value = false
   }
 }
 

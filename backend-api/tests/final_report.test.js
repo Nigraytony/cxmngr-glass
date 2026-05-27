@@ -363,6 +363,62 @@ describe('Final Report routes', function () {
   })
 
   // --------------------------------------------------------------------
+  // Phase 3 — HTML builder for PDF (unit-tests the template directly
+  // without spinning up Puppeteer; the route is integration-tested by
+  // the lock-final flow exercising it on every release).
+  // --------------------------------------------------------------------
+
+  it('buildReportHtml renders a valid self-contained document', async () => {
+    const { buildReportHtml } = require('../services/finalReportHtml')
+    const report = {
+      _id: 'r1',
+      projectId: 'p1',
+      status: 'draft',
+      currentVersion: 0,
+      cover: { title: 'Commissioning Final Report' },
+      sections: [
+        { key: 'purpose', title: 'Purpose', type: 'prose', order: 10, enabled: true, contentHtml: '<p>Hello <strong>world</strong>.</p>' },
+        { key: 'opr-coverage', title: 'OPR Coverage', type: 'data', dataSource: 'opr-coverage', order: 20, enabled: true },
+      ],
+      releases: [],
+    }
+    const project = {
+      _id: 'p1',
+      name: 'Test Tower',
+      client: 'Acme',
+      location: 'Atlanta, GA',
+      commissioning_agent: { firstName: 'Cee', lastName: 'Ay', company: 'CxCo' },
+    }
+    const sectionData = {
+      'opr-coverage': {
+        rows: [
+          { rank: 1, text: 'Temps 68-74F', category: 'Comfort', totalLinks: 2, passLinks: 2, failLinks: 0, naLinks: 0, unverifiedLinks: 0, overallStatus: 'pass', links: [] },
+        ],
+        totalCount: 1,
+        verifiedCount: 1,
+        failedCount: 0,
+        naCount: 0,
+        unverifiedCount: 0,
+      },
+    }
+    const html = buildReportHtml({ report, project, sectionData })
+    // Self-contained document
+    assert(html.startsWith('<!doctype html>'), 'expected DOCTYPE')
+    assert(html.includes('<style>'), 'expected inline styles')
+    // Cover renders project name + client
+    assert(html.includes('Test Tower'))
+    assert(html.includes('Acme'))
+    // TOC entries link to section anchors
+    assert(html.includes('href="#section-purpose"'))
+    assert(html.includes('href="#section-opr-coverage"'))
+    // Prose section preserves allowed inline markup
+    assert(html.includes('<strong>world</strong>'))
+    // OPR coverage renders the row + pass pill
+    assert(html.includes('Temps 68-74F'))
+    assert(html.includes('pill-pass'))
+  })
+
+  // --------------------------------------------------------------------
   // Phase 1 data source coverage
   // --------------------------------------------------------------------
 
