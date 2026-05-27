@@ -173,6 +173,37 @@ describe('Final Report routes', function () {
     assert.strictEqual(desc.dataSource, 'project-description')
   })
 
+  it('backfills missing default sections on GET for legacy reports', async () => {
+    const { ownerToken, projectId } = await setupProject()
+    const FinalReport = require('../models/finalReport')
+    // Simulate a pre-Phase-1 legacy report by stripping all but one section.
+    await FinalReport.findOneAndUpdate(
+      { projectId },
+      {
+        $set: {
+          sections: [
+            { key: 'legacy-only', title: 'Legacy', order: 10, type: 'prose', enabled: true, contentHtml: '<p>Kept.</p>' },
+          ],
+        },
+      },
+      { upsert: true },
+    )
+    const res = await request(app)
+      .get(`/api/projects/${projectId}/final-report`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+    assert.strictEqual(res.status, 200)
+    const keys = res.body.sections.map((s) => s.key)
+    // Existing section preserved
+    assert(keys.includes('legacy-only'))
+    // New defaults backfilled
+    assert(keys.includes('project-description'))
+    assert(keys.includes('opr-coverage'))
+    assert(keys.includes('revisions'))
+    // The legacy prose content was not overwritten
+    const legacy = res.body.sections.find((s) => s.key === 'legacy-only')
+    assert.strictEqual(legacy.contentHtml, '<p>Kept.</p>')
+  })
+
   it('is idempotent — second GET does not duplicate sections', async () => {
     const { ownerToken, projectId } = await setupProject()
     const first = await request(app)

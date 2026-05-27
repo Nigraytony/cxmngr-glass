@@ -186,6 +186,12 @@ function pickProjectPayload(source) {
     'endDate',
     'commissioning_agent',
     'teamRoleOptions',
+    // LEED + Cx scope fields surfaced in the Project Settings → Info tab
+    // (Commissioning Scope & LEED card). These drive the Final Report's
+    // boilerplate templates and the Cx Scope of Work section.
+    'leedTarget',
+    'leedCertificationLevel',
+    'cxScope',
   ]
   for (const k of allowed) {
     if (body[k] !== undefined) out[k] = body[k]
