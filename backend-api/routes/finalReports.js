@@ -23,6 +23,8 @@ const Project = require('../models/project')
 const FinalReport = require('../models/finalReport')
 
 const { fetchDataSource } = require('../utils/finalReportDataSources')
+const { generateFinalReportPdf } = require('../services/finalReportPdfService')
+const { generateBlobSasUrl } = require('../utils/blobSas')
 
 // ---------------------------------------------------------------------------
 // Identity / permission helpers
@@ -332,9 +334,108 @@ router.post('/lock', loadOrCreateReport, requireEditAccess, async (req, res) => 
     report.lockedBy = userId
 
     await report.save()
+
+    // Lock-final auto-generates the immutable PDF and persists its blob URL
+    // on the just-pushed Release. We do this AFTER the save so the release
+    // record exists for the PDF service to find via persistOnReport=true.
+    // Failures here don't roll back the lock — the report is still locked,
+    // and the user can re-trigger PDF generation via the /pdf endpoint.
+    if (next === 'final') {
+      try {
+        await generateFinalReportPdf(String(report.projectId), { persistOnReport: true })
+      } catch (pdfErr) {
+        console.error('[final-report] auto-PDF on lock-final failed', pdfErr)
+        // Surface a warning in the response so the UI can prompt for manual retry,
+        // but still treat the lock itself as successful.
+        const refreshed = await req.finalReport.constructor.findOne({ projectId: report.projectId })
+        return res.json({
+          ...serializeReport(refreshed || report, { permissions: computePermissions(req) }),
+          warning: {
+            code: pdfErr.code || 'PDF_AUTO_GENERATION_FAILED',
+            message: pdfErr.message || 'Locked, but PDF generation failed — retry via Download PDF.',
+          },
+        })
+      }
+      // Reload to pick up the pdfBlobUrl the service wrote onto the release.
+      const refreshed = await req.finalReport.constructor.findOne({ projectId: report.projectId })
+      return res.json(serializeReport(refreshed || report, { permissions: computePermissions(req) }))
+    }
     return res.json(serializeReport(report, { permissions: computePermissions(req) }))
   } catch (e) {
     return res.status(500).json({ error: 'Failed to lock report' })
+  }
+})
+
+/**
+ * POST /api/projects/:projectId/final-report/pdf
+ * Synchronous PDF generation. Caller waits up to ~90s while we:
+ *   1. refresh every enabled data section
+ *   2. build the HTML report
+ *   3. render via Puppeteer
+ *   4. upload to Azure Blob
+ *   5. return a short-lived read-SAS URL the browser can download from
+ *
+ * Anyone with project membership can request a "preview" PDF (the report
+ * UI exposes this via the Download PDF toolbar button). The immutable
+ * "released" PDF is generated automatically as part of the lock-final
+ * transition and stored on the corresponding Release.pdfBlobUrl.
+ */
+router.post('/pdf', loadOrCreateReport, async (req, res) => {
+  // Bump per-request timeout — Puppeteer + a large project can take ~30-60s.
+  req.setTimeout(120_000)
+  res.setTimeout(120_000)
+  try {
+    const result = await generateFinalReportPdf(req.finalReportProjectId, { persistOnReport: false })
+    // Generate a short-lived read SAS URL the browser can hit directly.
+    const sas = await generateBlobSasUrl({
+      blobName: result.blobName,
+      permissions: 'r',
+      expiresInSec: 600,
+    })
+    return res.json({
+      url: sas.url,
+      blobUrl: result.blobUrl,
+      sizeBytes: result.sizeBytes,
+      generatedAt: result.generatedAt,
+      expiresAt: sas.expiresAt,
+    })
+  } catch (e) {
+    if (e && e.status) {
+      const body = { error: e.message || 'Failed to generate PDF' }
+      if (e.code) body.code = e.code
+      if (e.hint) body.hint = e.hint
+      return res.status(e.status).json(body)
+    }
+    console.error('[final-report] PDF generation error', e)
+    return res.status(500).json({ error: 'Failed to generate PDF' })
+  }
+})
+
+/**
+ * GET /api/projects/:projectId/final-report/releases/:version/pdf
+ * Returns a short-lived read SAS URL for an immutable released PDF.
+ * The blob URL itself is stored on Release.pdfBlobUrl (set by the
+ * lock-final flow) — this endpoint just signs it for download.
+ */
+router.get('/releases/:version/pdf', loadOrCreateReport, async (req, res) => {
+  try {
+    const version = Number(req.params.version)
+    const release = (req.finalReport.releases || []).find((r) => Number(r.version) === version)
+    if (!release) return res.status(404).json({ error: 'Release not found' })
+    if (!release.pdfBlobUrl) {
+      return res.status(404).json({ error: 'Release has no PDF on file', code: 'RELEASE_PDF_MISSING' })
+    }
+    // The stored blobUrl is the base form: https://acct.blob.../container/blobName
+    // Extract the blobName (everything after the container path) and re-sign.
+    const url = new URL(release.pdfBlobUrl)
+    const segments = url.pathname.split('/').filter(Boolean)
+    // First segment is the container; the rest is the blob name.
+    const blobName = segments.slice(1).join('/')
+    const sas = await generateBlobSasUrl({ blobName, permissions: 'r', expiresInSec: 600 })
+    return res.json({ url: sas.url, expiresAt: sas.expiresAt, version })
+  } catch (e) {
+    console.error('[final-report] release PDF link error', e)
+    return res.status(500).json({ error: 'Failed to sign release PDF' })
   }
 })
 
