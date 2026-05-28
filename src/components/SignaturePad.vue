@@ -64,13 +64,6 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
 let SignaturePad: any = null
-try {
-  // require at runtime so tests / installs that haven't run don't fail
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  SignaturePad = require('signature_pad').default || require('signature_pad')
-} catch (e) {
-  SignaturePad = null
-}
 
 type Props = { value?: string; modelValue?: string; title?: string; person?: string; role?: string; removable?: boolean; showFields?: boolean }
 const props = defineProps<Props>()
@@ -192,7 +185,13 @@ function removeAndEmit() {
   emit('remove')
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    const mod: any = await import('signature_pad')
+    SignaturePad = mod.default || mod
+  } catch {
+    SignaturePad = null
+  }
   initSignaturePad()
   window.addEventListener('resize', resizeCanvas)
 })
