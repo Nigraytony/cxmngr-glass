@@ -68,6 +68,26 @@ function normalizeBoolFlag(value) {
   return s === '1' || s === 'true' || s === 'yes' || s === 'y' || s === 'on'
 }
 
+// Translate UI field names to the schema-canonical names before writing.
+// The Issue schema declares `severity` and `assignedTo`; the UI presents
+// them as `priority` and `responsible_person`. Without this translation,
+// Mongoose strict mode silently drops the unknown keys on write and
+// filters/aggregations against the UI names never match.
+// The frontend already maps severity→priority and assignedTo→responsible_person
+// on read (src/stores/issues.ts:51-54), so responses don't need adjustment.
+function denormalizeIssuePayload(body) {
+  if (!body || typeof body !== 'object') return body
+  if (body.priority !== undefined && body.severity === undefined) {
+    body.severity = body.priority
+  }
+  delete body.priority
+  if (body.responsible_person !== undefined && body.assignedTo === undefined) {
+    body.assignedTo = body.responsible_person
+  }
+  delete body.responsible_person
+  return body
+}
+
 const LIST_SORT_FIELDS = new Set([
   'updatedAt',
   'createdAt',
@@ -217,8 +237,11 @@ router.post(
     const oprValidation = await validateOprItemIds({ projectId, oprItemIds: (req.body || {}).oprItemIds })
     if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
 
-    // Compose the issue with the assigned number to ensure atomic assignment
-    const issueData = { ...req.body, number: assignedNumber };
+    // Compose the issue with the assigned number to ensure atomic assignment.
+    // Translate UI field names (priority/responsible_person) to the schema-
+    // canonical fields (severity/assignedTo) before construction so Mongoose
+    // strict mode doesn't silently drop them.
+    const issueData = denormalizeIssuePayload({ ...req.body, number: assignedNumber });
     if (oprValidation.ids !== undefined) issueData.oprItemIds = oprValidation.ids
     const issue = new Issue(issueData);
     await issue.save();
@@ -244,7 +267,9 @@ router.get(
   try {
 	    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
 	    const perPage = Math.min(200, Math.max(1, parseInt(req.query.perPage, 10) || 25))
-	    const sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+	    let sortBy = normalizeSortBy(req.query.sortBy, LIST_SORT_FIELDS, 'updatedAt')
+	    // Translate UI field names to schema-canonical ones for the actual sort.
+	    if (sortBy === 'priority') sortBy = 'severity'
 	    const sortDir = normalizeSortDir(req.query.sortDir)
 	    const projectId = req.query.projectId
 	    const includeFacets = String(req.query.includeFacets || '').toLowerCase() === 'true' || String(req.query.includeFacets || '') === '1'
@@ -264,7 +289,7 @@ router.get(
         { tag: { $regex: rx } },
         { title: { $regex: rx } },
         { type: { $regex: rx } },
-        { priority: { $regex: rx } },
+        { severity: { $regex: rx } },
         { status: { $regex: rx } },
       ]
     }
@@ -276,7 +301,8 @@ router.get(
 	    if (req.query.priority !== undefined) {
 	      const v = normalizeOptionalFilterString(req.query.priority)
 	      if (v === undefined) return res.status(400).send({ error: 'Invalid priority' })
-	      if (v) filter.priority = v
+	      // priority is the UI name for the schema's `severity` field.
+	      if (v) filter.severity = v
 	    }
 	    if (req.query.status !== undefined) {
 	      const v = normalizeOptionalFilterString(req.query.status)
@@ -749,6 +775,10 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requi
       const oprValidation = await validateOprItemIds({ projectId: issue.projectId, oprItemIds: incoming.oprItemIds })
       if (oprValidation.error) return res.status(400).send({ error: oprValidation.error })
       if (oprValidation.ids !== undefined) incoming.oprItemIds = oprValidation.ids
+
+      // Translate UI field names (priority/responsible_person) to schema-
+      // canonical fields (severity/assignedTo) before update.
+      denormalizeIssuePayload(incoming);
 
       const updated = await Issue.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
       if (!updated) return res.status(404).send();
