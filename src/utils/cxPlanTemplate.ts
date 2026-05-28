@@ -10,6 +10,8 @@
 // The result is *starter* content. The user is expected to edit it in the
 // WYSIWYG editor before treating it as the project's actual Cx Plan.
 
+import { cxScopeOfWorkTemplate } from './finalReportTemplates'
+
 export interface CxPlanProject {
   name?: string
   client?: string
@@ -148,8 +150,6 @@ function revisionsHtml(): string {
  * source of truth drives both the Cx Plan and Final Report renderings.
  */
 function cxScopeHtml(project: CxPlanProject): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { cxScopeOfWorkTemplate } = require('./finalReportTemplates')
   const ctx = {
     projectName: project.name || '',
     client: project.client || '',
