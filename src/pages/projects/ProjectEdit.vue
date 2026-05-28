@@ -4555,7 +4555,6 @@ async function startCheckout() {
   loading.value = true;
   try {
     const pid = projectId || (project.value && (project.value._id || project.value.id));
-  console.log('startCheckout -> sending', { projectId: pid, priceId: selectedPrice.value, url: apiUrl('/api/stripe/create-checkout-session') });
     if (!pid) {
       ui.showError('No project selected');
       loading.value = false;
@@ -4584,7 +4583,6 @@ async function startCheckout() {
 async function openBillingPortal() {
   loading.value = true;
   try {
-  console.log('openBillingPortal -> sending to', apiUrl('/api/stripe/portal-session'));
     const pid = String(project.value?.id || project.value?._id || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
     const { data } = await http.post('/api/stripe/portal-session', { projectId: pid });
     if (data && data.url) {

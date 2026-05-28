@@ -3294,13 +3294,10 @@ async function save() {
   }
   try {
     saving.value = true
-    console.log('[activity-save] Starting save process, payload:', payload)
     if (isNew.value) {
-      console.log('[activity-save] Creating new activity')
       const created = await store.createActivity(payload)
       router.replace({ name: 'activity-edit', params: { id: created.id || created._id } })
     } else {
-      console.log('[activity-save] Updating existing activity')
       await store.updateActivity(id.value, payload)
     }
     ui.showSuccess('Activity saved')

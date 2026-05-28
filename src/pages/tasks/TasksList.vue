@@ -3573,12 +3573,6 @@ function computeCostRecursive(task, seen = new Set()) {
   }
   // Parent cost is strictly the sum of its children's costs
   const out = any ? sum : null
-  // Temporary debug: log details when a parent computes a non-null cost
-  try {
-    if (typeof console !== 'undefined') {
-      console.debug('[tasks] computeCostRecursive:', { id, wbs: task && task.wbs, childDetails, sum, out })
-    }
-  } catch (e) { /* ignore */ }
   costCache.set(id, out)
   return out
 }

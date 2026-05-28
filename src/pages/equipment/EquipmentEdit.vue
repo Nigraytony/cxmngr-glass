@@ -3648,9 +3648,6 @@ async function persistFptSignatures(sigs: any[]) {
       ui.showError('You do not have permission to edit functional test signatures')
       return
     }
-    // Debug: log incoming signatures payload to help diagnose persistence issues
-    // (This will appear in the browser console when saving signatures)
-    console.debug('persistFptSignatures - payload:', sigs)
     const eid = String(form.value.id || (form.value as any)._id || id.value || '')
     if (!eid) return
     await equipmentStore.updateFields(eid, { fptSignatures: sigs } as any)

@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Project = require('../models/project');
 const User = require('../models/user');
@@ -375,7 +376,6 @@ router.get('/', auth, async (req, res) => {
     if (req.query.memberId) {
       const memberId = String(req.query.memberId);
       const or = [];
-      const mongoose = require('mongoose');
       // Prefer ObjectId matches when valid
       if (mongoose.Types.ObjectId.isValid(memberId)) {
         or.push({ team: { $elemMatch: { _id: new mongoose.Types.ObjectId(memberId) } } });
@@ -403,7 +403,6 @@ router.get('/', auth, async (req, res) => {
           }).filter(Boolean)
           if (projIds.length) {
             // coerce to ObjectId when possible
-            const mongoose = require('mongoose');
             const coerced = projIds.map((pid) => (mongoose.Types.ObjectId.isValid(pid) ? new mongoose.Types.ObjectId(pid) : pid))
             or.push({ _id: { $in: coerced } })
           }
@@ -803,7 +802,6 @@ router.post('/:id/ai/test', auth, requireObjectIdParam('id'), requirePermission(
 // post route to add user to project (with invitation flow)
 const Invitation = require('../models/invitation');
 const crypto = require('crypto');
-const mongoose = require('mongoose');
 const { sendInviteEmail } = require('../utils/mailer');
 
 router.post('/addUser', auth, requirePermission('projects.users.manage', { projectParam: 'projectId' }), requireActiveProject, async (req, res) => {
@@ -862,7 +860,6 @@ router.post('/addUser', auth, requirePermission('projects.users.manage', { proje
           // Enforce plan team limit
           ensureTeamCapacity(project);
           // Add an invited entry for existing users; they must accept to become active.
-          ensureTeamCapacity(project);
           project.team.push({
             _id: user._id,
             firstName: user.firstName,

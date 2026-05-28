@@ -3,7 +3,7 @@ const mongoose = require('mongoose')
 const oprQuestionSchema = new mongoose.Schema(
   {
     orgId: { type: String, required: true, index: true },
-    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'OprCategory', required: true, index: true },
     prompt: { type: String, required: true },
     // Default answer window for this question when opened (in minutes).
