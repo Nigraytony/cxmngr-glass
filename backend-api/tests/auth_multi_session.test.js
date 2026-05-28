@@ -112,6 +112,54 @@ describe('Auth — multi-session refresh', function () {
     assert.strictEqual(r2.status, 204, 'second session must also be revoked after password change');
   });
 
+  it('reset-password revokes every session', async () => {
+    // Regression test for the reset-revocation security fix: previously
+    // /reset-password only set the password and marked the token used, leaving
+    // any stolen refresh/access tokens active until their TTL elapsed.
+    const first = await registerUser(app, 'e');
+    const second = await loginUser(app, first.user.email);
+
+    // Stage a PasswordReset row directly to skip /forgot-password's email step.
+    // Token must be 64 hex chars to satisfy normalizePasswordResetToken().
+    const crypto = require('crypto');
+    const User = require('../models/user');
+    const PasswordReset = require('../models/passwordReset');
+    const u = await User.findOne({ email: first.user.email });
+    const token = crypto.randomBytes(32).toString('hex');
+    await PasswordReset.create({
+      userId: u._id,
+      token,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    const reset = await withCsrf(request(app).post('/api/users/reset-password'))
+      .send({ token, newPassword: 'newpass5678' });
+    assert.strictEqual(reset.status, 200, `reset-password should succeed: ${JSON.stringify(reset.body)}`);
+
+    const r1 = await withCsrf(request(app).post('/api/users/refresh')).set('Cookie', first.cookie);
+    assert.strictEqual(r1.status, 204, 'first session must be revoked after password reset');
+    const r2 = await withCsrf(request(app).post('/api/users/refresh')).set('Cookie', second.cookie);
+    assert.strictEqual(r2.status, 204, 'second session must be revoked after password reset');
+  });
+
+  it('change-password bumps tokenVersion so stale access tokens are rejected', async () => {
+    // Regression test for the tokenVersion-bump security fix: access tokens
+    // issued before a password change used to remain usable until their 15-min
+    // TTL elapsed, because tokenVersion was never incremented.
+    const first = await registerUser(app, 'f');
+
+    const change = await withCsrf(request(app).post('/api/users/change-password'))
+      .set('Authorization', `Bearer ${first.accessToken}`)
+      .send({ currentPassword: 'testpass1234', newPassword: 'newpass5678' });
+    assert.strictEqual(change.status, 200, `change-password should succeed: ${JSON.stringify(change.body)}`);
+
+    // The access token used to perform the change is now stale — its tv claim
+    // is one behind the user's bumped tokenVersion. Auth middleware must reject.
+    const me = await request(app).get('/api/users/me')
+      .set('Authorization', `Bearer ${first.accessToken}`);
+    assert.strictEqual(me.status, 401, 'access token issued before password change must be rejected by tv check');
+  });
+
   it('refresh-cookie reuse still succeeds (no rotation)', async () => {
     const sess = await registerUser(app, 'd');
     const r1 = await withCsrf(request(app).post('/api/users/refresh')).set('Cookie', sess.cookie);
