@@ -837,7 +837,10 @@ async function executeTool(toolName, toolInput, context) {
         if (input.status) q.status = input.status
         if (input.search) {
           const re = { $regex: str(input.search, 100), $options: 'i' }
-          q.$or = [{ tag: re }, { title: re }, { name: re }]
+          // Equipment has `tag` and `title` — `name` is not a declared field
+          // on the schema, so previous search attempts against it matched
+          // nothing.
+          q.$or = [{ tag: re }, { title: re }]
         }
         const items = await Equipment.find(q).select('_id tag title type system status').limit(limit).lean()
         return { success: true, count: items.length, records: items }
@@ -850,7 +853,6 @@ async function executeTool(toolName, toolInput, context) {
           projectId,
           tag: str(input.tag, 80),
           title: str(input.title, 160),
-          name: str(input.title, 160),
           type: str(input.type, 120),
           system: str(input.system, 120),
           status: input.status || 'Not Started',
@@ -868,7 +870,7 @@ async function executeTool(toolName, toolInput, context) {
         if (!existing) return { success: false, error: 'Equipment not found in this project' }
         const fields = {}
         if (input.tag) fields.tag = str(input.tag, 80)
-        if (input.title) { fields.title = str(input.title, 160); fields.name = fields.title }
+        if (input.title) fields.title = str(input.title, 160)
         if (input.type) fields.type = str(input.type, 120)
         if (input.system !== undefined) fields.system = str(input.system, 120)
         if (input.status) fields.status = input.status
@@ -890,7 +892,6 @@ async function executeTool(toolName, toolInput, context) {
           projectId,
           tag: str(input.tag, 80),
           title: str(input.title, 160),
-          name: str(input.title, 160),
           type: str(template.type || '', 120),
           system: str(template.system || '', 120),
           status: 'Not Started',
