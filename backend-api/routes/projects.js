@@ -1165,6 +1165,11 @@ router.post('/accept-invite', auth, async (req, res) => {
 
         const user = await User.findById(req.user && (req.user._id || req.user.id)).session(session);
         if (!user) throw { status: 404, error: 'User not found' };
+        // Bind the invite to the invited email: a leaked token can only be
+        // redeemed by the account that owns the invited address.
+        if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
+          throw { status: 403, error: 'Invite email mismatch' };
+        }
 
         const existingIndex = project.team.findIndex(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
         if (existingIndex === -1) {
@@ -1224,6 +1229,11 @@ router.post('/accept-invite', auth, async (req, res) => {
 
     const user = await User.findById(req.user && (req.user._id || req.user.id));
     if (!user) return res.status(404).send({ error: 'User not found' });
+    // Bind the invite to the invited email: a leaked token can only be
+    // redeemed by the account that owns the invited address.
+    if (String(user.email).toLowerCase() !== String(invite.email).toLowerCase()) {
+      return res.status(403).send({ error: 'Invite email mismatch' });
+    }
 
     const existingIndex = project.team.findIndex(t => String(t.email).toLowerCase() === String(user.email).toLowerCase());
     if (existingIndex === -1) {

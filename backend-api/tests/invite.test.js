@@ -185,6 +185,59 @@ describe('Invite flow integration', function () {
     assert(accept.body && accept.body.error && accept.body.error.toLowerCase().includes('invite email mismatch'));
   });
 
+  it('rejects token-based accept-invite when invite email does not match the authenticated user', async () => {
+    // Regression test for invite-hijack security fix: even with a valid token,
+    // the redeeming user's email must match the invite. The previously-shipped
+    // /accept-invite token path skipped this check, so any logged-in user who
+    // obtained a token (URL leak, mail forwarder, log) could join the project.
+    const inviter = await withCsrf(request(app)
+      .post('/api/users/register'))
+      .send({ email: 'inviter-hijack@example.com', password: 'password123', firstName: 'Hij', lastName: 'Iter', company: 'TestCo' });
+    assert(inviter.status === 201);
+    const inviterToken = inviter.body.accessToken;
+    const inviterUser = inviter.body.user;
+
+    const projectRes = await withCsrf(request(app)
+      .post('/api/projects'))
+      .set('Authorization', `Bearer ${inviterToken}`)
+      .send({ userId: inviterUser._id, name: 'ProjHijack', client: 'TestClient' });
+    assert(projectRes.status === 201);
+    const project = projectRes.body;
+
+    const inviteRes = await withCsrf(request(app)
+      .post('/api/projects/addUser'))
+      .set('Authorization', `Bearer ${inviterToken}`)
+      .send({ projectId: project._id, email: 'target-hijack@example.com', role: 'user', inviterName: 'Inviter' });
+    assert(inviteRes.status === 200);
+    const invitesList = await request(app)
+      .get(`/api/projects/${project._id}/invites`)
+      .set('Authorization', `Bearer ${inviterToken}`);
+    assert(invitesList.status === 200 && invitesList.body.length >= 1);
+    const inviteObj = invitesList.body[0];
+
+    // Register an attacker who somehow obtained the token.
+    const attacker = await withCsrf(request(app)
+      .post('/api/users/register'))
+      .send({ email: 'attacker-hijack@example.com', password: 'password123', firstName: 'Att', lastName: 'Acker', company: 'TestCo' });
+    assert(attacker.status === 201);
+    const attackerToken = attacker.body.accessToken;
+
+    const accept = await withCsrf(request(app)
+      .post('/api/projects/accept-invite'))
+      .set('Authorization', `Bearer ${attackerToken}`)
+      .send({ token: inviteObj.token });
+    assert(accept.status === 403, `expected 403 for token-based email mismatch, got ${accept.status} ${JSON.stringify(accept.body)}`);
+    assert(accept.body && accept.body.error && accept.body.error.toLowerCase().includes('invite email mismatch'));
+
+    // The invite must still be unaccepted so the legitimate recipient can use it.
+    const invitesAfter = await request(app)
+      .get(`/api/projects/${project._id}/invites`)
+      .set('Authorization', `Bearer ${inviterToken}`);
+    assert(invitesAfter.status === 200);
+    const sameInvite = invitesAfter.body.find((i) => i.token === inviteObj.token);
+    assert(sameInvite && sameInvite.accepted !== true, 'invite must remain pending after a rejected accept');
+  });
+
   it('rejects accepting an already accepted invite', async () => {
     // inviter
     const inviter = await withCsrf(request(app)

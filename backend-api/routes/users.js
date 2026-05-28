@@ -620,6 +620,9 @@ router.post('/change-password', auth, changePasswordLimiter, async (req, res) =>
     user.refreshTokens = [];
     user.refreshTokenIdHash = null;
     user.refreshTokenIssuedAt = null;
+    // Bump tokenVersion so any still-live access tokens (15-min TTL) issued
+    // before the password change are rejected by the auth middleware's tv check.
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
 
     await user.save();
     res.send({ message: 'Password updated successfully' });
@@ -687,6 +690,14 @@ router.post('/reset-password', passwordResetLimiter, async (req, res) => {
     if (!user) return res.status(404).send({ error: 'User not found' });
 
     user.password = newPassword;
+    // Reset is a privileged credential change — assume the prior owner may be
+    // compromised. Revoke every refresh session and bump tokenVersion so any
+    // outstanding access tokens (15-min TTL) issued before the reset are also
+    // rejected by the auth middleware's tv check. Mirrors /change-password.
+    user.refreshTokens = [];
+    user.refreshTokenIdHash = null;
+    user.refreshTokenIssuedAt = null;
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
 
     pr.used = true;
