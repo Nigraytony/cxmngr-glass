@@ -13,6 +13,7 @@ const { requireFeature } = require('../middleware/planGuard');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
+const { cascadeTemplate } = require('../utils/cascadeDelete');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -719,6 +720,13 @@ router.delete('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, r
         await project.save();
       }
     } catch (_) {}
+    // Cascade: unset Equipment.template refs so equipment doesn't point at a
+    // dead template.
+    try {
+      await cascadeTemplate(rec._id);
+    } catch (cascadeErr) {
+      console.warn('[templates.delete] cascade failed', cascadeErr && cascadeErr.message ? cascadeErr.message : cascadeErr);
+    }
     res.status(200).send(toPlainTemplate(rec));
   } catch (error) {
     console.error('[templates] delete error', error && (error.stack || error.message || error))

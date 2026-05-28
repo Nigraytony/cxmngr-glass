@@ -12,6 +12,7 @@ const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature } = require('../middleware/planGuard');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
+const { cascadeSpace } = require('../utils/cascadeDelete');
 const mongoose = require('mongoose');
 const runMiddleware = require('../middleware/runMiddleware');
 const { rateLimit } = require('../middleware/rateLimit');
@@ -538,6 +539,13 @@ router.delete('/:id', auth, requireObjectIdParam('id'), lookupSpaceProject, requ
     const space = await Space.findByIdAndDelete(req.params.id);
     if (!space) {
       return res.status(404).send();
+    }
+    // Cascade: unset refs in Equipment/Activity/Issue/Template, pull from
+    // Project.spaces[] and parent Space.subSpaces[], reparent sub-spaces.
+    try {
+      await cascadeSpace(space._id);
+    } catch (cascadeErr) {
+      console.warn('[spaces.delete] cascade failed', cascadeErr && cascadeErr.message ? cascadeErr.message : cascadeErr);
     }
     res.status(200).send(space);
   } catch (error) {

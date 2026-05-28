@@ -15,6 +15,7 @@ const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
+const { cascadeEquipment } = require('../utils/cascadeDelete');
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -1745,6 +1746,13 @@ router.delete('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, 
         await project.save();
       }
     } catch (_) {}
+
+    // Cascade: pull from Space.equipment[] arrays so spaces don't show ghosts.
+    try {
+      await cascadeEquipment(equipment._id);
+    } catch (cascadeErr) {
+      console.warn('[equipment.delete] cascade failed', cascadeErr && cascadeErr.message ? cascadeErr.message : cascadeErr);
+    }
 
     res.status(200).send(toPlainEquipment(equipment));
   } catch (error) {
