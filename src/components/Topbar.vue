@@ -196,82 +196,108 @@
               >
                 No projects
               </li>
-              <li
-                v-for="p in projectsList"
-                :key="p.id"
-              >
-                <button
-                  class="w-full text-left px-3 py-2 rounded flex items-center justify-between gap-2 hover:bg-white/10"
-                  :class="isDefaultProject(p) ? 'bg-white/10 cursor-default' : ''"
-                  :title="p.name"
-                  @click="onSelectProject(p)"
-                >
-                  <span
-                    class="truncate"
-                    :title="p.name"
-                  >{{ p.name }}</span>
-                  <span
-                    class="flex items-center gap-1 text-xs"
-                    :class="isDefaultProject(p) ? 'text-green-300' : 'text-white/70'"
+              <template v-else>
+                <li class="px-3 py-1 flex items-center gap-2">
+                  <span class="text-xs font-semibold text-white/70 shrink-0">Projects</span>
+                  <input
+                    v-if="projectsList.length > PROJECT_SEARCH_THRESHOLD"
+                    v-model="projectFilter"
+                    type="text"
+                    placeholder="Search…"
+                    class="flex-1 min-w-0 px-2 py-1 text-xs rounded bg-white/10 border border-white/15 text-white placeholder-white/40 focus:outline-none focus:bg-white/15"
+                    @click.stop
                   >
-                    <svg
-                      v-if="isDefaultProject(p)"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
+                </li>
+                <li
+                  v-if="filteredProjectsList.length === 0"
+                  class="px-3 py-2 text-sm text-white/60"
+                >
+                  No matching projects
+                </li>
+                <li
+                  v-else
+                  class="max-h-72 overflow-y-auto"
+                >
+                  <ul class="flex flex-col gap-1">
+                    <li
+                      v-for="p in filteredProjectsList"
+                      :key="p.id"
                     >
-                      <path
-                        d="M5 13l4 4L19 7"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                    <template v-else>
-                      <!-- thumbtack icon for 'make default' -->
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        class="w-4 h-4"
-                        aria-label="Make default"
-                        title="Make default"
+                      <button
+                        class="w-full text-left px-3 py-2 rounded flex items-center justify-between gap-2 hover:bg-white/10"
+                        :class="isDefaultProject(p) ? 'bg-white/10 cursor-default' : ''"
+                        :title="p.name"
+                        @click="onSelectProject(p)"
                       >
-                        <!-- tack head -->
-                        <circle
-                          cx="12"
-                          cy="6.5"
-                          r="2.5"
-                          stroke-width="1.4"
-                        />
-                        <!-- cross bar under head -->
-                        <path
-                          d="M9 10.5h6"
-                          stroke-width="1.4"
-                          stroke-linecap="round"
-                        />
-                        <!-- stem -->
-                        <path
-                          d="M12 10.5v5.5"
-                          stroke-width="1.4"
-                          stroke-linecap="round"
-                        />
-                        <!-- point -->
-                        <path
-                          d="M12 16l-1.8 5"
-                          stroke-width="1.4"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </template>
-                    <span v-if="isDefaultProject(p)">Default</span>
-                  </span>
-                </button>
-              </li>
+                        <span
+                          class="truncate"
+                          :title="p.name"
+                        >{{ p.name }}</span>
+                        <span
+                          class="flex items-center gap-1 text-xs"
+                          :class="isDefaultProject(p) ? 'text-green-300' : 'text-white/70'"
+                        >
+                          <svg
+                            v-if="isDefaultProject(p)"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            class="w-4 h-4"
+                          >
+                            <path
+                              d="M5 13l4 4L19 7"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                          <template v-else>
+                            <!-- thumbtack icon for 'make default' -->
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              class="w-4 h-4"
+                              aria-label="Make default"
+                              title="Make default"
+                            >
+                              <!-- tack head -->
+                              <circle
+                                cx="12"
+                                cy="6.5"
+                                r="2.5"
+                                stroke-width="1.4"
+                              />
+                              <!-- cross bar under head -->
+                              <path
+                                d="M9 10.5h6"
+                                stroke-width="1.4"
+                                stroke-linecap="round"
+                              />
+                              <!-- stem -->
+                              <path
+                                d="M12 10.5v5.5"
+                                stroke-width="1.4"
+                                stroke-linecap="round"
+                              />
+                              <!-- point -->
+                              <path
+                                d="M12 16l-1.8 5"
+                                stroke-width="1.4"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                          </template>
+                          <span v-if="isDefaultProject(p)">Default</span>
+                        </span>
+                      </button>
+                    </li>
+                  </ul>
+                </li>
+              </template>
 
               <li class="my-1 border-t border-white/10" />
               <li>
@@ -304,7 +330,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import { useAuthStore } from '../stores/auth'
@@ -340,6 +366,12 @@ const menuOpen = ref(false)
 const userWrap = ref(null)
 const dropdownStyle = ref({ position: 'fixed', top: '3rem', left: 'auto', right: '1rem' })
 const projectAccessNotice = ref(null)
+const projectFilter = ref('')
+const PROJECT_SEARCH_THRESHOLD = 8
+
+watch(menuOpen, (open) => {
+  if (!open) projectFilter.value = ''
+})
 
 // Logos from current project
 const clientLogo = computed(() => projectStore.currentProject?.logo || '')
@@ -472,6 +504,12 @@ const projectsList = computed(() => {
   // don't see all projects in the app (fallback to project store would leak all projects).
   return []
 })
+const filteredProjectsList = computed(() => {
+  const q = projectFilter.value.trim().toLowerCase()
+  if (!q) return projectsList.value
+  return projectsList.value.filter(p => String(p?.name || '').toLowerCase().includes(q))
+})
+
 const defaultProjectId = computed(() => {
   try {
     const list = (auth.user && Array.isArray(auth.user.projects)) ? auth.user.projects : []

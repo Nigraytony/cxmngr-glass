@@ -7,38 +7,38 @@
       <thead class="bg-white/5 text-white/70">
         <tr>
           <th
-            class="text-left px-3 py-2 w-24 cursor-pointer select-none"
+            class="text-left px-3 py-2 w-12 cursor-pointer select-none"
             @click="setSort('number')"
           >
-            Number
+            #
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('number') }}</span>
           </th>
           <th
-            class="text-left px-3 py-2 w-32 cursor-pointer select-none"
+            class="text-left px-3 py-2 w-28 cursor-pointer select-none"
             @click="setSort('type')"
           >
             Type
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('type') }}</span>
           </th>
           <th
-            class="text-left px-3 py-2 w-[18.75%] cursor-pointer select-none"
+            class="text-left px-3 py-2 w-[15%] cursor-pointer select-none"
             @click="setSort('title')"
           >
             Title
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('title') }}</span>
           </th>
           <th
-            class="text-left px-3 py-2 w-[31.25%] cursor-pointer select-none"
+            class="text-left px-3 py-2 w-[32%] cursor-pointer select-none"
             @click="setSort('description')"
           >
             Description
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('description') }}</span>
           </th>
-          <th class="text-left px-3 py-2 w-36">
+          <th class="text-left px-3 py-2 w-[32%]">
             Recommendation
           </th>
           <th
-            class="text-left px-3 py-2 w-28 cursor-pointer select-none"
+            class="text-left px-3 py-2 w-24 cursor-pointer select-none"
             @click="setSort('status')"
           >
             Status
@@ -46,7 +46,7 @@
           </th>
           <th
             v-if="showUnlink"
-            class="text-left px-3 py-2 w-24"
+            class="text-left px-3 py-2 w-20"
           >
             Actions
           </th>
@@ -58,7 +58,7 @@
           :key="it.id"
           class="border-t border-white/10 hover:bg-white/5"
         >
-          <td class="px-3 py-2 align-middle whitespace-nowrap w-24">
+          <td class="px-3 py-2 align-middle whitespace-nowrap w-12">
             <RouterLink
               :to="{ name: 'issue-edit', params: { id: it.id } }"
               class="hover:underline"
@@ -66,10 +66,10 @@
               #{{ it.number ?? '—' }}
             </RouterLink>
           </td>
-          <td class="px-3 py-2 align-middle whitespace-nowrap w-32">
+          <td class="px-3 py-2 align-middle whitespace-nowrap w-28">
             {{ it.type || '—' }}
           </td>
-          <td class="px-3 py-2 align-middle w-[18.75%]">
+          <td class="px-3 py-2 align-middle w-[15%]">
             <RouterLink
               :to="{ name: 'issue-edit', params: { id: it.id } }"
               class="hover:underline"
@@ -80,13 +80,13 @@
               >{{ it.title || '—' }}</span>
             </RouterLink>
           </td>
-          <td class="px-3 py-2 align-middle w-[31.25%]">
+          <td class="px-3 py-2 align-middle w-[32%]">
             <span class="block text-white/70 whitespace-normal break-words">{{ it.description || '—' }}</span>
           </td>
-          <td class="px-3 py-2 align-middle">
+          <td class="px-3 py-2 align-middle w-[32%]">
             <span class="block text-white/70 whitespace-normal break-words">{{ it.recommendation || '—' }}</span>
           </td>
-          <td class="px-3 py-2 align-middle whitespace-nowrap w-28">
+          <td class="px-3 py-2 align-middle whitespace-nowrap w-24">
             <span
               class="inline-flex items-center px-2 py-0.5 rounded-full text-xs border"
               :class="statusClass(it.status)"
@@ -94,7 +94,7 @@
           </td>
           <td
             v-if="showUnlink"
-            class="px-3 py-2 align-middle whitespace-nowrap w-24"
+            class="px-3 py-2 align-middle whitespace-nowrap w-20"
           >
             <button
               class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs"
