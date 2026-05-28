@@ -6,7 +6,7 @@ function asString(v) {
 
 const assistantChatMessageSchema = new mongoose.Schema(
   {
-    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
+    projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null, index: true },
     role: {
       type: String,
@@ -18,8 +18,7 @@ const assistantChatMessageSchema = new mongoose.Schema(
     createdAt: {
       type: Date,
       default: Date.now,
-      expires: 60 * 60 * 24 * 90, // 90 days retention
-      index: true,
+      expires: 60 * 60 * 24 * 90, // 90 days retention (TTL implies index)
     },
   },
   { versionKey: false }

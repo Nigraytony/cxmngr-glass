@@ -10,7 +10,6 @@ const projectSchema = new mongoose.Schema({
   location: { type: String },
   building_type: { type: String },
   description: { type: String },
-  status: { type: String },
   settings: [{ type: String }],
   photos: [{ type: String }],
   documents: [{ type: String }],

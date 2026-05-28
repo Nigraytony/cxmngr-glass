@@ -307,7 +307,7 @@ function viewFullPayload(p) {
     const url = 'data:text/json;charset=utf-8,' + encodeURIComponent(txt)
     window.open(url, '_blank')
   } catch (e) {
-    console.log(p)
+    /* preview is best-effort */
   }
 }
 
