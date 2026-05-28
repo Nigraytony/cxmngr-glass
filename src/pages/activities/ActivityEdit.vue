@@ -3187,6 +3187,23 @@ async function ensureReportData() {
     attachmentsLoaded.value = Array.isArray((form as any).attachments)
     commentsLoaded.value = Array.isArray((form as any).comments)
   } catch (e) { /* best effort */ }
+  // If photos are enabled in the report, ensure store.current carries the
+  // full photo data. Light/list fetches strip photo `.data` to keep payloads
+  // small (see backend routes/activities.js select projection), so without
+  // this the PDF Photos section quietly renders empty even when the activity
+  // has photos and the toggle is on. The dedicated /:id/photos endpoint
+  // returns the full array and the store writes it back into current.
+  try {
+    if (activityReport.value.include.photos && id.value && !isNew.value) {
+      const cur = store.current as any
+      const phs = (cur && Array.isArray(cur.photos)) ? cur.photos : []
+      const hasData = phs.length > 0 && phs.some((p: any) => p && (p.data || p.url))
+      if (!hasData) {
+        await store.fetchActivityPhotos(String(id.value))
+      }
+      photosLoaded.value = true
+    }
+  } catch (e) { /* best-effort — report will skip photos if fetch fails */ }
   try {
     if (pid) {
       await issuesStore.fetchIssues(pid)
