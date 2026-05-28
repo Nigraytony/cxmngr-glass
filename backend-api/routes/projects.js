@@ -18,6 +18,7 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 const { getPlan, requireFeature } = require('../middleware/planGuard');
 const { encryptString, decryptString } = require('../utils/encryption');
+const { cascadeProject } = require('../utils/cascadeDelete');
 const { isObjectId, requireObjectIdParam } = require('../middleware/validate')
 const sanitizeHtml = require('sanitize-html')
 const { buildSafeRegex } = require('../utils/search')
@@ -1743,6 +1744,18 @@ router.delete('/:id', auth, requireObjectIdParam('id'), requirePermission('proje
 
     const deleted = await Project.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).send({ error: 'Project not found' });
+
+    // Cascade: remove every project-scoped document so the rest of the app
+    // never reads orphaned IDs. Best-effort — partial cleanup is preferable
+    // to leaving orphans behind, and the helper logs per-model failures.
+    try {
+      const cascade = await cascadeProject(deleted._id);
+      if (cascade && cascade.counts) {
+        console.info('[projects.delete] cascade counts', { projectId: String(deleted._id), counts: cascade.counts });
+      }
+    } catch (cascadeErr) {
+      console.warn('[projects.delete] cascade failed', cascadeErr && cascadeErr.message ? cascadeErr.message : cascadeErr);
+    }
 
     // Remove the deleted project from every user's `projects` list (best-effort).
     // This prevents stale membership entries from lingering after project deletion.

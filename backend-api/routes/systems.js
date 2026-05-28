@@ -10,6 +10,7 @@ const runMiddleware = require('../middleware/runMiddleware');
 const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature, enforceLimit } = require('../middleware/planGuard');
 const { requireBodyField, requireObjectIdBody, requireObjectIdParam, isObjectId } = require('../middleware/validate');
+const { cascadeSystem } = require('../utils/cascadeDelete');
 
 function asStr(v, { maxLen = 2000 } = {}) {
   if (v === undefined || v === null) return '';
@@ -442,6 +443,12 @@ router.delete(
       const id = String(req.params.id);
       const deleted = await System.findByIdAndDelete(id).lean();
       if (!deleted) return res.status(404).json({ error: 'System not found' });
+      // Cascade: unset Issue.systemId and pull Activity.systems[] entries.
+      try {
+        await cascadeSystem(deleted._id);
+      } catch (cascadeErr) {
+        console.warn('[systems.delete] cascade failed', cascadeErr && cascadeErr.message ? cascadeErr.message : cascadeErr);
+      }
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error('[systems] delete error', err && (err.stack || err.message || err));
