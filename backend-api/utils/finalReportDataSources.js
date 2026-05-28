@@ -66,18 +66,27 @@ async function fetchOpr({ projectId }) {
 }
 
 /**
- * Tasks — top-level WBS items only (parentId is null/falsy), rendered as
- * milestones. The full WBS tree stays in the Tasks page.
+ * Tasks — every task on the project in WBS order, rendered as the project's
+ * Cx Milestones. Mirrors the Cx Plan Activity's milestone table so both
+ * documents read the same. A previous version filtered to parentId-null rows
+ * only, but real-world data often has parentId set on every row (the WBS code
+ * is used as the parent reference), which left this section empty.
  * Returns { rows: [{ wbs, name, start, end, percentComplete, status }] }
  */
 async function fetchTasks({ projectId }) {
   const tasks = await Task.find({
     projectId,
     deleted: { $ne: true },
-    $or: [{ parentId: null }, { parentId: { $exists: false } }, { parentId: '' }],
+  }).lean()
+  // Numeric-aware WBS sort ("1.2" before "1.10"), with start date as a
+  // tiebreaker — matches src/utils/cxPlanTemplate.ts.
+  tasks.sort((a, b) => {
+    const aw = String(a.wbs || '').localeCompare(String(b.wbs || ''), undefined, { numeric: true })
+    if (aw !== 0) return aw
+    const at = a.start ? new Date(a.start).getTime() : 0
+    const bt = b.start ? new Date(b.start).getTime() : 0
+    return at - bt
   })
-    .sort({ wbs: 1, start: 1 })
-    .lean()
   return {
     rows: tasks.map((t) => ({
       wbs: t.wbs || '',

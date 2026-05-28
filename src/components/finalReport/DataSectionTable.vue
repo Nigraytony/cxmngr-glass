@@ -126,7 +126,7 @@
             colspan="6"
             :class="emptyClass"
           >
-            No top-level tasks defined.
+            No tasks defined for this project.
           </td>
         </tr>
       </tbody>

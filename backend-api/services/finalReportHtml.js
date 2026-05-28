@@ -119,7 +119,7 @@ function renderOpr(data) {
 function renderTasks(data) {
   const rows = data && Array.isArray(data.rows) ? data.rows : []
   if (!rows.length) {
-    return `${tableOpen()}<thead><tr><th>WBS</th><th>Milestone</th><th>Start</th><th>End</th><th>%</th><th>Status</th></tr></thead><tbody>${emptyRow(6, 'No top-level tasks defined.')}</tbody></table>`
+    return `${tableOpen()}<thead><tr><th>WBS</th><th>Milestone</th><th>Start</th><th>End</th><th>%</th><th>Status</th></tr></thead><tbody>${emptyRow(6, 'No tasks defined for this project.')}</tbody></table>`
   }
   const body = rows
     .map(
