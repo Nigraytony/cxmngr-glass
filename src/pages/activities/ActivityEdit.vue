@@ -2590,7 +2590,7 @@ async function insertCxPlanStarter() {
     form.descriptionHtml = buildCxPlanHtml({ project, tasks, equipment })
     ui.showSuccess('Cx Plan starter inserted — edit as needed, then save the activity.')
   } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate Cx Plan starter')
+    ui.showError(e, 'Failed to generate Cx Plan starter')
   } finally {
     insertingCxPlanStarter.value = false
   }
@@ -2613,7 +2613,7 @@ async function refreshCxPlanDataTables() {
       ui.showWarning('No sections were refreshed — markers may have been edited or removed.')
     }
   } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to refresh Cx Plan data tables')
+    ui.showError(e, 'Failed to refresh Cx Plan data tables')
   } finally {
     refreshingCxPlanSections.value = false
   }

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { safeErrorMessage } from '../utils/safeErrorMessage'
 
 export const useUiStore = defineStore('ui', {
   state: () => ({
@@ -130,8 +131,26 @@ export const useUiStore = defineStore('ui', {
     showSuccess(message, opts = {}) {
       this.showToast({ message, variant: 'success', duration: opts.duration || 2500, top: opts.top || '4rem' })
     },
-    showError(message, opts = {}) {
-      this.showToast({ message, variant: 'error', duration: opts.duration || 3500, top: opts.top || '4rem' })
+    // Accepts either a string message (back-compat) or an Error/axios
+    // rejection plus a user-facing fallback. When given an error object,
+    // extracts a safe message via safeErrorMessage so raw dev jargon
+    // ("require is not defined", "Cannot read properties of undefined",
+    // axios's "Request failed with status code 500") never reach the user.
+    // Always logs the raw error to console for debugging.
+    //
+    // New form:   ui.showError(err, "Couldn't save your changes")
+    // Old form:   ui.showError('Something went wrong')   // still works
+    showError(messageOrError, opts = {}) {
+      let message
+      if (typeof messageOrError === 'string') {
+        message = messageOrError
+      } else {
+        const fallback = (typeof opts === 'string') ? opts : (opts && opts.fallback) || 'Something went wrong. Please try again.'
+        try { console.error('[ui.showError]', messageOrError) } catch (_) { /* ignore */ }
+        message = safeErrorMessage(messageOrError, fallback)
+      }
+      const normalizedOpts = (typeof opts === 'string') ? {} : (opts || {})
+      this.showToast({ message, variant: 'error', duration: normalizedOpts.duration || 3500, top: normalizedOpts.top || '4rem' })
     },
     showInfo(message, opts = {}) {
       this.showToast({ message, variant: 'info', duration: opts.duration || 2500, top: opts.top || '4rem' })
