@@ -14,28 +14,45 @@
     <PublicHeader />
 
     <main>
-      <!-- HERO: hybrid marketing + product, with glass dashboard preview -->
-      <section class="relative">
-        <div
-          class="mx-auto flex max-w-6xl flex-col items-center gap-10 px-4 pb-20 pt-12 md:flex-row md:gap-16 md:px-6 md:pb-28 md:pt-20"
-        >
-          <!-- Left: messaging -->
-          <div class="flex-1 space-y-6 text-center md:text-left">
-            <p
-              class="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-sky-700 shadow-sm ring-1 ring-sky-100/80 backdrop-blur-xl dark:bg-slate-900/80 dark:text-sky-300 dark:ring-sky-500/40"
-            >
-              <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Commissioning dashboard · Issues · Checklists · FPTs
-            </p>
+      <!-- HERO: dark glass band that mirrors the in-app look; real screenshot
+           panel on the right. Drop the actual product screenshot at
+           public/screenshots/hero-dashboard.png (16:10, ~1600x1000, optimized).
+           Until then, the placeholder card behind the <img> renders gracefully. -->
+      <section class="relative isolate overflow-hidden bg-slate-950 text-slate-100">
+        <!-- Vivid gradient blobs — Azure-style energy on dark, matching the
+             app's sidebar/app-bg gradients so signup → login feels continuous. -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute -top-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-sky-500/30 blur-3xl" />
+          <div class="absolute top-1/3 -right-32 h-[34rem] w-[34rem] rounded-full bg-emerald-500/20 blur-3xl" />
+          <div class="absolute -bottom-40 left-1/3 h-[28rem] w-[28rem] rounded-full bg-violet-500/25 blur-3xl" />
+          <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(56,189,248,0.08),transparent_55%)]" />
+        </div>
 
-            <h1
-              class="text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl dark:text-slate-50"
+        <div
+          class="mx-auto flex max-w-6xl flex-col items-center gap-12 px-4 pb-24 pt-16 md:flex-row md:gap-16 md:px-6 md:pb-32 md:pt-24"
+        >
+          <!-- Left: copy -->
+          <div class="flex-1 space-y-7 text-center md:text-left">
+            <!-- Eyebrow pill -->
+            <span
+              class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sky-300 backdrop-blur-xl"
             >
-              A Cx-process management app
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Commissioning · Cx Plan · Final Report
+            </span>
+
+            <!-- Headline with gradient highlight on "CxAs" both times -->
+            <h1
+              class="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl"
+            >
+              Built by
+              <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">CxAs</span>,
+              for
+              <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">CxAs</span>.
             </h1>
 
-            <p class="text-base text-slate-600 sm:text-lg dark:text-slate-300">
-              Cxma is very friendly to the Cx engineer — simple, intuitive, and full-featured for commissioning management. It is not just checklists and issues, but the complete Cx scope of work.
+            <p class="text-base text-slate-300 sm:text-lg">
+              The complete commissioning workflow — OPR through Final Report — without enterprise pricing or enterprise complexity. Made for sole practitioners and small firms.
             </p>
 
             <div
@@ -45,176 +62,84 @@
                 :to="{ name: 'register' }"
                 class="w-full rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700 sm:w-auto"
               >
-                Get started in minutes
+                Get started free
               </RouterLink>
               <RouterLink
                 :to="{ name: 'login', query: { redirect: '/app' } }"
-                class="w-full rounded-xl border border-slate-200/80 bg-white/70 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white sm:w-auto dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
+                class="w-full rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
               >
                 Log in to demo
               </RouterLink>
             </div>
 
-            <p class="text-xs text-slate-500 dark:text-slate-400">
-              OPR · Basis of Design · Design Reviews · Equipment · Checklists · FPTs · Tasks.
+            <!-- Trust strip: $ / trial / no per-seat -->
+            <p class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-400 sm:justify-start">
+              <span>$69/project</span>
+              <span class="h-1 w-1 rounded-full bg-slate-600" />
+              <span>15-day free trial</span>
+              <span class="h-1 w-1 rounded-full bg-slate-600" />
+              <span>No per-seat pricing</span>
             </p>
           </div>
 
-          <!-- Right: glass dashboard preview (matches app’s vibe) -->
-          <div class="flex-1">
+          <!-- Right: screenshot panel.
+               When public/screenshots/hero-dashboard.png exists, it renders.
+               Otherwise the placeholder card behind shows a tidy fallback so
+               the page never looks broken during development. -->
+          <div class="w-full flex-1 md:w-auto">
             <div
-              class="relative mx-auto max-w-md rounded-3xl border border-white/80 bg-white/60 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.25)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/70 dark:shadow-[0_24px_70px_rgba(0,0,0,0.65)]"
+              class="relative mx-auto max-w-xl -rotate-1 rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_30px_80px_rgba(2,6,23,0.6)] backdrop-blur-2xl"
             >
-              <!-- Top bar -->
-              <div class="mb-4 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-1.5">
-                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/90" />
-                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/90" />
-                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/90" />
-                </div>
-                <div class="h-3 w-32 rounded-full bg-slate-100 dark:bg-slate-800" />
-                <div class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100/80 dark:bg-slate-800/80">
-                  <span class="h-4 w-4 rounded-full bg-sky-400/80 dark:bg-sky-400" />
-                </div>
+              <!-- Window chrome (the trafficlight dots, like in the app's sidebar header) -->
+              <div class="flex items-center gap-1.5 px-3 py-2">
+                <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
               </div>
 
-              <!-- Body: fake but app-like layout -->
-              <div class="grid grid-cols-[0.9fr,1.1fr] gap-3">
-                <!-- Left column: sidebar-ish -->
-                <div class="space-y-3">
-                  <div
-                    class="rounded-2xl border border-white/70 bg-white/70 p-3 text-[10px] shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-                  >
-                    <p class="text-[0.65rem] font-semibold text-slate-500 dark:text-slate-400">
-                      Active project
+              <!-- Screenshot frame -->
+              <div class="relative aspect-[16/10] overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                <!-- Placeholder shown behind the <img>. Visible until the real
+                     screenshot file lands at the path below. -->
+                <div
+                  class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950"
+                >
+                  <div class="space-y-2 px-6 text-center">
+                    <p class="text-xs font-semibold uppercase tracking-widest text-sky-400/80">
+                      Dashboard preview
                     </p>
-                    <p class="mt-1 text-xs font-semibold text-slate-900 dark:text-slate-50">
-                      Central Utility Plant
+                    <p class="text-sm text-slate-400">
+                      Drop screenshot at
+                      <code class="rounded bg-white/10 px-1.5 py-0.5 text-xs text-slate-200">public/screenshots/hero-dashboard.png</code>
                     </p>
-                    <p class="mt-1 text-[0.65rem] text-slate-500 dark:text-slate-400">
-                      Issues · Checklists · FPTs
-                    </p>
-                  </div>
-
-                  <div
-                    class="space-y-2 rounded-2xl border border-white/70 bg-white/70 p-3 text-[10px] shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="text-[0.65rem] text-slate-500 dark:text-slate-400">
-                        Open issues
-                      </span>
-                      <span
-                        class="rounded-full bg-rose-100 px-2 py-0.5 text-[0.65rem] font-semibold text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
-                      >
-                        34
-                      </span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span class="text-[0.65rem] text-slate-500 dark:text-slate-400">
-                        Checklists in progress
-                      </span>
-                      <span
-                        class="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
-                      >
-                        12
-                      </span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span class="text-[0.65rem] text-slate-500 dark:text-slate-400">
-                        FPTs scheduled
-                      </span>
-                      <span
-                        class="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                      >
-                        7
-                      </span>
-                    </div>
                   </div>
                 </div>
-
-                <!-- Right column: main cards -->
-                <div class="space-y-3">
-                  <div
-                    class="rounded-2xl border border-white/70 bg-white/80 p-3 text-[10px] shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="text-[0.65rem] font-semibold text-slate-500 dark:text-slate-400">
-                        Issue log summary
-                      </span>
-                      <span class="h-2 w-10 rounded-full bg-sky-100 dark:bg-sky-900" />
-                    </div>
-                    <div class="mt-2 grid grid-cols-3 gap-2">
-                      <div class="space-y-1">
-                        <p class="text-[0.6rem] text-slate-500 dark:text-slate-400">
-                          Open
-                        </p>
-                        <p class="text-xs font-semibold text-rose-500 dark:text-rose-300">
-                          18
-                        </p>
-                      </div>
-                      <div class="space-y-1">
-                        <p class="text-[0.6rem] text-slate-500 dark:text-slate-400">
-                          In progress
-                        </p>
-                        <p class="text-xs font-semibold text-amber-500 dark:text-amber-300">
-                          9
-                        </p>
-                      </div>
-                      <div class="space-y-1">
-                        <p class="text-[0.6rem] text-slate-500 dark:text-slate-400">
-                          Closed (7d)
-                        </p>
-                        <p class="text-xs font-semibold text-emerald-500 dark:text-emerald-300">
-                          23
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    class="rounded-2xl border border-white/70 bg-white/80 p-3 text-[10px] shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="text-[0.65rem] font-semibold text-slate-500 dark:text-slate-400">
-                        Upcoming commissioning tasks
-                      </span>
-                      <span class="h-2 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900" />
-                    </div>
-                    <div class="mt-2 space-y-1.5">
-                      <div class="flex items-center justify-between">
-                        <span class="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-800" />
-                        <span class="text-[0.6rem] text-slate-500 dark:text-slate-400">
-                          Today
-                        </span>
-                      </div>
-                      <div class="flex items-center justify-between">
-                        <span class="h-2 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
-                        <span class="text-[0.6rem] text-slate-500 dark:text-slate-400">
-                          +1 day
-                        </span>
-                      </div>
-                      <div class="flex items-center justify-between">
-                        <span class="h-2 w-16 rounded-full bg-slate-100 dark:bg-slate-800" />
-                        <span class="text-[0.6rem] text-slate-500 dark:text-slate-400">
-                          +3 days
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <!-- Real screenshot. The path is bound dynamically (rather than
+                     written as a static src=) so Vite's import-analyzer doesn't
+                     try to resolve it at build time — without the file, we want
+                     a graceful runtime 404 (caught by onerror) revealing the
+                     placeholder behind, NOT a build failure. -->
+                <img
+                  :src="'/screenshots/hero-dashboard.png'"
+                  alt="Cxma project dashboard"
+                  loading="eager"
+                  class="relative h-full w-full object-cover object-left-top"
+                  onerror="this.style.display='none'"
+                >
               </div>
 
-              <!-- Floating “analytics” card -->
+              <!-- Floating analytics chip — keeps the visual interest the old
+                   mockup had, but small enough not to fight a real screenshot. -->
               <div
-                class="absolute -bottom-7 -right-4 w-40 rounded-2xl border border-white/80 bg-white/90 p-3 text-[10px] text-slate-700 shadow-[0_18px_45px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 dark:text-slate-100 dark:shadow-[0_18px_55px_rgba(0,0,0,0.85)]"
+                class="absolute -bottom-6 -right-4 hidden w-44 rounded-2xl border border-white/15 bg-slate-900/90 p-3 text-xs text-slate-100 shadow-[0_18px_45px_rgba(2,6,23,0.7)] backdrop-blur-xl sm:block"
               >
-                <p class="text-[0.65rem] font-medium text-slate-500 dark:text-slate-400">
-                  Avg. time to resolve
+                <p class="text-[0.65rem] font-medium uppercase tracking-wider text-slate-400">
+                  Avg. resolve time
                 </p>
-                <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-50">
+                <p class="mt-1 text-lg font-semibold text-white">
                   3.8 days
                 </p>
-                <p class="mt-1 text-[0.65rem] text-emerald-600 dark:text-emerald-400">
+                <p class="mt-1 text-[0.65rem] text-emerald-400">
                   –21% vs last project
                 </p>
               </div>
@@ -223,272 +148,404 @@
         </div>
       </section>
 
-      <!-- FEATURE STRIP: Issues / Checklists / FPTs -->
-      <!-- Anchor for header nav: #workflows -->
+      <!-- WORKFLOW WALKTHROUGH: 5 stepped panels with real product screenshots.
+           Continues the hero's dark-glass band so hero → walkthrough feels like
+           one composition. Each step alternates image-left / image-right for
+           visual rhythm. Anchor ids #workflows and #features both kept for any
+           existing nav links. -->
       <span
         id="workflows"
         class="block"
       />
       <section
         id="features"
-        class="pb-20"
+        class="relative isolate overflow-hidden bg-slate-950 text-slate-100"
       >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div class="mx-auto max-w-3xl text-center">
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Everything a commissioning team needs.
-            </h2>
-            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Cxma is built for the real workflows you use every day — issue
-              logs, reusable checklists, and step-by-step functional performance
-              tests.
-            </p>
-          </div>
+        <!-- Subtle continuation of the hero's blob field, dialed down so the
+             screenshots stay the focal point. -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-0 right-1/4 h-[28rem] w-[28rem] rounded-full bg-sky-500/10 blur-3xl" />
+          <div class="absolute bottom-1/4 left-0 h-[26rem] w-[26rem] rounded-full bg-emerald-500/10 blur-3xl" />
+          <div class="absolute bottom-0 right-0 h-[24rem] w-[24rem] rounded-full bg-violet-500/10 blur-3xl" />
+        </div>
 
-          <div class="mt-10 grid gap-6 md:grid-cols-3">
-            <!-- Issues -->
-            <div
-              class="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/75 p-5 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_18px_55px_rgba(0,0,0,0.80)]"
-            >
-              <div
-                class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                  />
-                  <line
-                    x1="12"
-                    y1="8"
-                    x2="12"
-                    y2="12"
-                  />
-                  <line
-                    x1="12"
-                    y1="16"
-                    x2="12.01"
-                    y2="16"
-                  />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-slate-900 dark:text-slate-50">
-                Issue log
+        <!-- Section intro -->
+        <div class="mx-auto max-w-3xl px-4 pb-12 pt-6 text-center md:px-6 md:pb-20 md:pt-12">
+          <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            From OPR to Final Report.
+            <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">One platform.</span>
+          </h2>
+          <p class="mt-4 text-base text-slate-300 sm:text-lg">
+            Five surfaces that take a project from kickoff to closeout — without ever leaving the app.
+          </p>
+        </div>
+
+        <!-- Five stepped panels. Each step uses md:grid-cols-2 and alternates
+             which side the screenshot sits on via order- classes. -->
+        <div class="mx-auto max-w-6xl space-y-24 px-4 pb-24 md:px-6 md:pb-32">
+
+          <!-- STEP 01 — Plan it (Cx Plan generator) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4 md:order-1">
+              <p class="text-sm font-semibold uppercase tracking-widest text-sky-400">
+                Step 01 · Plan it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Generate a Cx Plan from your project, not a Word template.
               </h3>
-              <p class="text-slate-600 dark:text-slate-300">
-                Capture severity, system, assignee, due date, and status. Track
-                everything from punch-list items to persistent performance
-                problems.
+              <p class="text-base text-slate-300">
+                Build a complete LEED v4 / v5 Commissioning Plan in minutes. Roles & responsibilities, milestones, scope, sampling — auto-populated from your project team and selected scope items, then editable in the rich-text editor.
               </p>
             </div>
-
-            <!-- Checklists -->
-            <div
-              class="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/75 p-5 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_18px_55px_rgba(0,0,0,0.80)]"
-            >
-              <div
-                class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 11 12 14 22 4" />
-                  <path
-                    d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
-                  />
-                </svg>
+            <div class="order-1 md:order-2">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-plan.png'"
+                    alt="Cx Plan generator inside an Activity"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
               </div>
-              <h3 class="font-semibold text-slate-900 dark:text-slate-50">
-                Reusable checklists
-              </h3>
-              <p class="text-slate-600 dark:text-slate-300">
-                Standardize system and equipment checks with templates that
-                support comments, attachments, and Pass / Fail / N/A status.
-              </p>
-            </div>
-
-            <!-- FPTs -->
-            <div
-              class="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/75 p-5 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_18px_55px_rgba(0,0,0,0.80)]"
-            >
-              <div
-                class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="5 13 9 17 19 7" />
-                  <path
-                    d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
-                  />
-                  <path
-                    d="M9 21h6"
-                  />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-slate-900 dark:text-slate-50">
-                Functional performance tests
-              </h3>
-              <p class="text-slate-600 dark:text-slate-300">
-                Separate test structures with expected vs actual results,
-                approvals, and step-by-step execution for every system.
-              </p>
             </div>
           </div>
+
+          <!-- STEP 02 — Build it (image LEFT, text RIGHT on desktop) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4">
+              <p class="text-sm font-semibold uppercase tracking-widest text-emerald-400">
+                Step 02 · Build it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Equipment, checklists, and FPTs in one place.
+              </h3>
+              <p class="text-base text-slate-300">
+                Define your scoped systems once. Attach checklists and functional performance tests with expected-vs-actual fields, capture signatures in the field, and tie every finding back to a real piece of equipment.
+              </p>
+            </div>
+            <div class="order-1">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-build.png'"
+                    alt="Equipment details with checklists and functional performance tests"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 03 — Manage it (Issues) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4 md:order-1">
+              <p class="text-sm font-semibold uppercase tracking-widest text-violet-400">
+                Step 03 · Manage it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                The issue log that actually keeps up.
+              </h3>
+              <p class="text-base text-slate-300">
+                Punch items, persistent performance problems, design-review comments — all in one place, with severity, system, assignee, and due dates. Filter by anything. Search the rich-text descriptions instantly.
+              </p>
+            </div>
+            <div class="order-1 md:order-2">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-manage.png'"
+                    alt="Issues list with filters and severity badges"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 04 — Track it (image LEFT, text RIGHT on desktop) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4">
+              <p class="text-sm font-semibold uppercase tracking-widest text-amber-400">
+                Step 04 · Track it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                A real WBS, not a hidden Trello board.
+              </h3>
+              <p class="text-base text-slate-300">
+                Schedule the entire Cx process — design review through warranty walkthrough — on a project Gantt. Roll up cost, track percent complete, and see what's blocking what. Skip the separate scheduling tool.
+              </p>
+            </div>
+            <div class="order-1">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-track.png'"
+                    alt="Tasks list with project Gantt view"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 05 — Deliver it (Final Report) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4 md:order-1">
+              <p class="text-sm font-semibold uppercase tracking-widest text-rose-400">
+                Step 05 · Deliver it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                The Final Report writes itself.
+              </h3>
+              <p class="text-base text-slate-300">
+                Every section LEED v4 / v5 expects, every signature, every metric — auto-generated from the work you've already done. Edit in the rich-text editor, export server-side to PDF, hand it over. No more rebuilding the report from scratch every project.
+              </p>
+            </div>
+            <div class="order-1 md:order-2">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-deliver.png'"
+                    alt="Final Report builder with LEED-aware sections"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      <!-- PRICING: Simple, project-based pricing -->
-      <section
-        id="pricing"
-        class="pb-20"
-      >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div class="mx-auto max-w-3xl text-center">
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Simple, project-based, monthly/annual pricing
-            </h2>
-            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Basic: $29 / project · Standard: $49 / project · Premium: $79 / project. Stripe-powered subscriptions with a 15-day free period when a project starts.
-            </p>
-            <div class="mt-6 flex items-center justify-center gap-3">
-              <RouterLink
-                :to="{ name: 'pricing' }"
-                class="rounded-xl border border-slate-200/80 bg-white/70 px-6 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
-              >
-                View full pricing
-              </RouterLink>
-              <RouterLink
-                :to="{ name: 'register' }"
-                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
-              >
-                Get started free
-              </RouterLink>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- FINAL CTA: Ready to give your commissioning a home? -->
-      <section
-        id="cta"
-        class="pb-24"
-      >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div
-            class="rounded-3xl border border-white/80 bg-white/70 p-8 text-center shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)]"
-          >
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Ready to give your commissioning a proper home?
-            </h2>
-            <p class="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Spin up a project in minutes and invite your team. Keep issues, checklists, and FPTs organized from day one.
-            </p>
-            <div class="mt-6 flex items-center justify-center gap-3">
-              <RouterLink
-                :to="{ name: 'register' }"
-                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
-              >
-                Get started free
-              </RouterLink>
-              <RouterLink
-                :to="{ name: 'login', query: { redirect: '/app' } }"
-                class="rounded-xl border border-slate-200/80 bg-white/70 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
-              >
-                Log in to demo
-              </RouterLink>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ROLES / RBAC -->
+      <!-- ROLES: dark band continuation; sits between the workflow walkthrough
+           ("what you'll do") and the pricing teaser ("what it costs") so the
+           page flow reads workflow → who uses each part → how to buy. -->
       <section
         id="roles"
-        class="pb-20"
+        class="relative isolate overflow-hidden bg-slate-950 pt-4 pb-20 text-slate-100 md:pt-12 md:pb-28"
       >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-1/3 right-0 h-[28rem] w-[28rem] rounded-full bg-violet-500/10 blur-3xl" />
+          <div class="absolute bottom-0 left-1/4 h-[24rem] w-[24rem] rounded-full bg-emerald-500/10 blur-3xl" />
+        </div>
+
+        <div class="mx-auto max-w-5xl px-4 md:px-6">
           <div
-            class="grid gap-10 rounded-3xl border border-white/80 bg-white/70 p-6 shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)] md:grid-cols-[1.1fr,0.9fr] md:p-10"
+            class="grid gap-10 rounded-3xl border border-white/15 bg-white/5 p-6 shadow-[0_28px_70px_rgba(2,6,23,0.55)] backdrop-blur-2xl md:grid-cols-[1.1fr,0.9fr] md:gap-12 md:p-10"
           >
             <div class="space-y-4">
-              <h2 class="text-2xl font-semibold sm:text-3xl">
-                Role-based views that mirror your project team.
-              </h2>
-              <p class="text-sm text-slate-600 sm:text-base dark:text-slate-300">
-                Cxma supports admins, CxAs, engineers, contractors, client
-                reps, and guests — with project-level assignments and field
-                visibility tuned per role.
+              <p class="text-sm font-semibold uppercase tracking-widest text-sky-400">
+                Built for project teams
               </p>
-              <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                <li>• Filter dashboards by active project and user role.</li>
-                <li>• Limit edit access to the right team members.</li>
-                <li>• Assign issues, checklists, and FPTs per user.</li>
+              <h2 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Roles that match
+                <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">how your team actually works.</span>
+              </h2>
+              <p class="text-base text-slate-300">
+                CxAs, MEP engineers, contractors, client reps, and guests — each with a default view tuned for what they actually do. Tighten or loosen permissions per project.
+              </p>
+              <ul class="space-y-2 text-sm text-slate-300">
+                <li class="flex gap-2"><span class="text-sky-400">·</span> Filter dashboards by active project and user role.</li>
+                <li class="flex gap-2"><span class="text-sky-400">·</span> Limit edit access to the right team members.</li>
+                <li class="flex gap-2"><span class="text-sky-400">·</span> Assign issues, checklists, and FPTs per user.</li>
               </ul>
             </div>
 
             <div class="space-y-3 text-sm">
-              <div
-                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-              >
-                <span class="text-slate-700 dark:text-slate-100">
-                  CxA · Admin
-                </span>
-                <span
-                  class="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700 dark:bg-sky-500/20 dark:text-sky-300"
-                >
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">CxA · Admin</span>
+                <span class="rounded-full bg-sky-500/20 px-3 py-1 text-xs font-medium text-sky-300">
                   Full access
                 </span>
               </div>
-              <div
-                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-              >
-                <span class="text-slate-700 dark:text-slate-100">
-                  Contractors
-                </span>
-                <span
-                  class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                >
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">Contractors</span>
+                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
                   Assigned systems
                 </span>
               </div>
-              <div
-                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-              >
-                <span class="text-slate-700 dark:text-slate-100">
-                  Client & reps
-                </span>
-                <span
-                  class="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700 dark:bg-violet-500/20 dark:text-violet-300"
-                >
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">Client &amp; reps</span>
+                <span class="rounded-full bg-violet-500/20 px-3 py-1 text-xs font-medium text-violet-300">
                   Read-only dashboards
+                </span>
+              </div>
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">Guests</span>
+                <span class="rounded-full bg-slate-500/20 px-3 py-1 text-xs font-medium text-slate-300">
+                  Single-project view
                 </span>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- PRICING TEASER: dark band, three mini tier cards + link to /pricing.
+           Shows the actual headline numbers so a buyer knows the order of
+           magnitude without leaving the page; the full comparison still lives
+           on the dedicated /pricing route. -->
+      <section
+        id="pricing"
+        class="relative isolate overflow-hidden bg-slate-950 pt-4 pb-20 text-slate-100 md:pt-12 md:pb-28"
+      >
+        <!-- Subtle gradient continuation from the walkthrough above -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-1/4 left-1/4 h-[26rem] w-[26rem] rounded-full bg-sky-500/10 blur-3xl" />
+          <div class="absolute bottom-0 right-1/4 h-[28rem] w-[28rem] rounded-full bg-violet-500/10 blur-3xl" />
+        </div>
+
+        <div class="mx-auto max-w-5xl px-4 md:px-6">
+          <div class="mx-auto max-w-3xl text-center">
+            <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Simple,
+              <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">project-based</span>
+              pricing.
+            </h2>
+            <p class="mt-4 text-base text-slate-300 sm:text-lg">
+              Monthly or annual. 15-day free trial when you start a project. <span class="text-white">No per-seat traps.</span>
+            </p>
+          </div>
+
+          <!-- Mini tier cards: Basic / Standard (featured) / Premium -->
+          <div class="mt-10 grid gap-4 sm:grid-cols-3">
+            <!-- Basic -->
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_18px_45px_rgba(2,6,23,0.4)] backdrop-blur-xl">
+              <p class="text-xs font-semibold uppercase tracking-widest text-sky-400">Basic</p>
+              <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
+                $69<span class="text-sm font-medium text-slate-400">/project · mo</span>
+              </p>
+              <p class="mt-2 text-sm text-slate-300">
+                Issues and Equipment for sole practitioners and the smallest teams.
+              </p>
+            </div>
+            <!-- Standard (featured) -->
+            <div class="relative rounded-2xl border border-sky-400/40 bg-gradient-to-br from-sky-500/15 via-white/5 to-emerald-500/10 p-5 text-left shadow-[0_24px_60px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+              <p class="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-sky-500 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-white">
+                Most popular
+              </p>
+              <p class="text-xs font-semibold uppercase tracking-widest text-emerald-300">Standard</p>
+              <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
+                $129<span class="text-sm font-medium text-slate-300">/project · mo</span>
+              </p>
+              <p class="mt-2 text-sm text-slate-200">
+                Full platform — Spaces, Activities, Final Report. The typical sweet spot.
+              </p>
+            </div>
+            <!-- Premium -->
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_18px_45px_rgba(2,6,23,0.4)] backdrop-blur-xl">
+              <p class="text-xs font-semibold uppercase tracking-widest text-violet-300">Premium</p>
+              <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
+                $249<span class="text-sm font-medium text-slate-400">/project · mo</span>
+              </p>
+              <p class="mt-2 text-sm text-slate-300">
+                Everything, plus Tasks, Templates, AI assistant. New features first.
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <RouterLink
+              :to="{ name: 'pricing' }"
+              class="w-full rounded-xl border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
+            >
+              See full pricing
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'register' }"
+              class="w-full rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700 sm:w-auto"
+            >
+              Start free trial
+            </RouterLink>
+          </div>
+        </div>
+      </section>
+
+      <!-- FINAL CTA: dark band, big glass card. Closes the page with the same
+           identity-first energy the hero opened with. -->
+      <section
+        id="cta"
+        class="relative isolate overflow-hidden bg-slate-950 pb-24 text-slate-100 md:pb-32"
+      >
+        <!-- Punchy accent blob behind the card -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-0 left-1/2 h-[30rem] w-[40rem] -translate-x-1/2 rounded-full bg-emerald-500/15 blur-3xl" />
+          <div class="absolute bottom-0 right-0 h-[24rem] w-[24rem] rounded-full bg-sky-500/15 blur-3xl" />
+        </div>
+
+        <div class="mx-auto max-w-6xl px-4 md:px-6">
+          <div
+            class="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 p-8 text-center shadow-[0_36px_90px_rgba(2,6,23,0.7)] backdrop-blur-2xl md:p-14"
+          >
+            <!-- Inset accent gradient inside the card -->
+            <div class="pointer-events-none absolute inset-0 -z-10">
+              <div class="absolute -top-20 left-1/2 h-[20rem] w-[28rem] -translate-x-1/2 rounded-full bg-sky-500/15 blur-3xl" />
+            </div>
+
+            <p class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sky-300 backdrop-blur-xl">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Built by CxAs, for CxAs
+            </p>
+
+            <h2 class="mx-auto mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Stop running commissioning out of spreadsheets.
+            </h2>
+            <p class="mx-auto mt-4 max-w-2xl text-base text-slate-300 sm:text-lg">
+              Spin up a project in minutes, invite your team, and have your first Cx Plan, issue log, and Final Report skeleton in place by lunch.
+            </p>
+
+            <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <RouterLink
+                :to="{ name: 'register' }"
+                class="w-full rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_40px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700 sm:w-auto"
+              >
+                Start your 15-day free trial
+              </RouterLink>
+              <RouterLink
+                :to="{ name: 'login', query: { redirect: '/app' } }"
+                class="w-full rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
+              >
+                Log in to demo
+              </RouterLink>
+            </div>
+
+            <p class="mt-6 text-xs text-slate-400">
+              No credit card to start · Cancel anytime · No per-seat pricing
+            </p>
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <PublicFooter />
