@@ -1464,7 +1464,7 @@
                   </button>
                   <div>
                     <div class="font-medium">
-                      AI (Bring your own OpenAI key)
+                      AI (Bring your own AI key)
                     </div>
                     <div class="text-xs text-white/60">
                       Project-scoped API key stored encrypted server-side.
@@ -1478,7 +1478,7 @@
                 class="mt-3"
               >
                 <div class="text-sm text-white/70 mb-3">
-                  Store a project-scoped OpenAI API key (encrypted on the server). The key is never exposed back to the browser.
+                  Store a project-scoped API key (encrypted on the server). The key is never exposed back to the browser.
                 </div>
 
                 <div
@@ -1570,7 +1570,7 @@
 
                   <div class="mt-3">
                     <div class="flex items-center justify-between">
-                      <label class="block text-sm text-white/70">OpenAI API key</label>
+                      <label class="block text-sm text-white/70">API key</label>
                       <span
                         class="text-xs px-2 py-0.5 rounded-full border"
                         :class="aiHasKey ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-100' : 'bg-white/5 border-white/10 text-white/60'"
