@@ -114,11 +114,13 @@
                     </p>
                   </div>
                 </div>
-                <!-- Real screenshot. Hidden via onerror if the file isn't there
-                     yet, so the placeholder above takes over without a broken
-                     image icon. -->
+                <!-- Real screenshot. The path is bound dynamically (rather than
+                     written as a static src=) so Vite's import-analyzer doesn't
+                     try to resolve it at build time — without the file, we want
+                     a graceful runtime 404 (caught by onerror) revealing the
+                     placeholder behind, NOT a build failure. -->
                 <img
-                  src="/screenshots/hero-dashboard.png"
+                  :src="'/screenshots/hero-dashboard.png'"
                   alt="Cxma project dashboard"
                   loading="eager"
                   class="relative h-full w-full object-cover object-left-top"
