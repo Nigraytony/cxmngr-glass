@@ -18,6 +18,7 @@ const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
+const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock')
 const { normalizeLogEvent } = require('../utils/logEvent')
 
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
@@ -863,9 +864,16 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, re
       incoming.oprItemIds = oprValidation.ids || []
     }
 
-    const updated = await Activity.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
-    if (!updated) return res.status(404).send();
-    res.status(200).send(updated);
+    // Opt-in optimistic locking: 409 when client-supplied __v is stale.
+    // Back-compat: no-op when the client doesn't send __v.
+    const expectedVersion = readExpectedVersion(req);
+    const result = await applyOptimisticUpdate(
+      Activity, req.params.id, incoming, expectedVersion,
+      { new: true, runValidators: true }
+    );
+    if (result.notFound) return res.status(404).send();
+    if (result.conflict) return sendConflict(res, result.current);
+    res.status(200).send(result.updated);
   } catch (error) {
     console.error('[activities] update error', error && (error.stack || error.message || error))
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update activity' });
