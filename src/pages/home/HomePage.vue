@@ -370,7 +370,7 @@
               Simple, project-based, monthly/annual pricing
             </h2>
             <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Basic: $29 / project · Standard: $49 / project · Premium: $79 / project. Stripe-powered subscriptions with a 15-day free period when a project starts.
+              Basic: $69 / project · Standard: $129 / project · Premium: $249 / project. Stripe-powered subscriptions with a 15-day free period when a project starts.
             </p>
             <div class="mt-6 flex items-center justify-center gap-3">
               <RouterLink
