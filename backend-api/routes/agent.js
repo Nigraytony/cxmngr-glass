@@ -327,14 +327,44 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
   const tools = getOpenAiTools()
   const toolResults = []
 
-  // Convert Claude-style messages to OpenAI format
+  // Translate one message's content from the Claude-shaped canonical format
+  // to OpenAI's chat-completions content shape. PDFs land as `type: 'file'`
+  // blocks with `file_data` as a base64 data URL — supported on gpt-4o,
+  // gpt-4o-mini, and o1.
+  function toOpenAiContent(content) {
+    if (typeof content === 'string') return content
+    if (!Array.isArray(content)) return ''
+    const parts = []
+    for (const b of content) {
+      if (!b) continue
+      if (b.type === 'text') {
+        parts.push({ type: 'text', text: asString(b.text) })
+      } else if (b.type === 'document' && b.source && b.source.type === 'base64') {
+        const mediaType = asString(b.source.media_type) || 'application/pdf'
+        const data = asString(b.source.data)
+        if (!data) continue
+        parts.push({
+          type: 'file',
+          file: {
+            filename: asString(b.filename) || 'document.pdf',
+            file_data: `data:${mediaType};base64,${data}`,
+          },
+        })
+      }
+    }
+    // Collapse to a plain string when there's only a single text block —
+    // keeps the wire format identical to the pre-PDF-support path so the
+    // happy path is unchanged for text-only chats.
+    if (parts.length === 1 && parts[0].type === 'text') return parts[0].text
+    return parts
+  }
+
+  // Convert Claude-shaped messages to OpenAI format
   const oaiMessages = [
     { role: 'system', content: systemPrompt },
     ...messages.map((m) => ({
       role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: typeof m.content === 'string'
-        ? m.content
-        : (Array.isArray(m.content) ? m.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n') : ''),
+      content: toOpenAiContent(m.content),
     })),
   ]
 
@@ -388,15 +418,37 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
   const tools = getGeminiTools()
   const toolResults = []
 
-  // Convert to Gemini contents format
+  // Translate one message's content to Gemini parts. PDFs become inline_data
+  // blocks with mime_type=application/pdf — supported across the
+  // gemini-1.5-* and gemini-2.0-* families.
+  function toGeminiParts(content) {
+    if (typeof content === 'string') return [{ text: content }]
+    if (!Array.isArray(content)) return [{ text: '' }]
+    const parts = []
+    for (const b of content) {
+      if (!b) continue
+      if (b.type === 'text') {
+        parts.push({ text: asString(b.text) })
+      } else if (b.type === 'document' && b.source && b.source.type === 'base64') {
+        const data = asString(b.source.data)
+        if (!data) continue
+        parts.push({
+          inline_data: {
+            mime_type: asString(b.source.media_type) || 'application/pdf',
+            data,
+          },
+        })
+      }
+    }
+    return parts.length ? parts : [{ text: '' }]
+  }
+
+  // Convert Claude-shaped messages to Gemini contents format
   function toGeminiContents(msgs) {
-    return msgs.map((m) => {
-      const role = m.role === 'assistant' ? 'model' : 'user'
-      const text = typeof m.content === 'string'
-        ? m.content
-        : (Array.isArray(m.content) ? m.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n') : '')
-      return { role, parts: [{ text }] }
-    })
+    return msgs.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: toGeminiParts(m.content),
+    }))
   }
 
   let contents = toGeminiContents(messages)
@@ -567,8 +619,17 @@ router.post(
       const model = resolveModel(provider, ai)
       const systemPrompt = buildSystemPrompt(project)
 
-      if (pdfFiles.length && provider !== 'claude') {
-        return res.status(400).json({ error: 'PDF upload requires the Claude provider. Switch AI provider in Project Settings → AI.' })
+      // Provider-specific PDF size limits (per the provider docs):
+      //   OpenAI:  32 MB total / 100 pages per request
+      //   Gemini:  20 MB total per request (inline-data mode)
+      //   Claude:  generous (validated by Anthropic at request time)
+      // Our own upload cap is 30 MB total (3 files × 10 MB). The Gemini path
+      // can therefore exceed its provider limit if the user uploads >20 MB
+      // and is on Gemini — we let the provider's error surface through the
+      // existing 502 catch rather than gating it here, but log a heads-up.
+      const totalPdfBytes = pdfFiles.reduce((sum, f) => sum + (f && f.buffer ? f.buffer.length : 0), 0)
+      if (pdfFiles.length && provider === 'gemini' && totalPdfBytes > 20 * 1024 * 1024) {
+        console.warn('[agent] gemini PDF payload exceeds 20 MB; request may be rejected by the API')
       }
 
       // Load recent history for context
@@ -579,7 +640,14 @@ router.post(
       historyDocs.reverse()
 
       // Build the new user turn. With PDFs attached, content is an array of
-      // document blocks followed by the text message (Claude-only path).
+      // document blocks (Claude-shaped, used as the canonical intermediate
+      // format) followed by the text message. Each provider loop transforms
+      // these blocks to its native PDF format:
+      //   - Claude: passed through as-is (it's already its native shape).
+      //   - OpenAI: → { type: 'file', file: { filename, file_data: data:... } }
+      //   - Gemini: → { inline_data: { mime_type, data } }
+      // The non-standard `filename` field on each block is ignored by Claude
+      // but used by the OpenAI mapper for the file.filename attribute.
       const messageText = userMessage || 'Please analyse the attached drawing(s).'
       const newUserContent = pdfFiles.length
         ? [
@@ -590,6 +658,7 @@ router.post(
                 media_type: 'application/pdf',
                 data: f.buffer.toString('base64'),
               },
+              filename: (f.originalname && String(f.originalname)) || 'document.pdf',
             })),
             { type: 'text', text: messageText },
           ]
