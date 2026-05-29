@@ -1,6 +1,8 @@
 # Operations runbook
 
-This is the on-call / ops-readiness reference for cxmngr-glass. It pairs with the launch-readiness audit (`LAUNCH_AUDIT_2026-05-27.md`). Sections marked **`<FILL IN>`** are the items the team needs to populate with environment-specific values before launch — they're left as placeholders here so the structure is committed, the gaps are visible in PR review, and operators have one place to look.
+On-call / ops-readiness reference for cxmngr-glass. Pairs with the launch-readiness audit (`LAUNCH_AUDIT_2026-05-27.md`).
+
+A few items still marked **`<FILL IN>`** are things the team must decide rather than facts I can infer — backup tier choice on Atlas, RTO/RPO targets, drill cadence. Everything else is now populated with concrete values.
 
 ---
 
@@ -9,37 +11,38 @@ This is the on-call / ops-readiness reference for cxmngr-glass. It pairs with th
 ```
                      ┌────────────────────────┐
                      │  Azure Static Web App  │  cxmngr-glass frontend (Vue 3 + Vite)
-                     │   deploys on  v* tags  │  workflow: .github/workflows/azure-static-web-apps-*.yml
+                     │   deploys on  v* tags  │  workflow: .github/workflows/azure-static-web-apps-lemon-forest-0c47c5d0f.yml
                      └────────────┬───────────┘
                                   │ HTTPS
                                   ▼
                      ┌────────────────────────┐
-                     │   Azure App Service    │  backend-api (Express + Mongoose)
-                     │  deploys on main merge │  workflow: .github/workflows/ci.yml :: deploy-backend
+                     │   Azure App Service    │  cxmngr-backend-api  (Express + Mongoose)
+                     │  deploys on main merge │  resource group: rg-cxmngr-eastus   region: East US
+                     │                        │  workflow: .github/workflows/ci.yml :: deploy-backend
                      └────┬──────────┬────────┘
                           │          │
-                          │          │
               ┌───────────▼──┐    ┌──▼──────────────┐
-              │ Mongo Atlas  │    │ Azure Blob      │  docs container
-              │ (Cosmos)     │    │ Storage         │
-              │  <FILL IN>   │    │  <FILL IN>      │
+              │  Mongo Atlas │    │  Azure Blob     │  docs container (in rg-cxmngr-eastus)
+              │  Cluster0    │    │  Storage        │
+              │  ymfn7gc     │    │                 │
+              │  db:cxmngr-  │    │                 │
+              │     api      │    │                 │
               └──────────────┘    └─────────────────┘
                           │          │
-                          │          │
               ┌───────────▼──┐    ┌──▼──────────────┐
-              │  Stripe      │    │  SendGrid /     │
-              │  Billing +   │    │  SMTP           │
-              │  Webhooks    │    │                 │
+              │   Stripe     │    │   SendGrid      │
+              │   Billing +  │    │   (mail)        │
+              │   Webhooks   │    │                 │
               └──────────────┘    └─────────────────┘
                           │
                           ▼
                      ┌────────────────────────┐
-                     │  Sentry (or App        │  error tracking
-                     │  Insights — pick one)  │  SENTRY_DSN env var
+                     │  Sentry  (NOT YET      │  error tracking — SDK wired (PR #49)
+                     │  CONFIGURED — see §10) │  SENTRY_DSN unset → all helpers no-op
                      └────────────────────────┘
 ```
 
-**Versioning**: backend tracks `main`. Frontend ships per `v*` git tag (semver patch by default). Last released tag: see `git tag --sort=-creatordate | head -1`.
+**Versioning**: backend tracks `main` (auto-deploy on merge). Frontend ships per `v*` git tag (semver patch). Last released tag: see `git tag --sort=-creatordate | head -1`.
 
 ---
 
@@ -47,35 +50,36 @@ This is the on-call / ops-readiness reference for cxmngr-glass. It pairs with th
 
 | Concern | Where | How |
 |---|---|---|
-| Frontend logs (build / deploy) | GitHub Actions → `Azure Static Web Apps CI/CD` | `gh run list --workflow=azure-static-web-apps-*.yml` |
-| Backend logs (runtime) | Azure App Service → Log stream | `az webapp log tail` or portal Log stream |
-| Backend logs (historical) | **`<FILL IN>`** — likely App Service "Application Logging (Filesystem/Blob)" + Log Analytics workspace | Configure under App Service → Monitoring → Diagnostic settings |
-| Errors / exceptions | Sentry dashboard at `<FILL IN sentry project URL>` | Set `SENTRY_DSN` in App Service Configuration |
-| DB metrics | Mongo Atlas (or Cosmos) console at `<FILL IN cluster URL>` | Atlas → Metrics tab |
-| Blob metrics | Azure portal → storage account → Metrics | |
+| Frontend logs (build / deploy) | GitHub Actions → `Azure Static Web Apps CI/CD` | `gh run list --workflow=azure-static-web-apps-lemon-forest-0c47c5d0f.yml` |
+| Backend logs (runtime) | Azure portal → App Service `cxmngr-backend-api` → Log stream | `az webapp log tail --name cxmngr-backend-api --resource-group rg-cxmngr-eastus` |
+| Backend logs (historical) | Enable in App Service → Monitoring → Diagnostic settings → ship to a Log Analytics workspace in `rg-cxmngr-eastus`. Current state: **not enabled** — App Service's default stdout capture is short-rotated. <!-- TODO: stand up Log Analytics workspace --> | Portal → App Service → Diagnostic settings → Add → "Send to Log Analytics workspace" |
+| Errors / exceptions | Sentry — **not configured yet**, see §10 for setup | Once configured, dashboard URL goes here |
+| DB metrics | Mongo Atlas console → cluster **Cluster0** → Metrics tab | `https://cloud.mongodb.com` → org/project → Cluster0 |
+| Blob metrics | Azure portal → storage account (in `rg-cxmngr-eastus`) → Metrics | |
 | Stripe events | Stripe dashboard → Developers → Webhooks | Live + Test modes are separate dashboards |
-| SendGrid deliverability | SendGrid → Activity Feed | |
+| SendGrid deliverability | SendGrid → Activity Feed | API key lives in GitHub secret `SENDGRID_API_KEY` |
 
 ---
 
 ## 3. Backups & restore
 
 ### MongoDB
-- **Provider**: `<FILL IN — Mongo Atlas / Cosmos DB for MongoDB / self-hosted>`
-- **Snapshot cadence**: `<FILL IN>` (Atlas default: continuous backup + daily snapshot at midnight UTC).
-- **Snapshot retention**: `<FILL IN>` (Atlas default: 7 daily / 4 weekly / 12 monthly).
-- **Point-in-time restore window**: `<FILL IN>` (Atlas: last 72h on M10+).
-- **Restore SOP**: see § 7 below.
-- **Recovery time objective (RTO)**: `<FILL IN>`.
-- **Recovery point objective (RPO)**: `<FILL IN>`.
-- **Drill cadence**: practice a restore into a scratch cluster every **`<FILL IN — e.g. quarterly>`**.
+- **Provider**: **Mongo Atlas** (cluster `cluster0.ymfn7gc.mongodb.net`, database `cxmngr-api`).
+- **Tier required for backups**: <!-- TODO: confirm tier -->. Atlas M0/M2/M5 (free / shared) **have no automated backup**. Continuous backup + PITR is available on **M10+ dedicated clusters**. If you're on M0, the only backup mechanism is `mongodump` from a scheduled job — and you do **not** have point-in-time restore.
+- **Snapshot cadence** (if M10+): Atlas default is continuous backup with hourly oplog snapshots and a daily snapshot at midnight UTC.
+- **Snapshot retention** (if M10+): default 7 daily / 4 weekly / 12 monthly. Adjust in Atlas → Backup → Policy.
+- **Point-in-time restore window** (if M10+): default last 72 hours.
+- **Restore SOP**: see §7 below.
+- **Recovery time objective (RTO)**: **`<FILL IN — recommend 4 hours for launch>`** — the time from "we declare an incident" to "service is restored on the new cluster."
+- **Recovery point objective (RPO)**: **`<FILL IN — recommend 24 hours for launch, 1 hour post-Series-A>`** — the maximum acceptable data loss measured in time.
+- **Drill cadence**: practice a restore into a scratch cluster **`<FILL IN — recommend quarterly>`**. Until at least one drill has succeeded, treat the backup as unverified.
 
 ### Azure Blob Storage (docs container)
-- **Container**: value of `DOCS_BLOB_CONTAINER` env var.
-- **Soft delete for blobs**: **ENABLE this in the portal** — Storage account → Data protection → Enable soft delete for blobs, retention `<FILL IN — e.g. 30 days>`. Without it, an accidental DELETE on a doc is permanent.
-- **Soft delete for containers**: also enable, retention `<FILL IN>`.
-- **Versioning**: `<FILL IN — recommend ON for the docs container>`.
-- **Geo-redundancy**: `<FILL IN — GRS/RA-GRS recommended>`.
+- **Container name**: value of `DOCS_BLOB_CONTAINER` env var on the backend App Service.
+- **Soft delete for blobs**: **MUST be enabled** — portal → storage account → Data protection → "Enable soft delete for blobs", retention **30 days** recommended. Without it, an accidental DELETE on a doc is permanent and there is no recovery path.
+- **Soft delete for containers**: also enable, **30 day** retention.
+- **Versioning**: **enable** on the docs container. Allows recovery from accidental overwrites.
+- **Geo-redundancy**: recommend **GRS** (or **RA-GRS** if you need read access during a region outage). East US has a paired region (West US) for GRS.
 
 ### Frontend SWA
 - Static assets are rebuilt from `v*` tags; no backup needed beyond the git tags themselves.
@@ -89,7 +93,7 @@ Validated at startup by `backend-api/utils/validateEnv.js`. The server **refuses
 | REQUIRED | What | Where to set |
 |---|---|---|
 | `MONGODB_URI` | Mongo connection string | App Service → Configuration |
-| `JWT_SECRET` | Session JWT secret. Rotate on suspected compromise (see § 8). | App Service → Configuration |
+| `JWT_SECRET` | Session JWT secret. Rotate on suspected compromise (see §7). | App Service → Configuration |
 | `AI_ENCRYPTION_KEY` | AES-256 key (base64 or hex) used to encrypt per-project AI keys at rest | App Service → Configuration |
 | `MAIL_FROM` | Sender address (must be a verified domain on the email provider) | App Service → Configuration |
 
@@ -97,15 +101,15 @@ Validated at startup by `backend-api/utils/validateEnv.js`. The server **refuses
 |---|---|---|
 | `STRIPE_SECRET_KEY` | Stripe billing API key | Billing endpoints return 503 |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signature secret | Webhooks 4xx; subscriptions can't sync |
-| `SENTRY_DSN` | Error tracking | Crashes go unnoticed until a customer reports |
+| `SENTRY_DSN` | Error tracking (§10) | Crashes go unnoticed until a customer reports |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowlist | Browser requests blocked or wildcarded |
 | `APP_URL` | Public URL of the SPA, used in transactional emails | Reset/invite links broken |
 | `FRONTEND_URL` | Public origin of the SPA, used by CORS fallback | CORS may block legit origins |
-| `DOCS_BLOB_CONTAINER` | Storage container name for docs feature | Doc uploads fail with `EMAIL_NOT_CONFIGURED`-style errors |
+| `DOCS_BLOB_CONTAINER` | Storage container name for docs feature | Doc uploads fail |
 
 Optional knobs:
 - `SHUTDOWN_TIMEOUT_MS` — graceful shutdown budget, default `25000` (must stay under Azure's ~30s SIGKILL deadline).
-- `SENTRY_RELEASE` — recommend setting to the deployed commit SHA so Sentry tags events with the version.
+- `SENTRY_RELEASE` — set to the deployed commit SHA so Sentry tags events with the version.
 - `SENTRY_TRACES_SAMPLE_RATE` — default `0` (errors only); raise to opt into performance tracing.
 
 ---
@@ -117,7 +121,13 @@ Optional knobs:
 | `GET /api/health` | Mongoose `readyState === 1` → 200; else 500 | App Service liveness/readiness probe |
 | `GET /` | Plain text "CXMNGR API alive" | Manual smoke test |
 
-App Service probe config: `<FILL IN — path, port, threshold, period>`.
+App Service health-check config (Azure portal → App Service → Monitoring → Health check):
+- **Path**: `/api/health`
+- **Threshold**: `2 minutes` of failure before instance is taken out of rotation (recommended)
+- **Probe interval**: `60 seconds`
+- **HTTP method**: GET (default)
+
+<!-- TODO: confirm the health check is actually enabled in the portal -->
 
 > **Known gap (audit B-O7)**: `/api/health` only checks Mongo, not Blob/Stripe/SendGrid reachability. Consider adding `/api/ready` for a multi-dependency check before going to scale.
 
@@ -146,33 +156,51 @@ Look for these log lines on every restart:
 ## 7. Common operations
 
 ### Restart the backend
-`<FILL IN — Azure portal: App Service → Overview → Restart, or:>`
+Portal: App Service → `cxmngr-backend-api` → Overview → **Restart**.
+
+Or via CLI:
 ```bash
-az webapp restart --name <app-name> --resource-group <rg>
+az webapp restart --name cxmngr-backend-api --resource-group rg-cxmngr-eastus
 ```
 
-### Rotate a secret (e.g. JWT_SECRET)
-1. Generate the new value (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`).
-2. **`<FILL IN — decide rotation strategy>`**: today rotating `JWT_SECRET` invalidates every outstanding session. No grace window is implemented (see audit B-Sec SHOULD-FIX "JWT secret rotation has no grace logic").
-3. Update App Service → Configuration → `JWT_SECRET`.
-4. Save → App Service restarts → graceful shutdown runs → new secret takes effect.
+### Rotate `JWT_SECRET`
+1. Generate the new value:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   ```
+2. **Heads up**: rotating `JWT_SECRET` invalidates **every outstanding session immediately**. All users get kicked to the login page on their next request. There is no grace window implemented — see audit SHOULD-FIX *"JWT secret rotation has no grace logic"* for the eventual fix. For now, schedule rotations during low-traffic windows or only on suspected compromise.
+3. Update App Service → Configuration → `JWT_SECRET` → Save.
+4. App Service auto-restarts on save → graceful shutdown runs → new secret takes effect.
+
+### Rotate `AI_ENCRYPTION_KEY`
+**Do not rotate without a migration step.** This key encrypts the per-project AI API keys stored in Mongo (`Project.ai.apiKey.enc`). Rotating it without re-encrypting existing rows leaves the AI feature broken for every project that had a BYO key configured. <!-- TODO: write a one-off re-encrypt script before the first rotation is needed -->
 
 ### Replay a stuck Stripe webhook event
-Admin tool already exists at `/api/admin/webhook-events/:eventId/replay` (used in `tests/replay_*.test.js`). Requires globaladmin or superadmin auth.
+Admin tool already exists at `POST /api/admin/webhook-events/:eventId/replay` (covered by `tests/replay_*.test.js`). Requires globaladmin or superadmin auth. The webhook UI lives at `/app/admin/webhooks` (only visible to admins).
 
 ### Manually clean up an orphaned record (post-incident)
-`<FILL IN — script reference or query>`. The cascade-delete helpers in `backend-api/utils/cascadeDelete.js` are the canonical reference for which collections reference which.
+`backend-api/utils/cascadeDelete.js` is the canonical reference for which collections reference which. To find orphans for a deleted project, you can run a query like:
+```javascript
+// connect via mongosh, then:
+const orphans = await db.activities.find({ projectId: <ObjectId-of-deleted-project> }).toArray()
+// then: db.activities.deleteMany({ projectId: <ObjectId> })
+```
+Cascade-delete now runs automatically on `/api/projects/:id` DELETE (PR #42), so this only applies to historical data from before that PR or to cases where the cascade itself partially failed (look for `[projects.delete] cascade counts` in the log).
 
-### Restore MongoDB to a point in time
-`<FILL IN — Atlas/Cosmos-specific steps>`. The general pattern:
-1. From the provider's restore UI, pick the snapshot or PITR target.
-2. Restore into a **new** cluster name, not the live one.
-3. Validate by connecting with `mongosh` and running:
+### Restore MongoDB to a point in time (Atlas)
+1. Atlas console → cluster `Cluster0` → **Backup** tab.
+2. Pick "Restore" → choose either a daily snapshot or a point-in-time target (within the last 72h on M10+).
+3. **Restore into a NEW cluster** (e.g. `Cluster0-restore-YYYYMMDD`) — never overwrite the live cluster.
+4. Wait for the new cluster to come online (15-30 min typical).
+5. Validate from your laptop:
+   ```bash
+   mongosh "mongodb+srv://<user>:<pass>@cluster0-restore-YYYYMMDD.ymfn7gc.mongodb.net/cxmngr-api"
+   > db.runCommand({ ping: 1 })
+   > db.projects.countDocuments({})  // sanity-check the row count
+   > db.users.countDocuments({})
    ```
-   db.runCommand({ ping: 1 })
-   db.projects.countDocuments({})  // sanity check
-   ```
-4. Cut over by updating `MONGODB_URI` in App Service → Configuration → restart.
+6. Cut over: update `MONGODB_URI` in App Service → Configuration → Save. App Service restarts; the graceful-shutdown handler drains gracefully; the new instance connects to the restored cluster.
+7. After cutover is stable for 24h, the old cluster can be terminated.
 
 ---
 
@@ -181,29 +209,91 @@ Admin tool already exists at `/api/admin/webhook-events/:eventId/replay` (used i
 When something breaks in production:
 
 1. **Confirm the symptom** from a customer report or a Sentry alert.
-2. **Check Sentry** → recent issues grouped by URL or release tag.
-3. **Check App Service log stream** for stack traces and structured request logs (JSON, includes `reqId`).
+2. **Check Sentry** (once configured, §10) → recent issues grouped by URL or release tag.
+3. **Check App Service log stream** (`cxmngr-backend-api` → Log stream) for stack traces and structured request logs (JSON, includes `reqId`).
 4. **Check Mongo Atlas metrics** for slow queries, connection saturation, or replica lag.
 5. **Check Stripe dashboard** (if billing-related) for failed webhook delivery attempts.
 6. **Triage**: hotfix, rollback, or wait?
-   - Hotfix: branch off `main`, ship a PR, merge, the `deploy-backend` job picks it up.
-   - Rollback frontend: re-push the previous good `v*` tag (e.g. `git tag -f v0.4.97-rollback && git push --tags`). The SWA workflow re-deploys that build.
-   - Rollback backend: `<FILL IN — Azure App Service has deployment slot swap; document the slot names>`.
-7. **Postmortem**: open a doc in `<FILL IN — Notion / GDocs / repo `docs/postmortems/`>`.
+   - **Hotfix**: branch off `main`, ship a PR, merge → `deploy-backend` picks it up automatically.
+   - **Rollback frontend**: find the last good `v*` tag with `git tag --sort=-creatordate | head -5`. Re-trigger that tag's SWA deploy:
+     ```bash
+     git tag -d v0.4.NN-rollback 2>/dev/null
+     git tag v0.4.NN-rollback v0.4.97   # point at the last-known-good
+     git push origin v0.4.NN-rollback
+     ```
+     <!-- TODO: confirm SWA accepts the rollback tag pattern; alternative is to revert the offending PR and re-tag forward -->
+   - **Rollback backend**: <!-- TODO: set up App Service deployment slots in the portal (staging + production), then document the slot-swap command here -->. Without slots configured, the only rollback path is `git revert` on `main`, which re-triggers `deploy-backend`.
+7. **Postmortem**: open a doc in **`docs/postmortems/YYYY-MM-DD-<short-name>.md`** in this repo. (Lightweight default — swap to Notion/Confluence later if the team picks a different tool.)
 
 ---
 
 ## 9. Pre-launch checklist
 
 - [ ] All four REQUIRED env vars set in App Service Configuration (§4)
-- [ ] `SENTRY_DSN` set and a test exception captured end-to-end
+- [ ] `SENTRY_DSN` set and a test exception captured end-to-end (§10)
 - [ ] `STRIPE_WEBHOOK_SECRET` set and Stripe dashboard shows recent successful deliveries
 - [ ] `MAIL_FROM` is a verified sender on SendGrid
-- [ ] Mongo backup cadence + retention verified in the Atlas/Cosmos console (§3)
-- [ ] Blob soft-delete enabled on the docs container (§3)
-- [ ] App Service liveness probe pointed at `/api/health`
+- [ ] Mongo backup cadence + retention verified in the Atlas console; confirm cluster tier supports backup (M10+)
+- [ ] Blob soft-delete enabled on the docs container (§3) with 30-day retention
+- [ ] App Service health-check enabled at `/api/health` (§5)
 - [ ] Cutover plan rehearsed: deploy backend, wait for `[shutdown] mongoose disconnected` on the old instance, smoke-test
-- [ ] `RUNBOOK.md` § 7 placeholders filled in for on-call handoff
+- [ ] First restore drill performed into a scratch cluster (§3) — until this is done, the backup is unverified
+- [ ] RTO / RPO targets agreed and recorded in §3
+
+---
+
+## 10. Sentry — initial setup
+
+We installed `@sentry/node` in PR #49 and wired the helpers in `backend-api/utils/observability.js`. They're inert until `SENTRY_DSN` is set. Setup is ~5 minutes.
+
+### Step 1 — create an account + project
+1. Go to https://sentry.io/signup/ — the free Developer tier is sufficient for launch (5k events/month).
+2. After signup, create a new project:
+   - **Platform**: Node.js
+   - **Project name**: `cxmngr-backend-api`
+   - **Alert frequency**: "Alert me on every new issue" (you can dial this back later)
+3. Once created, Sentry shows you a DSN URL like:
+   ```
+   https://abc123def456@o1234567.ingest.sentry.io/9876543
+   ```
+   Copy it.
+
+### Step 2 — paste the DSN into App Service
+1. Azure portal → App Service `cxmngr-backend-api` → Configuration → Application settings → New application setting.
+2. Name: `SENTRY_DSN`, Value: the URL you just copied.
+3. (Optional but recommended) add `SENTRY_RELEASE` with the current commit SHA — Sentry uses this to group issues by release. You can wire this automatically in `ci.yml`'s `deploy-backend` job later.
+4. Save → App Service restarts.
+
+### Step 3 — verify it works
+1. After the restart finishes, watch the App Service log stream for:
+   ```
+   [observability] Sentry initialized.
+   ```
+   That confirms the SDK loaded the DSN.
+2. Trigger a test exception. Easiest is to temporarily add this admin-only endpoint (then remove after the test):
+   ```javascript
+   // backend-api/index.js — TEMPORARY for Sentry verification
+   app.get('/api/admin/_sentry-test', (req, res) => {
+     throw new Error('Sentry verification test')
+   })
+   ```
+   Hit it once. The error appears in Sentry within ~30 seconds.
+3. Once you see the event in the Sentry dashboard with request context (URL, method, headers), remove the temporary endpoint.
+
+### Step 4 — set up alerts
+- Sentry → Project → Alerts → "Create alert" → "New issues" → email yourself or the team channel.
+- Recommended: also alert on **regression** ("an issue we marked resolved came back") — that's how you catch flaky deploys.
+
+### What goes to Sentry automatically
+Per our wiring in `observability.js`:
+- Every unhandled exception caught by Express's error path (`Sentry.Handlers.errorHandler`).
+- Every request that hit a route — Sentry adds context to whatever errors fire (URL, method, query params; PII headers/cookies are NOT included per `sendDefaultPii: false`).
+- `process.on('unhandledRejection')` and `process.on('uncaughtException')` — see `index.js`.
+- Mail send failures (PR #50) — tagged `kind: mail.invite | mail.reset | mail.support_access_pin`.
+
+### What does NOT go to Sentry
+- 4xx responses from happy-path validation. Those are user errors, not server bugs.
+- The support-access PIN. Deliberately excluded — that's the secret the email is trying to deliver.
 
 ---
 
@@ -212,3 +302,5 @@ When something breaks in production:
 - Source for boot-time env validation: `backend-api/utils/validateEnv.js`
 - Source for graceful shutdown: `backend-api/utils/gracefulShutdown.js`
 - Source for observability wiring: `backend-api/utils/observability.js`
+- Cascade-delete reference: `backend-api/utils/cascadeDelete.js`
+- Optimistic-locking reference: `backend-api/utils/optimisticLock.js`
