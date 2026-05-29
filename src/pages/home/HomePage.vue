@@ -347,66 +347,137 @@
         </div>
       </section>
 
-      <!-- PRICING: Simple, project-based pricing -->
+      <!-- PRICING TEASER: dark band, three mini tier cards + link to /pricing.
+           Shows the actual headline numbers so a buyer knows the order of
+           magnitude without leaving the page; the full comparison still lives
+           on the dedicated /pricing route. -->
       <section
         id="pricing"
-        class="pb-20"
+        class="relative isolate overflow-hidden bg-slate-950 pt-4 pb-20 text-slate-100 md:pt-12 md:pb-28"
       >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
+        <!-- Subtle gradient continuation from the walkthrough above -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-1/4 left-1/4 h-[26rem] w-[26rem] rounded-full bg-sky-500/10 blur-3xl" />
+          <div class="absolute bottom-0 right-1/4 h-[28rem] w-[28rem] rounded-full bg-violet-500/10 blur-3xl" />
+        </div>
+
+        <div class="mx-auto max-w-5xl px-4 md:px-6">
           <div class="mx-auto max-w-3xl text-center">
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Simple, project-based, monthly/annual pricing
+            <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Simple,
+              <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">project-based</span>
+              pricing.
             </h2>
-            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Basic: $69 / project · Standard: $129 / project · Premium: $249 / project. Stripe-powered subscriptions with a 15-day free period when a project starts.
+            <p class="mt-4 text-base text-slate-300 sm:text-lg">
+              Monthly or annual. 15-day free trial when you start a project. <span class="text-white">No per-seat traps.</span>
             </p>
-            <div class="mt-6 flex items-center justify-center gap-3">
-              <RouterLink
-                :to="{ name: 'pricing' }"
-                class="rounded-xl border border-slate-200/80 bg-white/70 px-6 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
-              >
-                View full pricing
-              </RouterLink>
-              <RouterLink
-                :to="{ name: 'register' }"
-                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
-              >
-                Get started free
-              </RouterLink>
+          </div>
+
+          <!-- Mini tier cards: Basic / Standard (featured) / Premium -->
+          <div class="mt-10 grid gap-4 sm:grid-cols-3">
+            <!-- Basic -->
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_18px_45px_rgba(2,6,23,0.4)] backdrop-blur-xl">
+              <p class="text-xs font-semibold uppercase tracking-widest text-sky-400">Basic</p>
+              <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
+                $69<span class="text-sm font-medium text-slate-400">/project · mo</span>
+              </p>
+              <p class="mt-2 text-sm text-slate-300">
+                Issues and Equipment for sole practitioners and the smallest teams.
+              </p>
             </div>
+            <!-- Standard (featured) -->
+            <div class="relative rounded-2xl border border-sky-400/40 bg-gradient-to-br from-sky-500/15 via-white/5 to-emerald-500/10 p-5 text-left shadow-[0_24px_60px_rgba(2,6,23,0.55)] backdrop-blur-xl">
+              <p class="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-sky-500 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-white">
+                Most popular
+              </p>
+              <p class="text-xs font-semibold uppercase tracking-widest text-emerald-300">Standard</p>
+              <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
+                $129<span class="text-sm font-medium text-slate-300">/project · mo</span>
+              </p>
+              <p class="mt-2 text-sm text-slate-200">
+                Full platform — Spaces, Activities, Final Report. The typical sweet spot.
+              </p>
+            </div>
+            <!-- Premium -->
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_18px_45px_rgba(2,6,23,0.4)] backdrop-blur-xl">
+              <p class="text-xs font-semibold uppercase tracking-widest text-violet-300">Premium</p>
+              <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
+                $249<span class="text-sm font-medium text-slate-400">/project · mo</span>
+              </p>
+              <p class="mt-2 text-sm text-slate-300">
+                Everything, plus Tasks, Templates, AI assistant. New features first.
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <RouterLink
+              :to="{ name: 'pricing' }"
+              class="w-full rounded-xl border border-white/15 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
+            >
+              See full pricing
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'register' }"
+              class="w-full rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700 sm:w-auto"
+            >
+              Start free trial
+            </RouterLink>
           </div>
         </div>
       </section>
 
-      <!-- FINAL CTA: Ready to give your commissioning a home? -->
+      <!-- FINAL CTA: dark band, big glass card. Closes the page with the same
+           identity-first energy the hero opened with. -->
       <section
         id="cta"
-        class="pb-24"
+        class="relative isolate overflow-hidden bg-slate-950 pb-24 text-slate-100 md:pb-32"
       >
+        <!-- Punchy accent blob behind the card -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-0 left-1/2 h-[30rem] w-[40rem] -translate-x-1/2 rounded-full bg-emerald-500/15 blur-3xl" />
+          <div class="absolute bottom-0 right-0 h-[24rem] w-[24rem] rounded-full bg-sky-500/15 blur-3xl" />
+        </div>
+
         <div class="mx-auto max-w-6xl px-4 md:px-6">
           <div
-            class="rounded-3xl border border-white/80 bg-white/70 p-8 text-center shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)]"
+            class="relative overflow-hidden rounded-3xl border border-white/15 bg-white/5 p-8 text-center shadow-[0_36px_90px_rgba(2,6,23,0.7)] backdrop-blur-2xl md:p-14"
           >
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Ready to give your commissioning a proper home?
-            </h2>
-            <p class="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Spin up a project in minutes and invite your team. Keep issues, checklists, and FPTs organized from day one.
+            <!-- Inset accent gradient inside the card -->
+            <div class="pointer-events-none absolute inset-0 -z-10">
+              <div class="absolute -top-20 left-1/2 h-[20rem] w-[28rem] -translate-x-1/2 rounded-full bg-sky-500/15 blur-3xl" />
+            </div>
+
+            <p class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sky-300 backdrop-blur-xl">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Built by CxAs, for CxAs
             </p>
-            <div class="mt-6 flex items-center justify-center gap-3">
+
+            <h2 class="mx-auto mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Stop running commissioning out of spreadsheets.
+            </h2>
+            <p class="mx-auto mt-4 max-w-2xl text-base text-slate-300 sm:text-lg">
+              Spin up a project in minutes, invite your team, and have your first Cx Plan, issue log, and Final Report skeleton in place by lunch.
+            </p>
+
+            <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <RouterLink
                 :to="{ name: 'register' }"
-                class="rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_12px_35px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700"
+                class="w-full rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_40px_rgba(56,189,248,0.55)] transition hover:from-sky-600 hover:to-sky-700 sm:w-auto"
               >
-                Get started free
+                Start your 15-day free trial
               </RouterLink>
               <RouterLink
                 :to="{ name: 'login', query: { redirect: '/app' } }"
-                class="rounded-xl border border-slate-200/80 bg-white/70 px-7 py-3 text-sm font-medium text-slate-800 shadow-sm backdrop-blur-xl transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
+                class="w-full rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
               >
                 Log in to demo
               </RouterLink>
             </div>
+
+            <p class="mt-6 text-xs text-slate-400">
+              No credit card to start · Cancel anytime · No per-seat pricing
+            </p>
           </div>
         </div>
       </section>
