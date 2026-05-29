@@ -9,8 +9,11 @@ The home-page hero and walkthrough sections reference these by path. Just save t
 | Path | Where it shows | Recommended size |
 |---|---|---|
 | `public/screenshots/hero-dashboard.png` | Hero panel (right side) | 1600 × 1000 (16:10) |
-
-*(More entries will be added here as we build out the workflow walkthrough section.)*
+| `public/screenshots/walkthrough-plan.png` | Workflow §01 · Plan it (Cx Plan generator) | 1600 × 1000 |
+| `public/screenshots/walkthrough-build.png` | Workflow §02 · Build it (Equipment + Checklists + FPTs) | 1600 × 1000 |
+| `public/screenshots/walkthrough-manage.png` | Workflow §03 · Manage it (Issues list) | 1600 × 1000 |
+| `public/screenshots/walkthrough-track.png` | Workflow §04 · Track it (Tasks + Gantt) | 1600 × 1000 |
+| `public/screenshots/walkthrough-deliver.png` | Workflow §05 · Deliver it (Final Report) | 1600 × 1000 |
 
 ## Capture tips
 

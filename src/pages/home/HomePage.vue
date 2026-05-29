@@ -148,139 +148,202 @@
         </div>
       </section>
 
-      <!-- FEATURE STRIP: Issues / Checklists / FPTs -->
-      <!-- Anchor for header nav: #workflows -->
+      <!-- WORKFLOW WALKTHROUGH: 5 stepped panels with real product screenshots.
+           Continues the hero's dark-glass band so hero → walkthrough feels like
+           one composition. Each step alternates image-left / image-right for
+           visual rhythm. Anchor ids #workflows and #features both kept for any
+           existing nav links. -->
       <span
         id="workflows"
         class="block"
       />
       <section
         id="features"
-        class="pb-20"
+        class="relative isolate overflow-hidden bg-slate-950 text-slate-100"
       >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div class="mx-auto max-w-3xl text-center">
-            <h2 class="text-2xl font-semibold sm:text-3xl">
-              Everything a commissioning team needs.
-            </h2>
-            <p class="mt-3 text-sm text-slate-600 sm:text-base dark:text-slate-300">
-              Cxma is built for the real workflows you use every day — issue
-              logs, reusable checklists, and step-by-step functional performance
-              tests.
-            </p>
-          </div>
+        <!-- Subtle continuation of the hero's blob field, dialed down so the
+             screenshots stay the focal point. -->
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-0 right-1/4 h-[28rem] w-[28rem] rounded-full bg-sky-500/10 blur-3xl" />
+          <div class="absolute bottom-1/4 left-0 h-[26rem] w-[26rem] rounded-full bg-emerald-500/10 blur-3xl" />
+          <div class="absolute bottom-0 right-0 h-[24rem] w-[24rem] rounded-full bg-violet-500/10 blur-3xl" />
+        </div>
 
-          <div class="mt-10 grid gap-6 md:grid-cols-3">
-            <!-- Issues -->
-            <div
-              class="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/75 p-5 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_18px_55px_rgba(0,0,0,0.80)]"
-            >
-              <div
-                class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                  />
-                  <line
-                    x1="12"
-                    y1="8"
-                    x2="12"
-                    y2="12"
-                  />
-                  <line
-                    x1="12"
-                    y1="16"
-                    x2="12.01"
-                    y2="16"
-                  />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-slate-900 dark:text-slate-50">
-                Issue log
+        <!-- Section intro -->
+        <div class="mx-auto max-w-3xl px-4 pb-12 pt-6 text-center md:px-6 md:pb-20 md:pt-12">
+          <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            From OPR to Final Report.
+            <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">One platform.</span>
+          </h2>
+          <p class="mt-4 text-base text-slate-300 sm:text-lg">
+            Five surfaces that take a project from kickoff to closeout — without ever leaving the app.
+          </p>
+        </div>
+
+        <!-- Five stepped panels. Each step uses md:grid-cols-2 and alternates
+             which side the screenshot sits on via order- classes. -->
+        <div class="mx-auto max-w-6xl space-y-24 px-4 pb-24 md:px-6 md:pb-32">
+
+          <!-- STEP 01 — Plan it (Cx Plan generator) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4 md:order-1">
+              <p class="text-sm font-semibold uppercase tracking-widest text-sky-400">
+                Step 01 · Plan it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Generate a Cx Plan from your project, not a Word template.
               </h3>
-              <p class="text-slate-600 dark:text-slate-300">
-                Capture severity, system, assignee, due date, and status. Track
-                everything from punch-list items to persistent performance
-                problems.
+              <p class="text-base text-slate-300">
+                Build a complete LEED v4 / v5 Commissioning Plan in minutes. Roles & responsibilities, milestones, scope, sampling — auto-populated from your project team and selected scope items, then editable in the rich-text editor.
               </p>
             </div>
-
-            <!-- Checklists -->
-            <div
-              class="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/75 p-5 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_18px_55px_rgba(0,0,0,0.80)]"
-            >
-              <div
-                class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 11 12 14 22 4" />
-                  <path
-                    d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
-                  />
-                </svg>
+            <div class="order-1 md:order-2">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-plan.png'"
+                    alt="Cx Plan generator inside an Activity"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
               </div>
-              <h3 class="font-semibold text-slate-900 dark:text-slate-50">
-                Reusable checklists
-              </h3>
-              <p class="text-slate-600 dark:text-slate-300">
-                Standardize system and equipment checks with templates that
-                support comments, attachments, and Pass / Fail / N/A status.
-              </p>
-            </div>
-
-            <!-- FPTs -->
-            <div
-              class="flex flex-col gap-3 rounded-2xl border border-white/80 bg-white/75 p-5 text-sm shadow-[0_16px_40px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_18px_55px_rgba(0,0,0,0.80)]"
-            >
-              <div
-                class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="5 13 9 17 19 7" />
-                  <path
-                    d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
-                  />
-                  <path
-                    d="M9 21h6"
-                  />
-                </svg>
-              </div>
-              <h3 class="font-semibold text-slate-900 dark:text-slate-50">
-                Functional performance tests
-              </h3>
-              <p class="text-slate-600 dark:text-slate-300">
-                Separate test structures with expected vs actual results,
-                approvals, and step-by-step execution for every system.
-              </p>
             </div>
           </div>
+
+          <!-- STEP 02 — Build it (Equipment + Checklists + FPTs) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="space-y-4">
+              <p class="text-sm font-semibold uppercase tracking-widest text-emerald-400">
+                Step 02 · Build it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Equipment, checklists, and FPTs in one place.
+              </h3>
+              <p class="text-base text-slate-300">
+                Define your scoped systems once. Attach checklists and functional performance tests with expected-vs-actual fields, capture signatures in the field, and tie every finding back to a real piece of equipment.
+              </p>
+            </div>
+            <div>
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-build.png'"
+                    alt="Equipment details with checklists and functional performance tests"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 03 — Manage it (Issues) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4 md:order-1">
+              <p class="text-sm font-semibold uppercase tracking-widest text-violet-400">
+                Step 03 · Manage it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                The issue log that actually keeps up.
+              </h3>
+              <p class="text-base text-slate-300">
+                Punch items, persistent performance problems, design-review comments — all in one place, with severity, system, assignee, and due dates. Filter by anything. Search the rich-text descriptions instantly.
+              </p>
+            </div>
+            <div class="order-1 md:order-2">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-manage.png'"
+                    alt="Issues list with filters and severity badges"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 04 — Track it (Tasks Gantt) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="space-y-4">
+              <p class="text-sm font-semibold uppercase tracking-widest text-amber-400">
+                Step 04 · Track it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                A real WBS, not a hidden Trello board.
+              </h3>
+              <p class="text-base text-slate-300">
+                Schedule the entire Cx process — design review through warranty walkthrough — on a project Gantt. Roll up cost, track percent complete, and see what's blocking what. Skip the separate scheduling tool.
+              </p>
+            </div>
+            <div>
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-track.png'"
+                    alt="Tasks list with project Gantt view"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 05 — Deliver it (Final Report) -->
+          <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            <div class="order-2 space-y-4 md:order-1">
+              <p class="text-sm font-semibold uppercase tracking-widest text-rose-400">
+                Step 05 · Deliver it
+              </p>
+              <h3 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                The Final Report writes itself.
+              </h3>
+              <p class="text-base text-slate-300">
+                Every section LEED v4 / v5 expects, every signature, every metric — auto-generated from the work you've already done. Edit in the rich-text editor, export server-side to PDF, hand it over. No more rebuilding the report from scratch every project.
+              </p>
+            </div>
+            <div class="order-1 md:order-2">
+              <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
+                <div class="flex items-center gap-1.5 px-3 py-2">
+                  <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-300/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <img
+                    :src="'/screenshots/walkthrough-deliver.png'"
+                    alt="Final Report builder with LEED-aware sections"
+                    loading="lazy"
+                    class="block h-auto w-full"
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
