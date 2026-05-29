@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { isTruthy } = require('../middleware/validate')
+const observability = require('./observability')
 let sgMail = null
 const hasSendGrid = !!(process.env.SENDGRID_API_KEY && String(process.env.SENDGRID_API_KEY).trim())
 if (hasSendGrid) {
@@ -161,7 +162,10 @@ async function sendInviteEmail({ to, inviterName, projectName, acceptUrl }) {
   try {
     return await sendEmailBestEffort({ to, subject: `Invitation to join project: ${projectName}`, html })
   } catch (err) {
-    // On send failure, persist to local log so invites are not lost in dev
+    // Ship the failure to error tracking so prod outages are visible. The
+    // local log write below remains for dev; in prod the file lives on
+    // ephemeral App Service disk and would disappear on restart.
+    try { observability.captureException(err, { kind: 'mail.invite', to, projectName }) } catch (_) { /* ignore */ }
     try {
       const fs = require('fs')
       const path = require('path')
@@ -248,6 +252,7 @@ async function sendResetEmail({ to, name, resetUrl, expiresMinutes }) {
   try {
     return await sendEmailBestEffort({ to, subject: 'Reset your password', html })
   } catch (err) {
+    try { observability.captureException(err, { kind: 'mail.reset', to }) } catch (_) { /* ignore */ }
     try {
       const fs = require('fs');
       const path = require('path');
@@ -322,6 +327,10 @@ async function sendSupportAccessPinEmail({ to, requesterEmail, pin, expiresMinut
   try {
     return await sendEmailBestEffort({ to, subject: 'CxMa.io support access PIN', html })
   } catch (err) {
+    // Do NOT include the PIN in the captured extras — that's the very
+    // secret the email is trying to deliver. Same goes for the rendered
+    // HTML.
+    try { observability.captureException(err, { kind: 'mail.support_access_pin', to, requesterEmail }) } catch (_) { /* ignore */ }
     try {
       const fs = require('fs');
       const path = require('path');
