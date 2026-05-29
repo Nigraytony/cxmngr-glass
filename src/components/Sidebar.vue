@@ -1,16 +1,32 @@
 <template>
+  <!-- Mobile backdrop: tap to close the sidebar. Renders only at <md and
+       only when the sidebar is open. z-30 keeps it under the aside (z-40)
+       and over page content. -->
+  <div
+    v-if="open"
+    class="fixed inset-0 z-30 bg-black/40 md:hidden"
+    aria-hidden="true"
+    @click="$emit('toggle')"
+  />
   <!-- Background uses an opaque slate fill rather than bg-white/10 so the
        sidebar keeps a consistent dark tone when the browser re-rasterises
        the layer (happens whenever a teleported element like a dropdown or
        modal enters/leaves the DOM). backdrop-filter stays for a subtle
        glass feel against the page gradient, but it no longer has to carry
-       the bulk of the visual fill. -->
+       the bulk of the visual fill.
+
+       Mobile (<md): the aside is `fixed` and slides off-canvas via
+       -translate-x-full when closed. It always occupies w-64 there since
+       there's no useful "rail mode" on a 360px screen; the backdrop
+       above gives the user a tap target to dismiss it.
+       Desktop (md+): keeps the existing sticky rail behaviour, w-64
+       when open and w-16 when collapsed. -->
   <aside
     class="group fixed md:sticky md:top-0 md:left-0 z-40 h-full md:h-screen transition-all duration-300
            bg-slate-900/90 backdrop-blur-xl border-r border-white/15
            shadow-[0_10px_40px_rgba(0,0,0,0.25)] ring-1 ring-white/10
-           overflow-hidden"
-    :class="[ open ? 'w-64' : 'w-16' ]"
+           overflow-hidden w-64"
+    :class="open ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-16'"
   >
     <div class="flex flex-col h-full">
       <div class="relative h-16 flex items-center gap-2 px-3">
@@ -425,11 +441,15 @@
       </div>
     </div>
 
-    <!-- Expand affordance -->
+    <!-- Expand affordance. Hidden on mobile — there's already a hamburger in
+         the Topbar, and the chevron would be tap-tiny next to the off-canvas
+         edge. -->
     <button
-      class="absolute -right-3 top-6 size-6 grid place-items-center rounded-full
+      class="hidden md:grid absolute -right-3 top-6 size-6 place-items-center rounded-full
              bg-white/40 border border-white/50 text-white shadow"
-      title="Toggle sidebar"
+      :title="open ? 'Collapse sidebar' : 'Expand sidebar'"
+      :aria-label="open ? 'Collapse sidebar' : 'Expand sidebar'"
+      :aria-expanded="open ? 'true' : 'false'"
       @click="$emit('toggle')"
     >
       <span v-if="open">‹</span>
@@ -452,6 +472,21 @@ const route = useRoute()
   const projectStore = useProjectStore()
   const authStore = useAuthStore()
   const opr = useOprStore()
+
+// Auto-close on mobile when the user navigates. Without this, the open
+// sidebar covers the page the user just navigated to and they have to tap
+// the backdrop or the hamburger to actually see it. Tailwind's md
+// breakpoint is 768px.
+watch(() => route.fullPath, (newPath, oldPath) => {
+  if (newPath === oldPath) return
+  if (typeof window === 'undefined') return
+  if (!props.open) return
+  try {
+    if (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) {
+      emit('toggle')
+    }
+  } catch (_) { /* ignore */ }
+})
 const currentProject = computed(() =>
   projectStore.currentProject ||
   (projectStore.projects || []).find(p => String(p.id || p._id) === currentProjectId.value) ||
