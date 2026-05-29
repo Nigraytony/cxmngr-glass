@@ -231,7 +231,25 @@ const MAX_HALLUCINATION_RETRIES = 3
 async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId }) {
   const tools = getClaudeTools()
   const toolResults = []
-  let currentMessages = messages.slice()
+
+  // Strip the non-standard `filename` field we attach to document blocks for
+  // the OpenAI translator's use. Anthropic's request schema is strict and
+  // returns 400 with `message.N.content.K.document.filename: Extra inputs are
+  // not permitted` if we forward unknown fields on a document block.
+  function sanitizeForClaude(content) {
+    if (typeof content === 'string') return content
+    if (!Array.isArray(content)) return content
+    return content.map((b) => {
+      if (!b || typeof b !== 'object') return b
+      if (b.type === 'document') {
+        // eslint-disable-next-line no-unused-vars
+        const { filename, ...rest } = b
+        return rest
+      }
+      return b
+    })
+  }
+  let currentMessages = messages.map((m) => ({ ...m, content: sanitizeForClaude(m.content) }))
   let finalText = ''
   let hallucinationRetries = 0
 
