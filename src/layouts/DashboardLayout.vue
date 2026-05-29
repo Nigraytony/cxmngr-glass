@@ -61,7 +61,7 @@ import Spinner from '../components/Spinner.vue'
 import AppFooter from '../components/AppFooter.vue'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
-import { computed, watch, onBeforeUnmount } from 'vue'
+import { computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore } from '../stores/project'
 import { useOprStore } from '../stores/opr'
@@ -73,6 +73,18 @@ const opr = useOprStore()
 const router = useRouter()
 const route = useRoute()
 const isAgentRoute = computed(() => route.name === 'agent')
+
+// Default sidebar state in ui.js is `true`, which lands mobile users on a
+// full-screen sidebar covering the page they came to see. On <md viewports
+// close it at mount so the content is visible; the user can re-open via the
+// Topbar hamburger.
+onMounted(() => {
+  try {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 767px)').matches) {
+      ui.closeSidebar()
+    }
+  } catch (_) { /* ignore */ }
+})
 
 const resolvedProjectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 
