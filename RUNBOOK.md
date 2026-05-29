@@ -8,22 +8,31 @@ A few items still marked **`<FILL IN>`** are things the team must decide rather 
 
 ## 1. Production architecture (one-pager)
 
+**Live URLs**
+- Frontend SPA: `https://app.cxma.io` (custom domain on the SWA)
+- Marketing redirects: `cxma.io` and `cxma.ai` → 301 → `app.cxma.io`
+- Backend API: `https://cxmngr-backend-api-brhhbng9crcxf6gp.westus3-01.azurewebsites.net`
+
+> ⚠️ **Region naming gotcha**: the resource group is named `rg-cxmngr-eastus` but the resources inside (App Service, Storage) actually live in **West US 3**. Azure RG names are arbitrary labels; don't trust them as region indicators. All `az` commands should target `--resource-group rg-cxmngr-eastus` *without* assuming an East US region.
+
 ```
                      ┌────────────────────────┐
                      │  Azure Static Web App  │  cxmngr-glass frontend (Vue 3 + Vite)
-                     │   deploys on  v* tags  │  workflow: .github/workflows/azure-static-web-apps-lemon-forest-0c47c5d0f.yml
+                     │   deploys on  v* tags  │  app.cxma.io
+                     │                        │  workflow: .github/workflows/azure-static-web-apps-lemon-forest-0c47c5d0f.yml
                      └────────────┬───────────┘
                                   │ HTTPS
                                   ▼
                      ┌────────────────────────┐
                      │   Azure App Service    │  cxmngr-backend-api  (Express + Mongoose)
-                     │  deploys on main merge │  resource group: rg-cxmngr-eastus   region: East US
+                     │  deploys on main merge │  RG: rg-cxmngr-eastus   actual region: West US 3
+                     │                        │  ...-brhhbng9crcxf6gp.westus3-01.azurewebsites.net
                      │                        │  workflow: .github/workflows/ci.yml :: deploy-backend
                      └────┬──────────┬────────┘
                           │          │
               ┌───────────▼──┐    ┌──▼──────────────┐
-              │  Mongo Atlas │    │  Azure Blob     │  docs container (in rg-cxmngr-eastus)
-              │  Cluster0    │    │  Storage        │
+              │  Mongo Atlas │    │  Azure Blob     │  docs container (in rg-cxmngr-eastus
+              │  Cluster0    │    │  Storage        │  — actual region: West US 3)
               │  ymfn7gc     │    │                 │
               │  db:cxmngr-  │    │                 │
               │     api      │    │                 │
@@ -51,7 +60,7 @@ A few items still marked **`<FILL IN>`** are things the team must decide rather 
 | Concern | Where | How |
 |---|---|---|
 | Frontend logs (build / deploy) | GitHub Actions → `Azure Static Web Apps CI/CD` | `gh run list --workflow=azure-static-web-apps-lemon-forest-0c47c5d0f.yml` |
-| Backend logs (runtime) | Azure portal → App Service `cxmngr-backend-api` → Log stream | `az webapp log tail --name cxmngr-backend-api --resource-group rg-cxmngr-eastus` |
+| Backend logs (runtime) | Azure portal → App Service `cxmngr-backend-api` (West US 3) → Log stream | `az webapp log tail --name cxmngr-backend-api --resource-group rg-cxmngr-eastus` |
 | Backend logs (historical) | Enable in App Service → Monitoring → Diagnostic settings → ship to a Log Analytics workspace in `rg-cxmngr-eastus`. Current state: **not enabled** — App Service's default stdout capture is short-rotated. <!-- TODO: stand up Log Analytics workspace --> | Portal → App Service → Diagnostic settings → Add → "Send to Log Analytics workspace" |
 | Errors / exceptions | Sentry — **not configured yet**, see §10 for setup | Once configured, dashboard URL goes here |
 | DB metrics | Mongo Atlas console → cluster **Cluster0** → Metrics tab | `https://cloud.mongodb.com` → org/project → Cluster0 |
@@ -156,11 +165,17 @@ Look for these log lines on every restart:
 ## 7. Common operations
 
 ### Restart the backend
-Portal: App Service → `cxmngr-backend-api` → Overview → **Restart**.
+Portal: App Service → `cxmngr-backend-api` (it's in West US 3 even though the RG says `eastus`) → Overview → **Restart**.
 
 Or via CLI:
 ```bash
 az webapp restart --name cxmngr-backend-api --resource-group rg-cxmngr-eastus
+```
+
+Quick post-restart sanity check from anywhere with curl:
+```bash
+curl -sS https://cxmngr-backend-api-brhhbng9crcxf6gp.westus3-01.azurewebsites.net/api/health
+# expect: {"status":"ok","dbState":1}
 ```
 
 ### Rotate `JWT_SECRET`
