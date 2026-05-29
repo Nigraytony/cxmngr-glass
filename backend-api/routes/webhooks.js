@@ -17,6 +17,16 @@ const Invoice = require('../models/invoice');
 const Charge = require('../models/charge');
 const plans = require('../config/plans');
 const { isObjectId } = require('../middleware/validate');
+const { rateLimit } = require('../middleware/rateLimit');
+
+// Per-IP rate limit on the Stripe webhook. Stripe's own delivery happens
+// from a published address range and stays well under 5 req/s per
+// endpoint, so 300/min/IP comfortably covers Stripe's bursts while
+// blocking a third party hammering the endpoint with garbage payloads.
+// Signature verification is fast, but unauthenticated DoS amplifies on
+// every layer above it (TLS, body-parse, log write); the rate limit
+// short-circuits the whole chain.
+const stripeWebhookLimiter = rateLimit({ windowMs: 60_000, max: 300, keyPrefix: 'webhook-stripe' });
 
 function getValidProjectId(value) {
   if (!value) return null;
@@ -39,7 +49,7 @@ async function markEventStatus(eventId, status, extra = {}) {
 }
 
 // Stripe webhook endpoint mounted at /api/stripe/webhook
-router.post('/webhook', async (req, res) => {
+router.post('/webhook', stripeWebhookLimiter, async (req, res) => {
   if (!stripe) return res.status(503).send('Stripe not configured');
   const sig = req.headers['stripe-signature'];
   let event;
