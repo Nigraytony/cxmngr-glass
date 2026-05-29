@@ -216,9 +216,9 @@
             </div>
           </div>
 
-          <!-- STEP 02 — Build it (Equipment + Checklists + FPTs) -->
+          <!-- STEP 02 — Build it (image LEFT, text RIGHT on desktop) -->
           <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
-            <div class="space-y-4">
+            <div class="order-2 space-y-4">
               <p class="text-sm font-semibold uppercase tracking-widest text-emerald-400">
                 Step 02 · Build it
               </p>
@@ -229,7 +229,7 @@
                 Define your scoped systems once. Attach checklists and functional performance tests with expected-vs-actual fields, capture signatures in the field, and tie every finding back to a real piece of equipment.
               </p>
             </div>
-            <div>
+            <div class="order-1">
               <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
                 <div class="flex items-center gap-1.5 px-3 py-2">
                   <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
@@ -280,9 +280,9 @@
             </div>
           </div>
 
-          <!-- STEP 04 — Track it (Tasks Gantt) -->
+          <!-- STEP 04 — Track it (image LEFT, text RIGHT on desktop) -->
           <div class="grid items-center gap-10 md:grid-cols-2 md:gap-16">
-            <div class="space-y-4">
+            <div class="order-2 space-y-4">
               <p class="text-sm font-semibold uppercase tracking-widest text-amber-400">
                 Step 04 · Track it
               </p>
@@ -293,7 +293,7 @@
                 Schedule the entire Cx process — design review through warranty walkthrough — on a project Gantt. Roll up cost, track percent complete, and see what's blocking what. Skip the separate scheduling tool.
               </p>
             </div>
-            <div>
+            <div class="order-1">
               <div class="relative rounded-3xl border border-white/15 bg-white/5 p-2 shadow-[0_28px_70px_rgba(2,6,23,0.6)] backdrop-blur-xl">
                 <div class="flex items-center gap-1.5 px-3 py-2">
                   <span class="h-2.5 w-2.5 rounded-full bg-rose-400/80" />
@@ -344,6 +344,70 @@
             </div>
           </div>
 
+        </div>
+      </section>
+
+      <!-- ROLES: dark band continuation; sits between the workflow walkthrough
+           ("what you'll do") and the pricing teaser ("what it costs") so the
+           page flow reads workflow → who uses each part → how to buy. -->
+      <section
+        id="roles"
+        class="relative isolate overflow-hidden bg-slate-950 pt-4 pb-20 text-slate-100 md:pt-12 md:pb-28"
+      >
+        <div class="pointer-events-none absolute inset-0 -z-10">
+          <div class="absolute top-1/3 right-0 h-[28rem] w-[28rem] rounded-full bg-violet-500/10 blur-3xl" />
+          <div class="absolute bottom-0 left-1/4 h-[24rem] w-[24rem] rounded-full bg-emerald-500/10 blur-3xl" />
+        </div>
+
+        <div class="mx-auto max-w-5xl px-4 md:px-6">
+          <div
+            class="grid gap-10 rounded-3xl border border-white/15 bg-white/5 p-6 shadow-[0_28px_70px_rgba(2,6,23,0.55)] backdrop-blur-2xl md:grid-cols-[1.1fr,0.9fr] md:gap-12 md:p-10"
+          >
+            <div class="space-y-4">
+              <p class="text-sm font-semibold uppercase tracking-widest text-sky-400">
+                Built for project teams
+              </p>
+              <h2 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                Roles that match
+                <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">how your team actually works.</span>
+              </h2>
+              <p class="text-base text-slate-300">
+                CxAs, MEP engineers, contractors, client reps, and guests — each with a default view tuned for what they actually do. Tighten or loosen permissions per project.
+              </p>
+              <ul class="space-y-2 text-sm text-slate-300">
+                <li class="flex gap-2"><span class="text-sky-400">·</span> Filter dashboards by active project and user role.</li>
+                <li class="flex gap-2"><span class="text-sky-400">·</span> Limit edit access to the right team members.</li>
+                <li class="flex gap-2"><span class="text-sky-400">·</span> Assign issues, checklists, and FPTs per user.</li>
+              </ul>
+            </div>
+
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">CxA · Admin</span>
+                <span class="rounded-full bg-sky-500/20 px-3 py-1 text-xs font-medium text-sky-300">
+                  Full access
+                </span>
+              </div>
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">Contractors</span>
+                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">
+                  Assigned systems
+                </span>
+              </div>
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">Client &amp; reps</span>
+                <span class="rounded-full bg-violet-500/20 px-3 py-1 text-xs font-medium text-violet-300">
+                  Read-only dashboards
+                </span>
+              </div>
+              <div class="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl">
+                <span class="text-white">Guests</span>
+                <span class="rounded-full bg-slate-500/20 px-3 py-1 text-xs font-medium text-slate-300">
+                  Single-project view
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -482,72 +546,6 @@
         </div>
       </section>
 
-      <!-- ROLES / RBAC -->
-      <section
-        id="roles"
-        class="pb-20"
-      >
-        <div class="mx-auto max-w-6xl px-4 md:px-6">
-          <div
-            class="grid gap-10 rounded-3xl border border-white/80 bg-white/70 p-6 shadow-[0_22px_60px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)] md:grid-cols-[1.1fr,0.9fr] md:p-10"
-          >
-            <div class="space-y-4">
-              <h2 class="text-2xl font-semibold sm:text-3xl">
-                Role-based views that mirror your project team.
-              </h2>
-              <p class="text-sm text-slate-600 sm:text-base dark:text-slate-300">
-                Cxma supports admins, CxAs, engineers, contractors, client
-                reps, and guests — with project-level assignments and field
-                visibility tuned per role.
-              </p>
-              <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                <li>• Filter dashboards by active project and user role.</li>
-                <li>• Limit edit access to the right team members.</li>
-                <li>• Assign issues, checklists, and FPTs per user.</li>
-              </ul>
-            </div>
-
-            <div class="space-y-3 text-sm">
-              <div
-                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-              >
-                <span class="text-slate-700 dark:text-slate-100">
-                  CxA · Admin
-                </span>
-                <span
-                  class="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700 dark:bg-sky-500/20 dark:text-sky-300"
-                >
-                  Full access
-                </span>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-              >
-                <span class="text-slate-700 dark:text-slate-100">
-                  Contractors
-                </span>
-                <span
-                  class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                >
-                  Assigned systems
-                </span>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80"
-              >
-                <span class="text-slate-700 dark:text-slate-100">
-                  Client & reps
-                </span>
-                <span
-                  class="rounded-full bg-violet-100 px-3 py-1 text-xs font-medium text-violet-700 dark:bg-violet-500/20 dark:text-violet-300"
-                >
-                  Read-only dashboards
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
 
     <PublicFooter />
