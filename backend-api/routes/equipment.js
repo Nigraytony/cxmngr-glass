@@ -16,6 +16,7 @@ const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
 const { cascadeEquipment } = require('../utils/cascadeDelete');
+const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock');
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -1611,9 +1612,18 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadEquipmentProjectId, r
       }
     }
 
-    const updated = await Equipment.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
-    if (!updated) return res.status(404).send();
-    res.status(200).send(toPlainEquipment(updated));
+    // Opt-in optimistic locking — see utils/optimisticLock.js. Critical
+    // here because equipment carries the heaviest embedded payloads
+    // (checklists, functionalTests, fptSignatures) where a silent
+    // last-write-wins loses the most user work.
+    const expectedVersion = readExpectedVersion(req);
+    const result = await applyOptimisticUpdate(
+      Equipment, req.params.id, incoming, expectedVersion,
+      { new: true, runValidators: true }
+    );
+    if (result.notFound) return res.status(404).send();
+    if (result.conflict) return sendConflict(res, result.current);
+    res.status(200).send(toPlainEquipment(result.updated));
   } catch (error) {
     console.error('[equipment] update error', error && (error.stack || error.message || error))
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update equipment' });

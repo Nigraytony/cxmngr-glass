@@ -15,6 +15,7 @@ const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
+const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock')
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -780,9 +781,17 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requi
       // canonical fields (severity/assignedTo) before update.
       denormalizeIssuePayload(incoming);
 
-      const updated = await Issue.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
-      if (!updated) return res.status(404).send();
-      return res.status(200).send(updated);
+      // Optimistic-concurrency: when the client sends `__v` (or If-Match),
+      // 409 on mismatch so two-tab edits don't silently overwrite each
+      // other. No-op when the client doesn't send it (back-compat).
+      const expectedVersion = readExpectedVersion(req);
+      const result = await applyOptimisticUpdate(
+        Issue, req.params.id, incoming, expectedVersion,
+        { new: true, runValidators: true }
+      );
+      if (result.notFound) return res.status(404).send();
+      if (result.conflict) return sendConflict(res, result.current);
+      return res.status(200).send(result.updated);
     } catch (err) {
       console.error('[issues] update inner error', err && (err.stack || err.message || err))
       return res.status(400).send({ error: err && err.message ? String(err.message) : 'Failed to update issue' });

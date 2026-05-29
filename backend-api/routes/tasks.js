@@ -16,6 +16,7 @@ const { XMLParser } = require('fast-xml-parser');
 const TaskTemplate = require('../models/taskTemplate');
 const sanitizeHtml = require('sanitize-html');
 const { buildSafeRegex } = require('../utils/search')
+const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock')
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const importLimiter = rateLimit({ windowMs: 60_000, max: 10, keyPrefix: 'tasks-import' })
@@ -947,9 +948,15 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadTaskProjectId, requir
       incoming.tags = arr.map(t => String(t).trim()).filter(Boolean).slice(0, 50)
     }
 
-    const updated = await Task.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
-    if (!updated) return res.status(404).send({ error: 'Task not found' });
-    res.status(200).send(updated);
+    // Opt-in optimistic locking — see utils/optimisticLock.js.
+    const expectedVersion = readExpectedVersion(req);
+    const result = await applyOptimisticUpdate(
+      Task, req.params.id, incoming, expectedVersion,
+      { new: true, runValidators: true }
+    );
+    if (result.notFound) return res.status(404).send({ error: 'Task not found' });
+    if (result.conflict) return sendConflict(res, result.current);
+    res.status(200).send(result.updated);
   } catch (error) {
     res.status(400).send({ error: error && error.message ? error.message : error });
   }
