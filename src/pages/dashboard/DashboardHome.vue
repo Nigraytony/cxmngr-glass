@@ -8,8 +8,69 @@
       />
     </div>
 
+    <!-- First-run / no-project empty state. Shown only when no project is
+         selected — without this, brand-new users land on a wall of "0"
+         stat cards with no guidance at all. -->
+    <div
+      v-if="!projectStore.currentProjectId"
+      class="rounded-2xl p-8 md:p-10 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10 text-center"
+    >
+      <div class="mx-auto h-12 w-12 grid place-items-center rounded-full bg-white/10 ring-1 ring-white/20 mb-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          class="h-6 w-6 text-white/90"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M3 7.5A1.5 1.5 0 0 1 4.5 6h5l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-10z"
+          />
+        </svg>
+      </div>
+      <template v-if="hasAnyProject">
+        <h2 class="text-lg font-semibold text-white">
+          Select a project to see its dashboard
+        </h2>
+        <p class="mt-2 text-sm text-white/70 max-w-md mx-auto">
+          Use the project switcher in the sidebar to pick one of your existing projects, or browse them all.
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <RouterLink
+            :to="{ name: 'projects' }"
+            class="inline-flex items-center gap-2 rounded-lg px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 text-sm font-medium"
+          >
+            Browse projects
+          </RouterLink>
+        </div>
+      </template>
+      <template v-else>
+        <h2 class="text-lg font-semibold text-white">
+          Welcome to Cxma
+        </h2>
+        <p class="mt-2 text-sm text-white/70 max-w-md mx-auto">
+          You don't have any projects yet. Create your first one to start tracking issues, activities, equipment, spaces, and more — all in one place.
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <RouterLink
+            :to="{ name: 'projects' }"
+            class="inline-flex items-center gap-2 rounded-lg px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 text-sm font-medium"
+          >
+            <span class="text-base leading-none">+</span>
+            Create your first project
+          </RouterLink>
+        </div>
+      </template>
+    </div>
+
     <!-- Top stats row -->
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div
+      v-if="projectStore.currentProjectId"
+      class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
+    >
       <!-- Issues -->
       <RouterLink
         v-if="featureEnabled('issues')"
@@ -208,13 +269,16 @@
 
     <!-- Main dashboard grid -->
     <ProjectDashboardCharts
-      v-if="featureEnabled('tasks') || featureEnabled('issues') || featureEnabled('spaces') || featureEnabled('equipment')"
+      v-if="projectStore.currentProjectId && (featureEnabled('tasks') || featureEnabled('issues') || featureEnabled('spaces') || featureEnabled('equipment'))"
       :tasks="featureEnabled('tasks') ? filteredTasks : []"
       :tasks-loading="featureEnabled('tasks') ? tasksLoading : false"
     />
 
     <!-- Team section -->
-    <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      v-if="projectStore.currentProjectId"
+      class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3"
+    >
       <div class="rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10 ring-1 ring-white/10">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -385,6 +449,10 @@ watch(() => projectStore.currentProjectId, async (newPid, oldPid) => {
     // ignore
   }
 })
+
+// Used by the no-project empty state to differentiate "you have projects
+// but haven't picked one" from "your org has no projects yet."
+const hasAnyProject = computed(() => Array.isArray(projectStore.projects) && projectStore.projects.length > 0)
 
 const issuesLoading = computed(() => issuesStore.loading)
 const activitiesLoading = computed(() => activitiesStore.loading)
