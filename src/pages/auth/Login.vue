@@ -134,6 +134,15 @@ const submit = async () => {
         sessionStorage.removeItem('auth.returnTo')
       } catch (e) { /* ignore */ }
       router.push(dest)
+    } else {
+      // Surface the auth store's error message. Without this the form just
+      // stops spinning with no feedback — users assume the click didn't
+      // register or that the app is broken. The store already extracts a
+      // safe message from the API response (auth.ts:233).
+      ui.showError(authStore.error || "We couldn't sign you in. Check your email and password and try again.")
+      // Clear the password so the user can retype without selecting it —
+      // standard pattern that also signals "we received your attempt".
+      password.value = ''
     }
   } finally {
     loading.value = false
