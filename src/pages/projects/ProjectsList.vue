@@ -394,6 +394,60 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Empty state: brand-new orgs (or filters that match nothing) -->
+      <div
+        v-if="pagedProjects.length === 0"
+        class="px-4 py-12 text-center"
+      >
+        <div class="mx-auto h-12 w-12 grid place-items-center rounded-full bg-white/10 ring-1 ring-white/20 mb-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="h-6 w-6 text-white/90"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M3 7.5A1.5 1.5 0 0 1 4.5 6h5l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5v-10z"
+            />
+          </svg>
+        </div>
+        <template v-if="hasActiveProjectFilters">
+          <h3 class="text-base font-semibold text-white">
+            No projects match the current filters
+          </h3>
+          <p class="mt-2 text-sm text-white/70 max-w-md mx-auto">
+            Try a different search, status, or toggle “Include archived” to see more.
+          </p>
+          <button
+            type="button"
+            class="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 bg-white/10 hover:bg-white/15 text-white border border-white/20 text-sm font-medium"
+            @click="clearProjectFilters"
+          >
+            Clear filters
+          </button>
+        </template>
+        <template v-else>
+          <h3 class="text-base font-semibold text-white">
+            You don't have any projects yet
+          </h3>
+          <p class="mt-2 text-sm text-white/70 max-w-md mx-auto">
+            Create your first project to start tracking issues, activities, equipment, and more.
+          </p>
+          <button
+            type="button"
+            class="mt-5 inline-flex items-center gap-2 rounded-lg px-4 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 text-sm font-medium"
+            @click="showAddModal = true"
+          >
+            <span class="text-base leading-none">+</span>
+            Create your first project
+          </button>
+        </template>
+      </div>
     </div>
 
     <div
@@ -807,6 +861,23 @@ watch(pageSize, () => persistPageSizePref())
 const statusFilter = ref('All')
 const includeArchived = ref(false)
 const searchQuery = ref('')
+
+// Used by the empty-state to differentiate "no projects exist" from
+// "no projects match these filters" — drives both the message and the CTA.
+const hasActiveProjectFilters = computed(() => {
+  return Boolean(
+    (searchQuery.value && String(searchQuery.value).trim()) ||
+    (statusFilter.value && statusFilter.value !== 'All') ||
+    includeArchived.value === true
+  )
+})
+
+function clearProjectFilters() {
+  searchQuery.value = ''
+  statusFilter.value = 'All'
+  includeArchived.value = false
+  page.value = 1
+}
 
 function debounce(fn, wait = 200) {
   let t
