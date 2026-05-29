@@ -11,6 +11,20 @@ if (fs.existsSync(backendEnvPath)) {
   dotenv.config();
 }
 
+// Validate critical env vars BEFORE anything else can require them. In
+// production this throws if required vars are missing — better than the
+// previous behaviour where the server booted and later requests failed
+// with confusing errors (e.g. silent localhost-mongo fallback, SendGrid
+// rejecting unverified MAIL_FROM). Runs as a no-op in dev/test.
+const { validateEnv } = require('./utils/validateEnv');
+validateEnv();
+
+// Initialize error tracking before route handlers are wired so the Sentry
+// request middleware can capture every request context. No-op if
+// SENTRY_DSN is unset.
+const observability = require('./utils/observability');
+observability.initSentry();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -164,6 +178,11 @@ if (frontendUrlEnv && String(frontendUrlEnv).trim() && (!allowedOriginsEnv || !S
 }
 
 // Middleware
+// Sentry request handler must run before any route handler so it can
+// attach request context to captured exceptions. No-op when Sentry isn't
+// configured (see utils/observability.js).
+app.use(observability.requestHandler());
+
 // Basic root for sanity
 app.get('/', (_req, res) => {
   res.type('text').send('CXMNGR API alive');
@@ -264,6 +283,10 @@ app.use('/api/assistant', assistantRoutes);
 // Agent endpoints (agentic CRUD loop; premium-only)
 app.use('/api/agent', agentRoutes);
 
+// Sentry error handler must come before the central error handler so it
+// gets a chance to capture before we serialize the response.
+app.use(observability.errorHandler());
+
 // Central error handler (always last)
 app.use(errorHandler);
 
@@ -293,17 +316,26 @@ connectMongo().catch(e => console.error('[mongo] unexpected connect error', e));
 // export the `app` without binding to a port so the test harness can control
 // the lifecycle.
 if (require.main === module) {
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`🚀 Server is running on port ${port}`);
   });
+  // SIGTERM / SIGINT drain: stop accepting new connections, let in-flight
+  // requests finish, disconnect mongo, flush Sentry, then exit. Azure
+  // App Service restarts send SIGTERM ~30s before SIGKILL.
+  const { installShutdownHandlers } = require('./utils/gracefulShutdown');
+  installShutdownHandlers(server);
 }
 
 module.exports = app;
 
-// Global diagnostics for unexpected errors
+// Global diagnostics for unexpected errors. These previously only logged
+// to stdout; now they also ship to Sentry so an unhandled crash isn't
+// silent until a customer emails support.
 process.on('unhandledRejection', (err) => {
   console.error('UnhandledRejection:', err);
+  try { observability.captureException(err, { kind: 'unhandledRejection' }); } catch (_) { /* ignore */ }
 });
 process.on('uncaughtException', (err) => {
   console.error('UncaughtException:', err);
+  try { observability.captureException(err, { kind: 'uncaughtException' }); } catch (_) { /* ignore */ }
 });
