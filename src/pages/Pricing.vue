@@ -355,7 +355,7 @@
   // Billing cycle: monthly vs annual (display only)
   const billingCycle = ref('monthly')
   const annualFactor = 0.9
-  const baseMonthly = { basic: 29, standard: 49, premium: 79 }
+  const baseMonthly = { basic: 69, standard: 129, premium: 249 }
   const monthlyText = (v) => `$${v}/month per project`
   const annualText = (v) => `$${Math.round(v * annualFactor)}/month per project`
 
@@ -369,7 +369,7 @@
         monthly: monthlyText(baseMonthly.basic),
         annually: annualText(baseMonthly.basic),
       },
-      highlights: ['10 Users', '250 Issues', '50 Equipment', '250 Checklists', '50 FPTs'],
+      highlights: ['10 Users', '250 Issues', '100 Equipment'],
     },
     {
       name: 'Standard',
@@ -380,7 +380,7 @@
         monthly: monthlyText(baseMonthly.standard),
         annually: annualText(baseMonthly.standard),
       },
-      highlights: ['25 Users', '1000 Issues', '500 Equipment', '500 Checklists', '1000 FPTs', '1000 Spaces', '200 Templates', '500 Activities'],
+      highlights: ['25 Users', '1000 Issues', '500 Equipment', '100 Spaces', '500 Activities'],
     },
     {
       name: 'Premium',
@@ -391,7 +391,7 @@
         monthly: monthlyText(baseMonthly.premium),
         annually: annualText(baseMonthly.premium),
       },
-      highlights: ['200 Users', 'Unlimited Issues', 'Unlimited Equipment', 'Unlimited Checklists', 'Unlimited FPTs', 'Unlimited Spaces', 'Unlimited Templates', 'Unlimited Activities', 'Tasks Included', 'New Features First'],
+      highlights: ['200 Users', 'Unlimited Issues', 'Unlimited Equipment', 'Unlimited Spaces', 'Unlimited Templates', 'Unlimited Activities', 'Tasks Included', 'BYO AI Key', 'New Features First'],
     },
   ])
 
@@ -400,13 +400,12 @@
       name: 'Features',
       features: [
         { name: 'Issues', tiers: { Basic: '250', Standard: '1000', Premium: 'Unlimited' } },
-        { name: 'Equipment', tiers: { Basic: '50', Standard: '500', Premium: 'Unlimited' } },
-        { name: 'Checklists', tiers: { Basic: '250', Standard: '500', Premium: 'Unlimited' } },
-        { name: 'FPTs', tiers: { Basic: '50', Standard: '1000', Premium: 'Unlimited' } },
-        { name: 'Spaces', tiers: { Basic: '—', Standard: '1000', Premium: 'Unlimited' } },
-        { name: 'Templates', tiers: { Basic: '—', Standard: '200', Premium: 'Unlimited' } },
+        { name: 'Equipment', tiers: { Basic: '100', Standard: '500', Premium: 'Unlimited' } },
+        { name: 'Spaces', tiers: { Basic: '—', Standard: '100', Premium: 'Unlimited' } },
+        { name: 'Templates', tiers: { Basic: '—', Standard: '—', Premium: 'Unlimited' } },
         { name: 'Activities', tiers: { Basic: '—', Standard: '500', Premium: 'Unlimited' } },
         { name: 'Tasks', tiers: { Basic: '—', Standard: 'Not included', Premium: 'Included' } },
+        { name: 'AI assistant (BYO key)', tiers: { Basic: '—', Standard: '—', Premium: 'Included' } },
       ],
     },
     {
