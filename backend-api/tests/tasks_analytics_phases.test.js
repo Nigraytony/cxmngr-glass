@@ -100,6 +100,33 @@ describe('Tasks analytics — new phase slices', function () {
     assert.strictEqual(linkedMap['1.1'], 1, 'only the task with a real activityId should count');
   });
 
+  it('PUT /api/projects/:id persists taskAnalyticsConfig (allowlist regression)', async function () {
+    const desired = {
+      statusDonut: false,
+      completionBar: true,
+      tasksByPhase: true,
+      completedByPhase: false,
+      linkedActivityByPhase: true,
+      totalCostKpi: true,
+      costByPhase: true,
+      topCostTasks: false,
+    }
+    const res = await withCsrf(request(app).put(`/api/projects/${projectId}`))
+      .set('Authorization', `Bearer ${token}`)
+      .send({ taskAnalyticsConfig: desired })
+    assert.strictEqual(res.status, 200, `expected 200, got ${res.status}: ${JSON.stringify(res.body)}`)
+    const got = res.body && res.body.taskAnalyticsConfig
+    assert.ok(got, 'response should include taskAnalyticsConfig')
+    assert.strictEqual(got.totalCostKpi, true, 'financial toggle must round-trip via PUT')
+    assert.strictEqual(got.statusDonut, false, 'non-financial toggle must round-trip via PUT')
+    // Unknown keys are stripped by the sanitizer
+    const res2 = await withCsrf(request(app).put(`/api/projects/${projectId}`))
+      .set('Authorization', `Bearer ${token}`)
+      .send({ taskAnalyticsConfig: { ...desired, bogusKey: true, __proto__: { polluted: true } } })
+    assert.strictEqual(res2.status, 200)
+    assert.strictEqual(res2.body.taskAnalyticsConfig.bogusKey, undefined, 'unknown keys must be stripped')
+  })
+
   it('Project schema accepts and persists taskAnalyticsConfig', async function () {
     const Project = require('../models/project');
     await Project.findByIdAndUpdate(projectId, {
