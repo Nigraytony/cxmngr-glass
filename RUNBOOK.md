@@ -312,9 +312,11 @@ Per our wiring in `observability.js`:
 
 ---
 
-## 11. Cross-origin cookie deployment — move backend to `api.cxma.io`
+## 11. Cross-origin cookie deployment (`api.cxma.io` custom domain)
 
-> ⚠️ **Known production issue (2026-05-30)** — until this is done, users on Safari, Firefox-strict, Brave, Chrome-incognito, and many regular-Chrome profiles will be **logged out unexpectedly** (often within 10-15 minutes of login) while actively working. This is **not a code bug** — the cookie config is correct. It's a browser policy change.
+> ✅ **Applied 2026-05-30** — backend now serves at `https://api.cxma.io` so the SPA at `app.cxma.io` and the API share the `cxma.io` eTLD+1. The refresh-token cookie is first-party for every browser. Confirmed fixed in Safari + Chrome.
+>
+> The original Azure URL (`cxmngr-backend-api-…westus3-01.azurewebsites.net`) still resolves and is the backing host behind the custom domain. The rest of this section is kept as a historical reference for **why** this setup exists and **how** to redo it if a similar split ever needs to be undone (e.g. staging environment on a new subdomain).
 
 ### Symptom
 
