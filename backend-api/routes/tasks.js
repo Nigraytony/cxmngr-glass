@@ -262,6 +262,79 @@ router.get(
           return compareWbs(a.wbs, b.wbs)
         })
 
+      // Reusable WBS → phase ("1.2.3" → "1.2") add-fields pipeline so the
+      // new slices use the same phase derivation as tasksByPhase / costByPhase.
+      const phaseDerivationStages = [
+        { $addFields: { wbsSafe: { $ifNull: ['$wbs', ''] } } },
+        { $addFields: { parts: { $cond: [{ $ne: ['$wbsSafe', ''] }, { $split: ['$wbsSafe', '.'] }, []] } } },
+        {
+          $addFields: {
+            phaseWbs: {
+              $cond: [
+                { $eq: [{ $size: '$parts' }, 0] },
+                '(No WBS)',
+                {
+                  $cond: [
+                    { $gte: [{ $size: '$parts' }, 2] },
+                    { $concat: [{ $arrayElemAt: ['$parts', 0] }, '.', { $arrayElemAt: ['$parts', 1] }] },
+                    { $arrayElemAt: ['$parts', 0] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      ]
+
+      // Completed tasks by phase. "Completed" = status='Completed' OR percentComplete=100,
+      // matching the completedTasks KPI count above.
+      const completedByPhaseRaw = await Task.aggregate([
+        {
+          $match: {
+            ...match,
+            $or: [{ percentComplete: 100 }, { status: 'Completed' }],
+          },
+        },
+        ...phaseDerivationStages,
+        { $group: { _id: '$phaseWbs', count: { $sum: 1 } } },
+      ])
+      const completedByPhase = completedByPhaseRaw
+        .map(r => {
+          const wbs = r && r._id ? String(r._id) : '(No WBS)'
+          const label = wbs === '(No WBS)' ? '(No phase)' : (phaseNameByWbs[wbs] || wbs)
+          return { wbs, label, count: Number(r && r.count ? r.count : 0) }
+        })
+        .sort((a, b) => {
+          if (a.wbs === '(No WBS)') return 1
+          if (b.wbs === '(No WBS)') return -1
+          return compareWbs(a.wbs, b.wbs)
+        })
+
+      // Tasks with a linked Activity, by phase. activityId is a string; treat
+      // empty / null as "not linked." We don't validate the link target here
+      // — that's the consumer's problem.
+      const linkedActivityByPhaseRaw = await Task.aggregate([
+        {
+          $match: {
+            ...match,
+            activityId: { $exists: true, $nin: [null, ''] },
+          },
+        },
+        ...phaseDerivationStages,
+        { $group: { _id: '$phaseWbs', count: { $sum: 1 } } },
+      ])
+      const linkedActivityByPhase = linkedActivityByPhaseRaw
+        .map(r => {
+          const wbs = r && r._id ? String(r._id) : '(No WBS)'
+          const label = wbs === '(No WBS)' ? '(No phase)' : (phaseNameByWbs[wbs] || wbs)
+          return { wbs, label, count: Number(r && r.count ? r.count : 0) }
+        })
+        .sort((a, b) => {
+          if (a.wbs === '(No WBS)') return 1
+          if (b.wbs === '(No WBS)') return -1
+          return compareWbs(a.wbs, b.wbs)
+        })
+
       res.status(200).json({
         totalTasks,
         completedTasks,
@@ -271,6 +344,8 @@ router.get(
         tasksByCompletion,
         tasksByPhase,
         costByPhase,
+        completedByPhase,
+        linkedActivityByPhase,
         topCostTasks: (topCostTasks || []).map(t => ({
           taskId: t && t.taskId ? String(t.taskId) : '',
           wbs: t && t.wbs ? String(t.wbs) : '',

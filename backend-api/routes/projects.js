@@ -194,9 +194,25 @@ function pickProjectPayload(source) {
     'leedTarget',
     'leedCertificationLevel',
     'cxScope',
+    // Per-project visibility config for the Tasks analytics panel + report.
+    // Sanitized below to only the known boolean keys.
+    'taskAnalyticsConfig',
   ]
   for (const k of allowed) {
     if (body[k] !== undefined) out[k] = body[k]
+  }
+  if (out.taskAnalyticsConfig && typeof out.taskAnalyticsConfig === 'object') {
+    const src = out.taskAnalyticsConfig
+    const known = [
+      'statusDonut', 'completionBar', 'tasksByPhase',
+      'completedByPhase', 'linkedActivityByPhase',
+      'totalCostKpi', 'costByPhase', 'topCostTasks',
+    ]
+    const clean = {}
+    for (const k of known) {
+      if (src[k] !== undefined) clean[k] = Boolean(src[k])
+    }
+    out.taskAnalyticsConfig = clean
   }
   return out
 }

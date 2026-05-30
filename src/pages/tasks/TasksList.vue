@@ -610,6 +610,7 @@
       v-if="projectId && showAnalytics"
       :analytics="tasksAnalytics"
       :loading="tasksAnalyticsLoading"
+      :config="taskAnalyticsConfig"
     />
 
     <div
@@ -1355,6 +1356,14 @@
           >
             Cover Page
           </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md border text-sm"
+            :class="settingsTab === 'analytics' ? 'bg-white/10 border-white/20 text-gray-300' : 'bg-transparent border-white/10 text-gray-300 hover:text-white hover:bg-white/5'"
+            @click="settingsTab = 'analytics'"
+          >
+            Analytics
+          </button>
         </div>
 
         <div
@@ -1513,7 +1522,7 @@
         </div>
 
         <div
-          v-else
+          v-else-if="settingsTab === 'cover'"
           class="space-y-4"
         >
           <div class="grid grid-cols-1 gap-3">
@@ -1575,6 +1584,118 @@
                 >
               </div>
             </div>
+          </div>
+        </div>
+
+        <div
+          v-else-if="settingsTab === 'analytics'"
+          class="space-y-5"
+        >
+          <p class="text-xs text-white/60">
+            Choose which charts appear on this project's Tasks page <em>and</em> in the PDF report. Settings apply to every team member on this project.
+          </p>
+
+          <div
+            class="space-y-5"
+            :class="{ 'opacity-60 pointer-events-none': !isAdmin }"
+          >
+
+          <div class="space-y-2">
+            <div class="text-white/80 text-xs uppercase tracking-wide">
+              Non-financial
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.statusDonut"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">By status (donut)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.completionBar"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">By completion (% buckets)</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.tasksByPhase"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">Tasks by phase</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.completedByPhase"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">Completed tasks by phase</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.linkedActivityByPhase"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">Tasks linked to activities, by phase</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="text-white/80 text-xs uppercase tracking-wide flex items-center gap-2">
+              <span>Financial</span>
+              <span class="text-[10px] text-white/50 normal-case">— off by default</span>
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.totalCostKpi"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">Total cost KPI tile</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.costByPhase"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">Cost overlay on “Tasks by phase”</span>
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm">
+                <input
+                  v-model="taskAnalyticsConfig.topCostTasks"
+                  type="checkbox"
+                  class="rounded"
+                  @change="persistTaskAnalyticsConfig"
+                >
+                <span class="text-white/80">Top cost tasks (horizontal bar)</span>
+              </label>
+            </div>
+          </div>
+
+          </div>
+
+          <div
+            v-if="!isAdmin"
+            class="text-xs text-amber-300/90"
+          >
+            You're viewing as a non-admin — toggles are read-only. Ask a project admin to change which charts appear.
           </div>
         </div>
       </div>
@@ -1795,6 +1916,7 @@
                 <TasksListCharts
                   :analytics="tasksAnalytics"
                   :loading="tasksAnalyticsLoading"
+                  :config="taskAnalyticsConfig"
                   mode="light"
                   embedded
                   :height-scale="0.60"
@@ -1957,7 +2079,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
@@ -2875,6 +2997,69 @@ const isAdmin = computed(() => {
   if (!u || !u.role) return false
   return ['admin', 'globaladmin', 'superadmin'].includes(String(u.role))
 })
+
+// ---------------------------------------------------------------------------
+// Task analytics per-project chart visibility
+//
+// Source of truth lives on Project.taskAnalyticsConfig (backend schema).
+// We mirror it into a reactive local object so checkbox v-models work
+// naturally, then PATCH the project on change (debounced).
+//
+// Old projects created before this feature don't have the field set, so we
+// initialize from a defaults object that mirrors the Mongoose schema. That
+// way the checkboxes show the right state on first load and saves include
+// the full 8-key object (not just the toggled key).
+//
+// Non-admins see the tab in read-only mode (inputs disabled via the
+// fieldset wrapping the form). Permission is also enforced server-side by
+// the existing project-update RBAC.
+// ---------------------------------------------------------------------------
+const DEFAULT_TASK_ANALYTICS_CONFIG = Object.freeze({
+  statusDonut: true,
+  completionBar: true,
+  tasksByPhase: true,
+  completedByPhase: true,
+  linkedActivityByPhase: true,
+  totalCostKpi: false,
+  costByPhase: false,
+  topCostTasks: false,
+})
+const taskAnalyticsConfig = reactive({ ...DEFAULT_TASK_ANALYTICS_CONFIG })
+let taskAnalyticsSaveTimer = null
+
+function loadTaskAnalyticsConfigFromProject() {
+  const proj = projectStore.currentProject || null
+  const fromDb = (proj && proj.taskAnalyticsConfig) ? proj.taskAnalyticsConfig : {}
+  for (const k of Object.keys(DEFAULT_TASK_ANALYTICS_CONFIG)) {
+    taskAnalyticsConfig[k] = (typeof fromDb[k] === 'boolean')
+      ? fromDb[k]
+      : DEFAULT_TASK_ANALYTICS_CONFIG[k]
+  }
+}
+
+async function persistTaskAnalyticsConfig() {
+  if (!isAdmin.value) return  // server-side RBAC also enforces; this just avoids the round-trip
+  const proj = projectStore.currentProject
+  if (!proj || !(proj.id || proj._id)) return
+  // Debounce so toggling multiple boxes in quick succession batches into one PUT.
+  if (taskAnalyticsSaveTimer) clearTimeout(taskAnalyticsSaveTimer)
+  taskAnalyticsSaveTimer = setTimeout(async () => {
+    try {
+      await projectStore.updateProject({
+        id: proj.id || proj._id,
+        taskAnalyticsConfig: { ...taskAnalyticsConfig },
+      })
+      ui.showInfo('Analytics settings updated')
+    } catch (e) {
+      ui.showError(e, "Couldn't save analytics settings")
+    }
+  }, 400)
+}
+
+// Re-sync when the active project changes (project switcher) or when the
+// project doc reloads from the server (e.g. after an external edit).
+watch(() => projectStore.currentProject?.id, loadTaskAnalyticsConfigFromProject, { immediate: true })
+watch(() => projectStore.currentProject?.taskAnalyticsConfig, loadTaskAnalyticsConfigFromProject, { deep: true })
 
     const showCostColumn = computed(() => {
       return isAdmin.value && !!ui.showCostColumn

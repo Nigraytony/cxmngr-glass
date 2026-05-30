@@ -163,6 +163,22 @@ const projectSchema = new mongoose.Schema({
       stripePaymentIntentId: { type: String, default: null },
     },
   },
+  // Per-project Tasks-analytics chart visibility. Lets the CxA/Admin decide
+  // which charts show on the Tasks list page AND in the Tasks PDF report.
+  // The financial charts (totalCostKpi, costByPhase, topCostTasks) default
+  // OFF so financial numbers don't leak to team members without explicit
+  // opt-in. Schema docs to add: when adding a new chart, declare its toggle
+  // here AND wire it into src/components/charts/TasksListCharts.vue.
+  taskAnalyticsConfig: {
+    statusDonut:           { type: Boolean, default: true  },  // status pie
+    completionBar:         { type: Boolean, default: true  },  // 0/25/50/75/100% buckets
+    tasksByPhase:          { type: Boolean, default: true  },  // count bar (new)
+    completedByPhase:      { type: Boolean, default: true  },  // new — Completed slice
+    linkedActivityByPhase: { type: Boolean, default: true  },  // new — has activityId
+    totalCostKpi:          { type: Boolean, default: false },  // $ KPI tile
+    costByPhase:           { type: Boolean, default: false },  // $ line on phase chart
+    topCostTasks:          { type: Boolean, default: false },  // $ horizontal bar
+  },
   // Optional per-project AI configuration (Bring-your-own key).
   // Secrets are stored encrypted and excluded from default query projections.
   ai: {
