@@ -312,6 +312,100 @@ Per our wiring in `observability.js`:
 
 ---
 
+## 11. Cross-origin cookie deployment — move backend to `api.cxma.io`
+
+> ⚠️ **Known production issue (2026-05-30)** — until this is done, users on Safari, Firefox-strict, Brave, Chrome-incognito, and many regular-Chrome profiles will be **logged out unexpectedly** (often within 10-15 minutes of login) while actively working. This is **not a code bug** — the cookie config is correct. It's a browser policy change.
+
+### Symptom
+
+A user reports: *"I was typing in an activity description for several minutes, hit Save, and got the 'please log in' modal — sometimes within 10 minutes of logging in."*
+
+Other tells:
+- They didn't navigate away from the tab.
+- The keepalive loop is firing every 30 s but silently failing.
+- DevTools → Application → Cookies for `cxmngr-backend-api-…azurewebsites.net` shows **no `__Host-rt` cookie** at the moment of failure — the browser dropped it.
+
+### Root cause
+
+The SPA lives at **`app.cxma.io`**. The backend lives at **`cxmngr-backend-api-…westus3-01.azurewebsites.net`**. Different eTLD+1 → the refresh-token cookie set by the backend is a **third-party cookie** when XHR requests go from `app.cxma.io` → backend. Modern browsers block third-party cookies by default:
+
+| Browser | Default |
+|---|---|
+| Safari (ITP) | blocked since 2020 |
+| Firefox strict | blocked |
+| Brave | blocked |
+| Chrome incognito | blocked |
+| Chrome regular | phased out for many users 2024-2025 |
+
+When the cookie is blocked, the keepalive `/api/users/refresh` call sees no cookie → 204 → silent fail → access token expires (15 min TTL) → next API call returns 401 → re-auth modal.
+
+The CSRF cookie also relies on third-party cookies, but the SPA tolerates that path because it generates fresh random tokens client-side (see `src/utils/api.ts:54-59` and the long comment in `backend-api/middleware/csrf.js:60-77`). The refresh-token cookie has no such workaround — it MUST be sent on every refresh, and it MUST come from the browser.
+
+### Fix: serve the backend at `api.cxma.io` (same eTLD+1 as the SPA)
+
+Once `api.cxma.io` and `app.cxma.io` share `cxma.io`, the cookie becomes **first-party** and every browser sends it back. **5–15 minutes in the Azure portal, plus one frontend env var change.** No code change needed on the backend.
+
+#### Step 1 — Add the custom hostname to the App Service
+1. Azure portal → App Service `cxmngr-backend-api` → Settings → **Custom domains** → **+ Add custom domain**.
+2. Type `api.cxma.io`. Azure shows you the **TXT** and **CNAME** records you need to create.
+
+#### Step 2 — DNS records in your registrar
+Add both records the portal asked for. Typically:
+
+| Type | Host | Value |
+|---|---|---|
+| `CNAME` | `api` | `cxmngr-backend-api-brhhbng9crcxf6gp.westus3-01.azurewebsites.net` |
+| `TXT` | `asuid.api` | `<the verification id Azure showed you>` |
+
+Wait for DNS to propagate (usually under 5 min on a major provider; can be longer on legacy ones — `dig api.cxma.io` to verify).
+
+#### Step 3 — Validate + bind the domain in Azure
+1. Back in the portal, click **Validate**. Both records should turn green.
+2. Click **Add**.
+3. The domain shows up "Not Secure" — that's fine for a minute, fix in step 4.
+
+#### Step 4 — TLS certificate (free, managed)
+1. Same panel → click the new `api.cxma.io` row → **Add binding**.
+2. Choose **Create App Service Managed Certificate** → free, auto-renewed.
+3. Bind → wait 5-15 min for cert issuance + propagation.
+4. Verify: `curl -sS https://api.cxma.io/api/health` returns `{"status":"ok","dbState":1}`.
+
+#### Step 5 — Update the SPA's API base
+1. GitHub → repo → Settings → Secrets and variables → Actions → **`VITE_API_BASE`** secret → update to `https://api.cxma.io`.
+2. Tag the next frontend release (`v0.5.2` or similar) → SWA workflow rebuilds → live SPA points at the new origin.
+
+#### Step 6 — Keep CORS happy
+The SPA's origin (`https://app.cxma.io`) doesn't change, so `CORS_ALLOWED_ORIGINS` on the App Service Configuration **doesn't need to change**. But while you're in there, double-check it includes `https://app.cxma.io` — without it, all browser requests to the backend get blocked (different symptom, easy to confuse with this one).
+
+### Verification after the change
+
+1. Hard-refresh `https://app.cxma.io` in a browser you know was blocking third-party cookies (e.g., Safari, Firefox-strict).
+2. Log in.
+3. Open DevTools → Application → Cookies → look for `__Host-rt` under **`api.cxma.io`** (not the long azurewebsites URL). It should be there.
+4. Wait 15 min while idle, then make any API call (e.g., open an activity). The keepalive should have refreshed silently; the call should succeed without the re-auth modal.
+5. Verify across 2-3 browsers (Chrome, Safari, Firefox).
+
+### What stops working if we DON'T do this
+
+- All Safari users — broken on day one.
+- Firefox-strict / Brave users — broken on day one.
+- Incognito sessions on every browser — broken.
+- Increasing share of regular Chrome users as the third-party cookie phase-out progresses.
+
+For a B2B AEC tool where customers may use any browser, this is a real adoption blocker, not a marginal compatibility issue.
+
+### Why we can't just "fix it in code"
+
+The fundamental constraint is browser policy: a cookie set by domain A cannot reliably be sent on requests to domain A initiated from domain B. The only code-only alternatives are:
+
+- **Store the refresh token in localStorage and send it as a Bearer header.** Loses HttpOnly protection → exposes refresh tokens to XSS. Strictly worse than the cookie approach. Not recommended.
+- **Storage Access API.** Requires explicit user permission grant via UI gesture. Complex, browser-specific, brittle.
+- **CHIPS (cookies with independent partitioned state).** Chrome-specific; doesn't help Safari/Firefox.
+
+The `api.cxma.io` custom-domain fix is the standard solution. Every SaaS that hosts a SPA on a different domain than its API does this.
+
+---
+
 ## Footnotes
 - Audit reference: `LAUNCH_AUDIT_2026-05-27.md`
 - Source for boot-time env validation: `backend-api/utils/validateEnv.js`
