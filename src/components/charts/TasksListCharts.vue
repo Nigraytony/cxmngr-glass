@@ -62,9 +62,16 @@
       </div>
     </div>
 
-    <!-- Row 1: status donut + completion distribution -->
-    <div :class="chartsWrapClass">
-      <div :class="panelClass">
+    <!-- Row 1: status donut + completion distribution. Whole row hides when
+         both are off so we don't leave an empty grid gap. -->
+    <div
+      v-if="visible.statusDonut || visible.completionBar"
+      :class="chartsWrapClass"
+    >
+      <div
+        v-if="visible.statusDonut"
+        :class="panelClass"
+      >
         <div :class="sectionTitleClass">
           By status
         </div>
@@ -82,7 +89,10 @@
           No status data.
         </div>
       </div>
-      <div :class="panelClass">
+      <div
+        v-if="visible.completionBar"
+        :class="panelClass"
+      >
         <div :class="sectionTitleClass">
           By completion
         </div>
@@ -102,14 +112,22 @@
       </div>
     </div>
 
-    <!-- Row 2: phase overview (dual-axis, spans full width) -->
-    <div :class="chartsWrapClass">
+    <!-- Row 2: phase overview. Series + axes adapt to which sub-toggles
+         (tasksByPhase, costByPhase) are on. Title and "Total cost" header
+         also flex with config so we don't advertise cost when it's hidden. -->
+    <div
+      v-if="visible.tasksByPhase || visible.costByPhase"
+      :class="chartsWrapClass"
+    >
       <div :class="panelClass + ' lg:col-span-2'">
         <div class="flex items-center justify-between gap-3">
           <div :class="sectionTitleClass">
-            By phase — task count &amp; cost
+            {{ phasePanelTitle }}
           </div>
-          <div :class="mutedClass + ' text-xs'">
+          <div
+            v-if="visible.costByPhase"
+            :class="mutedClass + ' text-xs'"
+          >
             Total cost: {{ formatCurrency(analytics?.totalCost) }}
           </div>
         </div>
@@ -129,8 +147,61 @@
       </div>
     </div>
 
-    <!-- Row 3: top-cost tasks (full width) -->
-    <div :class="chartsWrapClass">
+    <!-- Row 3: Completed by phase + Linked-activity by phase (two new
+         single-series bars). Each can hide independently. -->
+    <div
+      v-if="visible.completedByPhase || visible.linkedActivityByPhase"
+      :class="chartsWrapClass"
+    >
+      <div
+        v-if="visible.completedByPhase"
+        :class="panelClass"
+      >
+        <div :class="sectionTitleClass">
+          Completed tasks by phase
+        </div>
+        <VChart
+          v-if="completedByPhaseOption"
+          :style="chartStyle64"
+          :option="completedByPhaseOption"
+          autoresize
+        />
+        <div
+          v-else
+          :class="mutedClass + ' text-sm'"
+          :style="chartStyle64"
+        >
+          No completed tasks yet.
+        </div>
+      </div>
+      <div
+        v-if="visible.linkedActivityByPhase"
+        :class="panelClass"
+      >
+        <div :class="sectionTitleClass">
+          Tasks linked to an activity, by phase
+        </div>
+        <VChart
+          v-if="linkedActivityByPhaseOption"
+          :style="chartStyle64"
+          :option="linkedActivityByPhaseOption"
+          autoresize
+        />
+        <div
+          v-else
+          :class="mutedClass + ' text-sm'"
+          :style="chartStyle64"
+        >
+          No tasks are linked to activities yet.
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: top-cost tasks (financial — defaults off per project config) -->
+    <div
+      v-if="visible.topCostTasks"
+      :class="chartsWrapClass"
+    >
       <div :class="panelClass + ' lg:col-span-2'">
         <div :class="sectionTitleClass">
           Top cost tasks
@@ -167,7 +238,24 @@ export type TasksAnalytics = {
   tasksByCompletion: Array<{ bucket: string; count: number }>;
   tasksByPhase: Array<{ wbs: string; label: string; count: number }>;
   costByPhase: Array<{ wbs: string; label: string; totalCost: number }>;
+  completedByPhase?: Array<{ wbs: string; label: string; count: number }>;
+  linkedActivityByPhase?: Array<{ wbs: string; label: string; count: number }>;
   topCostTasks: Array<{ taskId: string; wbs: string; name: string; totalCost: number }>;
+}
+
+// Per-project visibility toggles. Source of truth lives on
+// Project.taskAnalyticsConfig (backend-api/models/project.js). When this prop
+// is omitted or null we render every chart — keeps existing call sites that
+// don't pass config back-compat.
+export type TaskAnalyticsConfig = {
+  statusDonut?: boolean;
+  completionBar?: boolean;
+  tasksByPhase?: boolean;
+  completedByPhase?: boolean;
+  linkedActivityByPhase?: boolean;
+  totalCostKpi?: boolean;
+  costByPhase?: boolean;
+  topCostTasks?: boolean;
 }
 
 const props = defineProps<{
@@ -177,7 +265,33 @@ const props = defineProps<{
   embedded?: boolean;
   heightScale?: number;
   variant?: 'default' | 'report';
+  config?: TaskAnalyticsConfig | null;
 }>()
+
+// Resolve per-chart visibility. Missing config → show everything (back-compat
+// for callers that haven't been updated). Missing key inside a present config
+// → default to ON (a partial config from the DB shouldn't hide unrelated
+// charts when the schema picks up new entries).
+const visible = computed(() => {
+  const c = props.config
+  if (!c) {
+    return {
+      statusDonut: true, completionBar: true, tasksByPhase: true,
+      completedByPhase: true, linkedActivityByPhase: true,
+      totalCostKpi: true, costByPhase: true, topCostTasks: true,
+    }
+  }
+  return {
+    statusDonut:           c.statusDonut !== false,
+    completionBar:         c.completionBar !== false,
+    tasksByPhase:          c.tasksByPhase !== false,
+    completedByPhase:      c.completedByPhase !== false,
+    linkedActivityByPhase: c.linkedActivityByPhase !== false,
+    totalCostKpi:          c.totalCostKpi !== false,
+    costByPhase:           c.costByPhase !== false,
+    topCostTasks:          c.topCostTasks !== false,
+  }
+})
 
 const isLight = computed(() => props.mode === 'light')
 const isReport = computed(() => props.variant === 'report')
@@ -302,12 +416,16 @@ const kpiTiles = computed<KpiTile[]>(() => {
     bar: avgPct,
     barClass: 'bg-sky-400/80',
   })
-  t.push({
-    key: 'cost',
-    label: 'Total cost',
-    value: formatCurrency(props.analytics?.totalCost, true),
-    hint: 'All tasks combined',
-  })
+  // Financial KPI gated by the per-project config. When hidden, the grid
+  // adapts: Tailwind will lay out 3 tiles instead of 4 with no broken cells.
+  if (visible.value.totalCostKpi) {
+    t.push({
+      key: 'cost',
+      label: 'Total cost',
+      value: formatCurrency(props.analytics?.totalCost, true),
+      hint: 'All tasks combined',
+    })
+  }
   return t
 })
 
@@ -417,14 +535,23 @@ function gradientColor(t: number): string {
 // Phase overview (dual axis: task count as bar, cost as line)
 // ---------------------------------------------------------------------------
 
+// Phase overview — adapts to which series the project config enables.
+// - tasksByPhase ON + costByPhase ON → dual-axis (count bar + cost line)
+// - tasksByPhase ON + costByPhase OFF → count-only bar (financials hidden)
+// - tasksByPhase OFF + costByPhase ON → cost-only line
+// - both OFF → null (panel hides via v-if in the template)
 const phaseOption = computed(() => {
+  const showCount = visible.value.tasksByPhase
+  const showCost = visible.value.costByPhase
+  if (!showCount && !showCost) return null
+
   const taskRows = props.analytics?.tasksByPhase || []
   const costRows = props.analytics?.costByPhase || []
   if (!taskRows.length && !costRows.length) return null
   // Union phases, keyed by wbs
   const keys = Array.from(new Set([
-    ...taskRows.map((r) => r.wbs || r.label || ''),
-    ...costRows.map((r) => r.wbs || r.label || ''),
+    ...(showCount ? taskRows.map((r) => r.wbs || r.label || '') : []),
+    ...(showCost ? costRows.map((r) => r.wbs || r.label || '') : []),
   ])).filter(Boolean)
   if (!keys.length) return null
   const labelFor = (k: string) => {
@@ -440,6 +567,47 @@ const phaseOption = computed(() => {
     const row = costRows.find((r) => (r.wbs || r.label) === k)
     return row ? safeNum(row.totalCost) : 0
   })
+
+  const series: any[] = []
+  if (showCount) {
+    series.push({
+      name: 'Tasks',
+      type: 'bar',
+      yAxisIndex: 0,
+      data: countSeries,
+      itemStyle: { color: palette.emerald, borderRadius: [6, 6, 0, 0] },
+      barMaxWidth: 28,
+    })
+  }
+  if (showCost) {
+    series.push({
+      name: 'Cost',
+      type: 'line',
+      yAxisIndex: showCount ? 1 : 0,
+      data: costSeries,
+      smooth: true,
+      symbolSize: 6,
+      lineStyle: { color: palette.amber, width: 2 },
+      itemStyle: { color: palette.amber },
+    })
+  }
+
+  // Build yAxis list to match the series. Single-axis when only one series is
+  // shown (avoids an empty dangling right-side axis on count-only mode).
+  const yAxis: any[] = []
+  if (showCount) yAxis.push({ type: 'value', name: 'Tasks', ...axisStyle.value })
+  if (showCost) {
+    yAxis.push({
+      type: 'value',
+      name: 'Cost',
+      ...axisStyle.value,
+      axisLabel: { ...axisStyle.value.axisLabel, formatter: (v: number) => formatCurrency(v, true) },
+      splitLine: { show: false },
+    })
+  }
+
+  const legendData = series.map((s) => s.name)
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -454,40 +622,46 @@ const phaseOption = computed(() => {
         return `${label}<br/>${rows}`
       },
     },
-    legend: { data: ['Tasks', 'Cost'], textStyle: { color: isLight.value ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }, top: 0 },
-    grid: { left: 50, right: 60, top: 30, bottom: 30 },
+    legend: { data: legendData, textStyle: { color: isLight.value ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }, top: 0 },
+    grid: { left: 50, right: showCost ? 60 : 20, top: 30, bottom: 30 },
     xAxis: { type: 'category', data: labels, ...axisStyle.value },
-    yAxis: [
-      { type: 'value', name: 'Tasks', ...axisStyle.value },
-      {
-        type: 'value',
-        name: 'Cost',
-        ...axisStyle.value,
-        axisLabel: { ...axisStyle.value.axisLabel, formatter: (v: number) => formatCurrency(v, true) },
-        splitLine: { show: false },
-      },
-    ],
-    series: [
-      {
-        name: 'Tasks',
-        type: 'bar',
-        yAxisIndex: 0,
-        data: countSeries,
-        itemStyle: { color: palette.emerald, borderRadius: [6, 6, 0, 0] },
-        barMaxWidth: 28,
-      },
-      {
-        name: 'Cost',
-        type: 'line',
-        yAxisIndex: 1,
-        data: costSeries,
-        smooth: true,
-        symbolSize: 6,
-        lineStyle: { color: palette.amber, width: 2 },
-        itemStyle: { color: palette.amber },
-      },
-    ],
+    yAxis: yAxis.length === 1 ? yAxis[0] : yAxis,
+    series,
   }
+})
+
+// Helper: render a single-series count bar by phase. Used by the two new
+// charts (Completed by phase, Linked-activity by phase) so they look like
+// siblings of the existing phase overview without duplicating boilerplate.
+function buildPhaseCountOption(rows: Array<{ wbs: string; label: string; count: number }> | undefined, color: string) {
+  const list = (rows || []).filter((r) => r && r.label)
+  if (!list.length) return null
+  const labels = list.map((r) => String(r.label))
+  const data = list.map((r) => safeNum(r.count))
+  return {
+    tooltip: { trigger: 'axis', ...tooltipStyle.value, axisPointer: { type: 'shadow' } },
+    grid: { left: 50, right: 20, top: 10, bottom: 30 },
+    xAxis: { type: 'category', data: labels, ...axisStyle.value },
+    yAxis: { type: 'value', ...axisStyle.value },
+    series: [{
+      type: 'bar',
+      data: data.map((v) => ({ value: v, itemStyle: { color, borderRadius: [6, 6, 0, 0] } })),
+      barMaxWidth: 32,
+      label: { show: true, position: 'top', color: isLight.value ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.85)' },
+    }],
+  }
+}
+
+const completedByPhaseOption = computed(() => buildPhaseCountOption(props.analytics?.completedByPhase, palette.emerald))
+const linkedActivityByPhaseOption = computed(() => buildPhaseCountOption(props.analytics?.linkedActivityByPhase, palette.indigo))
+
+// Title for the phase overview panel — drops "& cost" when the cost series
+// is hidden so the header doesn't promise something the chart isn't showing.
+const phasePanelTitle = computed(() => {
+  if (visible.value.tasksByPhase && visible.value.costByPhase) return 'By phase — task count & cost'
+  if (visible.value.tasksByPhase) return 'Tasks by phase'
+  if (visible.value.costByPhase) return 'Cost by phase'
+  return 'By phase'
 })
 
 // ---------------------------------------------------------------------------
