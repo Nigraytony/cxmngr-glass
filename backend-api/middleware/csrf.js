@@ -66,6 +66,12 @@ function ensureCsrfCookieAndProtect(req, res, next) {
     // design — the classic double-submit pattern only works when both are
     // readable by the same origin.
     //
+    // NOTE: this whole cross-origin dance also makes the refresh-token
+    // cookie a third-party cookie, which Safari / Firefox-strict / Brave /
+    // Chrome-incognito block by default → users get logged out mid-session.
+    // The proper fix is putting the backend on api.cxma.io (same eTLD+1 as
+    // the SPA). See RUNBOOK.md §11 for step-by-step.
+    //
     // We still require X-CSRF-Token to be present, which is the actual
     // CSRF protection in this deploy shape: rogue origins can't set a
     // custom header without a CORS preflight, and the CORS allowlist
