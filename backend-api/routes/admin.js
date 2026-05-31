@@ -1731,4 +1731,33 @@ router.patch('/billing/promotion-codes/:id', async (req, res) => {
   }
 });
 
+// ── SENTRY E2E TEST — REMOVE AFTER VERIFY ─────────────────────────────
+//
+// Throws a tagged exception so we can confirm the deployed backend is
+// successfully shipping errors to Sentry. Gated by the admin auth
+// already applied at the /api/admin mount (see backend-api/index.js).
+// The thrown error propagates through observability.errorHandler()
+// which captures + forwards to Sentry, then through the project's own
+// errorHandler middleware which returns 500 to the client.
+//
+// Identify the captured event in Sentry by the tag `synthetic: true`
+// or the message string. Delete this route + the corresponding test
+// case as soon as the integration is confirmed end-to-end.
+router.post('/_sentry-test', (req, res, next) => {
+  const observability = require('../utils/observability');
+  const err = new Error('Synthetic Sentry verification — safe to ignore.');
+  err.synthetic = true;
+  try {
+    observability.captureException(err, {
+      synthetic: true,
+      source: '/api/admin/_sentry-test',
+      adminUserId: String(req.user && (req.user._id || req.user.id) || ''),
+    });
+  } catch (_) { /* never let telemetry path block the test */ }
+  // Re-throw via next() so the Express error chain (including Sentry's
+  // own errorHandler middleware) also sees it. Belt-and-braces: confirms
+  // both the explicit capture path AND the middleware path are live.
+  return next(err);
+});
+
 module.exports = router;
