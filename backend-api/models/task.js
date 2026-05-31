@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+const taskStatuses = ['Not Started', 'Pending', 'In Progress', 'Completed', 'Deleted'];
+
 // Task schema aligned with the requested JSON shape.
 const taskSchema = new mongoose.Schema({
     taskId: { type: String }, // human-friendly id like T-100
@@ -12,7 +14,7 @@ const taskSchema = new mongoose.Schema({
     end: { type: Date },
     duration: { type: Number },
     percentComplete: { type: Number, min: 0, max: 100, default: 0 },
-    status: { type: String, enum: ['Not Started','Pending','In Progress','Completed','Deleted'], default: 'Not Started' },
+    status: { type: String, enum: taskStatuses, default: 'Not Started' },
     cost: { type: Number, default: 0 },
     autoCost: { type: Boolean, default: true },
     expenses: {
@@ -48,3 +50,4 @@ taskSchema.index({ taskId: 1 });
 const Task = mongoose.model('Task', taskSchema);
 
 module.exports = Task;
+module.exports.taskStatuses = taskStatuses;

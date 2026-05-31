@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 
+const issueSeverities = ['Comment', 'Critical', 'Low', 'Medium', 'High'];
+const issueStatuses = ['Cancelled', 'Closed', 'Open', 'Pending', 'In Progress'];
+
 const issueSchema = new mongoose.Schema({
   projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   spaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Space', required: false },
@@ -13,8 +16,8 @@ const issueSchema = new mongoose.Schema({
   foundBy: { type: String, required: false },
   dueDate: { type: String, required: false },
   assignedTo: { type: String, required: false },
-  severity: { type: String, enum: ['Comment', 'Critical','Low', 'Medium', 'High'], default: 'Medium' },
-  status: { type: String, enum: ['Cancelled','Closed','Open','Pending', 'In Progress'], default: 'Open' },
+  severity: { type: String, enum: issueSeverities, default: 'Medium' },
+  status: { type: String, enum: issueStatuses, default: 'Open' },
   // Closed metadata: who closed it and when (ISO date string, e.g., 2025-10-29)
   closedDate: { type: String, required: false },
   closedBy: { type: String, required: false },
@@ -55,3 +58,5 @@ issueSchema.index({ projectId: 1, oprItemIds: 1 })
 const Issue = mongoose.model('Issue', issueSchema);
 
 module.exports = Issue;
+module.exports.issueSeverities = issueSeverities;
+module.exports.issueStatuses = issueStatuses;
