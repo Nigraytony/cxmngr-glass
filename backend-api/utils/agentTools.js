@@ -13,9 +13,17 @@
 const sanitizeHtml = require('sanitize-html')
 
 const Task = require('../models/task')
+const { taskStatuses } = require('../models/task')
 const Activity = require('../models/activity')
+const { activityTypes, activityStatuses } = require('../models/activity')
 const Equipment = require('../models/equipment')
+const { equipmentStatuses } = require('../models/equipment')
 const Issue = require('../models/issue')
+const { issueStatuses, issueSeverities } = require('../models/issue')
+
+// 'Deleted' is a soft-delete sentinel — never surface it in the agent's
+// allowed status list. Use delete_task instead.
+const taskStatusesPublic = taskStatuses.filter((s) => s !== 'Deleted')
 const Space = require('../models/space')
 const Template = require('../models/template')
 const System = require('../models/system')
@@ -26,6 +34,31 @@ function isObjectId(v) {
 
 function str(v, max) {
   return String(v || '').slice(0, max)
+}
+
+// Upsert attribute entries by case-insensitive key match. Returns null if
+// `incoming` isn't an array (caller should skip the field). Otherwise
+// returns a new array: matched keys take the incoming value but preserve
+// the existing key casing; unmatched keys are appended; keys not mentioned
+// in `incoming` are left as-is. Pass an empty-string value to clear.
+function mergeAttributes(existing, incoming) {
+  if (!Array.isArray(incoming)) return null
+  const out = Array.isArray(existing)
+    ? existing.map((a) => ({ key: String((a && a.key) || ''), value: String((a && a.value) || '') }))
+    : []
+  for (const a of incoming) {
+    if (!a || typeof a !== 'object') continue
+    const key = String(a.key || '').trim().slice(0, 80)
+    if (!key) continue
+    const value = String(a.value == null ? '' : a.value).slice(0, 500)
+    const idx = out.findIndex((e) => String(e.key || '').toLowerCase() === key.toLowerCase())
+    if (idx >= 0) {
+      out[idx] = { key: out[idx].key, value }
+    } else {
+      out.push({ key, value })
+    }
+  }
+  return out
 }
 
 // Same allow-list the /api/activities POST/PATCH routes use, mirrored here
@@ -173,7 +206,7 @@ const TOOLS = [
     name: 'list_tasks',
     description: 'List tasks for the current project. Returns id, name, status, wbs, start, and end for each task.',
     properties: {
-      status: { type: 'string', description: 'Filter by status: Not Started, Pending, In Progress, Completed' },
+      status: { type: 'string', enum: taskStatusesPublic, description: `Filter by status. One of: ${taskStatusesPublic.join(', ')}.` },
       search: { type: 'string', description: 'Search by task name (partial match)' },
       limit: { type: 'number', description: 'Max results (default 20, max 50)' },
     },
@@ -185,7 +218,7 @@ const TOOLS = [
     properties: {
       name: { type: 'string', description: 'Task name (required)' },
       description: { type: 'string', description: 'Task description' },
-      status: { type: 'string', description: 'Status: Not Started, Pending, In Progress, Completed. Defaults to Not Started.' },
+      status: { type: 'string', enum: taskStatusesPublic, description: `Status. One of: ${taskStatusesPublic.join(', ')}. Defaults to Not Started.` },
       wbs: { type: 'string', description: 'WBS code (e.g., 1.1, 2.3.1)' },
       start: { type: 'string', description: 'Start date in ISO 8601 format (e.g., 2026-04-20)' },
       end: { type: 'string', description: 'Due/end date in ISO 8601 format' },
@@ -199,7 +232,7 @@ const TOOLS = [
       id: { type: 'string', description: 'Task _id (required)' },
       name: { type: 'string', description: 'New name' },
       description: { type: 'string', description: 'New description' },
-      status: { type: 'string', description: 'New status: Not Started, Pending, In Progress, Completed' },
+      status: { type: 'string', enum: taskStatusesPublic, description: `New status. One of: ${taskStatusesPublic.join(', ')}.` },
       wbs: { type: 'string', description: 'New WBS code' },
       start: { type: 'string', description: 'New start date (ISO 8601)' },
       end: { type: 'string', description: 'New due/end date (ISO 8601)' },
@@ -220,8 +253,8 @@ const TOOLS = [
     name: 'list_activities',
     description: 'List activities for the current project.',
     properties: {
-      type: { type: 'string', description: 'Filter by activity type (e.g., OPR, Pre-Design, Design Review, Site Visit)' },
-      status: { type: 'string', description: 'Filter by status' },
+      type: { type: 'string', enum: activityTypes, description: `Filter by activity type. One of: ${activityTypes.join(', ')}.` },
+      status: { type: 'string', enum: activityStatuses, description: `Filter by status. One of: ${activityStatuses.join(', ')}.` },
       search: { type: 'string', description: 'Search by name (partial match)' },
       limit: { type: 'number', description: 'Max results (default 20, max 50)' },
     },
@@ -240,8 +273,8 @@ const TOOLS = [
     description: 'Create a new activity (meeting, site visit, workshop, etc.) in the current project.',
     properties: {
       name: { type: 'string', description: 'Activity name (required)' },
-      type: { type: 'string', description: 'Activity type (e.g., OPR, Pre-Design, Design Review, Submittal Review, Site Visit, Prefunctional, Functional)' },
-      status: { type: 'string', description: 'Status: Not Started, In Progress, Complete, Cancelled. Defaults to Not Started.' },
+      type: { type: 'string', enum: activityTypes, description: `Activity type. One of: ${activityTypes.join(', ')}. Defaults to Site Visit Review.` },
+      status: { type: 'string', enum: activityStatuses, description: `Status. One of: ${activityStatuses.join(', ')} (lowercase). Defaults to draft.` },
       startDate: { type: 'string', description: 'Start date (ISO 8601)' },
       endDate: { type: 'string', description: 'End date (ISO 8601)' },
       location: { type: 'string', description: 'Location or venue' },
@@ -256,8 +289,8 @@ const TOOLS = [
     properties: {
       id: { type: 'string', description: 'Activity _id (required)' },
       name: { type: 'string', description: 'New name' },
-      type: { type: 'string', description: 'New type' },
-      status: { type: 'string', description: 'New status' },
+      type: { type: 'string', enum: activityTypes, description: `New type. One of: ${activityTypes.join(', ')}.` },
+      status: { type: 'string', enum: activityStatuses, description: `New status. One of: ${activityStatuses.join(', ')} (lowercase).` },
       startDate: { type: 'string', description: 'New start date (ISO 8601)' },
       endDate: { type: 'string', description: 'New end date (ISO 8601)' },
       location: { type: 'string', description: 'New location' },
@@ -282,7 +315,7 @@ const TOOLS = [
     properties: {
       system: { type: 'string', description: 'Filter by system name (partial match)' },
       type: { type: 'string', description: 'Filter by equipment type (partial match)' },
-      status: { type: 'string', description: 'Filter by status' },
+      status: { type: 'string', enum: equipmentStatuses, description: `Filter by status. One of: ${equipmentStatuses.join(', ')}.` },
       search: { type: 'string', description: 'Search by tag, title, or name (partial match)' },
       limit: { type: 'number', description: 'Max results (default 20, max 50)' },
     },
@@ -296,27 +329,51 @@ const TOOLS = [
       title: { type: 'string', description: 'Equipment title/display name. Required.' },
       type: { type: 'string', description: 'Equipment type (e.g., Air Handler, Chiller, Boiler, Pump). Required.' },
       system: { type: 'string', description: 'System name (e.g., HVAC, Plumbing, Electrical)' },
-      status: { type: 'string', description: 'Status: Not Started, In Progress, Complete. Defaults to Not Started.' },
+      status: { type: 'string', enum: equipmentStatuses, description: `Status. One of: ${equipmentStatuses.join(', ')}. Defaults to Not Started.` },
       description: { type: 'string', description: 'Equipment description or notes' },
       spaceId: { type: 'string', description: 'Space _id to link this equipment to a building/floor/room' },
       location: { type: 'string', description: 'Free-text location (e.g., "Mechanical Room B-12", "Roof")' },
       templateId: { type: 'string', description: 'Template _id for reference only (no content copy). Use apply_template_to_equipment to copy template content.' },
+      attributes: {
+        type: 'array',
+        description: 'Custom attributes as key/value pairs (e.g., Make=Trane, Serial Number=U96G42208). Each entry needs a key; value defaults to empty string.',
+        items: {
+          type: 'object',
+          properties: {
+            key: { type: 'string', description: 'Attribute name' },
+            value: { type: 'string', description: 'Attribute value' },
+          },
+          required: ['key'],
+        },
+      },
     },
     required: ['tag', 'title', 'type'],
   },
   {
     name: 'update_equipment',
-    description: 'Update existing equipment by its ID.',
+    description: 'Update existing equipment by its ID. To populate template-inherited attribute values (e.g., fill in Make, Serial Number on an AHU), pass the values in `attributes` — matching keys are upserted by case-insensitive comparison, unmatched keys are appended, and any existing attributes you DO NOT mention are preserved.',
     properties: {
       id: { type: 'string', description: 'Equipment _id (required)' },
       tag: { type: 'string', description: 'New tag' },
       title: { type: 'string', description: 'New title' },
       type: { type: 'string', description: 'New type' },
       system: { type: 'string', description: 'New system name' },
-      status: { type: 'string', description: 'New status' },
+      status: { type: 'string', enum: equipmentStatuses, description: `New status. One of: ${equipmentStatuses.join(', ')}.` },
       description: { type: 'string', description: 'New description' },
       spaceId: { type: 'string', description: 'New Space _id link' },
       location: { type: 'string', description: 'New free-text location' },
+      attributes: {
+        type: 'array',
+        description: 'Attributes to upsert by key. Case-insensitive key match against existing entries; existing key casing is preserved. Keys you do not mention are left untouched. Pass empty string to clear a value, or omit the entry to leave unchanged.',
+        items: {
+          type: 'object',
+          properties: {
+            key: { type: 'string', description: 'Attribute name (matched case-insensitively)' },
+            value: { type: 'string', description: 'New attribute value' },
+          },
+          required: ['key'],
+        },
+      },
     },
     required: ['id'],
   },
@@ -347,8 +404,8 @@ const TOOLS = [
     name: 'list_issues',
     description: 'List issues for the current project.',
     properties: {
-      status: { type: 'string', description: 'Filter by status: Open, Closed, In Progress, Pending, Cancelled' },
-      severity: { type: 'string', description: 'Filter by severity: Low, Medium, High, Critical, Comment' },
+      status: { type: 'string', enum: issueStatuses, description: `Filter by status. One of: ${issueStatuses.join(', ')}.` },
+      severity: { type: 'string', enum: issueSeverities, description: `Filter by severity. One of: ${issueSeverities.join(', ')}.` },
       system: { type: 'string', description: 'Filter by system name (partial match)' },
       search: { type: 'string', description: 'Search by title or description' },
       limit: { type: 'number', description: 'Max results (default 20, max 50)' },
@@ -361,7 +418,7 @@ const TOOLS = [
     properties: {
       title: { type: 'string', description: 'Issue title (required)' },
       description: { type: 'string', description: 'Issue description. Explain the problem clearly. Required.' },
-      severity: { type: 'string', description: 'Severity: Low, Medium, High, Critical, Comment. Defaults to Medium.' },
+      severity: { type: 'string', enum: issueSeverities, description: `Severity. One of: ${issueSeverities.join(', ')}. Defaults to Medium.` },
       type: { type: 'string', description: 'Issue type or category' },
       system: { type: 'string', description: 'Related system name' },
       assignedTo: { type: 'string', description: 'Name of person assigned to resolve' },
@@ -376,8 +433,8 @@ const TOOLS = [
       id: { type: 'string', description: 'Issue _id (required)' },
       title: { type: 'string', description: 'New title' },
       description: { type: 'string', description: 'New description' },
-      status: { type: 'string', description: 'New status: Open, Closed, In Progress, Pending, Cancelled' },
-      severity: { type: 'string', description: 'New severity' },
+      status: { type: 'string', enum: issueStatuses, description: `New status. One of: ${issueStatuses.join(', ')}.` },
+      severity: { type: 'string', enum: issueSeverities, description: `New severity. One of: ${issueSeverities.join(', ')}.` },
       assignedTo: { type: 'string', description: 'New assignee name' },
       resolution: { type: 'string', description: 'Resolution notes (provide when closing an issue)' },
     },
@@ -861,6 +918,8 @@ async function executeTool(toolName, toolInput, context) {
         }
         if (input.spaceId && isObjectId(input.spaceId)) doc.spaceId = input.spaceId
         if (input.templateId && isObjectId(input.templateId)) doc.template = input.templateId
+        const initialAttrs = mergeAttributes([], input.attributes)
+        if (initialAttrs) doc.attributes = initialAttrs
         const item = await Equipment.create(doc)
         return { success: true, record: item.toObject() }
       }
@@ -879,6 +938,8 @@ async function executeTool(toolName, toolInput, context) {
         if (input.spaceId !== undefined) {
           fields.spaceId = (input.spaceId && isObjectId(input.spaceId)) ? input.spaceId : null
         }
+        const mergedAttrs = mergeAttributes(existing.attributes, input.attributes)
+        if (mergedAttrs) fields.attributes = mergedAttrs
         const updated = await Equipment.findByIdAndUpdate(input.id, { $set: fields }, { new: true }).lean()
         return { success: true, record: updated }
       }

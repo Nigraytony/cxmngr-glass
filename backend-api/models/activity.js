@@ -1,5 +1,30 @@
 const mongoose = require('mongoose');
 
+const activityTypes = [
+  'Assessment',
+  'BOD Review',
+  'Construction Checklist',
+  'Construction Milestone Meeting',
+  'Cx Meeting',
+  'Cx Plan',
+  'Design Coordination Meeting',
+  'Design Review',
+  'Functional Test',
+  'Installation Review',
+  'OPR Review',
+  'Owners Manual Review',
+  'Schedule Integration',
+  'Seasonal Test',
+  'Site Visit Review',
+  'Startup Review',
+  'Submittal Review',
+  'Training Review',
+  'Test and Balance Review',
+  'Warranty Review',
+  'Other',
+];
+const activityStatuses = ['draft', 'published', 'completed'];
+
 const activitySchema = new mongoose.Schema({
   name: { type: String, required: true },
   // rich-text HTML description stored as string
@@ -13,33 +38,10 @@ const activitySchema = new mongoose.Schema({
   // (LEED v5 FCx 50%/100% meeting attendance), Design Coordination Meeting
   // (LEED v5 ECx 2-meeting minimum), Warranty Review (LEED v4 ECx 10-month
   // post-occupancy review — explicit type rather than overloading Site Visit).
-  type: { type: String,
-    enum: [
-      'Assessment',
-      'BOD Review',
-      'Construction Checklist',
-      'Construction Milestone Meeting',
-      'Cx Meeting',
-      'Cx Plan',
-      'Design Coordination Meeting',
-      'Design Review',
-      'Functional Test',
-      'Installation Review',
-      'OPR Review',
-      'Owners Manual Review',
-      'Schedule Integration',
-      'Seasonal Test',
-      'Site Visit Review',
-      'Startup Review',
-      'Submittal Review',
-      'Training Review',
-      'Test and Balance Review',
-      'Warranty Review',
-      'Other'
-    ], default: 'Site Visit Review' },
+  type: { type: String, enum: activityTypes, default: 'Site Visit Review' },
   status: {
     type: String,
-    enum: ['draft', 'published', 'completed'],
+    enum: activityStatuses,
     default: 'draft',
   },
   startDate: { type: Date, default: Date.now },
@@ -136,3 +138,5 @@ activitySchema.index({ spaceId: 1 })
 const Activity = mongoose.model('Activity', activitySchema);
 
 module.exports = Activity;
+module.exports.activityTypes = activityTypes;
+module.exports.activityStatuses = activityStatuses;
