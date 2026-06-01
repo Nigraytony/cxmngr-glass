@@ -3,7 +3,11 @@
 
     <!-- Header -->
     <div class="shrink-0 px-6 py-4 border-b border-white/10 flex items-center gap-3">
-      <span class="text-2xl">👷‍♀️</span>
+      <img
+        :src="`/avatars/${headerMood}.png`"
+        :alt="headerMood"
+        class="w-10 h-10 rounded-full bg-white/10 border border-white/15 object-cover"
+      >
       <div>
         <h1 class="text-white font-semibold text-lg leading-tight">Agent</h1>
         <p v-if="currentProjectName" class="text-white/50 text-xs truncate">{{ currentProjectName }}</p>
@@ -43,7 +47,11 @@
 
     <!-- No project selected -->
     <div v-if="!currentProjectId" class="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-      <span class="text-5xl opacity-40">👷‍♀️</span>
+      <img
+        src="/avatars/neutral.png"
+        alt="neutral"
+        class="w-20 h-20 rounded-full bg-white/10 border border-white/15 object-cover opacity-50"
+      >
       <p class="text-white/60 text-center text-sm max-w-xs">
         Select a project from the dashboard to start using the Agent.
       </p>
@@ -51,7 +59,11 @@
 
     <!-- Not available (no AI configured or not premium) -->
     <div v-else-if="aiStatus === 'unavailable'" class="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-      <span class="text-5xl opacity-40">👷‍♀️</span>
+      <img
+        src="/avatars/sad.png"
+        alt="sad"
+        class="w-20 h-20 rounded-full bg-white/10 border border-white/15 object-cover opacity-50"
+      >
       <p class="text-white/60 text-center text-sm max-w-xs">
         {{ unavailableReason }}
       </p>
@@ -75,7 +87,11 @@
           v-if="!agent.loadingHistory && agent.messages.length === 0"
           class="flex flex-col items-center justify-center h-full gap-6 py-12"
         >
-          <span class="text-6xl opacity-30">👷‍♀️</span>
+          <img
+            src="/avatars/happy.png"
+            alt="happy"
+            class="w-24 h-24 rounded-full bg-white/10 border border-white/15 object-cover opacity-60"
+          >
           <div class="text-center max-w-sm space-y-2">
             <p class="text-white/70 text-sm font-medium">What can I help you with?</p>
             <p class="text-white/40 text-xs">
@@ -109,12 +125,12 @@
             :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
           >
             <!-- Agent avatar -->
-            <div
+            <img
               v-if="msg.role === 'assistant'"
-              class="shrink-0 w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-sm mt-0.5"
+              :src="`/avatars/${msg.pending ? 'thinking' : (msg.mood || 'neutral')}.png`"
+              :alt="msg.pending ? 'thinking' : (msg.mood || 'neutral')"
+              class="shrink-0 w-7 h-7 rounded-full bg-white/10 border border-white/15 object-cover mt-0.5"
             >
-              👷‍♀️
-            </div>
 
             <div class="flex flex-col gap-1.5 max-w-[82%]">
               <!-- Bubble -->
@@ -308,6 +324,15 @@ const currentProjectName = computed(() => {
 const userInitial = computed(() => {
   const name = String(authStore.user?.name || authStore.user?.email || '?')
   return name.charAt(0).toUpperCase()
+})
+
+const headerMood = computed(() => {
+  if (agent.sending) return 'thinking'
+  for (let i = agent.messages.length - 1; i >= 0; i--) {
+    const m = agent.messages[i]
+    if (m && m.role === 'assistant' && !m.pending && m.mood) return m.mood
+  }
+  return 'neutral'
 })
 
 const examplePrompts = [

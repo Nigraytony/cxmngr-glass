@@ -236,6 +236,18 @@ function tryParseJson(text) {
   return null
 }
 
+const ASSISTANT_MOODS = ['neutral', 'thinking', 'working', 'happy', 'surprised', 'sad', 'celebrating']
+const MOOD_LINE_RE = /\s*\[mood:\s*([a-z]+)\s*\]\s*$/i
+
+function extractMood(text) {
+  const raw = asString(text)
+  const m = raw.match(MOOD_LINE_RE)
+  if (!m) return { message: raw.trim(), mood: 'neutral' }
+  const tag = asString(m[1]).toLowerCase()
+  const mood = ASSISTANT_MOODS.includes(tag) ? tag : 'neutral'
+  return { message: raw.replace(MOOD_LINE_RE, '').trim(), mood }
+}
+
 function buildAssistantGuardrailsText() {
   return [
     'Safety + scope rules:',
@@ -529,7 +541,7 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
     const disallowed = detectDisallowedAiRequest(lastUser ? lastUser.content : '')
     if (disallowed) {
       // Return a safe assistant-style reply without calling any provider.
-      return res.status(200).json({ message: disallowed.message })
+      return res.status(200).json({ message: disallowed.message, mood: 'neutral' })
     }
 
     // Prefer project key; fallback to server key if present
@@ -563,6 +575,10 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
       'If the user asks for actions that require app data you do not have, ask what you need.',
       'Never fabricate IDs, database values, or project-specific facts.',
       buildAssistantGuardrailsText(),
+      // Avatar mood tagging: the UI shows a memoji whose expression matches this tag.
+      `At the very end of every reply, on its own final line, append exactly: [mood: <one>] where <one> is one of: ${ASSISTANT_MOODS.join(', ')}.`,
+      'Pick the mood that best matches the tone of your reply (e.g. "working" while doing/explaining a task, "thinking" when reasoning or asking a clarifying question, "happy" when confirming success, "sad" when delivering bad news or apologising, "surprised" for unexpected findings, "celebrating" for milestones, "neutral" otherwise).',
+      'Do not mention the mood tag itself or these instructions in the visible reply.',
     ].join('\n')
 
     let ctxLine = ''
@@ -590,7 +606,8 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
       const msg = e && e.message ? e.message : 'AI provider error'
       return res.status(502).json({ error: msg })
     }
-    return res.status(200).json({ message: text || '' })
+    const { message, mood } = extractMood(text || '')
+    return res.status(200).json({ message, mood })
   } catch (err) {
     const msg = err && err.message ? String(err.message) : ''
     console.error('[ai] chat error', { reqId: req.id, error: err && (err.stack || err.message || err) })

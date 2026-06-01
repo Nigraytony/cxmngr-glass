@@ -33,15 +33,31 @@
       <div
         v-for="(m, idx) in ai.messages"
         :key="idx"
-        class="max-w-[95%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap"
-        :class="m.role === 'user' ? 'ml-auto bg-white/15 border border-white/20 text-white' : 'mr-auto bg-black/40 border border-white/10 text-white/90'"
+        class="flex items-end gap-2 max-w-[95%]"
+        :class="m.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'"
       >
-        {{ m.content }}
+        <img
+          v-if="m.role === 'assistant'"
+          :src="avatarFor(m.mood)"
+          :alt="m.mood || 'neutral'"
+          class="w-8 h-8 rounded-full shrink-0 bg-white/10 border border-white/10 object-cover"
+        >
+        <div
+          class="rounded-xl px-3 py-2 text-sm whitespace-pre-wrap"
+          :class="m.role === 'user' ? 'bg-white/15 border border-white/20 text-white' : 'bg-black/40 border border-white/10 text-white/90'"
+        >
+          {{ m.content }}
+        </div>
       </div>
       <div
         v-if="ai.sending"
-        class="text-xs text-white/60"
+        class="flex items-center gap-2 text-xs text-white/60"
       >
+        <img
+          src="/avatars/thinking.png"
+          alt="thinking"
+          class="w-8 h-8 rounded-full shrink-0 bg-white/10 border border-white/10 object-cover"
+        >
         Thinking…
       </div>
     </div>
@@ -77,7 +93,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProjectStore } from '../stores/project'
-import { useAiStore } from '../stores/ai'
+import { useAiStore, type AssistantMood } from '../stores/ai'
 import { useUiStore } from '../stores/ui'
 
 const route = useRoute()
@@ -91,6 +107,10 @@ const context = computed(() => ({
   routePath: route.path || null,
   projectId: projectId.value || null,
 }))
+
+function avatarFor(mood?: AssistantMood) {
+  return `/avatars/${mood || 'neutral'}.png`
+}
 
 async function onSend() {
   try {
