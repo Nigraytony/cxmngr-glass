@@ -91,7 +91,11 @@
             ]"
             :aria-current="isActive('/app/agent') ? 'page' : null"
           >
-            <span class="i">👷‍♀️</span>
+            <img
+              src="/avatars/neutral.png"
+              alt="Agent"
+              class="i w-5 h-5 rounded-full object-cover shrink-0"
+            >
             <span v-if="open">Agent</span>
           </RouterLink>
           <!-- OPR Workshop (paid add-on; only shown when a session is active) -->

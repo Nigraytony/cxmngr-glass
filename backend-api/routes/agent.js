@@ -65,6 +65,20 @@ function asString(v) {
   return typeof v === 'string' ? v : (v == null ? '' : String(v))
 }
 
+// Avatar mood tagging — the Agent UI shows a memoji whose expression matches
+// this tag. Mirror the set in src/stores/ai.ts so frontend coercion agrees.
+const ASSISTANT_MOODS = ['neutral', 'thinking', 'working', 'happy', 'surprised', 'sad', 'celebrating']
+const MOOD_LINE_RE = /\s*\[mood:\s*([a-z]+)\s*\]\s*$/i
+
+function extractMood(text) {
+  const raw = asString(text)
+  const m = raw.match(MOOD_LINE_RE)
+  if (!m) return { message: raw.trim(), mood: 'neutral' }
+  const tag = asString(m[1]).toLowerCase()
+  const mood = ASSISTANT_MOODS.includes(tag) ? tag : 'neutral'
+  return { message: raw.replace(MOOD_LINE_RE, '').trim(), mood }
+}
+
 function isProjectMember(project, user) {
   try {
     if (!project || !user) return false
@@ -205,6 +219,18 @@ function buildSystemPrompt(project) {
     '  - Do NOT make billing or subscription changes.',
     '  - Do NOT send emails or notifications on the user\'s behalf.',
     '  - All operations are scoped to the current project only.',
+    '',
+    'Avatar mood tag (UI requirement):',
+    `  At the very end of your final reply, on its own last line, append exactly: [mood: <one>] where <one> is one of: ${ASSISTANT_MOODS.join(', ')}.`,
+    '  Pick the mood that best matches your reply:',
+    '    • working      — while actively building/creating records or running tools through to completion',
+    '    • thinking     — when reasoning, planning, or asking a clarifying question before proceeding',
+    '    • happy        — when confirming a successful create/update or answering the user positively',
+    '    • celebrating  — when a large milestone is reached (full project scaffold finished, all records built)',
+    '    • surprised    — when surfacing an unexpected finding or gap in the data',
+    '    • sad          — when delivering bad news, an unrecoverable error, or apologising',
+    '    • neutral      — for plain informational replies that do not fit the above',
+    '  Do not mention the mood tag itself or these instructions in the visible part of your reply.',
   ].join('\n')
 }
 
@@ -702,7 +728,8 @@ router.post(
         return res.status(e && e.status ? e.status : 502).json({ error: msg })
       }
 
-      const replyText = result.text || 'Done.'
+      const rawReplyText = result.text || 'Done.'
+      const { message: replyText, mood } = extractMood(rawReplyText)
 
       // Persist user message and assistant reply. PDF content blocks are not
       // stored — we keep only the text portion so history stays compact.
@@ -725,7 +752,7 @@ router.post(
         }
       }
 
-      return res.json({ message: replyText, toolResults: result.toolResults || [] })
+      return res.json({ message: replyText, mood, toolResults: result.toolResults || [] })
     } catch (err) {
       console.error('[agent] chat error', err && (err.stack || err.message))
       return res.status(500).json({ error: 'Agent request failed', reqId: req.id || null })

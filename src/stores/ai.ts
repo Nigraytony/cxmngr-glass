@@ -4,10 +4,27 @@ import http from '../utils/http'
 
 export type AiRole = 'user' | 'assistant'
 
+export const ASSISTANT_MOODS = [
+  'neutral',
+  'thinking',
+  'working',
+  'happy',
+  'surprised',
+  'sad',
+  'celebrating',
+] as const
+export type AssistantMood = typeof ASSISTANT_MOODS[number]
+
+function coerceMood(v: any): AssistantMood {
+  const s = typeof v === 'string' ? v.toLowerCase() : ''
+  return (ASSISTANT_MOODS as readonly string[]).includes(s) ? (s as AssistantMood) : 'neutral'
+}
+
 export interface AiMessage {
   role: AiRole
   content: string
   ts: string
+  mood?: AssistantMood
 }
 
 export interface SuggestedTag {
@@ -87,7 +104,12 @@ export const useAiStore = defineStore('ai', () => {
       }
       const { data } = await http.post('/api/ai/chat', payload)
       const reply = String(data?.message || '').trim()
-      const assistantMsg: AiMessage = { role: 'assistant', content: reply || '(no response)', ts: new Date().toISOString() }
+      const assistantMsg: AiMessage = {
+        role: 'assistant',
+        content: reply || '(no response)',
+        ts: new Date().toISOString(),
+        mood: coerceMood(data?.mood),
+      }
       messages.value.push(assistantMsg)
 
       try {

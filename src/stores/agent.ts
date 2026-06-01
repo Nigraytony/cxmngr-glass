@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import http from '../utils/http'
+import { ASSISTANT_MOODS, type AssistantMood } from './ai'
+
+function coerceMood(v: unknown): AssistantMood {
+  const s = typeof v === 'string' ? v.toLowerCase() : ''
+  return (ASSISTANT_MOODS as readonly string[]).includes(s) ? (s as AssistantMood) : 'neutral'
+}
 
 export interface ToolResult {
   tool: string
@@ -22,6 +28,7 @@ export interface AgentMessage {
   toolResults?: ToolResult[]
   createdAt: Date
   pending?: boolean
+  mood?: AssistantMood
 }
 
 export const useAgentStore = defineStore('agent', () => {
@@ -92,7 +99,7 @@ export const useAgentStore = defineStore('agent', () => {
 
     sending.value = true
     try {
-      let data: { message?: string; toolResults?: ToolResult[] }
+      let data: { message?: string; mood?: string; toolResults?: ToolResult[] }
       if (hasFiles) {
         const form = new FormData()
         form.append('projectId', projectId)
@@ -115,6 +122,7 @@ export const useAgentStore = defineStore('agent', () => {
               toolResults: Array.isArray(data.toolResults) ? data.toolResults : [],
               createdAt: new Date(),
               pending: false,
+              mood: coerceMood(data.mood),
             }
           : m
       )
@@ -134,6 +142,7 @@ export const useAgentStore = defineStore('agent', () => {
               toolResults: [],
               createdAt: new Date(),
               pending: false,
+              mood: 'sad' as AssistantMood,
             }
           : m
       )
