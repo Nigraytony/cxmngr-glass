@@ -2047,6 +2047,58 @@
               </div>
             </div>
           </div>
+
+          <!--
+            Danger zone — close (archive) or restore the whole project. Archive is
+            the real "deactivate/close" action: it cancels billing at period end,
+            revokes team access, and starts a 90-day recovery window before purge.
+            Restoring requires a paid subscription (no trial); restoreProjectAction
+            routes the user through checkout when there is no active subscription.
+            Gated on project-admin / global-admin (backend enforces projects.delete).
+          -->
+          <div
+            v-if="canManageTeamRoles"
+            class="mt-8 rounded-xl p-4 bg-red-500/5 border border-red-500/30 space-y-3"
+          >
+            <div>
+              <h3 class="text-md font-medium text-red-200">
+                Danger zone
+              </h3>
+              <p class="text-xs text-white/60 mt-1">
+                Archiving closes the project: its subscription is cancelled at period end and the team loses access. It stays recoverable for 90 days, then is permanently deleted.
+              </p>
+            </div>
+            <div
+              v-if="!isArchivedOrDeleted"
+              class="flex items-center justify-between gap-3 flex-wrap"
+            >
+              <div class="text-sm text-white/80">
+                Archive (close) this project.
+              </div>
+              <button
+                class="px-4 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white disabled:opacity-50"
+                :disabled="archiving"
+                @click="archiveProjectAction"
+              >
+                {{ archiving ? 'Archiving…' : 'Archive project' }}
+              </button>
+            </div>
+            <div
+              v-else
+              class="flex items-center justify-between gap-3 flex-wrap"
+            >
+              <div class="text-sm text-white/80">
+                This project is <span class="font-medium text-white/90">{{ project.status }}</span>. Restoring requires a paid subscription (no trial) — you'll be taken to checkout if there isn't one.
+              </div>
+              <button
+                class="px-4 py-2 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white disabled:opacity-50"
+                :disabled="restoring"
+                @click="restoreProjectAction"
+              >
+                {{ restoring ? 'Restoring…' : 'Restore project' }}
+              </button>
+            </div>
+          </div>
         </div>
         <!-- end Roles accordion wrapper -->
         <div v-show="activeTab === 'logs'">
@@ -3785,7 +3837,24 @@ onMounted(async () => {
         // ignore: user can reconcile manually if needed
       }
     }
-    ui.showSuccess('Subscription updated')
+    // Restore-through-checkout: if we redirected to checkout from a Restore action,
+    // re-call restore now that the subscription is active. This is the single
+    // authoritative step that un-archives (clears status='Archived' + purgeAt).
+    let pendingRestore = null
+    try { pendingRestore = sessionStorage.getItem('pendingRestoreProjectId') } catch (e) { /* ignore */ }
+    const pid = projectId || (project.value && (project.value._id || project.value.id))
+    if ((String(route.query.intent || '') === 'restore' || (pendingRestore && String(pendingRestore) === String(pid))) && pid) {
+      try { sessionStorage.removeItem('pendingRestoreProjectId') } catch (e) { /* ignore */ }
+      try {
+        await projectStore.restoreProject(String(pid))
+        await refreshProject()
+        ui.showSuccess('Project restored')
+      } catch (e: any) {
+        ui.showError(e?.response?.data?.error || 'Paid, but restore did not complete — click Restore again in the Danger zone.')
+      }
+    } else {
+      ui.showSuccess('Subscription updated')
+    }
   } else if (route.query && route.query.checkout === 'cancel') {
     ui.showError('Checkout cancelled')
   }
@@ -4598,6 +4667,67 @@ const trialDaysLeft = computed(() => {
   const diff = Math.ceil((end - Date.now()) / (1000*60*60*24))
   return Math.max(diff, 0)
 })
+
+// --- Danger zone: archive / restore (close / reopen the project) -------------
+const archiving = ref(false)
+const restoring = ref(false)
+
+async function archiveProjectAction() {
+  const pid = projectId || (project.value && (project.value._id || project.value.id))
+  if (!pid) return
+  const ok = await confirm({
+    title: 'Archive project',
+    message: 'Archive (close) this project?\n\nIts subscription will be cancelled at period end and the team will lose access. The project stays recoverable for 90 days, then is permanently deleted.',
+    confirmText: 'Archive',
+    cancelText: 'Cancel',
+    variant: 'danger',
+  })
+  if (!ok) return
+  try {
+    archiving.value = true
+    await projectStore.archiveProject(String(pid))
+    ui.showSuccess('Project archived')
+    await refreshProject()
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || 'Failed to archive project')
+  } finally {
+    archiving.value = false
+  }
+}
+
+async function restoreProjectAction() {
+  const pid = projectId || (project.value && (project.value._id || project.value.id))
+  if (!pid) return
+  try {
+    restoring.value = true
+    await projectStore.restoreProject(String(pid))
+    ui.showSuccess('Project restored')
+    await refreshProject()
+  } catch (e: any) {
+    if (e?.response?.data?.code === 'SUBSCRIPTION_REQUIRED') {
+      const url = e?.response?.data?.checkoutUrl
+      if (url) {
+        const go = await confirm({
+          title: 'Subscription required',
+          message: 'Restoring this project requires a paid subscription (no trial). Continue to checkout now? You’ll return here and the project will be restored automatically after payment.',
+          confirmText: 'Continue to checkout',
+          cancelText: 'Cancel',
+        })
+        if (go) {
+          try { sessionStorage.setItem('pendingRestoreProjectId', String(pid)) } catch (e2) { /* ignore */ }
+          window.location.href = url
+          return
+        }
+      } else {
+        ui.showError('Subscription required to restore. Open the Subscription tab to re-subscribe, then restore again.')
+      }
+    } else {
+      ui.showError(e?.response?.data?.error || 'Failed to restore project')
+    }
+  } finally {
+    restoring.value = false
+  }
+}
 
 async function refreshProject() {
   try {

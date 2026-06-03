@@ -26,6 +26,8 @@ const { normalizeLogEvent } = require('../utils/logEvent')
 const plans = require('../config/plans')
 const standardTeamRoles = require('../config/standardTeamRoles')
 const { ensureDefaultProjectRoleTemplates } = require('../utils/defaultProjectRoleTemplates')
+const { getStripe: getRestoreStripe, canManageBilling, findLiveActiveSubscription, buildRestoreCheckoutUrl } = require('../utils/restoreBilling')
+const restoreStripe = getRestoreStripe()
 
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
 router.param('id', (req, res, next, value) => {
@@ -1906,13 +1908,41 @@ router.post('/:id/restore', auth, requireObjectIdParam('id'), requirePermission(
 
     // Require an active paid subscription (no trial). Treat past_due as active for grace period.
     const subStatus = String(project.stripeSubscriptionStatus || '').toLowerCase()
-    const hasPaidSubscription = Boolean(project.stripeSubscriptionId) && ['active', 'past_due'].includes(subStatus)
+    let hasPaidSubscription = Boolean(project.stripeSubscriptionId) && ['active', 'past_due'].includes(subStatus)
+
+    // Webhook lag: a user may have just paid (restore-through-checkout) but the
+    // subscription webhook hasn't landed yet, so our local stripe fields look
+    // stale. Reconcile live against Stripe before deciding we need checkout.
     if (!hasPaidSubscription) {
+      try {
+        const live = await findLiveActiveSubscription(project, req.user)
+        if (live) {
+          delete live._priceId
+          Object.assign(project, live)
+          hasPaidSubscription = true
+        }
+      } catch (e) {
+        console.warn('[projects.restore] live subscription reconcile failed', e && e.message ? e.message : e)
+      }
+    }
+
+    if (!hasPaidSubscription) {
+      // No active subscription — route the user through checkout. On return the
+      // SPA re-calls this endpoint (intent=restore), which then un-archives.
+      let checkoutUrl = null
+      try {
+        if (restoreStripe && canManageBilling(req.user, project)) {
+          checkoutUrl = await buildRestoreCheckoutUrl(project, req.user, {})
+        }
+      } catch (e) {
+        console.warn('[projects.restore] failed to build checkout url', e && e.message ? e.message : e)
+      }
       return res.status(402).send({
         error: 'Subscription required to restore project (no trial)',
         code: 'SUBSCRIPTION_REQUIRED',
         subscriptionStatus: project.stripeSubscriptionStatus || null,
-        hasStripe: Boolean(stripe),
+        hasStripe: Boolean(restoreStripe),
+        checkoutUrl,
       })
     }
 

@@ -1097,7 +1097,7 @@ async function confirmArchive(p) {
 async function confirmRestore(p) {
   const confirmed = await inlineConfirm({
     title: 'Restore project',
-    message: `Restore project "${p?.name || p?.id || ''}"? This requires an active paid subscription (no trial).`,
+    message: `Restore project "${p?.name || p?.id || ''}"? Restoring requires a paid subscription (no trial) — you'll be taken to checkout if there isn't an active one.`,
     confirmText: 'Restore',
     cancelText: 'Cancel',
     variant: 'default'
@@ -1110,7 +1110,15 @@ async function confirmRestore(p) {
   } catch (e) {
     const code = e?.response?.data?.code
     if (code === 'SUBSCRIPTION_REQUIRED') {
-      ui.showError('Subscription required to restore. Go to Project Settings → Subscription to re-subscribe.')
+      const url = e?.response?.data?.checkoutUrl
+      if (url) {
+        // Route through checkout; on return the project edit page (success_url
+        // carries intent=restore) re-calls restore to finish un-archiving.
+        try { sessionStorage.setItem('pendingRestoreProjectId', String(p.id)) } catch (e2) { /* ignore */ }
+        window.location.href = url
+        return
+      }
+      ui.showError('Subscription required to restore. Open Project Settings → Subscription to re-subscribe, then restore again.')
     } else {
       ui.showError(e?.response?.data?.error || 'Failed to restore')
     }
