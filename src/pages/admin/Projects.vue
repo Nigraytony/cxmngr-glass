@@ -564,12 +564,14 @@ function goToPage(n) {
 function prev() { goToPage(currentPage.value - 1) }
 function next() { goToPage(currentPage.value + 1) }
 
+// Operational status badge — reflects the `status` field only. Billing/access state
+// is shown separately via the isActive column and the Activate/Deactivate toggle.
 function displayStatus(p) {
   if (!p) return ''
   const s = (p.status || '').toString()
   if (p.deleted || s === 'Deleted') return 'Deleted'
   if (s === 'Archived') return 'Archived'
-  if (!p.isActive || s === 'Inactive') return 'Inactive'
+  if (s === 'Inactive') return 'Inactive'
   return 'Active'
 }
 
@@ -578,7 +580,7 @@ function statusBadgeClass(p) {
     const s = (p && p.status) ? String(p.status) : ''
     if (p && (p.deleted || s === 'Deleted')) return 'bg-red-500 text-white'
     if (s === 'Archived') return 'bg-gray-600 text-white'
-    if (p && (!p.isActive || s === 'Inactive')) return 'bg-white/10 text-white/80'
+    if (s === 'Inactive') return 'bg-white/10 text-white/80'
     return 'bg-yellow-500 text-black'
   } catch (e) { return 'bg-white/10 text-white/80' }
 }
@@ -601,10 +603,13 @@ async function unlinkStripe(p) {
   }
 }
 
+// Billing/access gate for the Activate/Deactivate toggle — driven by isActive only.
+// Intentionally does NOT consider the operational `status` label (decoupled), so the
+// toggle reflects real subscription access and never drifts against Stripe webhooks.
 function projectIsActive(p) {
   if (!p) return false
   if (p.deleted || p.status === 'Deleted' || p.status === 'Archived') return false
-  return !!p.isActive && p.status !== 'Inactive'
+  return !!p.isActive
 }
 
 function canToggleActive(p) {
@@ -623,9 +628,11 @@ async function toggleActive(p) {
   })
   if (!ok) return
   try {
+    // Only flip the billing/access gate. The operational `status` label is managed
+    // separately (admin status field / project Info tab), so we no longer overwrite it
+    // here — that coupling caused stale "Inactive" labels after webhook reactivations.
     await http.patch(`/api/admin/projects/${encodeURIComponent(p._id)}`, {
       isActive: willActivate,
-      status: willActivate ? 'Active' : 'Inactive',
     })
     ui.showSuccess(`Project ${willActivate ? 'activated' : 'deactivated'}`)
     await load()

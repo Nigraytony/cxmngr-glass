@@ -1932,6 +1932,41 @@ router.post('/:id/restore', auth, requireObjectIdParam('id'), requirePermission(
   }
 });
 
+// Set a project's operational status (Active/Inactive) from the Project Settings Info tab.
+// PATCH /api/projects/:id/status
+//
+// Deliberately NOT behind requireActiveProject: this is an operational lifecycle label
+// (the one shown in the projects list), independent of billing/subscription. A CxA must be
+// able to flip a project back to Active even when the Stripe gate (isActive) is off, so we
+// leave isActive/Stripe fields untouched here. Archived/Deleted keep their dedicated
+// archive/restore flows (purge scheduling, subscription handling) and are rejected below.
+router.patch('/:id/status', auth, requireObjectIdParam('id'), requirePermission('projects.update', { projectParam: 'id' }), async (req, res) => {
+  try {
+    const allowed = ['Active', 'Inactive']
+    const next = allowed.find(s => s.toLowerCase() === String((req.body && req.body.status) || '').trim().toLowerCase())
+    if (!next) {
+      return res.status(400).send({ error: "status must be 'Active' or 'Inactive'" })
+    }
+
+    const project = await Project.findById(req.params.id)
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+
+    // Archived/Deleted lifecycle is owned by the archive/restore endpoints; don't let this
+    // generic toggle resurrect a project and bypass purge/subscription bookkeeping.
+    const current = String(project.status || '').toLowerCase()
+    if (project.deleted === true || current === 'archived' || current === 'deleted') {
+      return res.status(409).send({ error: 'Use the archive/restore actions to change an archived or deleted project' })
+    }
+
+    project.status = next
+    await project.save()
+    return res.status(200).send(project)
+  } catch (error) {
+    console.error('[projects] set status error', error && (error.stack || error.message || error))
+    return res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update status' })
+  }
+})
+
 // Project logs: append and read
 // GET /api/projects/:id/logs?page=1&limit=50&type=section_created
 function isProjectMember(project, user) {
