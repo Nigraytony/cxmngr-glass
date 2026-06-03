@@ -219,7 +219,12 @@ projectSchema.pre('save', function (next) {
     } catch (e) {
       // ignore normalization errors
     }
-    // Keep deleted + status in sync
+    // Keep deleted + status in sync for the soft-delete lifecycle only.
+    // NOTE: `status` is an operational label, intentionally INDEPENDENT of the
+    // billing gate (`isActive`, driven by Stripe). Do NOT derive status from
+    // isActive here — doing so caused stale "Inactive" labels when webhooks
+    // reactivated isActive but left status untouched. A blank status simply
+    // defaults to 'Active' (matching the schema default).
     try {
       if (this.deleted) {
         this.status = 'Deleted'
@@ -228,7 +233,7 @@ projectSchema.pre('save', function (next) {
         this.deleted = true
         this.isActive = false
       } else if (!this.status) {
-        this.status = this.isActive ? 'Active' : 'Inactive'
+        this.status = 'Active'
       }
     } catch (e) {
       // ignore

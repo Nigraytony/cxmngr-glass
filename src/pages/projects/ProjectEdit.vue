@@ -110,6 +110,55 @@
           />
 
           <!--
+            Project status — operational lifecycle label shown in the projects list.
+            Editable by project admins (CxA) / global admins only. Independent of
+            billing: changing it does NOT grant or revoke paid access. Archived/
+            Deleted projects are managed via the dedicated archive/restore actions.
+          -->
+          <div
+            v-if="canManageTeamRoles"
+            class="mt-6 rounded-xl p-4 bg-white/5 border border-white/10 space-y-3"
+          >
+            <div>
+              <h3 class="text-md font-medium">
+                Project status
+              </h3>
+              <p class="text-xs text-white/60 mt-1">
+                Operational status shown in the projects list. Independent of billing — this does not change paid access or your subscription.
+              </p>
+            </div>
+            <div
+              v-if="isArchivedOrDeleted"
+              class="text-sm text-white/70"
+            >
+              This project is <span class="font-medium text-white/90">{{ project.status }}</span>. Use the archive/restore actions to change it.
+            </div>
+            <div
+              v-else
+              class="flex items-center gap-3"
+            >
+              <select
+                v-model="statusDraft"
+                class="px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+              >
+                <option value="Active">
+                  Active
+                </option>
+                <option value="Inactive">
+                  Inactive
+                </option>
+              </select>
+              <button
+                class="px-4 py-2 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white disabled:opacity-50"
+                :disabled="savingStatus || statusDraft === (project.status || 'Active')"
+                @click="setProjectStatus"
+              >
+                {{ savingStatus ? 'Saving…' : 'Update status' }}
+              </button>
+            </div>
+          </div>
+
+          <!--
             Commissioning Scope & LEED — drives the Final Report's Cx Scope
             of Work boilerplate, the LEED-aware section templates, and the
             "Designation Date" evidence required by LEED v5 FCx.
@@ -4279,6 +4328,38 @@ async function save() {
     ui.showError(msg)
   } finally {
     saving.value = false
+  }
+}
+
+// --- Project status (Info tab) -------------------------------------------------
+// Operational Active/Inactive toggle, gated to project admins (CxA) / global admins
+// via canManageTeamRoles. Persisted through the dedicated, non-billing-gated
+// PATCH /api/projects/:id/status endpoint so it never touches the subscription gate.
+const savingStatus = ref(false)
+const statusDraft = ref('Active')
+const isArchivedOrDeleted = computed(() => {
+  const s = String(project.value?.status || '').toLowerCase()
+  return s === 'archived' || s === 'deleted' || project.value?.deleted === true
+})
+
+// Keep the dropdown in sync with the loaded project's status.
+watch(() => project.value && project.value.status, (s) => {
+  statusDraft.value = String(s || '').toLowerCase() === 'inactive' ? 'Inactive' : 'Active'
+}, { immediate: true })
+
+async function setProjectStatus() {
+  const pid = projectId || (project.value && (project.value._id || project.value.id))
+  if (!pid) return
+  try {
+    savingStatus.value = true
+    const { data } = await http.patch(`/api/projects/${pid}/status`, { status: statusDraft.value })
+    if (data && data.status && project.value) project.value.status = data.status
+    ui.showSuccess('Status updated')
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || 'Failed to update status'
+    ui.showError(msg)
+  } finally {
+    savingStatus.value = false
   }
 }
 
