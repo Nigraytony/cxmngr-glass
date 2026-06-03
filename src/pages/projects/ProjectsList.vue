@@ -582,44 +582,37 @@
           <div class="space-y-4">
             <div>
               <label class="text-white/80 text-sm block mb-2">Choose a plan</label>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label class="cursor-pointer">
+              <div
+                v-if="plans.length"
+                class="grid grid-cols-1 sm:grid-cols-3 gap-3"
+              >
+                <label
+                  v-for="p in plans"
+                  :key="p.key"
+                  class="cursor-pointer"
+                >
                   <input
                     v-model="selectedPlan"
                     type="radio"
                     class="hidden"
-                    value="basic"
+                    :value="p.key"
                   >
-                  <div :class="['p-3 rounded-lg border', selectedPlan === 'basic' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
-                    <div class="text-white font-medium">Basic</div>
-                    <div class="text-white/80 text-sm">$29/mo</div>
-                  </div>
-                </label>
-                <label class="cursor-pointer">
-                  <input
-                    v-model="selectedPlan"
-                    type="radio"
-                    class="hidden"
-                    value="standard"
-                  >
-                  <div :class="['p-3 rounded-lg border', selectedPlan === 'standard' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
-                    <div class="text-white font-medium">Standard</div>
-                    <div class="text-white/80 text-sm">$49/mo</div>
-                  </div>
-                </label>
-                <label class="cursor-pointer">
-                  <input
-                    v-model="selectedPlan"
-                    type="radio"
-                    class="hidden"
-                    value="premium"
-                  >
-                  <div :class="['p-3 rounded-lg border', selectedPlan === 'premium' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
-                    <div class="text-white font-medium">Premium</div>
-                    <div class="text-white/80 text-sm">$79/mo</div>
+                  <div :class="['p-3 rounded-lg border', selectedPlan === p.key ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10']">
+                    <div class="text-white font-medium">
+                      {{ p.name || p.key }}
+                    </div>
+                    <div class="text-white/80 text-sm">
+                      {{ planPrice(p) }}
+                    </div>
                   </div>
                 </label>
               </div>
+              <p
+                v-else
+                class="text-xs text-white/60"
+              >
+                Couldn’t load plans. Enter a Stripe priceId below to continue.
+              </p>
             </div>
             <div>
               <label class="text-white/80 text-sm block mb-1">Or provide a specific Stripe priceId</label>
@@ -795,7 +788,27 @@ const addTab = ref('details') // 'details' | 'subscription'
 const selectedPlan = ref('')
 const priceIdOverride = ref('')
 const submittingAdd = ref(false)
-const chosenPriceId = computed(() => (priceIdOverride.value || PLAN_PRICE_IDS[selectedPlan.value] || ''))
+// Canonical plans come from the backend (GET /api/plans → config/plans.js) so the
+// modal always shows the live prices and priceIds, never stale hardcoded values.
+const plans = ref([])
+async function loadPlans() {
+  if (plans.value.length) return
+  try {
+    const { data } = await http.get('/api/plans')
+    plans.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    plans.value = []
+  }
+}
+// label is like "Standard — $129/mo"; show the price portion after the dash.
+function planPrice(p) {
+  const parts = String((p && p.label) || '').split(/[—–-]/)
+  return (parts.length > 1 ? parts.slice(1).join('-') : '').trim()
+}
+const selectedPlanObj = computed(() => plans.value.find((p) => p && p.key === selectedPlan.value) || null)
+const chosenPriceId = computed(() => (priceIdOverride.value || (selectedPlanObj.value && selectedPlanObj.value.priceId) || ''))
+// Load plans lazily the first time the New Project modal opens.
+watch(showAddModal, (open) => { if (open) loadPlans() })
 const editProject = ref(null)
 const formErrors = ref({})
 const pageSection = ref(null)
@@ -1147,13 +1160,6 @@ async function makeDefault(project) {
 }
 
 function formatDate(d) { if (!d) return '' ; try { return new Date(d).toLocaleDateString() } catch (e) { return d } }
-
-// Plan key to priceId mapping (keep in sync with backend config/plans.js)
-const PLAN_PRICE_IDS = {
-  basic: 'price_1MwoMXHUb4cunvDgueGxHOji',
-  standard: 'price_1MwoOMHUb4cunvDgtbBKXDrN',
-  premium: 'price_1MwoRJHUb4cunvDgehwhilRg',
-}
 
 async function createAndMaybeCheckout() {
   if (submittingAdd.value) return
