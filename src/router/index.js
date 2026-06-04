@@ -35,6 +35,7 @@ const OprItems = () => import('../pages/opr/OprItems.vue')
 // Marketing/public homepage
 const HomePage = () => import('../pages/home/HomePage.vue')
 const Pricing = () => import('../pages/Pricing.vue')
+const Demo = () => import('../pages/Demo.vue')
 const BillingReturn = () => import('../pages/account/BillingReturn.vue')
 
 const routes = [
@@ -45,6 +46,8 @@ const routes = [
   // Public marketing homepage
   { path: '/', name: 'home', component: HomePage, meta: { guestOnly: true } },
   { path: '/pricing', name: 'pricing', component: Pricing, meta: { guestOnly: true } },
+  // Self-serve live demo: auto signs into the shared demo account and enters the app.
+  { path: '/demo', name: 'demo', component: Demo },
   {
     path: '/app',
     component: DashboardLayout,

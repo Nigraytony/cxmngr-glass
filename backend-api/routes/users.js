@@ -17,6 +17,7 @@ const { requireObjectIdParam } = require('../middleware/validate');
 const { auth } = require('../middleware/auth');
 const { parseCookies } = require('../utils/cookies');
 const { signAccessToken, signRefreshToken, verifyRefreshToken, verifyAccessToken } = require('../utils/jwt');
+const { DEMO_USER_EMAIL, seedDemoProject } = require('../utils/demoProject');
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
 const loginLimiter = rateLimit({ windowMs: 60_000, max: 20, keyPrefix: 'login' })
@@ -291,6 +292,35 @@ router.post('/login', loginLimiter, async (req, res) => {
       code: 'LOGIN_FAILED',
       step,
     });
+  }
+});
+
+// Public sign-in for the shared self-serve demo account. Issues tokens for the
+// designated demo user only (no password required) and lazily seeds the demo
+// project on first use. See utils/demoProject.js and routes/demo.js.
+router.post('/demo-login', loginLimiter, async (req, res) => {
+  try {
+    let user = await User.findOne({ email: DEMO_USER_EMAIL });
+    if (!user) {
+      // First-ever demo login: build the demo user + project on the fly.
+      try { await seedDemoProject(); } catch (e) { console.error('[users.demo-login] seed failed', e && (e.message || e)); }
+      user = await User.findOne({ email: DEMO_USER_EMAIL });
+    }
+    if (!user) return res.status(503).send({ error: 'Demo not available' });
+
+    const userDoc = user.toObject({ getters: true });
+    const refreshId = newRefreshId();
+    addRefreshSession(user, refreshId, req.get('User-Agent'));
+    await user.save();
+    const accessToken = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 });
+    const refreshToken = signRefreshToken({ userId: user._id, refreshId });
+    setRefreshCookie(res, refreshToken);
+    delete userDoc.password;
+    const hydrated = await hydrateUserProjects(userDoc);
+    return res.send({ user: hydrated, accessToken });
+  } catch (error) {
+    console.error('[users.demo-login] error', error && (error.message || error));
+    return res.status(500).send({ error: 'Demo login failed' });
   }
 });
 

@@ -236,6 +236,26 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Sign into the shared self-serve demo account (no credentials needed).
+  async function demoLogin() {
+    error.value = null;
+    try {
+      const res = await api.post('/api/users/demo-login', {});
+      const data = res.data || {};
+      if (!data.user || !data.accessToken) throw new Error('Invalid demo login response');
+      setAccessToken(String(data.accessToken));
+      user.value = data.user as User;
+      markActivity();
+      hideSessionWarning();
+      syncDefaultProject(user.value);
+      return true;
+    } catch (e: any) {
+      error.value = e?.response?.data?.error || e?.response?.data?.message || 'Demo unavailable';
+      clearSession();
+      return false;
+    }
+  }
+
   async function refresh() {
     error.value = null;
     try {
@@ -423,6 +443,7 @@ export const useAuthStore = defineStore('auth', () => {
     setAccessToken,
     clearSession,
     login,
+    demoLogin,
     refresh,
     fetchMe,
     logout,
