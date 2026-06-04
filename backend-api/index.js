@@ -44,6 +44,7 @@ const rolesAdminRoutes = require('./routes/roles_admin');
 const billingRoutes = require('./routes/billing');
 const webhookRoutes = require('./routes/webhooks');
 const plansRoutes = require('./routes/plans');
+const demoRoutes = require('./routes/demo');
 const aiRoutes = require('./routes/ai');
 const assistantRoutes = require('./routes/assistant');
 const agentRoutes = require('./routes/agent');
@@ -276,6 +277,8 @@ app.use('/api/stripe', billingRoutes);
 app.use('/api/stripe', webhookRoutes);
 // Public plans endpoint
 app.use('/api/plans', plansRoutes);
+// Self-serve demo (reset endpoint; sign-in is POST /api/users/demo-login)
+app.use('/api/demo', demoRoutes);
 // AI endpoints (plan-gated per project)
 app.use('/api/ai', aiRoutes);
 // Assistant endpoints (project-scoped; AI gated separately)
