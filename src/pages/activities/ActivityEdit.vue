@@ -2124,8 +2124,13 @@
     </Modal>
 
     <!-- Create Issue Modal -->
-    <!-- Action editor -->
-    <Modal v-model="actionModalOpen">
+    <!-- Action editor: cap height to the viewport and scroll the body so the
+         tall editor (details + photos + documents + issues) never runs off-screen. -->
+    <Modal
+      v-model="actionModalOpen"
+      panel-class="max-w-2xl max-h-[90vh] flex flex-col"
+      main-class="overflow-y-auto min-h-0 flex-1"
+    >
       <template #header>
         <div class="font-medium">
           {{ editingActionId ? 'Edit action' : 'Add action' }}
