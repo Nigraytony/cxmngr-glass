@@ -51,7 +51,7 @@ async function cascadeProject(projectId) {
 
   // Models that declare projectId as ObjectId.
   const objectIdScoped = [
-    'Activity', 'AssistantChatMessage', 'AssistantChecklist', 'DocFile', 'DocFolder',
+    'Action', 'Activity', 'AssistantChatMessage', 'AssistantChecklist', 'DocFile', 'DocFolder',
     'Equipment', 'FinalReport', 'Invitation', 'Issue',
     'OprAnswer', 'OprCategory', 'OprItem', 'OprLinkEvaluation', 'OprParticipant',
     'OprQuestion', 'OprVote', 'OprWorkshop', 'OprWorkshopAttendee',

@@ -721,6 +721,7 @@
                 <span class="px-2 py-0.5 rounded-full bg-white/10">Comments: {{ countField(a, 'comments') }}</span>
                 <span class="px-2 py-0.5 rounded-full bg-white/10">Attachments: {{ countField(a, 'attachments') }}</span>
                 <span class="px-2 py-0.5 rounded-full bg-white/10">Equipment: {{ countField(a, 'equipment') }}</span>
+                <span class="px-2 py-0.5 rounded-full bg-white/10">Actions: {{ a.actionsCount || 0 }}<template v-if="a.actionsCount"> ({{ a.actionsCompleteCount || 0 }} done)</template></span>
               </div>
             </div>
           </RouterLink>
@@ -766,6 +767,7 @@
                     <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Comments: {{ countField(a, 'comments') }}</span>
                     <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Attachments: {{ countField(a, 'attachments') }}</span>
                     <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Equipment: {{ countField(a, 'equipment') }}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-white/10 text-white/80">Actions: {{ a.actionsCount || 0 }}<template v-if="a.actionsCount"> ({{ a.actionsCompleteCount || 0 }} done)</template></span>
                   </div>
                 </div>
               </RouterLink>
