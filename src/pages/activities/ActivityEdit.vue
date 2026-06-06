@@ -906,6 +906,14 @@
                     </td>
                     <td class="py-2 px-3 text-right whitespace-nowrap">
                       <button
+                        class="text-white/60 hover:text-white px-2 disabled:opacity-50"
+                        :disabled="actionsBusy"
+                        title="Create a new issue linked to this action"
+                        @click="createIssueForAction(a)"
+                      >
+                        New issue
+                      </button>
+                      <button
                         class="text-white/60 hover:text-white px-2"
                         @click="openActionEditor(a)"
                       >
@@ -2289,13 +2297,6 @@
               <h4 class="text-sm font-medium text-white/80">
                 Linked issues
               </h4>
-              <button
-                class="text-sm px-2 py-1 rounded bg-white/10 hover:bg-white/15 text-white border border-white/10 disabled:opacity-50"
-                :disabled="actionsBusy"
-                @click="createIssueForAction"
-              >
-                + Create issue
-              </button>
             </div>
             <!-- Link an existing project issue -->
             <div class="relative mb-2">
@@ -5653,33 +5654,36 @@ async function addOnePerTemplate() {
   }
 }
 
-async function createIssueForAction() {
-  if (!editingActionId.value) return
+// Create a new issue linked to an action (triggered from the action row's
+// "New issue" button), prefilled from the action, then open the new issue.
+async function createIssueForAction(a: any) {
+  const action = a && a._id ? a : null
+  if (!action) return
   const pid = azureProjectId.value
   actionsBusy.value = true
   try {
-    const d = actionDraft.value
     const issue: any = await issuesStore.createIssue({
       projectId: pid,
-      title: d.title ? `${d.title} issue` : 'Action issue',
-      description: `Created from action: ${d.title || ''}`.trim(),
+      title: action.title ? `${action.title} issue` : 'Action issue',
+      description: `Created from action: ${action.title || ''}`.trim(),
       activityId: id.value,
       type: 'Activity',
-      location: d.location || form.location || undefined,
-      foundBy: d.performedBy || undefined,
-      dateFound: d.date || undefined,
+      location: action.location || form.location || undefined,
+      foundBy: action.performedBy || undefined,
+      dateFound: action.date || undefined,
     } as any)
     const newId = String(issue.id || issue._id || '')
     if (newId) {
-      const cur = actions.value.find((x: any) => String(x._id) === editingActionId.value)
-      const existing = cur && Array.isArray(cur.issues) ? cur.issues.map((x: any) => String(x)) : []
+      const existing = Array.isArray(action.issues) ? action.issues.map((x: any) => String(x)) : []
       const next = Array.from(new Set([...existing, newId]))
-      const updated = await actionsStore.update(editingActionId.value, { issues: next })
-      const i = actions.value.findIndex((x: any) => String(x._id) === editingActionId.value)
+      const updated = await actionsStore.update(String(action._id), { issues: next })
+      const i = actions.value.findIndex((x: any) => String(x._id) === String(action._id))
       if (i >= 0) actions.value.splice(i, 1, updated)
-      actionIssues.value = [...actionIssues.value, issue]
+      // If this action is open in the editor, reflect the new link there too.
+      if (editingActionId.value === String(action._id)) actionIssues.value = [...actionIssues.value, issue]
+      ui.showSuccess('Issue created')
+      router.push(`/app/issues/${newId}`)
     }
-    ui.showSuccess('Issue created and linked')
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to create issue')
   } finally {
