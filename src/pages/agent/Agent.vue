@@ -239,7 +239,7 @@
           <input
             ref="fileInputEl"
             type="file"
-            accept="application/pdf,.pdf"
+            accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.docx,.xlsx,.xls,.csv,.txt,.md,.json,.log,.tsv,application/pdf,image/*"
             multiple
             class="hidden"
             @change="onFileChange"
@@ -248,7 +248,7 @@
             type="button"
             :disabled="agent.sending || aiStatus !== 'ready' || attachedFiles.length >= MAX_FILES"
             class="shrink-0 w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-            title="Attach PDF drawings (max 3, 10 MB each)"
+            title="Attach files — PDF, images, Word, Excel, CSV, text (max 3, 10 MB each)"
             @click="fileInputEl?.click()"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -259,7 +259,7 @@
             ref="inputEl"
             v-model="draft"
             rows="2"
-            :placeholder="attachedFiles.length ? 'Tell me what to build from these drawings (or press Send to analyse)…' : 'Ask me anything about this project…'"
+            :placeholder="attachedFiles.length ? 'Tell me what to do with these files (or press Send to analyse)…' : 'Ask me anything about this project…'"
             :disabled="agent.sending || aiStatus !== 'ready'"
             class="flex-1 resize-none rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/25
                    text-sm px-4 py-3 focus:outline-none focus:border-white/25 focus:bg-white/8 transition
@@ -282,7 +282,7 @@
             </svg>
           </button>
         </form>
-        <p class="text-white/25 text-[11px] mt-1.5 px-1">Enter to send · Shift+Enter for new line · Attach PDFs to build from drawings</p>
+        <p class="text-white/25 text-[11px] mt-1.5 px-1">Enter to send · Shift+Enter for new line · Attach PDFs, images, Word, Excel, CSV or text</p>
       </div>
     </template>
 
@@ -312,6 +312,7 @@ const unavailableReason = ref('')
 
 const MAX_FILES = 3
 const MAX_FILE_BYTES = 10 * 1024 * 1024
+const ACCEPTED_FILE_RE = /\.(pdf|png|jpe?g|gif|webp|docx|xlsx|xls|csv|txt|md|json|log|tsv)$/i
 
 const currentProjectId = computed(() =>
   projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || ''
@@ -391,8 +392,10 @@ function onFileChange(e) {
   e.target.value = '' // allow re-selecting the same file
   attachError.value = ''
   for (const f of picked) {
-    if (attachedFiles.value.length >= MAX_FILES) { attachError.value = `Max ${MAX_FILES} PDFs per message.`; break }
-    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { attachError.value = `${f.name} is not a PDF.`; continue }
+    if (attachedFiles.value.length >= MAX_FILES) { attachError.value = `Max ${MAX_FILES} files per message.`; break }
+    if (!ACCEPTED_FILE_RE.test(f.name) && !/^image\//.test(f.type) && f.type !== 'application/pdf') {
+      attachError.value = `${f.name} is not a supported type (PDF, image, Word, Excel, CSV, or text).`; continue
+    }
     if (f.size > MAX_FILE_BYTES) { attachError.value = `${f.name} exceeds 10 MB.`; continue }
     attachedFiles.value.push(f)
   }
