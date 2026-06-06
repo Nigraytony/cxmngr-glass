@@ -1034,6 +1034,46 @@ router.get('/:id/report', auth, requireObjectIdParam('id'), loadActivityProjectI
       doc.fontSize(10).text(`- ${iss.title || iss._id}`);
     }
 
+    // Actions (sub-records of work performed under this activity)
+    const actions = await Action.find({ activityId: req.params.id }).sort({ createdAt: 1 }).lean();
+    if (actions.length) {
+      // Resolve linked-issue titles for display.
+      const allIssueIds = [...new Set(actions.flatMap(a => (Array.isArray(a.issues) ? a.issues : []).map(String)))];
+      let issueMap = {};
+      if (allIssueIds.length) {
+        const issDocs = await Issue.find({ _id: { $in: allIssueIds } }).select('title number').lean();
+        issueMap = Object.fromEntries(issDocs.map(d => [String(d._id), d]));
+      }
+
+      doc.addPage();
+      doc.fontSize(12).fillColor('black').text('Actions', { underline: true });
+      const complete = actions.filter(a => a.status === 'Complete').length;
+      doc.moveDown(0.2);
+      doc.fontSize(9).fillColor('#555').text(`${complete}/${actions.length} complete`);
+      doc.moveDown(0.3);
+
+      for (const a of actions) {
+        doc.fillColor('black').fontSize(11).text(a.title || '(untitled action)');
+        const meta = [
+          a.type ? `Type: ${a.type}` : '',
+          a.status ? `Status: ${a.status}` : '',
+          a.date ? `Date: ${a.date}` : '',
+          a.performedBy ? `By: ${a.performedBy}` : '',
+          a.location ? `Location: ${a.location}` : '',
+        ].filter(Boolean).join('   |   ');
+        if (meta) doc.fontSize(9).fillColor('#555').text(meta);
+        if (a.notes) doc.fillColor('black').fontSize(9).text(String(a.notes));
+        const linked = (Array.isArray(a.issues) ? a.issues : []).map(id => issueMap[String(id)]).filter(Boolean);
+        if (linked.length) {
+          doc.fillColor('#555').fontSize(9).text('Linked issues:');
+          for (const li of linked) {
+            doc.text(`   - ${li.number != null ? '#' + li.number + ' ' : ''}${li.title || ''}`);
+          }
+        }
+        doc.fillColor('black').moveDown(0.4);
+      }
+    }
+
     doc.end();
   } catch (error) {
     console.error('[activities] report error', error);
