@@ -82,7 +82,7 @@
           <div
             v-if="menuOpen"
             :style="dropdownStyle"
-            class="w-72 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999]"
+            class="w-72 rounded-lg p-2 bg-white/6 backdrop-blur-md border border-white/10 shadow-lg text-white z-[9999] overflow-y-auto overflow-x-hidden"
           >
             <ul class="flex flex-col gap-1">
               <li
@@ -338,7 +338,7 @@ const defaultProjectName = computed(() => {
 
 const menuOpen = ref(false)
 const userWrap = ref(null)
-const dropdownStyle = ref({ position: 'fixed', top: '3rem', left: 'auto', right: '1rem' })
+const dropdownStyle = ref({ position: 'fixed', top: '3rem', left: 'auto', right: '1rem', maxHeight: 'calc(100vh - 4rem)' })
 const projectAccessNotice = ref(null)
 
 // Logos from current project
@@ -377,7 +377,10 @@ function updateDropdownPosition() {
   // position dropdown below the button, align right edge
   const top = rect.bottom + 8
   const right = window.innerWidth - rect.right
-  dropdownStyle.value = { position: 'fixed', top: `${top}px`, right: `${right}px` }
+  // Cap height to the remaining viewport so a long project list scrolls inside
+  // the menu instead of running off-screen (Logout was getting cut off).
+  const maxHeight = `calc(100vh - ${Math.round(top + 12)}px)`
+  dropdownStyle.value = { position: 'fixed', top: `${top}px`, right: `${right}px`, maxHeight }
 }
 
 function onWindowChange() {
