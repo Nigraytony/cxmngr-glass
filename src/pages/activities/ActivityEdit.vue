@@ -798,6 +798,132 @@
           </div>
 
           <!-- Photos Tab -->
+          <!-- Actions Tab: sub-records of work under this activity -->
+          <div
+            v-else-if="currentTab === 'Actions'"
+            class="space-y-3"
+          >
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <div class="text-white/80">
+                Sub-records of work under this activity
+                <span
+                  v-if="actions.length"
+                  class="text-white/50 text-sm ml-2"
+                >{{ actionsCompleteCount }}/{{ actions.length }} complete</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="!isNew"
+                  class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm border border-white/10"
+                  @click="openActionEditor()"
+                >
+                  + Add action
+                </button>
+                <button
+                  v-if="!isNew && actionTemplates.length"
+                  class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm border border-white/10 disabled:opacity-50"
+                  :disabled="actionsBusy"
+                  title="Create one Submittal action per equipment template"
+                  @click="addOnePerTemplate"
+                >
+                  One per template
+                </button>
+              </div>
+            </div>
+
+            <p
+              v-if="isNew"
+              class="text-sm text-white/60"
+            >
+              Save the activity first, then you can add actions.
+            </p>
+            <div
+              v-else-if="actionsLoading"
+              class="text-white/60 text-sm"
+            >
+              Loading actions…
+            </div>
+            <div
+              v-else-if="!actions.length"
+              class="text-white/60 text-sm rounded-lg border border-white/10 bg-white/5 p-4"
+            >
+              No actions yet. Track submittals, meetings, reviews, checklist verifications, training and as-built reviews — each with its own date, person, status, photos, documents, and issues.
+            </div>
+            <div
+              v-else
+              class="overflow-x-auto rounded-lg border border-white/10"
+            >
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="text-white/60 text-left bg-white/5">
+                    <th class="py-2 px-3">
+                      Title
+                    </th>
+                    <th class="py-2 px-3">
+                      Type
+                    </th>
+                    <th class="py-2 px-3">
+                      Date
+                    </th>
+                    <th class="py-2 px-3">
+                      Person
+                    </th>
+                    <th class="py-2 px-3">
+                      Status
+                    </th>
+                    <th class="py-2 px-3">
+                      Issues
+                    </th>
+                    <th class="py-2 px-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="a in actions"
+                    :key="a._id"
+                    class="border-t border-white/5 hover:bg-white/5"
+                  >
+                    <td
+                      class="py-2 px-3 text-white/90 cursor-pointer"
+                      @click="openActionEditor(a)"
+                    >
+                      {{ a.title }}
+                    </td>
+                    <td class="py-2 px-3 text-white/70">
+                      {{ a.type }}
+                    </td>
+                    <td class="py-2 px-3 text-white/70">
+                      {{ a.date || '—' }}
+                    </td>
+                    <td class="py-2 px-3 text-white/70">
+                      {{ a.performedBy || '—' }}
+                    </td>
+                    <td class="py-2 px-3">
+                      <span :class="['text-xs px-2 py-0.5 rounded-full', actionStatusClass(a.status)]">{{ a.status }}</span>
+                    </td>
+                    <td class="py-2 px-3 text-white/70">
+                      {{ (a.issues || []).length }}
+                    </td>
+                    <td class="py-2 px-3 text-right whitespace-nowrap">
+                      <button
+                        class="text-white/60 hover:text-white px-2"
+                        @click="openActionEditor(a)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        class="text-red-300 hover:text-red-200 px-2"
+                        @click="deleteAction(a)"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div v-else-if="currentTab === 'Photos'">
             <AzurePhotosPanel
               :project-id="azureProjectId"
@@ -1998,6 +2124,184 @@
     </Modal>
 
     <!-- Create Issue Modal -->
+    <!-- Action editor -->
+    <Modal v-model="actionModalOpen">
+      <template #header>
+        <div class="font-medium">
+          {{ editingActionId ? 'Edit action' : 'Add action' }}
+        </div>
+      </template>
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="md:col-span-2">
+            <label class="block text-sm text-white/70">Title</label>
+            <input
+              v-model="actionDraft.title"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+              placeholder="e.g. AHU-1 submittal review"
+            >
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Type</label>
+            <select
+              v-model="actionDraft.type"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            >
+              <option
+                v-for="t in ACTION_TYPES"
+                :key="t"
+                :value="t"
+              >
+                {{ t }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Status</label>
+            <select
+              v-model="actionDraft.status"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            >
+              <option
+                v-for="s in ACTION_STATUSES"
+                :key="s"
+                :value="s"
+              >
+                {{ s }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Date</label>
+            <input
+              v-model="actionDraft.date"
+              type="date"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            >
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Performed / reviewed by</label>
+            <input
+              v-model="actionDraft.performedBy"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+              placeholder="Name or team"
+            >
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Location</label>
+            <input
+              v-model="actionDraft.location"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            >
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Equipment</label>
+            <select
+              v-model="actionDraft.equipmentId"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            >
+              <option :value="null">
+                —
+              </option>
+              <option
+                v-for="e in equipmentInProject"
+                :key="String(e.id || e._id)"
+                :value="String(e.id || e._id)"
+              >
+                {{ e.tag }}{{ e.title ? ' — ' + e.title : '' }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm text-white/70">Template</label>
+            <select
+              v-model="actionDraft.templateId"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            >
+              <option :value="null">
+                —
+              </option>
+              <option
+                v-for="t in actionTemplates"
+                :key="String(t.id || t._id)"
+                :value="String(t.id || t._id)"
+              >
+                {{ t.title || t.name }}
+              </option>
+            </select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm text-white/70">Notes</label>
+            <textarea
+              v-model="actionDraft.notes"
+              rows="3"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90"
+            />
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button
+            class="px-4 py-2 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white disabled:opacity-50"
+            :disabled="actionsBusy || !actionDraft.title.trim()"
+            @click="saveAction"
+          >
+            {{ actionsBusy ? 'Saving…' : (editingActionId ? 'Save' : 'Create') }}
+          </button>
+        </div>
+
+        <!-- Photos / Documents / Issues: available once the action exists -->
+        <div
+          v-if="editingActionId"
+          class="space-y-4 border-t border-white/10 pt-4"
+        >
+          <div>
+            <h4 class="text-sm font-medium text-white/80 mb-2">
+              Photos
+            </h4>
+            <AzurePhotosPanel
+              :project-id="azureProjectId"
+              entity-type="Action"
+              :entity-id="editingActionId"
+              :max-count="16"
+              :max-bytes="256 * 1024"
+              :concurrency="3"
+            />
+          </div>
+          <div>
+            <h4 class="text-sm font-medium text-white/80 mb-2">
+              Documents
+            </h4>
+            <AzureAttachmentsPanel
+              :project-id="azureProjectId"
+              entity-type="Action"
+              :entity-id="editingActionId"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,image/*,application/zip"
+            />
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-sm font-medium text-white/80">
+                Linked issues
+              </h4>
+              <button
+                class="text-sm px-2 py-1 rounded bg-white/10 hover:bg-white/15 text-white border border-white/10 disabled:opacity-50"
+                :disabled="actionsBusy"
+                @click="createIssueForAction"
+              >
+                + Create issue
+              </button>
+            </div>
+            <IssuesTable
+              :issues="actionIssues"
+              :show-unlink="true"
+              @unlink="unlinkActionIssue"
+            />
+          </div>
+        </div>
+      </div>
+    </Modal>
+
     <Modal v-model="showIssueModal">
       <template #header>
         <div class="text-lg font-semibold">
@@ -2267,6 +2571,8 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import IssuesTable from '../../components/IssuesTable.vue'
 import IssueForm from '../../components/IssueForm.vue'
 import { useIssuesStore } from '../../stores/issues'
+import { useActionsStore } from '../../stores/actions'
+import { useTemplatesStore } from '../../stores/templates'
 import { useEquipmentStore } from '../../stores/equipment'
   import { useSpacesStore } from '../../stores/spaces'
 import Spinner from '../../components/Spinner.vue'
@@ -3255,6 +3561,16 @@ watch(() => currentTab.value, async (tab) => {
   }
   if (tab === 'Equipment' && !equipmentLoaded.value && pid) {
     try { await Promise.all([ equipmentStore.fetchByProject(pid), spacesStore.fetchByProject(pid) ]); equipmentLoaded.value = true } catch (e) { /* ignore */ }
+  }
+  if (tab === 'Actions' && pid) {
+    try {
+      await Promise.all([
+        loadActions(),
+        equipmentLoaded.value ? Promise.resolve() : equipmentStore.fetchByProject(pid),
+        actionTemplatesLoaded.value ? Promise.resolve() : templatesStore.fetchByProject(pid).then(() => { actionTemplatesLoaded.value = true }),
+      ])
+      equipmentLoaded.value = true
+    } catch (e) { /* ignore */ }
   }
   if (tab === 'Logs' && !logsLoaded.value) {
     try { await loadLogs(); logsLoaded.value = true } catch (e) { /* ignore */ }
@@ -4659,7 +4975,7 @@ async function downloadActivityPdf() {
 }
 
 // Tabs logic
-const tabs = ['Info', 'Photos', 'Issues', 'OPR', 'Comments', 'Attachments', 'Equipment', 'Logs']
+const tabs = ['Info', 'Actions', 'Photos', 'Issues', 'OPR', 'Comments', 'Attachments', 'Equipment', 'Logs']
 const activeIndex = computed(() => {
   const i = tabs.indexOf(currentTab.value)
   return i >= 0 ? i : 0
@@ -5155,6 +5471,187 @@ function openIssueModal() {
   showIssueModal.value = true
 }
 function closeIssueModal() { showIssueModal.value = false }
+
+// --- Actions: sub-records of work under this activity --------------------------
+const actionsStore = useActionsStore()
+const templatesStore = useTemplatesStore()
+const ACTION_TYPES = ['Submittal', 'Meeting', 'Review', 'Checklist Verification', 'Training Review', 'As-Built Review', 'Other']
+const ACTION_STATUSES = ['Not Started', 'In Progress', 'Complete']
+
+const actions = ref<any[]>([])
+const actionsLoading = ref(false)
+const actionsBusy = ref(false)
+const actionModalOpen = ref(false)
+const editingActionId = ref('')
+const actionIssues = ref<any[]>([])
+const actionTemplatesLoaded = ref(false)
+const actionDraft = ref<any>({ title: '', type: 'Other', status: 'Not Started', date: '', performedBy: '', location: '', equipmentId: null, templateId: null, notes: '' })
+
+const actionsCompleteCount = computed(() => actions.value.filter((a: any) => a && a.status === 'Complete').length)
+const actionTemplates = computed<any[]>(() => Array.isArray(templatesStore.items) ? templatesStore.items : [])
+
+function actionStatusClass(s: string) {
+  const v = String(s || '')
+  if (v === 'Complete') return 'bg-emerald-500/20 text-emerald-200'
+  if (v === 'In Progress') return 'bg-yellow-500/20 text-yellow-100'
+  return 'bg-white/10 text-white/70'
+}
+
+async function loadActions() {
+  const aid = id.value
+  if (!aid || aid === 'new') { actions.value = []; return }
+  actionsLoading.value = true
+  try {
+    actions.value = await actionsStore.list(aid, azureProjectId.value)
+  } catch (e) {
+    actions.value = []
+  } finally {
+    actionsLoading.value = false
+  }
+}
+
+async function loadActionIssues(a: any) {
+  const ids = Array.isArray(a && a.issues) ? a.issues.map((x: any) => String(x && (x._id || x.id || x))).filter(Boolean) : []
+  if (!ids.length) { actionIssues.value = []; return }
+  try {
+    const results = await Promise.all(ids.map((iid: string) => issuesStore.fetchIssue(iid).catch(() => null)))
+    actionIssues.value = results.filter(Boolean)
+  } catch (e) {
+    actionIssues.value = []
+  }
+}
+
+function openActionEditor(a?: any) {
+  if (a && a._id) {
+    editingActionId.value = String(a._id)
+    actionDraft.value = {
+      title: a.title || '', type: a.type || 'Other', status: a.status || 'Not Started',
+      date: a.date || '', performedBy: a.performedBy || '', location: a.location || '',
+      equipmentId: a.equipmentId ? String(a.equipmentId) : null,
+      templateId: a.templateId ? String(a.templateId) : null,
+      notes: a.notes || '',
+    }
+    loadActionIssues(a)
+  } else {
+    editingActionId.value = ''
+    actionDraft.value = { title: '', type: 'Other', status: 'Not Started', date: '', performedBy: '', location: form.location || '', equipmentId: null, templateId: null, notes: '' }
+    actionIssues.value = []
+  }
+  actionModalOpen.value = true
+}
+
+async function saveAction() {
+  const title = String(actionDraft.value.title || '').trim()
+  if (!title) return
+  const pid = azureProjectId.value
+  const aid = id.value
+  if (!pid || !aid || aid === 'new') { ui.showError('Save the activity first'); return }
+  actionsBusy.value = true
+  try {
+    const payload: any = { ...actionDraft.value, title }
+    if (editingActionId.value) {
+      const updated = await actionsStore.update(editingActionId.value, payload)
+      const i = actions.value.findIndex((x: any) => String(x._id) === editingActionId.value)
+      if (i >= 0) actions.value.splice(i, 1, updated)
+    } else {
+      const created = await actionsStore.create({ ...payload, projectId: pid, activityId: aid })
+      actions.value.push(created)
+      // Keep the modal open in edit mode so Photos/Documents/Issues become available.
+      editingActionId.value = String(created._id)
+      actionIssues.value = []
+    }
+    ui.showSuccess('Action saved')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to save action')
+  } finally {
+    actionsBusy.value = false
+  }
+}
+
+async function deleteAction(a: any) {
+  const ok = await inlineConfirm({ title: 'Delete action', message: `Delete "${a.title || 'this action'}"? Linked issues are not deleted.`, confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' })
+  if (!ok) return
+  try {
+    await actionsStore.remove(String(a._id))
+    actions.value = actions.value.filter((x: any) => String(x._id) !== String(a._id))
+    if (editingActionId.value === String(a._id)) actionModalOpen.value = false
+  } catch (e) {
+    ui.showError('Failed to delete action')
+  }
+}
+
+async function addOnePerTemplate() {
+  const tpls = actionTemplates.value || []
+  const pid = azureProjectId.value
+  const aid = id.value
+  if (!tpls.length || !pid || aid === 'new') return
+  actionsBusy.value = true
+  try {
+    for (const t of tpls) {
+      const created = await actionsStore.create({
+        projectId: pid, activityId: aid, type: 'Submittal', status: 'Not Started',
+        title: `${t.title || t.name || 'Template'} submittal`,
+        templateId: String(t.id || t._id),
+      })
+      actions.value.push(created)
+    }
+    ui.showSuccess(`Added ${tpls.length} submittal action${tpls.length === 1 ? '' : 's'}`)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || 'Failed to add actions')
+  } finally {
+    actionsBusy.value = false
+  }
+}
+
+async function createIssueForAction() {
+  if (!editingActionId.value) return
+  const pid = azureProjectId.value
+  actionsBusy.value = true
+  try {
+    const d = actionDraft.value
+    const issue: any = await issuesStore.createIssue({
+      projectId: pid,
+      title: d.title ? `${d.title} issue` : 'Action issue',
+      description: `Created from action: ${d.title || ''}`.trim(),
+      activityId: id.value,
+      type: 'Activity',
+      location: d.location || form.location || undefined,
+      foundBy: d.performedBy || undefined,
+      dateFound: d.date || undefined,
+    } as any)
+    const newId = String(issue.id || issue._id || '')
+    if (newId) {
+      const cur = actions.value.find((x: any) => String(x._id) === editingActionId.value)
+      const existing = cur && Array.isArray(cur.issues) ? cur.issues.map((x: any) => String(x)) : []
+      const next = Array.from(new Set([...existing, newId]))
+      const updated = await actionsStore.update(editingActionId.value, { issues: next })
+      const i = actions.value.findIndex((x: any) => String(x._id) === editingActionId.value)
+      if (i >= 0) actions.value.splice(i, 1, updated)
+      actionIssues.value = [...actionIssues.value, issue]
+    }
+    ui.showSuccess('Issue created and linked')
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to create issue')
+  } finally {
+    actionsBusy.value = false
+  }
+}
+
+async function unlinkActionIssue(issue: any) {
+  if (!editingActionId.value) return
+  const rid = String(issue.id || issue._id || '')
+  try {
+    const cur = actions.value.find((x: any) => String(x._id) === editingActionId.value)
+    const existing = cur && Array.isArray(cur.issues) ? cur.issues.map((x: any) => String(x)) : []
+    const next = existing.filter((x: string) => x !== rid)
+    const updated = await actionsStore.update(editingActionId.value, { issues: next })
+    const i = actions.value.findIndex((x: any) => String(x._id) === editingActionId.value)
+    if (i >= 0) actions.value.splice(i, 1, updated)
+    actionIssues.value = actionIssues.value.filter((x: any) => String(x.id || x._id) !== rid)
+  } catch (e) {
+    ui.showError('Failed to unlink issue')
+  }
+}
 
 function maybeNumber(v: any): number | null {
   const n = Number(v)

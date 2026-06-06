@@ -13,6 +13,7 @@ const path = require('path');
 const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
 const Issue = require('../models/issue');
+const Action = require('../models/action');
 const OprItem = require('../models/oprItem')
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
@@ -307,6 +308,8 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
     const activities = await Activity.aggregate([
       { $match: visibilityMatch },
       { $sort: { createdAt: -1 } },
+      // Pull this activity's sub-records (Actions) to surface counts on the card.
+      { $lookup: { from: 'actions', localField: '_id', foreignField: 'activityId', as: '_actions' } },
       {
         $project: {
           name: 1,
@@ -331,6 +334,16 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
           commentsCount: { $size: { $ifNull: ['$comments', []] } },
           attachmentsCount: { $size: { $ifNull: ['$attachments', []] } },
           equipmentCount: { $size: { $ifNull: ['$systems', []] } },
+          actionsCount: { $size: { $ifNull: ['$_actions', []] } },
+          actionsCompleteCount: {
+            $size: {
+              $filter: {
+                input: { $ifNull: ['$_actions', []] },
+                as: 'a',
+                cond: { $eq: ['$$a.status', 'Complete'] },
+              },
+            },
+          },
         }
       }
     ])
@@ -893,6 +906,10 @@ router.delete('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, r
     await runMiddleware(req, res, requireActiveProject);
 
     await Activity.findByIdAndDelete(req.params.id);
+
+    // Remove the activity's sub-records (Actions). Azure media blobs for those
+    // actions are left in place (best-effort; cheap to ignore for v1).
+    try { await Action.deleteMany({ activityId: req.params.id }) } catch (_) {}
 
     // Remove activity from the corresponding project
     try {
