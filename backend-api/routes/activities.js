@@ -14,6 +14,7 @@ const sanitizeHtml = require('sanitize-html');
 const mongoose = require('mongoose');
 const Issue = require('../models/issue');
 const Action = require('../models/action');
+const { deleteEntityMedia } = require('../utils/entityMedia');
 const OprItem = require('../models/oprItem')
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireNotDisabled } = require('../middleware/killSwitch');
@@ -907,9 +908,16 @@ router.delete('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, r
 
     await Activity.findByIdAndDelete(req.params.id);
 
-    // Remove the activity's sub-records (Actions). Azure media blobs for those
-    // actions are left in place (best-effort; cheap to ignore for v1).
-    try { await Action.deleteMany({ activityId: req.params.id }) } catch (_) {}
+    // Remove the activity's sub-records (Actions) and clean up media blobs for
+    // each action plus the activity itself (best-effort; never blocks delete).
+    try {
+      const childActions = await Action.find({ activityId: req.params.id }).select('_id').lean()
+      for (const a of childActions) {
+        await deleteEntityMedia(activity.projectId, 'Action', a._id)
+      }
+      await Action.deleteMany({ activityId: req.params.id })
+      await deleteEntityMedia(activity.projectId, 'Activity', req.params.id)
+    } catch (_) {}
 
     // Remove activity from the corresponding project
     try {
