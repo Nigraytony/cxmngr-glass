@@ -5131,6 +5131,16 @@ async function onUnlinkIssue(issue: any) {
   }
 }
 
+// form.systems actually holds reviewed-equipment IDs (see normalizeSelectedEquipmentTokens).
+// An Issue's `system` field is a free-text system NAME, so resolve the first reviewed
+// equipment to its system name rather than leaking a raw ObjectId into the field.
+function defaultIssueSystemName(): string {
+  const token = (Array.isArray(form.systems) && form.systems[0]) ? String(form.systems[0]).trim() : ''
+  if (!token) return ''
+  const eq = equipmentInProject.value.find(e => String(e?.id || e?._id || '').trim() === token)
+  return eq && eq.system ? String(eq.system) : ''
+}
+
 function openIssueModal() {
   const name = (form.name || '').trim()
   activityIssueDraft.value.title = name ? `${name} issue` : 'Activity issue'
@@ -5141,7 +5151,7 @@ function openIssueModal() {
   activityIssueDraft.value.description = descParts.join('\n') || 'Issue for this activity'
   activityIssueDraft.value.type = 'Activity'
   activityIssueDraft.value.location = form.location || ''
-  activityIssueDraft.value.system = (Array.isArray(form.systems) && form.systems[0]) ? form.systems[0] : ''
+  activityIssueDraft.value.system = defaultIssueSystemName()
   showIssueModal.value = true
 }
 function closeIssueModal() { showIssueModal.value = false }
@@ -5199,8 +5209,11 @@ async function createActivityIssue() {
       status: toApiStatus(draft.status),
       activityId: aid,
       location: draft.location || form.location || undefined,
-      system: draft.system || ((Array.isArray(form.systems) && form.systems[0]) ? form.systems[0] : undefined),
+      system: draft.system || defaultIssueSystemName() || undefined,
       assignedTo: draft.assignedTo || undefined,
+      foundBy: draft.foundBy || undefined,
+      dateFound: draft.dateFound || undefined,
+      dueDate: draft.dueDate || undefined,
     }
     const created = await issuesStore.createIssue(payload)
     const newId = String((created as any).id || (created as any)._id || '')

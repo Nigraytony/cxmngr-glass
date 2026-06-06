@@ -1532,11 +1532,17 @@ function refresh() {
 }
 
 function spaceLabel(a: any) {
+  // Prefer the human-readable location chain stored on the activity.
+  const loc = a && a.location ? String(a.location).trim() : ''
+  const isObjectIdLike = (s: string) => /^[a-f0-9]{24}$/i.test(s)
+  if (loc && !isObjectIdLike(loc)) return loc
+  // Fall back to resolving the linked space id to a name. Never render a raw id.
   const sid = a && (a.spaceId || a.spaceID) ? String(a.spaceId || a.spaceID) : ''
-  if (!sid) return '—'
-  const sp: any = (spacesStore as any).byId ? (spacesStore as any).byId[sid] : null
-  if (!sp) return sid
-  return sp.title || sp.tag || sid
+  if (sid) {
+    const sp: any = (spacesStore as any).byId ? (spacesStore as any).byId[sid] : null
+    if (sp) return sp.title || sp.tag || '—'
+  }
+  return '—'
 }
 
 function countField(a: any, kind: 'photos' | 'issues' | 'comments' | 'attachments' | 'equipment') {
