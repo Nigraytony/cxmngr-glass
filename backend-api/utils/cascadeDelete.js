@@ -10,6 +10,7 @@
 // is still preferable to leaving orphans behind.
 
 const mongoose = require('mongoose')
+const { deleteAllProjectMedia } = require('./entityMedia')
 
 function toObjectIdOrNull(id) {
   try {
@@ -66,6 +67,9 @@ async function cascadeProject(projectId) {
   const projectField = ['Space']
 
   const counts = {}
+  // Delete the underlying Azure blobs BEFORE the DocFile/DocFolder records are
+  // removed below (otherwise the blob names are lost and the blobs orphan).
+  counts._mediaBlobs = await deleteAllProjectMedia(pid)
   for (const name of objectIdScoped) counts[name] = await safeDelete(name, { projectId: pid })
   for (const name of optionalObjectIdScoped) counts[name] = await safeDelete(name, { projectId: pid })
   for (const name of stringScoped) counts[name] = await safeDelete(name, { projectId: pidStr })

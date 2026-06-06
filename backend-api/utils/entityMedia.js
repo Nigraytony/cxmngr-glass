@@ -54,4 +54,29 @@ async function deleteEntityMedia(projectId, entityType, entityId) {
   }
 }
 
-module.exports = { deleteEntityMedia }
+// Delete ALL Azure blobs for a project's documents. Used on project deletion,
+// where cascadeProject hard-deletes the DocFile/DocFolder records — call this
+// FIRST so the blob names are still readable. Best-effort: never throws.
+async function deleteAllProjectMedia(projectId) {
+  let deleted = 0
+  try {
+    if (!projectId) return 0
+    const files = await DocFile.find({ projectId, status: { $ne: 'deleted' } })
+      .select('blobName previewBlobName').lean()
+    for (const f of files) {
+      for (const bn of [f.blobName, f.previewBlobName]) {
+        if (!bn) continue
+        try {
+          const sas = await generateBlobSasUrl({ blobName: String(bn), permissions: 'd', expiresInSec: 600 })
+          await deleteBlob(sas.url)
+          deleted += 1
+        } catch (_) { /* best-effort */ }
+      }
+    }
+  } catch (_) {
+    // best-effort
+  }
+  return deleted
+}
+
+module.exports = { deleteEntityMedia, deleteAllProjectMedia }
