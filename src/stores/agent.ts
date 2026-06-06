@@ -76,8 +76,8 @@ export const useAgentStore = defineStore('agent', () => {
     error.value = ''
 
     // Optimistically add the user message (with a lightweight attachment marker)
-    const attachSuffix = hasFiles ? ` (📎 ${files!.length} PDF${files!.length === 1 ? '' : 's'} attached)` : ''
-    const displayText = trimmed || 'Please analyse the attached drawing(s).'
+    const attachSuffix = hasFiles ? ` (📎 ${files!.length} file${files!.length === 1 ? '' : 's'} attached)` : ''
+    const displayText = trimmed || 'Please analyse the attached file(s).'
     const userMsg: AgentMessage = {
       id: generateId(),
       role: 'user',
@@ -104,7 +104,7 @@ export const useAgentStore = defineStore('agent', () => {
         const form = new FormData()
         form.append('projectId', projectId)
         form.append('message', trimmed)
-        for (const f of files!) form.append('pdf', f)
+        for (const f of files!) form.append('files', f)
         const resp = await http.post('/api/agent/chat', form)
         data = resp.data
       } else {

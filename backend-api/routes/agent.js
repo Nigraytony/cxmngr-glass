@@ -48,14 +48,75 @@ const MAX_TOKENS = 8192
 const MAX_PDF_FILES = 3
 const MAX_PDF_BYTES = 10 * 1024 * 1024 // 10 MB per file
 
-const uploadPdfs = multer({
+// Accepted attachment types. PDFs and images go to the model natively (document
+// / image blocks); Office + text files are extracted to text server-side.
+const ACCEPTED_FILE_RE = /\.(pdf|png|jpe?g|gif|webp|docx|xlsx|xls|csv|txt|md|json|log|tsv)$/i
+const ACCEPTED_MIME = new Set([
+  'application/pdf',
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel', // .xls
+  'text/csv', 'text/plain', 'text/markdown', 'application/json', 'text/tab-separated-values',
+])
+
+const uploadFiles = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_PDF_BYTES, files: MAX_PDF_FILES },
   fileFilter: (_req, file, cb) => {
-    const ok = (file.mimetype === 'application/pdf') || /\.pdf$/i.test(file.originalname || '')
-    cb(ok ? null : new Error('Only PDF files are accepted'), ok)
+    const ok = ACCEPTED_MIME.has(file.mimetype) || ACCEPTED_FILE_RE.test(file.originalname || '')
+    cb(ok ? null : new Error('Unsupported file type. Accepted: PDF, images, Word, Excel, CSV, and text files.'), ok)
   },
 })
+
+// Extracted-text cap per file so a huge spreadsheet/doc can't blow the context window.
+const MAX_EXTRACTED_CHARS = 100_000
+
+// Turn one uploaded file into Claude-shaped canonical content block(s):
+//  - PDF       -> document block (sent to the model natively)
+//  - image/*   -> image block (vision)
+//  - .docx     -> mammoth text extraction -> text block
+//  - .xls(x)   -> xlsx -> per-sheet CSV -> text block
+//  - text-ish  -> utf8 -> text block
+async function fileToBlocks(f) {
+  const name = (f.originalname && String(f.originalname)) || 'file'
+  const ext = (name.split('.').pop() || '').toLowerCase()
+  const mime = String(f.mimetype || '').toLowerCase()
+  const b64 = () => f.buffer.toString('base64')
+  const textBlock = (label, text) => ({
+    type: 'text',
+    text: `--- Attached file: ${name} (${label}) ---\n${String(text || '').slice(0, MAX_EXTRACTED_CHARS)}\n--- end of ${name} ---`,
+  })
+
+  if (mime === 'application/pdf' || ext === 'pdf') {
+    return [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64() }, filename: name }]
+  }
+  if (mime.startsWith('image/') || /^(png|jpe?g|gif|webp)$/.test(ext)) {
+    const mediaType = mime.startsWith('image/') ? mime : (ext === 'jpg' ? 'image/jpeg' : `image/${ext}`)
+    return [{ type: 'image', source: { type: 'base64', media_type: mediaType, data: b64() } }]
+  }
+  if (ext === 'docx' || mime.includes('wordprocessingml')) {
+    try {
+      const mammoth = require('mammoth')
+      const { value } = await mammoth.extractRawText({ buffer: f.buffer })
+      return [textBlock('Word document', value)]
+    } catch (e) {
+      return [textBlock('Word document — extraction failed', '')]
+    }
+  }
+  if (ext === 'xlsx' || ext === 'xls' || mime.includes('spreadsheetml') || mime.includes('ms-excel')) {
+    try {
+      const XLSX = require('xlsx')
+      const wb = XLSX.read(f.buffer, { type: 'buffer' })
+      const sheets = wb.SheetNames.map((sn) => `# Sheet: ${sn}\n${XLSX.utils.sheet_to_csv(wb.Sheets[sn])}`).join('\n\n')
+      return [textBlock('spreadsheet', sheets)]
+    } catch (e) {
+      return [textBlock('spreadsheet — extraction failed', '')]
+    }
+  }
+  // csv / txt / md / json / log / tsv and anything else accepted -> plain text
+  return [textBlock('text file', f.buffer.toString('utf8'))]
+}
 
 // ---------------------------------------------------------------------------
 // Helpers (shared with ai.js pattern)
@@ -394,6 +455,11 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
             file_data: `data:${mediaType};base64,${data}`,
           },
         })
+      } else if (b.type === 'image' && b.source && b.source.type === 'base64') {
+        const mediaType = asString(b.source.media_type) || 'image/png'
+        const data = asString(b.source.data)
+        if (!data) continue
+        parts.push({ type: 'image_url', image_url: { url: `data:${mediaType};base64,${data}` } })
       }
     }
     // Collapse to a plain string when there's only a single text block —
@@ -473,12 +539,12 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
       if (!b) continue
       if (b.type === 'text') {
         parts.push({ text: asString(b.text) })
-      } else if (b.type === 'document' && b.source && b.source.type === 'base64') {
+      } else if ((b.type === 'document' || b.type === 'image') && b.source && b.source.type === 'base64') {
         const data = asString(b.source.data)
         if (!data) continue
         parts.push({
           inline_data: {
-            mime_type: asString(b.source.media_type) || 'application/pdf',
+            mime_type: asString(b.source.media_type) || (b.type === 'image' ? 'image/png' : 'application/pdf'),
             data,
           },
         })
@@ -605,7 +671,8 @@ router.get(
 // POST /api/agent/chat
 // Accepts both application/json and multipart/form-data.
 // JSON body:      { projectId, message }
-// multipart form: projectId, message, pdf[] (up to 3 PDFs, 10 MB each)
+// multipart form: projectId, message, files[] (up to 3 files, 10 MB each:
+//                 PDF, images, Word/Excel, CSV, text)
 router.post(
   '/chat',
   auth,
@@ -613,7 +680,7 @@ router.post(
   (req, res, next) => {
     const ct = asString(req.headers && req.headers['content-type']).toLowerCase()
     if (ct.startsWith('multipart/form-data')) {
-      return uploadPdfs.array('pdf', MAX_PDF_FILES)(req, res, (err) => {
+      return uploadFiles.array('files', MAX_PDF_FILES)(req, res, (err) => {
         if (err) {
           const msg = err && err.message ? err.message : 'Upload failed'
           return res.status(400).json({ error: msg })
@@ -692,21 +759,20 @@ router.post(
       //   - Gemini: → { inline_data: { mime_type, data } }
       // The non-standard `filename` field on each block is ignored by Claude
       // but used by the OpenAI mapper for the file.filename attribute.
-      const messageText = userMessage || 'Please analyse the attached drawing(s).'
-      const newUserContent = pdfFiles.length
-        ? [
-            ...pdfFiles.map((f) => ({
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: f.buffer.toString('base64'),
-              },
-              filename: (f.originalname && String(f.originalname)) || 'document.pdf',
-            })),
-            { type: 'text', text: messageText },
-          ]
-        : messageText
+      const messageText = userMessage || 'Please analyse the attached file(s).'
+      let newUserContent = messageText
+      if (pdfFiles.length) {
+        const fileBlocks = []
+        for (const f of pdfFiles) {
+          try {
+            const blocks = await fileToBlocks(f)
+            for (const b of blocks) fileBlocks.push(b)
+          } catch (e) {
+            console.warn('[agent] failed to process attachment', f && f.originalname, e && e.message)
+          }
+        }
+        newUserContent = [...fileBlocks, { type: 'text', text: messageText }]
+      }
 
       const messages = [
         ...historyDocs.map((m) => ({ role: m.role, content: m.content })),
