@@ -5211,6 +5211,9 @@ async function createActivityIssue() {
       location: draft.location || form.location || undefined,
       system: draft.system || defaultIssueSystemName() || undefined,
       assignedTo: draft.assignedTo || undefined,
+      foundBy: draft.foundBy || undefined,
+      dateFound: draft.dateFound || undefined,
+      dueDate: draft.dueDate || undefined,
     }
     const created = await issuesStore.createIssue(payload)
     const newId = String((created as any).id || (created as any)._id || '')
