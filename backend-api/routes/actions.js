@@ -16,6 +16,7 @@ const { requireActiveProject } = require('../middleware/subscription');
 const { requireFeature } = require('../middleware/planGuard');
 const runMiddleware = require('../middleware/runMiddleware');
 const { requireObjectIdParam, requireBodyField, requireObjectIdBody } = require('../middleware/validate');
+const { deleteEntityMedia } = require('../utils/entityMedia');
 
 const PAYLOAD_FIELDS = ['title', 'type', 'status', 'date', 'performedBy', 'location', 'equipmentId', 'templateId', 'notes'];
 
@@ -169,6 +170,8 @@ router.delete('/:id', auth, requireObjectIdParam('id'), loadActionProjectId, req
     await runMiddleware(req, res, requireActiveProject);
 
     await Action.deleteOne({ _id: action._id });
+    // Clean up this action's photos/documents (Azure blobs + DocFile/DocFolder records).
+    await deleteEntityMedia(action.projectId, 'Action', action._id);
     res.status(200).send({ ok: true });
   } catch (error) {
     console.error('[actions] delete error', error && (error.stack || error.message || error));

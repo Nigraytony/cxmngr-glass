@@ -2292,6 +2292,42 @@
                 + Create issue
               </button>
             </div>
+            <!-- Link an existing project issue -->
+            <div class="relative mb-2">
+              <input
+                v-model="actionIssueSearch"
+                placeholder="Search to link an existing issue…"
+                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 text-sm"
+                @focus="openActionIssueSuggest"
+                @blur="onActionIssueBlur"
+              >
+              <div
+                v-if="actionIssueSuggestOpen && (actionIssueSuggestions.length || actionIssueSuggestLoading)"
+                class="absolute z-20 mt-1 w-full rounded-md bg-[#0b1220] border border-white/15 shadow-lg max-h-56 overflow-auto"
+              >
+                <div
+                  v-if="actionIssueSuggestLoading"
+                  class="px-3 py-2 text-white/60 text-sm"
+                >
+                  Searching…
+                </div>
+                <button
+                  v-for="s in actionIssueSuggestions"
+                  :key="s.id"
+                  type="button"
+                  class="block w-full text-left px-3 py-2 text-sm text-white/85 hover:bg-white/10"
+                  @mousedown.prevent="linkExistingIssueToAction(s)"
+                >
+                  <span class="text-white/50">#{{ s.number ?? '—' }}</span> {{ s.title }}
+                </button>
+                <div
+                  v-if="!actionIssueSuggestLoading && !actionIssueSuggestions.length"
+                  class="px-3 py-2 text-white/50 text-sm"
+                >
+                  No matching issues
+                </div>
+              </div>
+            </div>
             <IssuesTable
               :issues="actionIssues"
               :show-unlink="true"
@@ -5486,6 +5522,12 @@ const editingActionId = ref('')
 const actionIssues = ref<any[]>([])
 const actionTemplatesLoaded = ref(false)
 const actionDraft = ref<any>({ title: '', type: 'Other', status: 'Not Started', date: '', performedBy: '', location: '', equipmentId: null, templateId: null, notes: '' })
+// Link-existing-issue picker (action editor)
+const actionIssueSearch = ref('')
+const actionIssueSuggestions = ref<any[]>([])
+const actionIssueSuggestLoading = ref(false)
+const actionIssueSuggestOpen = ref(false)
+let actionIssueSuggestTimer: any = null
 
 const actionsCompleteCount = computed(() => actions.value.filter((a: any) => a && a.status === 'Complete').length)
 const actionTemplates = computed<any[]>(() => Array.isArray(templatesStore.items) ? templatesStore.items : [])
@@ -5537,6 +5579,9 @@ function openActionEditor(a?: any) {
     actionDraft.value = { title: '', type: 'Other', status: 'Not Started', date: '', performedBy: '', location: form.location || '', equipmentId: null, templateId: null, notes: '' }
     actionIssues.value = []
   }
+  actionIssueSearch.value = ''
+  actionIssueSuggestions.value = []
+  actionIssueSuggestOpen.value = false
   actionModalOpen.value = true
 }
 
@@ -5650,6 +5695,67 @@ async function unlinkActionIssue(issue: any) {
     actionIssues.value = actionIssues.value.filter((x: any) => String(x.id || x._id) !== rid)
   } catch (e) {
     ui.showError('Failed to unlink issue')
+  }
+}
+
+// Search the project's issues to link an EXISTING one to this action.
+async function fetchActionIssueSuggestions(qRaw: string) {
+  const q = String(qRaw || '').trim()
+  const pid = azureProjectId.value
+  if (!pid) { actionIssueSuggestions.value = []; return }
+  actionIssueSuggestLoading.value = true
+  try {
+    const { data } = await http.get('/api/issues', { params: { projectId: pid, ...(q ? { search: q } : {}), page: 1, perPage: 8 } })
+    const payload = (data && (data.items || data)) || []
+    const items: any[] = Array.isArray(payload) ? payload : []
+    const linked = new Set(actionIssues.value.map((x: any) => String(x.id || x._id || '')))
+    actionIssueSuggestions.value = items
+      .map((it: any) => ({ ...(it || {}), id: it?._id || it?.id }))
+      .filter((it: any) => { const idv = String(it?.id || ''); return idv && !linked.has(idv) })
+  } catch (e) {
+    actionIssueSuggestions.value = []
+  } finally {
+    actionIssueSuggestLoading.value = false
+  }
+}
+
+watch(actionIssueSearch, (q) => {
+  if (actionIssueSuggestTimer) clearTimeout(actionIssueSuggestTimer)
+  actionIssueSuggestTimer = setTimeout(() => { fetchActionIssueSuggestions(String(q || '')).catch(() => {}) }, 150)
+})
+
+function openActionIssueSuggest() {
+  actionIssueSuggestOpen.value = true
+  if (!actionIssueSuggestions.value.length && !actionIssueSuggestLoading.value) {
+    fetchActionIssueSuggestions(actionIssueSearch.value).catch(() => {})
+  }
+}
+function onActionIssueBlur() {
+  setTimeout(() => { actionIssueSuggestOpen.value = false }, 150)
+}
+
+async function linkExistingIssueToAction(issue: any) {
+  if (!editingActionId.value) return
+  const rid = String(issue.id || issue._id || '')
+  if (!rid) return
+  actionsBusy.value = true
+  try {
+    const cur = actions.value.find((x: any) => String(x._id) === editingActionId.value)
+    const existing = cur && Array.isArray(cur.issues) ? cur.issues.map((x: any) => String(x)) : []
+    const next = Array.from(new Set([...existing, rid]))
+    const updated = await actionsStore.update(editingActionId.value, { issues: next })
+    const i = actions.value.findIndex((x: any) => String(x._id) === editingActionId.value)
+    if (i >= 0) actions.value.splice(i, 1, updated)
+    if (!actionIssues.value.some((x: any) => String(x.id || x._id) === rid)) {
+      actionIssues.value = [...actionIssues.value, issue]
+    }
+    actionIssueSearch.value = ''
+    actionIssueSuggestions.value = []
+    actionIssueSuggestOpen.value = false
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || 'Failed to link issue')
+  } finally {
+    actionsBusy.value = false
   }
 }
 
