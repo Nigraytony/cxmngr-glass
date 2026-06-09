@@ -140,11 +140,14 @@
                   ? 'bg-indigo-600/70 text-white rounded-br-sm border border-indigo-400/20'
                   : 'bg-white/8 text-white/90 rounded-bl-sm border border-white/10'"
               >
-                <!-- Typing indicator -->
-                <span v-if="msg.pending" class="flex gap-1 items-center py-0.5">
-                  <span class="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style="animation-delay: 0ms" />
-                  <span class="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style="animation-delay: 150ms" />
-                  <span class="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style="animation-delay: 300ms" />
+                <!-- Typing indicator + live status narration -->
+                <span v-if="msg.pending" class="flex gap-2 items-center py-0.5">
+                  <span class="flex gap-1 items-center">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style="animation-delay: 0ms" />
+                    <span class="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style="animation-delay: 150ms" />
+                    <span class="w-1.5 h-1.5 rounded-full bg-white/50 animate-bounce" style="animation-delay: 300ms" />
+                  </span>
+                  <span v-if="msg.status" class="text-white/50 text-xs">{{ msg.status }}</span>
                 </span>
                 <!-- Message content -->
                 <div
