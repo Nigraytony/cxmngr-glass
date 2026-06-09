@@ -322,6 +322,14 @@ const TOOLS = [
     required: [],
   },
   {
+    name: 'get_equipment',
+    description: 'Fetch the FULL record for a single equipment item, including its attributes, components, checklists and functional tests (with counts). Use this to verify that content was actually applied after create_equipment / apply_template_to_equipment, or before update_equipment. list_equipment only returns summary fields and cannot confirm whether commissioning content exists — use this when the user asks you to confirm or double-check.',
+    properties: {
+      id: { type: 'string', description: 'Equipment _id (required)' },
+    },
+    required: ['id'],
+  },
+  {
     name: 'create_equipment',
     description: 'Create new equipment in the current project. For templated equipment (AHUs, chillers, pumps), prefer apply_template_to_equipment instead so the equipment inherits full Cx content.',
     properties: {
@@ -724,7 +732,7 @@ function getToolLabel(toolName) {
     get_project_summary: 'Project summary',
     list_tasks: 'Listed tasks', create_task: 'Created task', update_task: 'Updated task', delete_task: 'Deleted task',
     list_activities: 'Listed activities', get_activity: 'Read activity', create_activity: 'Created activity', update_activity: 'Updated activity', delete_activity: 'Deleted activity',
-    list_equipment: 'Listed equipment', create_equipment: 'Created equipment', update_equipment: 'Updated equipment', delete_equipment: 'Deleted equipment', apply_template_to_equipment: 'Created equipment from template',
+    list_equipment: 'Listed equipment', get_equipment: 'Read equipment', create_equipment: 'Created equipment', update_equipment: 'Updated equipment', delete_equipment: 'Deleted equipment', apply_template_to_equipment: 'Created equipment from template',
     list_issues: 'Listed issues', create_issue: 'Created issue', update_issue: 'Updated issue', delete_issue: 'Deleted issue',
     list_spaces: 'Listed spaces', create_space: 'Created space', update_space: 'Updated space', delete_space: 'Deleted space',
     list_templates: 'Listed templates', create_template: 'Created template', update_template: 'Updated template', delete_template: 'Deleted template',
@@ -738,7 +746,7 @@ function getRecordLink(toolName, record) {
   if (!record || !record._id) return null
   const id = String(record._id)
   if (toolName === 'apply_template_to_equipment') return `/app/equipment/${id}`
-  const module = toolName.replace(/^(create|update|delete|list)_/, '')
+  const module = toolName.replace(/^(create|update|delete|list|get)_/, '')
   const map = {
     task: `/app/tasks/${id}`,
     activity: `/app/activities/${id}`,
@@ -901,6 +909,27 @@ async function executeTool(toolName, toolInput, context) {
         }
         const items = await Equipment.find(q).select('_id tag title type system status').limit(limit).lean()
         return { success: true, count: items.length, records: items }
+      }
+      case 'get_equipment': {
+        if (!input.id || !isObjectId(input.id)) return { success: false, error: 'Valid id is required' }
+        const item = await Equipment.findOne({ _id: input.id, projectId }).lean()
+        if (!item) return { success: false, error: 'Equipment not found in this project' }
+        // Surface explicit content counts so the model can verify a template
+        // was actually applied without having to eyeball the raw arrays.
+        const fnTests = Array.isArray(item.functionalTests) ? item.functionalTests : []
+        const checklists = Array.isArray(item.checklists) ? item.checklists : []
+        const checklistQuestions = checklists.reduce((sum, sec) => {
+          const qs = sec && (sec.questions || sec.items)
+          return sum + (Array.isArray(qs) ? qs.length : 0)
+        }, 0)
+        const content = {
+          attributes: Array.isArray(item.attributes) ? item.attributes.length : 0,
+          components: Array.isArray(item.components) ? item.components.length : 0,
+          checklistSections: checklists.length,
+          checklistQuestions,
+          functionalTests: fnTests.length,
+        }
+        return { success: true, record: item, content }
       }
       case 'create_equipment': {
         if (!input.tag) return { success: false, error: 'tag is required' }

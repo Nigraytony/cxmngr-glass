@@ -44,7 +44,31 @@ const {
 // the model's final text claiming it had finished when it hadn't.
 const MAX_TOOL_ITERATIONS = 25
 const MAX_HISTORY_MESSAGES = 20 // how many prior turns to include in context
-const MAX_TOKENS = 8192
+// Bumped from 8192. A single fully-populated template (dozens of attributes,
+// components, checklist questions and multi-step functional tests) is a large
+// JSON tool call that routinely exceeded 8192 output tokens — the provider
+// returned stop_reason "max_tokens" with a TRUNCATED, invalid tool call that
+// either silently did nothing or created a partial record. 16384 gives a
+// single record room to land; genuine overflow is now caught explicitly below.
+const MAX_TOKENS = 16384
+// When the model still hits the output ceiling mid-response, retry by asking it
+// to split the work into smaller create_* + update_* calls (capped to avoid
+// looping forever on a single oversized request).
+const MAX_TRUNCATION_RETRIES = 2
+// Per-call ceiling on a single provider HTTP request. Bounds a hung or slow
+// provider call so one iteration can't sit silently long enough to trip an
+// upstream idle timeout (or wedge the request forever). Overridable via env.
+const PROVIDER_CALL_TIMEOUT_MS = Number(process.env.AGENT_PROVIDER_TIMEOUT_MS) || 120_000
+// SSE keepalive — emitted while a provider call is in flight so the streamed
+// connection keeps sending bytes (a long single call sends nothing on its own)
+// and never goes idle long enough for Azure's ~230s HTTP ceiling to cut it.
+const SSE_HEARTBEAT_MS = 15_000
+const TRUNCATION_NUDGE =
+  'Your previous response hit the output token limit and was cut off before it completed. ' +
+  'None of the tool calls in that truncated response were executed — do NOT assume any record ' +
+  'was created or updated. Redo the work in smaller steps: create the record first with the ' +
+  'core fields, attributes and components, then add checklists and functional tests in one or ' +
+  'more follow-up update_* calls. Continue now.'
 const MAX_PDF_FILES = 3
 const MAX_PDF_BYTES = 10 * 1024 * 1024 // 10 MB per file
 
@@ -258,6 +282,10 @@ function buildSystemPrompt(project) {
     '     can exhaust the iteration budget on large projects.',
     '  10. If you genuinely run out of room, end the turn with a clear status: "I created A, B, C. Reply',
     '      \'continue\' to keep going with D, E, F." — never pretend the work is finished.',
+    '  11. To VERIFY equipment (e.g. the user asks "are you sure?" or "did that get created?"), call get_equipment',
+    '      and report its actual content counts (attributes, components, checklist sections/questions, functional',
+    '      tests). list_equipment only confirms a record exists, not that template content was applied. Never claim',
+    '      something is verified without a tool result backing it.',
     '',
     'Editing a Cx Plan activity description (or any rich-text section bounded by markers):',
     '  Activities of type "Cx Plan" carry a long descriptionHtml document. Auto-generated blocks inside',
@@ -315,7 +343,41 @@ const MUTATION_TOOLS = new Set([
 ])
 const MAX_HALLUCINATION_RETRIES = 3
 
-async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId }) {
+// fetch() wrapper that aborts a provider call that exceeds the per-call budget
+// and turns the abort into a clean 504 the caller can surface to the user.
+async function fetchWithTimeout(url, options, timeoutMs = PROVIDER_CALL_TIMEOUT_MS) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } catch (e) {
+    if (e && (e.name === 'AbortError' || e.code === 'ABORT_ERR')) {
+      const err = new Error('The AI provider took too long to respond and the request timed out. Try again, or break the request into smaller steps.')
+      err.status = 504
+      throw err
+    }
+    throw e
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// Write one Server-Sent Event frame. No-ops once the socket is gone so a
+// client that navigated away can't crash the run.
+function sseSend(res, event) {
+  if (!res || res.writableEnded || res.destroyed) return
+  try {
+    res.write(`data: ${JSON.stringify(event)}\n\n`)
+    if (typeof res.flush === 'function') res.flush()
+  } catch (_) { /* socket closed mid-write */ }
+}
+
+function sseComment(res, text) {
+  if (!res || res.writableEnded || res.destroyed) return
+  try { res.write(`: ${text}\n\n`) } catch (_) { /* ignore */ }
+}
+
+async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId, emit, isAborted }) {
   const tools = getClaudeTools()
   const toolResults = []
 
@@ -339,8 +401,11 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
   let currentMessages = messages.map((m) => ({ ...m, content: sanitizeForClaude(m.content) }))
   let finalText = ''
   let hallucinationRetries = 0
+  let truncationRetries = 0
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+    if (isAborted && isAborted()) break
+    if (emit) emit({ type: 'status', text: iteration === 0 ? 'Thinking…' : 'Working…' })
     const body = {
       model,
       max_tokens: MAX_TOKENS,
@@ -349,7 +414,7 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
       messages: currentMessages,
     }
 
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -375,6 +440,22 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
     if (turnText) finalText = turnText
 
     const toolUseBlocks = contentBlocks.filter((b) => b && b.type === 'tool_use')
+
+    // Truncation guard: the model hit the output token ceiling mid-response.
+    // Any tool_use block in this turn is cut off — its input JSON is incomplete
+    // and unsafe to execute (it would create a partial record), so we drop the
+    // tool blocks entirely, keep only any complete text, and ask the model to
+    // redo the work in smaller create_* + update_* steps.
+    if (stopReason === 'max_tokens' && truncationRetries < MAX_TRUNCATION_RETRIES) {
+      truncationRetries++
+      const textOnly = contentBlocks.filter((b) => b && b.type === 'text')
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: textOnly.length ? textOnly : [{ type: 'text', text: '(response truncated)' }] },
+        { role: 'user', content: [{ type: 'text', text: TRUNCATION_NUDGE }] },
+      ]
+      continue
+    }
 
     // Hallucination guard: the model is ending the turn (no tool calls) but
     // its text claims it just created / added / saved something. Reject the
@@ -407,10 +488,13 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
 
     const toolResultBlocks = []
     let successfulMutationsThisTurn = 0
+    if (emit) emit({ type: 'status', text: 'Running actions…' })
     for (const block of toolUseBlocks) {
       const result = await executeTool(block.name, block.input, { projectId })
       toolResultBlocks.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) })
-      toolResults.push(buildToolResultEntry(block.name, result))
+      const entry = buildToolResultEntry(block.name, result)
+      toolResults.push(entry)
+      if (emit) emit({ type: 'tool', entry })
       if (result && result.success && MUTATION_TOOLS.has(block.name)) successfulMutationsThisTurn++
     }
     // Successful mutation work resets the hallucination budget so a model
@@ -428,7 +512,7 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
 // OpenAI agentic loop
 // ---------------------------------------------------------------------------
 
-async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId }) {
+async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId, emit, isAborted }) {
   const tools = getOpenAiTools()
   const toolResults = []
 
@@ -480,11 +564,14 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
 
   let currentMessages = oaiMessages.slice()
   let finalText = ''
+  let truncationRetries = 0
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+    if (isAborted && isAborted()) break
+    if (emit) emit({ type: 'status', text: iteration === 0 ? 'Thinking…' : 'Working…' })
     const body = { model, tools, messages: currentMessages, temperature: 0.2 }
 
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    const r = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(body),
@@ -503,17 +590,34 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
     if (message && message.content) finalText = asString(message.content).trim()
 
     const toolCalls = Array.isArray(message && message.tool_calls) ? message.tool_calls : []
+
+    // Truncation guard — see runClaudeLoop. A 'length' finish means the
+    // response (possibly mid tool_call) was cut off; don't execute the partial
+    // call, ask for smaller steps instead.
+    if (finishReason === 'length' && truncationRetries < MAX_TRUNCATION_RETRIES) {
+      truncationRetries++
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: asString(message && message.content) || '(response truncated)' },
+        { role: 'user', content: TRUNCATION_NUDGE },
+      ]
+      continue
+    }
+
     if (finishReason !== 'tool_calls' || !toolCalls.length) break
 
     // Append assistant message with tool_calls
     currentMessages = [...currentMessages, { role: 'assistant', content: message.content, tool_calls: toolCalls }]
 
+    if (emit) emit({ type: 'status', text: 'Running actions…' })
     for (const call of toolCalls) {
       let callInput = {}
       try { callInput = JSON.parse(asString(call.function && call.function.arguments)) } catch (_) { /* ignore */ }
       const result = await executeTool(call.function.name, callInput, { projectId })
       currentMessages = [...currentMessages, { role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) }]
-      toolResults.push(buildToolResultEntry(call.function.name, result))
+      const entry = buildToolResultEntry(call.function.name, result)
+      toolResults.push(entry)
+      if (emit) emit({ type: 'tool', entry })
     }
   }
 
@@ -524,7 +628,7 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
 // Gemini agentic loop
 // ---------------------------------------------------------------------------
 
-async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId }) {
+async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId, emit, isAborted }) {
   const tools = getGeminiTools()
   const toolResults = []
 
@@ -563,9 +667,12 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
 
   let contents = toGeminiContents(messages)
   let finalText = ''
+  let truncationRetries = 0
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+    if (isAborted && isAborted()) break
+    if (emit) emit({ type: 'status', text: iteration === 0 ? 'Thinking…' : 'Working…' })
     const body = {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       tools,
@@ -573,7 +680,7 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
       generationConfig: { temperature: 0.2 },
     }
 
-    const r = await fetch(url, {
+    const r = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -587,12 +694,26 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
     }
 
     const candidate = data && data.candidates && data.candidates[0]
+    const finishReason = asString(candidate && candidate.finishReason)
     const parts = (candidate && candidate.content && Array.isArray(candidate.content.parts)) ? candidate.content.parts : []
 
     const textParts = parts.filter((p) => p && p.text)
     if (textParts.length) finalText = textParts.map((p) => asString(p.text)).join('\n').trim()
 
     const functionCallParts = parts.filter((p) => p && p.functionCall)
+
+    // Truncation guard — see runClaudeLoop. Drop the (possibly partial) turn
+    // and ask the model to redo the work in smaller steps.
+    if (finishReason === 'MAX_TOKENS' && truncationRetries < MAX_TRUNCATION_RETRIES) {
+      truncationRetries++
+      contents = [
+        ...contents,
+        { role: 'model', parts: textParts.length ? textParts : [{ text: '(response truncated)' }] },
+        { role: 'user', parts: [{ text: TRUNCATION_NUDGE }] },
+      ]
+      continue
+    }
+
     if (!functionCallParts.length) break
 
     // Append model turn
@@ -600,11 +721,14 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
 
     // Execute tool calls and append function responses
     const responseParts = []
+    if (emit) emit({ type: 'status', text: 'Running actions…' })
     for (const part of functionCallParts) {
       const fc = part.functionCall
       const result = await executeTool(fc.name, fc.args || {}, { projectId })
       responseParts.push({ functionResponse: { name: fc.name, response: { result } } })
-      toolResults.push(buildToolResultEntry(fc.name, result))
+      const entry = buildToolResultEntry(fc.name, result)
+      toolResults.push(entry)
+      if (emit) emit({ type: 'tool', entry })
     }
     contents = [...contents, { role: 'user', parts: responseParts }]
   }
@@ -629,6 +753,27 @@ function buildToolResultEntry(toolName, result) {
     deleted: result.deleted || false,
     error: result.error || null,
   }
+}
+
+// Ground a replayed assistant turn in what its tool calls ACTUALLY did. The
+// history store keeps only text, so without this the model sees its own past
+// "✅ created…" prose with zero evidence of tool calls and learns to imitate
+// the prose while skipping the tools — a self-reinforcing hallucination loop.
+// Appending the real ledger (or an explicit "no tools were executed") breaks
+// it. Older messages predate the toolResults field and get no note.
+function groundAssistantContent(doc) {
+  const content = asString(doc && doc.content)
+  if (!doc || doc.role !== 'assistant' || !Array.isArray(doc.toolResults)) return content
+  const tr = doc.toolResults
+  if (!tr.length) {
+    return `${content}\n\n[history note: NO tools were executed in this turn — nothing was created, updated, or deleted.]`
+  }
+  const parts = tr.slice(0, 40).map((t) => {
+    const label = getToolLabel(t.tool) || asString(t.tool)
+    const nm = t.name ? ` "${t.name}"` : ''
+    return `${label}${nm} ${t.success ? '✓' : '✗ (failed)'}`
+  })
+  return `${content}\n\n[history note: tools actually executed this turn: ${parts.join(', ')}]`
 }
 
 // ---------------------------------------------------------------------------
@@ -696,6 +841,9 @@ router.post(
   requireFeature('ai'),
   rateLimit({ windowMs: 60_000, max: 30, keyPrefix: 'agent-chat' }),
   async (req, res) => {
+    // Hoisted so the catch can tear down a half-open SSE stream cleanly.
+    let streaming = false
+    let heartbeat = null
     try {
       const projectId = asString(req.body && req.body.projectId).trim()
       const userMessage = asString(req.body && req.body.message).trim().slice(0, 4000)
@@ -775,24 +923,57 @@ router.post(
       }
 
       const messages = [
-        ...historyDocs.map((m) => ({ role: m.role, content: m.content })),
+        ...historyDocs.map((m) => ({ role: m.role, content: groundAssistantContent(m) })),
         { role: 'user', content: newUserContent },
       ]
+
+      // Streaming vs buffered response. The frontend opts in with
+      // `Accept: text/event-stream`. Everything above still answers with normal
+      // JSON on error — we only switch the response to SSE here, right before
+      // the (potentially minutes-long) agentic loop runs.
+      streaming = asString(req.headers && req.headers.accept).includes('text/event-stream')
+        || asString(req.query && req.query.stream) === '1'
+
+      let aborted = false
+      if (streaming) {
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-cache, no-transform')
+        res.setHeader('Connection', 'keep-alive')
+        res.setHeader('X-Accel-Buffering', 'no') // ask nginx/Azure not to buffer the stream
+        // Don't let Node's socket timeout cut a long build short — the
+        // heartbeat below is what keeps the upstream proxy from idling out.
+        if (typeof req.setTimeout === 'function') req.setTimeout(0)
+        if (typeof res.setTimeout === 'function') res.setTimeout(0)
+        res.flushHeaders()
+        sseComment(res, 'open')
+        heartbeat = setInterval(() => sseComment(res, 'ping'), SSE_HEARTBEAT_MS)
+        // Client navigated away / closed the tab — stop spending on provider
+        // calls between iterations (the in-flight call still finishes).
+        req.on('close', () => { aborted = true })
+      }
+      const emit = streaming ? (ev) => sseSend(res, ev) : null
 
       // Run the agentic loop for the configured provider
       let result = { text: '', toolResults: [] }
       try {
+        const loopOpts = { apiKey, model, systemPrompt, messages, projectId, emit, isAborted: () => aborted }
         if (provider === 'claude') {
-          result = await runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId })
+          result = await runClaudeLoop(loopOpts)
         } else if (provider === 'gemini') {
-          result = await runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId })
+          result = await runGeminiLoop(loopOpts)
         } else {
-          result = await runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId })
+          result = await runOpenAiLoop(loopOpts)
         }
       } catch (e) {
         const msg = e && e.message ? e.message : 'AI provider error'
+        if (heartbeat) { clearInterval(heartbeat); heartbeat = null }
+        if (streaming) {
+          sseSend(res, { type: 'error', error: msg })
+          return res.end()
+        }
         return res.status(e && e.status ? e.status : 502).json({ error: msg })
       }
+      if (heartbeat) { clearInterval(heartbeat); heartbeat = null }
 
       const rawReplyText = result.text || 'Done.'
       const { message: replyText, mood } = extractMood(rawReplyText)
@@ -807,7 +988,21 @@ router.post(
         role: 'user',
         content: (userMessage || messageText) + attachmentSuffix,
       })
-      await AssistantChatMessage.create({ projectId, userId: null, role: 'assistant', content: replyText })
+      // Persist a compact ledger of what actually ran so future turns replay
+      // grounded in reality (see groundAssistantContent). Capped and stripped
+      // of record payloads to keep history small.
+      const persistedToolResults = (result.toolResults || []).slice(0, 50).map((t) => ({
+        tool: asString(t && t.tool),
+        name: asString((t && t.name) || ''),
+        success: Boolean(t && t.success),
+      }))
+      await AssistantChatMessage.create({
+        projectId,
+        userId: null,
+        role: 'assistant',
+        content: replyText,
+        toolResults: persistedToolResults,
+      })
 
       // Prune to 300 messages per project
       const count = await AssistantChatMessage.countDocuments({ projectId })
@@ -818,12 +1013,27 @@ router.post(
         }
       }
 
+      if (streaming) {
+        sseSend(res, { type: 'done', message: replyText, mood, toolResults: result.toolResults || [] })
+        return res.end()
+      }
       return res.json({ message: replyText, mood, toolResults: result.toolResults || [] })
     } catch (err) {
       console.error('[agent] chat error', err && (err.stack || err.message))
+      if (heartbeat) { clearInterval(heartbeat); heartbeat = null }
+      // If we've already switched to SSE, headers are flushed — surface the
+      // failure as a stream event instead of a (now-impossible) JSON response.
+      if (streaming || res.headersSent) {
+        sseSend(res, { type: 'error', error: 'Agent request failed' })
+        try { return res.end() } catch (_) { return undefined }
+      }
       return res.status(500).json({ error: 'Agent request failed', reqId: req.id || null })
     }
   }
 )
+
+// Exposed for unit tests — the SSE wire format and the per-call timeout are the
+// fragile new primitives worth testing without standing up the full route.
+router._internals = { fetchWithTimeout, sseSend, sseComment }
 
 module.exports = router

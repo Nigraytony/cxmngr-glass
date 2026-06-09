@@ -15,6 +15,20 @@ const assistantChatMessageSchema = new mongoose.Schema(
       set: (v) => asString(v).trim().toLowerCase(),
     },
     content: { type: String, required: true, trim: true },
+    // Compact ledger of tools that actually ran during an assistant turn. Only
+    // the fields needed to ground future replays (which records were really
+    // created/updated/deleted) — NOT the full records, to keep history small.
+    // Replayed back into context so the model can't imitate a past "✅ created"
+    // prose turn that had no backing tool calls. See routes/agent.js.
+    toolResults: {
+      type: [{
+        _id: false,
+        tool: { type: String, default: '' },
+        name: { type: String, default: '' },
+        success: { type: Boolean, default: false },
+      }],
+      default: undefined,
+    },
     createdAt: {
       type: Date,
       default: Date.now,

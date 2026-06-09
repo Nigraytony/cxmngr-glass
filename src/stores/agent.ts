@@ -1,11 +1,32 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import http from '../utils/http'
+import { getApiBase } from '../utils/api'
+import { useAuthStore } from './auth'
 import { ASSISTANT_MOODS, type AssistantMood } from './ai'
 
 function coerceMood(v: unknown): AssistantMood {
   const s = typeof v === 'string' ? v.toLowerCase() : ''
   return (ASSISTANT_MOODS as readonly string[]).includes(s) ? (s as AssistantMood) : 'neutral'
+}
+
+// Read the double-submit CSRF token the same way the axios interceptor does
+// (api.ts) — value from the `csrf` cookie, or a random seed if absent.
+function csrfToken(): string {
+  try {
+    const all = String(document.cookie || '')
+    for (const part of all.split(';')) {
+      const [k, ...rest] = part.trim().split('=')
+      if (k === 'csrf') return decodeURIComponent(rest.join('=') || '')
+    }
+  } catch (e) { /* ignore */ }
+  try {
+    const arr = new Uint8Array(32)
+    crypto.getRandomValues(arr)
+    return Array.from(arr).map((b) => b.toString(16).padStart(2, '0')).join('')
+  } catch (e) {
+    return Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)
+  }
 }
 
 export interface ToolResult {
@@ -28,7 +49,20 @@ export interface AgentMessage {
   toolResults?: ToolResult[]
   createdAt: Date
   pending?: boolean
+  // Transient narrator line shown while streaming (e.g. "Creating template…").
+  status?: string
   mood?: AssistantMood
+}
+
+// One Server-Sent Event from POST /api/agent/chat.
+interface StreamEvent {
+  type: 'status' | 'tool' | 'done' | 'error'
+  text?: string
+  entry?: ToolResult
+  message?: string
+  mood?: string
+  toolResults?: ToolResult[]
+  error?: string
 }
 
 export const useAgentStore = defineStore('agent', () => {
@@ -67,6 +101,126 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  // Update the in-flight assistant message by id (immutably, so Vue re-renders).
+  function patchMessage(id: string, patch: Partial<AgentMessage>) {
+    messages.value = messages.value.map((m) => (m.id === id ? { ...m, ...patch } : m))
+  }
+
+  // POST the turn and consume the SSE stream, updating the pending message as
+  // status/tool/done events arrive. Retries once after a token refresh on 401.
+  async function streamChat(projectId: string, trimmed: string, files: File[] | undefined, pendingId: string) {
+    const hasFiles = Array.isArray(files) && files.length > 0
+    const url = `${getApiBase()}/api/agent/chat`
+
+    const buildRequest = (): RequestInit => {
+      const headers: Record<string, string> = {
+        Accept: 'text/event-stream',
+        'X-CSRF-Token': csrfToken(),
+      }
+      try {
+        const auth = useAuthStore() as unknown as { accessToken?: string }
+        if (auth?.accessToken) headers.Authorization = `Bearer ${auth.accessToken}`
+      } catch (e) { /* cookie auth only */ }
+
+      let body: BodyInit
+      if (hasFiles) {
+        const form = new FormData()
+        form.append('projectId', projectId)
+        form.append('message', trimmed)
+        for (const f of files!) form.append('files', f)
+        body = form // browser sets the multipart Content-Type + boundary
+      } else {
+        headers['Content-Type'] = 'application/json'
+        body = JSON.stringify({ projectId, message: trimmed })
+      }
+      return { method: 'POST', credentials: 'include', headers, body }
+    }
+
+    let resp = await fetch(url, buildRequest())
+
+    // Session expired mid-send: refresh once and retry.
+    if (resp.status === 401) {
+      let refreshed = false
+      try {
+        const auth = useAuthStore() as unknown as { refresh?: () => Promise<unknown> }
+        if (typeof auth?.refresh === 'function') refreshed = Boolean(await auth.refresh())
+      } catch (e) { /* ignore */ }
+      if (refreshed) resp = await fetch(url, buildRequest())
+    }
+
+    const ctype = resp.headers.get('content-type') || ''
+    if (!resp.ok || !ctype.includes('text/event-stream') || !resp.body) {
+      // Server answered with JSON (an error, or a non-streaming fallback).
+      let msg = `Request failed (${resp.status})`
+      let payload: { message?: string; mood?: string; toolResults?: ToolResult[]; error?: string } | null = null
+      try { payload = await resp.json() } catch (e) { /* not json */ }
+      if (resp.ok && payload && typeof payload.message === 'string') {
+        // Graceful degradation: buffered JSON reply.
+        patchMessage(pendingId, {
+          content: String(payload.message || ''),
+          toolResults: Array.isArray(payload.toolResults) ? payload.toolResults : [],
+          mood: coerceMood(payload.mood),
+          status: '',
+          pending: false,
+        })
+        return
+      }
+      if (payload && payload.error) msg = payload.error
+      throw new Error(msg)
+    }
+
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let finalised = false
+
+    const handle = (ev: StreamEvent) => {
+      if (ev.type === 'status') {
+        patchMessage(pendingId, { status: String(ev.text || '') })
+      } else if (ev.type === 'tool' && ev.entry) {
+        const existing = messages.value.find((m) => m.id === pendingId)?.toolResults || []
+        patchMessage(pendingId, { toolResults: [...existing, ev.entry] })
+      } else if (ev.type === 'done') {
+        patchMessage(pendingId, {
+          content: String(ev.message || ''),
+          toolResults: Array.isArray(ev.toolResults)
+            ? ev.toolResults
+            : (messages.value.find((m) => m.id === pendingId)?.toolResults || []),
+          mood: coerceMood(ev.mood),
+          status: '',
+          pending: false,
+        })
+        finalised = true
+      } else if (ev.type === 'error') {
+        throw new Error(String(ev.error || 'Agent error'))
+      }
+    }
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      let sep
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, sep)
+        buffer = buffer.slice(sep + 2)
+        const dataLines = frame.split('\n').filter((l) => l.startsWith('data:'))
+        if (!dataLines.length) continue // heartbeat comment (": ping")
+        const json = dataLines.map((l) => l.slice(5).trim()).join('\n')
+        let ev: StreamEvent
+        try { ev = JSON.parse(json) } catch (e) { continue }
+        handle(ev)
+      }
+      if (finalised) break
+    }
+
+    // Stream closed without an explicit done — finalise what we have.
+    if (!finalised) {
+      patchMessage(pendingId, { pending: false, status: '' })
+    }
+  }
+
   async function send(projectId: string, content: string, files?: File[]) {
     const trimmed = content.trim()
     const hasFiles = Array.isArray(files) && files.length > 0
@@ -94,58 +248,23 @@ export const useAgentStore = defineStore('agent', () => {
       content: '',
       createdAt: new Date(),
       pending: true,
+      status: '',
     }
     messages.value = [...messages.value, pendingMsg]
 
     sending.value = true
     try {
-      let data: { message?: string; mood?: string; toolResults?: ToolResult[] }
-      if (hasFiles) {
-        const form = new FormData()
-        form.append('projectId', projectId)
-        form.append('message', trimmed)
-        for (const f of files!) form.append('files', f)
-        const resp = await http.post('/api/agent/chat', form)
-        data = resp.data
-      } else {
-        const resp = await http.post('/api/agent/chat', { projectId, message: trimmed })
-        data = resp.data
-      }
-
-      // Replace the pending message with the real reply
-      messages.value = messages.value.map((m) =>
-        m.id === pendingId
-          ? {
-              id: generateId(),
-              role: 'assistant' as const,
-              content: String(data.message || ''),
-              toolResults: Array.isArray(data.toolResults) ? data.toolResults : [],
-              createdAt: new Date(),
-              pending: false,
-              mood: coerceMood(data.mood),
-            }
-          : m
-      )
+      await streamChat(projectId, trimmed, files, pendingId)
     } catch (e: unknown) {
-      const errMsg =
-        (e as { response?: { data?: { error?: string } } })?.response?.data?.error ||
-        (e instanceof Error ? e.message : 'Request failed')
+      const errMsg = e instanceof Error ? e.message : 'Request failed'
       error.value = errMsg
-
-      // Replace pending with error message
-      messages.value = messages.value.map((m) =>
-        m.id === pendingId
-          ? {
-              id: generateId(),
-              role: 'assistant' as const,
-              content: `Sorry, something went wrong: ${errMsg}`,
-              toolResults: [],
-              createdAt: new Date(),
-              pending: false,
-              mood: 'sad' as AssistantMood,
-            }
-          : m
-      )
+      patchMessage(pendingId, {
+        content: `Sorry, something went wrong: ${errMsg}`,
+        toolResults: [],
+        status: '',
+        pending: false,
+        mood: 'sad' as AssistantMood,
+      })
     } finally {
       sending.value = false
     }
