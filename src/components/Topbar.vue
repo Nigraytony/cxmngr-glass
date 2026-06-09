@@ -507,10 +507,16 @@ async function onSelectProject(p) {
     // Switch current project in store
     if (projectId) projectStore.setCurrentProject(String(projectId))
     ui.showSuccess('Default project updated')
+    // Land on the new project's dashboard. Routes are store-driven (the
+    // projectId isn't in the URL), so without this the user stays on the
+    // previous project's page — e.g. an equipment detail view — showing stale
+    // data until they manually navigate away.
+    menuOpen.value = false
+    if (router.currentRoute.value.name !== 'dashboard') {
+      router.push({ name: 'dashboard' }).catch(() => { /* ignore redundant navigation */ })
+    }
   } catch (err) {
     ui.showError(err?.response?.data?.error || 'Failed to set default project')
-  } finally {
-    // keep menu open so user sees the highlight update; optionally close
   }
 }
 
