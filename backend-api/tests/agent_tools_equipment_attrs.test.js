@@ -183,6 +183,51 @@ describe('Agent tools — equipment attributes + status enum', function () {
     });
   });
 
+  describe('get_equipment — verification read-back', function () {
+    it('returns the full record plus content counts', async function () {
+      const seeded = await Equipment.create({
+        projectId,
+        tag: 'CT-1',
+        title: 'Cooling Tower 1',
+        type: 'Cooling Tower',
+        attributes: [{ key: 'Make', value: 'BAC' }, { key: 'Tons', value: '500' }],
+        components: [{ tag: 'FAN-1' }, { tag: 'MTR-1' }, { tag: 'VFD-1' }],
+        checklists: [
+          { title: 'Installation', questions: [{ question_text: 'a' }, { question_text: 'b' }] },
+          { title: 'Startup', questions: [{ question_text: 'c' }] },
+        ],
+        functionalTests: [{ name: 'Startup', kind: 'sequence' }, { name: 'Fan Control', kind: 'sequence' }],
+      });
+
+      const res = await executeTool('get_equipment', { id: String(seeded._id) }, ctx());
+      assert.strictEqual(res.success, true, `expected success, got: ${JSON.stringify(res)}`);
+      assert.strictEqual(res.record.tag, 'CT-1');
+      assert.deepStrictEqual(res.content, {
+        attributes: 2,
+        components: 3,
+        checklistSections: 2,
+        checklistQuestions: 3,
+        functionalTests: 2,
+      });
+    });
+
+    it('is scoped to the project — foreign equipment is not found', async function () {
+      const foreign = await Equipment.create({
+        projectId: new mongoose.Types.ObjectId(),
+        tag: 'X-1', title: 'X-1', type: 'Pump',
+      });
+      const res = await executeTool('get_equipment', { id: String(foreign._id) }, ctx());
+      assert.strictEqual(res.success, false);
+      assert.match(res.error, /not found/i);
+    });
+
+    it('rejects a missing/invalid id', async function () {
+      const res = await executeTool('get_equipment', {}, ctx());
+      assert.strictEqual(res.success, false);
+      assert.match(res.error, /valid id/i);
+    });
+  });
+
   describe('tool schemas — status enums exposed to the LLM', function () {
     it('update_equipment input_schema status.enum matches the model enum exactly', function () {
       const tools = getClaudeTools();

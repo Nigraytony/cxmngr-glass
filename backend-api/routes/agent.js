@@ -44,7 +44,23 @@ const {
 // the model's final text claiming it had finished when it hadn't.
 const MAX_TOOL_ITERATIONS = 25
 const MAX_HISTORY_MESSAGES = 20 // how many prior turns to include in context
-const MAX_TOKENS = 8192
+// Bumped from 8192. A single fully-populated template (dozens of attributes,
+// components, checklist questions and multi-step functional tests) is a large
+// JSON tool call that routinely exceeded 8192 output tokens — the provider
+// returned stop_reason "max_tokens" with a TRUNCATED, invalid tool call that
+// either silently did nothing or created a partial record. 16384 gives a
+// single record room to land; genuine overflow is now caught explicitly below.
+const MAX_TOKENS = 16384
+// When the model still hits the output ceiling mid-response, retry by asking it
+// to split the work into smaller create_* + update_* calls (capped to avoid
+// looping forever on a single oversized request).
+const MAX_TRUNCATION_RETRIES = 2
+const TRUNCATION_NUDGE =
+  'Your previous response hit the output token limit and was cut off before it completed. ' +
+  'None of the tool calls in that truncated response were executed — do NOT assume any record ' +
+  'was created or updated. Redo the work in smaller steps: create the record first with the ' +
+  'core fields, attributes and components, then add checklists and functional tests in one or ' +
+  'more follow-up update_* calls. Continue now.'
 const MAX_PDF_FILES = 3
 const MAX_PDF_BYTES = 10 * 1024 * 1024 // 10 MB per file
 
@@ -258,6 +274,10 @@ function buildSystemPrompt(project) {
     '     can exhaust the iteration budget on large projects.',
     '  10. If you genuinely run out of room, end the turn with a clear status: "I created A, B, C. Reply',
     '      \'continue\' to keep going with D, E, F." — never pretend the work is finished.',
+    '  11. To VERIFY equipment (e.g. the user asks "are you sure?" or "did that get created?"), call get_equipment',
+    '      and report its actual content counts (attributes, components, checklist sections/questions, functional',
+    '      tests). list_equipment only confirms a record exists, not that template content was applied. Never claim',
+    '      something is verified without a tool result backing it.',
     '',
     'Editing a Cx Plan activity description (or any rich-text section bounded by markers):',
     '  Activities of type "Cx Plan" carry a long descriptionHtml document. Auto-generated blocks inside',
@@ -339,6 +359,7 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
   let currentMessages = messages.map((m) => ({ ...m, content: sanitizeForClaude(m.content) }))
   let finalText = ''
   let hallucinationRetries = 0
+  let truncationRetries = 0
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const body = {
@@ -375,6 +396,22 @@ async function runClaudeLoop({ apiKey, model, systemPrompt, messages, projectId 
     if (turnText) finalText = turnText
 
     const toolUseBlocks = contentBlocks.filter((b) => b && b.type === 'tool_use')
+
+    // Truncation guard: the model hit the output token ceiling mid-response.
+    // Any tool_use block in this turn is cut off — its input JSON is incomplete
+    // and unsafe to execute (it would create a partial record), so we drop the
+    // tool blocks entirely, keep only any complete text, and ask the model to
+    // redo the work in smaller create_* + update_* steps.
+    if (stopReason === 'max_tokens' && truncationRetries < MAX_TRUNCATION_RETRIES) {
+      truncationRetries++
+      const textOnly = contentBlocks.filter((b) => b && b.type === 'text')
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: textOnly.length ? textOnly : [{ type: 'text', text: '(response truncated)' }] },
+        { role: 'user', content: [{ type: 'text', text: TRUNCATION_NUDGE }] },
+      ]
+      continue
+    }
 
     // Hallucination guard: the model is ending the turn (no tool calls) but
     // its text claims it just created / added / saved something. Reject the
@@ -480,6 +517,7 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
 
   let currentMessages = oaiMessages.slice()
   let finalText = ''
+  let truncationRetries = 0
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
     const body = { model, tools, messages: currentMessages, temperature: 0.2 }
@@ -503,6 +541,20 @@ async function runOpenAiLoop({ apiKey, model, systemPrompt, messages, projectId 
     if (message && message.content) finalText = asString(message.content).trim()
 
     const toolCalls = Array.isArray(message && message.tool_calls) ? message.tool_calls : []
+
+    // Truncation guard — see runClaudeLoop. A 'length' finish means the
+    // response (possibly mid tool_call) was cut off; don't execute the partial
+    // call, ask for smaller steps instead.
+    if (finishReason === 'length' && truncationRetries < MAX_TRUNCATION_RETRIES) {
+      truncationRetries++
+      currentMessages = [
+        ...currentMessages,
+        { role: 'assistant', content: asString(message && message.content) || '(response truncated)' },
+        { role: 'user', content: TRUNCATION_NUDGE },
+      ]
+      continue
+    }
+
     if (finishReason !== 'tool_calls' || !toolCalls.length) break
 
     // Append assistant message with tool_calls
@@ -563,6 +615,7 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
 
   let contents = toGeminiContents(messages)
   let finalText = ''
+  let truncationRetries = 0
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`
 
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
@@ -587,12 +640,26 @@ async function runGeminiLoop({ apiKey, model, systemPrompt, messages, projectId 
     }
 
     const candidate = data && data.candidates && data.candidates[0]
+    const finishReason = asString(candidate && candidate.finishReason)
     const parts = (candidate && candidate.content && Array.isArray(candidate.content.parts)) ? candidate.content.parts : []
 
     const textParts = parts.filter((p) => p && p.text)
     if (textParts.length) finalText = textParts.map((p) => asString(p.text)).join('\n').trim()
 
     const functionCallParts = parts.filter((p) => p && p.functionCall)
+
+    // Truncation guard — see runClaudeLoop. Drop the (possibly partial) turn
+    // and ask the model to redo the work in smaller steps.
+    if (finishReason === 'MAX_TOKENS' && truncationRetries < MAX_TRUNCATION_RETRIES) {
+      truncationRetries++
+      contents = [
+        ...contents,
+        { role: 'model', parts: textParts.length ? textParts : [{ text: '(response truncated)' }] },
+        { role: 'user', parts: [{ text: TRUNCATION_NUDGE }] },
+      ]
+      continue
+    }
+
     if (!functionCallParts.length) break
 
     // Append model turn
@@ -629,6 +696,27 @@ function buildToolResultEntry(toolName, result) {
     deleted: result.deleted || false,
     error: result.error || null,
   }
+}
+
+// Ground a replayed assistant turn in what its tool calls ACTUALLY did. The
+// history store keeps only text, so without this the model sees its own past
+// "✅ created…" prose with zero evidence of tool calls and learns to imitate
+// the prose while skipping the tools — a self-reinforcing hallucination loop.
+// Appending the real ledger (or an explicit "no tools were executed") breaks
+// it. Older messages predate the toolResults field and get no note.
+function groundAssistantContent(doc) {
+  const content = asString(doc && doc.content)
+  if (!doc || doc.role !== 'assistant' || !Array.isArray(doc.toolResults)) return content
+  const tr = doc.toolResults
+  if (!tr.length) {
+    return `${content}\n\n[history note: NO tools were executed in this turn — nothing was created, updated, or deleted.]`
+  }
+  const parts = tr.slice(0, 40).map((t) => {
+    const label = getToolLabel(t.tool) || asString(t.tool)
+    const nm = t.name ? ` "${t.name}"` : ''
+    return `${label}${nm} ${t.success ? '✓' : '✗ (failed)'}`
+  })
+  return `${content}\n\n[history note: tools actually executed this turn: ${parts.join(', ')}]`
 }
 
 // ---------------------------------------------------------------------------
@@ -775,7 +863,7 @@ router.post(
       }
 
       const messages = [
-        ...historyDocs.map((m) => ({ role: m.role, content: m.content })),
+        ...historyDocs.map((m) => ({ role: m.role, content: groundAssistantContent(m) })),
         { role: 'user', content: newUserContent },
       ]
 
@@ -807,7 +895,21 @@ router.post(
         role: 'user',
         content: (userMessage || messageText) + attachmentSuffix,
       })
-      await AssistantChatMessage.create({ projectId, userId: null, role: 'assistant', content: replyText })
+      // Persist a compact ledger of what actually ran so future turns replay
+      // grounded in reality (see groundAssistantContent). Capped and stripped
+      // of record payloads to keep history small.
+      const persistedToolResults = (result.toolResults || []).slice(0, 50).map((t) => ({
+        tool: asString(t && t.tool),
+        name: asString((t && t.name) || ''),
+        success: Boolean(t && t.success),
+      }))
+      await AssistantChatMessage.create({
+        projectId,
+        userId: null,
+        role: 'assistant',
+        content: replyText,
+        toolResults: persistedToolResults,
+      })
 
       // Prune to 300 messages per project
       const count = await AssistantChatMessage.countDocuments({ projectId })
