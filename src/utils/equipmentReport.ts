@@ -32,7 +32,7 @@ async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<st
   } catch (e) { return null }
 }
 
-async function maybeReinkSignatureForPdf(dataUrl: string): Promise<string> {
+export async function maybeReinkSignatureForPdf(dataUrl: string): Promise<string> {
   try {
     if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return dataUrl
     // Signatures are captured with white ink for the dark UI; on a white PDF page they can appear blank.
