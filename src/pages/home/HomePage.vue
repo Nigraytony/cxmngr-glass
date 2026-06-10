@@ -65,10 +65,10 @@
                 Get started free
               </RouterLink>
               <RouterLink
-                :to="{ name: 'login', query: { redirect: '/app' } }"
+                :to="{ name: 'demo' }"
                 class="w-full rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
               >
-                Log in to demo
+                Try the live demo
               </RouterLink>
             </div>
 
@@ -532,10 +532,10 @@
                 Start your 15-day free trial
               </RouterLink>
               <RouterLink
-                :to="{ name: 'login', query: { redirect: '/app' } }"
+                :to="{ name: 'demo' }"
                 class="w-full rounded-xl border border-white/15 bg-white/5 px-7 py-3 text-sm font-medium text-white backdrop-blur-xl transition hover:border-white/25 hover:bg-white/10 sm:w-auto"
               >
-                Log in to demo
+                Try the live demo
               </RouterLink>
             </div>
 
