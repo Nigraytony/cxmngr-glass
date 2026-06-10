@@ -294,12 +294,13 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useAgentStore } from '../../stores/agent'
 import http from '../../utils/http'
 
+const route = useRoute()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
 const agent = useAgentStore()
@@ -504,7 +505,14 @@ watch(() => agent.messages.length, async () => {
 })
 
 onMounted(() => {
-  nextTick(() => inputEl.value?.focus())
+  // Handoff from the setup walkthrough: pre-fill the draft so the user can review
+  // before running it (we deliberately don't auto-send).
+  const handoff = String(route.query?.prompt || '').trim()
+  if (handoff) draft.value = handoff
+  nextTick(() => {
+    inputEl.value?.focus()
+    autoGrow()
+  })
 })
 </script>
 

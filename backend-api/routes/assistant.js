@@ -9,10 +9,14 @@ const { requireNotDisabled } = require('../middleware/killSwitch')
 const { rateLimit } = require('../middleware/rateLimit')
 const { requireObjectIdQuery, requireObjectIdParam } = require('../middleware/validate')
 const Project = require('../models/project')
+const Task = require('../models/task')
+const Equipment = require('../models/equipment')
+const Activity = require('../models/activity')
 const AssistantChecklist = require('../models/assistantChecklist')
 const AssistantChatMessage = require('../models/assistantChatMessage')
 const AssistantArticle = require('../models/assistantArticle')
 const { getAssistantChecklistTemplateForProjectType } = require('../config/assistantChecklists')
+const { computeSetupStatus } = require('../utils/setupStatus')
 const { getAssistantDocsForProjectType } = require('../config/assistantDocs')
 const { getAssistantArticleSeeds, normalizeSlug } = require('../config/assistantArticles')
 
@@ -462,6 +466,39 @@ router.get(
       })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to load checklist' })
+    }
+  }
+)
+
+// Project onboarding ("setup walkthrough") status: where the owner is in the
+// canonical setup sequence, derived from real app state. Drives the proactive
+// walkthrough in the Assistant UI and grounds the assistant's chat guidance.
+router.get(
+  '/setup-status',
+  auth,
+  requireObjectIdQuery('projectId'),
+  requireActiveProject,
+  requireAssistantProjectAccess,
+  async (req, res) => {
+    try {
+      const projectId = asString(req.query.projectId).trim()
+      const project = req.assistantProject
+      const projectType = getProjectType(project)
+
+      // Checklist may be null if there's no template for this project type yet —
+      // computeSetupStatus tolerates that (Planning step simply stays incomplete).
+      const checklist = await ensureChecklistForProject(projectId, projectType)
+
+      const [tasks, activities, equipment] = await Promise.all([
+        Task.countDocuments({ projectId }),
+        Activity.countDocuments({ projectId }),
+        Equipment.countDocuments({ projectId }),
+      ])
+
+      const status = computeSetupStatus({ tasks, activities, equipment }, checklist)
+      return res.json({ projectId, projectType: asString(projectType).trim(), ...status })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to load setup status' })
     }
   }
 )

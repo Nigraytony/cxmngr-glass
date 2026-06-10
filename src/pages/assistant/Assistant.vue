@@ -35,6 +35,81 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
       <div class="lg:col-span-2 h-full rounded-xl border border-white/10 bg-white/5 p-4 min-h-0 overflow-y-auto pr-1">
+        <!-- Proactive setup walkthrough: shown while the project is still being set up. -->
+        <div
+          v-if="setupStatus && setupStatus.inSetup"
+          class="mb-4 rounded-xl border border-sky-400/30 bg-sky-500/10 p-4"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="text-sm font-semibold text-white">
+              Set up your project
+            </div>
+            <div class="text-xs text-white/70">
+              {{ setupStatus.completedCount }} of {{ setupStatus.totalSteps }} done
+            </div>
+          </div>
+          <div class="mt-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+            <div
+              class="h-full rounded-full bg-sky-400 transition-all"
+              :style="{ width: `${Math.round((setupStatus.completedCount / Math.max(1, setupStatus.totalSteps)) * 100)}%` }"
+            />
+          </div>
+
+          <ul class="mt-3 space-y-1.5">
+            <li
+              v-for="step in setupStatus.steps"
+              :key="step.key"
+              class="flex items-center gap-2 text-xs"
+              :class="step.done ? 'text-white/55' : 'text-white/90'"
+            >
+              <span
+                class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] shrink-0"
+                :class="step.done ? 'border-emerald-400/50 bg-emerald-400/20 text-emerald-200' : 'border-white/25 text-white/50'"
+              >
+                <span v-if="step.done">✓</span>
+              </span>
+              <span :class="{ 'line-through': step.done }">{{ step.title }}</span>
+            </li>
+          </ul>
+
+          <div
+            v-if="nextStep"
+            class="mt-3 rounded-lg border border-white/15 bg-black/20 p-3"
+          >
+            <div class="text-[11px] uppercase tracking-wide text-sky-200/80">
+              Next step
+            </div>
+            <div class="mt-0.5 text-sm font-medium text-white">
+              {{ nextStep.title }}
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="px-2.5 py-1 rounded-md bg-sky-500/80 hover:bg-sky-500 text-xs font-medium text-white"
+                @click="goToStep(nextStep.link)"
+              >
+                Go there
+              </button>
+              <button
+                v-if="nextStep.canAutomate"
+                type="button"
+                class="px-2.5 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-xs text-white/90"
+                @click="automateStep(nextStep.agentInstruction)"
+              >
+                Do this for me
+              </button>
+              <button
+                v-if="aiStatus && aiStatus.ai && aiStatus.ai.canChat === true"
+                type="button"
+                class="px-2.5 py-1 rounded-md text-xs text-sky-200/90 hover:text-white underline-offset-2 hover:underline"
+                @click="askInChat"
+              >
+                Ask in chat
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="text-sm font-semibold text-white/90">
@@ -680,6 +755,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import AssistantChat from '../../components/assistant/AssistantChat.vue'
 import AssistantHelper from '../../components/assistant/AssistantHelper.vue'
@@ -694,6 +770,7 @@ import http from '../../utils/http'
 import { confirm } from '../../utils/confirm'
 import { runCoachmarkOnce } from '../../utils/coachmarks'
 
+const router = useRouter()
 const projectStore = useProjectStore()
 const assistantStore = useAssistantStore()
 const checklistStore = useAssistantChecklistStore()
@@ -701,6 +778,35 @@ const docsStore = useAssistantDocsStore()
 const articlesStore = useAssistantArticlesStore()
 const ui = useUiStore()
 const authStore = useAuthStore()
+
+// Proactive setup walkthrough (see utils/setupStatus.js + stores/assistant.ts).
+const setupStatus = computed(() => assistantStore.setupStatus)
+const nextStep = computed(() => assistantStore.setupStatus?.nextStep || null)
+
+async function loadSetupStatus() {
+  if (!projectId.value) return
+  const s = await assistantStore.fetchSetupStatus(projectId.value)
+  // Flag onboarding context while the project is still being set up so chat replies
+  // stay grounded in what's done / what's next.
+  assistantStore.setContext({ onboarding: !!(s && s.inSetup), setupStatus: s || null })
+}
+
+function goToStep(link: string) {
+  const to = String(link || '').trim()
+  if (!to) return
+  router.push(to).catch(() => { /* ignore nav errors */ })
+}
+
+function automateStep(instruction: string | null) {
+  const p = String(instruction || '').trim()
+  if (!p) return
+  // Hybrid handoff: jump to the Agent with the step pre-filled (user reviews + runs).
+  router.push({ name: 'agent', query: { prompt: p } }).catch(() => { /* ignore */ })
+}
+
+function askInChat() {
+  docsTab.value = 'Chat'
+}
 
 const projectId = computed(() => String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim())
 const projectType = computed(() => String(projectStore.currentProject?.project_type || projectStore.currentProject?.type || '').trim())
@@ -889,7 +995,9 @@ const highlightedArticleBody = computed(() => {
   }
 
   function onToggleItem(item: AssistantChecklistItem, checked: boolean) {
-    checklistStore.setItemCompleted(item.id, Boolean(checked))
+    Promise.resolve(checklistStore.setItemCompleted(item.id, Boolean(checked)))
+      .then(() => loadSetupStatus())
+      .catch(() => {})
   }
 
   function setDocsTab(tab: DocsTab) {
@@ -927,6 +1035,18 @@ onMounted(() => {
 
   const pid = String(projectId.value || '').trim()
   const uid = authStore.user?._id ? String(authStore.user._id) : null
+
+  loadSetupStatus()
+    .then(() => {
+      if (pid && assistantStore.setupStatus?.inSetup) {
+        // Auto trigger: greet a new owner once and point them at the walkthrough.
+        runCoachmarkOnce('assistant.onboarding.offer', { projectId: pid, userId: uid }, () => {
+          ui.showInfo('Welcome! This project is still being set up — follow the “Set up your project” guide on the left. I can walk you through each step and do some of them for you.', { duration: 14000 })
+        })
+      }
+    })
+    .catch(() => {})
+
   if (pid) {
     runCoachmarkOnce('assistant.docs.tip', { projectId: pid, userId: uid }, () => {
       ui.showInfo('Tip: Select a checklist item (checkbox toggles completion) to see CXMA guidance + trusted docs. If nothing is selected, browse/search articles on the right.', { duration: 12000 })
@@ -937,6 +1057,7 @@ onMounted(() => {
   watch(projectId, () => {
     ensureLoaded().catch(() => {})
     fetchAiStatus().catch(() => {})
+    loadSetupStatus().catch(() => {})
     selectedItemId.value = ''
     docsTab.value = 'Articles'
     selectedArticleSlug.value = ''

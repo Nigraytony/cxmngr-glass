@@ -1,7 +1,28 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import http from '../utils/http'
 import { useAuthStore } from './auth'
 import { useProjectStore } from './project'
+
+export interface SetupStep {
+  key: string
+  title: string
+  description?: string
+  link: string
+  done: boolean
+  canAutomate: boolean
+  agentInstruction: string | null
+}
+
+export interface SetupStatus {
+  projectId?: string
+  projectType?: string
+  inSetup: boolean
+  totalSteps: number
+  completedCount: number
+  steps: SetupStep[]
+  nextStep: { key: string; title: string; link: string; canAutomate: boolean; agentInstruction: string | null } | null
+}
 
 export interface AssistantContext {
   projectId: string | null
@@ -10,6 +31,8 @@ export interface AssistantContext {
   entityType?: string | null
   entityId?: string | null
   activeTab?: string | null
+  onboarding?: boolean
+  setupStatus?: SetupStatus | null
 }
 
 function normalizeTierKey(raw: any) {
@@ -27,6 +50,9 @@ function normalizeTierKey(raw: any) {
 export const useAssistantStore = defineStore('assistant', () => {
   const open = ref(false)
   const context = ref<AssistantContext>({ projectId: null })
+
+  const setupStatus = ref<SetupStatus | null>(null)
+  const setupLoading = ref(false)
 
   const auth = useAuthStore()
   const projectStore = useProjectStore()
@@ -77,6 +103,23 @@ export const useAssistantStore = defineStore('assistant', () => {
     context.value = { ...context.value, ...next }
   }
 
+  async function fetchSetupStatus(projectId?: string) {
+    const pid = String(projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
+    if (!pid) return null
+    setupLoading.value = true
+    try {
+      const { data } = await http.get('/api/assistant/setup-status', { params: { projectId: pid } })
+      setupStatus.value = (data && typeof data === 'object') ? (data as SetupStatus) : null
+      return setupStatus.value
+    } catch {
+      // Non-fatal: the walkthrough simply doesn't surface if status can't load.
+      setupStatus.value = null
+      return null
+    } finally {
+      setupLoading.value = false
+    }
+  }
+
   function openWithContext(next?: Partial<AssistantContext>) {
     const pid = String(projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '').trim()
     setContext({ projectId: pid || null, ...(next || {}) })
@@ -98,6 +141,8 @@ export const useAssistantStore = defineStore('assistant', () => {
   return {
     open,
     context,
+    setupStatus,
+    setupLoading,
     currentProject,
     tierKey,
     projectType,
@@ -106,6 +151,7 @@ export const useAssistantStore = defineStore('assistant', () => {
     dismissIntro,
     setOpen,
     setContext,
+    fetchSetupStatus,
     openWithContext,
     close,
   }

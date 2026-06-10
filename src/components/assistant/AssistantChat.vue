@@ -167,6 +167,10 @@
     routeName: route.name || null,
     routePath: route.path || null,
     projectId: projectId.value || null,
+    // Hoisted to the top level so the AI chat endpoint can detect onboarding mode
+    // and ground its guidance (see routes/ai.js buildOnboardingGuidanceText).
+    onboarding: assistant.context?.onboarding === true,
+    setupStatus: assistant.setupStatus || assistant.context?.setupStatus || null,
     assistant: {
       ...(assistant.context || {}),
       projectType: assistant.projectType || null,
