@@ -260,6 +260,32 @@ function buildAssistantGuardrailsText() {
   ].join('\n')
 }
 
+// Proactive setup-walkthrough guidance. Only injected when the frontend flags an
+// onboarding chat and supplies setupStatus (see utils/setupStatus.js). Keeps the
+// assistant focused on exactly one next step and offers an agent handoff.
+function buildOnboardingGuidanceText(setupStatus) {
+  if (!setupStatus || typeof setupStatus !== 'object') return ''
+  const next = setupStatus.nextStep || null
+  const lines = [
+    'PROJECT SETUP MODE:',
+    'This owner is setting up a new project. Act as a friendly setup guide.',
+    '- Recommend EXACTLY ONE next step — the nextStep below — not the whole list.',
+    '- Keep it to 2–3 short sentences. Tell them where to go in the app (the step’s link).',
+    '- Do not invent steps or app data; rely only on the setup status provided.',
+  ]
+  if (next) {
+    lines.push(`Next step: "${asString(next.title)}" → ${asString(next.link)}`)
+    if (next.canAutomate) {
+      lines.push('This step can be automated: offer to do it for them in the Agent (they can click “Do this for me”).')
+    } else {
+      lines.push('This step needs their judgment — guide them, do not offer to automate it.')
+    }
+  } else {
+    lines.push('All setup steps are complete — congratulate them briefly and invite them to explore.')
+  }
+  return lines.join('\n')
+}
+
 function detectDisallowedAiRequest(text) {
   const t = asString(text).toLowerCase()
   if (!t) return null
@@ -569,11 +595,15 @@ router.post('/chat', auth, requireNotDisabled('ai'), requireBodyField('projectId
         : (asString(ai.model || process.env.OPENAI_MODEL || 'gpt-4o-mini').trim() || 'gpt-4o-mini')
     const context = (req.body && typeof req.body.context === 'object' && req.body.context) ? req.body.context : null
 
+    const onboarding = !!(context && context.onboarding === true && context.setupStatus)
+    const onboardingText = onboarding ? buildOnboardingGuidanceText(context.setupStatus) : ''
+
     const system = [
       'You are CXMA, an assistant inside a commissioning management web app.',
       'Be concise and practical. Prefer checklists, next steps, and clear recommendations.',
       'If the user asks for actions that require app data you do not have, ask what you need.',
       'Never fabricate IDs, database values, or project-specific facts.',
+      ...(onboardingText ? [onboardingText] : []),
       buildAssistantGuardrailsText(),
       // Avatar mood tagging: the UI shows a memoji whose expression matches this tag.
       `At the very end of every reply, on its own final line, append exactly: [mood: <one>] where <one> is one of: ${ASSISTANT_MOODS.join(', ')}.`,
