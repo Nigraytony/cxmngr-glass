@@ -645,15 +645,20 @@
               </details>
             </div>
 
-            <!-- Right column: Description only. Editor uses a fixed 24rem
-                 height in normal mode so the page stays compact and scrolls
-                 internally. In Cx Plan mode the editor's own docMode styles
-                 (70-80vh) drive sizing instead — see RichTextEditor.vue. -->
+            <!-- Right column: Description only. In normal mode the editor must
+                 match the (taller) left column's height and scroll internally —
+                 NOT grow the page to fit all its text. We do that by stretching
+                 this grid item to the row height (md:self-stretch overrides the
+                 grid's items-start) and absolutely positioning the editor inside
+                 (md:absolute md:inset-0) so its content height does NOT inflate
+                 the row — the left column alone sets the row height.
+                 In Cx Plan mode the editor's own docMode styles (70-80vh) drive
+                 sizing instead and the page scrolls normally. -->
             <div
-              class="flex flex-col gap-3 min-w-0"
-              :class="{ 'md:col-span-2': isCxPlan }"
+              class="min-w-0"
+              :class="isCxPlan ? 'flex flex-col gap-3 md:col-span-2' : 'md:self-stretch md:relative'"
             >
-              <div>
+              <div :class="isCxPlan ? '' : 'flex flex-col min-h-0 md:absolute md:inset-0'">
                 <div class="flex items-center justify-between gap-2 mb-1">
                   <label class="text-sm text-white/70">Description</label>
                   <div
@@ -698,7 +703,8 @@
                 <RichTextEditor
                   v-model="form.descriptionHtml"
                   :doc-mode="isCxPlan"
-                  :class="isCxPlan ? '' : 'h-96'"
+                  :fill="!isCxPlan"
+                  :class="isCxPlan ? '' : 'flex-1 min-h-0'"
                 />
               </div>
             </div>
@@ -3910,7 +3916,7 @@ async function downloadActivityPdf() {
         const res = drawBrandedHeader(doc, {
           margin,
           pageWidth,
-          title: `${form.name || 'Activity'} Report`,
+          title: form.name || 'Activity',
         leftLogo: clientImg,
         rightLogo: cxaImg,
         logoH: 12,
@@ -4107,11 +4113,14 @@ async function downloadActivityPdf() {
         .replace(/<h1/gi,'<h1 style="font-size:20px; margin:4px 0; font-weight:700;"')
         .replace(/<h2/gi,'<h2 style="font-size:16px; margin:4px 0; font-weight:700;"')
         .replace(/<h3/gi,'<h3 style="font-size:14px; margin:3px 0; font-weight:700;"')
-        // 12pt ≈ 16px (Word 12)
-        .replace(/<p/gi,'<p style="font-size:16px; margin:2px 0; line-height:1.35;"')
-        .replace(/<ul/gi,'<ul style="margin:4px 0; padding-left:18px; list-style-type:disc; list-style-position:outside;"')
-        .replace(/<ol/gi,'<ol style="margin:4px 0; padding-left:18px; list-style-type:decimal; list-style-position:outside;"')
-        .replace(/<li/gi,'<li style="font-size:16px; margin:1px 0;"')
+        // 12pt ≈ 16px (Word 12). Match the editor's paragraph/list spacing
+        // (RichTextEditor.vue uses 0.4rem ≈ 6px on <p>, 0.2rem ≈ 3px on <li>) so the
+        // PDF reads with the same paragraph breaks the user sees while editing —
+        // a 2px margin previously jammed separate paragraphs into one block.
+        .replace(/<p/gi,'<p style="font-size:16px; margin:6px 0; line-height:1.35;"')
+        .replace(/<ul/gi,'<ul style="margin:6px 0; padding-left:20px; list-style-type:disc; list-style-position:outside;"')
+        .replace(/<ol/gi,'<ol style="margin:6px 0; padding-left:20px; list-style-type:decimal; list-style-position:outside;"')
+        .replace(/<li/gi,'<li style="font-size:16px; margin:3px 0;"')
         // Tables — the rich-text editor (TipTap) now lets the user add tables,
         // and the Cx Plan starter emits several. Without explicit borders /
         // padding here, html2canvas paints them as a single jammed line of
@@ -4456,8 +4465,8 @@ async function downloadActivityPdf() {
         drawIssuesHeader();
         for (const it of issues) {
           const numTxt = '#' + (it.number ?? '—');
-          const typeTxt = String(it.type||'—');
-          const sourceTxt = String((it as any).__source || (it as any).assetTag || (it as any).asset || '—');
+          const typeLines = iDoc.splitTextToSize(String(it.type||'—'), typeW - 3) as string[];
+          const sourceLines = iDoc.splitTextToSize(String((it as any).__source || (it as any).assetTag || (it as any).asset || '—'), sourceW - 3) as string[];
           const titleLines = iDoc.splitTextToSize(String(it.title||'—'), titleW - 3) as string[];
           const descText = htmlToText((it as any).description || (it as any).descriptionHtml || '') || '—';
           const descLines = iDoc.splitTextToSize(descText, finalDescW - 3) as string[];
@@ -4465,7 +4474,7 @@ async function downloadActivityPdf() {
           const recLines = iDoc.splitTextToSize(recTxt, recW - 3) as string[];
           const statusTxt = String(it.status || 'Open');
           const statusLines = iDoc.splitTextToSize(statusTxt, statusW - 3) as string[];
-          const hLines = Math.max(1, titleLines.length, descLines.length, recLines.length, statusLines.length);
+          const hLines = Math.max(1, typeLines.length, sourceLines.length, titleLines.length, descLines.length, recLines.length, statusLines.length);
           const rowH = Math.max(8, hLines*5 + 2);
           if (ensureISpace(rowH + 2)) drawIssuesHeader();
           // Fill closed rows with a light gray background
@@ -4493,9 +4502,11 @@ async function downloadActivityPdf() {
           let cx = tableX + 1.5;
           iDoc.text(numTxt, cx, iy+5);
           cx += numW;
-          iDoc.text(typeTxt.slice(0,16), cx+1.5, iy+5);
+          let tyY = iy+5;
+          for (const l of typeLines) { iDoc.text(l, cx+1.5, tyY); tyY += 5 }
           cx += typeW;
-          iDoc.text(sourceTxt.slice(0,18), cx+1.5, iy+5);
+          let soY = iy+5;
+          for (const l of sourceLines) { iDoc.text(l, cx+1.5, soY); soY += 5 }
           cx += sourceW;
           let tlY = iy+5;
           for (const l of titleLines) { iDoc.text(l, cx+1.5, tlY); tlY += 5 }
@@ -4655,7 +4666,7 @@ async function downloadActivityPdf() {
             const res = drawBrandedHeader(eqDoc, {
               margin: eqMargin,
               pageWidth: eqPW,
-              title: `${form.name || 'Activity'} Report`,
+              title: form.name || 'Activity',
               leftLogo: clientImg,
               rightLogo: cxaImg,
               logoH: 12,
@@ -4859,7 +4870,7 @@ async function downloadActivityPdf() {
           const res = drawBrandedHeader(eqDoc, {
             margin: eqMargin,
             pageWidth: eqPW,
-            title: `${form.name || 'Activity'} Report`,
+            title: form.name || 'Activity',
             leftLogo: clientImg,
             rightLogo: cxaImg,
             logoH: 12,

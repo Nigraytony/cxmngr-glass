@@ -1,5 +1,5 @@
 <template>
-  <div class="rte-root" :class="{ 'rte-doc-mode': docMode, 'rte-readonly': !editable }">
+  <div class="rte-root" :class="{ 'rte-doc-mode': docMode, 'rte-readonly': !editable, 'rte-fill': fill }">
     <div
       v-if="editor && editable"
       class="rte-toolbar"
@@ -163,10 +163,14 @@ const props = withDefaults(defineProps<{
   modelValue?: string
   docMode?: boolean
   editable?: boolean
+  // When true, the editor grows to fill its flex parent instead of capping at
+  // 60vh — used where the editor should fill an entire column (e.g. ActivityEdit).
+  fill?: boolean
 }>(), {
   modelValue: '',
   docMode: false,
   editable: true,
+  fill: false,
 })
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void
@@ -351,8 +355,19 @@ onBeforeUnmount(() => {
   margin: 0.75rem 0 0.35rem;
 }
 .rte-content :deep(.ProseMirror p) { margin: 0.4rem 0; }
-.rte-content :deep(.ProseMirror ul),
-.rte-content :deep(.ProseMirror ol) { margin: 0.4rem 0 0.4rem 1.25rem; }
+/* Tailwind's preflight resets `list-style: none` on ul/ol, which hid the bullets
+   and numbers in the editor. Re-enable markers explicitly and indent with padding
+   so the markers sit inside the content box (visible against the dark editor bg). */
+.rte-content :deep(.ProseMirror ul) {
+  margin: 0.4rem 0;
+  padding-left: 1.5rem;
+  list-style: disc outside;
+}
+.rte-content :deep(.ProseMirror ol) {
+  margin: 0.4rem 0;
+  padding-left: 1.5rem;
+  list-style: decimal outside;
+}
 .rte-content :deep(.ProseMirror li) { margin: 0.2rem 0; }
 .rte-content :deep(.ProseMirror table),
 .rte-content :deep(.ProseMirror .rte-table) {
@@ -391,6 +406,12 @@ onBeforeUnmount(() => {
   border: 0;
   pointer-events: none;
   user-select: none;
+}
+
+/* Fill mode — the parent gives the editor its height via flex-1; lift the 60vh
+   cap so the content area grows to fill the full column instead of stopping short. */
+.rte-fill .rte-content {
+  max-height: none;
 }
 
 /* Document mode — grow tall like a word processor */
