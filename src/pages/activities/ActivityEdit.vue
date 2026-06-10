@@ -757,6 +757,39 @@
                 </button>
                 <button
                   v-if="!isNew"
+                  :disabled="downloading"
+                  class="px-3 py-2 rounded-md bg-sky-500/20 border-2 border-sky-400/70 text-sky-100 hover:bg-sky-500/40 hover:border-sky-500/90 focus:outline-none focus:ring-2 focus:ring-sky-400/60 inline-flex items-center gap-2 transition-colors duration-150"
+                  :class="downloading ? 'opacity-60 cursor-not-allowed' : ''"
+                  title="Download an editable Microsoft Word (.docx) version of this report"
+                  @click="downloadActivityDocx"
+                >
+                  <!-- Word icon -->
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M6 2h7l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M13 2v6h6"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M7 12l1.5 6 1.5-4 1.5 4 1.5-6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <span>Download Word</span>
+                </button>
+                <button
+                  v-if="!isNew"
                   type="button"
                   class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
                   title="Report settings"
@@ -2618,6 +2651,7 @@ import { useAuthStore } from '../../stores/auth'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import IssuesTable from '../../components/IssuesTable.vue'
 import IssueForm from '../../components/IssueForm.vue'
+import { generateActivityDocxBlob, type ActivityDocxData } from '../../utils/activityReportDocx'
 import { useIssuesStore } from '../../stores/issues'
 import { useActionsStore } from '../../stores/actions'
 import { useTemplatesStore } from '../../stores/templates'
@@ -5000,6 +5034,342 @@ async function downloadActivityPdf() {
     }
   } catch (e:any) {
     ui.showError(e?.message || 'Failed to generate report')
+  } finally {
+    downloading.value = false
+  }
+}
+
+// Read a named equipment attribute, supporting both the array-of-{key,value}
+// and plain-object attribute shapes (mirrors the PDF generator).
+function getEquipAttr(eq: any, key: string): string {
+  if (Array.isArray(eq?.attributes)) {
+    for (const a of eq.attributes) {
+      if (a && typeof a === 'object' && a.key === key && a.value) return String(a.value)
+    }
+  } else if (eq?.attributes && typeof eq.attributes === 'object') {
+    if (eq.attributes[key]) return String(eq.attributes[key])
+  }
+  return '—'
+}
+
+// Editable Microsoft Word (.docx) export — mirrors the PDF report sections as real
+// text/tables/images instead of a flattened canvas. See utils/activityReportDocx.ts.
+async function downloadActivityDocx() {
+  if (!id.value || isNew.value || downloading.value) return
+  downloading.value = true
+  ui.showInfo('Generating Word document…', { duration: 10000 })
+  try {
+    await ensureReportData()
+    const inc = activityReport.value.include
+    const project: any = projectStore.currentProject || {}
+
+    const client = await loadImage(project?.logo).catch(() => null)
+    const cxa = await loadImage(project?.commissioning_agent?.logo).catch(() => null)
+
+    // Cover jumbotron image
+    let jumbotron: any = null
+    if (inc.coverPage) {
+      const j = String(activityReport.value.coverJumbotronDataUrl || '').trim()
+      if (j) jumbotron = await loadImage(j).catch(() => null)
+    }
+
+    // Activity photos (respect photoLimit)
+    const photos: any[] = []
+    if (inc.photos) {
+      const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
+      const lim = Math.min(activityReport.value.photoLimit, phs.length)
+      for (let p = 0; p < lim; p++) {
+        const src = phs[p]?.data || phs[p]?.url || phs[p]
+        const im = await loadImage(src).catch(() => null)
+        if (im?.dataUrl) photos.push(im)
+      }
+    }
+
+    // Equipment List rows (lightweight — identity + key attributes)
+    const equipment: any[] = []
+    if (inc.equipmentList && selectedEquip.value.length) {
+      for (const eq of selectedEquip.value) {
+        equipment.push({
+          tag: eq.tag,
+          title: eq.title,
+          status: eq.status,
+          manufacturer: getEquipAttr(eq, 'Manufacturer'),
+          condition: getEquipAttr(eq, 'Condition'),
+          location: eq.location || '',
+        })
+      }
+    }
+
+    // Issues — aggregate from the activity and selected equipment (deduped),
+    // mirroring downloadActivityPdf's aggregation.
+    const issues: any[] = []
+    if (inc.issues) {
+      const seen = new Set<string>()
+      const push = (obj: any, source: string) => {
+        if (!obj) return
+        const k = String(obj.id || obj._id || `${obj.number ?? ''}|${obj.type ?? ''}|${String(obj.title ?? '').slice(0, 40)}`)
+        if (seen.has(k)) return
+        seen.add(k)
+        issues.push({
+          number: obj.number,
+          type: obj.type,
+          source,
+          title: obj.title,
+          description: htmlToText(obj.description || obj.descriptionHtml || ''),
+          recommendation: obj.recommendation || obj.recommendationText || obj.recommendation_text || '',
+          status: obj.status || 'Open',
+        })
+      }
+      for (const it of (issuesForActivity.value || [])) push(it, 'Activity')
+      try {
+        for (const eq of (selectedEquip.value || [])) {
+          let eqObj: any = eq
+          const hasInline = Array.isArray(eqObj?.issues) && eqObj.issues.length > 0
+          if (!hasInline && (eqObj?.id || eqObj?._id)) {
+            try { const f = await equipmentStore.fetchOne(String(eqObj.id || eqObj._id)); if (f) eqObj = f } catch (_) { /* ignore */ }
+          }
+          const srcLabel = String(eqObj?.tag || eqObj?.title || 'Equipment')
+          const refs: any[] = Array.isArray(eqObj?.issues) ? eqObj.issues : []
+          for (const ref of refs) {
+            const rid = String((ref && (ref.id || ref._id)) || ref || '')
+            const obj = rid ? issuesById.value[rid] : (typeof ref === 'object' ? ref : null)
+            if (obj) push(obj, srcLabel)
+          }
+          const eqId = String((eqObj?.id || eqObj?._id) || '')
+          if (eqId) {
+            for (const it of (issuesStore.issues || [])) {
+              if (String((it as any)?.assetId || '') === eqId) push(it, srcLabel)
+            }
+          }
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    // Equipment Reports — full per-equipment reports (mirrors generateEquipmentPdf).
+    const equipmentReports: any[] = []
+    if (inc.equipmentReports && selectedEquip.value.length) {
+      const { maybeReinkSignatureForPdf } = await import('../../utils/equipmentReport')
+      const toIssueRow = (obj: any, source: string) => ({
+        number: obj.number,
+        type: obj.type,
+        source,
+        title: obj.title,
+        description: htmlToText(obj.description || obj.descriptionHtml || ''),
+        recommendation: obj.recommendation || obj.recommendationText || obj.recommendation_text || '',
+        status: obj.status || 'Open',
+      })
+      const normalizeDone = (it: any): 'yes' | 'no' | 'na' | 'unknown' => {
+        if (typeof it?.done !== 'undefined') return it.done ? 'yes' : 'no'
+        if (typeof it?.answer !== 'undefined' && it?.answer !== null) {
+          const ans = String(it.answer).toLowerCase()
+          if (ans === 'yes') return 'yes'
+          if (ans === 'na') return 'na'
+          if (ans === 'no') return 'no'
+        }
+        return 'unknown'
+      }
+      const spaceName = (sid?: string) => {
+        const s = sid ? (spacesById() as any)[String(sid)] : null
+        return s ? String(s.title || s.tag || '') : ''
+      }
+      for (const eq of selectedEquip.value) {
+        let full: any = eq
+        try { const f = await fetchFullEquipmentForReport(String(eq.id || eq._id)); if (f) full = f } catch (_) { /* ignore */ }
+
+        // Per-equipment report include settings (mirror the PDF: force issues + signatures on).
+        const baseInc = (full?.reportSettings && full.reportSettings.include) || {}
+        // Defaults, then the equipment's saved settings, then force issues + signatures on (as the PDF does).
+        const include = { info: true, attributes: true, components: true, photos: true, checklists: true, fpt: true, attachments: true, ...baseInc, issues: true, signatures: true }
+
+        // Photos
+        const photos: any[] = []
+        if (include.photos) {
+          const eqPhs: any[] = Array.isArray(full?.photos) ? full.photos : []
+          for (let p = 0; p < Math.min(activityReport.value.photoLimit, eqPhs.length); p++) {
+            const src = eqPhs[p]?.data || eqPhs[p]?.url || eqPhs[p]
+            const im = await loadImage(src).catch(() => null)
+            if (im?.dataUrl) photos.push(im)
+          }
+        }
+
+        // Components
+        const components = (Array.isArray(full?.components) ? full.components : []).map((c: any) => {
+          const toPairs = (obj: any) => {
+            if (!obj) return []
+            if (Array.isArray(obj)) return obj.map((r: any) => ({ key: String(r?.key ?? r?.title ?? ''), value: String(r?.value ?? '') })).filter((p: any) => p.key)
+            if (typeof obj === 'object') return Object.entries(obj).map(([k, v]) => ({ key: String(k), value: String(v ?? '') }))
+            return []
+          }
+          return {
+            header: `${c?.tag ? c.tag + ' — ' : ''}${c?.title || c?.type || 'Component'}`,
+            type: c?.type || '',
+            status: c?.status || '',
+            attributes: toPairs(c?.attributes),
+            notes: c?.notes || '',
+          }
+        })
+
+        // Checklists
+        const checklists = (Array.isArray(full?.checklists) ? full.checklists : []).map((s: any) => {
+          const items: any[] = Array.isArray(s?.questions) ? s.questions : (Array.isArray(s?.items) ? s.items : [])
+          return {
+            title: String(s?.title || 'Section'),
+            items: items.map((it: any) => ({ done: normalizeDone(it), question: String(it?.question_text ?? it?.text ?? ''), notes: String(it?.notes || '') })),
+          }
+        })
+
+        // Functional tests
+        const functionalTests = (Array.isArray(full?.functionalTests) ? full.functionalTests : []).map((t: any) => {
+          const number = (t?.number != null) ? `#${t.number} ` : ''
+          const rows = (Array.isArray(t?.rows) && t.kind === 'sheet') ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? '') })) : []
+          return {
+            title: `${number}${String(t?.name || t?.title || 'Test')}`,
+            status: t?.pass === true ? 'PASS' : (t?.pass === false ? 'FAIL' : null),
+            description: t?.description ? String(t.description) : '',
+            notes: t?.notes ? String(t.notes) : '',
+            rows,
+          }
+        })
+
+        // Signatures
+        const signatures: any[] = []
+        if (include.signatures) {
+          const raw = full?.fptSignatures
+          const sigs: any[] = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : [])
+          for (const sig of sigs) {
+            let image: any = null
+            if (sig?.block) {
+              // Signatures are drawn with light ink for the dark UI; re-ink to dark
+              // so they're visible on the white Word page (same as the PDF).
+              const printable = await maybeReinkSignatureForPdf(String(sig.block)).catch(() => String(sig.block))
+              const im = await loadImage(printable).catch(() => null)
+              if (im?.dataUrl) image = im
+            }
+            signatures.push({
+              name: String(sig?.person || sig?.name || '').trim() || 'Name',
+              role: String(sig?.role || '').trim(),
+              title: String(sig?.title || '').trim(),
+              date: String(sig?.date || sig?.signedAt || '').trim(),
+              image,
+            })
+          }
+        }
+
+        // Issues for this equipment (checklist-question links, assetId, tag-as-location)
+        const eqIssues: any[] = []
+        if (include.issues) {
+          const linked = new Set<string>()
+          const eqId = String(full?.id || full?._id || '')
+          const tag = String(full?.tag || '')
+          for (const r of (Array.isArray(full?.issues) ? full.issues : [])) { const iid = String((r && (r.id || r._id)) || r || ''); if (iid) linked.add(iid) }
+          for (const c of (Array.isArray(full?.checklists) ? full.checklists : [])) {
+            const items: any[] = Array.isArray(c?.questions) ? c.questions : (Array.isArray(c?.items) ? c.items : [])
+            for (const q of items) for (const r of (Array.isArray(q?.issues) ? q.issues : [])) { const iid = String((r && (r.id || r._id)) || r || ''); if (iid) linked.add(iid) }
+          }
+          for (const it of Object.values(issuesById.value)) {
+            const o: any = it
+            if (eqId && String(o?.assetId || '') === eqId) linked.add(String(o.id || o._id))
+            else if (tag && String(o?.location || '') === tag) linked.add(String(o.id || o._id))
+          }
+          const srcLabel = tag || String(full?.title || 'Equipment')
+          const seenE = new Set<string>()
+          for (const iid of linked) {
+            const obj = issuesById.value[iid]
+            if (obj && !seenE.has(iid)) { seenE.add(iid); eqIssues.push(toIssueRow(obj, srcLabel)) }
+          }
+        }
+
+        // Attachments
+        const eqAtts: any[] = []
+        if (include.attachments) {
+          const atts: any[] = Array.isArray(full?.attachments) ? full.attachments : []
+          const isImage = (a: any) => {
+            const type = String(a?.type || '').toLowerCase()
+            const name = String(a?.filename || a?.url || '').toLowerCase()
+            const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''
+            return type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(ext)
+          }
+          for (const a of atts.slice(0, 20)) {
+            const rec: any = { filename: a?.filename || a?.name || 'Attachment' }
+            if (isImage(a)) { const im = await loadImage(a?.url || a?.data).catch(() => null); if (im?.dataUrl) rec.image = im }
+            eqAtts.push(rec)
+          }
+        }
+
+        equipmentReports.push({
+          tag: full?.tag || '',
+          title: full?.title || '',
+          type: full?.type || '',
+          system: full?.system || '',
+          status: full?.status || '',
+          spaceName: spaceName(full?.spaceId),
+          descriptionHtml: full?.description || '',
+          attributes: Array.isArray(full?.attributes) ? full.attributes.filter((a: any) => a && (String(a.key || '').trim() || String(a.value || '').trim())) : [],
+          components,
+          photos,
+          checklists,
+          functionalTests,
+          signatures,
+          issues: eqIssues,
+          attachments: eqAtts,
+          include,
+        })
+      }
+    }
+
+    // Attachments — list filenames + embed image attachments inline.
+    const attachments: any[] = []
+    if (inc.attachments) {
+      const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
+      const isImage = (a: any) => {
+        const type = String(a?.type || '').toLowerCase()
+        const name = String(a?.filename || a?.url || '').toLowerCase()
+        const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''
+        return type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(ext)
+      }
+      for (const a of atts.slice(0, 20)) {
+        const rec: any = { filename: a?.filename || a?.name || 'Attachment' }
+        if (isImage(a)) {
+          const im = await loadImage(a?.url || a?.data).catch(() => null)
+          if (im?.dataUrl) rec.image = im
+        }
+        attachments.push(rec)
+      }
+    }
+
+    const data: ActivityDocxData = {
+      include: inc,
+      activityName: form.name || 'Activity',
+      activityType: form.type || '',
+      startDate: form.startDate || '',
+      endDate: form.endDate || '',
+      location: form.location || '',
+      projectName: String(project?.name || ''),
+      descriptionHtml: inc.description ? (form.descriptionHtml || '') : '',
+      cover: {
+        title: activityReport.value.coverTitle || '',
+        subtitle: activityReport.value.coverSubtitle || '',
+        byLine: activityReport.value.coverByLine || '',
+        jumbotron,
+      },
+      photos,
+      equipment,
+      equipmentReports,
+      issues,
+      attachments,
+      logos: { client, cxa },
+    }
+
+    const blob = await generateActivityDocxBlob(data)
+    const fname = buildActivityPdfFilename().replace(/\.pdf$/i, '.docx')
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fname
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (e: any) {
+    ui.showError(e?.message || 'Failed to generate Word document')
   } finally {
     downloading.value = false
   }
