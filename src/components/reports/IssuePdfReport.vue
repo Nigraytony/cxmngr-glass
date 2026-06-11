@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // ref not required here
 import jsPDF from 'jspdf'
+import { ensureReportFonts, SANS, setColor as setReportColor } from '../../utils/reportTypography'
 import { useProjectStore } from '../../stores/project'
 
 // Image helpers copied and generalized from IssueEdit.vue
@@ -136,29 +137,9 @@ function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
 
 const projectStore = useProjectStore()
 
-// Lazy-load Source Sans Pro from public assets and register with jsPDF
-let sourceSansLoaded = false
+// Embed the shared report fonts (IBM Plex Sans) into the doc.
 async function ensureSourceSans(doc: jsPDF) {
-  if (sourceSansLoaded) return
-  try {
-    const loadFont = async (url: string) => {
-      const res = await fetch(url)
-      const buf = await res.arrayBuffer()
-      const bytes = new Uint8Array(buf)
-      let binary = ''
-      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
-      return btoa(binary)
-    }
-    const regularB64 = await loadFont('/fonts/SourceSansPro_5/ttf/source-sans-pro-latin-400-normal.ttf')
-    // Use regular file for both normal and bold weights to avoid missing font errors if bold not present
-    doc.addFileToVFS('SourceSansPro-Regular.ttf', regularB64)
-    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'normal')
-    doc.addFont('SourceSansPro-Regular.ttf', 'SourceSansPro', 'bold')
-    sourceSansLoaded = true
-  } catch (e) {
-    // fall back silently to built-in fonts
-    sourceSansLoaded = false
-  }
+  await ensureReportFonts(doc)
 }
 
 function setZeroCharSpace(doc: jsPDF) {
@@ -171,9 +152,9 @@ function setZeroCharSpace(doc: jsPDF) {
 function setBodyFont(doc: jsPDF, weight: 'normal' | 'bold' = 'normal') {
   // Prefer Source Sans Pro if loaded; fall back to Times
   try {
-    doc.setFont('SourceSansPro', weight)
+    doc.setFont(SANS, weight)
   } catch (e) {
-    doc.setFont('times', weight)
+    doc.setFont(SANS, weight)
   }
 }
 
@@ -214,14 +195,14 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
         const lh = 5.5
         const lw = 12
         doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh)
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(8)
         const issueNumText = (issue.number != null && issue.number !== undefined) ? String(issue.number) : ''
         const footerTitle = `Issue ${issueNumText} Report`
         doc.text(footerTitle, margin + lw + 2, footerY - 2)
       } else {
         doc.setFillColor(220, 220, 220)
         doc.rect(margin, footerY - 5.5, 8, 5, 'F')
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(8)
         const issueNumText = (issue.number != null && issue.number !== undefined) ? String(issue.number) : ''
         const footerTitle = `Issue ${issueNumText} Report`
         doc.text(footerTitle, margin + 10, footerY - 2)
@@ -229,13 +210,13 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
     } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(8)
       const issueNumText = (issue.number != null && issue.number !== undefined) ? String(issue.number) : ''
       const footerTitle = `Issue ${issueNumText} Report`
       doc.text(footerTitle, margin + 10, footerY - 2)
     }
     // Middle: page number
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(SANS, 'normal')
     doc.text(String(opts.pageNoRef.value), pageWidth / 2, footerY - 2, { align: 'center' })
     // Right: date
     doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
@@ -310,7 +291,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
   const section = (heading: string, content?: string) => {
     const text = normalizePdfText(htmlToText(content || ''))
     if (!text) return
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(SANS, 'bold')
     doc.setFontSize(12)
     // If no room for header, new page
     if (y + 6 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin; setZeroCharSpace(doc) }
@@ -341,11 +322,11 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
     const commentsArr: any[] = Array.isArray(issue.comments) ? issue.comments : []
     if (commentsArr.length) {
       const drawCommentsHeader = (continued = false) => {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(12)
         // If no room for header, new page
         if (y + 6 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin }
         doc.text(continued ? 'Comments (continued)' : 'Comments', margin, y); y += 6
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+        doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       }
       drawCommentsHeader(false)
       for (let c = 0; c < commentsArr.length; c++) {
@@ -374,7 +355,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
     }
     if (imgs.length) {
       if (y + 4 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
+      doc.setFont(SANS, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
       const thumbW = (pageWidth - margin * 2 - 8) / 3
       const thumbH = thumbW * 0.75
       for (let idx = 0; idx < imgs.length; idx++) {
@@ -395,14 +376,14 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
     const atts: any[] = Array.isArray(issue.attachments) ? issue.attachments : (issue as any)?.documents || []
     if (atts.length) {
       if (y + 6 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin }
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       const maxA = 5
       for (let a = 0; a < Math.min(maxA, atts.length); a++) {
         const att = atts[a]
         const name = (typeof att === 'string') ? att.split('/').pop() : (att?.name || att?.filename || att?.url || 'Attachment')
         const lines = splitText(doc, String(name), pageWidth - margin * 2)
-        if (y + 10 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin; doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Attachments (continued)', margin, y); y += 6; doc.setFont('helvetica', 'normal'); doc.setFontSize(9) }
+        if (y + 10 > bottomLimit) { drawFooter(); doc.addPage(); opts.pageNoRef.value++; y = margin; doc.setFont(SANS, 'bold'); doc.setFontSize(12); doc.text('Attachments (continued)', margin, y); y += 6; doc.setFont(SANS, 'normal'); doc.setFontSize(9) }
         doc.text(lines, margin + 2, y)
         y += Math.min(10, lines.length * 4) + 1
       }
@@ -416,7 +397,7 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
 async function generateIssuePdf(issue: any) {
   // Open blank window to preserve user gesture
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); setReportColor(doc, 'text')
   const pageNoRef = { value: 1 }
   await renderIssuePage(doc, issue, { pageNoRef })
   const fname = `issue-${issue?.number || issue?.id || 'report'}.pdf`
@@ -439,7 +420,7 @@ async function generateIssuesDetailedPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
   await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); setReportColor(doc, 'text')
   const pageNoRef = { value: 1 }
   for (let idx = 0; idx < issues.length; idx++) {
     const issue = issues[idx]
@@ -466,7 +447,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
   await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); setReportColor(doc, 'text')
   setZeroCharSpace(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -543,7 +524,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
     if (!text) return
     // Header spacing
     ensureSpace(6)
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
+    doc.setFont(SANS, 'bold'); doc.setFontSize(12)
     doc.text(heading, margin, y); y += 6
     setBodyFont(doc, 'normal'); doc.setFontSize(10)
     const maxW = pageWidth - margin * 2
@@ -575,7 +556,7 @@ async function generateIssuesCompactPdf(issues: any[]) {
     // H2 title: Issue # — title
     const numberText = issue.number != null ? `Issue # ${issue.number}` : 'Issue'
     const titleText = issue.title ? ` — ${normalizePdfText(issue.title)}` : ''
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14)
+    doc.setFont(SANS, 'bold'); doc.setFontSize(14)
     const titleLines = splitText(doc, numberText + titleText, pageWidth - margin * 2)
     ensureSpace(Math.max(10, titleLines.length * 7) + 2)
     doc.text(titleLines, margin, y)
@@ -644,7 +625,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
   await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' }); setReportColor(doc, 'text')
   setZeroCharSpace(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -678,7 +659,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
       }
   } catch (e) { /* ignore */ }
     // Title
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14)
+    doc.setFont(SANS, 'bold'); doc.setFontSize(14)
     const projName = (project && (project as any).name) ? String((project as any).name) : ''
     const title = projName ? `${projName} - Issues List` : 'Issues List'
     doc.text(title, pageWidth / 2, headerTop + headerLogoH + 3, { align: 'center' })
@@ -731,7 +712,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   const widths = cols.map((_, i) => tableWidth * (weights[i] / totalWeight))
 
   // Header row
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+  doc.setFont(SANS, 'bold'); doc.setFontSize(10)
   const headerY = y
   let x = margin
   const headerLabel = (key: string) => {
@@ -795,7 +776,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
     if (y + rowHeight + textYOffset > bottomLimit) {
       drawFooter(); doc.addPage(); pageNoRef.value++; setZeroCharSpace(doc); y = drawHeader()
       // redraw header row
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(10)
       let hx = margin; const hy = y
       for (let i = 0; i < cols.length; i++) { doc.text(headerLabel(String(cols[i])), hx + 1, hy + textYOffset); hx += widths[i] }
       y += 4; doc.setDrawColor(200,200,200); doc.line(margin, y, margin + tableWidth, y); y += 2

@@ -517,6 +517,9 @@ export async function generateActivityDocxBlob(d: ActivityDocxData): Promise<Blo
     header: true,
     footer: true,
     pageNumber: true,
+    // Match the PDF reports — IBM Plex Sans as the document default (Word falls
+    // back to a clean sans for anyone who doesn't have it installed).
+    font: 'IBM Plex Sans',
     table: { row: { cantSplit: true } },
   }
   const out: any = await htmlToDocx(html, header, options, footer)

@@ -2630,6 +2630,7 @@
   import { onMounted, reactive, computed, ref, watch } from 'vue'
   import { jsPDF } from 'jspdf'
   import { drawBrandedFooter, drawBrandedHeader } from '../../utils/pdfBranding'
+  import { ensureReportFonts, SANS, setColor as setReportColor, ensureWebReportFontLoaded, REPORT_FONT_STACK } from '../../utils/reportTypography'
 // Ensure html2canvas is available for jsPDF html() rendering
 import html2canvas from 'html2canvas'
 ;(window as any).html2canvas = (window as any).html2canvas || html2canvas
@@ -3780,7 +3781,7 @@ type LoadedImage = { dataUrl?: string, format?: ImageFormat, width?: number, hei
 
 // Lazy-load Source Sans Pro for PDFs
 function setBodyFont(doc: any, weight: 'normal' | 'bold' = 'normal') {
-  doc.setFont('helvetica', weight)
+  doc.setFont(SANS, weight)
 }
 function setZeroCharSpace(doc: any) {
   try {
@@ -3907,8 +3908,8 @@ async function downloadActivityPdf() {
   ui.showInfo(generatingToast, { duration: 10000 })
   try {
     await ensureReportData()
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    // Helvetica is default; SourceSansPro removed
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
+    // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
     setZeroCharSpace(doc)
     setBodyFont(doc, 'normal')
       const margin = 12
@@ -4007,7 +4008,7 @@ async function downloadActivityPdf() {
         }
         if (coverTitle || coverSubtitle) markBodyContent()
         setBodyFont(doc, 'normal')
-        doc.setFontSize(12)
+        doc.setFontSize(9.5)
 
       const meta: Array<[string, string]> = [
         ['Project', projectLabel],
@@ -4072,7 +4073,7 @@ async function downloadActivityPdf() {
         ensureSpace(14)
         setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
         markBodyContent()
-        setBodyFont(doc, 'normal'); doc.setFontSize(12)
+        setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
         for (const it of items) {
           ensureSpace(7)
           doc.text(`• ${it}`, margin + 2, y)
@@ -4101,7 +4102,7 @@ async function downloadActivityPdf() {
 
       // Info
       if (activityReport.value.include.info) {
-        setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(12)
+        setBodyFont(doc, 'bold'); doc.setFontSize(13); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
         markBodyContent()
         const projectName = String((projectStore.currentProject as any)?.name || '')
         const projectLabel = projectName || String(form.projectId || '')
@@ -4141,20 +4142,21 @@ async function downloadActivityPdf() {
       // Use px width for consistency with html2canvas
       const widthPx = Math.round((pageWidth - margin*2) / 0.264583) // mm -> px
       container.style.width = widthPx + 'px'
-      container.style.color = '#000'
+      container.style.color = '#1a1a1a'
       container.style.background = '#fff'
+      // Match the rest of the report: render the Description in IBM Plex Sans.
+      container.style.fontFamily = REPORT_FONT_STACK
+      await ensureWebReportFontLoaded()
       container.innerHTML = form.descriptionHtml
-        .replace(/<h1/gi,'<h1 style="font-size:20px; margin:4px 0; font-weight:700;"')
-        .replace(/<h2/gi,'<h2 style="font-size:16px; margin:4px 0; font-weight:700;"')
-        .replace(/<h3/gi,'<h3 style="font-size:14px; margin:3px 0; font-weight:700;"')
-        // 12pt ≈ 16px (Word 12). Match the editor's paragraph/list spacing
-        // (RichTextEditor.vue uses 0.4rem ≈ 6px on <p>, 0.2rem ≈ 3px on <li>) so the
-        // PDF reads with the same paragraph breaks the user sees while editing —
-        // a 2px margin previously jammed separate paragraphs into one block.
-        .replace(/<p/gi,'<p style="font-size:16px; margin:6px 0; line-height:1.35;"')
-        .replace(/<ul/gi,'<ul style="margin:6px 0; padding-left:20px; list-style-type:disc; list-style-position:outside;"')
-        .replace(/<ol/gi,'<ol style="margin:6px 0; padding-left:20px; list-style-type:decimal; list-style-position:outside;"')
-        .replace(/<li/gi,'<li style="font-size:16px; margin:3px 0;"')
+        .replace(/<h1/gi,'<h1 style="font-size:17px; margin:4px 0; font-weight:600;"')
+        .replace(/<h2/gi,'<h2 style="font-size:14px; margin:4px 0; font-weight:600;"')
+        .replace(/<h3/gi,'<h3 style="font-size:12.5px; margin:3px 0; font-weight:600;"')
+        // Body ~13px (≈ the report's 9.5pt). Keep the editor's paragraph/list
+        // spacing so the PDF reads with the same breaks the user sees while editing.
+        .replace(/<p/gi,'<p style="font-size:13px; margin:6px 0; line-height:1.4;"')
+        .replace(/<ul/gi,'<ul style="margin:6px 0; padding-left:18px; list-style-type:disc; list-style-position:outside;"')
+        .replace(/<ol/gi,'<ol style="margin:6px 0; padding-left:18px; list-style-type:decimal; list-style-position:outside;"')
+        .replace(/<li/gi,'<li style="font-size:13px; margin:3px 0;"')
         // Tables — the rich-text editor (TipTap) now lets the user add tables,
         // and the Cx Plan starter emits several. Without explicit borders /
         // padding here, html2canvas paints them as a single jammed line of
@@ -4300,7 +4302,7 @@ async function downloadActivityPdf() {
           y += 2
         } catch (e) {
           // Fallback to text if html render fails
-          setBodyFont(doc, 'normal'); doc.setFontSize(12)
+          setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
           const lines = htmlToLines(form.descriptionHtml)
           for (const l of lines) {
             const wrapped = doc.splitTextToSize(l, pageWidth - margin * 2) as string[]
@@ -4320,7 +4322,7 @@ async function downloadActivityPdf() {
           if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
         }
         if (imgs.length) {
-          sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
+          sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(13); doc.text('Photos', margin, y); y += 4
           markBodyContent()
           const thumbW = (pageWidth - margin * 2 - 8) / 3
           const thumbH = thumbW * 0.75
@@ -4403,8 +4405,8 @@ async function downloadActivityPdf() {
       } catch (e) { /* ignore */ }
       const issues = aggregated
       if (issues.length) {
-        const iDoc = new jsPDF({ unit: 'mm', format: 'a4' })
-        // Helvetica is default; SourceSansPro removed
+        const iDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(iDoc); setReportColor(iDoc, 'text')
+        // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
         setZeroCharSpace(iDoc)
         setBodyFont(iDoc, 'normal')
         const iPW = iDoc.internal.pageSize.getWidth(); const iPH = iDoc.internal.pageSize.getHeight(); const iBottom = iPH - 26; let iy = margin; let iPageNo = 1
@@ -4453,7 +4455,7 @@ async function downloadActivityPdf() {
           })
           // Reset to body font after header
           iy = res.nextY
-          setBodyFont(iDoc, 'normal'); iDoc.setFontSize(12)
+          setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9.5)
         }
         const ensureISpace = (h:number) => { if (iy + h > iBottom) { drawIFooter(); iDoc.addPage(); iPageNo++; drawIHeader(); return true } return false }
         drawIHeader()
@@ -4494,7 +4496,7 @@ async function downloadActivityPdf() {
           iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+5);
           iDoc.text('Recommendation', tableX+numW+typeW+sourceW+titleW+finalDescW+1.5, iy+5);
           iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+finalDescW+recW+1.5, iy+5);
-          iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(12)
+          iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9.5)
         };
         drawIssuesHeader();
         for (const it of issues) {
@@ -4566,13 +4568,13 @@ async function downloadActivityPdf() {
     if (activityReport.value.include.attachments) {
       const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
       if (atts.length) {
-        const attDoc = new jsPDF({ unit: 'mm', format: 'a4' })
-        // Helvetica is default; SourceSansPro removed
+        const attDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(attDoc); setReportColor(attDoc, 'text')
+        // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
         setZeroCharSpace(attDoc)
         setBodyFont(attDoc, 'normal')
         const aPW = attDoc.internal.pageSize.getWidth(); const aPH = attDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
         const drawAttFooter = () => { const footerY = aPH - 10; attDoc.setDrawColor(180,180,180); attDoc.line(margin, footerY - 6, aPW - margin, footerY - 6); setBodyFont(attDoc, 'normal'); attDoc.setFontSize(8); attDoc.text(String(aPageNo), aPW/2, footerY - 2, { align: 'center' }) }
-        const drawAttHeader = () => { setBodyFont(attDoc, 'bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; setBodyFont(attDoc, 'normal'); attDoc.setFontSize(12) }
+        const drawAttHeader = () => { setBodyFont(attDoc, 'bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; setBodyFont(attDoc, 'normal'); attDoc.setFontSize(9.5) }
         const ensureAttSpace = (h:number) => { if (ay + h > aBottom) { drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); return true } return false }
         drawAttHeader()
         // Listing first
@@ -4580,7 +4582,7 @@ async function downloadActivityPdf() {
         // Image full pages
         const isImage = (a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }
   const getDims = async (dataUrl:string): Promise<{w:number;h:number}> => { return new Promise(res => { const img = new Image(); img.onload=()=>res({ w: img.naturalWidth||img.width, h: img.naturalHeight||img.height }); img.onerror=()=>res({w:0,h:0}); img.src = dataUrl }) }
-        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); setBodyFont(attDoc, 'bold'); attDoc.setFontSize(12); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; setBodyFont(attDoc, 'normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
+        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); setBodyFont(attDoc, 'bold'); attDoc.setFontSize(9.5); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; setBodyFont(attDoc, 'normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
         drawAttFooter()
         attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
       }
@@ -4657,7 +4659,7 @@ async function downloadActivityPdf() {
         // Only add if there is at least one equipment selected
         if (activityReport.value.include.equipmentList && selectedEquipSnapshot.length) {
           const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF;
-          const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' });
+          const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text');
           setZeroCharSpace(eqDoc);
           setBodyFont(eqDoc, 'normal');
           const eqPW = eqDoc.internal.pageSize.getWidth();
@@ -4710,8 +4712,8 @@ async function downloadActivityPdf() {
             })
             eqY = res.nextY
             // Section title
-            setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(12); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
-            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12)
+            setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(13); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
+            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(9.5)
           }
 
           // Table columns
@@ -4861,7 +4863,7 @@ async function downloadActivityPdf() {
         const merged = await PDFDocument.load(baseBytes)
 
         const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF
-        const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' })
+        const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text')
         setZeroCharSpace(eqDoc)
         setBodyFont(eqDoc, 'normal')
         const eqPW = eqDoc.internal.pageSize.getWidth()
@@ -4913,8 +4915,8 @@ async function downloadActivityPdf() {
             setTitleFont: () => setBodyFont(eqDoc, 'bold'),
           })
           eqY = res.nextY
-          setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(12); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
-          setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(12)
+          setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(13); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
+          setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(9.5)
         }
 
         const columns = [

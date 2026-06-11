@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { drawBrandedFooter, drawBrandedHeader } from './pdfBranding'
+import { ensureReportFonts, SANS, setColor } from './reportTypography'
 
 // Minimal image format enum mirroring existing usage
 export type ImageFormat = 'JPEG' | 'PNG' | 'WEBP' | 'GIF' | 'SVG'
@@ -180,6 +181,8 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
   const include = { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, signatures: false, issues: true, ...(opts?.include || {}) }
   const photoLimit = typeof opts?.photoLimit === 'number' ? opts.photoLimit : 6
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await ensureReportFonts(doc)
+  setColor(doc, 'text')
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -196,7 +199,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
   if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
 
   const drawFooter = () => {
-    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
+    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
     const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
     drawBrandedFooter(doc, {
       margin,
@@ -206,13 +209,13 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
       pageDate,
       footerLogo,
       leftLabel: `${eq.tag || eq.title || 'Equipment'} Report`,
-      setBold: () => doc.setFont('helvetica', 'bold'),
-      setNormal: () => doc.setFont('helvetica', 'normal'),
+      setBold: () => doc.setFont(SANS, 'bold'),
+      setNormal: () => doc.setFont(SANS, 'normal'),
     })
-    doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
+    doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
   }
   const drawHeader = () => {
-    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
+    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
     const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
     const headTitle = (eq && (eq.tag || eq.title)) ? (eq.tag || eq.title) : 'Equipment'
     const res = drawBrandedHeader(doc, {
@@ -223,11 +226,11 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
       rightLogo: cxaImg,
       logoH: 12,
       maxLogoW: 36,
-      titleFontSize: 20,
-      setTitleFont: () => doc.setFont('helvetica', 'bold'),
+      titleFontSize: 16,
+      setTitleFont: () => doc.setFont(SANS, 'bold'),
     })
     y = res.nextY
-    doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
+    doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
   }
   const ensureSpace = (amount: number): boolean => { if (y + amount > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader(); return true } return false }
   const sectionGap = (gap=6) => { ensureSpace(gap); y += gap }
@@ -235,23 +238,23 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
 
   // Info
   if (include.info) {
-    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(12)
+    doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Info', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5)
     const spaceName = (sid?: string) => { const s = sid ? spacesById[String(sid)] : null; return s ? (s.title || s.tag || '') : '' }
     const info: Array<[string,string]> = [ ['Tag', eq.tag||''], ['Title', eq.title||''], ['Type', eq.type||''], ['System', eq.system||''], ['Status', eq.status||''], ['Space', spaceName(eq.spaceId)] ]
     const colW = (pageWidth - margin*2)/2; let i=0
     for (const [label,value] of info) { const col = i%2; const row=Math.floor(i/2); const x= margin + col*colW; const yy = y + row*8; ensureSpace(11); doc.setTextColor(100); doc.text(label+':', x, yy); doc.setTextColor(0); const lines = splitText(doc, String(value||'—'), colW - 24); doc.text(lines, x+24, yy); i++ }
     const rows = Math.ceil(info.length/2); y += rows*8 + 2
-    if (eq.description) { ensureSpace(14); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Description', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(12); const lines = splitText(doc, htmlToText(eq.description), pageWidth - margin*2); for (const l of lines) { ensureSpace(7); doc.text(l, margin, y); y += 6 } }
+    if (eq.description) { ensureSpace(14); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Description', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); const lines = splitText(doc, htmlToText(eq.description), pageWidth - margin*2); for (const l of lines) { ensureSpace(7); doc.text(l, margin, y); y += 6 } }
   }
   // Attributes
   if (include.attributes) {
     const attrs: Array<{key:string;value:string}> = Array.isArray(eq.attributes) ? eq.attributes.filter((r:any)=> (String(r?.key||'').trim()||String(r?.value||'').trim())) : []
-    if (attrs.length) { sectionGap(); ensureSpace(12); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Attributes', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(12); for (const a of attrs) { const line = `${a.key}: ${a.value}`; const lines = splitText(doc, line, pageWidth - margin*2); for (const l of lines) { ensureSpace(7); doc.text(l, margin + 2, y); y += 6 } } }
+    if (attrs.length) { sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Attributes', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); for (const a of attrs) { const line = `${a.key}: ${a.value}`; const lines = splitText(doc, line, pageWidth - margin*2); for (const l of lines) { ensureSpace(7); doc.text(l, margin + 2, y); y += 6 } } }
   }
   // Components
   if (include.components) {
     const comps: any[] = Array.isArray(eq.components)? eq.components : []
-    if (comps.length) { sectionGap(); ensureSpace(12); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Components', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(12); const toPairs = (obj:any)=> { if(!obj) return []; if(Array.isArray(obj)) return obj.map((r:any)=> ({k:String(r?.key??r?.title??''), v:String(r?.value??'')})).filter((p:any)=>p.k); if(typeof obj==='object') return Object.entries(obj).map(([k,v])=> ({k:String(k), v:String(v??'')})); return [] }; for (const c of comps){ const header = `${c.tag ? c.tag + ' — ' : ''}${c.title || c.type || 'Component'}`; const hLines = splitText(doc, header, pageWidth - margin*2); doc.setFont('helvetica','bold'); for(const l of hLines){ ensureSpace(7); doc.text(l, margin+2, y); y +=5 } doc.setFont('helvetica','normal'); const metaBits: string[] = []; if(c.type) metaBits.push(`Type: ${c.type}`); if(c.status) metaBits.push(`Status: ${c.status}`); const meta = metaBits.join('  •  '); if(meta){ const mLines = splitText(doc, meta, pageWidth - margin*2 -4); for(const l of mLines){ ensureSpace(6); doc.text(l, margin+4, y); y +=5 } } const attrs = toPairs(c?.attributes); for(const p of attrs){ const txt = `${p.k}: ${p.v}`; const aLines = splitText(doc, txt, pageWidth - margin*2 -6); for(const l of aLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } if(c.notes){ const nLines = splitText(doc, `Notes: ${c.notes}`, pageWidth - margin*2 -6); for(const l of nLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } y +=3 } }
+    if (comps.length) { sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Components', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); const toPairs = (obj:any)=> { if(!obj) return []; if(Array.isArray(obj)) return obj.map((r:any)=> ({k:String(r?.key??r?.title??''), v:String(r?.value??'')})).filter((p:any)=>p.k); if(typeof obj==='object') return Object.entries(obj).map(([k,v])=> ({k:String(k), v:String(v??'')})); return [] }; for (const c of comps){ const header = `${c.tag ? c.tag + ' — ' : ''}${c.title || c.type || 'Component'}`; const hLines = splitText(doc, header, pageWidth - margin*2); doc.setFont(SANS,'bold'); for(const l of hLines){ ensureSpace(7); doc.text(l, margin+2, y); y +=5 } doc.setFont(SANS,'normal'); const metaBits: string[] = []; if(c.type) metaBits.push(`Type: ${c.type}`); if(c.status) metaBits.push(`Status: ${c.status}`); const meta = metaBits.join('  •  '); if(meta){ const mLines = splitText(doc, meta, pageWidth - margin*2 -4); for(const l of mLines){ ensureSpace(6); doc.text(l, margin+4, y); y +=5 } } const attrs = toPairs(c?.attributes); for(const p of attrs){ const txt = `${p.k}: ${p.v}`; const aLines = splitText(doc, txt, pageWidth - margin*2 -6); for(const l of aLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } if(c.notes){ const nLines = splitText(doc, `Notes: ${c.notes}`, pageWidth - margin*2 -6); for(const l of nLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } y +=3 } }
   }
   // Photos
   if (include.photos) {
@@ -265,8 +268,8 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
     if (imgs.length) {
       sectionGap()
       ensureSpace(10)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12)
+      doc.setFont(SANS, 'bold')
+      doc.setFontSize(13)
       doc.text('Photos', margin, y)
       y += 4
 
@@ -309,20 +312,20 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
   // Checklists
   if (include.checklists) {
     const sections: any[] = Array.isArray(eq.checklists)? eq.checklists : []
-    if (sections.length){ sectionGap(); ensureSpace(12); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Checklists', margin, y); y +=6; doc.setFont('helvetica','normal'); doc.setFontSize(12); for (const s of sections){ const title = String(s?.title || 'Section'); ensureSpace(7); doc.setFont('helvetica','bold'); doc.text(title, margin+1, y); y +=6; doc.setFont('helvetica','normal'); const items: any[] = Array.isArray(s?.questions)? s.questions : (Array.isArray(s?.items)? s.items : []); if(!items.length) continue; const totalW = pageWidth - margin*2 -2; const doneW = 12; const notesW = Math.max(28, Math.min(60, totalW*0.33)); const textW = totalW - doneW - notesW; const tableX = margin + 1; const drawChecklistHeader = () => { ensureSpace(9); doc.setFont('helvetica','bold'); const headerH = 7; doc.setFillColor(235,245,238); doc.rect(tableX,y,totalW,headerH,'F'); doc.rect(tableX,y,totalW,headerH); doc.line(tableX+doneW, y, tableX+doneW, y+headerH); doc.line(tableX+doneW+textW, y, tableX+doneW+textW, y+headerH); doc.text('Done', tableX+1.5, y+5); doc.text('Question', tableX+doneW+1.5, y+5); doc.text('Notes', tableX+doneW+textW+1.5, y+5); y += headerH; doc.setFont('helvetica','normal') }; drawChecklistHeader(); for (const it of items){ let doneTxt = '[ ]'; if (typeof it?.done !== 'undefined'){ doneTxt = it?.done ? '[x]' : '[ ]' } else if (typeof it?.answer !== 'undefined' && it?.answer !== null){ const ans = String(it.answer).toLowerCase(); doneTxt = ans === 'yes' ? '[x]' : (ans === 'na' ? 'N/A' : '[ ]') } const questionText = String(it?.question_text ?? it?.text ?? ''); const qLines = splitText(doc, questionText, textW - 3); const nLines = splitText(doc, String(it?.notes || ''), notesW - 3); const hLines = Math.max(1, qLines.length, nLines.length); const rowH = Math.max(8, hLines*5 + 2); if (ensureSpace(rowH + 2)){ drawChecklistHeader() } doc.rect(tableX, y, totalW, rowH); doc.line(tableX+doneW, y, tableX+doneW, y+rowH); doc.line(tableX+doneW+textW, y, tableX+doneW+textW, y+rowH); doc.text(doneTxt, tableX+1.5, y+5); for (let k=0;k<qLines.length;k++){ doc.text(qLines[k], tableX+doneW+1.5, y+5 + k*5) } for (let k=0;k<nLines.length;k++){ doc.text(nLines[k], tableX+doneW+textW+1.5, y+5 + k*5) } y += rowH } sectionGap(6) } }
+    if (sections.length){ sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Checklists', margin, y); y +=6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); for (const s of sections){ const title = String(s?.title || 'Section'); ensureSpace(7); doc.setFont(SANS,'bold'); doc.text(title, margin+1, y); y +=6; doc.setFont(SANS,'normal'); const items: any[] = Array.isArray(s?.questions)? s.questions : (Array.isArray(s?.items)? s.items : []); if(!items.length) continue; const totalW = pageWidth - margin*2 -2; const doneW = 12; const notesW = Math.max(28, Math.min(60, totalW*0.33)); const textW = totalW - doneW - notesW; const tableX = margin + 1; const drawChecklistHeader = () => { ensureSpace(9); doc.setFont(SANS,'bold'); const headerH = 7; doc.setFillColor(235,245,238); doc.rect(tableX,y,totalW,headerH,'F'); doc.rect(tableX,y,totalW,headerH); doc.line(tableX+doneW, y, tableX+doneW, y+headerH); doc.line(tableX+doneW+textW, y, tableX+doneW+textW, y+headerH); doc.text('Done', tableX+1.5, y+5); doc.text('Question', tableX+doneW+1.5, y+5); doc.text('Notes', tableX+doneW+textW+1.5, y+5); y += headerH; doc.setFont(SANS,'normal') }; drawChecklistHeader(); for (const it of items){ let doneTxt = '[ ]'; if (typeof it?.done !== 'undefined'){ doneTxt = it?.done ? '[x]' : '[ ]' } else if (typeof it?.answer !== 'undefined' && it?.answer !== null){ const ans = String(it.answer).toLowerCase(); doneTxt = ans === 'yes' ? '[x]' : (ans === 'na' ? 'N/A' : '[ ]') } const questionText = String(it?.question_text ?? it?.text ?? ''); const qLines = splitText(doc, questionText, textW - 3); const nLines = splitText(doc, String(it?.notes || ''), notesW - 3); const hLines = Math.max(1, qLines.length, nLines.length); const rowH = Math.max(8, hLines*5 + 2); if (ensureSpace(rowH + 2)){ drawChecklistHeader() } doc.rect(tableX, y, totalW, rowH); doc.line(tableX+doneW, y, tableX+doneW, y+rowH); doc.line(tableX+doneW+textW, y, tableX+doneW+textW, y+rowH); doc.text(doneTxt, tableX+1.5, y+5); for (let k=0;k<qLines.length;k++){ doc.text(qLines[k], tableX+doneW+1.5, y+5 + k*5) } for (let k=0;k<nLines.length;k++){ doc.text(nLines[k], tableX+doneW+textW+1.5, y+5 + k*5) } y += rowH } sectionGap(6) } }
   }
   // Functional Tests
   if (include.fpt) {
     const tests: any[] = Array.isArray(eq.functionalTests)? eq.functionalTests : []
     if (tests.length) {
-      sectionGap(); ensureSpace(12); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Functional Tests', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(12)
+      sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Functional Tests', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5)
       for (const t of tests) {
         const number = (t?.number != null && t?.number !== undefined) ? `#${t.number} ` : ''
         const title = `${number}${String(t?.name || t?.title || 'Test')}`
         const lines = splitText(doc, title, pageWidth - margin * 2)
-        doc.setFont('helvetica', 'bold')
+        doc.setFont(SANS, 'bold')
         for (const l of lines) { ensureSpace(6); doc.text(l, margin + 1, y); y += 5 }
-        doc.setFont('helvetica', 'normal')
+        doc.setFont(SANS, 'normal')
 
         if (t?.pass === true || t?.pass === false) {
           const st = t.pass === true ? 'PASS' : 'FAIL'
@@ -363,12 +366,12 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
           const tableX = margin + 1
           const passX = tableX + stepsW
           const drawSheetHeader = () => {
-            ensureSpace(9); doc.setFont('helvetica', 'bold'); const headerH = 7; doc.setFillColor(235, 241, 250); doc.rect(tableX, y, totalW, headerH, 'F'); doc.rect(tableX, y, totalW, headerH)
+            ensureSpace(9); doc.setFont(SANS, 'bold'); const headerH = 7; doc.setFillColor(235, 241, 250); doc.rect(tableX, y, totalW, headerH, 'F'); doc.rect(tableX, y, totalW, headerH)
             for (let i = 1; i < cols.length; i++) { const vx = tableX + i * colW; doc.line(vx, y, vx, y + headerH) }
             doc.line(passX, y, passX, y + headerH)
             cols.forEach((c, idx) => { const x = tableX + idx * colW + 1.5; doc.text(String(c.name || ''), x, y + 5) })
             doc.text('Pass', passX + 1.5, y + 5)
-            y += headerH; doc.setFont('helvetica', 'normal')
+            y += headerH; doc.setFont(SANS, 'normal')
           }
           drawSheetHeader()
           for (const r of t.rows) {
@@ -407,14 +410,14 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
             const baseW = totalW / cols.length
             const tableX = margin + 1
             const drawTableHeader = () => {
-              ensureSpace(9); doc.setFont('helvetica', 'bold'); const headerH = 7; doc.setFillColor(235, 241, 250); doc.rect(tableX, y, totalW, headerH, 'F'); doc.rect(tableX, y, totalW, headerH)
+              ensureSpace(9); doc.setFont(SANS, 'bold'); const headerH = 7; doc.setFillColor(235, 241, 250); doc.rect(tableX, y, totalW, headerH, 'F'); doc.rect(tableX, y, totalW, headerH)
               for (let i = 1; i < cols.length; i++) { const vx = tableX + i * baseW; doc.line(vx, y, vx, y + headerH) }
               cols.forEach((c, idx) => {
                 const x = tableX + idx * baseW + 1.5
                 const name = String(c.name || '')
                 doc.text(name, x, y + 5)
               })
-              y += headerH; doc.setFont('helvetica', 'normal')
+              y += headerH; doc.setFont(SANS, 'normal')
             }
             drawTableHeader()
             for (const r of rows) {
@@ -488,8 +491,8 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
     const sigs: any[] = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : [])
     if (sigs.length) {
       sectionGap()
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Signatures', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Signatures', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
 
       const colW = Math.floor((pageWidth - margin * 2 - 4) / 2)
       const boxH = 44
@@ -521,10 +524,10 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         if (date) doc.text(date, sx + 4, baseY)
         if (role) {
           const roleLabel = role + ':'
-          doc.setFont('helvetica', 'bold')
+          doc.setFont(SANS, 'bold')
           doc.text(roleLabel, sx + 4, baseY - 5)
           const roleW = doc.getTextWidth(roleLabel)
-          doc.setFont('helvetica', 'normal')
+          doc.setFont(SANS, 'normal')
           doc.text(' ' + name, sx + 4 + roleW, baseY - 5)
         } else {
           doc.text(name, sx + 4, baseY - 5)
@@ -605,8 +608,8 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
 
     if (iss.length) {
       sectionGap(); ensureSpace(12)
-      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Issues', margin, y); y +=6
-      doc.setFont('helvetica','normal'); doc.setFontSize(12)
+      doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Issues', margin, y); y +=6
+      doc.setFont(SANS,'normal'); doc.setFontSize(9.5)
 
       const totalW = pageWidth - margin*2 -2
       const numW = 16
@@ -623,7 +626,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
 
       const drawIssuesHeader = () => {
         ensureSpace(9)
-        doc.setFont('helvetica','bold')
+        doc.setFont(SANS,'bold')
         const headerH = 7
         doc.setFillColor(250,236,236)
         doc.rect(tableX, y, totalW, headerH, 'F')
@@ -647,7 +650,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         doc.text('Recommendation', tableX + numW + typeW + sourceW + titleW + finalDescW + 1.5, y + 5)
         doc.text('Status', tableX + numW + typeW + sourceW + titleW + finalDescW + recW + 1.5, y + 5)
         y += headerH
-        doc.setFont('helvetica','normal')
+        doc.setFont(SANS,'normal')
       }
 
       drawIssuesHeader()
@@ -710,7 +713,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
     const atts: any[] = Array.isArray(eq.attachments)? eq.attachments : []
     if (atts.length) {
       sectionGap(); ensureSpace(12);
-      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6; doc.setFont('helvetica','normal'); doc.setFontSize(12);
+      doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Attachments', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5);
       for (let a = 0; a < Math.min(8, atts.length); a++) {
         const name = String(atts[a]?.filename || atts[a]?.url || 'Attachment')
         const lines = splitText(doc, name, pageWidth - margin*2)
@@ -734,7 +737,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         if (!img.dataUrl) continue
         drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader()
         const label = `Attachment: ${String(a?.filename || a?.url || '')}`
-        doc.setFont('helvetica','bold'); doc.setFontSize(12); ensureSpace(8); doc.text(label, margin, y); y += 5; doc.setFont('helvetica','normal')
+        doc.setFont(SANS,'bold'); doc.setFontSize(9.5); ensureSpace(8); doc.text(label, margin, y); y += 5; doc.setFont(SANS,'normal')
         const dims = await getDims(img.dataUrl)
         const maxW = pageWidth - margin*2; const maxH = bottomLimit - y
         let drawW = maxW, drawH = maxH
