@@ -17,6 +17,7 @@ const Template = require('../models/template')
 const Equipment = require('../models/equipment')
 const Space = require('../models/space')
 const System = require('../models/system')
+const Project = require('../models/project')
 
 // Baked-in template library: the demo's Cx content (attributes/components/
 // checklists/FPTs) is authored data committed to the repo (exported once from the
@@ -187,6 +188,15 @@ async function bootstrapDemoSource(targetProjectId) {
   const spaceByTag = await createSpaces(targetProjectId, DEMO_SPACES)
   await createSystems(targetProjectId, DEMO_SYSTEMS)
   const equipment = await createEquipmentFromBlueprint(targetProjectId, templateByTag, spaceByTag)
+  // Wire the project's reference arrays so the UI lists the seeded content (the
+  // project pages read project.templates/spaces/equipment, not just projectId).
+  await Project.findByIdAndUpdate(targetProjectId, {
+    $set: {
+      templates: [...templateByTag.values()].map((d) => d._id),
+      spaces: [...spaceByTag.values()].map((d) => d._id),
+      equipment: equipment.map((d) => d._id),
+    },
+  })
   return {
     templates: templateByTag.size,
     spaces: spaceByTag.size,
