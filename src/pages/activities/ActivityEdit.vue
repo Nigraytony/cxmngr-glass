@@ -5218,16 +5218,25 @@ async function downloadActivityDocx() {
           }
         })
 
-        // Functional tests
+        // Functional tests — Sequence/Sheet tests keep their steps in `rows`
+        // (with a per-step pass), Points/Table tests in `table` (custom columns).
+        const passStr = (p: any) => (p === true ? 'PASS' : (p === false ? 'FAIL' : null))
         const functionalTests = (Array.isArray(full?.functionalTests) ? full.functionalTests : []).map((t: any) => {
           const number = (t?.number != null) ? `#${t.number} ` : ''
-          const rows = (Array.isArray(t?.rows) && t.kind === 'sheet') ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? '') })) : []
+          const isPointsKind = t?.kind === 'table' || t?.kind === 'points'
+          const rows = (!isPointsKind && Array.isArray(t?.rows))
+            ? t.rows.map((r: any) => ({ step: String(r?.step ?? ''), expected: String(r?.expected ?? ''), actual: String(r?.actual ?? ''), pass: passStr(r?.pass) }))
+            : []
+          const tbl = (t?.table && Array.isArray(t.table.columns) && t.table.columns.length)
+            ? { columns: t.table.columns.map((c: any) => ({ key: String(c?.key ?? ''), name: String(c?.name ?? '') })), rows: Array.isArray(t.table.rows) ? t.table.rows : [] }
+            : null
           return {
             title: `${number}${String(t?.name || t?.title || 'Test')}`,
-            status: t?.pass === true ? 'PASS' : (t?.pass === false ? 'FAIL' : null),
+            status: passStr(t?.pass),
             description: t?.description ? String(t.description) : '',
             notes: t?.notes ? String(t.notes) : '',
             rows,
+            table: tbl,
           }
         })
 

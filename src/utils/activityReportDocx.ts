@@ -52,13 +52,19 @@ export interface DocxFptRow {
   step?: string
   expected?: string
   actual?: string
+  pass?: 'PASS' | 'FAIL' | null
+}
+export interface DocxFptTable {
+  columns: Array<{ key: string; name: string }>
+  rows: Array<Record<string, any>>
 }
 export interface DocxFunctionalTest {
   title: string
   status?: 'PASS' | 'FAIL' | null
   description?: string
   notes?: string
-  rows?: DocxFptRow[]
+  rows?: DocxFptRow[] // Sequence/Sheet tests — step-by-step
+  table?: DocxFptTable | null // Points/Table tests — custom columns
 }
 export interface DocxComponent {
   header: string
@@ -338,14 +344,35 @@ function eqFunctionalTestsHtml(r: DocxEquipmentReport): string {
         : ''
       const descHtml = t.description ? `<p style="font-size:11px; margin:2px 0 2px 10px;"><em>Description:</em> ${esc(t.description)}</p>` : ''
       const notesHtml = t.notes ? `<p style="font-size:11px; margin:2px 0 2px 10px;"><em>Notes:</em> ${esc(t.notes)}</p>` : ''
+      // Step-based (Sequence/Sheet) rows, with a Pass column.
       const rows = (t.rows || []).filter((x) => x)
       let tableHtml = ''
       if (rows.length) {
-        const head = `<tr><th ${TH}>Step</th><th ${TH}>Expected</th><th ${TH}>Actual</th></tr>`
-        const body = rows.map((x) => `<tr><td ${TD}>${esc(x.step || '')}</td><td ${TD}>${esc(x.expected || '')}</td><td ${TD}>${esc(x.actual || '')}</td></tr>`).join('')
+        const passCell = (p?: string | null) => p
+          ? `<td ${TD} style="border:1px solid #444; padding:4px 6px; text-align:center; color:${p === 'PASS' ? '#15803d' : '#b91c1c'};">${esc(p)}</td>`
+          : `<td ${TD}>&mdash;</td>`
+        const head = `<tr><th ${TH}>Step</th><th ${TH}>Expected</th><th ${TH}>Actual</th><th ${TH}>Pass</th></tr>`
+        const body = rows.map((x) => `<tr><td ${TD}>${esc(x.step || '')}</td><td ${TD}>${esc(x.expected || '')}</td><td ${TD}>${esc(x.actual || '')}</td>${passCell(x.pass)}</tr>`).join('')
         tableHtml = `<table ${TABLE}>${head}${body}</table>`
       }
-      return `<p style="font-size:12px; margin:6px 0 0;"><strong>${esc(t.title)}</strong></p>${statusHtml}${descHtml}${notesHtml}${tableHtml}`
+      // Points/Table tests render their custom columns.
+      let pointsHtml = ''
+      const tbl = t.table
+      if (tbl && Array.isArray(tbl.columns) && tbl.columns.length && Array.isArray(tbl.rows) && tbl.rows.length) {
+        const isPassCol = (name: string) => ['pass', 'result', 'status'].includes(String(name || '').toLowerCase())
+        const head = `<tr>${tbl.columns.map((c) => `<th ${TH}>${esc(c.name)}</th>`).join('')}</tr>`
+        const body = tbl.rows.map((row) => `<tr>${tbl.columns.map((c) => {
+          const v = String(row[c.key] ?? '')
+          if (isPassCol(c.name)) {
+            const norm = v.trim().toLowerCase()
+            const color = norm.startsWith('pass') ? '#15803d' : norm.startsWith('fail') ? '#b91c1c' : '#000'
+            return `<td ${TD} style="border:1px solid #444; padding:4px 6px; text-align:center; color:${color};">${esc(v)}</td>`
+          }
+          return `<td ${TD}>${esc(v)}</td>`
+        }).join('')}</tr>`).join('')
+        pointsHtml = `<table ${TABLE}>${head}${body}</table>`
+      }
+      return `<p style="font-size:12px; margin:6px 0 0;"><strong>${esc(t.title)}</strong></p>${statusHtml}${descHtml}${notesHtml}${tableHtml}${pointsHtml}`
     })
     .join('')
   return `<h4>Functional Tests</h4>${blocks}`
