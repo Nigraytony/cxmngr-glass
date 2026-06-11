@@ -346,19 +346,28 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
           for (const l of nLines) { ensureSpace(6); doc.text(l, margin + 4, y); y += 5 }
         }
 
-        const hasSheetRows = Array.isArray(t?.rows) && t.rows.length && (t.kind === 'sheet')
+        // Step-based tests (Sequence / Sheet) keep their steps in `rows`. Render
+        // these whenever a test carries rows and isn't a Points/Table test — a
+        // `kind === 'sequence'` test was previously skipped (only 'sheet' matched),
+        // so its Test Steps were silently dropped from the report.
+        const hasStepRows = Array.isArray(t?.rows) && t.rows.length > 0 && t.kind !== 'table' && t.kind !== 'points'
         const tbl = t?.table && Array.isArray(t.table.columns) ? t.table : null
         let tableRendered = false
 
-        if (hasSheetRows) {
+        if (hasStepRows) {
           const totalW = pageWidth - margin * 2 - 2
+          const passW = 22
+          const stepsW = totalW - passW
           const cols = [{ key: 'step', name: 'Step' }, { key: 'expected', name: 'Expected' }, { key: 'actual', name: 'Actual' }]
-          const colW = totalW / cols.length
+          const colW = stepsW / cols.length
           const tableX = margin + 1
+          const passX = tableX + stepsW
           const drawSheetHeader = () => {
             ensureSpace(9); doc.setFont('helvetica', 'bold'); const headerH = 7; doc.setFillColor(235, 241, 250); doc.rect(tableX, y, totalW, headerH, 'F'); doc.rect(tableX, y, totalW, headerH)
             for (let i = 1; i < cols.length; i++) { const vx = tableX + i * colW; doc.line(vx, y, vx, y + headerH) }
+            doc.line(passX, y, passX, y + headerH)
             cols.forEach((c, idx) => { const x = tableX + idx * colW + 1.5; doc.text(String(c.name || ''), x, y + 5) })
+            doc.text('Pass', passX + 1.5, y + 5)
             y += headerH; doc.setFont('helvetica', 'normal')
           }
           drawSheetHeader()
@@ -366,16 +375,27 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
             const s = splitText(doc, String(r?.step ?? ''), colW - 3)
             const e = splitText(doc, String(r?.expected ?? ''), colW - 3)
             const a = splitText(doc, String(r?.actual ?? ''), colW - 3)
-            const hLines = Math.max(s.length, e.length, a.length)
+            const hLines = Math.max(s.length, e.length, a.length, 1)
             const rowH = Math.max(8, hLines * 5 + 2)
             if (ensureSpace(rowH + 2)) { drawSheetHeader() }
+            // Tint the Pass cell green/red to match the Points-table styling.
+            const state = passCellState((r as any)?.pass)
+            if (state === 'pass') { doc.setFillColor(222, 247, 233); doc.rect(passX, y, passW, rowH, 'F') }
+            else if (state === 'fail') { doc.setFillColor(254, 226, 226); doc.rect(passX, y, passW, rowH, 'F') }
             doc.rect(tableX, y, totalW, rowH)
             for (let i = 1; i < cols.length; i++) { const vx = tableX + i * colW; doc.line(vx, y, vx, y + rowH) }
+            doc.line(passX, y, passX, y + rowH)
             const cells = [s, e, a]
             cells.forEach((lines, idx) => {
               const x = tableX + idx * colW + 1.5
               for (let k = 0; k < lines.length; k++) { doc.text(lines[k], x, y + 5 + k * 5) }
             })
+            const label = passLabel(state)
+            if (state === 'pass') doc.setTextColor(0, 128, 0)
+            else if (state === 'fail') doc.setTextColor(200, 0, 0)
+            else doc.setTextColor(0)
+            doc.text(label, passX + passW / 2, y + 5, { align: 'center' })
+            doc.setTextColor(0)
             y += rowH
           }
           sectionGap(6); tableRendered = true

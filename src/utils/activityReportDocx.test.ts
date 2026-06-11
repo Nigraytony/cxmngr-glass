@@ -134,6 +134,38 @@ describe('buildActivityReportHtml', () => {
     expect(html).not.toContain('<h4>Checklists</h4>')
   })
 
+  it('renders Sequence-test step rows (with Pass) and Points-test tables', () => {
+    const data = baseData()
+    data.include.equipmentReports = true
+    data.equipmentReports = [{
+      tag: 'VAV-101', title: 'VAV Box',
+      functionalTests: [
+        // Sequence test — steps live in rows, each with a pass
+        { title: '#2 Cooling Mode Operation', status: null, rows: [
+          { step: 'Set zone thermostat to call for cooling', expected: 'Damper opens', actual: 'Damper opened', pass: 'PASS' },
+          { step: 'Verify min airflow', expected: 'At setpoint', actual: 'Low', pass: 'FAIL' },
+        ] },
+        // Points test — data lives in a custom-column table
+        { title: '#1 Points Verification', status: null, table: {
+          columns: [{ key: 'c1', name: 'System Point' }, { key: 'c2', name: 'BAS' }, { key: 'c3', name: 'Field' }, { key: 'c4', name: 'Pass' }],
+          rows: [{ c1: 'Mixed Air Temp', c2: '75.7', c3: '77.5', c4: 'PASS' }],
+        } },
+      ],
+      include: { fpt: true, info: false, attributes: false, components: false, photos: false, checklists: false, signatures: false, issues: false, attachments: false },
+    }]
+    const { html } = buildActivityReportHtml(data)
+    // Sequence steps render with a Pass column
+    expect(html).toContain('Cooling Mode Operation')
+    expect(html).toContain('Set zone thermostat to call for cooling')
+    expect(html).toContain('>Pass</th>')
+    expect(html).toContain('PASS')
+    expect(html).toContain('FAIL')
+    // Points table renders its custom columns
+    expect(html).toContain('Points Verification')
+    expect(html).toContain('System Point')
+    expect(html).toContain('Mixed Air Temp')
+  })
+
   it('generates a real, non-trivial .docx blob end-to-end', async () => {
     const blob = await generateActivityDocxBlob(baseData())
     expect(blob).toBeInstanceOf(Blob)
