@@ -2099,6 +2099,7 @@ import TasksListCharts from '../../components/charts/TasksListCharts.vue'
 // the deprecated `darken()` calls in that SCSS for modern Sass compatibility.
 import Gantt from 'frappe-gantt'
 import { jsPDF } from 'jspdf'
+import { ensureWebReportFontLoaded, REPORT_FONT_STACK } from '../../utils/reportTypography'
 import html2canvas from 'html2canvas'
 ;(window).html2canvas = (window).html2canvas || html2canvas
 
@@ -2799,6 +2800,9 @@ async function downloadTasksPdf() {
     const pageW = doc.internal.pageSize.getWidth()
     const pageH = doc.internal.pageSize.getHeight()
 
+    // Render the captured pages in IBM Plex Sans like every other report.
+    await ensureWebReportFontLoaded()
+
     for (let i = 0; i < pages.length; i += 1) {
       const el = pages[i]
       const canvas = await html2canvas(el, {
@@ -2806,6 +2810,9 @@ async function downloadTasksPdf() {
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
+        onclone: (clonedDoc) => {
+          try { clonedDoc.body.style.fontFamily = REPORT_FONT_STACK } catch (e) { /* ignore */ }
+        },
       })
       const imgData = canvas.toDataURL('image/png')
       if (i > 0) doc.addPage('letter', 'portrait')

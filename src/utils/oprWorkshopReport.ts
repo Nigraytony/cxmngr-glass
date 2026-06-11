@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { drawBrandedFooter, drawBrandedHeader, fitImageToHeight } from './pdfBranding'
+import { ensureReportFonts, SANS, setColor as setReportColor } from './reportTypography'
 import type { OprAnswer, OprCategory, OprQuestion, OprResult, OprResultsRow, OprWorkshopAttendee, OprWorkshopInfo } from '../stores/opr'
 
 export type OprWorkshopReportSettings = {
@@ -199,7 +200,7 @@ function estimateTocPages(doc: jsPDF, titles: Array<{ title: string; indent: num
   const bottomLimit = opts.pageHeight - 26
   const lineH = 6
   const linesPerPage = Math.max(10, Math.floor((bottomLimit - startY) / lineH))
-  doc.setFont('helvetica', 'normal')
+  doc.setFont(SANS, 'normal')
   doc.setFontSize(11)
   const tocW = opts.pageWidth - opts.margin * 2 - 18
   let lines = 2 // "Table of Contents" + spacing
@@ -241,7 +242,7 @@ function sortAllResults(rows: OprResultsRow[]) {
 }
 
 export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settings: OprWorkshopReportSettings): Promise<ArrayBuffer> {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -282,8 +283,8 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
   let y = margin
   const tocEntries: TocEntry[] = []
 
-  const setBold = () => doc.setFont('helvetica', 'bold')
-  const setNormal = () => doc.setFont('helvetica', 'normal')
+  const setBold = () => doc.setFont(SANS, 'bold')
+  const setNormal = () => doc.setFont(SANS, 'normal')
 
   const drawHeader = (subtitle?: string) => {
     const res = drawBrandedHeader(doc, {

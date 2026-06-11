@@ -1877,6 +1877,7 @@ import lists from '../../lists.js'
 import http from '../../utils/http'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { jsPDF } from 'jspdf'
+import { ensureReportFonts, SANS, setColor as setReportColor } from '../../utils/reportTypography'
 import { buildEquipmentLogDetails } from '../../utils/equipmentLogDiff'
 
 const route = useRoute()
@@ -3977,7 +3978,7 @@ function passLabel(state: PassState) { return state === 'pass' ? 'PASS' : state 
 async function downloadEquipmentPdf() {
   await ensureReportData()
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -4002,7 +4003,7 @@ async function downloadEquipmentPdf() {
 
   const drawFooter = () => {
     // Preserve current font and size
-    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
+    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
     const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
     const footerY = pageHeight - 10
     doc.setDrawColor(180, 180, 180)
@@ -4012,30 +4013,30 @@ async function downloadEquipmentPdf() {
         const lh = 5.5
         const lw = 6.5
         doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh)
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(9)
         doc.text('cxma', margin + lw + 2, footerY - 2)
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(8)
         const tail = String((form.value as any).tag || (form.value as any).title || 'Equipment')
         doc.text(`${tail} Report`, margin + lw + 2 + doc.getTextWidth('cxma') + 4, footerY - 2)
       } else {
         doc.setFillColor(220, 220, 220)
         doc.rect(margin, footerY - 5.5, 8, 5, 'F')
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(8)
         const tail = String((form.value as any).tag || (form.value as any).title || 'Equipment')
         doc.text(`${tail} Report`, margin + 10, footerY - 2)
       }
     } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(8)
       const tail = String((form.value as any).tag || (form.value as any).title || 'Equipment')
       doc.text(`${tail} Report`, margin + 10, footerY - 2)
     }
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(SANS, 'normal')
     doc.text(String(pageNo), pageWidth / 2, footerY - 2, { align: 'center' })
     doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
     // Restore previous font and size
-    doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal')
+    doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal')
     doc.setFontSize(prevSize)
   }
 
@@ -4081,17 +4082,17 @@ async function downloadEquipmentPdf() {
   } catch (e) { /* ignore */ }
   const drawHeader = () => {
     // Preserve current font and size
-    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
+    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
     const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
     // Draw header band
     if (clientImg.dataUrl) doc.addImage(clientImg.dataUrl, clientImg.format || 'PNG', margin, margin, clientLogoSize.w, clientLogoSize.h)
     if (cxaImg.dataUrl) { const w = cxaLogoSize.w; const h = cxaLogoSize.h; doc.addImage(cxaImg.dataUrl, cxaImg.format || 'PNG', pageWidth - margin - w, margin, w, h) }
-    doc.setFontSize(20); doc.setFont('helvetica', 'bold')
+    doc.setFontSize(16); doc.setFont(SANS, 'bold')
     const headerTitle = String((form.value as any).tag || (form.value as any).title || 'Equipment')
     doc.text(`${headerTitle} Report`, pageWidth / 2, margin + 8, { align: 'center' })
     y = margin + 22
     // Restore previous font and size
-    doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal')
+    doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal')
     doc.setFontSize(prevSize)
   }
 
@@ -4113,8 +4114,8 @@ async function downloadEquipmentPdf() {
 
   // Info
   if (report.value.include.info) {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Info', margin, y); y += 6
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+    doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Info', margin, y); y += 6
+    doc.setFont(SANS, 'normal'); doc.setFontSize(10)
     const info: Array<[string, string]> = [
       ['Tag', String((form.value as any).tag || '')],
       ['Title', String((form.value as any).title || '')],
@@ -4136,8 +4137,8 @@ async function downloadEquipmentPdf() {
     const rows = Math.ceil(info.length / 2); y += rows * 7 + 2
     if ((form.value as any).description) {
       ensureSpace(14)
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Description', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Description', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(10)
       const lines = splitText(doc, htmlToText(String((form.value as any).description || '')), pageWidth - margin * 2)
       for (const l of lines) { ensureSpace(6); doc.text(l, margin, y); y += 5 }
     }
@@ -4148,8 +4149,8 @@ async function downloadEquipmentPdf() {
     const attrs: Array<{ key: string; value: string }> = Array.isArray((form.value as any).attributes) ? (form.value as any).attributes.filter((r: any) => (String(r?.key || '').trim() || String(r?.value || '').trim())) : []
     if (attrs.length) {
       sectionGap();
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Attributes', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Attributes', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(10)
       for (const a of attrs) {
         const line = `${a.key}: ${a.value}`
         const lines = splitText(doc, line, pageWidth - margin * 2)
@@ -4163,8 +4164,8 @@ async function downloadEquipmentPdf() {
     const list: any[] = Array.isArray((form.value as any).components) ? (form.value as any).components : []
     if (list.length) {
       sectionGap();
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Components', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Components', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       const toPairs = (obj: any) => {
         if (!obj) return []
         if (Array.isArray(obj)) return obj.map((r: any) => ({ k: String(r?.key ?? r?.title ?? ''), v: String(r?.value ?? '') })).filter((p: any) => p.k)
@@ -4175,9 +4176,9 @@ async function downloadEquipmentPdf() {
         // Header line: Tag — Title/Type (bold)
         const header = `${c.tag ? c.tag + ' — ' : ''}${c.title || c.type || 'Component'}`
         const hLines = splitText(doc, header, pageWidth - margin * 2)
-        doc.setFont('helvetica', 'bold')
+        doc.setFont(SANS, 'bold')
         for (const l of hLines) { ensureSpace(6); doc.text(l, margin + 2, y); y += 4 }
-        doc.setFont('helvetica', 'normal')
+        doc.setFont(SANS, 'normal')
         // Inline meta
         const metaBits: string[] = []
         if (c.type) metaBits.push(`Type: ${c.type}`)
@@ -4215,7 +4216,7 @@ async function downloadEquipmentPdf() {
     }
     if (imgs.length) {
       sectionGap();
-      ensureSpace(10); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
+      ensureSpace(10); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Photos', margin, y); y += 4
       const thumbW = (pageWidth - margin * 2 - 8) / 3
       const thumbH = thumbW * 0.75
       for (let idx = 0; idx < imgs.length; idx++) {
@@ -4235,11 +4236,11 @@ async function downloadEquipmentPdf() {
     const sections: any[] = Array.isArray((form.value as any).checklists) ? (form.value as any).checklists : []
     if (sections.length) {
       sectionGap();
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Checklists', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Checklists', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       for (const s of sections) {
         const title = String(s?.title || 'Section')
-        ensureSpace(6); doc.setFont('helvetica', 'bold'); doc.text(title, margin + 1, y); y += 5; doc.setFont('helvetica', 'normal')
+        ensureSpace(6); doc.setFont(SANS, 'bold'); doc.text(title, margin + 1, y); y += 5; doc.setFont(SANS, 'normal')
         // In UI/state, checklist rows are stored as `questions`; support legacy `items` too
         const items: any[] = Array.isArray(s?.questions) ? s.questions : (Array.isArray(s?.items) ? s.items : [])
         if (!items.length) continue
@@ -4251,7 +4252,7 @@ async function downloadEquipmentPdf() {
         const tableX = margin + 1
         const drawChecklistHeader = () => {
           ensureSpace(8)
-          doc.setFont('helvetica', 'bold')
+          doc.setFont(SANS, 'bold')
           const headerH = 6
           // Header background (slight green shading) and box
           doc.setFillColor(235, 245, 238)
@@ -4265,7 +4266,7 @@ async function downloadEquipmentPdf() {
           doc.text('Question', tableX + doneW + 1.5, y + 4)
           doc.text('Notes', tableX + doneW + textW + 1.5, y + 4)
           y += headerH
-          doc.setFont('helvetica', 'normal')
+          doc.setFont(SANS, 'normal')
         }
         drawChecklistHeader()
         for (const it of items) {
@@ -4313,16 +4314,16 @@ async function downloadEquipmentPdf() {
     const tests: any[] = Array.isArray((form.value as any).functionalTests) ? (form.value as any).functionalTests : []
     if (tests.length) {
       sectionGap();
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Functional Tests', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Functional Tests', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       for (const t of tests) {
         // Header line: number and name (match checklist section title styling)
         const number = (t?.number != null && t?.number !== undefined) ? `#${t.number} ` : ''
         const title = `${number}${String(t?.name || t?.title || 'Test')}`
         const lines = splitText(doc, title, pageWidth - margin * 2)
-        doc.setFont('helvetica', 'bold')
+        doc.setFont(SANS, 'bold')
         for (const l of lines) { ensureSpace(6); doc.text(l, margin + 1, y); y += 5 }
-        doc.setFont('helvetica', 'normal')
+        doc.setFont(SANS, 'normal')
         // Status
         if (t?.pass === true || t?.pass === false) {
           const st = t.pass === true ? 'PASS' : 'FAIL'
@@ -4360,7 +4361,7 @@ async function downloadEquipmentPdf() {
           const passX = tableX + stepsW
           const drawSheetHeader = () => {
             ensureSpace(8)
-            doc.setFont('helvetica', 'bold')
+            doc.setFont(SANS, 'bold')
             const headerH = 6
             // Header background (slight blue shading) and box
             doc.setFillColor(235, 241, 250)
@@ -4379,7 +4380,7 @@ async function downloadEquipmentPdf() {
             })
             doc.text('Pass', passX + 1.5, y + 4)
             y += headerH
-            doc.setFont('helvetica', 'normal')
+            doc.setFont(SANS, 'normal')
           }
           drawSheetHeader()
           for (const r of t.rows) {
@@ -4432,7 +4433,7 @@ async function downloadEquipmentPdf() {
             const tableX = margin + 1
             const drawTableHeader = () => {
               ensureSpace(8)
-              doc.setFont('helvetica', 'bold')
+              doc.setFont(SANS, 'bold')
               const headerH = 6
               // Header background (slight blue shading) and box
               doc.setFillColor(235, 241, 250)
@@ -4450,7 +4451,7 @@ async function downloadEquipmentPdf() {
                 doc.text(name, x, y + 4)
               })
               y += headerH
-              doc.setFont('helvetica', 'normal')
+              doc.setFont(SANS, 'normal')
             }
             drawTableHeader()
             for (const r of rows) {
@@ -4522,8 +4523,8 @@ async function downloadEquipmentPdf() {
     const sigs: any[] = Array.isArray(fptSignatures.value) ? fptSignatures.value : []
     if (sigs.length) {
       sectionGap()
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Signatures', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Signatures', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       // Layout: up to 2 signatures per row
       const colW = Math.floor((pageWidth - margin * 2 - 4) / 2)
       const drawSignatureBlock = async (sx: number, sy: number, sig: any) => {
@@ -4556,10 +4557,10 @@ async function downloadEquipmentPdf() {
         // Bold the role label, normal for the name
         if (role) {
           const roleLabel = role + ':'
-          doc.setFont('helvetica', 'bold');
+          doc.setFont(SANS, 'bold');
           doc.text(roleLabel, sx + 4, baseY - 5)
           const roleW = doc.getTextWidth(roleLabel)
-          doc.setFont('helvetica', 'normal');
+          doc.setFont(SANS, 'normal');
           doc.text(' ' + name, sx + 4 + roleW, baseY - 5)
         } else {
           doc.text(name, sx + 4, baseY - 5)
@@ -4588,8 +4589,8 @@ async function downloadEquipmentPdf() {
     const iss: any[] = Array.isArray(issuesForEquipment.value) ? issuesForEquipment.value : []
     if (iss.length) {
       sectionGap();
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Issues', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Issues', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       // Table layout based on Issues tab: Number | Type | Title | Description | Recommendation | Status
       const totalW = pageWidth - margin * 2 - 2
       const numW = 16
@@ -4602,7 +4603,7 @@ async function downloadEquipmentPdf() {
       const tableX = margin + 1
       const drawIssuesHeader = () => {
         ensureSpace(8)
-        doc.setFont('helvetica', 'bold')
+        doc.setFont(SANS, 'bold')
         const headerH = 6
   // Header background (slight red shading) and box
   doc.setFillColor(250, 236, 236)
@@ -4630,7 +4631,7 @@ async function downloadEquipmentPdf() {
         doc.text('Recommendation', tableX + numW + typeW + titleW + descW + 1.5, y + 4)
         doc.text('Status', tableX + numW + typeW + titleW + descW + recW + 1.5, y + 4)
         y += headerH
-        doc.setFont('helvetica', 'normal')
+        doc.setFont(SANS, 'normal')
       }
       drawIssuesHeader()
       for (const it of iss) {
@@ -4689,8 +4690,8 @@ async function downloadEquipmentPdf() {
     const atts: any[] = Array.isArray((form.value as any).attachments) ? (form.value as any).attachments : []
     if (atts.length) {
       sectionGap();
-      ensureSpace(12); doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      ensureSpace(12); doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.text('Attachments', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       for (let a = 0; a < Math.min(8, atts.length); a++) {
         const name = String(atts[a]?.filename || atts[a]?.url || 'Attachment')
         const lines = splitText(doc, name, pageWidth - margin * 2)
@@ -4720,9 +4721,9 @@ async function downloadEquipmentPdf() {
         // New page for the image attachment
         drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader()
         const label = `Attachment: ${String(a?.filename || a?.url || '')}`
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(10)
         ensureSpace(8); doc.text(label, margin, y); y += 4
-        doc.setFont('helvetica', 'normal')
+        doc.setFont(SANS, 'normal')
         const dims = await getImageDims(img.dataUrl)
         const maxW = pageWidth - margin * 2
         const maxH = bottomLimit - y

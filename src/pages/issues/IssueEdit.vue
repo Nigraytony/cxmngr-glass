@@ -1252,6 +1252,7 @@ import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
 import { jsPDF } from 'jspdf'
+import { ensureReportFonts, SANS, setColor as setReportColor } from '../../utils/reportTypography'
 import http from '../../utils/http'
 
 const route = useRoute()
@@ -1648,7 +1649,7 @@ function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
 async function downloadIssuePdf() {
   // Open a blank window immediately to preserve user-gesture context and avoid popup/download blocking
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
@@ -1685,7 +1686,7 @@ async function downloadIssuePdf() {
         const lh = 5.5
         const lw = 12
         doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, footerY - lh, lw, lh)
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(8)
         const issueNumText = (form.number != null && form.number !== undefined) ? String(form.number) : String(id.value)
         const footerTitle = `Issue ${issueNumText} Report`
         doc.text(footerTitle, margin + lw + 2, footerY - 2)
@@ -1693,7 +1694,7 @@ async function downloadIssuePdf() {
         // Fallback placeholder
         doc.setFillColor(220, 220, 220)
         doc.rect(margin, footerY - 5.5, 8, 5, 'F')
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(8)
         const issueNumText = (form.number != null && form.number !== undefined) ? String(form.number) : String(id.value)
         const footerTitle = `Issue ${issueNumText} Report`
         doc.text(footerTitle, margin + 10, footerY - 2)
@@ -1701,13 +1702,13 @@ async function downloadIssuePdf() {
     } catch (e) {
       doc.setFillColor(220, 220, 220)
       doc.rect(margin, footerY - 5.5, 8, 5, 'F')
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(8)
       const issueNumText = (form.number != null && form.number !== undefined) ? String(form.number) : String(id.value)
       const footerTitle = `Issue ${issueNumText} Report`
       doc.text(footerTitle, margin + 10, footerY - 2)
     }
     // Middle: page number
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(SANS, 'normal')
     doc.text(String(pageNo), pageWidth / 2, footerY - 2, { align: 'center' })
     // Right: date
     doc.text(pageDate, pageWidth - margin, footerY - 2, { align: 'right' })
@@ -1724,7 +1725,7 @@ async function downloadIssuePdf() {
   }
   // Header (H1)
   doc.setFontSize(20)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont(SANS, 'bold')
   const headerIssueNum = (form.number != null && form.number !== undefined) ? String(form.number) : String(id.value)
   doc.text(`Issue ${headerIssueNum} Report`, pageWidth / 2, y + 8, { align: 'center' })
   y += 22
@@ -1733,14 +1734,14 @@ async function downloadIssuePdf() {
   const numberText = form.number != null ? `Issue # ${form.number}` : 'Issue'
   const titleText = form.title ? ` — ${form.title}` : ''
   doc.setFontSize(14)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont(SANS, 'bold')
   const titleLines = splitText(doc, numberText + titleText, pageWidth - margin * 2)
   doc.text(titleLines, margin, y)
   y += Math.max(10, titleLines.length * 7) + 2
 
   // Key fields grid (2 columns)
   doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont(SANS, 'normal')
   const info: Array<[string, string]> = [
     ['Type', String(form.type || '')],
     ['Priority', String(form.priority || '')],
@@ -1784,11 +1785,11 @@ async function downloadIssuePdf() {
   const section = (heading: string, content?: string) => {
     const text = htmlToText(content || '').trim()
     if (!text) return
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(SANS, 'bold')
     doc.setFontSize(12)
     doc.text(heading, margin, y)
     y += 6
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(SANS, 'normal')
     doc.setFontSize(10)
     const maxW = pageWidth - margin * 2
     let lines = splitText(doc, text, maxW)
@@ -1812,10 +1813,10 @@ async function downloadIssuePdf() {
     const commentsArr: any[] = Array.isArray(form.comments) ? form.comments : []
     if (commentsArr.length) {
       const drawCommentsHeader = (continued = false) => {
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
+        doc.setFont(SANS, 'bold'); doc.setFontSize(12)
         doc.text(continued ? 'Comments (continued)' : 'Comments', margin, y)
         y += 6
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+        doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       }
       // Ensure room for header
       if (y + 6 > bottomLimit) {
@@ -1850,7 +1851,7 @@ async function downloadIssuePdf() {
       if (img.dataUrl) imgs.push({ dataUrl: img.dataUrl, format: img.format })
     }
     if (imgs.length) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
+      doc.setFont(SANS, 'bold'); doc.setFontSize(12); doc.text('Photos', margin, y); y += 4
       const thumbW = (pageWidth - margin * 2 - 8) / 3 // 3 per row, 4mm gaps
       const thumbH = thumbW * 0.75
       for (let idx = 0; idx < imgs.length; idx++) {
@@ -1870,8 +1871,8 @@ async function downloadIssuePdf() {
   try {
     const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
     if (atts.length) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+      doc.setFont(SANS, 'bold'); doc.setFontSize(12); doc.text('Attachments', margin, y); y += 6
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
       const maxA = 5
       for (let a = 0; a < Math.min(maxA, atts.length); a++) {
         const att = atts[a]
