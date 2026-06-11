@@ -32,9 +32,9 @@ function ensureCsrfCookieAndProtect(req, res, next) {
   try {
     // Never apply JSON parsing / CSRF protection to Stripe webhook endpoint.
     if (req.originalUrl && req.originalUrl.startsWith('/api/stripe/webhook')) return next();
-    // Demo reset is called by a scheduled job (no browser cookie); it is protected
-    // by a shared secret header instead. Exempt it from CSRF.
-    if (req.originalUrl && req.originalUrl.startsWith('/api/demo/reset')) return next();
+    // Demo reset / source-bootstrap are called by scheduled jobs or curl (no browser
+    // cookie); they are protected by a shared secret header instead. Exempt from CSRF.
+    if (req.originalUrl && req.originalUrl.startsWith('/api/demo/')) return next();
     if (req.method === 'OPTIONS') return next();
 
     const unsafe = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
