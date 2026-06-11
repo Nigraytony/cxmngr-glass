@@ -1,0 +1,6763 @@
+[
+  {
+    "tag": "CHLR-TEMPLATE",
+    "title": "Water Chiller",
+    "type": "Chiller",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Water-cooled or air-cooled chiller for central plant chilled water production. Includes compressor(s), evaporator, condenser, expansion devices, controls, and safety systems.",
+    "attributes": [
+      {
+        "key": "Cooling Capacity (Tons)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94c9"
+      },
+      {
+        "key": "Refrigerant Type",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94ca"
+      },
+      {
+        "key": "Compressor Type",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94cb"
+      },
+      {
+        "key": "Condenser Type",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94cc"
+      },
+      {
+        "key": "Evaporator Type",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94cd"
+      },
+      {
+        "key": "Full Load Efficiency (kW/Ton)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94ce"
+      },
+      {
+        "key": "IPLV / NPLV",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94cf"
+      },
+      {
+        "key": "Chilled Water Flow (GPM)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d0"
+      },
+      {
+        "key": "CHW Entering/Leaving Temp (°F)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d1"
+      },
+      {
+        "key": "Condenser Water Flow (GPM)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d2"
+      },
+      {
+        "key": "CDW Entering/Leaving Temp (°F)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d3"
+      },
+      {
+        "key": "Operating Pressure Range (psig)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d4"
+      },
+      {
+        "key": "Voltage",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d5"
+      },
+      {
+        "key": "Full Load Amps (FLA)",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d6"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d7"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a035a4f2512db57d23d94d8"
+      }
+    ],
+    "components": [
+      {
+        "tag": "COMP",
+        "type": "Compressor",
+        "title": "Compressor",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          },
+          {
+            "key": "Capacity Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "EVAP",
+        "type": "Heat Exchanger",
+        "title": "Evaporator",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          },
+          {
+            "key": "Material",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "COND",
+        "type": "Heat Exchanger",
+        "title": "Condenser",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          },
+          {
+            "key": "Material",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "EXV",
+        "type": "Expansion Device",
+        "title": "Expansion Valve",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "OIL-SEP",
+        "type": "Oil Separator",
+        "title": "Oil Separator",
+        "status": "Not Started"
+      },
+      {
+        "tag": "REF-FILTER",
+        "type": "Filter",
+        "title": "Refrigerant Filter Drier",
+        "status": "Not Started"
+      },
+      {
+        "tag": "STARTER",
+        "type": "Motor Starter",
+        "title": "Starter/VFD",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "CTRL-PNL",
+        "type": "Control Panel",
+        "title": "Chiller Control Panel",
+        "status": "Not Started"
+      },
+      {
+        "tag": "CHWT-SENSOR",
+        "type": "Sensor",
+        "title": "Chilled Water Temp Sensor",
+        "status": "Not Started"
+      },
+      {
+        "tag": "CDWT-SENSOR",
+        "type": "Sensor",
+        "title": "Condenser Water Temp Sensor",
+        "status": "Not Started"
+      },
+      {
+        "tag": "CHW-FLOW",
+        "type": "Flow Switch",
+        "title": "CHW Flow Switch",
+        "status": "Not Started"
+      },
+      {
+        "tag": "CDW-FLOW",
+        "type": "Flow Switch",
+        "title": "CDW Flow Switch",
+        "status": "Not Started"
+      },
+      {
+        "tag": "RELIEF",
+        "type": "Safety Device",
+        "title": "Refrigerant Relief Valves",
+        "status": "Not Started"
+      },
+      {
+        "tag": "ECON",
+        "type": "Economizer",
+        "title": "Economizer (if applicable)",
+        "status": "Not Started"
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Chiller is level and properly isolated on vibration isolators or inertia base",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Clearances for service and tube pull verified per manufacturer",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Nameplate data recorded and matches design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Shipping brackets and transit bolts removed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All panels, access doors, and guards installed",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Piping and Refrigerant System",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Chilled water piping connections tight, no leaks observed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condenser water piping connections tight, no leaks observed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "CHW and CDW flow switches installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Isolation and balance valves installed and accessible",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pressure gauges installed on evaporator and condenser",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Refrigerant charge verified per manufacturer (nameplate or log)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Refrigerant piping insulated, no damage or leaks",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Oil level verified in compressor sight glass",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Relief valves installed and piped per code",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Electrical",
+        "type": "Prefunctional",
+        "responsible": "Electrical",
+        "questions": [
+          {
+            "question_text": "Voltage verified at chiller disconnect (within ±10%)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Voltage balance across phases verified (<2% imbalance)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All electrical connections tight, no exposed conductors",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Control power fused and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Starter or VFD operational and programmed per sequence",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Emergency stop (if provided) tested and functional",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Controls and Safety Devices",
+        "type": "Prefunctional",
+        "responsible": "Controls",
+        "questions": [
+          {
+            "question_text": "Chiller controller powers up and displays correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Temperature sensors calibrated and reading correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow switches tested and interlocked (chiller lockout on loss of flow)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "High/low pressure cutouts tested and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Low refrigerant temperature cutout tested",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Oil pressure safety (if applicable) tested",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS communication verified (points list reviewed)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "5",
+        "title": "Water Treatment",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Chilled water system chemically cleaned and flushed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condenser water treatment system installed and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Water quality tested and within manufacturer limits (pH, conductivity, hardness)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "6",
+        "title": "Startup and Initial Operation",
+        "type": "Startup",
+        "responsible": "Mechanical / Factory Rep",
+        "questions": [
+          {
+            "question_text": "Factory startup completed by authorized representative",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Chiller runs without abnormal noise or vibration",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Operating pressures and temperatures within normal range",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Capacity control (staging or modulation) verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Compressor oil level and pressure normal during operation",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All alarms and safeties reset and logged in controller",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Startup report provided by manufacturer rep",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Start/Stop Operation",
+        "description": "Verify chiller can be started and stopped manually from local control panel.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Verify CHW and CDW pumps running and flow established",
+            "expected": "Both pumps running, flow switches proven",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Initiate manual start from chiller control panel",
+            "expected": "Chiller starts, compressor energizes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe startup sequence and time delays",
+            "expected": "Startup per manufacturer sequence, no faults",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify chiller reaches stable operation",
+            "expected": "Operating pressures and temps stabilize within normal range",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Initiate manual stop",
+            "expected": "Chiller stops, compressor de-energizes, no alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Automatic Operation and Temperature Control",
+        "description": "Verify chiller starts/stops on BAS command and maintains chilled water temperature setpoint.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set CHW supply temperature setpoint via BAS (e.g., 44°F)",
+            "expected": "Setpoint accepted and displayed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Enable chiller via BAS",
+            "expected": "Chiller starts automatically",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Monitor CHW supply temperature as load varies",
+            "expected": "Chiller modulates capacity to maintain setpoint ±2°F",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS receives real-time feedback (status, temps, alarms)",
+            "expected": "All points updating in BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Disable chiller via BAS",
+            "expected": "Chiller stops, status reported to BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Condenser Water Control",
+        "description": "Verify chiller modulates condenser water valve or fan speed (if air-cooled) to maintain condenser pressure/temperature.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start chiller under normal load",
+            "expected": "Chiller running, condenser water flowing",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe condenser water temperature or head pressure",
+            "expected": "Chiller modulates CDW valve or fan to maintain setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low ambient (if applicable) or reduce CDW flow",
+            "expected": "Chiller adjusts to prevent low head pressure",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify no low-pressure alarms during modulation",
+            "expected": "Chiller remains stable",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Capacity Control and Staging",
+        "description": "Verify chiller modulates capacity (VFD, unloading, or staging) in response to load.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start chiller at low load (CHW temp above setpoint)",
+            "expected": "Chiller runs at minimum capacity",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Increase load (raise CHW return temp or increase flow)",
+            "expected": "Chiller increases capacity (VFD ramps up or stages on)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease load",
+            "expected": "Chiller decreases capacity (VFD ramps down or stages off)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify smooth transitions, no cycling or hunting",
+            "expected": "Stable control, no alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Low Load / Minimum Run Time",
+        "description": "Verify chiller operates stably at low load and respects minimum run timers.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start chiller with minimal cooling load",
+            "expected": "Chiller starts and runs at minimum capacity",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Attempt to stop chiller before minimum run timer expires",
+            "expected": "Chiller continues to run until timer satisfied",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify chiller does not short-cycle",
+            "expected": "Minimum off-time enforced between starts",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "High Pressure Cutout Test",
+        "description": "Verify high refrigerant pressure safety shuts down chiller and alarms.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start chiller under normal operation",
+            "expected": "Chiller running normally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate high head pressure (restrict condenser water flow or disable cooling)",
+            "expected": "Head pressure rises",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify chiller trips on high pressure cutout",
+            "expected": "Chiller stops, high pressure alarm generated",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify alarm reported to BAS and logged locally",
+            "expected": "Alarm visible in BAS and chiller log",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reset condition and clear alarm",
+            "expected": "Chiller can be restarted after reset",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-7",
+        "name": "Low Pressure Cutout Test",
+        "description": "Verify low refrigerant pressure safety shuts down chiller and alarms.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start chiller under normal operation",
+            "expected": "Chiller running normally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low suction pressure (restrict CHW flow or lower setpoint excessively)",
+            "expected": "Suction pressure drops",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify chiller trips on low pressure cutout",
+            "expected": "Chiller stops, low pressure alarm generated",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify alarm reported to BAS and logged locally",
+            "expected": "Alarm visible in BAS and chiller log",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reset condition and clear alarm",
+            "expected": "Chiller can be restarted after reset",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-8",
+        "name": "Flow Switch Interlock Test",
+        "description": "Verify loss of CHW or CDW flow prevents chiller start or shuts down running chiller.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "With chiller off, close CHW isolation valve to simulate no flow",
+            "expected": "CHW flow switch opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Attempt to start chiller",
+            "expected": "Chiller fails to start, flow alarm generated",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore CHW flow and start chiller",
+            "expected": "Chiller starts normally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "While running, close CDW isolation valve",
+            "expected": "CDW flow switch opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify chiller shuts down on loss of condenser water flow",
+            "expected": "Chiller stops, CDW flow alarm generated",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore flow and reset",
+            "expected": "Chiller can be restarted",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-9",
+        "name": "BAS Points Verification",
+        "description": "Verify all chiller monitoring and control points are communicating accurately with the BAS.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "standard",
+        "rows": [],
+        "table": {
+          "columns": [
+            {
+              "key": "cnn3m5c",
+              "name": "System Point"
+            },
+            {
+              "key": "cfpi1x0",
+              "name": "BAS"
+            },
+            {
+              "key": "cw9z348",
+              "name": "Field"
+            },
+            {
+              "key": "coxpwo2",
+              "name": "Offset"
+            },
+            {
+              "key": "c6xokg3",
+              "name": "Pass"
+            }
+          ],
+          "rows": [
+            {
+              "cnn3m5c": "Chiller Enable/Disable Command",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "Chiller Run Status",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "CHW Supply Temp",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "CHW Return Temp",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "CDW Supply Temp",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "CDW Return Temp",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "Evaporator Pressure",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "Condenser Pressure",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "Percent Load / Capacity",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "kW Demand",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "CHW Flow (GPM)",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "CDW Flow (GPM)",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            },
+            {
+              "cnn3m5c": "Alarm Status",
+              "cfpi1x0": "",
+              "cw9z348": "",
+              "coxpwo2": "",
+              "c6xokg3": ""
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "tag": "CT-TEMPLATE",
+    "title": "Cooling Tower Template",
+    "type": "Cooling Tower",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Open-circuit cooling tower for condenser water heat rejection. Commission per ASHRAE Guideline 0 and 202.",
+    "attributes": [
+      {
+        "key": "Capacity (Tons)",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e6a"
+      },
+      {
+        "key": "Flow Rate (GPM)",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e6b"
+      },
+      {
+        "key": "Entering Water Temp (°F)",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e6c"
+      },
+      {
+        "key": "Leaving Water Temp (°F)",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e6d"
+      },
+      {
+        "key": "Ambient WB (°F)",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e6e"
+      },
+      {
+        "key": "Fan Motor HP",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e6f"
+      },
+      {
+        "key": "Fan Quantity",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e70"
+      },
+      {
+        "key": "Voltage",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e71"
+      },
+      {
+        "key": "Control Type",
+        "value": "VFD",
+        "_id": "6a0349b42512db57d23d8e72"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e73"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e74"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a0349b42512db57d23d8e75"
+      }
+    ],
+    "components": [
+      {
+        "tag": "FAN-1",
+        "type": "Fan",
+        "title": "Cooling Tower Fan",
+        "attributes": [
+          {
+            "key": "Motor HP",
+            "value": ""
+          },
+          {
+            "key": "Speed Control",
+            "value": "VFD"
+          }
+        ]
+      },
+      {
+        "tag": "VFD-1",
+        "type": "VFD",
+        "title": "Fan Variable Frequency Drive",
+        "attributes": [
+          {
+            "key": "HP Rating",
+            "value": ""
+          },
+          {
+            "key": "Input Voltage",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "BASIN",
+        "type": "Basin",
+        "title": "Sump Basin",
+        "attributes": [
+          {
+            "key": "Capacity (Gal)",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "FILL",
+        "type": "Fill Media",
+        "title": "Cooling Tower Fill"
+      },
+      {
+        "tag": "ELIM",
+        "type": "Drift Eliminator",
+        "title": "Drift Eliminator"
+      },
+      {
+        "tag": "MU-VLV",
+        "type": "Valve",
+        "title": "Make-Up Water Valve"
+      },
+      {
+        "tag": "BO-VLV",
+        "type": "Valve",
+        "title": "Blowdown Valve"
+      },
+      {
+        "tag": "TEMP-SNS",
+        "type": "Sensor",
+        "title": "Leaving Water Temp Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "RTD"
+          }
+        ]
+      },
+      {
+        "tag": "FLOW-SNS",
+        "type": "Sensor",
+        "title": "Flow Sensor"
+      },
+      {
+        "tag": "HTR",
+        "type": "Heater",
+        "title": "Basin Heater",
+        "attributes": [
+          {
+            "key": "kW",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Tower installed level and properly supported per drawings",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Basin clean and free of debris",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fill media installed correctly without damage",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Drift eliminators installed and secure",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan rotation verified correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan guard in place and secure",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Make-up water line connected and functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Overflow drain installed and piped to waste",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Blowdown valve installed and accessible",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Mechanical Connections",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Condenser water supply piping connected and supported",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condenser water return piping connected",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Isolation valves installed and accessible",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Piping flushed and clean",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "System filled and vented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Water treatment system installed and operational",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Electrical & Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power wiring to fan motor correct voltage and phase",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD installed, powered, and programmed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Basin heater wired and functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Leaving water temp sensor installed and wired to BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow switch installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS control points verified (start/stop, speed, status)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Safety & Alarms",
+        "type": "Prefunctional",
+        "responsible": "Mechanical / Controls",
+        "questions": [
+          {
+            "question_text": "Low water level cutout functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "High water level alarm functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Freeze protection alarm set and functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD alarms integrated to BAS",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Normal Cooling Operation",
+        "description": "Verify cooling tower operates to maintain condenser water leaving temperature setpoint under normal load.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable cooling tower via BAS",
+            "expected": "Tower enabled, status confirmed at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify condenser water flow established",
+            "expected": "Flow switch proves flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Start cooling tower fan",
+            "expected": "Fan starts, runs smoothly without vibration",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Monitor leaving water temperature as load increases",
+            "expected": "Temperature maintained at setpoint ±2°F",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify VFD modulates fan speed to maintain setpoint",
+            "expected": "Fan speed increases with load to maintain temp",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS trend logs record temp, fan speed, status",
+            "expected": "All points trending correctly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Fan Speed Modulation",
+        "description": "Verify VFD modulates fan speed in response to leaving water temperature.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set leaving water temp setpoint to design value",
+            "expected": "Setpoint accepted at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate increased load (or allow actual load)",
+            "expected": "Leaving water temp begins to rise",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe fan speed increase via VFD",
+            "expected": "Fan speed ramps up smoothly (no hunting)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify leaving water temp stabilizes at setpoint",
+            "expected": "Temp returns to setpoint ±2°F",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reduce load",
+            "expected": "Fan speed decreases, temp maintained",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Low Water Level Cutout",
+        "description": "Verify tower shuts down on low water level to protect equipment.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Tower operating in normal mode",
+            "expected": "Fan running, water circulating",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low water level in basin (or lower actual level)",
+            "expected": "Low level sensor/switch trips",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify tower fan shuts down immediately",
+            "expected": "Fan stops, no delay",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify alarm sent to BAS",
+            "expected": "Low water alarm displayed at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore water level to normal",
+            "expected": "Alarm clears, tower ready to restart",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restart tower via BAS",
+            "expected": "Tower resumes normal operation",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Freeze Protection (Basin Heater)",
+        "description": "Verify basin heater energizes when outdoor temperature drops to prevent freezing.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Tower off, outdoor temp above freeze protection setpoint",
+            "expected": "Basin heater off",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Lower outdoor air temp below freeze protection setpoint (simulate or actual)",
+            "expected": "Basin heater energizes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify basin water temperature maintained above freezing",
+            "expected": "Water temp > 40°F",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS logs heater status",
+            "expected": "Heater status ON at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Water Treatment System Integration",
+        "description": "Verify automatic water treatment (chemical feed, blowdown) operates as designed.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Tower in normal operation",
+            "expected": "Water circulating, fan running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify automatic blowdown cycles per timer or conductivity",
+            "expected": "Blowdown valve opens on schedule or high conductivity",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify make-up water valve opens to replace blowdown",
+            "expected": "Basin level maintained",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify chemical feed system dosing (if automated)",
+            "expected": "Chemical pump cycles per program",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Test water chemistry (pH, conductivity, inhibitor level)",
+            "expected": "Parameters within acceptable range per spec",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "HWB-TEMPLATE",
+    "title": "Hot Water Boiler Template",
+    "type": "Hot Water Boiler",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Gas-fired hot water boiler for heating water system. Commission per ASHRAE Guideline 0 and 202.",
+    "attributes": [
+      {
+        "key": "Capacity (MBH)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e78"
+      },
+      {
+        "key": "Input (MBH)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e79"
+      },
+      {
+        "key": "Efficiency (%)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e7a"
+      },
+      {
+        "key": "Fuel Type",
+        "value": "Natural Gas",
+        "_id": "6a0349b52512db57d23d8e7b"
+      },
+      {
+        "key": "Supply Water Temp (°F)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e7c"
+      },
+      {
+        "key": "Return Water Temp (°F)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e7d"
+      },
+      {
+        "key": "Flow Rate (GPM)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e7e"
+      },
+      {
+        "key": "Pressure Rating (PSI)",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e7f"
+      },
+      {
+        "key": "Burner Type",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e80"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e81"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e82"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a0349b52512db57d23d8e83"
+      }
+    ],
+    "components": [
+      {
+        "tag": "BURNER",
+        "type": "Burner",
+        "title": "Gas Burner Assembly",
+        "attributes": [
+          {
+            "key": "Input MBH",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "HX",
+        "type": "Heat Exchanger",
+        "title": "Boiler Heat Exchanger"
+      },
+      {
+        "tag": "PUMP",
+        "type": "Pump",
+        "title": "Boiler Circulating Pump",
+        "attributes": [
+          {
+            "key": "HP",
+            "value": ""
+          },
+          {
+            "key": "GPM",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "EXP-TNK",
+        "type": "Expansion Tank",
+        "title": "Expansion Tank",
+        "attributes": [
+          {
+            "key": "Capacity (Gal)",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "PRV",
+        "type": "Relief Valve",
+        "title": "Pressure Relief Valve",
+        "attributes": [
+          {
+            "key": "Set Pressure (PSI)",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "SWT-SNS",
+        "type": "Sensor",
+        "title": "Supply Water Temp Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "RTD"
+          }
+        ]
+      },
+      {
+        "tag": "RWT-SNS",
+        "type": "Sensor",
+        "title": "Return Water Temp Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "RTD"
+          }
+        ]
+      },
+      {
+        "tag": "PRESS-SNS",
+        "type": "Sensor",
+        "title": "System Pressure Sensor"
+      },
+      {
+        "tag": "FLOW-SNS",
+        "type": "Sensor",
+        "title": "Flow Sensor"
+      },
+      {
+        "tag": "LWCO",
+        "type": "Safety Device",
+        "title": "Low Water Cutoff"
+      },
+      {
+        "tag": "IGN",
+        "type": "Ignition",
+        "title": "Ignition Module"
+      },
+      {
+        "tag": "FLAME-SNS",
+        "type": "Sensor",
+        "title": "Flame Sensor"
+      },
+      {
+        "tag": "GAS-VLV",
+        "type": "Valve",
+        "title": "Gas Valve"
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Boiler installed level and properly supported per drawings",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Clearances to combustibles meet code and manufacturer requirements",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Boiler room ventilation adequate per code",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pressure relief valve installed and piped to drain",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Expansion tank installed and pre-charged",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "System filled, vented, and pressurized",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flue/vent pipe installed per code and manufacturer requirements",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condensate drain (if condensing boiler) piped correctly",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Gas & Fuel Piping",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Gas piping sized per code and design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Gas piping pressure tested and leak-free",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Manual gas shutoff valve installed and accessible",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Gas regulator set to proper inlet pressure",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Drip leg installed on gas line",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Gas valve operation verified (open/close)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Hydronic Piping & Connections",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Supply and return piping connected correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Isolation valves installed on supply and return",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Piping flushed and clean",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "System water treatment installed and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Air vents installed at high points",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Circulating pump rotation correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow balanced per design",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Electrical & Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power supply voltage correct and phase verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Control wiring per manufacturer wiring diagram",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Supply and return water temp sensors installed and wired to BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "System pressure sensor wired to BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow switch installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS control points verified (enable, status, alarms)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Boiler controller programmed per design sequence",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "5",
+        "title": "Safety Devices & Interlocks",
+        "type": "Prefunctional",
+        "responsible": "Mechanical / Controls",
+        "questions": [
+          {
+            "question_text": "Low water cutoff functional and wired to burner lockout",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "High limit temperature switch functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pressure relief valve operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flame safeguard system functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow proving switch functional (no flow = no fire)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Gas pressure switch functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Vent damper or vent safety switch (if equipped) functional",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "6",
+        "title": "Startup & Combustion",
+        "type": "Startup",
+        "responsible": "Manufacturer Rep / Mechanical",
+        "questions": [
+          {
+            "question_text": "Manufacturer startup completed and documented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Combustion analysis performed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "CO₂ percentage within manufacturer spec",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "O₂ percentage within manufacturer spec",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flue gas temperature recorded",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Burner firing rate verified at high fire",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Burner firing rate verified at low fire (if modulating)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Efficiency calculated and meets or exceeds design",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Normal Heating Operation",
+        "description": "Verify boiler fires and maintains supply water temperature setpoint under normal load.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable boiler via BAS",
+            "expected": "Boiler enabled, status confirmed at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify system flow via flow switch",
+            "expected": "Flow switch proves flow, burner enabled",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Initiate call for heat (lower SWT setpoint or allow actual load)",
+            "expected": "Burner fires, ignition confirmed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Monitor supply water temperature rise",
+            "expected": "SWT rises smoothly to setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify burner modulates (if modulating) to maintain setpoint",
+            "expected": "Burner modulates between low and high fire as needed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify supply water temp maintained at setpoint ±3°F",
+            "expected": "Temperature stable at setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS trend logs record temps, firing rate, status",
+            "expected": "All points trending correctly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Burner Modulation (if modulating)",
+        "description": "Verify burner modulates firing rate in response to load.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Boiler in normal operation at part load",
+            "expected": "Burner firing at mid-range",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Increase heating load (lower setpoint or open more zones)",
+            "expected": "SWT drops slightly below setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify burner firing rate increases to high fire",
+            "expected": "Burner ramps to high fire smoothly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify SWT returns to setpoint",
+            "expected": "Temperature stabilizes at setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease heating load",
+            "expected": "Burner modulates down or cycles off",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify no short-cycling or hunting",
+            "expected": "Burner modulates smoothly without rapid on/off",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Low Water Cutoff Test",
+        "description": "Verify boiler shuts down on low water condition to prevent damage.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Boiler operating in normal heating mode",
+            "expected": "Burner firing, water circulating",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low water condition (lower pressure or trip LWCO manually)",
+            "expected": "Low water cutoff trips",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify burner shuts down immediately",
+            "expected": "Burner lockout, no flame",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify alarm sent to BAS",
+            "expected": "Low water alarm displayed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore water level and reset LWCO",
+            "expected": "LWCO resets, alarm clears",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restart boiler via BAS",
+            "expected": "Boiler resumes normal operation",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "High Limit Safety Test",
+        "description": "Verify boiler shuts down on high temperature limit to prevent overheating.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Boiler firing in normal mode",
+            "expected": "SWT rising toward setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate high limit condition (raise setpoint above limit or disable load)",
+            "expected": "Supply water temp reaches high limit setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify burner shuts down on high limit",
+            "expected": "Burner off, high limit switch opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify alarm sent to BAS",
+            "expected": "High limit alarm displayed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Allow SWT to drop below limit",
+            "expected": "High limit switch closes, ready to restart",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify boiler resumes firing when temp drops",
+            "expected": "Burner restarts automatically or via BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Proof of Flow Interlock",
+        "description": "Verify burner will not fire without proven water flow.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Boiler enabled via BAS, call for heat active",
+            "expected": "Circulating pump running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Close isolation valve or stop pump to simulate no-flow",
+            "expected": "Flow switch opens (no flow)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify burner does not fire or shuts down if already firing",
+            "expected": "Burner disabled, no ignition",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify alarm sent to BAS",
+            "expected": "No flow alarm displayed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore flow",
+            "expected": "Flow switch closes, burner enabled",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify boiler resumes normal operation",
+            "expected": "Burner fires, heating resumes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "Outdoor Air Reset (if applicable)",
+        "description": "Verify supply water temperature setpoint resets based on outdoor air temperature.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set boiler to OA reset mode in BAS",
+            "expected": "Reset schedule active",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "At design outdoor temp (e.g., 0°F), verify SWT setpoint at design high (e.g., 180°F)",
+            "expected": "SWT setpoint = 180°F",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Increase OAT to mild condition (e.g., 50°F)",
+            "expected": "SWT setpoint decreases per reset schedule (e.g., 140°F)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify boiler maintains new lower setpoint",
+            "expected": "SWT maintained at reset setpoint ±3°F",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Return OAT to cold condition",
+            "expected": "SWT setpoint increases back to high limit",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "CHWP-TEMPLATE",
+    "title": "Chilled Water Pump",
+    "type": "Pump",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Chilled water circulation pump for hydronic cooling system distribution",
+    "attributes": [
+      {
+        "key": "Flow Rate",
+        "value": "",
+        "_id": "6a034ab82512db57d23d902b"
+      },
+      {
+        "key": "Head",
+        "value": "",
+        "_id": "6a034ab82512db57d23d902c"
+      },
+      {
+        "key": "Motor HP",
+        "value": "",
+        "_id": "6a034ab82512db57d23d902d"
+      },
+      {
+        "key": "Motor Voltage",
+        "value": "",
+        "_id": "6a034ab82512db57d23d902e"
+      },
+      {
+        "key": "RPM",
+        "value": "",
+        "_id": "6a034ab82512db57d23d902f"
+      },
+      {
+        "key": "Impeller Size",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9030"
+      },
+      {
+        "key": "VFD",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9031"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9032"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9033"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9034"
+      }
+    ],
+    "components": [
+      {
+        "tag": "MOTOR",
+        "type": "Motor",
+        "title": "Pump Motor",
+        "attributes": [
+          {
+            "key": "HP",
+            "value": ""
+          },
+          {
+            "key": "Voltage",
+            "value": ""
+          },
+          {
+            "key": "FLA",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "VFD",
+        "type": "VFD",
+        "title": "Variable Frequency Drive",
+        "attributes": [
+          {
+            "key": "Manufacturer",
+            "value": ""
+          },
+          {
+            "key": "Model",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "FLOW",
+        "type": "Sensor",
+        "title": "Flow Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          },
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "SUCT-PRESS",
+        "type": "Sensor",
+        "title": "Suction Pressure Sensor",
+        "attributes": [
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "DISC-PRESS",
+        "type": "Sensor",
+        "title": "Discharge Pressure Sensor",
+        "attributes": [
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "DISC-TEMP",
+        "type": "Sensor",
+        "title": "Discharge Temperature Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "STARTER",
+        "type": "Starter",
+        "title": "Motor Starter",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Pump model, size, and capacity match design documents",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump rotation is correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All piping connections are complete and leak-free",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Suction and discharge isolation valves installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Balancing valve installed in discharge",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Check valve installed (if applicable)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flexible connectors installed at suction and discharge",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump base is level and grouted",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Alignment completed and documented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Strainer installed and clean",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical & Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Electrical/Controls",
+        "questions": [
+          {
+            "question_text": "Motor voltage matches nameplate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor starter/VFD installed per specifications",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Overload protection set correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD parameters programmed per sequence of operations",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All sensors installed and wired (flow, pressure, temperature)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Start/stop commands functional from BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Speed control functional (if VFD)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All alarms and status points communicate to BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hand-Off-Auto switch functional",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Safety Devices",
+        "type": "Prefunctional",
+        "responsible": "Mechanical/Controls",
+        "questions": [
+          {
+            "question_text": "Low flow cutout installed and functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Low suction pressure cutout functional (if applicable)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor overload protection functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Freeze protection sensors installed (if applicable)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump run status proven before valve opens",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Startup",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Pump primed and vented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "System filled and air purged",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump operates smoothly without vibration or noise",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "No leaks observed during operation",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor amperage within nameplate FLA",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Discharge pressure within design range",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow rate within design range",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Operation",
+        "description": "Verify pump can be started and stopped manually at the local control panel",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place Hand-Off-Auto switch in HAND position",
+            "expected": "Pump starts immediately",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify discharge pressure rises",
+            "expected": "Pressure increases to design setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify flow is established",
+            "expected": "Flow sensor reads within design range",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify motor amperage",
+            "expected": "Current is within nameplate FLA",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Place switch in OFF position",
+            "expected": "Pump stops immediately",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Automatic Operation",
+        "description": "Verify pump responds to BAS start/stop commands",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place Hand-Off-Auto switch in AUTO position",
+            "expected": "Pump ready for BAS control",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command pump to start via BAS",
+            "expected": "Pump starts within 5 seconds",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify run status at BAS",
+            "expected": "BAS displays pump running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command pump to stop via BAS",
+            "expected": "Pump stops within 5 seconds",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify stopped status at BAS",
+            "expected": "BAS displays pump stopped",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "VFD Speed Control",
+        "description": "Verify VFD responds to speed commands and modulates correctly",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode",
+            "expected": "Pump starts at minimum speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 50% speed via BAS",
+            "expected": "VFD ramps to 50%, motor amperage decreases proportionally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify discharge pressure modulates",
+            "expected": "Pressure decreases with reduced speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 100% speed",
+            "expected": "VFD ramps to 100%, flow and pressure increase",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to minimum speed",
+            "expected": "VFD ramps down to minimum",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Low Flow Cutout",
+        "description": "Verify pump shuts down on low flow condition",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode",
+            "expected": "Pump runs normally with adequate flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Slowly close discharge valve to simulate low flow",
+            "expected": "Flow decreases below setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe pump response",
+            "expected": "Pump shuts down within time delay period",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS alarm",
+            "expected": "Low flow alarm generated at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Open discharge valve fully and reset alarm",
+            "expected": "System ready to restart",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "BAS Points Verification",
+        "description": "Verify all BAS points read accurately",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "standard",
+        "rows": [],
+        "table": {
+          "columns": [
+            {
+              "key": "cg9nmts",
+              "name": "System Point"
+            },
+            {
+              "key": "c75xepu",
+              "name": "BAS"
+            },
+            {
+              "key": "cg9j6j2",
+              "name": "Field"
+            },
+            {
+              "key": "cx6l1ow",
+              "name": "Offset"
+            },
+            {
+              "key": "cxtj2z9",
+              "name": "Pass"
+            }
+          ],
+          "rows": [
+            {
+              "cg9nmts": "Pump Run Status",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Pump Speed Command (%)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Pump Speed Feedback (%)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Discharge Pressure (psi)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Suction Pressure (psi)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Flow Rate (GPM)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Discharge Temperature (°F)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Motor Current (A)",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            },
+            {
+              "cg9nmts": "Low Flow Alarm",
+              "c75xepu": "",
+              "cg9j6j2": "",
+              "cx6l1ow": "",
+              "cxtj2z9": ""
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "tag": "CDWP-TEMPLATE",
+    "title": "Condenser Water Pump",
+    "type": "Pump",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Condenser water pump commissioning template for chiller condenser water loop circulation.",
+    "attributes": [
+      {
+        "key": "Pump Type",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91e3"
+      },
+      {
+        "key": "Flow Rate (GPM)",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91e4"
+      },
+      {
+        "key": "Total Head (ft)",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91e5"
+      },
+      {
+        "key": "Motor HP",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91e6"
+      },
+      {
+        "key": "Motor RPM",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91e7"
+      },
+      {
+        "key": "Voltage",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91e8"
+      },
+      {
+        "key": "Phase",
+        "value": "3",
+        "_id": "6a034cde2512db57d23d91e9"
+      },
+      {
+        "key": "Full Load Amps (FLA)",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91ea"
+      },
+      {
+        "key": "VFD",
+        "value": "Yes",
+        "_id": "6a034cde2512db57d23d91eb"
+      },
+      {
+        "key": "Impeller Size",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91ec"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91ed"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a034cde2512db57d23d91ee"
+      }
+    ],
+    "components": [
+      {
+        "tag": "MOTOR",
+        "type": "Motor",
+        "title": "Pump Motor",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "HP",
+            "value": ""
+          },
+          {
+            "key": "RPM",
+            "value": ""
+          },
+          {
+            "key": "Voltage",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "VFD",
+        "type": "VFD",
+        "title": "Variable Frequency Drive",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Make",
+            "value": ""
+          },
+          {
+            "key": "Model",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "FLOW-SENSOR",
+        "type": "Sensor",
+        "title": "Flow Sensor",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "Flow"
+          },
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "PRESS-SENSOR",
+        "type": "Sensor",
+        "title": "Differential Pressure Sensor",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "Pressure"
+          },
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "STARTER",
+        "type": "Starter",
+        "title": "Motor Starter",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Pump is properly mounted and anchored to base/pad",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Alignment is correct between motor and pump",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Piping connections are complete with no leaks",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Isolation valves are installed and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Strainer is installed upstream of pump",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Suction and discharge gauges installed and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow meter installed and operational",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump casing has been filled/primed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor rotation verified correct (clockwise looking at shaft)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Vibration isolators installed correctly",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical and Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Electrical/Controls",
+        "questions": [
+          {
+            "question_text": "Electrical connections to motor complete and tight",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor voltage matches nameplate requirements",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD is installed and wired correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD parameters programmed per design (min/max speed, ramp)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Control signals wired to BAS (start/stop, speed, status)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow sensor wired and calibrated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Differential pressure sensor wired and calibrated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hand-Off-Auto switch functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Run status indication functional at BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Alarm points programmed (low flow, high vibration, VFD fault)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Safety Devices",
+        "type": "Prefunctional",
+        "responsible": "Mechanical/Controls",
+        "questions": [
+          {
+            "question_text": "Motor overload protection set correctly per FLA",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Low flow cutout switch installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump run interlock with associated chiller verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD fault shutdown stops pump",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Emergency stop button functional (if provided)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Startup",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "System flushed and chemically treated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Strainer cleaned after initial run",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump operated and no unusual noise or vibration",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Amp draw recorded and within nameplate FLA",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow rate measured and within design range",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Differential pressure across pump recorded",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "No leaks observed during operation",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Bearing temperature normal after 1 hour run",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Operation",
+        "description": "Verify pump can be started and stopped manually using HOA switch in Hand mode.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place HOA switch in HAND position",
+            "expected": "Pump starts immediately at fixed speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe pump operation for 2 minutes",
+            "expected": "Pump runs smoothly with no unusual noise or vibration",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Record motor amps",
+            "expected": "Amps within nameplate FLA rating",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Record suction and discharge pressures",
+            "expected": "Pressures stable and within design range",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Place HOA switch in OFF position",
+            "expected": "Pump stops",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Automatic Operation with Chiller",
+        "description": "Verify pump starts and stops automatically with associated chiller per control sequence.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place HOA switch in AUTO position",
+            "expected": "Pump remains off (chiller not running)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Start associated chiller",
+            "expected": "Condenser water pump starts (lead or lag per sequence)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS shows pump run status",
+            "expected": "BAS indicates pump running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Allow system to stabilize for 5 minutes",
+            "expected": "Flow and pressures stable",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Stop chiller",
+            "expected": "Condenser water pump stops after time delay",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "VFD Speed Control",
+        "description": "Verify VFD modulates pump speed in response to control signal.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode",
+            "expected": "Pump starts at minimum speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 50% speed via BAS",
+            "expected": "VFD ramps to 50% speed, flow decreases proportionally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 75% speed",
+            "expected": "VFD ramps to 75%, flow increases",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 100% speed",
+            "expected": "VFD ramps to 100% (max design speed)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to minimum speed",
+            "expected": "VFD ramps down to minimum speed setting",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify speed feedback signal at BAS",
+            "expected": "BAS speed feedback matches commanded speed ±5%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Low Flow Cutout",
+        "description": "Verify pump shuts down on low flow condition.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode and allow to stabilize",
+            "expected": "Pump running, normal flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Slowly close discharge isolation valve to simulate low flow",
+            "expected": "Flow decreases as valve closes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Continue closing valve until flow alarm setpoint reached",
+            "expected": "Low flow alarm activates at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe pump response",
+            "expected": "Pump shuts down after time delay (typically 30-60 sec)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Open valve fully and reset alarm",
+            "expected": "Alarm clears, pump can be restarted",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "BAS Points Verification",
+        "description": "Verify all condenser water pump BAS points are reading accurately.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "standard",
+        "rows": [],
+        "table": {
+          "columns": [
+            {
+              "key": "co8aqyh",
+              "name": "System Point"
+            },
+            {
+              "key": "c38z7vv",
+              "name": "BAS"
+            },
+            {
+              "key": "c5dmud3",
+              "name": "Field"
+            },
+            {
+              "key": "cuh3zgk",
+              "name": "Offset"
+            },
+            {
+              "key": "c1m7h9x",
+              "name": "Pass"
+            }
+          ],
+          "rows": [
+            {
+              "co8aqyh": "Pump Run Status",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "Pump Run Command",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "VFD Speed Command (%)",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "VFD Speed Feedback (%)",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "Motor Current (Amps)",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "Flow Rate (GPM)",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "Differential Pressure (psi)",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "VFD Fault Alarm",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            },
+            {
+              "co8aqyh": "Low Flow Alarm",
+              "c38z7vv": "",
+              "c5dmud3": "",
+              "cuh3zgk": "",
+              "c1m7h9x": ""
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "tag": "HWP-TEMPLATE",
+    "title": "Hot Water Pump",
+    "type": "Pump",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Hot water circulation pump for hydronic heating system distribution",
+    "attributes": [
+      {
+        "key": "Flow Rate",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9037"
+      },
+      {
+        "key": "Head",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9038"
+      },
+      {
+        "key": "Motor HP",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9039"
+      },
+      {
+        "key": "Motor Voltage",
+        "value": "",
+        "_id": "6a034ab82512db57d23d903a"
+      },
+      {
+        "key": "RPM",
+        "value": "",
+        "_id": "6a034ab82512db57d23d903b"
+      },
+      {
+        "key": "Impeller Size",
+        "value": "",
+        "_id": "6a034ab82512db57d23d903c"
+      },
+      {
+        "key": "VFD",
+        "value": "",
+        "_id": "6a034ab82512db57d23d903d"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a034ab82512db57d23d903e"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a034ab82512db57d23d903f"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a034ab82512db57d23d9040"
+      }
+    ],
+    "components": [
+      {
+        "tag": "MOTOR",
+        "type": "Motor",
+        "title": "Pump Motor",
+        "attributes": [
+          {
+            "key": "HP",
+            "value": ""
+          },
+          {
+            "key": "Voltage",
+            "value": ""
+          },
+          {
+            "key": "FLA",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "VFD",
+        "type": "VFD",
+        "title": "Variable Frequency Drive",
+        "attributes": [
+          {
+            "key": "Manufacturer",
+            "value": ""
+          },
+          {
+            "key": "Model",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "FLOW",
+        "type": "Sensor",
+        "title": "Flow Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          },
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "SUCT-PRESS",
+        "type": "Sensor",
+        "title": "Suction Pressure Sensor",
+        "attributes": [
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "DISC-PRESS",
+        "type": "Sensor",
+        "title": "Discharge Pressure Sensor",
+        "attributes": [
+          {
+            "key": "Range",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "DISC-TEMP",
+        "type": "Sensor",
+        "title": "Discharge Temperature Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "STARTER",
+        "type": "Starter",
+        "title": "Motor Starter",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": ""
+          }
+        ]
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Pump model, size, and capacity match design documents",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump rotation is correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All piping connections are complete and leak-free",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Suction and discharge isolation valves installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Balancing valve installed in discharge",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Check valve installed (if applicable)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flexible connectors installed at suction and discharge",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump base is level and grouted",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Alignment completed and documented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Strainer installed and clean",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical & Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Electrical/Controls",
+        "questions": [
+          {
+            "question_text": "Motor voltage matches nameplate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor starter/VFD installed per specifications",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Overload protection set correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD parameters programmed per sequence of operations",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All sensors installed and wired (flow, pressure, temperature)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Start/stop commands functional from BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Speed control functional (if VFD)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All alarms and status points communicate to BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hand-Off-Auto switch functional",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Safety Devices",
+        "type": "Prefunctional",
+        "responsible": "Mechanical/Controls",
+        "questions": [
+          {
+            "question_text": "Low flow cutout installed and functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "High temperature cutout functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor overload protection functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Freeze protection sensors installed (if applicable)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump run status proven before valve opens",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Startup",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Pump primed and vented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "System filled and air purged",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Pump operates smoothly without vibration or noise",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "No leaks observed during operation",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor amperage within nameplate FLA",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Discharge pressure within design range",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flow rate within design range",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Operation",
+        "description": "Verify pump can be started and stopped manually at the local control panel",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place Hand-Off-Auto switch in HAND position",
+            "expected": "Pump starts immediately",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify discharge pressure rises",
+            "expected": "Pressure increases to design setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify flow is established",
+            "expected": "Flow sensor reads within design range",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify motor amperage",
+            "expected": "Current is within nameplate FLA",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Place switch in OFF position",
+            "expected": "Pump stops immediately",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Automatic Operation",
+        "description": "Verify pump responds to BAS start/stop commands",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place Hand-Off-Auto switch in AUTO position",
+            "expected": "Pump ready for BAS control",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command pump to start via BAS",
+            "expected": "Pump starts within 5 seconds",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify run status at BAS",
+            "expected": "BAS displays pump running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command pump to stop via BAS",
+            "expected": "Pump stops within 5 seconds",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify stopped status at BAS",
+            "expected": "BAS displays pump stopped",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "VFD Speed Control",
+        "description": "Verify VFD responds to speed commands and modulates correctly",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode",
+            "expected": "Pump starts at minimum speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 50% speed via BAS",
+            "expected": "VFD ramps to 50%, motor amperage decreases proportionally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify discharge pressure modulates",
+            "expected": "Pressure decreases with reduced speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 100% speed",
+            "expected": "VFD ramps to 100%, flow and pressure increase",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to minimum speed",
+            "expected": "VFD ramps down to minimum",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Low Flow Cutout",
+        "description": "Verify pump shuts down on low flow condition",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode",
+            "expected": "Pump runs normally with adequate flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Slowly close discharge valve to simulate low flow",
+            "expected": "Flow decreases below setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe pump response",
+            "expected": "Pump shuts down within time delay period",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS alarm",
+            "expected": "Low flow alarm generated at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Open discharge valve fully and reset alarm",
+            "expected": "System ready to restart",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "High Temperature Cutout",
+        "description": "Verify pump shuts down on high temperature condition",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start pump in AUTO mode with hot water system operational",
+            "expected": "Pump runs normally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate high temperature condition (close isolation valve or adjust boiler setpoint)",
+            "expected": "Temperature rises above high limit",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe pump response",
+            "expected": "Pump shuts down within time delay period",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS alarm",
+            "expected": "High temperature alarm generated at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore normal conditions and reset alarm",
+            "expected": "System ready to restart",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "BAS Points Verification",
+        "description": "Verify all BAS points read accurately",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "standard",
+        "rows": [],
+        "table": {
+          "columns": [
+            {
+              "key": "cskpyh2",
+              "name": "System Point"
+            },
+            {
+              "key": "cmwcahe",
+              "name": "BAS"
+            },
+            {
+              "key": "cfxo1rk",
+              "name": "Field"
+            },
+            {
+              "key": "cxi97v7",
+              "name": "Offset"
+            },
+            {
+              "key": "c27m9oz",
+              "name": "Pass"
+            }
+          ],
+          "rows": [
+            {
+              "cskpyh2": "Pump Run Status",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Pump Speed Command (%)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Pump Speed Feedback (%)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Discharge Pressure (psi)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Suction Pressure (psi)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Flow Rate (GPM)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Discharge Temperature (°F)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Motor Current (A)",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "Low Flow Alarm",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            },
+            {
+              "cskpyh2": "High Temperature Alarm",
+              "cmwcahe": "",
+              "cfxo1rk": "",
+              "cxi97v7": "",
+              "c27m9oz": ""
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "tag": "HWUH-TEMPLATE",
+    "title": "Hot Water Unit Heater Template",
+    "type": "Hot Water Unit Heater",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Hot water unit heater for space heating",
+    "attributes": [
+      {
+        "key": "Heating Capacity (MBH)",
+        "value": "",
+        "_id": "6a0346732512db57d23d8ab7"
+      },
+      {
+        "key": "Airflow (CFM)",
+        "value": "",
+        "_id": "6a0346732512db57d23d8ab8"
+      },
+      {
+        "key": "Hot Water Flow (GPM)",
+        "value": "",
+        "_id": "6a0346732512db57d23d8ab9"
+      },
+      {
+        "key": "Entering Water Temp (°F)",
+        "value": "",
+        "_id": "6a0346732512db57d23d8aba"
+      },
+      {
+        "key": "Leaving Water Temp (°F)",
+        "value": "",
+        "_id": "6a0346732512db57d23d8abb"
+      },
+      {
+        "key": "Voltage",
+        "value": "",
+        "_id": "6a0346732512db57d23d8abc"
+      },
+      {
+        "key": "Fan Motor HP",
+        "value": "",
+        "_id": "6a0346732512db57d23d8abd"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a0346732512db57d23d8abe"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a0346732512db57d23d8abf"
+      }
+    ],
+    "components": [
+      {
+        "tag": "HW-COIL",
+        "type": "Coil",
+        "title": "Hot Water Coil",
+        "status": "Not Started"
+      },
+      {
+        "tag": "FAN",
+        "type": "Fan",
+        "title": "Circulation Fan",
+        "status": "Not Started"
+      },
+      {
+        "tag": "MOTOR",
+        "type": "Motor",
+        "title": "Fan Motor",
+        "status": "Not Started"
+      },
+      {
+        "tag": "VALVE",
+        "type": "Valve",
+        "title": "Control Valve",
+        "status": "Not Started"
+      },
+      {
+        "tag": "CTRL",
+        "type": "Controls",
+        "title": "Unit Controls",
+        "status": "Not Started"
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Unit mounted securely per manufacturer specs",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hot water piping connected and tested",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Control valve installed in correct orientation",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Coil vented and system purged of air",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Electrical connections complete and voltage correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Thermostat/controller installed and wired",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Controls",
+        "questions": [
+          {
+            "question_text": "Control valve operates full stroke",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Valve fails to safe position on power loss",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Thermostat modulates valve correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan cycles with heating demand",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Hot water flow verified at design rate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan rotation correct, no unusual noise",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Unit heats space effectively",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Heating Operation",
+        "description": "Verify unit heater operates correctly and maintains setpoint",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set thermostat to call for heat",
+            "expected": "Fan starts, control valve opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify hot water flow through coil",
+            "expected": "Water flowing, coil warming up",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Measure supply air temperature",
+            "expected": "Temperature rise consistent with capacity",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Monitor valve modulation as space warms",
+            "expected": "Valve modulates to maintain setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Allow unit to satisfy thermostat",
+            "expected": "Valve closes, fan stops",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "tag": "AHU-TEMPLATE",
+    "title": "Air Handling Unit",
+    "type": "Air Handling Unit",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Air handling unit providing heating, cooling, filtration, and outdoor air ventilation for building zones. Includes supply and return fans, heating and cooling coils, filters, dampers, and full DDC controls integration.",
+    "attributes": [
+      {
+        "key": "Design Airflow",
+        "value": "",
+        "_id": "6a034d502512db57d23d9212"
+      },
+      {
+        "key": "Supply Fan Motor HP",
+        "value": "",
+        "_id": "6a034d502512db57d23d9213"
+      },
+      {
+        "key": "Return Fan Motor HP",
+        "value": "",
+        "_id": "6a034d502512db57d23d9214"
+      },
+      {
+        "key": "External Static Pressure",
+        "value": "",
+        "_id": "6a034d502512db57d23d9215"
+      },
+      {
+        "key": "Heating Coil Type",
+        "value": "",
+        "_id": "6a034d502512db57d23d9216"
+      },
+      {
+        "key": "Heating Capacity",
+        "value": "",
+        "_id": "6a034d502512db57d23d9217"
+      },
+      {
+        "key": "Cooling Coil Type",
+        "value": "",
+        "_id": "6a034d502512db57d23d9218"
+      },
+      {
+        "key": "Cooling Capacity",
+        "value": "",
+        "_id": "6a034d502512db57d23d9219"
+      },
+      {
+        "key": "Filter Type",
+        "value": "",
+        "_id": "6a034d502512db57d23d921a"
+      },
+      {
+        "key": "Filter Efficiency",
+        "value": "",
+        "_id": "6a034d502512db57d23d921b"
+      },
+      {
+        "key": "Minimum Outside Air CFM",
+        "value": "",
+        "_id": "6a034d502512db57d23d921c"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a034d502512db57d23d921d"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a034d502512db57d23d921e"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a034d502512db57d23d921f"
+      },
+      {
+        "key": "Supply Air Design Temperature",
+        "value": "",
+        "_id": "6a034d502512db57d23d9220"
+      },
+      {
+        "key": "Mixed Air Design Temperature",
+        "value": "",
+        "_id": "6a034d502512db57d23d9221"
+      }
+    ],
+    "components": [
+      {
+        "tag": "SF",
+        "type": "Supply Fan",
+        "title": "Supply Fan",
+        "attributes": [
+          {
+            "key": "Motor HP",
+            "value": ""
+          },
+          {
+            "key": "Design RPM",
+            "value": ""
+          },
+          {
+            "key": "Design CFM",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "RF",
+        "type": "Return Fan",
+        "title": "Return Fan",
+        "attributes": [
+          {
+            "key": "Motor HP",
+            "value": ""
+          },
+          {
+            "key": "Design RPM",
+            "value": ""
+          },
+          {
+            "key": "Design CFM",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "SF-VFD",
+        "type": "Variable Frequency Drive",
+        "title": "Supply Fan VFD",
+        "attributes": [
+          {
+            "key": "Voltage",
+            "value": ""
+          },
+          {
+            "key": "HP Rating",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "RF-VFD",
+        "type": "Variable Frequency Drive",
+        "title": "Return Fan VFD",
+        "attributes": [
+          {
+            "key": "Voltage",
+            "value": ""
+          },
+          {
+            "key": "HP Rating",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "HW-COIL",
+        "type": "Heating Coil",
+        "title": "Hot Water Heating Coil",
+        "attributes": [
+          {
+            "key": "Coil Type",
+            "value": "Hot Water"
+          },
+          {
+            "key": "Entering Water Temp",
+            "value": ""
+          },
+          {
+            "key": "Leaving Water Temp",
+            "value": ""
+          },
+          {
+            "key": "Capacity (MBH)",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "CHW-COIL",
+        "type": "Cooling Coil",
+        "title": "Chilled Water Cooling Coil",
+        "attributes": [
+          {
+            "key": "Coil Type",
+            "value": "Chilled Water"
+          },
+          {
+            "key": "Entering Water Temp",
+            "value": ""
+          },
+          {
+            "key": "Leaving Water Temp",
+            "value": ""
+          },
+          {
+            "key": "Capacity (Tons)",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "OA-DMPR",
+        "type": "Damper",
+        "title": "Outside Air Damper",
+        "attributes": [
+          {
+            "key": "Damper Type",
+            "value": "Modulating"
+          },
+          {
+            "key": "Actuator Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "RA-DMPR",
+        "type": "Damper",
+        "title": "Return Air Damper",
+        "attributes": [
+          {
+            "key": "Damper Type",
+            "value": "Modulating"
+          },
+          {
+            "key": "Actuator Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "EA-DMPR",
+        "type": "Damper",
+        "title": "Exhaust Air Damper",
+        "attributes": [
+          {
+            "key": "Damper Type",
+            "value": "Modulating"
+          },
+          {
+            "key": "Actuator Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "FILTERS",
+        "type": "Filter Bank",
+        "title": "Air Filters",
+        "attributes": [
+          {
+            "key": "Filter Type",
+            "value": ""
+          },
+          {
+            "key": "MERV Rating",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "SAT",
+        "type": "Temperature Sensor",
+        "title": "Supply Air Temperature Sensor"
+      },
+      {
+        "tag": "MAT",
+        "type": "Temperature Sensor",
+        "title": "Mixed Air Temperature Sensor"
+      },
+      {
+        "tag": "RAT",
+        "type": "Temperature Sensor",
+        "title": "Return Air Temperature Sensor"
+      },
+      {
+        "tag": "OAT",
+        "type": "Temperature Sensor",
+        "title": "Outside Air Temperature Sensor"
+      },
+      {
+        "tag": "SASP",
+        "type": "Pressure Sensor",
+        "title": "Supply Duct Static Pressure Sensor"
+      },
+      {
+        "tag": "FILTER-SW",
+        "type": "Differential Pressure Switch",
+        "title": "Filter Differential Pressure Switch"
+      },
+      {
+        "tag": "FREEZE-STAT",
+        "type": "Freeze Stat",
+        "title": "Low Temperature Freeze Stat"
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "AHU is properly anchored and leveled per manufacturer instructions",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All shipping bracing, blocks, and packaging removed from unit",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Unit access doors close and seal properly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Unit interior is clean and free of construction debris",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All fan wheels are clean and free of debris",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan belt tension is correct (if belt-driven)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan sheaves properly aligned and set screws tight",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Bearings properly lubricated per manufacturer schedule",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All coil fins are clean and undamaged",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Heating coil piping connections tight and leak-free",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Cooling coil piping connections tight and leak-free",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Coil drain pans clean and draining properly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condensate drain lines properly trapped and pitched",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Filters installed correctly with proper gasket seal",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All dampers operate freely through full stroke",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Damper linkages secure and properly adjusted",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All vibration isolators properly adjusted",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Flexible duct connections installed at supply and return",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Ductwork and Airflow",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Supply ductwork installation complete",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Return ductwork installation complete",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Outside air ductwork installation complete",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All duct connections sealed and airtight",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fire/smoke dampers installed per code",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Volume dampers installed and accessible for TAB",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Duct static pressure sensor installed per design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "TAB ports installed at required locations",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Electrical and Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical/Controls",
+        "questions": [
+          {
+            "question_text": "Power wiring to unit complete and terminated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor starters/disconnects labeled and accessible",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Supply fan motor rotation verified correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Return fan motor rotation verified correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFDs programmed per manufacturer and design requirements",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD minimum and maximum speed settings configured",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All temperature sensors installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All pressure sensors installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Filter differential pressure switch installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Freeze stat installed in proper location and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All damper actuators installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Heating coil valve and actuator installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Cooling coil valve and actuator installed and wired",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Unit connected to BAS and communicating",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All BAS points mapped and trending",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Safety Devices",
+        "type": "Prefunctional",
+        "responsible": "Mechanical/Controls",
+        "questions": [
+          {
+            "question_text": "Freeze stat set to trip at design temperature",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Freeze stat shuts down supply fan and closes outside air damper on alarm",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Filter status switch wired to BAS for alarm",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Smoke detectors installed per code (if required)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Smoke detector alarm shuts down unit and closes outside air damper",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor overload protection functional",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Disconnect switches lock in OFF position",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "5",
+        "title": "Startup and Initial Operation",
+        "type": "Prefunctional",
+        "responsible": "Mechanical/Controls",
+        "questions": [
+          {
+            "question_text": "Manufacturer startup completed and documented",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Supply fan amperage recorded and within nameplate rating",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Return fan amperage recorded and within nameplate rating",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Unit operates without excessive vibration or noise",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All sensors reading reasonable values",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Heating coil valve modulates smoothly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Cooling coil valve modulates smoothly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All dampers stroke fully and smoothly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Test and Balance (TAB) complete with report submitted",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Design airflow achieved at all terminal devices",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Minimum outside air CFM verified by TAB",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Operation Test",
+        "description": "Verify all components can be manually controlled via BAS and respond correctly.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Via BAS, command supply fan ON",
+            "expected": "Supply fan starts and runs smoothly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Via BAS, command return fan ON",
+            "expected": "Return fan starts and runs smoothly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command supply fan VFD to 50% speed",
+            "expected": "VFD responds, fan speed reduces, airflow decreases",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command supply fan VFD to 100% speed",
+            "expected": "VFD responds, fan runs at full speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command outside air damper to 100% open",
+            "expected": "Damper strokes fully open",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command outside air damper to 0% (closed)",
+            "expected": "Damper closes fully, seated properly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command return air damper to 100% open",
+            "expected": "Return damper opens fully",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command exhaust air damper to 100% open",
+            "expected": "Exhaust damper opens fully",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command heating coil valve to 100% open",
+            "expected": "Valve opens fully, hot water flows",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command heating coil valve to 0% (closed)",
+            "expected": "Valve closes fully",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command cooling coil valve to 100% open",
+            "expected": "Valve opens fully, chilled water flows",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command cooling coil valve to 0% (closed)",
+            "expected": "Valve closes fully",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command unit OFF",
+            "expected": "All fans stop, all valves close, dampers return to normal positions",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Occupied Mode - Heating Operation",
+        "description": "Verify unit responds correctly to heating demand in occupied mode.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set zone thermostat to call for heat (setpoint above space temp)",
+            "expected": "Unit enters occupied heating mode",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify supply and return fans are enabled",
+            "expected": "Both fans running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify outside air damper modulates to minimum position",
+            "expected": "OA damper at minimum ventilation position per design",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return air damper modulates open",
+            "expected": "RA damper open to maintain economizer sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify cooling coil valve is closed",
+            "expected": "CHW valve 0%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify heating coil valve modulates to maintain supply air setpoint",
+            "expected": "HW valve modulates, SAT increases toward setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe supply air temperature",
+            "expected": "SAT reaches and maintains heating setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify zone temperature rises",
+            "expected": "Space temp increases toward setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "When zone satisfies, verify heating valve closes",
+            "expected": "HW valve returns to 0% when satisfied",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Occupied Mode - Cooling Operation",
+        "description": "Verify unit responds correctly to cooling demand in occupied mode.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set zone thermostat to call for cooling (setpoint below space temp)",
+            "expected": "Unit enters occupied cooling mode",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify supply and return fans are enabled",
+            "expected": "Both fans running",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify heating coil valve is closed",
+            "expected": "HW valve 0%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "If OAT permits, verify economizer dampers modulate for free cooling",
+            "expected": "OA damper opens, RA damper closes per economizer logic",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "If cooling still needed, verify cooling coil valve modulates to maintain supply air setpoint",
+            "expected": "CHW valve modulates, SAT decreases toward setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe supply air temperature",
+            "expected": "SAT reaches and maintains cooling setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify zone temperature decreases",
+            "expected": "Space temp decreases toward setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "When zone satisfies, verify cooling valve closes",
+            "expected": "CHW valve returns to 0% when satisfied",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Economizer Operation",
+        "description": "Verify economizer provides free cooling when outdoor conditions permit.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate cooling demand with outside air temperature below economizer high limit",
+            "expected": "Unit recognizes economizer is available",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify outside air damper modulates open beyond minimum",
+            "expected": "OA damper opens to provide free cooling",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return air damper modulates closed",
+            "expected": "RA damper closes proportionally as OA opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify exhaust air damper modulates open",
+            "expected": "EA damper opens to relieve excess air",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify mixed air temperature is controlled",
+            "expected": "MAT sensor controls damper modulation",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify cooling coil valve remains closed if economizer satisfies load",
+            "expected": "CHW valve at 0% while economizer is effective",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate OAT rising above economizer high limit",
+            "expected": "Economizer disables, dampers return to minimum OA",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify mechanical cooling (CHW valve) takes over",
+            "expected": "CHW valve modulates to satisfy cooling demand",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Unoccupied Mode Operation",
+        "description": "Verify unit operates correctly in unoccupied/night setback mode.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set BAS schedule to unoccupied mode",
+            "expected": "Unit enters unoccupied mode",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify supply and return fans cycle OFF (unless override active)",
+            "expected": "Fans shut down in unoccupied mode",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify outside air damper closes",
+            "expected": "OA damper fully closed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return air damper opens",
+            "expected": "RA damper fully open",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify heating and cooling valves are closed",
+            "expected": "Both coil valves at 0%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate space temp drops below unoccupied heating setpoint",
+            "expected": "Unit cycles ON to provide heating",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify fans start and heating valve modulates",
+            "expected": "Fans run, HW valve opens to maintain unoccupied heating setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "When setpoint satisfied, verify unit returns to OFF",
+            "expected": "Fans stop, valves close after deadband satisfied",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate space temp rises above unoccupied cooling setpoint",
+            "expected": "Unit cycles ON to provide cooling",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify fans start and cooling valve modulates",
+            "expected": "Fans run, CHW valve opens to maintain unoccupied cooling setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "Supply Duct Static Pressure Control",
+        "description": "Verify supply fan VFD modulates to maintain duct static pressure setpoint.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable unit in occupied mode with fans running",
+            "expected": "Supply fan operating",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Record initial duct static pressure and VFD speed",
+            "expected": "Baseline readings recorded",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate increased load by opening VAV boxes or zone dampers",
+            "expected": "Duct static pressure drops",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify VFD increases fan speed to maintain static pressure setpoint",
+            "expected": "VFD speed increases, static pressure returns to setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate decreased load by closing VAV boxes or zone dampers",
+            "expected": "Duct static pressure rises",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify VFD decreases fan speed to maintain static pressure setpoint",
+            "expected": "VFD speed decreases, static pressure returns to setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify VFD does not drop below minimum speed setting",
+            "expected": "VFD respects minimum speed limit",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify VFD does not exceed maximum speed setting",
+            "expected": "VFD respects maximum speed limit",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-7",
+        "name": "Freeze Protection",
+        "description": "Verify freeze stat shuts down unit and protects coils from freezing.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable unit in occupied mode",
+            "expected": "Unit running normally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low mixed air temperature by adjusting freeze stat setpoint or sensor input",
+            "expected": "Mixed air temp drops below freeze stat setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify freeze stat alarm activates",
+            "expected": "Freeze stat trips, alarm appears in BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify supply fan shuts down immediately",
+            "expected": "Supply fan stops",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return fan shuts down immediately",
+            "expected": "Return fan stops",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify outside air damper closes fully",
+            "expected": "OA damper drives to 0%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return air damper opens fully",
+            "expected": "RA damper drives to 100%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify heating coil valve opens to 100%",
+            "expected": "HW valve fully open to prevent coil freeze",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify unit remains locked out until manual reset",
+            "expected": "Unit will not restart automatically",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reset freeze stat and verify unit can be restarted",
+            "expected": "After reset, unit returns to normal operation",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-8",
+        "name": "Filter Status Monitoring",
+        "description": "Verify filter differential pressure switch alarms when filters require replacement.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Verify filter differential pressure switch is installed and wired to BAS",
+            "expected": "Switch visible in BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "With unit running and clean filters installed, verify switch is in normal state",
+            "expected": "No filter alarm present",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate high filter pressure drop (block filters or adjust switch setpoint)",
+            "expected": "Differential pressure across filters increases",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify filter status switch trips",
+            "expected": "Switch changes state",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify BAS displays filter maintenance alarm",
+            "expected": "Filter alarm appears on BAS and notifications sent",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Replace filters or remove blockage",
+            "expected": "Pressure drop returns to normal",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify filter alarm clears",
+            "expected": "Alarm resets in BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-9",
+        "name": "Smoke/Fire Mode (if applicable)",
+        "description": "Verify unit responds correctly to smoke detector or fire alarm signal.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable unit in normal occupied mode",
+            "expected": "Unit running normally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate smoke detector activation (if installed)",
+            "expected": "Smoke alarm signal sent to unit controller",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify supply fan shuts down",
+            "expected": "Supply fan stops immediately",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return fan shuts down",
+            "expected": "Return fan stops immediately",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify outside air damper closes fully",
+            "expected": "OA damper fully closed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify return air damper closes fully (or per smoke control sequence)",
+            "expected": "RA damper closes per code requirements",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify all coil valves close",
+            "expected": "HW and CHW valves at 0%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify unit remains locked out until alarm is reset",
+            "expected": "Unit will not restart until manual reset",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reset smoke alarm and verify unit can resume normal operation",
+            "expected": "After reset, unit returns to normal control",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-10",
+        "name": "BAS Points Verification",
+        "description": "Verify all BAS points are mapped correctly, trending, and reporting accurate values.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "standard",
+        "rows": [],
+        "table": {
+          "columns": [
+            {
+              "key": "ci1r2tr",
+              "name": "System Point"
+            },
+            {
+              "key": "c8d8rh2",
+              "name": "BAS"
+            },
+            {
+              "key": "cmtik1w",
+              "name": "Field"
+            },
+            {
+              "key": "cqilb6l",
+              "name": "Offset"
+            },
+            {
+              "key": "cazpj2y",
+              "name": "Pass"
+            }
+          ],
+          "rows": [
+            {
+              "ci1r2tr": "Supply Air Temperature",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Mixed Air Temperature",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Return Air Temperature",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Outside Air Temperature",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Supply Duct Static Pressure",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Supply Fan Status",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Supply Fan Speed (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Return Fan Status",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Return Fan Speed (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Outside Air Damper Position (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Return Air Damper Position (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Exhaust Air Damper Position (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Heating Coil Valve Position (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Cooling Coil Valve Position (%)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Filter Status Alarm",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Freeze Stat Alarm",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Smoke Detector Alarm (if applicable)",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            },
+            {
+              "ci1r2tr": "Occupancy Mode",
+              "c8d8rh2": "",
+              "cmtik1w": "",
+              "cqilb6l": "",
+              "cazpj2y": ""
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "tag": "EF-TEMPLATE",
+    "title": "Exhaust Fan",
+    "type": "Exhaust Fan",
+    "system": "HVAC",
+    "status": "Not Started",
+    "description": "Exhaust fan template with full commissioning scope including components, prefunctional checklists, and functional performance tests.",
+    "attributes": [
+      {
+        "key": "Airflow (CFM)",
+        "value": "",
+        "_id": "6a034b102512db57d23d907d"
+      },
+      {
+        "key": "Motor HP",
+        "value": "",
+        "_id": "6a034b102512db57d23d907e"
+      },
+      {
+        "key": "Fan Speed (RPM)",
+        "value": "",
+        "_id": "6a034b102512db57d23d907f"
+      },
+      {
+        "key": "Static Pressure (in. w.g.)",
+        "value": "",
+        "_id": "6a034b102512db57d23d9080"
+      },
+      {
+        "key": "Voltage",
+        "value": "",
+        "_id": "6a034b102512db57d23d9081"
+      },
+      {
+        "key": "Phase",
+        "value": "",
+        "_id": "6a034b102512db57d23d9082"
+      },
+      {
+        "key": "Drive Type",
+        "value": "",
+        "_id": "6a034b102512db57d23d9083"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "6a034b102512db57d23d9084"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "6a034b102512db57d23d9085"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "6a034b102512db57d23d9086"
+      }
+    ],
+    "components": [
+      {
+        "tag": "FAN",
+        "type": "Fan",
+        "title": "Exhaust Fan",
+        "status": "Not Started",
+        "attributes": [
+          {
+            "key": "Motor HP",
+            "value": ""
+          },
+          {
+            "key": "RPM",
+            "value": ""
+          },
+          {
+            "key": "Drive Type",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "FS",
+        "type": "Sensor",
+        "title": "Fan Status",
+        "status": "Not Started"
+      },
+      {
+        "tag": "VFD",
+        "type": "VFD",
+        "title": "Variable Frequency Drive",
+        "status": "Not Started",
+        "notes": "If applicable"
+      },
+      {
+        "tag": "STARTER",
+        "type": "Starter",
+        "title": "Motor Starter",
+        "status": "Not Started",
+        "notes": "If not VFD"
+      },
+      {
+        "tag": "DMP",
+        "type": "Damper",
+        "title": "Backdraft Damper",
+        "status": "Not Started"
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Fan installed per approved shop drawings and specifications",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan securely mounted and vibration isolators installed correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All shipping brackets and restraints removed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan rotation verified correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan belts properly tensioned and aligned (if belt-driven)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan wheel secure and balanced",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Backdraft damper installed and moves freely",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Adequate clearances provided for service",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Ductwork & Connections",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Ductwork connected and sealed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Discharge terminates properly (away from air intakes, operable windows)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fire/smoke dampers installed and operational (if required)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Balancing dampers installed and accessible",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Electrical & Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical/Controls",
+        "questions": [
+          {
+            "question_text": "Power wiring complete and voltage verified correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Motor overload protection set correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD programmed and parameters set (if applicable)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Control wiring complete and terminated per drawings",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan status proven contact wired to BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Start/stop commands from BAS verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Interlock with space pressure or occupancy verified (if applicable)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "4",
+        "title": "Startup",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Fan motor amperage measured and within nameplate rating",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Airflow measured and meets design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan runs smoothly with no abnormal noise or vibration",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Backdraft damper closes fully when fan off",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD operation smooth across speed range (if applicable)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Operation",
+        "description": "Verify fan can be manually started and stopped.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set fan to 'Manual' or 'Hand' mode at controller",
+            "expected": "Fan enables manual control",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Start fan manually",
+            "expected": "Fan starts; fan status proven at BAS; backdraft damper opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify airflow at exhaust grille",
+            "expected": "Airflow present",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Stop fan manually",
+            "expected": "Fan stops; fan status off at BAS; backdraft damper closes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Automatic Operation",
+        "description": "Verify fan operates per sequence of operations in automatic mode.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set fan to 'Auto' mode",
+            "expected": "Fan is in automatic mode",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Trigger start condition (occupancy schedule, space pressure, or manual BAS command)",
+            "expected": "Fan starts automatically; fan status proven",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify interlocks (if applicable, e.g., with MUA or space pressure)",
+            "expected": "Interlocked equipment operates per sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Remove start condition",
+            "expected": "Fan stops after appropriate time delay (if programmed)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "VFD Speed Control",
+        "description": "Verify VFD modulates fan speed per control signal (if VFD-equipped).",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start fan in automatic mode with VFD",
+            "expected": "Fan starts at minimum speed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 50% speed from BAS",
+            "expected": "VFD ramps to 50%; fan speed reduces; airflow reduces proportionally",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to 100% speed",
+            "expected": "VFD ramps to 100%; fan speed increases; airflow increases",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VFD to minimum speed",
+            "expected": "VFD ramps to minimum speed setting",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify smooth operation across speed range with no hunting or instability",
+            "expected": "VFD operates smoothly",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "BAS Points Verification",
+        "description": "Verify all BAS points are mapped correctly and values are accurate.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "standard",
+        "rows": [],
+        "table": {
+          "columns": [
+            {
+              "key": "cs6xz9f",
+              "name": "System Point"
+            },
+            {
+              "key": "cnazsm1",
+              "name": "BAS"
+            },
+            {
+              "key": "c8884gw",
+              "name": "Field"
+            },
+            {
+              "key": "c36qvmw",
+              "name": "Offset"
+            },
+            {
+              "key": "crc8826",
+              "name": "Pass"
+            }
+          ],
+          "rows": [
+            {
+              "cs6xz9f": "Fan Start/Stop Command",
+              "cnazsm1": "",
+              "c8884gw": "",
+              "c36qvmw": "",
+              "crc8826": ""
+            },
+            {
+              "cs6xz9f": "Fan Status",
+              "cnazsm1": "",
+              "c8884gw": "",
+              "c36qvmw": "",
+              "crc8826": ""
+            },
+            {
+              "cs6xz9f": "VFD Speed Command (%)",
+              "cnazsm1": "",
+              "c8884gw": "",
+              "c36qvmw": "",
+              "crc8826": ""
+            },
+            {
+              "cs6xz9f": "VFD Speed Feedback (%)",
+              "cnazsm1": "",
+              "c8884gw": "",
+              "c36qvmw": "",
+              "crc8826": ""
+            },
+            {
+              "cs6xz9f": "Motor Current (A)",
+              "cnazsm1": "",
+              "c8884gw": "",
+              "c36qvmw": "",
+              "crc8826": ""
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "tag": "VAV-TEMPLATE",
+    "title": "VAV Terminal Unit with Reheat",
+    "type": "VAV Box",
+    "system": "HVAC - Terminal Units",
+    "status": "Not Started",
+    "description": "Variable Air Volume terminal unit with hot water reheat coil for zone temperature control. Includes airflow sensor, damper, actuator, and reheat coil.",
+    "attributes": [
+      {
+        "key": "Design Airflow (Max)",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2da"
+      },
+      {
+        "key": "Design Airflow (Min)",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2db"
+      },
+      {
+        "key": "Inlet Size",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2dc"
+      },
+      {
+        "key": "Reheat Coil Capacity",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2dd"
+      },
+      {
+        "key": "Hot Water Flow",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2de"
+      },
+      {
+        "key": "Control Valve Size",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2df"
+      },
+      {
+        "key": "Manufacturer",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2e0"
+      },
+      {
+        "key": "Model Number",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2e1"
+      },
+      {
+        "key": "Serial Number",
+        "value": "",
+        "_id": "69f4efec507b53087f5ea2e2"
+      }
+    ],
+    "components": [
+      {
+        "tag": "DAMPER",
+        "type": "Damper",
+        "title": "Primary Air Damper",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "Modulating"
+          },
+          {
+            "key": "Actuator Type",
+            "value": "DDC"
+          }
+        ]
+      },
+      {
+        "tag": "ACTUATOR",
+        "type": "Actuator",
+        "title": "Damper Actuator",
+        "attributes": [
+          {
+            "key": "Control Signal",
+            "value": "0-10VDC"
+          }
+        ]
+      },
+      {
+        "tag": "FLOW-SENSOR",
+        "type": "Sensor",
+        "title": "Airflow Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "Differential Pressure"
+          }
+        ]
+      },
+      {
+        "tag": "RH-COIL",
+        "type": "Coil",
+        "title": "Hot Water Reheat Coil",
+        "attributes": [
+          {
+            "key": "Fluid",
+            "value": "Hot Water"
+          },
+          {
+            "key": "Rows",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "tag": "RH-VALVE",
+        "type": "Control Valve",
+        "title": "Reheat Control Valve",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "2-Way Modulating"
+          }
+        ]
+      },
+      {
+        "tag": "TEMP-SENSOR",
+        "type": "Sensor",
+        "title": "Discharge Air Temp Sensor",
+        "attributes": [
+          {
+            "key": "Type",
+            "value": "Thermistor"
+          }
+        ]
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "VAV box installed per approved shop drawings and manufacturer instructions",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Inlet and discharge duct connections properly sealed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Unit properly supported and vibration isolated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Access for service and testing is adequate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Reheat coil piping installed with isolation valves",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Coil vented and drained properly",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Controls",
+        "questions": [
+          {
+            "question_text": "VAV controller installed and wired per submittal",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Airflow sensor installed and calibrated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Zone temperature sensor installed per design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Discharge air temperature sensor installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Damper actuator wired and responds to control signal",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Reheat valve actuator wired and responds to control signal",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "All points visible in BAS with correct units and scaling",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup and Balancing",
+        "type": "Startup",
+        "responsible": "TAB",
+        "questions": [
+          {
+            "question_text": "Maximum airflow set and verified per design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Minimum airflow set and verified per design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Damper strokes fully open and closed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hot water flow verified at design conditions",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Zone properly balanced to adjacent zones",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Cooling Mode Operation",
+        "description": "Verify VAV box responds correctly to cooling demand by modulating airflow.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set zone thermostat to call for cooling (reduce setpoint below room temp)",
+            "expected": "VAV damper modulates open to increase airflow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify airflow increases toward maximum",
+            "expected": "Measured airflow increases; BAS displays increased CFM",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify reheat valve is fully closed during cooling",
+            "expected": "Reheat valve position = 0%, no hot water flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Return zone thermostat to setpoint",
+            "expected": "Damper modulates toward minimum airflow position",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Heating Mode Operation",
+        "description": "Verify VAV box responds correctly to heating demand with airflow and reheat sequencing.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set zone thermostat to call for heating (raise setpoint above room temp)",
+            "expected": "VAV damper modulates toward maximum airflow first",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "If heating demand continues, verify reheat valve begins to open",
+            "expected": "Reheat valve modulates open; discharge air temp rises",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify zone temperature rises toward setpoint",
+            "expected": "Zone temp increases; heating demand is satisfied",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Return zone thermostat to setpoint",
+            "expected": "Reheat valve closes; damper returns to minimum flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Airflow Tracking and Control",
+        "description": "Verify airflow sensor and damper control maintain setpoint accurately.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command VAV to minimum airflow setpoint via BAS",
+            "expected": "Damper modulates to maintain minimum CFM ±10%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Measure actual airflow with calibrated instrument",
+            "expected": "Measured flow matches BAS-reported flow ±10%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command VAV to maximum airflow setpoint via BAS",
+            "expected": "Damper fully open; maximum CFM achieved ±10%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Measure actual airflow at maximum",
+            "expected": "Measured flow matches design and BAS reading ±10%",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Occupied/Unoccupied Mode",
+        "description": "Verify VAV responds to occupancy schedule with setback and airflow adjustment.",
+        "notes": "",
+        "pass": null,
+        "issues": [],
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Force system to unoccupied mode via BAS",
+            "expected": "Zone setpoints adjust to unoccupied heating/cooling setpoints; airflow reduces to minimum",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Verify VAV damper at minimum position",
+            "expected": "Damper at minimum; airflow at unoccupied minimum CFM",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Force system to occupied mode via BAS",
+            "expected": "Zone setpoints return to occupied; VAV ready to modulate on demand",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ]
+  }
+]

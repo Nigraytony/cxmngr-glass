@@ -36,23 +36,18 @@ router.post('/reset', async (req, res) => {
 })
 
 // POST /api/demo/bootstrap-source — ONE-TIME: populate the maintained demo-source
-// project (the team's "Test Project 1") from a template library project; after this
-// the nightly reset clones plant content from it. Body (or env fallbacks):
-//   { sourceProjectId?, libraryProjectId? }
-//   sourceProjectId  defaults to env DEMO_SOURCE_PROJECT_ID
-//   libraryProjectId defaults to env DEMO_TEMPLATE_LIBRARY_PROJECT_ID
+// project (the team's "Test Project 1") from the baked-in template library; after
+// this the nightly reset clones plant content from it. Body (or env fallback):
+//   { sourceProjectId? }  — defaults to env DEMO_SOURCE_PROJECT_ID
 // Destructive to the source project's plant content (it starts clean). Keyed.
 router.post('/bootstrap-source', async (req, res) => {
   try {
     if (denyIfBadKey(req, res)) return
     const body = req.body || {}
     const sourceId = String(body.sourceProjectId || process.env.DEMO_SOURCE_PROJECT_ID || '').trim()
-    const libraryId = String(body.libraryProjectId || process.env.DEMO_TEMPLATE_LIBRARY_PROJECT_ID || '').trim()
     if (!sourceId) return res.status(400).json({ error: 'sourceProjectId required (or set DEMO_SOURCE_PROJECT_ID)' })
-    if (!libraryId) return res.status(400).json({ error: 'libraryProjectId required (or set DEMO_TEMPLATE_LIBRARY_PROJECT_ID)' })
-    if (sourceId === libraryId) return res.status(400).json({ error: 'sourceProjectId and libraryProjectId must differ' })
-    const result = await bootstrapDemoSource(sourceId, libraryId)
-    return res.status(200).json({ ok: true, sourceProjectId: sourceId, libraryProjectId: libraryId, ...result })
+    const result = await bootstrapDemoSource(sourceId)
+    return res.status(200).json({ ok: true, sourceProjectId: sourceId, ...result })
   } catch (err) {
     console.error('[demo.bootstrap-source] error', err && (err.stack || err.message || err))
     return res.status(500).json({ error: 'Failed to bootstrap demo source' })
