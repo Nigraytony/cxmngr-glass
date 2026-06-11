@@ -4338,20 +4338,26 @@ async function downloadEquipmentPdf() {
           const nLines = splitText(doc, `Notes: ${String(t.notes)}`, pageWidth - margin * 2 - 4)
           for (const l of nLines) { ensureSpace(5); doc.text(l, margin + 4, y); y += 4 }
         }
-        // Rows: support sheet or table
-        const hasSheetRows = Array.isArray(t?.rows) && t.rows.length && (t.kind === 'sheet')
+        // Step-based tests (Sequence/Sheet) keep their steps in `rows`; Points/Table
+        // tests use `table`. Render step rows for any test that carries rows and
+        // isn't a Points/Table test — a `kind === 'sequence'` test was previously
+        // skipped (only 'sheet' matched), dropping its Test Steps from the report.
+        const hasStepRows = Array.isArray(t?.rows) && t.rows.length > 0 && t.kind !== 'table' && t.kind !== 'points'
         const tbl = t?.table && Array.isArray(t.table.columns) ? t.table : null
         let tableRendered = false
-        if (hasSheetRows) {
-          // Draw grid table: Step | Expected | Actual
+        if (hasStepRows) {
+          // Draw grid table: Step | Expected | Actual | Pass
           const totalW = pageWidth - margin * 2 - 2
+          const passW = 22
+          const stepsW = totalW - passW
           const cols = [
             { key: 'step', name: 'Step' },
             { key: 'expected', name: 'Expected' },
             { key: 'actual', name: 'Actual' },
           ] as Array<{ key: string; name: string }>
-          const colW = totalW / cols.length
+          const colW = stepsW / cols.length
           const tableX = margin + 1
+          const passX = tableX + stepsW
           const drawSheetHeader = () => {
             ensureSpace(8)
             doc.setFont('helvetica', 'bold')
@@ -4365,11 +4371,13 @@ async function downloadEquipmentPdf() {
               const vx = tableX + i * colW
               doc.line(vx, y, vx, y + headerH)
             }
+            doc.line(passX, y, passX, y + headerH)
             // Header text
             cols.forEach((c, idx) => {
               const x = tableX + idx * colW + 1.5
               doc.text(String(c.name || ''), x, y + 4)
             })
+            doc.text('Pass', passX + 1.5, y + 4)
             y += headerH
             doc.setFont('helvetica', 'normal')
           }
@@ -4378,17 +4386,22 @@ async function downloadEquipmentPdf() {
             const s = splitText(doc, String(r?.step ?? ''), colW - 3)
             const e = splitText(doc, String(r?.expected ?? ''), colW - 3)
             const a = splitText(doc, String(r?.actual ?? ''), colW - 3)
-            const hLines = Math.max(s.length, e.length, a.length)
+            const hLines = Math.max(s.length, e.length, a.length, 1)
             const rowH = Math.max(6, hLines * 4 + 2)
             if (ensureSpace(rowH + 2)) {
               drawSheetHeader()
             }
+            // Tint the Pass cell green/red to match the Points table styling.
+            const state = passCellState((r as any)?.pass)
+            if (state === 'pass') { doc.setFillColor(222, 247, 233); doc.rect(passX, y, passW, rowH, 'F') }
+            else if (state === 'fail') { doc.setFillColor(254, 226, 226); doc.rect(passX, y, passW, rowH, 'F') }
             // Row box and vertical lines
             doc.rect(tableX, y, totalW, rowH)
             for (let i = 1; i < cols.length; i++) {
               const vx = tableX + i * colW
               doc.line(vx, y, vx, y + rowH)
             }
+            doc.line(passX, y, passX, y + rowH)
             // Cell text
             const cells = [s, e, a]
             cells.forEach((lines, idx) => {
@@ -4397,6 +4410,13 @@ async function downloadEquipmentPdf() {
                 doc.text(lines[k], x, y + 4 + k * 4)
               }
             })
+            // Pass label, centered + colored
+            const label = passLabel(state)
+            if (state === 'pass') doc.setTextColor(0, 128, 0)
+            else if (state === 'fail') doc.setTextColor(200, 0, 0)
+            else doc.setTextColor(0)
+            doc.text(label, passX + passW / 2, y + 4, { align: 'center' })
+            doc.setTextColor(0)
             y += rowH
           }
           // Extra spacing after the FPT sheet table
