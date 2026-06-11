@@ -1134,3 +1134,7 @@ router.delete('/subtree/:id', auth, requireObjectIdParam('id'), loadTaskProjectI
 	});
 
 module.exports = router;
+// Reused by the demo seeder (utils/demoProject.js) so the demo's task list is
+// imported from the same Cx General template via the exact same code path.
+module.exports.importCsvTasks = importCsvTasks;
+module.exports.importMsProjectXml = importMsProjectXml;
