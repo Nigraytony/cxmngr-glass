@@ -3,7 +3,7 @@
     v-if="rows.length"
     class="overflow-x-auto rounded-md border border-white/10"
   >
-    <table class="min-w-full w-full text-sm table-fixed">
+    <table class="min-w-full w-full text-sm">
       <thead class="bg-white/5 text-white/70">
         <tr>
           <th
@@ -21,20 +21,20 @@
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('type') }}</span>
           </th>
           <th
-            class="text-left px-3 py-2 w-[18.75%] cursor-pointer select-none"
+            class="text-left px-3 py-2 min-w-[160px] cursor-pointer select-none"
             @click="setSort('title')"
           >
             Title
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('title') }}</span>
           </th>
           <th
-            class="text-left px-3 py-2 w-[31.25%] cursor-pointer select-none"
+            class="text-left px-3 py-2 min-w-[220px] cursor-pointer select-none"
             @click="setSort('description')"
           >
             Description
             <span class="ml-1 text-[10px] align-middle">{{ sortIndicator('description') }}</span>
           </th>
-          <th class="text-left px-3 py-2 w-36">
+          <th class="text-left px-3 py-2 min-w-[150px]">
             Recommendation
           </th>
           <th
@@ -69,7 +69,7 @@
           <td class="px-3 py-2 align-middle whitespace-nowrap w-32">
             {{ it.type || '—' }}
           </td>
-          <td class="px-3 py-2 align-middle w-[18.75%]">
+          <td class="px-3 py-2 align-middle min-w-[160px]">
             <RouterLink
               :to="{ name: 'issue-edit', params: { id: it.id } }"
               class="hover:underline"
@@ -80,10 +80,10 @@
               >{{ it.title || '—' }}</span>
             </RouterLink>
           </td>
-          <td class="px-3 py-2 align-middle w-[31.25%]">
+          <td class="px-3 py-2 align-middle min-w-[220px]">
             <span class="block text-white/70 whitespace-normal break-words">{{ it.description || '—' }}</span>
           </td>
-          <td class="px-3 py-2 align-middle">
+          <td class="px-3 py-2 align-middle min-w-[150px]">
             <span class="block text-white/70 whitespace-normal break-words">{{ it.recommendation || '—' }}</span>
           </td>
           <td class="px-3 py-2 align-middle whitespace-nowrap w-28">
