@@ -4686,9 +4686,12 @@ async function downloadActivityPdf() {
     // Defer issues merge until after the Equipment List section so ordering is:
     // main report -> Equipment List -> Issues -> Equipment Reports -> Attachments
     // Build attachments doc separately (list + image pages) if needed.
+    // Attachments come from project documents (Attachments/Activity/<id>) plus any
+    // legacy inline form.attachments.
+    const reportAttachments: any[] = activityReport.value.include.attachments ? await gatherReportAttachments() : []
     let attachmentsBytes: ArrayBuffer | null = null
     if (activityReport.value.include.attachments) {
-      const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
+      const atts: any[] = reportAttachments
       if (atts.length) {
         const attDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(attDoc); setReportColor(attDoc, 'text')
         // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
@@ -4980,7 +4983,7 @@ async function downloadActivityPdf() {
         }
         // Append PDF attachments last
         if (activityReport.value.include.attachments) {
-          const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
+          const atts: any[] = reportAttachments
           const pdfAtts = atts.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
           for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf, attPdf.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch (e) { /* ignore */ } }
         }
@@ -5167,7 +5170,7 @@ async function downloadActivityPdf() {
         }
         // Append PDF attachments
         if (activityReport.value.include.attachments) {
-          const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
+          const atts: any[] = reportAttachments
           const pdfAtts = atts.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
           for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf2 = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf2, attPdf2.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch (e) { /* ignore */ } }
         }
@@ -5474,9 +5477,10 @@ async function downloadActivityDocx() {
     }
 
     // Attachments — list filenames + embed image attachments inline.
+    // Sourced from project documents (Attachments/Activity/<id>) + legacy inline.
     const attachments: any[] = []
     if (inc.attachments) {
-      const atts: any[] = Array.isArray(form.attachments) ? form.attachments : []
+      const atts: any[] = await gatherReportAttachments()
       const isImage = (a: any) => {
         const type = String(a?.type || '').toLowerCase()
         const name = String(a?.filename || a?.url || '').toLowerCase()
@@ -6099,34 +6103,56 @@ async function loadActions() {
   }
 }
 
-// Fetch an action's photos (stored in project documents under Photos/Action/<id>)
-// as embeddable image data URLs. Best-effort: returns [] if docs aren't reachable.
-async function fetchActionPhotosForReport(pid: string, actionId: string): Promise<LoadedImage[]> {
+// List the files stored in project documents under <kind>/<entityType>/<entityId>
+// (e.g. Photos/Action/<id> or Attachments/Activity/<id>), resolving a download URL
+// for each. Best-effort: returns [] if the documents API isn't reachable.
+async function fetchEntityDocFiles(pid: string, kind: string, entityType: string, entityId: string): Promise<Array<{ filename: string; url: string; type: string }>> {
   try {
     await documentsStore.fetchFoldersTree(pid)
     const flat: any[] = (documentsStore as any).flatFolders || []
     let parentId: string | null = null
-    for (const seg of ['Photos', 'Action', String(actionId)]) {
+    for (const seg of [kind, entityType, String(entityId)]) {
       const hit = flat.find((f: any) => (f.parentId ? String(f.parentId) : null) === parentId && String(f.name || '').trim() === seg)
       if (!hit) return []
       parentId = String(hit.id)
     }
     await documentsStore.fetchFiles(pid, String(parentId))
     const files: any[] = Array.isArray((documentsStore as any).files) ? [...(documentsStore as any).files] : []
-    const out: LoadedImage[] = []
+    const out: Array<{ filename: string; url: string; type: string }> = []
     for (const f of files) {
-      const name = String(f.filename || f.name || '').toLowerCase()
-      const ctype = String(f.contentType || f.mimeType || '').toLowerCase()
-      const isImg = ctype.startsWith('image/') || /\.(png|jpe?g|webp|gif)(\?|$)/.test(name)
-      if (!isImg) continue
       try {
         const { downloadUrl } = await documentsStore.getDownloadUrl(pid, String(f.id))
-        const im = await loadImage(downloadUrl)
-        if (im.dataUrl) out.push(im)
-      } catch (_) { /* skip a photo that fails to load */ }
+        out.push({ filename: String(f.filename || f.name || 'Attachment'), url: downloadUrl, type: String(f.contentType || f.mimeType || '') })
+      } catch (_) { /* skip a file that fails to resolve */ }
     }
     return out
   } catch (_) { return [] }
+}
+
+// An action's photos (Photos/Action/<id>) as embeddable image data URLs.
+async function fetchActionPhotosForReport(pid: string, actionId: string): Promise<LoadedImage[]> {
+  const files = await fetchEntityDocFiles(pid, 'Photos', 'Action', actionId)
+  const out: LoadedImage[] = []
+  for (const f of files) {
+    const name = f.filename.toLowerCase(); const ctype = f.type.toLowerCase()
+    const isImg = ctype.startsWith('image/') || /\.(png|jpe?g|webp|gif)(\?|$)/.test(name)
+    if (!isImg) continue
+    try { const im = await loadImage(f.url); if (im.dataUrl) out.push(im) } catch (_) { /* skip */ }
+  }
+  return out
+}
+
+// The activity's attachments (Attachments/Activity/<id>) for the report, merged with
+// any legacy inline form.attachments. Returns descriptors the report pipeline expects.
+async function gatherReportAttachments(): Promise<any[]> {
+  const merged: any[] = Array.isArray(form.attachments) ? [...form.attachments] : []
+  if (id.value && !isNew.value && azureProjectId.value) {
+    try {
+      const files = await fetchEntityDocFiles(azureProjectId.value, 'Attachments', 'Activity', String(id.value))
+      for (const f of files) merged.push({ filename: f.filename, url: f.url, type: f.type })
+    } catch (_) { /* best-effort */ }
+  }
+  return merged
 }
 
 // Gather the activity's actions enriched for reporting: linked issues resolved and
