@@ -5891,6 +5891,8 @@ const ACTION_TYPES = ['Submittal', 'Meeting', 'Review', 'Checklist Verification'
 const ACTION_STATUSES = ['Not Started', 'In Progress', 'Complete']
 
 const actions = ref<any[]>([])
+const actionsLoaded = ref(false)
+const actionsCountHint = ref<number | null>(null)
 const actionsLoading = ref(false)
 const actionsBusy = ref(false)
 const actionModalOpen = ref(false)
@@ -5917,10 +5919,11 @@ function actionStatusClass(s: string) {
 
 async function loadActions() {
   const aid = id.value
-  if (!aid || aid === 'new') { actions.value = []; return }
+  if (!aid || aid === 'new') { actions.value = []; actionsLoaded.value = true; return }
   actionsLoading.value = true
   try {
     actions.value = await actionsStore.list(aid, azureProjectId.value)
+    actionsLoaded.value = true
   } catch (e) {
     actions.value = []
   } finally {
@@ -6158,6 +6161,9 @@ function initTabBadgeCountsFromActivity(activityData: any) {
 
   const commentsCount = maybeNumber(activityData?.commentsCount)
   if (commentsCount !== null) commentsCountHint.value = commentsCount
+
+  const actionsCount = maybeNumber(activityData?.actionsCount)
+  if (actionsCount !== null) actionsCountHint.value = actionsCount
 }
 
 // Map IssueForm values to API values (mirrors IssuesList.vue)
@@ -6213,6 +6219,7 @@ async function createActivityIssue() {
 
 // Counts per tab for badges
 function countForTab(t: string): number {
+  if (t === 'Actions') return actionsLoaded.value ? actions.value.length : (actionsCountHint.value ?? 0)
   if (t === 'Photos') return azurePhotosCount.value
   if (t === 'Issues') {
     if (Array.isArray((form as any).issues) && (form as any).issues.length) return (form as any).issues.length
