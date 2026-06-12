@@ -2175,8 +2175,8 @@
          tall editor (details + photos + documents + issues) never runs off-screen. -->
     <Modal
       v-model="actionModalOpen"
-      panel-class="max-w-2xl max-h-[90vh] flex flex-col"
-      main-class="overflow-y-auto min-h-0 flex-1"
+      panel-class="max-w-4xl w-[92vw] max-h-[90vh] flex flex-col"
+      main-class="overflow-y-auto overflow-x-hidden min-h-0 flex-1"
     >
       <template #header>
         <div class="font-medium">
@@ -2184,7 +2184,7 @@
         </div>
       </template>
       <div class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 [&>div]:min-w-0">
           <div class="md:col-span-2">
             <label class="block text-sm text-white/70">Title</label>
             <input
