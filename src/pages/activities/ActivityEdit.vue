@@ -2489,6 +2489,14 @@
             </label>
             <label class="inline-flex items-center gap-2">
               <input
+                v-model="activityReport.include.actions"
+                type="checkbox"
+                class="rounded"
+              >
+              <span class="text-gray-300">Actions</span>
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input
                 v-model="activityReport.include.issues"
                 type="checkbox"
                 class="rounded"
@@ -2658,6 +2666,7 @@ import { useActionsStore } from '../../stores/actions'
 import { useTemplatesStore } from '../../stores/templates'
 import { useEquipmentStore } from '../../stores/equipment'
   import { useSpacesStore } from '../../stores/spaces'
+import { useDocumentsStore } from '../../stores/documents'
 import Spinner from '../../components/Spinner.vue'
 import { useAiStore } from '../../stores/ai'
 import type { SuggestedTag } from '../../stores/ai'
@@ -2674,6 +2683,7 @@ const ui = useUiStore()
 const issuesStore = useIssuesStore()
 const equipmentStore = useEquipmentStore()
 const spacesStore = useSpacesStore()
+const documentsStore = useDocumentsStore()
 const ai = useAiStore()
 
 const oprVerificationRef = ref<any>(null)
@@ -2739,6 +2749,7 @@ interface ActivityReportSettings {
     info: boolean
     description: boolean
     photos: boolean
+    actions: boolean
     issues: boolean
     attachments: boolean
     equipmentList: boolean
@@ -2751,7 +2762,7 @@ interface ActivityReportSettings {
   coverJumbotronDataUrl: string
 }
 const activityReport = ref<ActivityReportSettings>({
-  include: { coverPage: false, toc: false, info: true, description: true, photos: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
+  include: { coverPage: false, toc: false, info: true, description: true, photos: true, actions: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
   photoLimit: 6,
   coverTitle: 'Activity Report',
   coverSubtitle: '',
@@ -2801,7 +2812,7 @@ async function saveActivityReportSettings() {
 }
 function resetActivityReportSettings() {
   activityReport.value = {
-    include: { coverPage: false, toc: false, info: true, description: true, photos: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
+    include: { coverPage: false, toc: false, info: true, description: true, photos: true, actions: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
     photoLimit: 6,
     coverTitle: 'Activity Report',
     coverSubtitle: '',
@@ -4066,6 +4077,7 @@ async function downloadActivityPdf() {
         if (activityReport.value.include.description) items.push('Description')
         if (activityReport.value.include.photos) items.push('Photos')
         if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
+        if (activityReport.value.include.actions) items.push('Actions')
         if (activityReport.value.include.issues) items.push('Issues')
         if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
         if (activityReport.value.include.attachments) items.push('Attachments')
@@ -4338,6 +4350,8 @@ async function downloadActivityPdf() {
           y += Math.ceil(imgs.length / 3) * (thumbH + 4) + 2
         }
       }
+      // (Actions are rendered as their own section placed AFTER the Equipment List —
+      //  built into actionsBytes below and merged in after the equipment pages.)
       // We intentionally delay issues & attachments so equipment reports can appear before them.
       // Close out the main activity doc (without attachments yet).
       // If the current page has only header/footer (no body content), it can be an accidental
@@ -4559,6 +4573,114 @@ async function downloadActivityPdf() {
         }
         drawIFooter();
         issuesBytes = iDoc.output('arraybuffer') as ArrayBuffer;
+      }
+    }
+    // Build actions doc separately (paragraphed sections: heading + meta bullets +
+    // notes + photos + linked-issues grid). Merged in AFTER the Equipment List.
+    let actionsBytes: ArrayBuffer | null = null
+    if (activityReport.value.include.actions) {
+      const reportActions = await gatherReportActions({ withPhotos: true })
+      if (reportActions.length) {
+        const aDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(aDoc); setReportColor(aDoc, 'text')
+        setZeroCharSpace(aDoc); setBodyFont(aDoc, 'normal')
+        const aPW = aDoc.internal.pageSize.getWidth(); const aPH = aDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
+        const contentW = aPW - margin * 2
+        const drawAFooter = () => {
+          const prevFont = (aDoc as any).getFont ? (aDoc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
+          const prevSize = (aDoc as any).getFontSize ? (aDoc as any).getFontSize() : 9
+          const fY = aPH - 10
+          aDoc.setDrawColor(180, 180, 180); aDoc.line(margin, fY - 6, aPW - margin, fY - 6)
+          try {
+            if (footerLogo?.dataUrl) {
+              const lh = 5.5; let lw = 12
+              if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) lw = lh * ((footerLogo as any).width / (footerLogo as any).height)
+              if (lw > 14) lw = 14
+              aDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh)
+              const brandX = margin + lw + 2
+              setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8); aDoc.text('cxma', brandX, fY - 2)
+              const tw = typeof (aDoc as any).getTextWidth === 'function' ? (aDoc as any).getTextWidth('cxma') : 10
+              aDoc.text(`${form.name || 'Activity'} Actions`, brandX + tw + 3, fY - 2)
+            } else {
+              aDoc.setFillColor(220, 220, 220); aDoc.rect(margin, fY - 5.5, 8, 5, 'F'); setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8)
+              aDoc.text('cxma', margin + 10, fY - 2); aDoc.text(`${form.name || 'Activity'} Actions`, margin + 24, fY - 2)
+            }
+          } catch (e) { /* ignore */ }
+          setBodyFont(aDoc, 'normal'); aDoc.text(String(aPageNo), aPW / 2, fY - 2, { align: 'center' })
+          try { if (typeof pageDate === 'string') aDoc.text(pageDate, aPW - margin, fY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
+          aDoc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); aDoc.setFontSize(prevSize)
+        }
+        const drawAHeader = () => {
+          const res = drawBrandedHeader(aDoc, { margin, pageWidth: aPW, title: 'Actions', leftLogo: clientImg, rightLogo: cxaImg, logoH: 12, maxLogoW: 36, titleFontSize: 20, setTitleFont: () => setBodyFont(aDoc, 'bold') })
+          ay = res.nextY; setBodyFont(aDoc, 'normal'); aDoc.setFontSize(9.5)
+        }
+        const ensureASpace = (h: number) => { if (ay + h > aBottom) { drawAFooter(); aDoc.addPage(); aPageNo++; drawAHeader(); return true } return false }
+        drawAHeader()
+        for (let i = 0; i < reportActions.length; i++) {
+          const a = reportActions[i]
+          ensureASpace(12)
+          setBodyFont(aDoc, 'bold'); aDoc.setFontSize(12); setReportColor(aDoc, 'text')
+          const headLines = aDoc.splitTextToSize(`${i + 1}. ${a.title || 'Action'}`, contentW) as string[]
+          aDoc.text(headLines, margin, ay + 4); ay += headLines.length * 5.5 + 1
+          // Meta bullets
+          setBodyFont(aDoc, 'normal'); aDoc.setFontSize(9); setReportColor(aDoc, 'muted')
+          const meta: string[] = []
+          if (a.type) meta.push(`Type: ${a.type}`)
+          if (a.status) meta.push(`Status: ${a.status}`)
+          if (a.date) meta.push(`Date: ${a.date}`)
+          if (a.performedBy) meta.push(`Performed by: ${a.performedBy}`)
+          if (a.location) meta.push(`Location: ${a.location}`)
+          for (const m of meta) { ensureASpace(5); aDoc.text(`•  ${m}`, margin + 2, ay + 3); ay += 4.6 }
+          ay += 1; setReportColor(aDoc, 'text')
+          // Notes narrative
+          if (a.notes && String(a.notes).trim()) {
+            setBodyFont(aDoc, 'normal'); aDoc.setFontSize(9.5)
+            const noteLines = aDoc.splitTextToSize(String(a.notes), contentW) as string[]
+            for (const ln of noteLines) { ensureASpace(5); aDoc.text(ln, margin, ay + 3.5); ay += 4.8 }
+            ay += 1
+          }
+          // Photos (3 per row)
+          const photos = Array.isArray(a.photos) ? a.photos.filter((p: any) => p && p.dataUrl) : []
+          if (photos.length) {
+            const colsN = 3; const gap = 3; const thumbW = (contentW - gap * (colsN - 1)) / colsN; const thumbH = thumbW * 0.72
+            let idx = 0
+            while (idx < photos.length) {
+              ensureASpace(thumbH + 3)
+              for (let c = 0; c < colsN && idx < photos.length; c++, idx++) {
+                const p = photos[idx]; const px = margin + c * (thumbW + gap)
+                try { aDoc.addImage(p.dataUrl, p.format || 'JPEG', px, ay, thumbW, thumbH) } catch (_) { /* skip */ }
+              }
+              ay += thumbH + 3
+            }
+          }
+          // Linked issues grid
+          const issues = Array.isArray(a.issues) ? a.issues : []
+          if (issues.length) {
+            ensureASpace(10)
+            setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8.5); aDoc.text('Linked issues', margin, ay + 3); ay += 5
+            const cw = [contentW * 0.10, contentW * 0.20, contentW * 0.52, contentW * 0.18]
+            const cx = [margin, margin + cw[0], margin + cw[0] + cw[1], margin + cw[0] + cw[1] + cw[2]]
+            const drawIssHead = () => {
+              setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8); aDoc.setFillColor(250, 236, 236)
+              aDoc.rect(margin, ay, contentW, 6, 'F'); aDoc.rect(margin, ay, contentW, 6)
+              ;['#', 'Type', 'Title', 'Status'].forEach((h, k) => { if (k > 0) aDoc.line(cx[k], ay, cx[k], ay + 6); aDoc.text(h, cx[k] + 1.5, ay + 4) })
+              ay += 6; setBodyFont(aDoc, 'normal'); aDoc.setFontSize(8)
+            }
+            drawIssHead()
+            for (const it of issues) {
+              const titleLines = aDoc.splitTextToSize(String(it.title || '—'), cw[2] - 3) as string[]
+              const rowH = Math.max(6, titleLines.length * 4 + 2)
+              if (ensureASpace(rowH)) drawIssHead()
+              aDoc.rect(margin, ay, contentW, rowH)
+              const cellVals: any[] = [it.number != null ? `#${it.number}` : '—', String(it.type || '—'), titleLines, String(it.status || 'Open')]
+              ;[0, 1, 2, 3].forEach((k) => { if (k > 0) aDoc.line(cx[k], ay, cx[k], ay + rowH); aDoc.text(cellVals[k], cx[k] + 1.5, ay + 4) })
+              ay += rowH
+            }
+          }
+          // Separator between actions
+          ay += 2; ensureASpace(4); aDoc.setDrawColor(210, 210, 210); aDoc.line(margin, ay, aPW - margin, ay); ay += 5
+        }
+        drawAFooter()
+        actionsBytes = aDoc.output('arraybuffer') as ArrayBuffer
       }
     }
     // Defer issues merge until after the Equipment List section so ordering is:
@@ -4804,6 +4926,16 @@ async function downloadActivityPdf() {
           eqPages.forEach((p: any) => merged.addPage(p));
         }
 
+        // Merge actions after the Equipment List (and before Issues)
+        if (actionsBytes) {
+          try {
+            const actPdf = await PDFDocument.load(actionsBytes)
+            const actPages = await merged.copyPages(actPdf, actPdf.getPageIndices())
+            actPages.forEach((p:any) => merged.addPage(p))
+            actionsBytes = null
+          } catch (e) { /* ignore */ }
+        }
+
         // Merge issues after Equipment List
         if (issuesBytes) {
           try {
@@ -4998,6 +5130,19 @@ async function downloadActivityPdf() {
       } catch (e) { /* ignore */ }
     }
 
+    // Append actions after the Equipment List (and before Issues), when not already
+    // merged in the equipment-reports branch above.
+    if (actionsBytes) {
+      try {
+        const { PDFDocument } = await import('pdf-lib')
+        const merged = await PDFDocument.load(baseBytes)
+        const actPdf = await PDFDocument.load(actionsBytes)
+        const actPages = await merged.copyPages(actPdf, actPdf.getPageIndices())
+        actPages.forEach((p:any) => merged.addPage(p))
+        baseBytes = await merged.save()
+        actionsBytes = null
+      } catch (e) { /* keep baseBytes as-is */ }
+    }
     // If equipment reports are not requested, merge issues after the main report.
     if (issuesBytes) {
       try {
@@ -5348,6 +5493,24 @@ async function downloadActivityDocx() {
       }
     }
 
+    // Actions — sub-records of work, as paragraphed sub-sections (meta + notes +
+    // photos + linked-issues grid), mirroring the PDF.
+    let actionRows: any[] = []
+    if (inc.actions) {
+      const gathered = await gatherReportActions({ withPhotos: true })
+      actionRows = gathered.map((a: any) => ({
+        title: a.title, type: a.type, status: a.status, date: a.date,
+        performedBy: a.performedBy, location: a.location, notes: a.notes,
+        photos: (a.photos || []).map((p: any) => ({ dataUrl: p.dataUrl, width: p.width, height: p.height })),
+        issues: (a.issues || []).map((it: any) => ({
+          number: it.number, type: it.type, source: 'Action', title: it.title,
+          description: htmlToText(it.description || it.descriptionHtml || ''),
+          recommendation: it.recommendation || it.recommendationText || it.recommendation_text || '',
+          status: it.status || 'Open',
+        })),
+      }))
+    }
+
     const data: ActivityDocxData = {
       include: inc,
       activityName: form.name || 'Activity',
@@ -5364,6 +5527,7 @@ async function downloadActivityDocx() {
         jumbotron,
       },
       photos,
+      actions: actionRows,
       equipment,
       equipmentReports,
       issues,
@@ -5933,6 +6097,58 @@ async function loadActions() {
   } finally {
     actionsLoading.value = false
   }
+}
+
+// Fetch an action's photos (stored in project documents under Photos/Action/<id>)
+// as embeddable image data URLs. Best-effort: returns [] if docs aren't reachable.
+async function fetchActionPhotosForReport(pid: string, actionId: string): Promise<LoadedImage[]> {
+  try {
+    await documentsStore.fetchFoldersTree(pid)
+    const flat: any[] = (documentsStore as any).flatFolders || []
+    let parentId: string | null = null
+    for (const seg of ['Photos', 'Action', String(actionId)]) {
+      const hit = flat.find((f: any) => (f.parentId ? String(f.parentId) : null) === parentId && String(f.name || '').trim() === seg)
+      if (!hit) return []
+      parentId = String(hit.id)
+    }
+    await documentsStore.fetchFiles(pid, String(parentId))
+    const files: any[] = Array.isArray((documentsStore as any).files) ? [...(documentsStore as any).files] : []
+    const out: LoadedImage[] = []
+    for (const f of files) {
+      const name = String(f.filename || f.name || '').toLowerCase()
+      const ctype = String(f.contentType || f.mimeType || '').toLowerCase()
+      const isImg = ctype.startsWith('image/') || /\.(png|jpe?g|webp|gif)(\?|$)/.test(name)
+      if (!isImg) continue
+      try {
+        const { downloadUrl } = await documentsStore.getDownloadUrl(pid, String(f.id))
+        const im = await loadImage(downloadUrl)
+        if (im.dataUrl) out.push(im)
+      } catch (_) { /* skip a photo that fails to load */ }
+    }
+    return out
+  } catch (_) { return [] }
+}
+
+// Gather the activity's actions enriched for reporting: linked issues resolved and
+// (optionally) photos embedded. Shared by the PDF and Word generators.
+async function gatherReportActions(opts?: { withPhotos?: boolean }): Promise<any[]> {
+  if (!(id.value && !isNew.value)) return []
+  const pid = azureProjectId.value
+  let acts: any[] = []
+  try { acts = await actionsStore.list(String(id.value), pid) } catch (e) { acts = Array.isArray(actions.value) ? actions.value : [] }
+  const out: any[] = []
+  for (const a of (acts || [])) {
+    const issueIds: string[] = Array.isArray(a?.issues) ? a.issues.map((x: any) => String((x && (x.id || x._id)) || x || '')).filter(Boolean) : []
+    const issues = issueIds.map((iid) => issuesById.value[iid]).filter(Boolean)
+    let photos: LoadedImage[] = []
+    if (opts?.withPhotos !== false && pid) { try { photos = await fetchActionPhotosForReport(pid, String(a._id)) } catch (_) { photos = [] } }
+    out.push({
+      title: a?.title || '', type: a?.type || '', status: a?.status || '', date: a?.date || '',
+      performedBy: a?.performedBy || '', location: a?.location || '', notes: a?.notes || '',
+      photos, issues,
+    })
+  }
+  return out
 }
 
 async function loadActionIssues(a: any) {

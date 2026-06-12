@@ -55,6 +55,34 @@ describe('buildActivityReportHtml', () => {
     expect(html).toMatch(/background:#ececec/)
   })
 
+  it('renders actions as paragraphed sub-sections with meta, notes, photos and linked issues', () => {
+    const data = baseData({
+      include: { ...baseData().include, actions: true },
+      actions: [
+        {
+          title: 'Boiler walkdown', type: 'Review', status: 'Complete', date: '2026-06-04', performedBy: 'Nigel Gray', notes: 'No deficiencies found',
+          photos: [{ dataUrl: 'data:image/png;base64,AAAA', width: 100, height: 80 }],
+          issues: [{ number: 5, type: 'assessment', source: 'Action', title: 'Leak at flange', description: 'Drip', recommendation: 'Tighten', status: 'Open' }],
+        },
+        { title: 'Pump startup', type: 'Startup', status: 'In Progress', date: '2026-06-05', performedBy: 'Tech 2', notes: '' },
+      ],
+    })
+    const { html } = buildActivityReportHtml(data)
+    expect(html).toContain('<h2>Actions</h2>')
+    expect(html).toContain('1. Boiler walkdown')
+    expect(html).toContain('2. Pump startup')
+    expect(html).toContain('<strong>Performed by:</strong>')
+    expect(html).toContain('No deficiencies found')
+    expect(html).toContain('Linked issues')
+    expect(html).toContain('Leak at flange')
+    expect(html).toContain('<img')
+  })
+
+  it('omits the actions section when disabled or empty', () => {
+    expect(buildActivityReportHtml(baseData({ include: { ...baseData().include, actions: false }, actions: [{ title: 'x' }] })).html).not.toContain('<h2>Actions</h2>')
+    expect(buildActivityReportHtml(baseData({ include: { ...baseData().include, actions: true }, actions: [] })).html).not.toContain('<h2>Actions</h2>')
+  })
+
   it('renders the equipment list row', () => {
     const { html } = buildActivityReportHtml(baseData())
     expect(html).toContain('AHU-1')
