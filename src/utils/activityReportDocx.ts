@@ -118,6 +118,7 @@ export interface ActivityDocxData {
     info?: boolean
     description?: boolean
     photos?: boolean
+    actions?: boolean
     issues?: boolean
     attachments?: boolean
     equipmentList?: boolean
@@ -132,11 +133,24 @@ export interface ActivityDocxData {
   descriptionHtml?: string
   cover?: { title?: string; subtitle?: string; byLine?: string; jumbotron?: DocxImage | null }
   photos?: DocxImage[]
+  actions?: DocxActionRow[]
   equipment?: DocxEquipmentRow[]
   equipmentReports?: DocxEquipmentReport[]
   issues?: DocxIssueRow[]
   attachments?: DocxAttachment[]
   logos?: { client?: DocxImage | null; cxa?: DocxImage | null }
+}
+
+export interface DocxActionRow {
+  title?: string
+  type?: string
+  status?: string
+  date?: string
+  performedBy?: string
+  location?: string
+  notes?: string
+  photos?: DocxImage[]
+  issues?: DocxIssueRow[]
 }
 
 function esc(v: any): string {
@@ -194,6 +208,7 @@ function tocSection(d: ActivityDocxData): string {
   if (inc.description) items.push('Description')
   if (inc.photos) items.push('Photos')
   if (inc.equipmentList && (d.equipment || []).length) items.push('Equipment List')
+  if (inc.actions && (d.actions || []).length) items.push('Actions')
   if (inc.issues) items.push('Issues')
   if (inc.equipmentReports && (d.equipment || []).length) items.push('Equipment Reports')
   if (inc.attachments) items.push('Attachments')
@@ -228,6 +243,30 @@ function photosSection(d: ActivityDocxData): string {
   if (!photos.length) return ''
   const imgs = photos.map((p) => `<span style="display:inline-block; margin:4px;">${img(p, 260)}</span>`).join('')
   return `<h2>Photos</h2><p>${imgs}</p>`
+}
+
+function actionItem(a: DocxActionRow, i: number): string {
+  const parts: string[] = []
+  parts.push(`<h3 style="font-size:14px; margin:10px 0 4px;">${i + 1}. ${esc(a.title || 'Action')}</h3>`)
+  const meta: string[] = []
+  if (a.type) meta.push(`<li><strong>Type:</strong> ${esc(a.type)}</li>`)
+  if (a.status) meta.push(`<li><strong>Status:</strong> ${esc(a.status)}</li>`)
+  if (a.date) meta.push(`<li><strong>Date:</strong> ${esc(a.date)}</li>`)
+  if (a.performedBy) meta.push(`<li><strong>Performed by:</strong> ${esc(a.performedBy)}</li>`)
+  if (a.location) meta.push(`<li><strong>Location:</strong> ${esc(a.location)}</li>`)
+  if (meta.length) parts.push(`<ul style="font-size:11px; margin:2px 0 6px 16px;">${meta.join('')}</ul>`)
+  if (a.notes && String(a.notes).trim()) parts.push(`<p style="font-size:12px; margin:4px 0;">${esc(a.notes)}</p>`)
+  const photos = (a.photos || []).filter((p) => p && p.dataUrl)
+  if (photos.length) parts.push(`<p>${photos.map((p) => `<span style="display:inline-block; margin:4px;">${img(p, 240)}</span>`).join('')}</p>`)
+  if ((a.issues || []).length) parts.push(`<p style="font-size:11px; margin:6px 0 2px;"><strong>Linked issues</strong></p>${issuesTable(a.issues as DocxIssueRow[])}`)
+  return parts.join('\n')
+}
+
+function actionsSection(d: ActivityDocxData): string {
+  const acts = d.actions || []
+  if (!acts.length) return ''
+  const body = acts.map((a, i) => actionItem(a, i)).join('<hr style="border:0; border-top:1px solid #ddd; margin:8px 0;" />')
+  return `<h2>Actions</h2>${body}`
 }
 
 function equipmentListSection(d: ActivityDocxData): string {
@@ -450,6 +489,7 @@ export function buildActivityReportHtml(d: ActivityDocxData): { html: string; he
   if (inc.description) sections.push(descriptionSection(d))
   if (inc.photos) sections.push(photosSection(d))
   if (inc.equipmentList) sections.push(equipmentListSection(d))
+  if (inc.actions) sections.push(actionsSection(d))
   if (inc.issues) sections.push(issuesSection(d))
   if (inc.equipmentReports) sections.push(equipmentReportsSection(d))
   if (inc.attachments) sections.push(attachmentsSection(d))
