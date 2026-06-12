@@ -2386,7 +2386,7 @@
     <Modal v-model="showIssueModal">
       <template #header>
         <div class="text-lg font-semibold">
-          Add Issue for Activity
+          {{ issueModalActionId ? 'Add Issue for Action' : 'Add Issue for Activity' }}
         </div>
       </template>
 
@@ -5654,6 +5654,9 @@ const issuesForActivity = computed(() => {
 
 // Activity Issue creation modal state
 const showIssueModal = ref(false)
+// When set, the issue modal is creating an issue for this action (link it to the
+// action on create); null = an activity-level issue.
+const issueModalActionId = ref<string | null>(null)
 const activityIssueDraft = ref<any>({
   number: null,
   status: 'open',
@@ -5870,6 +5873,7 @@ function defaultIssueSystemName(): string {
 }
 
 function openIssueModal() {
+  issueModalActionId.value = null
   const name = (form.name || '').trim()
   activityIssueDraft.value.title = name ? `${name} issue` : 'Activity issue'
   const descParts: string[] = []
@@ -5882,7 +5886,7 @@ function openIssueModal() {
   activityIssueDraft.value.system = defaultIssueSystemName()
   showIssueModal.value = true
 }
-function closeIssueModal() { showIssueModal.value = false }
+function closeIssueModal() { showIssueModal.value = false; issueModalActionId.value = null }
 
 // --- Actions: sub-records of work under this activity --------------------------
 const actionsStore = useActionsStore()
@@ -6027,41 +6031,31 @@ async function addOnePerTemplate() {
   }
 }
 
-// Create a new issue linked to an action (triggered from the action row's
-// "New issue" button), prefilled from the action, then open the new issue.
-async function createIssueForAction(a: any) {
+// Open the in-page New Issue modal prefilled from an action (triggered from the
+// action row's "New issue" button). The issue is created and linked to the action
+// on "Create" (in createActivityIssue) — without navigating away.
+function createIssueForAction(a: any) {
   const action = a && a._id ? a : null
   if (!action) return
-  const pid = azureProjectId.value
-  actionsBusy.value = true
-  try {
-    const issue: any = await issuesStore.createIssue({
-      projectId: pid,
-      title: action.title ? `${action.title} issue` : 'Action issue',
-      description: `Created from action: ${action.title || ''}`.trim(),
-      activityId: id.value,
-      type: 'Activity',
-      location: action.location || form.location || undefined,
-      foundBy: action.performedBy || undefined,
-      dateFound: action.date || undefined,
-    } as any)
-    const newId = String(issue.id || issue._id || '')
-    if (newId) {
-      const existing = Array.isArray(action.issues) ? action.issues.map((x: any) => String(x)) : []
-      const next = Array.from(new Set([...existing, newId]))
-      const updated = await actionsStore.update(String(action._id), { issues: next })
-      const i = actions.value.findIndex((x: any) => String(x._id) === String(action._id))
-      if (i >= 0) actions.value.splice(i, 1, updated)
-      // If this action is open in the editor, reflect the new link there too.
-      if (editingActionId.value === String(action._id)) actionIssues.value = [...actionIssues.value, issue]
-      ui.showSuccess('Issue created')
-      router.push(`/app/issues/${newId}`)
-    }
-  } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to create issue')
-  } finally {
-    actionsBusy.value = false
+  const descParts: string[] = []
+  if (action.title) descParts.push(`Action: ${action.title}`)
+  if (action.location || form.location) descParts.push(`Location: ${action.location || form.location}`)
+  activityIssueDraft.value = {
+    number: null,
+    status: 'open',
+    priority: 'medium',
+    type: 'Activity',
+    title: action.title ? `${action.title} issue` : 'Action issue',
+    description: descParts.join('\n') || `Created from action: ${action.title || ''}`.trim(),
+    foundBy: action.performedBy || '',
+    dateFound: action.date || '',
+    assignedTo: '',
+    dueDate: '',
+    location: action.location || form.location || '',
+    system: defaultIssueSystemName() || '',
   }
+  issueModalActionId.value = String(action._id)
+  showIssueModal.value = true
 }
 
 async function unlinkActionIssue(issue: any) {
@@ -6209,9 +6203,24 @@ async function createActivityIssue() {
       if (!Array.isArray(form.issues)) form.issues = []
       if (!form.issues.includes(newId)) form.issues.push(newId)
       await store.updateActivity(String(aid), { issues: form.issues })
+
+      // If the modal was opened from an action row, link the new issue to it too.
+      if (issueModalActionId.value) {
+        try {
+          const actionId = issueModalActionId.value
+          const action = actions.value.find((x: any) => String(x._id) === String(actionId))
+          const existing = action && Array.isArray(action.issues) ? action.issues.map((x: any) => String(x)) : []
+          const next = Array.from(new Set([...existing, newId]))
+          const updated = await actionsStore.update(String(actionId), { issues: next })
+          const i = actions.value.findIndex((x: any) => String(x._id) === String(actionId))
+          if (i >= 0) actions.value.splice(i, 1, updated)
+          if (editingActionId.value === String(actionId)) actionIssues.value = [...actionIssues.value, created]
+        } catch (e) { /* best-effort link */ }
+      }
     }
     ui.showSuccess('Issue created')
     showIssueModal.value = false
+    issueModalActionId.value = null
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to create issue')
   }
