@@ -451,11 +451,16 @@ onMounted(async () => {
   } catch (e) { /* ignore */ }
 })
 
+// The user-menu dropdown is a quick switcher for current work, not a full project
+// browser — cap it at the latest few projects. The full list lives on the Projects
+// page (the "Projects" menu item above).
+const PROJECT_SWITCHER_LIMIT = 5
 const projectsList = computed(() => {
   // Prefer the authenticated user's project membership list (hydrated by /api/users/me)
+  let full = []
   try {
     if (auth.user && Array.isArray(auth.user.projects) && auth.user.projects.length > 0) {
-      return auth.user.projects
+      full = auth.user.projects
         .map((p) => {
           if (!p) return null
           if (typeof p === 'string') return { id: p, name: p }
@@ -473,7 +478,23 @@ const projectsList = computed(() => {
   }
   // No authenticated project list available -> return empty list so users
   // don't see all projects in the app (fallback to project store would leak all projects).
-  return []
+  if (full.length <= PROJECT_SWITCHER_LIMIT) return full
+
+  // Show only the latest projects worked on: current first, then most-recently-used,
+  // with any remaining projects keeping their original order as a stable fallback.
+  const recent = projectStore.recentProjectIds || []
+  const curr = String(projectStore.currentProjectId || '')
+  const rank = (id) => {
+    const sid = String(id || '')
+    if (sid && sid === curr) return -1
+    const idx = recent.indexOf(sid)
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx
+  }
+  return full
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => (rank(a.p.id) - rank(b.p.id)) || (a.i - b.i))
+    .slice(0, PROJECT_SWITCHER_LIMIT)
+    .map((x) => x.p)
 })
 const defaultProjectId = computed(() => {
   try {

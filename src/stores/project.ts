@@ -156,6 +156,27 @@ export const useProjectStore = defineStore('project', () => {
   const currentProject = ref<Project | null>(null);
   const logsCache = ref<Record<string, any[]>>({});
 
+  // Most-recently-worked-on project ids (newest first), persisted locally. Powers the
+  // topbar quick-switcher, which shows only the latest few projects.
+  const RECENT_PROJECTS_KEY = 'recentProjectIds';
+  const RECENT_PROJECTS_CAP = 12;
+  function loadRecentProjectIds(): string[] {
+    try {
+      if (typeof window === 'undefined') return [];
+      const raw = localStorage.getItem(RECENT_PROJECTS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.map((x) => String(x)).filter(Boolean) : [];
+    } catch (e) { return []; }
+  }
+  const recentProjectIds = ref<string[]>(loadRecentProjectIds());
+  function recordRecentProject(id: string) {
+    const sid = String(id || '').trim();
+    if (!sid) return;
+    const next = [sid, ...recentProjectIds.value.filter((x) => x !== sid)].slice(0, RECENT_PROJECTS_CAP);
+    recentProjectIds.value = next;
+    try { if (typeof window !== 'undefined') localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(next)); } catch (e) { /* ignore */ }
+  }
+
   type ProjectAccessNotice = { ts: string; projectId?: string; projectName?: string; message: string }
 
   function writeProjectAccessNotice(notice: ProjectAccessNotice) {
@@ -211,6 +232,7 @@ export const useProjectStore = defineStore('project', () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('selectedProjectId', id);
     }
+    if (id) recordRecentProject(id);
     try {
       // Keep a best-effort display name for UX (e.g., access-revoked notice).
       const fromCurrent = (currentProject.value && (currentProject.value.id === id) && currentProject.value.name) ? currentProject.value.name : ''
@@ -490,6 +512,7 @@ export const useProjectStore = defineStore('project', () => {
     projects,
     currentProjectId,
     currentProject,
+    recentProjectIds,
     setCurrentProject,
     fetchProjects,
   fetchProject,
