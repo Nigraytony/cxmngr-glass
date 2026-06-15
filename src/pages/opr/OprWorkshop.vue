@@ -280,7 +280,7 @@
                 OPR Workshop is a paid add-on
               </div>
               <div class="text-sm text-white/70 mt-1">
-                One-time purchase: $24.99 per project.
+                One-time purchase: $99 per project.
               </div>
               <div class="mt-3 flex items-center gap-2">
                 <TooltipWrap :text="isProjectArchived ? 'Restore the project to purchase the OPR Workshop add-on' : 'Purchase OPR Workshop add-on'">
@@ -808,7 +808,7 @@
                   OPR Workshop is a paid add-on
                 </div>
                 <div class="text-sm text-white/70 mt-1">
-                  One-time purchase: $24.99 per project.
+                  One-time purchase: $99 per project.
                 </div>
                 <div class="mt-3 flex items-center gap-2">
                   <TooltipWrap text="Purchase OPR Workshop add-on">
