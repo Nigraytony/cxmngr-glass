@@ -283,11 +283,12 @@
                 One-time purchase: $24.99 per project.
               </div>
               <div class="mt-3 flex items-center gap-2">
-                <TooltipWrap text="Purchase OPR Workshop add-on">
+                <TooltipWrap :text="isProjectArchived ? 'Restore the project to purchase the OPR Workshop add-on' : 'Purchase OPR Workshop add-on'">
                   <button
                     type="button"
-                    class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm inline-flex items-center gap-2"
+                    class="px-3 py-2 rounded-md bg-emerald-500/80 hover:bg-emerald-500 text-white text-sm inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500/80"
                     aria-label="Purchase"
+                    :disabled="isProjectArchived"
                     @click="purchaseAddon"
                   >
                     <svg
@@ -3049,6 +3050,12 @@ const OPR_API_BASE = `/api/projects`
 const projectId = computed(() => projectStore.currentProjectId)
 const project = computed(() => projectStore.currentProject as any)
 const addonEnabled = computed(() => Boolean(project.value?.addons?.oprWorkshop?.enabled))
+// Mirror the backend's archived check (middleware/subscription.js): can't purchase
+// the add-on for an archived/deleted project.
+const isProjectArchived = computed(() => {
+  const s = String(project.value?.status || '').toLowerCase()
+  return Boolean(project.value?.deleted) || s === 'archived' || s === 'deleted'
+})
 
 const mainTab = ref<'info' | 'qa' | 'results' | 'import'>('info')
 
@@ -4527,6 +4534,7 @@ async function adminCloseVotingFor(q: OprQuestion) {
 
 async function purchaseAddon() {
   if (!projectId.value) return
+  if (isProjectArchived.value) { ui.showError('Restore the project before purchasing the OPR Workshop add-on'); return }
   try {
     const { url } = await opr.startOprCheckout(projectId.value)
     if (url) window.location.href = url
