@@ -616,14 +616,6 @@
                   </div>
                 </div>
 
-                <div class="text-right">
-                  <button
-                    class="px-3 py-1 rounded bg-white/6"
-                    @click="addMember"
-                  >
-                    Add
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -2254,7 +2246,52 @@
         </div>
       </div>
 
-      <div class="mt-6 text-right">
+      <div class="mt-6 flex items-center justify-end gap-2">
+        <button
+          v-if="activeTab === 'team'"
+          :disabled="addingMember"
+          class="px-3 py-2 rounded-md bg-emerald-600/80 border border-emerald-400/60 text-white hover:bg-emerald-600 inline-flex items-center gap-2"
+          :class="addingMember ? 'opacity-60 cursor-not-allowed' : ''"
+          @click="addMember"
+        >
+          <svg
+            v-if="addingMember"
+            class="w-4 h-4 animate-spin"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke="currentColor"
+              stroke-width="2.5"
+              class="opacity-25"
+            />
+            <path
+              d="M21 12a9 9 0 0 0-9-9"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              d="M12 5v14M5 12h14"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>{{ addingMember ? 'Adding…' : 'Add member' }}</span>
+        </button>
         <button
           :disabled="saving"
           class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
@@ -2484,6 +2521,7 @@ const ui = useUiStore()
 const clientFileInput = ref<HTMLInputElement | null>(null)
 const cxaFileInput = ref<HTMLInputElement | null>(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })
+const addingMember = ref(false)
 const invites = ref<any[]>([])
 // track which invite ids are currently being resent
 const loadingInviteIds = ref<string[]>([])
@@ -4101,6 +4139,8 @@ function statusLabel(member: any) {
 
 async function addMember() {
   if (!newMember.value.email) return ui.showError('Email required')
+  if (addingMember.value) return
+  addingMember.value = true
   // do not provide _id here; let the backend/mongoose generate a proper ObjectId for subdocs
   // member variable not used directly; payload built from newMember.value below
   // Prefer calling the dedicated addUser API so the server can create an Invitation
@@ -4127,6 +4167,7 @@ async function addMember() {
     ui.showError(msg)
   } finally {
     newMember.value = { email: '', firstName: '', lastName: '', company: '', role: 'User' }
+    addingMember.value = false
   }
 }
 
