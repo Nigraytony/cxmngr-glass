@@ -596,7 +596,6 @@ function buildStyles() {
  */
 function buildHeaderTemplate(projectName, projectNumber) {
   return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#475569; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-    <span style="font-weight:600; color:#1e3a8a;">cxma</span>
     <span>${escapeHtml(projectName)}</span>
     <span>${escapeHtml(projectNumber || '')}</span>
   </div>`
@@ -604,7 +603,7 @@ function buildHeaderTemplate(projectName, projectNumber) {
 
 function buildFooterTemplate(reportTitle) {
   return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#94a3b8; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-    <span>${escapeHtml(reportTitle || 'Cx Final Report')}</span>
+    <span><span style="font-weight:600; color:#1e3a8a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
     <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
   </div>`
 }
