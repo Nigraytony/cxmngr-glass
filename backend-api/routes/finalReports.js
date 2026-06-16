@@ -291,9 +291,13 @@ router.put('/', loadOrCreateReport, requireEditAccess, requireUnlockedForEdit, a
     }
 
     if (body.cover && typeof body.cover === 'object') {
+      const sources = ['commissioning_agent', 'client', 'custom', 'none']
+      const logoSource = sources.includes(body.cover.logoSource) ? body.cover.logoSource : 'commissioning_agent'
       report.cover = {
         title: asString(body.cover.title || '').trim(),
         subtitle: asString(body.cover.subtitle || '').trim(),
+        logoSource,
+        customLogoUrl: body.cover.customLogoUrl || null,
         ownerLogoBlobUrl: body.cover.ownerLogoBlobUrl || null,
         showProjectImage: body.cover.showProjectImage !== false,
       }

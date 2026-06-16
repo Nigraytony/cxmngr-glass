@@ -62,7 +62,15 @@ const coverSubSchema = new mongoose.Schema(
   {
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },
-    ownerLogoBlobUrl: { type: String, default: null },
+    // Which logo to show on the cover page.
+    logoSource: {
+      type: String,
+      enum: ['commissioning_agent', 'client', 'custom', 'none'],
+      default: 'commissioning_agent',
+    },
+    // Used when logoSource === 'custom' — a data URI or URL.
+    customLogoUrl: { type: String, default: null },
+    ownerLogoBlobUrl: { type: String, default: null }, // legacy
     showProjectImage: { type: Boolean, default: true },
   },
   { _id: false },

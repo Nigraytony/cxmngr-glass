@@ -382,9 +382,21 @@ function renderDataSection(dataSource, data) {
 // Cover, TOC, sections, and the outer document.
 // =========================================================================
 
+// Pick the cover logo per the report's cover.logoSource setting. Returns a data URI
+// or URL (Puppeteer embeds both), or '' for none / when the chosen logo is missing.
+function pickCoverLogo(project, cover) {
+  const src = (cover && cover.logoSource) || 'commissioning_agent'
+  if (src === 'none') return ''
+  if (src === 'custom') return (cover && (cover.customLogoUrl || cover.ownerLogoBlobUrl)) || ''
+  if (src === 'client') return (project && project.logo) || ''
+  // default: commissioning agent
+  return (project && project.commissioning_agent && project.commissioning_agent.logo) || ''
+}
+
 function renderCover(project, report) {
-  const title = (report.cover && report.cover.title) || 'Commissioning Final Report'
-  const subtitle = (report.cover && report.cover.subtitle) || (project && project.client) || ''
+  const cover = report.cover || {}
+  const title = cover.title || 'Commissioning Final Report'
+  const subtitle = cover.subtitle || (project && project.client) || ''
   const projectName = (project && project.name) || ''
   const location = (project && project.location) || ''
   const ca = project && project.commissioning_agent
@@ -392,10 +404,11 @@ function renderCover(project, report) {
   const caCompany = (ca && ca.company) || ''
   const generated = formatDate(new Date())
   const version = report.currentVersion ? `Version v${report.currentVersion}` : 'Draft'
+  const logo = pickCoverLogo(project, cover)
   return `
     <section class="cover">
       <div class="cover-brand">
-        <div class="cover-brand-mark">cxma</div>
+        ${logo ? `<img class="cover-logo" src="${escapeHtml(logo)}" alt="" />` : ''}
       </div>
       <div class="cover-body">
         <h1 class="cover-title">${escapeHtml(title)}</h1>
@@ -460,12 +473,8 @@ function buildStyles() {
       justify-content: space-between;
       background: linear-gradient(180deg, #f8fafc 0%, #e0e7ff 100%);
     }
-    .cover-brand-mark {
-      font-size: 28pt;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      color: #1e3a8a;
-    }
+    .cover-brand { min-height: 90px; }
+    .cover-logo { max-height: 110px; max-width: 320px; object-fit: contain; }
     .cover-body { margin-top: auto; }
     .cover-title { font-size: 32pt; color: #1e3a8a; margin-bottom: 0.3em; }
     .cover-project { font-size: 22pt; color: #1f2937; margin-bottom: 0.3em; font-weight: 600; }

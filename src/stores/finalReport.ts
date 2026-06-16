@@ -31,9 +31,12 @@ export type FinalReportRelease = {
   note: string
 }
 
+export type FinalReportCoverLogoSource = 'commissioning_agent' | 'client' | 'custom' | 'none'
 export type FinalReportCover = {
   title: string
   subtitle: string
+  logoSource: FinalReportCoverLogoSource
+  customLogoUrl: string | null
   ownerLogoBlobUrl: string | null
   showProjectImage: boolean
 }
