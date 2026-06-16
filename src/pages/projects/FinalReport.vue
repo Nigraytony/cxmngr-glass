@@ -45,6 +45,17 @@
 
         <button
           v-if="canEdit"
+          :disabled="isLocked || saving"
+          class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          title="Cover page settings"
+          @click="openCoverModal"
+        >
+          <span>🖼</span>
+          <span>Cover…</span>
+        </button>
+
+        <button
+          v-if="canEdit"
           :disabled="!hasUnsavedChanges || saving"
           class="px-3 py-1.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           @click="onSave"
@@ -341,6 +352,132 @@
         </div>
       </div>
     </div>
+
+    <!-- Cover page settings modal -->
+    <div
+      v-if="showCoverModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      @click.self="showCoverModal = false"
+    >
+      <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900/95 border border-white/15 p-5 space-y-4">
+        <div class="text-lg font-semibold text-white">
+          Cover page settings
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-xs text-white/60">Title</label>
+          <input
+            v-model="coverDraft.title"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+            placeholder="Commissioning Final Report"
+          >
+        </div>
+        <div class="space-y-1">
+          <label class="block text-xs text-white/60">Subtitle</label>
+          <input
+            v-model="coverDraft.subtitle"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+            placeholder="Client / sub-heading"
+          >
+        </div>
+
+        <div class="space-y-2">
+          <div class="text-xs text-white/60">Cover logo</div>
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+            <input
+              v-model="coverDraft.logoSource"
+              type="radio"
+              value="commissioning_agent"
+              :disabled="!caLogo"
+            >
+            <span>Commissioning Agent logo</span>
+            <span
+              v-if="!caLogo"
+              class="text-xs text-white/40"
+            >(none on this project)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+            <input
+              v-model="coverDraft.logoSource"
+              type="radio"
+              value="client"
+              :disabled="!clientLogo"
+            >
+            <span>Client logo</span>
+            <span
+              v-if="!clientLogo"
+              class="text-xs text-white/40"
+            >(none on this project)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+            <input
+              v-model="coverDraft.logoSource"
+              type="radio"
+              value="custom"
+            >
+            <span>Uploaded image</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-white">
+            <input
+              v-model="coverDraft.logoSource"
+              type="radio"
+              value="none"
+            >
+            <span>No logo</span>
+          </label>
+
+          <div
+            v-if="coverDraft.logoSource === 'custom'"
+            class="pl-6"
+          >
+            <input
+              type="file"
+              accept="image/*"
+              class="text-xs text-white/70 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-white/15 file:text-white"
+              @change="onCoverLogoFile"
+            >
+            <p class="text-[11px] text-white/40 mt-1">
+              PNG/JPG/SVG, up to 2 MB.
+            </p>
+          </div>
+
+          <div
+            v-if="coverLogoPreview"
+            class="mt-2 rounded-lg border border-white/10 bg-white/5 p-3 flex items-center justify-center"
+          >
+            <img
+              :src="coverLogoPreview"
+              alt="Cover logo preview"
+              class="max-h-20 max-w-[240px] object-contain"
+            >
+          </div>
+        </div>
+
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-white/85">
+          <input
+            v-model="coverDraft.showProjectImage"
+            type="checkbox"
+          >
+          <span>Show project image on the cover</span>
+        </label>
+
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button
+            class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm"
+            @click="showCoverModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            :disabled="saving"
+            class="px-3 py-1.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-white text-sm disabled:opacity-50"
+            @click="onSaveCover"
+          >
+            {{ saving ? 'Saving…' : 'Save cover' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -352,7 +489,7 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import { hasTemplate, renderTemplate, type TemplateContext } from '../../utils/finalReportTemplates'
 import DataSectionTable from '../../components/finalReport/DataSectionTable.vue'
-import { useFinalReportStore, type FinalReportSection } from '../../stores/finalReport'
+import { useFinalReportStore, type FinalReportSection, type FinalReportCover } from '../../stores/finalReport'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 
@@ -376,6 +513,56 @@ const hasUnsavedChanges = ref(false)
 const showLockModal = ref(false)
 const lockChoice = ref<'in_review' | 'final'>('in_review')
 const lockNote = ref('')
+
+// --- Cover page settings ---
+const showCoverModal = ref(false)
+const coverDraft = ref<FinalReportCover>({
+  title: '', subtitle: '', logoSource: 'commissioning_agent', customLogoUrl: null, ownerLogoBlobUrl: null, showProjectImage: true,
+})
+const caLogo = computed(() => String((project.value && project.value.commissioning_agent && project.value.commissioning_agent.logo) || ''))
+const clientLogo = computed(() => String((project.value && project.value.logo) || ''))
+const coverLogoPreview = computed(() => {
+  const s = coverDraft.value.logoSource
+  if (s === 'commissioning_agent') return caLogo.value
+  if (s === 'client') return clientLogo.value
+  if (s === 'custom') return String(coverDraft.value.customLogoUrl || '')
+  return ''
+})
+
+function openCoverModal() {
+  const c: any = (report.value && report.value.cover) || {}
+  coverDraft.value = {
+    title: c.title || '',
+    subtitle: c.subtitle || '',
+    logoSource: c.logoSource || 'commissioning_agent',
+    customLogoUrl: c.customLogoUrl || null,
+    ownerLogoBlobUrl: c.ownerLogoBlobUrl || null,
+    showProjectImage: c.showProjectImage !== false,
+  }
+  showCoverModal.value = true
+}
+
+function onCoverLogoFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files && input.files[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) { ui.showError('Please choose an image file'); return }
+  if (file.size > 2 * 1024 * 1024) { ui.showError('Image must be under 2 MB'); return }
+  const reader = new FileReader()
+  reader.onload = () => { coverDraft.value.customLogoUrl = String(reader.result || ''); coverDraft.value.logoSource = 'custom' }
+  reader.onerror = () => ui.showError('Failed to read image')
+  reader.readAsDataURL(file)
+}
+
+async function onSaveCover() {
+  try {
+    await store.save({ cover: coverDraft.value })
+    showCoverModal.value = false
+    ui.showSuccess('Cover settings saved')
+  } catch (e: any) {
+    ui.showError(store.error || 'Failed to save cover settings')
+  }
+}
 
 const selectedSection = computed(() => {
   if (!selectedKey.value) return null
