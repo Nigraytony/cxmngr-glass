@@ -138,6 +138,7 @@ async function loadOrCreateReport(req, res, next) {
       // anything missing. Idempotent and preserves user-customised content.
       const existingKeys = new Set((report.sections || []).map((s) => s.key))
       const missing = (FinalReport.DEFAULT_SECTIONS || []).filter((d) => !existingKeys.has(d.key))
+      let changed = false
       if (missing.length) {
         for (const d of missing) {
           report.sections.push({
@@ -153,6 +154,25 @@ async function loadOrCreateReport(req, res, next) {
             includeInToc: true,
           })
         }
+        changed = true
+      }
+
+      // Order repair: Construction Checklist Summary should precede Functional
+      // Performance Test Results. Older reports were created with FPT first; flip
+      // them, but only when still on that exact legacy default (fpt=130, checklist=140)
+      // so an intentional custom ordering is preserved. Idempotent.
+      const fpt = (report.sections || []).find((s) => s.key === 'fpt-results')
+      const chk = (report.sections || []).find((s) => s.key === 'checklist-summary')
+      if (fpt && chk && Number(fpt.order) === 130 && Number(chk.order) === 140) {
+        chk.order = 130
+        fpt.order = 140
+        changed = true
+      }
+
+      if (changed) {
+        // Keep the stored array in render order so the editor (array order) and the
+        // PDF (sorted by `order`) agree, and backfilled sections land in the right spot.
+        report.sections.sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
         try { await report.save() } catch (_) { /* best-effort */ }
       }
     }
