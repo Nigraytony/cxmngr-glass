@@ -349,6 +349,7 @@ async function fetchRevisions({ projectId }) {
   const releases = Array.isArray(report && report.releases) ? report.releases : []
   const rows = [
     ...manual.map((r) => ({
+      id: r._id ? String(r._id) : '',
       versionLabel: r.versionLabel || '',
       summary: r.summary || '',
       reviser: r.reviserName || '',

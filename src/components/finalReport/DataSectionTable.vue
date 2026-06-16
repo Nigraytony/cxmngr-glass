@@ -556,6 +556,12 @@
           <th :class="thClass + ' w-24'">
             Kind
           </th>
+          <th
+            v-if="editable"
+            :class="thClass + ' w-12'"
+          >
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -582,13 +588,75 @@
               :class="r.kind === 'release' ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100' : 'bg-white/10 border-white/20 text-white/70'"
             >{{ r.kind }}</span>
           </td>
+          <td
+            v-if="editable"
+            :class="tdClass + ' text-right'"
+          >
+            <button
+              v-if="r.kind === 'manual' && r.id"
+              type="button"
+              class="px-2 py-1 rounded-md text-red-300 hover:text-red-200 hover:bg-red-500/10 text-xs"
+              title="Delete revision"
+              @click="emit('delete-revision', r.id)"
+            >
+              ✕
+            </button>
+          </td>
         </tr>
-        <tr v-if="!(data.rows || []).length">
+        <tr v-if="!(data.rows || []).length && !editable">
           <td
             colspan="5"
             :class="emptyClass"
           >
             No revisions yet — add a manual entry or lock a release.
+          </td>
+        </tr>
+        <!-- Add manual revision -->
+        <tr
+          v-if="editable"
+          class="border-t border-white/10 bg-white/3"
+        >
+          <td class="px-3 py-2 align-top">
+            <input
+              v-model="newRevision.versionLabel"
+              placeholder="e.g. 1.0"
+              class="w-full rounded p-1.5 bg-white/5 border border-white/15 text-sm placeholder-white/40"
+            >
+          </td>
+          <td class="px-3 py-2 align-top">
+            <input
+              v-model="newRevision.summary"
+              placeholder="Summary of changes"
+              class="w-full rounded p-1.5 bg-white/5 border border-white/15 text-sm placeholder-white/40"
+              @keyup.enter="submitRevision"
+            >
+          </td>
+          <td class="px-3 py-2 align-top">
+            <input
+              v-model="newRevision.reviserName"
+              placeholder="Reviser"
+              class="w-full rounded p-1.5 bg-white/5 border border-white/15 text-sm placeholder-white/40"
+            >
+          </td>
+          <td class="px-3 py-2 align-top">
+            <input
+              v-model="newRevision.date"
+              type="date"
+              class="w-full rounded p-1.5 bg-white/5 border border-white/15 text-sm"
+            >
+          </td>
+          <td
+            class="px-3 py-2 align-top"
+            colspan="2"
+          >
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-md bg-emerald-600/80 border border-emerald-400/60 text-white hover:bg-emerald-600 text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+              :disabled="!newRevision.versionLabel.trim() && !newRevision.summary.trim()"
+              @click="submitRevision"
+            >
+              + Add
+            </button>
           </td>
         </tr>
       </tbody>
@@ -1241,10 +1309,32 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+
 defineProps<{
   dataSource: string | null
   data: any
+  editable?: boolean
 }>()
+
+const emit = defineEmits<{
+  (e: 'add-revision', payload: { versionLabel: string; summary: string; reviserName: string; date: string }): void
+  (e: 'delete-revision', id: string): void
+}>()
+
+// Manual revision-log add form (Revisions section).
+const newRevision = ref({ versionLabel: '', summary: '', reviserName: '', date: '' })
+function submitRevision() {
+  const p = newRevision.value
+  if (!p.versionLabel.trim() && !p.summary.trim()) return
+  emit('add-revision', {
+    versionLabel: p.versionLabel.trim(),
+    summary: p.summary.trim(),
+    reviserName: p.reviserName.trim(),
+    date: p.date,
+  })
+  newRevision.value = { versionLabel: '', summary: '', reviserName: '', date: '' }
+}
 
 // Tailwind class shorthands — reused across every table block above.
 const theadClass = 'bg-white/5 text-white/55 text-xs uppercase tracking-wide'

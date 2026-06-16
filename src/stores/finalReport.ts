@@ -250,6 +250,34 @@ export const useFinalReportStore = defineStore('finalReport', () => {
     }
   }
 
+  /** Add a manual entry to the revision log, then refresh the Revisions section. */
+  async function addRevision(entry: { versionLabel?: string; summary?: string; reviserName?: string; date?: string }): Promise<void> {
+    const projectId = report.value?.projectId
+    if (!projectId) throw new Error('Report not loaded')
+    error.value = null
+    try {
+      await http.post(`/api/projects/${projectId}/final-report/revisions`, entry)
+      await refreshSection('revisions')
+    } catch (e) {
+      setError(e, 'Failed to add revision')
+      throw e
+    }
+  }
+
+  /** Remove a manual revision-log entry, then refresh the Revisions section. */
+  async function deleteRevision(revisionId: string): Promise<void> {
+    const projectId = report.value?.projectId
+    if (!projectId) throw new Error('Report not loaded')
+    error.value = null
+    try {
+      await http.delete(`/api/projects/${projectId}/final-report/revisions/${encodeURIComponent(revisionId)}`)
+      await refreshSection('revisions')
+    } catch (e) {
+      setError(e, 'Failed to delete revision')
+      throw e
+    }
+  }
+
   function reset() {
     report.value = null
     sectionData.value = {}
@@ -274,6 +302,8 @@ export const useFinalReportStore = defineStore('finalReport', () => {
     unlock,
     generatePdf,
     getReleasePdfUrl,
+    addRevision,
+    deleteRevision,
     reset,
   }
 })
