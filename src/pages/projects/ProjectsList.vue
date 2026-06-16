@@ -830,7 +830,7 @@ function goNextFromDetails() {
 // Pagination
 const page = ref(1)
 // Initialize pageSize default; we'll load the user's preference (profile or session) below
-const pageSize = ref(5)
+const pageSize = ref(10)
 const pageSizes = [5, 10, 20]
 
 // Re-fetch projects when paging/sort/search changes. `page` is declared above.
