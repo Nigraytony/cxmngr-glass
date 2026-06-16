@@ -489,14 +489,18 @@ router.post('/pdf', loadOrCreateReport, async (req, res) => {
       expiresAt: sas.expiresAt,
     })
   } catch (e) {
+    // Always log the full error (including the underlying Chromium cause) so prod
+    // failures are diagnosable from the App Service log stream.
+    console.error('[final-report] PDF generation error', e && (e.stack || e), '| cause:', e && e.cause && (e.cause.stack || e.cause.message || e.cause))
+    const detail = (e && e.cause && (e.cause.message || String(e.cause))) || (e && e.message) || ''
     if (e && e.status) {
       const body = { error: e.message || 'Failed to generate PDF' }
       if (e.code) body.code = e.code
       if (e.hint) body.hint = e.hint
+      if (detail) body.detail = detail
       return res.status(e.status).json(body)
     }
-    console.error('[final-report] PDF generation error', e)
-    return res.status(500).json({ error: 'Failed to generate PDF' })
+    return res.status(500).json({ error: 'Failed to generate PDF', detail })
   }
 })
 
