@@ -22,20 +22,7 @@ const Project = require('../models/project')
 const { fetchDataSource } = require('../utils/finalReportDataSources')
 const { buildReportHtml, buildHeaderTemplate, buildFooterTemplate } = require('./finalReportHtml')
 const { generateBlobSasUrl, blobExists } = require('../utils/blobSas')
-
-function requirePuppeteer() {
-  try {
-    // eslint-disable-next-line global-require
-    return require('puppeteer')
-  } catch (e) {
-    const err = new Error('Puppeteer is not installed on this host')
-    err.status = 503
-    err.code = 'PDF_RENDERER_UNAVAILABLE'
-    err.hint = 'Run `npm install puppeteer` on the backend; ensure Chromium can launch.'
-    err.cause = e
-    throw err
-  }
-}
+const { launchBrowser } = require('../utils/puppeteerLauncher')
 
 /**
  * Refresh every enabled data section. Returns a map keyed by section.key
@@ -69,13 +56,9 @@ async function fetchAllSectionData(report) {
  * Mirrors the launch args used by docsPreview.js for consistency.
  */
 async function renderHtmlToPdfBuffer(html, { headerHtml, footerHtml }) {
-  const puppeteer = requirePuppeteer()
   let browser
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    })
+    browser = await launchBrowser()
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'load', timeout: 60000 })
     const buf = await page.pdf({

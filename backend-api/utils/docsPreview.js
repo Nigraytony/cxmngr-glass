@@ -140,23 +140,10 @@ function wrapHtmlDocument(bodyHtml) {
 }
 
 async function renderHtmlToPdf(html, outPdfPath) {
-  let puppeteer
-  try {
-    puppeteer = require('puppeteer')
-  } catch (e) {
-    const err = new Error('Preview converter is not available (Puppeteer is not installed)')
-    err.status = 503
-    err.code = 'PREVIEW_CONVERTER_UNAVAILABLE'
-    err.hint = 'Install Puppeteer on the backend to enable Office previews.'
-    err.cause = e
-    throw err
-  }
+  const { launchBrowser } = require('./puppeteerLauncher')
   let browser
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    })
+    browser = await launchBrowser()
     const page = await browser.newPage()
     await page.setContent(html, { waitUntil: 'load', timeout: 30000 })
     await page.pdf({
