@@ -602,9 +602,13 @@ function buildHeaderTemplate(projectName, projectNumber) {
 }
 
 function buildFooterTemplate(reportTitle) {
+  // NB: Chromium resets the header/footer font-size to 0 by default, and the text it
+  // injects into .pageNumber/.totalPages doesn't reliably inherit the parent size on
+  // every Chromium build — so set font-size explicitly on those spans too, or the
+  // page numbers render blank ("Page  of ").
   return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#94a3b8; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-    <span><span style="font-weight:600; color:#1e3a8a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
-    <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+    <span style="font-size:8pt;"><span style="font-weight:600; color:#1e3a8a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
+    <span style="font-size:8pt;">Page <span class="pageNumber" style="font-size:8pt;"></span> of <span class="totalPages" style="font-size:8pt;"></span></span>
   </div>`
 }
 
