@@ -265,6 +265,9 @@
             <DataSectionTable
               :data-source="selectedSection.dataSource"
               :data="sectionData[selectedSection.key]"
+              :editable="canEdit && !isLocked"
+              @add-revision="onAddRevision"
+              @delete-revision="onDeleteRevision"
             />
           </div>
         </div>
@@ -505,6 +508,23 @@ async function onRefreshSection(key: string) {
     ui.showError(store.error || 'Failed to refresh section')
   } finally {
     refreshingKey.value = null
+  }
+}
+
+async function onAddRevision(payload: { versionLabel: string; summary: string; reviserName: string; date: string }) {
+  try {
+    await store.addRevision(payload)
+    ui.showSuccess('Revision added')
+  } catch (e: any) {
+    ui.showError(store.error || 'Failed to add revision')
+  }
+}
+
+async function onDeleteRevision(id: string) {
+  try {
+    await store.deleteRevision(id)
+  } catch (e: any) {
+    ui.showError(store.error || 'Failed to delete revision')
   }
 }
 

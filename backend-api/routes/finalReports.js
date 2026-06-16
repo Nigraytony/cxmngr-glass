@@ -307,6 +307,51 @@ router.put('/', loadOrCreateReport, requireEditAccess, requireUnlockedForEdit, a
 })
 
 /**
+ * Manual revision log (FinalReport.revisions[], kind='manual'). The Revisions data
+ * section merges these with release-derived rows at render time. Editing is blocked
+ * on locked reports, same as section edits.
+ *
+ * POST   /revisions             — add a manual entry
+ * DELETE /revisions/:revisionId — remove a manual entry
+ */
+router.post('/revisions', loadOrCreateReport, requireEditAccess, requireUnlockedForEdit, async (req, res) => {
+  try {
+    const report = req.finalReport
+    const b = req.body || {}
+    const versionLabel = asString(b.versionLabel || '').trim()
+    const summary = asString(b.summary || '').trim()
+    if (!versionLabel && !summary) return res.status(400).json({ error: 'A version label or summary is required' })
+    const d = b.date ? new Date(b.date) : new Date()
+    report.revisions.push({
+      versionLabel,
+      summary,
+      reviserName: asString(b.reviserName || '').trim(),
+      reviserUserId: req.user._id || req.user.id || null,
+      date: Number.isNaN(d.getTime()) ? new Date() : d,
+      kind: 'manual',
+    })
+    await report.save()
+    return res.json({ ok: true })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to add revision' })
+  }
+})
+
+router.delete('/revisions/:revisionId', loadOrCreateReport, requireEditAccess, requireUnlockedForEdit, async (req, res) => {
+  try {
+    const report = req.finalReport
+    const rid = asString(req.params.revisionId).trim()
+    const sub = report.revisions && typeof report.revisions.id === 'function' ? report.revisions.id(rid) : null
+    if (!sub) return res.status(404).json({ error: 'Revision not found' })
+    report.revisions.pull(rid)
+    await report.save()
+    return res.json({ ok: true })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to delete revision' })
+  }
+})
+
+/**
  * POST /api/projects/:projectId/final-report/sections/:key/refresh
  * Re-pull live data for a single data section. Returns the fresh dataset.
  * Does not persist anything — the data is computed on render.
