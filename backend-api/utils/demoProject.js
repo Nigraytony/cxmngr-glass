@@ -85,6 +85,16 @@ function applyDemoTaskOverlay(tasks) {
 const DEMO_USER_EMAIL = String(process.env.DEMO_USER_EMAIL || 'demo@cxma.io').trim().toLowerCase()
 const DEMO_PROJECT_NAME = 'Cxma Live Demo — Riverside Medical Center'
 
+// Curated project tag library for the demo (the governed vocabulary used by the tag
+// filter and AI auto-tag). The phasing/location tags match what's applied to the demo
+// equipment (see PHASE_LOCATION_TAGS) so filtering returns results; the rest are
+// standard Cx dimensions that round out the library for the auto-tag demo.
+const DEMO_TAG_LIBRARY = [
+  'Phase 1', 'Phase 2',
+  'Central Plant', 'Boiler Room', 'Cooling Tower Yard', 'Penthouse', 'Building',
+  'Critical Path', 'Long Lead', 'Life Safety', 'LEED',
+]
+
 function premiumFeatures() {
   try {
     const premium = Array.isArray(plans) ? plans.find((p) => p && p.key === 'premium') : null
@@ -366,6 +376,7 @@ async function seedDemoProject() {
   project.deleted = false
   project.isActive = true
   project.subscriptionTier = 'premium'
+  project.tags = DEMO_TAG_LIBRARY.slice() // curated tag library for the tag filter + AI auto-tag
   if (features) project.subscriptionFeatures = features
   // Team = demo user (admin) + the OPR workshop attendees (members), so the roster
   // matches the people who appear in the OPR history.
