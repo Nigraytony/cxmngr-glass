@@ -873,12 +873,15 @@ router.post('/create-checkout-session', auth, requireBodyField('projectId'), req
       }),
       success_url: `${process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/app/projects/edit/${project._id}?checkout=success`,
       cancel_url: `${process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173'}/app/projects/edit/${project._id}?checkout=cancel`,
-      allow_promotion_codes: true,
       client_reference_id: String(project._id),
       metadata: { projectId: String(project._id), userId: String(user._id) },
     };
+    // Stripe rejects a session that sets both `discounts` and `allow_promotion_codes`.
+    // Pre-apply a specific code when provided; otherwise expose the promo-code field.
     if (promotionCode) {
       sessionParams.discounts = [{ promotion_code: promotionCode }];
+    } else {
+      sessionParams.allow_promotion_codes = true;
     }
 
     // Persist intended price + plan defaults on project so UI gating is consistent
