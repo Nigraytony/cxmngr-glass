@@ -703,14 +703,34 @@ router.post('/link/items', requireOprAdmin, async (req, res) => {
         projectId,
         categoryId: item.categoryId,
         text: item.text,
+        // rank is required and unique per active category; score is required.
+        // Manual adds don't supply them, so backfill below / default score to 0.
         rank: item.rank,
-        score: item.score,
+        score: Number.isFinite(item.score) ? item.score : 0,
         status: 'active',
         createdBy: req.user._id,
         updatedBy: req.user._id,
         createdAt: now,
         updatedAt: now,
       })
+    }
+
+    // Assign a sequential rank to any item missing one, continuing after the highest
+    // existing active rank in its category (and within this batch), so the required +
+    // unique rank constraint is satisfied instead of silently failing validation.
+    const nextRankByCat = {}
+    const needRank = [...new Set(docs.filter((d) => !Number.isFinite(d.rank)).map((d) => String(d.categoryId)))]
+    for (const cat of needRank) {
+      const top = await OprItem.find({ orgId, projectId, categoryId: cat, status: 'active' })
+        .sort({ rank: -1 }).limit(1).select('rank').lean()
+      nextRankByCat[cat] = (top[0] && Number.isFinite(top[0].rank)) ? Number(top[0].rank) : 0
+    }
+    for (const d of docs) {
+      if (!Number.isFinite(d.rank)) {
+        const cat = String(d.categoryId)
+        nextRankByCat[cat] = (nextRankByCat[cat] || 0) + 1
+        d.rank = nextRankByCat[cat]
+      }
     }
 
     const inserted = await OprItem.insertMany(docs, { ordered: false })
