@@ -958,6 +958,9 @@ router.post('/project/:id/addons/opr/checkout', auth, async (req, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
+      // Show the "Add promotion code" field on the hosted checkout page so a
+      // customer can apply a coupon (validated against active Stripe promo codes).
+      allow_promotion_codes: true,
       client_reference_id: String(project._id),
       metadata: {
         projectId: String(project._id),
