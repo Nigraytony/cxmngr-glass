@@ -173,11 +173,16 @@ async function buildRestoreCheckoutUrl(project, user, { promotionCode } = {}) {
     },
     success_url: `${base}/app/projects/edit/${project._id}?checkout=success&intent=restore`,
     cancel_url: `${base}/app/projects/edit/${project._id}?checkout=cancel`,
-    allow_promotion_codes: true,
     client_reference_id: String(project._id),
     metadata: { projectId: String(project._id), userId: String(user._id), intent: 'restore' },
   };
-  if (promotionCode) sessionParams.discounts = [{ promotion_code: promotionCode }];
+  // Stripe rejects a session that sets both `discounts` and `allow_promotion_codes`.
+  // Pre-apply a specific code when provided; otherwise expose the promo-code field.
+  if (promotionCode) {
+    sessionParams.discounts = [{ promotion_code: promotionCode }];
+  } else {
+    sessionParams.allow_promotion_codes = true;
+  }
 
   let idempotencyKey;
   try {
