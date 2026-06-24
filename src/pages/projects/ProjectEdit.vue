@@ -1477,6 +1477,34 @@
                 <p class="text-xs text-white/60 mt-1 max-w-2xl">
                   Tip: use commas or Enter to add multiple tags.
                 </p>
+
+                <div
+                  v-if="isProjectAdmin"
+                  class="mt-3"
+                >
+                  <div class="text-xs text-white/60 mb-1.5">
+                    Quick add a category
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="cat in tagCategorySuggestions"
+                      :key="cat.label"
+                      type="button"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-400/20 hover:bg-sky-500/15 text-xs text-sky-100 disabled:opacity-40"
+                      :disabled="tagsRemainingForCategory(cat) === 0"
+                      :title="`Adds: ${cat.tags.join(', ')}`"
+                      @click="addTagCategory(cat)"
+                    >
+                      <span>{{ cat.label }}</span>
+                      <span class="text-sky-200/60">
+                        {{ tagsRemainingForCategory(cat) === 0 ? '✓' : `+${tagsRemainingForCategory(cat)}` }}
+                      </span>
+                    </button>
+                  </div>
+                  <p class="text-xs text-white/50 mt-1 max-w-2xl">
+                    Adds a starter set of tags you can then trim. Existing tags are skipped.
+                  </p>
+                </div>
               </div>
             </div>
             <!-- AI configuration (Premium only) -->
@@ -3616,6 +3644,28 @@ function removeProjectTag(tag: string) {
   if (!project.value) return
   const key = String(tag || '').trim().toLowerCase()
   project.value.tags = (project.value.tags || []).filter((t: any) => String(t || '').trim().toLowerCase() !== key)
+}
+
+// Curated tag-category presets: clicking a category adds its set of tags at once, so a
+// project gets a sensible starter vocabulary without typing each one. Title Case, no
+// hyphens — matches the seeded demo tag library style.
+const tagCategorySuggestions: Array<{ label: string; tags: string[] }> = [
+  { label: 'Phases', tags: ['Design', 'Construction', 'Testing', 'Warranty'] },
+  { label: 'Disciplines', tags: ['Mechanical', 'Electrical', 'Plumbing', 'Controls', 'Fire Protection'] },
+  { label: 'Systems', tags: ['HVAC', 'Lighting', 'Domestic Water', 'Fire Alarm', 'Emergency Power'] },
+  { label: 'Priority', tags: ['Critical Path', 'Long Lead', 'Life Safety', 'Punch List', 'Rework'] },
+  { label: 'Locations', tags: ['Central Plant', 'Penthouse', 'Roof', 'Basement', 'Mechanical Room'] },
+]
+
+// How many of a category's tags aren't already on the project (case-insensitive).
+function tagsRemainingForCategory(cat: { tags: string[] }): number {
+  const existing = new Set((project.value?.tags || []).map((t: any) => String(t || '').trim().toLowerCase()))
+  return cat.tags.filter((t) => !existing.has(t.trim().toLowerCase())).length
+}
+
+function addTagCategory(cat: { tags: string[] }) {
+  if (!project.value || !isProjectAdmin.value) return
+  project.value.tags = normalizeProjectTags([...(project.value.tags || []), ...cat.tags])
 }
 
 // Issues per-page (local, per-project) preference UI
