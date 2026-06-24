@@ -1002,7 +1002,7 @@
           <div
             v-for="issue in pagedIssues"
             :key="issue.id"
-            :class="['rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:items-center gap-2 shadow-sm transition-opacity', isClosedRow(issue) ? 'opacity-60' : '']"
+            :class="['rounded-xl bg-white/10 border border-white/10 p-2 flex flex-col md:flex-row md:flex-wrap md:items-center gap-2 shadow-sm transition-opacity', isClosedRow(issue) ? 'opacity-60' : '']"
           >
             <!-- Left: Main info -->
             <router-link
@@ -1121,6 +1121,30 @@
             <div class="flex flex-col items-end min-w-[120px] justify-end">
               <div class="flex flex-row items-center gap-1">
                 <button
+                  class="w-6 h-6 grid place-items-center rounded border p-0"
+                  :class="isExpanded(issue) ? 'bg-sky-500/30 border-sky-400/40 text-sky-100' : 'bg-white/10 hover:bg-white/20 text-white border-white/10'"
+                  :aria-expanded="isExpanded(issue) ? 'true' : 'false'"
+                  aria-label="Toggle photos and comments"
+                  :title="isExpanded(issue) ? 'Hide photos & comments' : 'Show photos & comments'"
+                  @click="toggleReveal(issue)"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-3 h-3 transition-transform"
+                    :class="isExpanded(issue) ? 'rotate-180' : ''"
+                  >
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
                   class="w-6 h-6 grid place-items-center rounded bg-white/10 hover:bg-white/20 text-white border border-white/10 p-0"
                   aria-label="Visit issue"
                   :title="`Visit issue #${issue.number || ''}`"
@@ -1230,6 +1254,54 @@
                   :class="isClosedRow(issue) ? 'text-emerald-200' : 'text-white/60'"
                 >{{ isClosedRow(issue) ? 'YES' : 'NO' }}</span>
               </div>
+            </div>
+            <!-- Inline reveal: photos + comments -->
+            <div
+              v-if="isExpanded(issue)"
+              class="w-full mt-1 rounded-lg bg-black/20 border border-white/10 p-3"
+            >
+              <div
+                v-if="revealLoading[issue.id]"
+                class="text-white/60 text-sm py-2"
+              >
+                Loading…
+              </div>
+              <template v-else>
+                <div
+                  v-if="revealError[issue.id]"
+                  class="text-rose-200 text-sm mb-2"
+                >
+                  {{ revealError[issue.id] }}
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div class="min-w-0">
+                    <div class="text-xs uppercase tracking-wide text-white/50 mb-2">
+                      Photos
+                    </div>
+                    <AzurePhotosPanel
+                      :project-id="rowProjectId(issue)"
+                      entity-type="Issue"
+                      :entity-id="String(issue.id)"
+                      :disabled="isClosedRow(issue)"
+                      :max-count="16"
+                      :max-bytes="256 * 1024"
+                      :concurrency="3"
+                    />
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs uppercase tracking-wide text-white/50 mb-2">
+                      Comments
+                    </div>
+                    <Comments
+                      :model-value="revealComments[issue.id] || []"
+                      :on-add="(text) => revealAddComment(issue, text)"
+                      :on-edit="(c, idx, next) => revealEditComment(issue, c, idx, next)"
+                      :on-delete="(c, idx) => revealDeleteComment(issue, c, idx)"
+                      @update:model-value="(v) => setRevealComments(String(issue.id), v)"
+                    />
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -2013,6 +2085,8 @@ import Spinner from '../../components/Spinner.vue'
 import IssuesListCharts from '../../components/charts/IssuesListCharts.vue'
 import type { IssuesAnalytics } from '../../components/charts/IssuesListCharts.vue'
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
+import Comments from '../../components/Comments.vue'
+import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useIssuesNavStore } from '../../stores/issuesNav'
@@ -3726,6 +3800,110 @@ function openView(issue: IssueRow) {
   if (!id) return
   rememberNavOrder()
   router.push({ name: 'issue-edit', params: { id } })
+}
+
+// ---- Inline reveal: photos + comments without leaving the list ----
+const expandedIssueId = ref('')
+const revealComments = ref<Record<string, any[]>>({})
+const revealLoading = ref<Record<string, boolean>>({})
+const revealError = ref<Record<string, string>>({})
+
+function rowProjectId(issue: any): string {
+  return String(issue?.projectId || projectStore.currentProjectId || '').trim()
+}
+function isExpanded(issue: any): boolean {
+  return expandedIssueId.value === String(issue?.id || issue?._id || '')
+}
+function setRevealComments(iid: string, arr: any[]) {
+  revealComments.value = { ...revealComments.value, [iid]: Array.isArray(arr) ? arr : [] }
+}
+
+async function toggleReveal(issue: any) {
+  const iid = String(issue?.id || issue?._id || '')
+  if (!iid) return
+  if (expandedIssueId.value === iid) { expandedIssueId.value = ''; return }
+  expandedIssueId.value = iid
+  // Comments aren't included in the list payload — fetch them once on first open.
+  if (revealComments.value[iid] === undefined) await loadRevealComments(issue)
+}
+
+async function loadRevealComments(issue: any) {
+  const iid = String(issue?.id || issue?._id || '')
+  if (!iid) return
+  const pid = rowProjectId(issue)
+  revealLoading.value = { ...revealLoading.value, [iid]: true }
+  revealError.value = { ...revealError.value, [iid]: '' }
+  try {
+    const { data } = await http.get(`/api/issues/${iid}`, { params: pid ? { projectId: pid } : {} })
+    setRevealComments(iid, Array.isArray(data?.comments) ? data.comments : [])
+  } catch (e: any) {
+    revealError.value = { ...revealError.value, [iid]: e?.response?.data?.error || e?.message || 'Failed to load comments' }
+    setRevealComments(iid, [])
+  } finally {
+    revealLoading.value = { ...revealLoading.value, [iid]: false }
+  }
+}
+
+// Mirror IssueEdit's comment save shape (trim avatar bloat, keep identity fields).
+function commentsForSave(arr: any[]): any[] {
+  return (arr || []).map((c: any) => ({
+    userId: c?.userId || undefined,
+    name: c?.name || '',
+    text: c?.text || c?.comment || '',
+    createdAt: c?.createdAt || new Date().toISOString(),
+    avatar: (typeof c?.avatar === 'string' && c.avatar.length < 1024) ? c.avatar : '',
+  }))
+}
+
+async function revealAddComment(issue: any, text: string) {
+  const iid = String(issue?.id || issue?._id || '')
+  const t = String(text || '').trim()
+  if (!iid || !t) return
+  const u: any = authStore.user || {}
+  const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Anonymous'
+  const avatar = u.avatar || u.contact?.avatar || ''
+  const cur = Array.isArray(revealComments.value[iid]) ? revealComments.value[iid] : []
+  const next = [...cur, { userId: u._id || u.id, name, avatar, text: t, createdAt: new Date().toISOString() }]
+  try {
+    await issuesStore.updateIssue(iid, { projectId: rowProjectId(issue), comments: commentsForSave(next) } as any)
+    setRevealComments(iid, next)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to add comment')
+    throw e
+  }
+}
+
+async function revealEditComment(issue: any, comment: any, index: number, nextText: string) {
+  const iid = String(issue?.id || issue?._id || '')
+  const t = String(nextText ?? comment?.text ?? '').trim()
+  if (!iid || !t) return
+  const cur = Array.isArray(revealComments.value[iid]) ? [...revealComments.value[iid]] : []
+  const idx = typeof index === 'number' && index >= 0 ? index : cur.findIndex((c: any) => c === comment)
+  if (idx < 0) return
+  cur[idx] = { ...(cur[idx] || {}), text: t }
+  try {
+    await issuesStore.updateIssue(iid, { projectId: rowProjectId(issue), comments: commentsForSave(cur) } as any)
+    setRevealComments(iid, cur)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to update comment')
+    throw e
+  }
+}
+
+async function revealDeleteComment(issue: any, comment: any, index: number) {
+  const iid = String(issue?.id || issue?._id || '')
+  if (!iid) return
+  const cur = Array.isArray(revealComments.value[iid]) ? [...revealComments.value[iid]] : []
+  const idx = typeof index === 'number' && index >= 0 ? index : cur.findIndex((c: any) => c === comment)
+  if (idx < 0) return
+  cur.splice(idx, 1)
+  try {
+    await issuesStore.updateIssue(iid, { projectId: rowProjectId(issue), comments: commentsForSave(cur) } as any)
+    setRevealComments(iid, cur)
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to remove comment')
+    throw e
+  }
 }
 
 async function onDelete(issue: IssueRow) {
