@@ -4638,8 +4638,8 @@ async function loadPlansAndSelect() {
     // Fallback only if the backend returns no plans; keep in sync with config/plans.js.
     const list = rawList.length ? rawList : [
       { key: 'basic', name: 'Basic', label: 'Basic — $69/mo', priceId: 'price_basic' },
-      { key: 'standard', name: 'Standard', label: 'Standard — $129/mo', priceId: 'price_standard' },
-      { key: 'premium', name: 'Premium', label: 'Premium — $249/mo', priceId: 'price_premium' },
+      { key: 'standard', name: 'Standard', label: 'Standard — $99/mo', priceId: 'price_standard' },
+      { key: 'premium', name: 'Premium', label: 'Premium — $149/mo', priceId: 'price_premium' },
     ];
     prices.value = list.map(p => {
       const id = String(p.priceId || p.key || '').trim() || String(p.key || 'basic');

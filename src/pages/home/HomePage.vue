@@ -456,7 +456,7 @@
               </p>
               <p class="text-xs font-semibold uppercase tracking-widest text-emerald-300">Standard</p>
               <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
-                $129<span class="text-sm font-medium text-slate-300">/project · mo</span>
+                $99<span class="text-sm font-medium text-slate-300">/project · mo</span>
               </p>
               <p class="mt-2 text-sm text-slate-200">
                 Full platform — Spaces, Activities, Final Report. The typical sweet spot.
@@ -466,7 +466,7 @@
             <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_18px_45px_rgba(2,6,23,0.4)] backdrop-blur-xl">
               <p class="text-xs font-semibold uppercase tracking-widest text-violet-300">Premium</p>
               <p class="mt-2 text-3xl font-semibold tracking-tight text-white">
-                $249<span class="text-sm font-medium text-slate-400">/project · mo</span>
+                $149<span class="text-sm font-medium text-slate-400">/project · mo</span>
               </p>
               <p class="mt-2 text-sm text-slate-300">
                 Everything, plus Tasks, Templates, AI assistant. New features first.
