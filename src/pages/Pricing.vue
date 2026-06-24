@@ -355,7 +355,7 @@
   // Billing cycle: monthly vs annual (display only)
   const billingCycle = ref('monthly')
   const annualFactor = 0.9
-  const baseMonthly = { basic: 69, standard: 129, premium: 249 }
+  const baseMonthly = { basic: 69, standard: 99, premium: 149 }
   const monthlyText = (v) => `$${v}/month per project`
   const annualText = (v) => `$${Math.round(v * annualFactor)}/month per project`
 

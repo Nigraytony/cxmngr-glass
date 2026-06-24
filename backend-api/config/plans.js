@@ -36,7 +36,7 @@ module.exports = [
   {
     key: 'standard',
     name: 'Standard',
-    label: 'Standard — $129/mo',
+    label: 'Standard — $99/mo',
     priceId: priceStandard,
     features: {
       issues: true,
@@ -64,7 +64,7 @@ module.exports = [
   {
     key: 'premium',
     name: 'Premium',
-    label: 'Premium — $249/mo',
+    label: 'Premium — $149/mo',
     priceId: pricePremium,
     features: {
       issues: true,
