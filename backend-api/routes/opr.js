@@ -836,6 +836,35 @@ router.post('/link/items/upsert', requireOprAdmin, async (req, res) => {
   }
 })
 
+// Admin-only: permanently delete OPR items (single or batch) by id, along with any
+// link evaluations that referenced them so coverage data isn't orphaned.
+router.post('/link/items/delete', requireOprAdmin, async (req, res) => {
+  try {
+    const orgId = req.oprOrgId
+    const projectId = asString(req.params.projectId).trim()
+
+    const idsRaw = Array.isArray(req.body && req.body.ids) ? req.body.ids : []
+    const ids = [...new Set(idsRaw.map((v) => asString(v).trim()).filter((id) => isHexObjectIdString(id)))]
+    if (!ids.length) return res.status(400).json({ error: 'ids is required' })
+    if (ids.length > 1000) return res.status(400).json({ error: 'Too many items (max 1000)' })
+
+    const result = await OprItem.deleteMany({ orgId, projectId, _id: { $in: ids } })
+    const deleted = Number(result && (result.deletedCount || 0))
+
+    // Best-effort cleanup of link evaluations for the removed items (non-fatal).
+    if (deleted) {
+      try {
+        await OprLinkEvaluation.deleteMany({ orgId, projectId, oprItemId: { $in: ids } })
+      } catch (e) { /* ignore evaluation cleanup errors */ }
+    }
+
+    return res.json({ ok: true, deleted })
+  } catch (e) {
+    const msg = e && e.message ? e.message : 'Failed to delete OPR items'
+    return res.status(500).json({ error: msg })
+  }
+})
+
 // Link evaluation (verification) endpoints: pass/fail/na/unverified per linked OPR item.
 router.get('/link/evaluations', async (req, res) => {
   try {

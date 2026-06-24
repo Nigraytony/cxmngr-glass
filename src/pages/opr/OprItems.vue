@@ -67,6 +67,37 @@
           </div>
         </div>
 
+        <div class="relative inline-block group shrink-0">
+          <button
+            :disabled="submitting || !projectId"
+            aria-label="Quick populate"
+            :title="quickTooltip"
+            class="w-10 h-10 flex items-center justify-center rounded-full bg-transparent hover:bg-white/10 text-white border border-white/10 disabled:opacity-40"
+            @click="openQuickPopulate"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3Z"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <div
+            role="tooltip"
+            class="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100"
+          >
+            {{ quickTooltip }}
+          </div>
+        </div>
+
         <div class="flex flex-wrap items-center gap-3 gap-y-2">
           <div class="flex items-center gap-2">
             <label class="text-white/70 text-sm">Category</label>
@@ -392,6 +423,32 @@
     <div class="grid grid-cols-12 gap-4">
       <div class="col-span-12">
         <div
+          v-if="selectedCount > 0"
+          class="mb-3 flex items-center justify-between gap-3 rounded-xl bg-sky-500/10 border border-sky-400/20 px-3 py-2"
+        >
+          <div class="text-sm text-white/85">
+            {{ selectedCount }} selected
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white/80 text-sm border border-white/10"
+              @click="clearSelection"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/25 text-rose-100 text-sm border border-rose-400/30 disabled:opacity-50"
+              :disabled="submitting"
+              @click="deleteSelected"
+            >
+              Delete selected
+            </button>
+          </div>
+        </div>
+
+        <div
           v-if="!loading && filtered.length === 0"
           class="px-2 py-6 text-white/70 text-sm"
         >
@@ -402,6 +459,15 @@
           v-else
           class="mt-2 flex flex-col gap-3"
         >
+          <label class="flex items-center gap-2 px-1 text-xs text-white/60 select-none">
+            <input
+              type="checkbox"
+              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+              :checked="pageAllSelected"
+              @change="toggleSelectAllOnPage"
+            >
+            Select all on this page
+          </label>
           <div
             v-for="it in pagedItems"
             :key="it.id"
@@ -410,6 +476,17 @@
               it.status === 'archived' ? 'opacity-60' : ''
             ]"
           >
+            <!-- Select -->
+            <label class="flex items-center pr-1 self-start md:self-center shrink-0">
+              <input
+                type="checkbox"
+                class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+                aria-label="Select OPR item"
+                :checked="!!rowSelected[it.id]"
+                @change="toggleRow(it.id, ($event.target as HTMLInputElement).checked)"
+              >
+            </label>
+
             <!-- Left: Tag column -->
             <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
               <div class="flex flex-col min-w-[70px] items-start">
@@ -502,7 +579,56 @@
             </div>
 
             <!-- Right: Actions -->
-            <div class="flex flex-col items-end min-w-[56px] justify-end gap-1">
+            <div class="flex flex-wrap items-end justify-end min-w-[56px] gap-1">
+              <button
+                type="button"
+                class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
+                aria-label="Edit OPR item"
+                title="Edit"
+                @click="openEdit(it)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M4 20h4L19 9l-4-4L4 16v4Z"
+                    stroke-width="1.5"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M13.5 6.5l4 4"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="w-8 h-8 grid place-items-center rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-100 border border-rose-400/25 disabled:opacity-50"
+                aria-label="Delete OPR item"
+                title="Delete"
+                :disabled="submitting"
+                @click="deleteOne(it)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  class="w-4 h-4"
+                >
+                  <path
+                    d="M5 7h14M10 7V5h4v2M6 7l1 13h10l1-13"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
               <button
                 type="button"
                 class="w-8 h-8 grid place-items-center rounded-lg bg-white/6 hover:bg-white/10 text-white border border-white/10"
@@ -725,6 +851,178 @@
     </Modal>
 
     <Modal
+      v-model="editOpen"
+      panel-class="max-w-xl"
+    >
+      <template #header>
+        <div class="flex items-center justify-between w-full gap-3">
+          <div class="text-lg font-semibold">
+            Edit OPR Item
+          </div>
+          <div class="text-sm text-white/60">
+            Admin only
+          </div>
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <label class="block">
+          <div class="text-white/70 text-sm mb-1">Category</div>
+          <select
+            v-model="editCategoryId"
+            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+          >
+            <option
+              v-for="c in categories"
+              :key="c.id"
+              :value="c.id"
+            >
+              {{ c.name }}
+            </option>
+          </select>
+        </label>
+
+        <label class="block">
+          <div class="text-white/70 text-sm mb-1">Text</div>
+          <textarea
+            v-model="editText"
+            rows="4"
+            class="w-full rounded-md bg-black/20 border border-white/15 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/30"
+            placeholder="OPR item text…"
+          />
+        </label>
+
+        <div
+          v-if="importError"
+          class="rounded-xl bg-rose-500/10 border border-rose-400/20 p-3 text-rose-100 text-sm"
+        >
+          {{ importError }}
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
+            @click="editOpen = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+            :disabled="submitting || !editText.trim()"
+            @click="saveEdit"
+          >
+            {{ submitting ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </template>
+    </Modal>
+
+    <Modal
+      v-model="quickOpen"
+      panel-class="max-w-2xl"
+    >
+      <template #header>
+        <div class="flex items-center justify-between w-full gap-3">
+          <div class="text-lg font-semibold">
+            Quick populate OPR
+          </div>
+          <div class="text-sm text-white/60">
+            Admin only
+          </div>
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <p class="text-sm text-white/70">
+          Add a starter set of common OPR items to the categories you select. You can edit,
+          re-rank, or remove any of them afterward — this is just a head start so you don't
+          have to run a full workshop to get going.
+        </p>
+
+        <div
+          v-if="quickCandidates.length === 0"
+          class="rounded-xl bg-white/5 border border-white/10 p-3 text-white/70 text-sm"
+        >
+          No starter content is available for this project's categories yet.
+        </div>
+
+        <div
+          v-else
+          class="space-y-2 max-h-[22rem] overflow-auto pr-1"
+        >
+          <label
+            v-for="c in quickCandidates"
+            :key="c.id"
+            class="flex items-start gap-3 rounded-xl bg-white/5 border border-white/10 px-3 py-2 cursor-pointer hover:bg-white/8"
+          >
+            <input
+              v-model="quickSelected[c.id]"
+              type="checkbox"
+              class="mt-1 form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+            >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-white/90 text-sm font-medium">{{ c.name }}</span>
+                <span class="text-xs text-white/55 shrink-0">
+                  <template v-if="quickSkipExisting && c.existingCount">
+                    {{ c.fresh.length }} new · {{ c.existingCount }} already added
+                  </template>
+                  <template v-else>
+                    {{ c.seedCount }} items
+                  </template>
+                </span>
+              </div>
+              <div class="text-xs text-white/50 mt-0.5 truncate">
+                {{ c.seeds.slice(0, 2).join(' · ') }}…
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+          <label class="flex items-center gap-2 text-sm text-white/70 select-none">
+            <input
+              v-model="quickSkipExisting"
+              type="checkbox"
+              class="form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+            >
+            Skip items already on this project
+          </label>
+          <div class="text-xs text-white/60">
+            {{ quickItemsToAdd.length }} item{{ quickItemsToAdd.length === 1 ? '' : 's' }} to add
+          </div>
+        </div>
+
+        <div
+          v-if="importError"
+          class="rounded-xl bg-rose-500/10 border border-rose-400/20 p-3 text-rose-100 text-sm"
+        >
+          {{ importError }}
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <button
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
+            @click="quickOpen = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+            :disabled="submitting || quickItemsToAdd.length === 0"
+            @click="submitQuickPopulate"
+          >
+            {{ submitting ? 'Adding…' : `Add ${quickItemsToAdd.length} item${quickItemsToAdd.length === 1 ? '' : 's'}` }}
+          </button>
+        </div>
+      </template>
+    </Modal>
+
+    <Modal
       v-model="traceOpen"
       panel-class="max-w-3xl"
     >
@@ -829,6 +1127,7 @@ import SearchPill from '../../components/SearchPill.vue'
 import Modal from '../../components/Modal.vue'
 import OprItemsProgressCharts from '../../components/charts/OprItemsProgressCharts.vue'
 import http from '../../utils/http'
+import { confirm } from '../../utils/confirm'
 import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
@@ -1030,6 +1329,19 @@ const importDefaultCategoryId = ref('')
 const importLines = ref('')
 const importRows = ref<ImportRow[]>([])
 
+const quickOpen = ref(false)
+const quickSelected = ref<Record<string, boolean>>({})
+const quickSkipExisting = ref(true)
+
+// Single-item edit
+const editOpen = ref(false)
+const editItem = ref<OprItem | null>(null)
+const editText = ref('')
+const editCategoryId = ref('')
+
+// Batch selection (keyed by item id)
+const rowSelected = ref<Record<string, boolean>>({})
+
 const manualLineCount = computed(() => String(importLines.value || '').split(/\r?\n/g).map((s) => s.trim()).filter(Boolean).length)
 
 function normalizeHeaderKey(v: any) {
@@ -1094,6 +1406,297 @@ function categoryName(id: string | null) {
   if (!id) return ''
   const c = categories.value.find((x) => String(x.id) === String(id))
   return c ? c.name : ''
+}
+
+// Curated starter OPR items keyed by category name. Matched case-insensitively to the
+// project's categories so quick-populate can seed common requirements without a workshop.
+const OPR_SEED_LIBRARY: Array<{ category: string; items: string[] }> = [
+  {
+    category: 'Energy & Sustainability',
+    items: [
+      'Achieve an energy use intensity (EUI) at least 20% below the ASHRAE 90.1 baseline.',
+      'Meter and sub-meter major energy end uses (HVAC, lighting, plug loads) for ongoing tracking.',
+      'Specify high-efficiency equipment and variable-speed drives where applicable.',
+      'Provide equipment capable of demand response and load-shedding strategies.',
+      'Support the owner’s sustainability certification goals (e.g., LEED, ENERGY STAR, WELL).',
+      'Commission renewable and energy-recovery systems to verify rated performance.',
+    ],
+  },
+  {
+    category: 'Thermal Comfort',
+    items: [
+      'Maintain occupied space temperatures within the ASHRAE Standard 55 comfort range year-round.',
+      'Limit temperature drift to ±2°F from setpoint in occupied zones.',
+      'Provide zone-level temperature control in regularly occupied spaces.',
+      'Maintain relative humidity between 30% and 60% in occupied spaces.',
+      'Eliminate drafts and hot/cold spots through proper diffuser selection and air balancing.',
+      'Document a procedure for responding to occupant comfort complaints.',
+    ],
+  },
+  {
+    category: 'Indoor Air Quality',
+    items: [
+      'Provide outdoor air ventilation rates meeting or exceeding ASHRAE Standard 62.1.',
+      'Install MERV 13 (or higher) filtration on all air-handling units.',
+      'Monitor CO₂ in densely occupied spaces and modulate ventilation accordingly.',
+      'Implement a construction indoor air quality management plan prior to occupancy.',
+      'Maintain building pressurization to limit infiltration of unconditioned air.',
+      'Specify low-VOC materials, finishes, and furnishings.',
+    ],
+  },
+  {
+    category: 'Controls & Integration',
+    items: [
+      'Provide a BACnet-compliant building automation system using open protocols.',
+      'Integrate HVAC, lighting, and metering onto a single front-end interface.',
+      'Provide trend logging for all critical points with at least 12 months of retention.',
+      'Provide graphical floor-plan dashboards for operator situational awareness.',
+      'Implement alarm prioritization and notification routing to facility staff.',
+      'Document all sequences of operation and make them accessible to operators.',
+    ],
+  },
+  {
+    category: 'Systems Reliability',
+    items: [
+      'Design critical systems to achieve at least 99% uptime during occupied hours.',
+      'Provide manufacturer-recommended spare parts for critical components at handover.',
+      'Verify all life-safety systems through documented functional performance testing.',
+      'Confirm systems perform to specification across the full range of operating conditions.',
+      'Establish equipment runtime and fault tracking to support predictive maintenance.',
+    ],
+  },
+  {
+    category: 'Maintainability',
+    items: [
+      'Provide adequate clearance and access for service, filter changes, and component replacement.',
+      'Label all equipment, valves, dampers, and devices per a consistent naming convention.',
+      'Deliver complete as-built drawings and O&M manuals electronically at closeout.',
+      'Provide permanent access platforms or catwalks for rooftop and high-level equipment.',
+      'Standardize equipment makes and models to reduce spare-parts inventory where practical.',
+    ],
+  },
+  {
+    category: 'Operations & Training',
+    items: [
+      'Provide hands-on training for facility staff on all major systems before occupancy.',
+      'Record training sessions and deliver them as part of the closeout documentation.',
+      'Provide a systems manual summarizing design intent, sequences, and operating procedures.',
+      'Conduct a 10-month warranty review and seasonal re-commissioning of major systems.',
+      'Define roles and responsibilities for ongoing building operation and performance tracking.',
+    ],
+  },
+  {
+    category: 'Resiliency / Redundancy',
+    items: [
+      'Provide N+1 redundancy for critical HVAC and power systems serving essential loads.',
+      'Provide emergency or standby power for life-safety and owner-designated critical loads.',
+      'Maintain habitable conditions in critical spaces during a loss of primary utility.',
+      'Locate critical equipment above established flood elevations.',
+      'Provide automatic failover and documented manual procedures for critical outages.',
+    ],
+  },
+  {
+    category: 'Future Flexibility',
+    items: [
+      'Provide spare capacity in electrical, mechanical, and structural systems for future expansion.',
+      'Design distribution systems to accommodate reconfiguration of interior spaces.',
+      'Provide spare conduit, raceway, and panel capacity for future low-voltage systems.',
+      'Allow phased addition of metering and submetering without major rework.',
+      'Specify modular equipment that can scale as building loads change over time.',
+    ],
+  },
+]
+
+function normText(s: any): string {
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function seedItemsForCategory(name: string): string[] {
+  const key = normText(name)
+  const hit = OPR_SEED_LIBRARY.find((g) => normText(g.category) === key)
+  return hit ? hit.items.slice() : []
+}
+
+const quickTooltip = computed(() => {
+  if (!projectId.value) return 'Select a project'
+  return 'Quick populate common OPR items'
+})
+
+// Categories (with starter content) annotated with how many seed items are new vs. already present.
+const quickCandidates = computed(() => {
+  const cats = Array.isArray(categories.value) ? categories.value : []
+  return cats
+    .map((c) => {
+      const seeds = seedItemsForCategory(c.name)
+      const existing = new Set(
+        (Array.isArray(items.value) ? items.value : [])
+          .filter((it) => String(it.categoryId) === String(c.id))
+          .map((it) => normText(it.text)),
+      )
+      const fresh = seeds.filter((t) => !existing.has(normText(t)))
+      return {
+        id: String(c.id),
+        name: c.name,
+        seeds,
+        fresh,
+        seedCount: seeds.length,
+        existingCount: seeds.length - fresh.length,
+      }
+    })
+    .filter((c) => c.seedCount > 0)
+})
+
+const quickItemsToAdd = computed<Array<{ categoryId: string; text: string }>>(() => {
+  const out: Array<{ categoryId: string; text: string }> = []
+  for (const c of quickCandidates.value) {
+    if (!quickSelected.value[c.id]) continue
+    const texts = quickSkipExisting.value ? c.fresh : c.seeds
+    for (const t of texts) out.push({ categoryId: c.id, text: t })
+  }
+  return out
+})
+
+function openQuickPopulate() {
+  if (!projectId.value) return
+  const sel: Record<string, boolean> = {}
+  for (const c of quickCandidates.value) sel[c.id] = c.fresh.length > 0
+  quickSelected.value = sel
+  quickSkipExisting.value = true
+  importError.value = ''
+  quickOpen.value = true
+}
+
+async function submitQuickPopulate() {
+  const newItems = quickItemsToAdd.value
+  if (!newItems.length) return
+  await postImportedItems(newItems)
+  if (!importError.value) quickOpen.value = false
+}
+
+// ----- Single-item edit -----
+function openEdit(it: OprItem) {
+  editItem.value = it
+  editText.value = it.text
+  editCategoryId.value = it.categoryId ? String(it.categoryId) : ''
+  importError.value = ''
+  editOpen.value = true
+}
+
+async function saveEdit() {
+  const it = editItem.value
+  if (!it || !projectId.value) return
+  const text = String(editText.value || '').trim()
+  if (!text) return
+  const newCategoryId = editCategoryId.value || it.categoryId
+  // Rank is unique per active category. If the item moves to another category, place it at the
+  // end of that category to avoid colliding with an existing rank there; otherwise keep its rank.
+  let rank = it.rank
+  if (String(newCategoryId) !== String(it.categoryId)) {
+    const ranks = (Array.isArray(items.value) ? items.value : [])
+      .filter((x) => x.status === 'active' && String(x.categoryId) === String(newCategoryId))
+      .map((x) => Number(x.rank))
+      .filter((n) => Number.isFinite(n))
+    rank = (ranks.length ? Math.max(...ranks) : 0) + 1
+  }
+  const row = {
+    id: it.id,
+    categoryId: newCategoryId,
+    text,
+    rank,
+    score: it.score,
+    status: it.status,
+  }
+  submitting.value = true
+  importError.value = ''
+  try {
+    await http.post(`/api/projects/${projectId.value}/opr/link/items/upsert`, { items: [row] }, {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    ui.showSuccess('OPR item updated', { duration: 2500 })
+    editOpen.value = false
+    await refreshAll()
+  } catch (e: any) {
+    importError.value = e?.response?.data?.error || e?.message || 'Failed to update OPR item'
+  } finally {
+    submitting.value = false
+  }
+}
+
+// ----- Batch selection -----
+const selectedIds = computed(() => Object.keys(rowSelected.value).filter((k) => rowSelected.value[k]))
+const selectedCount = computed(() => selectedIds.value.length)
+
+function toggleRow(id: string, val?: boolean) {
+  const next = { ...rowSelected.value }
+  const newVal = typeof val === 'boolean' ? val : !next[id]
+  if (newVal) next[id] = true
+  else delete next[id]
+  rowSelected.value = next
+}
+
+const pageAllSelected = computed(() => {
+  const list = Array.isArray(pagedItems.value) ? pagedItems.value : []
+  return list.length > 0 && list.every((it) => rowSelected.value[it.id])
+})
+
+function toggleSelectAllOnPage() {
+  const list = Array.isArray(pagedItems.value) ? pagedItems.value : []
+  const next = { ...rowSelected.value }
+  if (pageAllSelected.value) {
+    for (const it of list) delete next[it.id]
+  } else {
+    for (const it of list) next[it.id] = true
+  }
+  rowSelected.value = next
+}
+
+function clearSelection() {
+  rowSelected.value = {}
+}
+
+// ----- Delete (single & batch) -----
+async function deleteItemIds(ids: string[]) {
+  if (!projectId.value || !ids.length) return
+  submitting.value = true
+  try {
+    const { data } = await http.post(`/api/projects/${projectId.value}/opr/link/items/delete`, { ids }, {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const deleted = Number(data?.deleted || 0)
+    ui.showSuccess(`Deleted ${deleted} OPR item${deleted === 1 ? '' : 's'}`, { duration: 2500 })
+    const next = { ...rowSelected.value }
+    for (const id of ids) delete next[id]
+    rowSelected.value = next
+    await refreshAll()
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to delete OPR items', { duration: 6000 })
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function deleteOne(it: OprItem) {
+  const ok = await confirm({
+    title: 'Delete OPR item',
+    message: `Delete this OPR item? This cannot be undone.\n\n“${it.text}”`,
+    confirmText: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
+  await deleteItemIds([it.id])
+}
+
+async function deleteSelected() {
+  const ids = selectedIds.value
+  if (!ids.length) return
+  const ok = await confirm({
+    title: 'Delete OPR items',
+    message: `Delete ${ids.length} selected OPR item${ids.length === 1 ? '' : 's'}? This cannot be undone.`,
+    confirmText: `Delete ${ids.length}`,
+    variant: 'danger',
+  })
+  if (!ok) return
+  await deleteItemIds(ids)
 }
 
 const filtered = computed(() => {
