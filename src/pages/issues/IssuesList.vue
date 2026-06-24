@@ -1010,6 +1010,7 @@
               class="flex-1 ..."
               tabindex="0"
               style="text-decoration: none;"
+              @click="rememberNavOrder"
             >
               <div class="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                 <div class="flex flex-col min-w-[60px] items-start">
@@ -2014,6 +2015,7 @@ import type { IssuesAnalytics } from '../../components/charts/IssuesListCharts.v
 import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
+import { useIssuesNavStore } from '../../stores/issuesNav'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
@@ -2028,6 +2030,7 @@ const removedColumns = ['projectId', 'comments', 'attachments', 'photos', 'docum
 const preferredColumns = ['number','title','description','type','priority','severity','status','foundBy','dateFound','assignedTo','responsible_person','dueDate','createdAt','closedDate','location','system']
 
 const issuesStore = useIssuesStore()
+const issuesNav = useIssuesNavStore()
 const router = useRouter()
 const projectStore = useProjectStore()
 const authStore = useAuthStore()
@@ -3709,9 +3712,19 @@ function nextPage() { if (page.value < totalPages.value) page.value++ }
 // pagination helpers: explicit page setter and pages array removed
 // (not needed in this component — navigation uses prevPage/nextPage)
 
+// Snapshot the current filtered + sorted ordering so the Issue edit page's prev/next
+// steps through the same set the user has set up here.
+function rememberNavOrder() {
+  const ids = (Array.isArray(sortedIssues.value) ? sortedIssues.value : [])
+    .map((it: any) => String(it?.id || it?._id || ''))
+    .filter(Boolean)
+  issuesNav.setOrder(projectStore.currentProjectId || '', ids)
+}
+
 function openView(issue: IssueRow) {
   const id = issue.id || issue._id
   if (!id) return
+  rememberNavOrder()
   router.push({ name: 'issue-edit', params: { id } })
 }
 

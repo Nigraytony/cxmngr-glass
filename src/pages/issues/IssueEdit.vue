@@ -1247,6 +1247,7 @@ import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import lists from '../../lists.js'
 import { useIssuesStore } from '../../stores/issues'
+import { useIssuesNavStore } from '../../stores/issuesNav'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
@@ -1258,6 +1259,7 @@ import http from '../../utils/http'
 const route = useRoute()
 const router = useRouter()
 const issues = useIssuesStore()
+const issuesNav = useIssuesNavStore()
 const projectStore = useProjectStore()
 const ui = useUiStore()
 const auth = useAuthStore()
@@ -1909,6 +1911,8 @@ async function downloadIssuePdf() {
 }
 
 onMounted(async () => {
+  // Restore the list's filtered ordering for prev/next (survives reload/deep-link).
+  issuesNav.hydrate()
   await projectStore.fetchProjects?.()?.catch(() => {})
   const pid = chooseProjectId()
   if (pid) form.projectId = pid
@@ -2195,17 +2199,26 @@ const sortedIssues = computed(() => {
   })
   return arr
 })
-const currentIndex = computed(() => sortedIssues.value.findIndex((it: any) => String(it?.id || it?._id) === id.value))
+// Prefer the filtered + sorted ordering captured on the Issues list (so prev/next obey
+// the filters the user set up there). Fall back to the local hardcoded sort when there's
+// no list context (e.g. the issue was opened directly without visiting the list).
+const fallbackOrderIds = computed(() => sortedIssues.value.map((it: any) => String(it?.id || it?._id || '')).filter(Boolean))
+const orderIds = computed(() => {
+  const nav = Array.isArray(issuesNav.orderedIds) ? issuesNav.orderedIds : []
+  if (nav.length && nav.includes(id.value)) return nav
+  return fallbackOrderIds.value
+})
+const currentIndex = computed(() => orderIds.value.indexOf(id.value))
 const prevIssueId = computed(() => {
   if (isNew.value) return ''
   const idx = currentIndex.value
-  if (idx > 0) return String(sortedIssues.value[idx - 1]?.id || sortedIssues.value[idx - 1]?._id || '')
+  if (idx > 0) return String(orderIds.value[idx - 1] || '')
   return ''
 })
 const nextIssueId = computed(() => {
   if (isNew.value) return ''
   const idx = currentIndex.value
-  if (idx >= 0 && idx < sortedIssues.value.length - 1) return String(sortedIssues.value[idx + 1]?.id || sortedIssues.value[idx + 1]?._id || '')
+  if (idx >= 0 && idx < orderIds.value.length - 1) return String(orderIds.value[idx + 1] || '')
   return ''
 })
 function goPrevIssue() { if (prevIssueId.value) router.replace({ name: 'issue-edit', params: { id: prevIssueId.value } }) }
