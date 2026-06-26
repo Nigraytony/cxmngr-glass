@@ -14,6 +14,7 @@ const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
 const { cascadeTemplate } = require('../utils/cascadeDelete');
+const { listPresets, getPreset, buildTemplateDoc } = require('../utils/templatePresets');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -189,6 +190,55 @@ router.post(
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to create template' });
   }
 });
+
+// ── Preset library ──────────────────────────────────────────────────────────
+// Defined before the `/:id` routes so `/presets` isn't captured as an id.
+
+// List available preset templates (metadata only).
+router.get('/presets', auth, (req, res) => {
+  res.send({ items: listPresets() })
+})
+
+// Create one or more project templates from the preset library.
+// Body: { projectId, keys?: string[] }  (keys omitted/empty => all presets).
+// Skips any preset whose tag already exists in the project (idempotent).
+router.post(
+  '/presets/apply',
+  auth,
+  requireBodyField('projectId'),
+  requireObjectIdBody('projectId'),
+  requirePermission('templates.create', { projectParam: 'projectId' }),
+  requireActiveProject,
+  requireFeature('templates'),
+  async (req, res) => {
+    try {
+      const projectId = req.body.projectId
+      const reqKeys = Array.isArray(req.body.keys) ? req.body.keys.map((k) => String(k || '').trim()).filter(Boolean) : []
+      const allKeys = listPresets().map((p) => p.key)
+      const keys = reqKeys.length ? reqKeys.filter((k) => allKeys.includes(k)) : allKeys
+      if (!keys.length) return res.status(400).send({ error: 'No valid preset keys' })
+
+      // Skip presets whose tag already exists in this project.
+      const wantTags = keys.map((k) => { const p = getPreset(k); return p && p.tag }).filter(Boolean)
+      const existing = await Template.find({ projectId, tag: { $in: wantTags } }).select('tag').lean()
+      const existingTags = new Set(existing.map((t) => String(t.tag)))
+
+      const created = []
+      const skipped = []
+      for (const key of keys) {
+        const preset = getPreset(key)
+        if (!preset) continue
+        if (existingTags.has(preset.tag)) { skipped.push({ key, tag: preset.tag, reason: 'exists' }); continue }
+        const rec = await Template.create(buildTemplateDoc(projectId, key))
+        created.push({ id: String(rec._id), key, tag: rec.tag, title: rec.title })
+      }
+      return res.status(201).send({ created, skipped, createdCount: created.length, skippedCount: skipped.length })
+    } catch (error) {
+      console.error('[templates] presets apply error', error && (error.stack || error.message || error))
+      return res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to apply presets' })
+    }
+  }
+)
 
 // Read all (paginated, filtered, light projection, optional facets)
 router.get('/', auth, requireFeature('templates'), requirePermission('templates.read', { projectParam: 'projectId' }), async (req, res) => {

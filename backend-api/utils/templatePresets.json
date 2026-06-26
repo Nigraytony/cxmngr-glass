@@ -1,0 +1,2371 @@
+[
+  {
+    "key": "ahu_rtu",
+    "tag": "AHU-RTU-PRESET",
+    "title": "Air Handling Unit / RTU",
+    "type": "Air Handler",
+    "system": "HVAC",
+    "summary": "Built-up or packaged air handler / rooftop unit with cooling, heating, economizer and BAS control.",
+    "description": "Preset commissioning template for air handling units and packaged rooftop units (RTUs). Covers fan, cooling, heating, economizer and safety functions.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Serial Number",
+        "value": ""
+      },
+      {
+        "key": "Supply Airflow (CFM)",
+        "value": ""
+      },
+      {
+        "key": "External Static Pressure (in. w.c.)",
+        "value": ""
+      },
+      {
+        "key": "Supply Fan Motor (HP)",
+        "value": ""
+      },
+      {
+        "key": "Cooling Capacity (MBH)",
+        "value": ""
+      },
+      {
+        "key": "Heating Capacity (MBH)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Unit set level on curb/pad with proper clearances for service and airflow",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Supply, return and outside air ductwork connected and sealed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condensate drain trapped, primed and piped to approved point",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Filters installed, correct size/MERV, no gaps or bypass",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Vibration isolation installed and shipping bolts removed",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Pre-Start / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power, disconnect and overcurrent protection per nameplate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS controller addressed and all points commanded/verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Supply air, mixed air and space temperature sensors calibrated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Outside/return/exhaust dampers stroke fully and fail to safe position",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical / Factory Rep",
+        "questions": [
+          {
+            "question_text": "Fan rotation correct; belts tensioned and aligned (if belt drive)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Refrigerant charge verified per manufacturer (packaged/RTU)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "No abnormal noise or vibration at full speed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Amp draw within nameplate FLA on all motors",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Fan Start / Stop & Status",
+        "description": "Verify supply fan starts and stops on command with proven status.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command fan ON at BAS",
+            "expected": "Fan starts; status proven; airflow established",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command fan OFF at BAS",
+            "expected": "Fan stops; status clears",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Supply Air Temperature Control (Cooling)",
+        "description": "Verify cooling modulates to maintain supply air setpoint.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Drive space/zone into a cooling call",
+            "expected": "Cooling stages/modulates on",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe supply air temperature",
+            "expected": "SAT drives to and holds cooling setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Remove cooling call",
+            "expected": "Cooling stages off",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Heating Operation",
+        "description": "Verify heating modulates to maintain setpoint.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Drive into a heating call",
+            "expected": "Heating stages/modulates on",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe supply air temperature",
+            "expected": "SAT drives to and holds heating setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Remove heating call",
+            "expected": "Heating stages off",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Economizer / Outside Air Damper",
+        "description": "Verify economizer and minimum OA operation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate favorable outside air conditions",
+            "expected": "Economizer modulates OA damper open for free cooling",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate unfavorable conditions",
+            "expected": "OA damper returns to minimum position",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Place unit in occupied mode",
+            "expected": "Minimum outside air position maintained",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Safeties",
+        "description": "Verify freeze, smoke and high static shutdown.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate freezestat trip",
+            "expected": "Unit shuts down and alarms; requires reset per sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate duct smoke detector trip",
+            "expected": "Unit shuts down and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate high duct static (if equipped)",
+            "expected": "Supply fan limited/shut down and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "Occupied / Unoccupied Scheduling",
+        "description": "Verify scheduled mode changes.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command occupied mode",
+            "expected": "Unit runs to occupied setpoints; minimum OA active",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command unoccupied mode",
+            "expected": "Unit cycles to setback; OA damper closes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "vav_piu",
+    "tag": "VAV-PIU-PRESET",
+    "title": "Terminal Unit (VAV / PIU)",
+    "type": "Terminal Unit",
+    "system": "HVAC",
+    "summary": "VAV or parallel/series fan-powered terminal unit with reheat and DDC control.",
+    "description": "Preset commissioning template for VAV boxes and parallel/series powered induction units (PIU) with hydronic or electric reheat.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Inlet Size (in.)",
+        "value": ""
+      },
+      {
+        "key": "Maximum Airflow (CFM)",
+        "value": ""
+      },
+      {
+        "key": "Minimum Airflow (CFM)",
+        "value": ""
+      },
+      {
+        "key": "Reheat Type (HW/Electric)",
+        "value": ""
+      },
+      {
+        "key": "Reheat Capacity (MBH/kW)",
+        "value": ""
+      },
+      {
+        "key": "Controller Address",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Box installed level with access to controls and reheat coil",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Inlet and discharge ductwork connected and sealed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Reheat coil piped and valved (HW) or wired (electric)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Series/parallel fan free to rotate (fan-powered units)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Controls",
+        "questions": [
+          {
+            "question_text": "Controller addressed and online at BAS",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Airflow (velocity) sensor reads and zeroes correctly",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Damper actuator strokes full open to full closed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Space temperature sensor calibrated",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "TAB",
+        "questions": [
+          {
+            "question_text": "Minimum and maximum airflow calibrated to design",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan operation verified (fan-powered units)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Damper Stroke & Airflow Calibration",
+        "description": "Verify damper and airflow readings.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command damper to maximum",
+            "expected": "Airflow drives to design maximum CFM",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command damper to minimum",
+            "expected": "Airflow drives to design minimum CFM",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Cooling Airflow Control",
+        "description": "Verify cooling demand modulates primary air.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Drive zone into cooling",
+            "expected": "Primary airflow modulates up toward max",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Satisfy cooling demand",
+            "expected": "Airflow modulates back toward minimum",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Reheat Operation",
+        "description": "Verify reheat on heating demand.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Drive zone into heating",
+            "expected": "Airflow at heating minimum; reheat valve/stages energize",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe discharge temperature",
+            "expected": "Discharge air temperature rises",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Satisfy heating demand",
+            "expected": "Reheat de-energizes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Fan Operation (Fan-Powered)",
+        "description": "Verify terminal fan operation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Initiate heating call (parallel) or occupied (series)",
+            "expected": "Terminal fan starts and runs",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Remove call / unoccupied",
+            "expected": "Fan stops per sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Occupied / Unoccupied Modes",
+        "description": "Verify scheduled setpoints.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command occupied",
+            "expected": "Unit controls to occupied setpoints",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command unoccupied",
+            "expected": "Unit goes to setback; damper to minimum/closed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "air_cooled_chiller",
+    "tag": "ACC-PRESET",
+    "title": "Air-Cooled Chiller",
+    "type": "Chiller",
+    "system": "HVAC",
+    "summary": "Packaged air-cooled chiller with integral condenser fans and BAS control.",
+    "description": "Preset commissioning template for packaged air-cooled chillers serving a chilled water system.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Serial Number",
+        "value": ""
+      },
+      {
+        "key": "Capacity (Tons)",
+        "value": ""
+      },
+      {
+        "key": "Refrigerant Type",
+        "value": ""
+      },
+      {
+        "key": "Chilled Water Flow (GPM)",
+        "value": ""
+      },
+      {
+        "key": "Entering/Leaving CHW Temp (°F)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      },
+      {
+        "key": "MCA / MOCP (A)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Chiller set, leveled and isolated with clearance for condenser airflow and service",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Chilled water piped, flushed and flow switch installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Strainers installed and clean; air vented from CHW loop",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Vibration isolation installed and shipping restraints removed",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power and overcurrent protection per nameplate (MCA/MOCP)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS communication established; setpoints and status verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "CHW supply/return sensors calibrated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Chilled water pump interlock proven before chiller enable",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Manufacturer Rep / Mechanical",
+        "questions": [
+          {
+            "question_text": "Factory/authorized startup completed and report provided",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Refrigerant charge and oil levels verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Phase rotation and voltage verified",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Enable / Disable & Pump Interlock",
+        "description": "Verify chiller enables only with flow proven.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable chiller with CHW pump off",
+            "expected": "Chiller does NOT start; flow not proven",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Start CHW pump and enable chiller",
+            "expected": "Flow proven; chiller starts",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Disable chiller",
+            "expected": "Chiller stops; pump runs out per sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Chilled Water Temperature Control",
+        "description": "Verify CHW supply setpoint control.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Apply cooling load",
+            "expected": "Compressor(s) load to hold CHW supply setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe leaving CHW temperature",
+            "expected": "LCHWT holds at setpoint within tolerance",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Capacity / Staging Modulation",
+        "description": "Verify capacity control across load.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Increase load",
+            "expected": "Capacity stages/modulates up",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease load",
+            "expected": "Capacity stages/modulates down without short cycling",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Condenser Fan Staging",
+        "description": "Verify head pressure control.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Run at part load, mild ambient",
+            "expected": "Condenser fans stage to maintain head pressure",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Increase load / ambient",
+            "expected": "Additional condenser fans stage on",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Low CHW Flow Safety",
+        "description": "Verify low flow protection.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate loss of CHW flow during operation",
+            "expected": "Chiller shuts down on flow/freeze protection and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "Alarm / Fault Reporting",
+        "description": "Verify fault annunciation to BAS.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Generate a fault condition",
+            "expected": "Chiller faults and reports specific alarm to BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Clear and reset",
+            "expected": "Alarm clears; chiller returns to normal",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "centrifugal_chiller",
+    "tag": "CENT-CHLR-PRESET",
+    "title": "Centrifugal Chiller (Water-Cooled)",
+    "type": "Chiller",
+    "system": "HVAC",
+    "summary": "Water-cooled centrifugal chiller with CHW/CW circuits, IGV/VFD capacity control and tower interlocks.",
+    "description": "Preset commissioning template for water-cooled centrifugal chillers including pump and cooling tower interlocks.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Serial Number",
+        "value": ""
+      },
+      {
+        "key": "Capacity (Tons)",
+        "value": ""
+      },
+      {
+        "key": "Refrigerant Type",
+        "value": ""
+      },
+      {
+        "key": "Chilled Water Flow (GPM)",
+        "value": ""
+      },
+      {
+        "key": "Condenser Water Flow (GPM)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Chiller set, leveled and isolated on inertia base/isolators",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Chilled and condenser water piped, flushed; flow switches installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Strainers clean; loops vented; relief piped to safe location",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Shipping restraints removed; rigging complete",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power and starter/VFD verified; phase rotation correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS communication established; setpoints/status verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "CHW and CW sensors calibrated",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Interlocks with CHWP, CWP and cooling tower proven",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Manufacturer Rep / Mechanical",
+        "questions": [
+          {
+            "question_text": "Factory startup completed; evacuation and charge verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Oil heater energized for required duration prior to start",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Megger / insulation test acceptable",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Start Sequence & Interlocks",
+        "description": "Verify staged start with pumps and tower.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Initiate chiller plant start",
+            "expected": "CHWP and CWP start and prove flow; tower available",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Chiller enabled after flows proven",
+            "expected": "Chiller starts; guide vanes open from closed",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Initiate plant stop",
+            "expected": "Chiller stops; pumps run out; tower disabled per sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "CHW Supply Temperature Control",
+        "description": "Verify leaving CHW setpoint control.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Apply cooling load",
+            "expected": "Capacity modulates to hold CHW supply setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Observe leaving CHW temperature",
+            "expected": "LCHWT holds at setpoint within tolerance",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Capacity Modulation (IGV/VFD)",
+        "description": "Verify modulation across load.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Increase load",
+            "expected": "Inlet guide vanes / VFD increase capacity",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease load",
+            "expected": "Capacity reduces smoothly without surge",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Surge / Low-Load Operation",
+        "description": "Verify stable low-load operation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Reduce load toward minimum",
+            "expected": "Chiller manages surge (hot gas bypass / vane control); no surge alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Safeties",
+        "description": "Verify protective shutdowns.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate low CHW flow",
+            "expected": "Chiller shuts down and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low refrigerant/evaporator temperature",
+            "expected": "Chiller shuts down and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate low oil pressure",
+            "expected": "Chiller shuts down and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "Alarm Reporting to BAS",
+        "description": "Verify fault annunciation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Generate a fault",
+            "expected": "Specific alarm reported to BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reset",
+            "expected": "Alarm clears; chiller returns to normal",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "cooling_tower",
+    "tag": "CT-PRESET",
+    "title": "Cooling Tower",
+    "type": "Cooling Tower",
+    "system": "HVAC",
+    "summary": "Open or closed-circuit cooling tower with VFD fan, basin level control and freeze protection.",
+    "description": "Preset commissioning template for cooling towers serving condenser water systems.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Nominal Capacity (Tons)",
+        "value": ""
+      },
+      {
+        "key": "Condenser Water Flow (GPM)",
+        "value": ""
+      },
+      {
+        "key": "Fan Motor (HP)",
+        "value": ""
+      },
+      {
+        "key": "Entering/Leaving CW Temp (°F)",
+        "value": ""
+      },
+      {
+        "key": "Design Wet Bulb (°F)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Tower set, anchored and leveled with service clearance",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condenser water supply/return piped; basin makeup and overflow piped",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Inlet screens, fill and drift eliminators in place and clean",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Vibration isolation installed; rotating assembly free",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Fan motor power and VFD verified; rotation correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Basin heater and level controls wired and verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS points (status, speed, level, temp) verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Vibration cutout switch installed and wired",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Basin filled; water treatment system online",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan rotation and amp draw verified within nameplate",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Fan Start / Stop & Status",
+        "description": "Verify fan control and status.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command fan ON",
+            "expected": "Fan starts; status proven at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command fan OFF",
+            "expected": "Fan stops; status clears",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Fan Speed Control (CW Temperature)",
+        "description": "Verify VFD modulation to setpoint.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Raise condenser water temperature above setpoint",
+            "expected": "Fan speed increases to hold setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Lower temperature below setpoint",
+            "expected": "Fan speed decreases / fan cycles off",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Basin Makeup & Level Control",
+        "description": "Verify water level maintained.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Lower basin level",
+            "expected": "Makeup valve opens to restore level",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore level",
+            "expected": "Makeup valve closes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Basin Heater / Freeze Protection",
+        "description": "Verify freeze protection.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate low basin water temperature",
+            "expected": "Basin heater energizes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Restore temperature",
+            "expected": "Basin heater de-energizes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Vibration Cutout Safety",
+        "description": "Verify vibration shutdown.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate vibration switch trip",
+            "expected": "Fan shuts down and alarms; requires reset",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "base_mounted_pump",
+    "tag": "BMP-PRESET",
+    "title": "Base-Mounted Pump (CHWP / CWP / HWP)",
+    "type": "Pump",
+    "system": "HVAC",
+    "summary": "End-suction or split-case base-mounted pump for chilled, condenser or hot water service, with VFD and lead/lag.",
+    "description": "Preset commissioning template for base-mounted pumps. Suitable for chilled water (CHWP), condenser water (CWP) and hot water (HWP) service.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Service (CHW/CW/HW)",
+        "value": ""
+      },
+      {
+        "key": "Flow (GPM)",
+        "value": ""
+      },
+      {
+        "key": "Head (ft)",
+        "value": ""
+      },
+      {
+        "key": "Motor (HP)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      },
+      {
+        "key": "VFD (Yes/No)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Pump set on housekeeping pad; base grouted and anchored",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Coupling alignment verified (flexible-coupled pumps)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Suction diffuser/strainer and triple-duty/check valve installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Suction and discharge pressure gauges installed",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power and overcurrent protection per nameplate; rotation correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "VFD parameters set (if equipped); min/max speed verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS status, speed command and flow/DP proving verified",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Air vented; mechanical seal not leaking",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Amp draw within nameplate FLA at design flow",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Start / Stop & Status Proving",
+        "description": "Verify control and proof of flow.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command pump ON",
+            "expected": "Pump starts; flow/DP proven at BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Command pump OFF",
+            "expected": "Pump stops; status clears",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "VFD Speed Control (DP Setpoint)",
+        "description": "Verify variable-speed control.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Increase system demand",
+            "expected": "Pump speed increases to hold differential pressure setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease system demand",
+            "expected": "Pump speed decreases to hold setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Lead / Lag / Standby Rotation",
+        "description": "Verify multi-pump rotation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Command lead pump operation",
+            "expected": "Lead pump runs; lag in standby",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Initiate scheduled rotation",
+            "expected": "Lead/lag assignment swaps; even runtime maintained",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Flow / Differential Pressure Verification",
+        "description": "Verify hydraulic performance.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Operate at design condition",
+            "expected": "Flow and DP within design tolerance",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Failure Changeover to Standby",
+        "description": "Verify automatic standby start.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate lead pump failure (loss of status)",
+            "expected": "Standby pump starts automatically; alarm generated",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "exhaust_fan",
+    "tag": "EF-PRESET",
+    "title": "Exhaust Fan",
+    "type": "Fan",
+    "system": "HVAC",
+    "summary": "Inline, roof or wall exhaust fan with backdraft damper and BAS interlock.",
+    "description": "Preset commissioning template for general and dedicated exhaust fans.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Airflow (CFM)",
+        "value": ""
+      },
+      {
+        "key": "External Static Pressure (in. w.c.)",
+        "value": ""
+      },
+      {
+        "key": "Motor (HP)",
+        "value": ""
+      },
+      {
+        "key": "Drive (Direct/Belt)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Fan mounted securely on curb/hangers with vibration isolation",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Ductwork connected and sealed; backdraft/motorized damper installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Shipping restraints removed; wheel free to rotate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Belts tensioned and aligned (belt-driven)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power and disconnect per nameplate; rotation correct",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS status point verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Interlock/schedule wiring verified",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Amp draw within nameplate FLA",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "No abnormal noise or vibration",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Manual Start / Stop & Status",
+        "description": "Verify manual control and status.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start fan in hand/manual",
+            "expected": "Fan runs; status proven; backdraft damper opens",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Stop fan",
+            "expected": "Fan stops; status clears; damper closes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Automatic Operation",
+        "description": "Verify scheduled/interlocked operation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Place in auto and initiate schedule/interlock",
+            "expected": "Fan starts automatically",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Remove schedule/interlock",
+            "expected": "Fan stops automatically",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Backdraft Damper Operation",
+        "description": "Verify damper coordination.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Start fan",
+            "expected": "Backdraft/motorized damper opens before/with airflow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Stop fan",
+            "expected": "Damper closes to prevent reverse flow",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Airflow Verification",
+        "description": "Verify delivered airflow.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Measure airflow at design condition",
+            "expected": "Airflow within design tolerance",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "unit_heater",
+    "tag": "UH-PRESET",
+    "title": "Unit Heater",
+    "type": "Unit Heater",
+    "system": "HVAC",
+    "summary": "Hydronic, steam, gas or electric unit heater with thermostat/BAS control.",
+    "description": "Preset commissioning template for unit heaters serving mechanical, storage and similar spaces.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Heating Type (HW/Steam/Gas/Electric)",
+        "value": ""
+      },
+      {
+        "key": "Heating Capacity (MBH)",
+        "value": ""
+      },
+      {
+        "key": "Airflow (CFM)",
+        "value": ""
+      },
+      {
+        "key": "Motor (HP)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Heater mounted securely at correct height/angle with clearances",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hydronic piped and valved / gas and flue connected / electric connected",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Air vent and control valve installed (hydronic)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Fan guard in place; wheel free to rotate",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Controls Verification",
+        "type": "Prefunctional",
+        "responsible": "Controls",
+        "questions": [
+          {
+            "question_text": "Thermostat or space sensor installed and addressed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS point verified (if networked)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Control valve / stage strokes and fails safe",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Fan rotation correct; amp draw within nameplate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "No leaks at piping/valve connections",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Fan Start / Stop",
+        "description": "Verify fan control.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Initiate heating call",
+            "expected": "Fan energizes per sequence (after coil warm for hydronic)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Remove heating call",
+            "expected": "Fan de-energizes per sequence (fan delay off)",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Heating Operation",
+        "description": "Verify heat on thermostat call.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Lower space below setpoint",
+            "expected": "Heating energizes; discharge air temperature rises",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Raise space above setpoint",
+            "expected": "Heating de-energizes",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Control Valve / Stage Modulation",
+        "description": "Verify capacity control.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Increase heating demand",
+            "expected": "Control valve opens / stages energize",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease heating demand",
+            "expected": "Control valve closes / stages de-energize",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Freeze / Low-Temperature Protection",
+        "description": "Verify freeze protection (if applicable).",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate low space temperature in unoccupied mode",
+            "expected": "Heater runs to maintain low-limit setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "boiler",
+    "tag": "BLR-PRESET",
+    "title": "Boiler",
+    "type": "Boiler",
+    "system": "HVAC",
+    "summary": "Hot water (or steam) boiler with modulating burner, BAS control and safety train.",
+    "description": "Preset commissioning template for hot water heating boilers including staging and safety verification.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Model",
+        "value": ""
+      },
+      {
+        "key": "Serial Number",
+        "value": ""
+      },
+      {
+        "key": "Input (MBH)",
+        "value": ""
+      },
+      {
+        "key": "Output (MBH)",
+        "value": ""
+      },
+      {
+        "key": "Fuel Type",
+        "value": ""
+      },
+      {
+        "key": "Hot Water Flow (GPM)",
+        "value": ""
+      },
+      {
+        "key": "Design Supply/Return Temp (°F)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Boiler set with required clearances; flue/venting connected",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Hot water piped, flushed and vented; flow switch installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Relief valve piped to safe location; expansion tank verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Gas train/fuel piping connected and leak-tested",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power and overcurrent protection per nameplate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "BAS communication established; setpoints/status verified",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Supply/return sensors calibrated; outdoor air reset configured",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Boiler pump interlock proven prior to firing",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Manufacturer Rep / Mechanical",
+        "questions": [
+          {
+            "question_text": "Combustion set up and report provided (CO/O2/efficiency)",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Safety devices tested (low water cutoff, high limit, flame)",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Enable & Pump Interlock",
+        "description": "Verify boiler fires only with flow proven.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Enable boiler with HW pump off",
+            "expected": "Boiler does NOT fire; flow not proven",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Start pump and enable boiler",
+            "expected": "Flow proven; boiler fires through ignition sequence",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "HW Supply Temperature Control",
+        "description": "Verify supply setpoint / reset.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Apply heating load",
+            "expected": "Burner fires to hold HW supply setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Vary outside air temperature",
+            "expected": "Setpoint adjusts per outdoor air reset schedule",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Firing Rate Modulation",
+        "description": "Verify burner modulation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Increase load",
+            "expected": "Firing rate modulates up",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Decrease load",
+            "expected": "Firing rate modulates down without short cycling",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Lead / Lag Staging",
+        "description": "Verify multi-boiler staging (if applicable).",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Increase plant load beyond lead capacity",
+            "expected": "Lag boiler stages on",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reduce load",
+            "expected": "Lag boiler stages off; runtime equalized",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Safeties",
+        "description": "Verify protective shutdowns.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Simulate low water condition",
+            "expected": "Burner locks out and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate high limit temperature",
+            "expected": "Burner locks out and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Simulate flame failure",
+            "expected": "Burner locks out and alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-6",
+        "name": "Alarm Reporting to BAS",
+        "description": "Verify fault annunciation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Generate a fault",
+            "expected": "Specific alarm reported to BAS",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Reset",
+            "expected": "Alarm clears; boiler returns to normal",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  },
+  {
+    "key": "split_system_ac",
+    "tag": "SPLIT-AC-PRESET",
+    "title": "Split System AC Unit",
+    "type": "Split System",
+    "system": "HVAC",
+    "summary": "Ductless or ducted split system with indoor fan-coil and outdoor condensing unit.",
+    "description": "Preset commissioning template for split system air conditioners (cooling or heat pump) serving IDF/electrical/tenant spaces.",
+    "attributes": [
+      {
+        "key": "Manufacturer",
+        "value": ""
+      },
+      {
+        "key": "Indoor Model",
+        "value": ""
+      },
+      {
+        "key": "Outdoor Model",
+        "value": ""
+      },
+      {
+        "key": "Cooling Capacity (MBH)",
+        "value": ""
+      },
+      {
+        "key": "Refrigerant Type",
+        "value": ""
+      },
+      {
+        "key": "Airflow (CFM)",
+        "value": ""
+      },
+      {
+        "key": "Electrical (V/Ph/Hz)",
+        "value": ""
+      },
+      {
+        "key": "Refrigerant Line Length (ft)",
+        "value": ""
+      }
+    ],
+    "checklists": [
+      {
+        "number": "1",
+        "title": "Installation Verification",
+        "type": "Prefunctional",
+        "responsible": "Mechanical",
+        "questions": [
+          {
+            "question_text": "Indoor and outdoor units mounted securely with service clearance",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Refrigerant line set installed, insulated and leak-tested",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Condensate drain trapped and piped; float switch installed",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Outdoor unit airflow unobstructed",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "2",
+        "title": "Electrical / Controls",
+        "type": "Prefunctional",
+        "responsible": "Electrical / Controls",
+        "questions": [
+          {
+            "question_text": "Power and disconnects at indoor and outdoor units per nameplate",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Interconnecting control wiring complete",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Thermostat/controller installed and addressed",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "3",
+        "title": "Startup",
+        "type": "Startup",
+        "responsible": "Mechanical / Factory Rep",
+        "questions": [
+          {
+            "question_text": "System evacuated; charge weighed-in per line length",
+            "answer": "",
+            "notes": ""
+          },
+          {
+            "question_text": "Leak check passed; superheat/subcooling verified",
+            "answer": "",
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "functionalTests": [
+      {
+        "number": "FPT-1",
+        "name": "Cooling Operation",
+        "description": "Verify cooling on thermostat call.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Lower thermostat below space temperature",
+            "expected": "Compressor and indoor fan start; supply air cools",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          },
+          {
+            "step": "Raise thermostat above space temperature",
+            "expected": "Compressor stops; fan off per fan setting",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-2",
+        "name": "Compressor & Condenser Fan Operation",
+        "description": "Verify outdoor unit operation.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "On a cooling call, observe outdoor unit",
+            "expected": "Compressor and condenser fan run; pressures normal",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-3",
+        "name": "Indoor Fan & Airflow",
+        "description": "Verify indoor unit airflow.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Cycle fan through available speeds",
+            "expected": "Indoor fan runs at each speed; airflow present at supply",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-4",
+        "name": "Condensate Drain & Float Switch",
+        "description": "Verify condensate safety.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Pour water to drain pan / lift float switch",
+            "expected": "Drains freely; float switch interrupts cooling and/or alarms",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      },
+      {
+        "number": "FPT-5",
+        "name": "Setpoint Control",
+        "description": "Verify thermostat maintains space.",
+        "kind": "sequence",
+        "rows": [
+          {
+            "step": "Set a cooling setpoint",
+            "expected": "Space temperature drives to and holds setpoint",
+            "actual": "",
+            "pass": null,
+            "notes": ""
+          }
+        ]
+      }
+    ],
+    "status": "Not Started",
+    "components": []
+  }
+]
