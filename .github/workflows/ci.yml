@@ -155,6 +155,12 @@ jobs:
     needs: backend-integration
     # Only deploy on push to main — not on pull requests
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Serialize deploys: back-to-back merges to main otherwise race on the App
+    # Service and ZIP Deploy returns 409 Conflict. Queue (don't cancel) so each
+    # in-flight deploy finishes before the next starts.
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: backend-api
