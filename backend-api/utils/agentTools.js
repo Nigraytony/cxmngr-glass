@@ -26,6 +26,7 @@ const { issueStatuses, issueSeverities } = require('../models/issue')
 const taskStatusesPublic = taskStatuses.filter((s) => s !== 'Deleted')
 const Space = require('../models/space')
 const Template = require('../models/template')
+const { listPresets, getPreset, buildTemplateDoc } = require('./templatePresets')
 const System = require('../models/system')
 
 function isObjectId(v) {
@@ -687,6 +688,25 @@ const TOOLS = [
     },
     required: ['id'],
   },
+
+  // ── TEMPLATE PRESETS ───────────────────────────────────────────────────
+  {
+    name: 'list_template_presets',
+    description: 'List the built-in preset commissioning templates for common equipment types (AHU/RTU, VAV/PIU terminal unit, air-cooled chiller, centrifugal chiller, cooling tower, base-mounted pump, exhaust fan, unit heater, boiler, split system AC). Use this to find a preset key, then call create_template_from_preset.',
+    properties: {},
+    required: [],
+  },
+  {
+    name: 'create_template_from_preset',
+    description: 'Create a project template by cloning a built-in preset (attributes, checklists and functional tests included, all ready-made). PREFER THIS over create_template for common equipment — it produces clean content with no duplicated/repeated items. Call list_template_presets first to get the preset key.',
+    properties: {
+      presetKey: { type: 'string', description: 'Preset key from list_template_presets (e.g., "ahu_rtu", "boiler", "centrifugal_chiller", "base_mounted_pump"). Required.' },
+      tag: { type: 'string', description: 'Optional tag override for the new template (defaults to the preset tag).' },
+      title: { type: 'string', description: 'Optional title override (defaults to the preset title).' },
+      system: { type: 'string', description: 'Optional system override (defaults to the preset system, usually HVAC).' },
+    },
+    required: ['presetKey'],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -1112,6 +1132,22 @@ async function executeTool(toolName, toolInput, context) {
         }
         const items = await Template.find(q).select('_id tag title type system').limit(limit).lean()
         return { success: true, count: items.length, records: items }
+      }
+      case 'list_template_presets': {
+        return { success: true, presets: listPresets() }
+      }
+      case 'create_template_from_preset': {
+        const preset = getPreset(input.presetKey)
+        if (!preset) {
+          return { success: false, error: 'Unknown presetKey. Call list_template_presets for the valid keys.' }
+        }
+        const doc = buildTemplateDoc(projectId, input.presetKey, {
+          tag: input.tag ? str(input.tag, 80) : undefined,
+          title: input.title ? str(input.title, 160) : undefined,
+          system: input.system ? str(input.system, 120) : undefined,
+        })
+        const item = await Template.create(doc)
+        return { success: true, record: item.toObject() }
       }
       case 'create_template': {
         if (!input.tag) return { success: false, error: 'tag is required' }

@@ -76,6 +76,32 @@
             </div>
           </div>
 
+          <div class="relative inline-block group">
+            <button
+              :disabled="!projectStore.currentProjectId"
+              aria-label="Add preset templates"
+              :title="projectStore.currentProjectId ? 'Add preset templates' : 'Select a project'"
+              class="h-10 px-3 inline-flex items-center gap-2 rounded-full bg-sky-500/15 hover:bg-sky-500/25 text-sky-100 border border-sky-400/25 text-sm disabled:opacity-40"
+              @click="openPresets()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3Z"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Presets</span>
+            </button>
+          </div>
+
           <div>
             <label class="block text-white/70 text-sm">Type</label>
             <div
@@ -865,6 +891,81 @@
         </div>
       </form>
     </Modal>
+
+    <Modal
+      v-model="presetsOpen"
+      panel-class="max-w-2xl"
+    >
+      <template #header>
+        <div class="text-lg font-semibold">
+          Add preset templates
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <p class="text-sm text-white/70">
+          Add ready-made commissioning templates for common equipment types. Each includes
+          curated attributes, checklists and functional tests — edit them after adding.
+          Presets already in this project are skipped.
+        </p>
+
+        <div
+          v-if="presetsLoading"
+          class="text-white/60 text-sm py-2"
+        >
+          Loading presets…
+        </div>
+
+        <div
+          v-else
+          class="space-y-2 max-h-[24rem] overflow-auto pr-1"
+        >
+          <label
+            v-for="p in presetItems"
+            :key="p.key"
+            class="flex items-start gap-3 rounded-xl bg-white/5 border border-white/10 px-3 py-2 cursor-pointer hover:bg-white/8"
+          >
+            <input
+              v-model="presetSelected[p.key]"
+              type="checkbox"
+              class="mt-1 form-checkbox h-4 w-4 rounded bg-white/10 border-white/30 text-white/80"
+            >
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-white/90 text-sm font-medium">{{ p.title }}</span>
+                <span class="text-xs text-white/55 shrink-0">{{ p.attributes }} attrs · {{ p.checklists }} checklists · {{ p.functionalTests }} tests</span>
+              </div>
+              <div class="text-xs text-white/50 mt-0.5">
+                {{ p.summary }}
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-white/60">
+            {{ presetSelectedKeys.length }} selected
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white"
+              @click="presetsOpen = false"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/30 hover:bg-emerald-500/25 text-emerald-100 text-sm disabled:opacity-50"
+              :disabled="applyingPresets || presetSelectedKeys.length === 0"
+              @click="applyPresets"
+            >
+              {{ applyingPresets ? 'Adding…' : `Add ${presetSelectedKeys.length} template${presetSelectedKeys.length === 1 ? '' : 's'}` }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </Modal>
   </section>
 </template>
 
@@ -1281,6 +1382,54 @@ function openCreate() {
   editing.value = false
   form.value = { tag: '', title: '', type: '', system: '', status: 'Not Started', description: '', projectId: projectStore.currentProjectId || '' }
   modalOpen.value = true
+}
+
+// ── Preset templates ────────────────────────────────────────────────────────
+const presetsOpen = ref(false)
+const presetItems = ref<any[]>([])
+const presetSelected = ref<Record<string, boolean>>({})
+const presetsLoading = ref(false)
+const applyingPresets = ref(false)
+
+async function openPresets() {
+  if (!projectStore.currentProjectId) return
+  presetsOpen.value = true
+  if (!presetItems.value.length) {
+    presetsLoading.value = true
+    try {
+      const { data } = await http.get('/api/templates/presets')
+      presetItems.value = Array.isArray(data?.items) ? data.items : []
+      const sel: Record<string, boolean> = {}
+      for (const p of presetItems.value) sel[p.key] = true
+      presetSelected.value = sel
+    } catch (e: any) {
+      ui.showError(e?.response?.data?.error || e?.message || 'Failed to load presets')
+    } finally {
+      presetsLoading.value = false
+    }
+  }
+}
+
+const presetSelectedKeys = computed(() => presetItems.value.map((p: any) => p.key).filter((k: string) => presetSelected.value[k]))
+
+async function applyPresets() {
+  const pid = String(projectStore.currentProjectId || '')
+  const keys = presetSelectedKeys.value
+  if (!pid || !keys.length) return
+  applyingPresets.value = true
+  try {
+    const { data } = await http.post('/api/templates/presets/apply', { projectId: pid, keys })
+    const added = Number(data?.createdCount || 0)
+    const skipped = Number(data?.skippedCount || 0)
+    ui.showSuccess(`Added ${added} preset template${added === 1 ? '' : 's'}${skipped ? `, ${skipped} already existed` : ''}`)
+    if (page.value !== 1) page.value = 1
+    await fetchTemplatesPage(pid)
+    presetsOpen.value = false
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to add preset templates')
+  } finally {
+    applyingPresets.value = false
+  }
 }
 
 function openEdit(e: Template) {
