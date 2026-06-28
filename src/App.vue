@@ -80,6 +80,7 @@
     @update:show="(v) => ui.toast.show = v"
     @close="(payload) => ui.hideToast(payload)"
   />
+  <OfflinePanel v-if="offlineEnabled" />
 </template>
 
 <script setup>
@@ -87,8 +88,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from './components/Modal.vue'
 import Toast from './components/Toast.vue'
+import OfflinePanel from './components/OfflinePanel.vue'
 import { useAuthStore } from './stores/auth'
 import { useUiStore } from './stores/ui'
+import { isOfflineEnabled } from './data/offlineFeature'
 
 const ui = useUiStore()
 const auth = useAuthStore()
@@ -96,6 +99,9 @@ const router = useRouter()
 const stayingSignedIn = ref(false)
 const nowTs = ref(Date.now())
 let countdownTimer = null
+
+// Offline beta — feature-flagged, OFF by default (see data/offlineFeature.ts).
+const offlineEnabled = isOfflineEnabled()
 
 const sessionWarningCountdown = computed(() => {
   const deadline = Number(auth.sessionWarningDeadlineAt || 0)

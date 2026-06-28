@@ -17,6 +17,7 @@ const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam,
 const { tryDeleteLocalUpload } = require('../utils/uploads')
 const { cascadeEquipment } = require('../utils/cascadeDelete');
 const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock');
+const { applyClientId } = require('../utils/clientId');
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -371,6 +372,12 @@ router.post(
     if (typeof payload.metadata === 'string') {
       payload.metadata = sanitizeHtml(String(payload.metadata), { allowedTags: [], allowedAttributes: {} }).trim()
     }
+
+    // Accept a client-supplied _id for offline creates (idempotent replay).
+    const cid = await applyClientId(Equipment, req, payload.projectId);
+    if (cid.handled) return res.status(cid.status).send(cid.body);
+    if (cid.id) payload._id = cid.id;
+
     const equipment = new Equipment(payload);
     await equipment.save();
 
@@ -602,8 +609,9 @@ router.post('/:id/logs', auth, requireObjectIdParam('id'), loadEquipmentProjectI
   }
 })
 
-// Projection for list/light responses (omit heavy fields)
-const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt'
+// Projection for list/light responses (omit heavy fields).
+// Includes __v so clients can send it back for optimistic-lock updates.
+const LIGHT_FIELDS = 'number tag title type system status projectId spaceId space responsible template orderDate installationDate balanceDate testDate labels tags metadata createdAt updatedAt __v'
 
 function countArrayExpr(field) {
   return { $cond: [{ $isArray: field }, { $size: field }, 0] }

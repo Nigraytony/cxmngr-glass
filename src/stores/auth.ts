@@ -205,6 +205,16 @@ export const useAuthStore = defineStore('auth', () => {
     reAuthRequired.value = false
   }
 
+  // Apply a session obtained by redeeming an offline grant on reconnect
+  // (offline Phase 1, decision D1) — like a login, but the credential was the
+  // grant rather than a password.
+  function applyRedeemedSession(data: { accessToken: string; user: any }) {
+    if (!data || !data.accessToken) return
+    setAccessToken(String(data.accessToken))
+    if (data.user) user.value = data.user as User
+    markActivity()
+  }
+
   async function expireSession(reason: 'expired' | 'inactive' = 'expired', opts?: { announce?: boolean }) {
     if (opts?.announce !== false) markExpiredReason(reason)
     try {
@@ -439,6 +449,7 @@ export const useAuthStore = defineStore('auth', () => {
     requireReAuth,
     clearReAuthRequired,
     expireSession,
+    applyRedeemedSession,
     bootstrap,
     setAccessToken,
     clearSession,

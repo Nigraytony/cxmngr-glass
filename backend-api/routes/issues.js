@@ -16,6 +16,7 @@ const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
 const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock')
+const { applyClientId } = require('../utils/clientId')
 const runMiddleware = require('../middleware/runMiddleware');
 const multer = require('multer');
 const fs = require('fs');
@@ -185,8 +186,9 @@ function getBackendBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
-// Light projection for list responses to avoid pulling large blobs
-const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation oprItemIds';
+// Light projection for list responses to avoid pulling large blobs.
+// Includes __v so clients can send it back for optimistic-lock updates.
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation oprItemIds __v';
 
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
@@ -222,6 +224,11 @@ router.post(
       req.body.resolution = sanitizeHtml(String(req.body.resolution), { allowedTags: [], allowedAttributes: {} }).trim()
     }
 
+    // Accept a client-supplied _id for offline creates (idempotent replay).
+    // Checked BEFORE the counter increment so a replay doesn't burn a number.
+    const cid = await applyClientId(Issue, req, projectId);
+    if (cid.handled) return res.status(cid.status).send(cid.body);
+
     // Atomically increment a per-project counter (lastIssueNumber)
     // Use findByIdAndUpdate on the Project to $inc lastIssueNumber and get the new value
     const updatedProject = await Project.findByIdAndUpdate(
@@ -244,6 +251,7 @@ router.post(
     // strict mode doesn't silently drop them.
     const issueData = denormalizeIssuePayload({ ...req.body, number: assignedNumber });
     if (oprValidation.ids !== undefined) issueData.oprItemIds = oprValidation.ids
+    if (cid.id) issueData._id = cid.id
     const issue = new Issue(issueData);
     await issue.save();
 

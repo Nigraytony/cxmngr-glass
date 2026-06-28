@@ -4,6 +4,13 @@
       <BreadCrumbs :items="crumbs" />
     </div>
 
+    <ConflictBanner
+      v-if="equipmentStore.conflict"
+      entity-label="equipment"
+      @reload="reloadForConflict"
+      @dismiss="equipmentStore.conflict = null"
+    />
+
     <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
       <div
         v-if="loading"
@@ -1857,6 +1864,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import ConflictBanner from '../../components/ConflictBanner.vue'
 import Modal from '../../components/Modal.vue'
 import ChecklistPanel from '../../components/ChecklistPanel.vue'
 import FunctionalTestsPanel from '../../components/FunctionalTestsPanel.vue'
@@ -1887,6 +1895,8 @@ const id = computed(() => String(route.params.id || ''))
 const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const equipmentStore = useEquipmentStore()
+// Optimistic-lock conflict: discard local edits and reload the latest record.
+function reloadForConflict() { try { window.location.reload() } catch (_) { /* ignore */ } }
 const ui = useUiStore()
 const ai = useAiStore()
 const authStore = useAuthStore()

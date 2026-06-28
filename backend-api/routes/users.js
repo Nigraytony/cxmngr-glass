@@ -15,8 +15,9 @@ const { sendResetEmail } = require('../utils/mailer');
 const { rateLimit } = require('../middleware/rateLimit');
 const { requireObjectIdParam } = require('../middleware/validate');
 const { auth } = require('../middleware/auth');
+const { requireNotDisabled } = require('../middleware/killSwitch');
 const { parseCookies } = require('../utils/cookies');
-const { signAccessToken, signRefreshToken, verifyRefreshToken, verifyAccessToken } = require('../utils/jwt');
+const { signAccessToken, signRefreshToken, verifyRefreshToken, verifyAccessToken, verifyOfflineGrant } = require('../utils/jwt');
 const { DEMO_USER_EMAIL, seedDemoProject } = require('../utils/demoProject');
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
 
@@ -411,6 +412,57 @@ router.post('/refresh', async (req, res) => {
   } catch (e) {
     console.error('[users.refresh] error', e && (e.stack || e.message || e))
     return res.status(400).send({ error: 'Refresh failed' })
+  }
+})
+
+// Redeem an offline grant for a fresh access token (offline Phase 1, decision
+// D1). A device that went offline may have an expired access token; rather than
+// forcing a full re-login on reconnect, it presents the still-valid offline
+// grant captured at checkout. The grant is honored only while its checkout lock
+// is still active (same grantId/user/device) and the user's tokenVersion is
+// unchanged — so checking in, a new checkout, or "log out everywhere" all
+// revoke it.
+router.post('/offline-grant/redeem', requireNotDisabled('offline_sync'), async (req, res) => {
+  try {
+    const raw = String(
+      (req.body && req.body.grant) || (req.header('Authorization') || '').replace('Bearer ', '')
+    ).trim()
+    if (!raw) return res.status(400).send({ error: 'grant is required', code: 'GRANT_REQUIRED' })
+
+    let decoded
+    try {
+      decoded = verifyOfflineGrant(raw)
+    } catch (e) {
+      return res.status(401).send({ error: 'Invalid or expired grant', code: 'GRANT_INVALID' })
+    }
+
+    const project = await Project.findById(decoded.pid).select('offlineCheckout').lean()
+    const lock = project && project.offlineCheckout
+    const matches = lock
+      && String(lock.grantId || '') === String(decoded.jti)
+      && String(lock.userId || '') === String(decoded.sub)
+      && String(lock.deviceId || '') === String(decoded.did)
+    if (!matches) {
+      return res.status(401).send({ error: 'Grant has been revoked', code: 'GRANT_REVOKED' })
+    }
+    if (lock.expiresAt && new Date(lock.expiresAt).getTime() < Date.now()) {
+      return res.status(401).send({ error: 'Grant has expired', code: 'GRANT_EXPIRED' })
+    }
+
+    const user = await User.findById(decoded.sub)
+    if (!user) return res.status(401).send({ error: 'User not found', code: 'GRANT_INVALID' })
+    if (Number(user.tokenVersion || 0) !== Number(decoded.tv || 0)) {
+      return res.status(401).send({ error: 'Session was revoked', code: 'TOKEN_VERSION_MISMATCH' })
+    }
+
+    const accessToken = signAccessToken({ userId: user._id, tokenVersion: user.tokenVersion || 0 })
+    const userDoc = user.toObject({ getters: true })
+    delete userDoc.password
+    const hydrated = await hydrateUserProjects(userDoc)
+    return res.send({ accessToken, user: hydrated })
+  } catch (error) {
+    console.error('[users.offline-grant.redeem] error', error && (error.message || error))
+    return res.status(500).send({ error: 'Grant redemption failed' })
   }
 })
 

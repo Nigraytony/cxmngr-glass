@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useProjectStore } from './project'
-import http from '../utils/http'
+import { activitiesRepository } from '../data/activitiesRepository'
 
 export interface ActivityPhoto {
   filename?: string
@@ -45,10 +45,9 @@ export interface Activity {
   labels?: string[]
   createdAt?: string
   updatedAt?: string
+  // Mongoose version key — used for optimistic concurrency control on update.
+  __v?: number
 }
-
-const API_BASE = `/api/activities`
-const API_PHOTOS = `${API_BASE}`
 
 export const useActivitiesStore = defineStore('activities', () => {
   const activities = ref<Activity[]>([])
@@ -56,6 +55,10 @@ export const useActivitiesStore = defineStore('activities', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const errorCode = ref<string | null>(null)
+  // Set when an update is rejected because the record changed server-side
+  // (optimistic-lock 409). Holds the latest server doc so the UI can offer a
+  // "reload to see the latest" path instead of silently overwriting.
+  const conflict = ref<{ current: any; currentVersion: number | null } | null>(null)
 
   function normalize(a: any): Activity & any {
     if (!a) return a
@@ -149,8 +152,8 @@ export const useActivitiesStore = defineStore('activities', () => {
         return activities.value
       }
 
-      const res = await http.get(API_BASE, { params: { projectId: pid, light: true } })
-      const list = (res.data || []).map(normalize).filter(a => !isDeletedActivity(a))
+      const data = await activitiesRepository.list({ projectId: pid, light: true })
+      const list = (data || []).map(normalize).filter(a => !isDeletedActivity(a))
       activities.value = list
       return activities.value
     } catch (e: any) {
@@ -179,12 +182,11 @@ export const useActivitiesStore = defineStore('activities', () => {
   async function fetchActivity(id: string, opts?: { light?: boolean; includePhotos?: boolean }) {
     loading.value = true
     error.value = null
+    // Loading a fresh record clears any prior optimistic-lock conflict banner.
+    conflict.value = null
     try {
-      const params: any = {}
-      if (opts?.light) params.light = true
-      if (opts?.includePhotos) params.includePhotos = true
-      const res = await http.get(`${API_BASE}/${id}`, { params })
-      current.value = normalize(res.data)
+      const data = await activitiesRepository.get(id, { light: opts?.light, includePhotos: opts?.includePhotos })
+      current.value = normalize(data)
       return current.value
     } catch (e: any) {
       error.value = e.message || 'Failed to fetch activity'
@@ -195,8 +197,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function fetchActivityPhotos(id: string) {
-    const res = await http.get(`${API_PHOTOS}/${id}/photos`)
-    const photos = res.data || []
+    const photos = await activitiesRepository.getPhotos(id)
     if (current.value && (current.value.id === id || (current.value as any)._id === id)) {
       current.value = { ...(current.value as any), photos }
     }
@@ -208,8 +209,8 @@ export const useActivitiesStore = defineStore('activities', () => {
     error.value = null
     try {
       if (!payload.projectId) throw new Error('projectId is required')
-      const res = await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })
-      const created = normalize(res.data)
+      const data = await activitiesRepository.create(payload)
+      const created = normalize(data)
       activities.value.unshift(created)
       current.value = created
       try {
@@ -240,12 +241,27 @@ export const useActivitiesStore = defineStore('activities', () => {
   async function updateActivity(id: string, payload: Partial<Activity>) {
     loading.value = true
     error.value = null
+    errorCode.value = null
+    conflict.value = null
     try {
       const prev = (current.value && String((current.value as any).id || (current.value as any)._id || '') === String(id))
         ? (current.value as any)
         : activities.value.find(a => String((a as any).id || (a as any)._id || '') === String(id))
-      const res = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } })
-      const updated = normalize(res.data)
+      // Optimistic concurrency: send the version we loaded so the server can
+      // reject (409) if someone else changed the record. Only sent when known
+      // — a missing __v falls back to last-write-wins for back-compat.
+      const expectedVersion = prev && typeof prev.__v === 'number' ? prev.__v : null
+      const result = await activitiesRepository.update(id, payload, { expectedVersion })
+      if (result.conflict) {
+        conflict.value = { current: result.current, currentVersion: result.currentVersion ?? null }
+        errorCode.value = 'STALE_VERSION'
+        error.value = 'This activity was changed by someone else. Reload to see the latest version.'
+        const err: any = new Error(error.value)
+        err.code = 'STALE_VERSION'
+        err.current = result.current
+        throw err
+      }
+      const updated = normalize(result.data)
       current.value = updated
       const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
       if (idx !== -1) activities.value.splice(idx, 1, updated)
@@ -281,11 +297,8 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function uploadPhotos(id: string, files: FileList | File[]) {
-    const fd = new FormData()
-    const arr = Array.from(files as any)
-    for (const f of arr) fd.append('photos', f as Blob)
-    const res = await http.post(`${API_BASE}/${id}/photos`, fd)
-    const updated = normalize(res.data)
+    const data = await activitiesRepository.uploadPhotos(id, files)
+    const updated = normalize(data)
     current.value = updated
     const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
     if (idx !== -1) activities.value.splice(idx, 1, updated)
@@ -294,8 +307,8 @@ export const useActivitiesStore = defineStore('activities', () => {
 
   async function removePhoto(id: string, index: number) {
     // Prefer dedicated endpoint to avoid sending large base64 payloads
-    const res = await http.delete(`${API_BASE}/${id}/photos/${index}`)
-    const updated = normalize(res.data)
+    const data = await activitiesRepository.removePhoto(id, index)
+    const updated = normalize(data)
     current.value = updated
     const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
     if (idx !== -1) activities.value.splice(idx, 1, updated)
@@ -303,8 +316,8 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function updatePhotoCaption(id: string, index: number, caption: string) {
-    const res = await http.patch(`${API_BASE}/${id}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
-    const updated = normalize(res.data)
+    const data = await activitiesRepository.updatePhotoCaption(id, index, caption)
+    const updated = normalize(data)
     current.value = updated
     const idx = activities.value.findIndex(a => (a.id || a._id) === (updated.id || updated._id))
     if (idx !== -1) activities.value.splice(idx, 1, updated)
@@ -312,8 +325,7 @@ export const useActivitiesStore = defineStore('activities', () => {
   }
 
   async function downloadReport(id: string) {
-    const res = await http.get(`${API_BASE}/${id}/report`, { responseType: 'blob' })
-    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const blob = await activitiesRepository.fetchReportBlob(id)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -331,9 +343,7 @@ export const useActivitiesStore = defineStore('activities', () => {
       const existing = activities.value.find(a => String(a.id || a._id) === String(id)) || current.value
       let pid = existing ? String(existing.projectId || (existing as any).project || '') : ''
       const name = existing ? (existing.name || '') : ''
-      const config: any = {}
-      if (pid) config.params = { projectId: pid }
-      await http.delete(`${API_BASE}/${id}`, config)
+      await activitiesRepository.remove(id, pid || undefined)
       activities.value = activities.value.filter(a => String(a.id || a._id) !== String(id))
       if (current.value && String(current.value.id || current.value?._id) === String(id)) current.value = null
 
@@ -349,7 +359,7 @@ export const useActivitiesStore = defineStore('activities', () => {
         if (!pid) {
           // best-effort: try to fetch the activity to get projectId
           try {
-            const { data } = await http.get(`${API_BASE}/${id}`)
+            const data = await activitiesRepository.get(id)
             pid = String((data && (data.projectId || data.project)) || '')
           } catch (_) { /* ignore */ }
         }
@@ -368,5 +378,5 @@ export const useActivitiesStore = defineStore('activities', () => {
     }
   }
 
-  return { activities, current, loading, error, errorCode, fetchActivities, fetchActivity, fetchActivityPhotos, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
+  return { activities, current, loading, error, errorCode, conflict, fetchActivities, fetchActivity, fetchActivityPhotos, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
 })
