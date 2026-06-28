@@ -98,7 +98,16 @@ async function onCheckout() {
   busy.value = true
   try {
     const s = await store.checkout(projectId.value)
-    ui.showSuccess(`Checked out: ${s.activities} activities, ${s.issues} issues, ${s.equipment} equipment, ${s.actions} actions`)
+    // List only entities that actually have records — avoids naming features
+    // the project's plan doesn't include (e.g. activities on the basic tier).
+    const counts: Array<[number, string]> = [
+      [s.activities, 'activities'],
+      [s.issues, 'issues'],
+      [s.equipment, 'equipment'],
+      [s.actions, 'actions'],
+    ]
+    const parts = counts.filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}`)
+    ui.showSuccess(parts.length ? `Checked out: ${parts.join(', ')}` : 'Checked out (no existing records)')
   } catch (e: any) {
     ui.showError(e?.message || 'Checkout failed')
   } finally {
