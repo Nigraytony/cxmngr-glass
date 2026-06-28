@@ -7,6 +7,13 @@
       />
     </div>
 
+    <ConflictBanner
+      v-if="issues.conflict"
+      entity-label="issue"
+      @reload="reloadForConflict"
+      @dismiss="issues.conflict = null"
+    />
+
     <template v-if="!loaded && !notFound">
       <div
         class="w-full rounded-2xl p-6 bg-white/6 backdrop-blur-xl border border-white/10 text-white/80 flex items-center gap-3"
@@ -1237,6 +1244,7 @@ import { onMounted, reactive, computed, ref, watch, onBeforeUnmount, nextTick } 
 import { useRoute, useRouter } from 'vue-router'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
+import ConflictBanner from '../../components/ConflictBanner.vue'
 import OprItemPicker from '../../components/OprItemPicker.vue'
 import OprLinkVerification from '../../components/OprLinkVerification.vue'
 import Comments from '../../components/Comments.vue'
@@ -1259,6 +1267,8 @@ import http from '../../utils/http'
 const route = useRoute()
 const router = useRouter()
 const issues = useIssuesStore()
+// Optimistic-lock conflict: discard local edits and reload the latest record.
+function reloadForConflict() { try { window.location.reload() } catch (_) { /* ignore */ } }
 const issuesNav = useIssuesNavStore()
 const projectStore = useProjectStore()
 const ui = useUiStore()

@@ -17,6 +17,7 @@ const { requireFeature } = require('../middleware/planGuard');
 const runMiddleware = require('../middleware/runMiddleware');
 const { requireObjectIdParam, requireBodyField, requireObjectIdBody } = require('../middleware/validate');
 const { deleteEntityMedia } = require('../utils/entityMedia');
+const { applyClientId } = require('../utils/clientId');
 
 const PAYLOAD_FIELDS = ['title', 'type', 'status', 'date', 'performedBy', 'location', 'equipmentId', 'templateId', 'notes'];
 
@@ -101,6 +102,11 @@ router.post('/', auth, requireBodyField('projectId'), requireObjectIdBody('proje
     payload.projectId = projectId;
     payload.activityId = activityId;
     payload.createdBy = req.user && req.user._id ? req.user._id : null;
+
+    // Accept a client-supplied _id for offline creates (idempotent replay).
+    const cid = await applyClientId(Action, req, projectId);
+    if (cid.handled) return res.status(cid.status).send(cid.body);
+    if (cid.id) payload._id = cid.id;
 
     const action = new Action(payload);
     await action.save();

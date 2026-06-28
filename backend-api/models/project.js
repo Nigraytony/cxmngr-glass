@@ -55,6 +55,17 @@ const projectSchema = new mongoose.Schema({
   issues: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Issue' }],
   // Per-project atomic issue counter. Incremented when creating issues to assign sequential numbers.
   lastIssueNumber: { type: Number, default: 0 },
+  // Advisory lock for offline checkout (Phase 1, decision D1). When a device
+  // checks the project out to work offline, it is reserved here so a second
+  // device can't also check it out. Cleared on check-in. `grantId` ties an
+  // issued offline grant to this lock, so checking in revokes the grant.
+  offlineCheckout: {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    deviceId: { type: String, default: null },
+    grantId: { type: String, default: null },
+    checkedOutAt: { type: Date, default: null },
+    expiresAt: { type: Date, default: null },
+  },
   equipment: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Equipment' }],
   templates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Template' }],
   tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],

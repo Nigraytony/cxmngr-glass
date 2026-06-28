@@ -1,6 +1,7 @@
 import { api } from './api'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
+import { isOfflineSessionActive } from '../data/offlineGate'
 
 export const http = api
 
@@ -111,7 +112,10 @@ http.interceptors.response.use(
             ? Boolean(auth.isInactiveExceeded())
             : true
 
-          if (inactive) {
+          // While checked out + offline, never hard-redirect to /login: that
+          // would discard queued offline edits. Surface the re-auth modal
+          // (which preserves the page) instead. See offline Phase 1 (D1).
+          if (inactive && !isOfflineSessionActive()) {
             markSessionExpired('inactive')
             try {
               if (typeof auth.expireSession === 'function') await auth.expireSession('inactive')

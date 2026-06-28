@@ -1,0 +1,200 @@
+# Offline Support — Phase 1 Design
+
+Status: **Draft for discussion** · Last updated: 2026-06-28
+
+## TL;DR
+
+Make the app usable offline for the field-work core — **Assets, Activities, Issues** — under a
+**check-out / check-in** model: pull one project to the device, work fully offline, sync changes
+back when connected. Ship it first as an **Electron desktop app** (Windows/Mac/Linux), with the
+offline data layer built as portable Vue code so the same core later wraps in **Capacitor**
+(iPad/Android) and continues to run in the existing **web app**.
+
+The shell (Electron / Capacitor / browser) is the cheap, swappable part. The offline **data layer**
+is the expensive, reusable part. We build the data layer once and package it three ways.
+
+## Goals
+
+- A user can **check out** a single project while online and then work with no connectivity.
+- Offline create / edit / delete for **Assets (Equipment), Activities, Issues** (and Activity
+  **Actions** — see decision D3), including **photo capture**.
+- On reconnect, **check in**: replay local changes to the API, resolve conflicts, return the device
+  to a clean state.
+- The offline core is **shell-agnostic** — identical code in Electron, Capacitor, and the browser.
+- No regression to the existing online web app.
+
+## Non-goals (Phase 1)
+
+- Multi-user concurrent offline editing / real-time merge. Checkout takes an **advisory lock**;
+  the offline device is the only writer.
+- Offline support for Templates, OPR Workshop, Documents (Azure Blob), Spaces, Systems, Tasks,
+  billing, final report. These come in later phases.
+- Offline **project creation**. Phase 1 checks out an existing project; you cannot create a brand
+  new project offline.
+- Capacitor/mobile packaging. Phase 1 ships Electron only; mobile is a later phase reusing this core.
+
+## Background / current state
+
+(From the architecture survey — see file paths for the spots we touch.)
+
+- **Frontend**: Vue 3 + Vite + Pinia. No service worker / PWA today. No IndexedDB today.
+- **Data access**: Pinia stores call `http.get/post/patch/delete` **directly** — no repository layer.
+  - `src/utils/api.ts` (Axios instance, CSRF), `src/utils/http.ts` (401/402 + refresh interceptors)
+  - `src/stores/activities.ts`, `src/stores/issues.ts`, `src/stores/equipment.ts`,
+    `src/stores/actions.ts`, `src/stores/project.ts`
+- **Auth**: JWT access token in `sessionStorage`, httpOnly refresh cookie, 15-min idle timeout,
+  ~2-min keep-alive refresh. All of which require the network. (`src/stores/auth.ts`, `src/main.js`)
+- **IDs**: server-side Mongo `ObjectId`. No client-generated IDs today.
+- **Conflict control**: `__v` optimistic locking **already exists on the backend** but is **opt-in**
+  and the frontend does not send `__v` yet. (`backend-api/utils/optimisticLock.js`)
+- **Photos**: base64 strings embedded in Activity/Issue documents (250 KB cap each, multer memory).
+- **Entities**: all carry `projectId`, `createdAt`, `updatedAt`, `__v`. Models in `backend-api/models/`.
+
+## The four decisions to settle first
+
+These are the load-bearing choices. Everything else is mechanical once these are fixed.
+
+### D1 — Offline auth
+
+**Problem:** a checked-out device with an expired access token and no network is dead. Token refresh
+needs the network; the idle timeout would log the user out mid-job.
+
+**Proposal:**
+- At **checkout**, capture an **offline grant**: a longer-lived credential bound to the checked-out
+  project + device, stored encrypted in IndexedDB (not sessionStorage).
+- While a project is checked out and offline, **suspend** the idle-timeout logout and keep-alive loop;
+  the app operates in an "offline session" that trusts the offline grant for read+write to **local
+  data only** (no network calls are even attempted).
+- On reconnect, **re-authenticate** (silent refresh if the refresh cookie is still valid; otherwise
+  prompt for login) **before** check-in is allowed to push anything.
+- Offline grant has a hard expiry (e.g. configurable, default ~7–14 days). Past expiry, local data is
+  still readable but check-in requires fresh online login.
+
+**Open questions:** grant lifetime; where the server validates the grant on check-in; whether to bind
+to a device fingerprint. Backend work: issue + validate offline grant on checkout/check-in endpoints.
+
+### D2 — Client-generated IDs
+
+**Problem:** offline you create an Issue/Activity/Action/Asset before the server has assigned an
+`ObjectId`, and these entities reference each other (`activity.issues[]`, `action.activityId`, …).
+
+**Decision (recommended): client-generated IDs.** Generate a 24-hex ObjectId-compatible value
+client-side at create time and let the server **accept the client-supplied `_id`** on insert.
+- Pros: references are valid immediately; no remap/patch pass on sync; simplest sync logic.
+- Cons: touches every create route + model to accept (and validate uniqueness of) a supplied `_id`.
+
+**Rejected alternative:** temp local IDs remapped on sync. Fiddlier — every cross-entity reference
+must be rewritten when the server returns the real ID, across the whole graph. More sync bugs.
+
+Backend work: allow client-supplied `_id` on create for Assets/Activities/Actions/Issues, with
+collision handling (reject as conflict if `_id` already exists with different content).
+
+### D3 — Are Actions in Phase 1?
+
+Actions are sub-records of Activities (own collection, `src/stores/actions.ts`). An Activity without
+its Actions is half a record for field use.
+
+**Recommendation: YES, include Actions in Phase 1.** They inherit the same offline treatment as
+their parent Activity. (If we cut them, an offline Activity edit can't add the action items a tech
+actually performs on site — which defeats the purpose.)
+
+### D4 — Photos
+
+All three entities carry base64 photos, and **photo capture is probably the #1 reason** a field tech
+wants offline. So photos are **in scope** for Phase 1, and they are the heaviest single chunk.
+
+**Proposal:**
+- Offline, store captured photos as **Blobs in IndexedDB** (not base64) to save ~33% size + memory.
+- Convert to the existing base64 `photos[]` shape only at **check-in** upload time, so the backend
+  contract is unchanged in Phase 1.
+- Respect the existing 250 KB cap at capture time (downscale/compress before store).
+- **Later phase:** revisit moving photos off base64-in-Mongo to blob/SAS upload (like Documents) —
+  out of scope here, but flagged because base64-in-Mongo will not scale.
+
+## Architecture
+
+```
+            ┌──────────────────────────────────────────────────────────┐
+            │                  Vue 3 app (portable core)                │
+            │                                                          │
+   Views ─► │  Pinia stores ─► Repository layer ─► ┬─ API (online)     │
+            │  (activities,                        └─ Dexie/IndexedDB  │
+            │   issues, equipment,                      (offline)       │
+            │   actions)            ▲                                   │
+            │                       │                                   │
+            │              Outbox + Sync engine (checkout / check-in)   │
+            └──────────────────────────────────────────────────────────┘
+                      same build, three shells ▼
+        ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+        │   Electron    │   │   Capacitor   │   │   Browser     │
+        │ (Phase 1 now) │   │ (later phase) │   │  (always)     │
+        └───────────────┘   └───────────────┘   └───────────────┘
+```
+
+### Key components
+
+- **Repository layer** (new) — sits between Pinia stores and the network. Each entity gets a
+  repository with the same read/write API the stores use today, but it transparently routes to the
+  **API** (online, project not checked out) or **Dexie/IndexedDB** (project checked out / offline)
+  and appends mutations to the **outbox**. This is the central new abstraction; stores stop calling
+  `http.*` directly.
+- **Dexie schema** (new) — local tables for `projects`, `activities`, `actions`, `issues`,
+  `equipment`, `photos` (Blobs), `outbox`, and a `checkout` meta record. Use **Dexie**, not raw
+  IndexedDB. **Do not use SQLite/`better-sqlite3`** even though Electron allows it — it would not
+  port to Capacitor/web and we'd build the data layer twice.
+- **Outbox** (new) — ordered, append-only queue of pending operations
+  (`create|update|delete`, entity, id, payload, `__v`, timestamps). Replayed in order on check-in.
+- **Sync engine** (new) — `checkout(projectId)`, `checkIn()`, conflict handling. Uses `__v` on every
+  mutation; on a 409 from the backend, applies the conflict policy (D5 below).
+
+### Conflict policy (uses existing `__v`)
+
+We **finish the frontend `__v` migration** so every mutation sends its version. On check-in:
+- **No conflict** (server `__v` matches): apply, advance version.
+- **Conflict** (409): Phase 1 policy = **last-write-wins with a surfaced report** — apply the local
+  change, but record the overwritten server state and show the user a post-check-in summary of any
+  conflicts so nothing is silently lost. (Field-level merge / interactive resolution is a later
+  enhancement; the checkout lock should make conflicts rare.)
+
+## Backend changes (Phase 1)
+
+- **Checkout/check-in endpoints**: `POST /api/projects/:id/checkout`, `POST /api/projects/:id/checkin`
+  — issue/validate the offline grant (D1), set/clear an advisory checkout lock, accept a batched
+  replay of outbox operations on check-in.
+- **Accept client-supplied `_id`** on create for Assets/Activities/Actions/Issues (D2).
+- **Enforce `__v`** on the Phase-1 entity mutations (flip optimistic lock from opt-in to required for
+  these routes once the frontend sends it). `backend-api/utils/optimisticLock.js` already exists.
+- Advisory lock fields on Project (e.g. `checkedOutBy`, `checkedOutAt`, `checkoutDeviceId`).
+
+## Work breakdown (sequenced)
+
+Steps 1–2 ship value **in the browser with no Electron at all**, and de-risk the hard part early.
+
+1. **Repository layer + `__v` frontend migration** — refactor `activities.ts` to read/write through a
+   new repository instead of `http.*` directly; send `__v` on mutations. **Pilot deliverable.**
+   No offline behavior yet — proves the abstraction online first.
+2. **Offline core** — Dexie schema, outbox, `checkout()/checkIn()`, client-generated IDs, offline
+   auth (D1). Roll the repository pattern out to `issues.ts`, `equipment.ts`, `actions.ts`.
+   Photo capture → Blob → check-in upload (D4). Still fully testable in a plain browser.
+3. **Backend** — checkout/check-in endpoints, client-`_id` acceptance, advisory lock, `__v`
+   enforcement on the four entities.
+4. **Electron shell** — wrap the existing Vite build; app menus; **code signing + auto-update**
+   (Apple notarization + Windows cert — a setup tax to budget for). Mostly packaging at this point.
+5. **(Later phase, not Phase 1)** — Capacitor wrap for iPad/Android (native camera + mobile shell),
+   reusing the same data layer untouched.
+
+## Risks / watch-list
+
+- **Offline auth (D1)** is the highest-uncertainty item — design and prototype it first.
+- **Photos (D4)** are the largest single chunk; base64-in-Mongo is a known scaling debt to revisit.
+- **Storage limits** — IndexedDB is generous but browser/OS can evict; in Electron this is less of a
+  worry, but the portable web path must handle quota + persistence requests.
+- **The repository refactor touches every Phase-1 store** — but it's healthy architecture regardless
+  of offline, so the cost is justified even if offline slipped.
+- **Code signing / auto-update** is a real distribution tax for Electron — plan for certs early.
+
+## Pilot — first concrete deliverable
+
+Refactor `src/stores/activities.ts` to go through a new repository abstraction and send `__v` on
+mutations, with no behavior change online. This proves the central abstraction before any IndexedDB
+or Electron work, and becomes the template every other store follows.

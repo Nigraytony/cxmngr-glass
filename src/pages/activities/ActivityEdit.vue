@@ -19,6 +19,14 @@
         />
       </div>
 
+      <ConflictBanner
+        v-if="store.conflict"
+        entity-label="activity"
+        class="mb-4"
+        @reload="reloadForConflict"
+        @dismiss="store.conflict = null"
+      />
+
       <div class="w-full rounded-2xl p-4 md:p-6 bg-white/6 backdrop-blur-xl border border-white/10">
         <!-- Tabs header -->
         <div class="mb-4 md:mb-6">
@@ -2648,6 +2656,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useActivitiesStore } from '../../stores/activities'
 import { useProjectStore } from '../../stores/project'
 import RichTextEditor from '../../components/RichTextEditor.vue'
+import ConflictBanner from '../../components/ConflictBanner.vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import OprItemPicker from '../../components/OprItemPicker.vue'
 import OprLinkVerification from '../../components/OprLinkVerification.vue'
@@ -2677,6 +2686,8 @@ const props = defineProps<{ id?: string }>()
 const route = useRoute()
 const router = useRouter()
 const store = useActivitiesStore()
+// Optimistic-lock conflict: discard local edits and reload the latest record.
+function reloadForConflict() { try { window.location.reload() } catch (_) { /* ignore */ } }
 const projectStore = useProjectStore()
 const auth = useAuthStore()
 const ui = useUiStore()

@@ -21,6 +21,7 @@ const { requireNotDisabled } = require('../middleware/killSwitch');
 const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam, requireIntParam } = require('../middleware/validate');
 const { tryDeleteLocalUpload } = require('../utils/uploads')
 const { readExpectedVersion, applyOptimisticUpdate, sendConflict } = require('../utils/optimisticLock')
+const { applyClientId } = require('../utils/clientId')
 const { normalizeLogEvent } = require('../utils/logEvent')
 
 // Defensive: validate `:id` params everywhere in this router to avoid CastErrors and 500s.
@@ -260,6 +261,11 @@ router.post(
       payload.oprItemIds = oprValidation.ids
     }
 
+    // Accept a client-supplied _id for offline creates (idempotent replay).
+    const cid = await applyClientId(Activity, req, payload.projectId);
+    if (cid.handled) return res.status(cid.status).send(cid.body);
+    if (cid.id) payload._id = cid.id;
+
     const activity = new Activity(payload);
     await activity.save();
 
@@ -330,6 +336,7 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
           reviewer: 1,
           createdAt: 1,
           updatedAt: 1,
+          __v: 1,
           issuesCount: { $size: { $ifNull: ['$issues', []] } },
           photosCount: { $size: { $ifNull: ['$photos', []] } },
           commentsCount: { $size: { $ifNull: ['$comments', []] } },
@@ -484,7 +491,8 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const isLight = String(req.query.light || '').toLowerCase() === 'true' || String(req.query.light || '') === '1'
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
-    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues oprItemIds'
+    // Include __v so clients can send it back for optimistic-lock updates.
+    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues oprItemIds __v'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos

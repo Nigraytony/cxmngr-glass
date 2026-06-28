@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useProjectStore } from './project'
-import http from '../utils/http'
+import { issuesRepository } from '../data/issuesRepository'
 
 export interface Issue {
   _id?: string
@@ -35,14 +35,17 @@ export interface Issue {
   logs?: string[]
   createdAt?: string
   updatedAt?: string
+  // Mongoose version key — used for optimistic concurrency control on update.
+  __v?: number
 }
-
-const API_BASE = `/api/issues`
 
 export const useIssuesStore = defineStore('issues', () => {
   const issues = ref<Issue[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  // Set when an update is rejected because the record changed server-side
+  // (optimistic-lock 409). Holds the latest server doc for a "reload" path.
+  const conflict = ref<{ current: any; currentVersion: number | null } | null>(null)
 
   function normalize(issue: any): Issue & any {
     if (!issue) return issue
@@ -71,8 +74,7 @@ export const useIssuesStore = defineStore('issues', () => {
         return issues.value
       }
 
-      const res = await http.get(API_BASE, { params: { projectId: pid, page: 1, perPage: 200 } })
-      const payload = res.data || []
+      const payload = await issuesRepository.list({ projectId: pid, page: 1, perPage: 200 })
       // Support both legacy array response and new paginated shape { items, total, ... }
       const items = Array.isArray(payload)
         ? payload
@@ -92,9 +94,11 @@ export const useIssuesStore = defineStore('issues', () => {
   async function fetchIssue(id: string) {
     loading.value = true
     error.value = null
+    // Loading a fresh record clears any prior optimistic-lock conflict banner.
+    conflict.value = null
     try {
-      const res = await http.get(`${API_BASE}/${id}`)
-      const it = normalize(res.data)
+      const data = await issuesRepository.get(id)
+      const it = normalize(data)
       const key = String((it as any).id || (it as any)._id || id)
       if (key) {
         const idx = issues.value.findIndex(x => String((x as any).id || (x as any)._id || '') === key)
@@ -115,8 +119,8 @@ export const useIssuesStore = defineStore('issues', () => {
     error.value = null
     try {
       if (!payload.projectId) throw new Error('projectId is required to create an issue')
-      const res = await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })
-      const ni = normalize(res.data)
+      const data = await issuesRepository.create(payload)
+      const ni = normalize(data)
       issues.value.unshift(ni)
       try {
         const { useLogsStore } = await import('./logs')
@@ -143,9 +147,23 @@ export const useIssuesStore = defineStore('issues', () => {
   async function updateIssue(id: string, payload: Partial<Issue>) {
     loading.value = true
     error.value = null
+    conflict.value = null
     try {
-      const res = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } })
-      const updated = normalize(res.data)
+      // Optimistic concurrency: send the version we loaded so the server can
+      // reject (409) on a concurrent edit. Only sent when known; a missing __v
+      // falls back to last-write-wins for back-compat.
+      const prev = issues.value.find(i => String((i as any).id || (i as any)._id || '') === String(id))
+      const expectedVersion = prev && typeof prev.__v === 'number' ? prev.__v : null
+      const result = await issuesRepository.update(id, payload, { expectedVersion })
+      if (result.conflict) {
+        conflict.value = { current: result.current, currentVersion: result.currentVersion ?? null }
+        error.value = 'This issue was changed by someone else. Reload to see the latest version.'
+        const err: any = new Error(error.value)
+        err.code = 'STALE_VERSION'
+        err.current = result.current
+        throw err
+      }
+      const updated = normalize(result.data)
       const idx = issues.value.findIndex(i => (i.id || i._id) === (updated.id || updated._id))
       if (idx !== -1) issues.value.splice(idx, 1, updated)
       try {
@@ -173,8 +191,8 @@ export const useIssuesStore = defineStore('issues', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await http.delete(`${API_BASE}/${id}`)
-      const removed = normalize(res.data)
+      const data = await issuesRepository.remove(id)
+      const removed = normalize(data)
       issues.value = issues.value.filter(i => (i.id || i._id) !== (removed.id || removed._id) && (i.id || i._id) !== id)
       try {
         const { useLogsStore } = await import('./logs')
@@ -201,6 +219,7 @@ export const useIssuesStore = defineStore('issues', () => {
     issues,
     loading,
     error,
+    conflict,
     fetchIssues,
     fetchIssue,
     createIssue,

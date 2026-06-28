@@ -6,6 +6,8 @@ const User = require('../models/user');
 const { requireActiveProject } = require('../middleware/subscription');
 const { auth } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
+const { requireNotDisabled } = require('../middleware/killSwitch');
+const { signOfflineGrant, OFFLINE_GRANT_TTL_DAYS } = require('../utils/jwt');
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
   try {
@@ -2244,5 +2246,105 @@ router.put('/:id/team/:memberId/permissions', auth, requireObjectIdParam('id'), 
     return res.status(500).send({ error: 'Failed to update member permissions' });
   }
 });
+
+// ---- Offline checkout (advisory lock + grant) — Phase 1, decision D1 --------
+
+function offlineCheckoutStatus(project) {
+  const c = (project && project.offlineCheckout) || {}
+  const active = !!(c.userId && c.expiresAt && new Date(c.expiresAt).getTime() > Date.now())
+  if (!active) return { checkedOut: false }
+  return {
+    checkedOut: true,
+    userId: String(c.userId),
+    deviceId: c.deviceId || null,
+    checkedOutAt: c.checkedOutAt || null,
+    expiresAt: c.expiresAt || null,
+  }
+}
+
+// Read the current checkout/lock status.
+router.get('/:id/checkout', auth, requireObjectIdParam('id'), requireProjectMember, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id).select('offlineCheckout').lean()
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+    return res.send(offlineCheckoutStatus(project))
+  } catch (e) {
+    console.error('[projects.checkout-status] error', e && (e.stack || e.message || e))
+    return res.status(500).send({ error: 'Failed to read checkout status' })
+  }
+})
+
+// Check a project out for offline use: reserve the advisory lock and issue an
+// offline grant. The same user may re-check-out (e.g. a new device), which
+// supersedes the prior grant; a different user is rejected with 409.
+router.post('/:id/checkout', auth, requireObjectIdParam('id'), requireNotDisabled('offline_sync'), requireProjectMember, async (req, res) => {
+  try {
+    const deviceId = String((req.body && req.body.deviceId) || '').trim()
+    if (!deviceId) return res.status(400).send({ error: 'deviceId is required', code: 'DEVICE_ID_REQUIRED' })
+
+    const project = await Project.findById(req.params.id)
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+
+    const userId = String(req.user._id)
+    const now = Date.now()
+    const existing = project.offlineCheckout || {}
+    const heldByOther = existing.userId
+      && String(existing.userId) !== userId
+      && existing.expiresAt && new Date(existing.expiresAt).getTime() > now
+    if (heldByOther) {
+      return res.status(409).send({
+        error: 'Project is checked out by another user',
+        code: 'PROJECT_CHECKED_OUT',
+        checkedOutBy: String(existing.userId),
+        checkedOutAt: existing.checkedOutAt,
+        expiresAt: existing.expiresAt,
+      })
+    }
+
+    const grantId = crypto.randomBytes(16).toString('hex')
+    const expiresAt = new Date(now + OFFLINE_GRANT_TTL_DAYS * 24 * 60 * 60 * 1000)
+    project.offlineCheckout = { userId: req.user._id, deviceId, grantId, checkedOutAt: new Date(now), expiresAt }
+    await project.save()
+
+    const grant = signOfflineGrant({
+      userId,
+      projectId: String(project._id),
+      deviceId,
+      grantId,
+      tokenVersion: req.user.tokenVersion || 0,
+    })
+    return res.status(200).send({ grant, expiresAt, deviceId, projectId: String(project._id) })
+  } catch (e) {
+    console.error('[projects.checkout] error', e && (e.stack || e.message || e))
+    return res.status(500).send({ error: 'Checkout failed' })
+  }
+})
+
+// Release the lock (and revoke the grant) on check-in. Only the holder or a
+// global admin may release.
+router.post('/:id/checkin', auth, requireObjectIdParam('id'), requireNotDisabled('offline_sync'), requireProjectMember, async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id)
+    if (!project) return res.status(404).send({ error: 'Project not found' })
+
+    const existing = project.offlineCheckout || {}
+    const userId = String(req.user._id)
+    const isHolder = existing.userId && String(existing.userId) === userId
+    if (existing.userId && !isHolder && !isGlobalAdmin(req.user)) {
+      return res.status(409).send({
+        error: 'Checkout is held by another user',
+        code: 'NOT_CHECKOUT_HOLDER',
+        checkedOutBy: String(existing.userId),
+      })
+    }
+
+    project.offlineCheckout = { userId: null, deviceId: null, grantId: null, checkedOutAt: null, expiresAt: null }
+    await project.save()
+    return res.status(200).send({ released: true })
+  } catch (e) {
+    console.error('[projects.checkin] error', e && (e.stack || e.message || e))
+    return res.status(500).send({ error: 'Check-in failed' })
+  }
+})
 
 module.exports = router;

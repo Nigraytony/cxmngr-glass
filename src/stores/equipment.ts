@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import http from '../utils/http'
+import { equipmentRepository } from '../data/equipmentRepository'
 import { buildEquipmentLogDetails } from '../utils/equipmentLogDiff'
 
 export interface Equipment {
@@ -52,14 +52,17 @@ export interface Equipment {
   metadata?: any
   createdAt?: string
   updatedAt?: string
+  // Mongoose version key — used for optimistic concurrency control on update.
+  __v?: number
 }
-
-const API_BASE = `/api/equipment`
 
 export const useEquipmentStore = defineStore('equipment', () => {
   const items = ref<Equipment[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  // Set when an update is rejected because the record changed server-side
+  // (optimistic-lock 409). Holds the latest server doc for a "reload" path.
+  const conflict = ref<{ current: any; currentVersion: number | null } | null>(null)
 
   const byId = computed<Record<string, Equipment>>(() => {
     const m: Record<string, Equipment> = {}
@@ -80,7 +83,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await http.get(`${API_BASE}/project/${pid}`)
+      const data = await equipmentRepository.listByProject(pid)
       items.value = Array.isArray(data) ? data.map((d: any) => ({ ...d, id: d._id })) : []
     } catch (e: any) {
       error.value = e?.response?.data?.error || e?.message || 'Failed to load equipment'
@@ -94,8 +97,10 @@ export const useEquipmentStore = defineStore('equipment', () => {
     if (!id) return null
     loading.value = true
     error.value = null
+    // Loading a fresh record clears any prior optimistic-lock conflict banner.
+    conflict.value = null
     try {
-      const { data } = await http.get(`${API_BASE}/${id}`)
+      const data = await equipmentRepository.get(id)
       const eq = { ...data, id: data._id }
       const idx = items.value.findIndex(e => (e.id || (e as any)._id) === id)
       if (idx !== -1) items.value.splice(idx, 1, eq)
@@ -113,7 +118,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const payload: any = { ...e }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
-    const { data } = await http.post(`${API_BASE}`, payload)
+    const data = await equipmentRepository.create(payload)
     const saved = { ...data, id: data._id }
     items.value.push(saved)
     try {
@@ -135,17 +140,21 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const payload: any = { ...e }
     if (payload.id) delete payload.id
     if (payload._id) delete payload._id
-    let data: any
-    try {
-      ({ data } = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
-    } catch (err: any) {
-      // Fallback to PUT if PATCH is not supported by backend
-      if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await http.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
-      } else {
-        throw err
-      }
+    if ('__v' in payload) delete payload.__v
+    const expectedVersion = (prev && typeof prev.__v === 'number')
+      ? prev.__v
+      : (typeof (e as any).__v === 'number' ? (e as any).__v : null)
+    conflict.value = null
+    const result = await equipmentRepository.update(String(id), payload, { expectedVersion })
+    if (result.conflict) {
+      conflict.value = { current: result.current, currentVersion: result.currentVersion ?? null }
+      error.value = 'This equipment was changed by someone else. Reload to see the latest version.'
+      const err: any = new Error(error.value)
+      err.code = 'STALE_VERSION'
+      err.current = result.current
+      throw err
     }
+    const data = result.data
     const saved = { ...data, id: data._id || id }
     const idx = items.value.findIndex(x => (x.id || (x as any)._id) === id)
     if (idx !== -1) items.value[idx] = saved
@@ -166,16 +175,21 @@ export const useEquipmentStore = defineStore('equipment', () => {
   // Partial update helper (PATCH only). Useful for updating a subset of fields (e.g., attributes).
   async function updateFields(id: string, payload: Partial<Equipment>) {
     if (!id) throw new Error('Missing equipment id')
-    let data: any
-    try {
-      ({ data } = await http.patch(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
-    } catch (err: any) {
-      if (err?.response?.status === 404 || err?.response?.status === 405) {
-        ({ data } = await http.put(`${API_BASE}/${id}`, payload, { headers: { 'Content-Type': 'application/json' } }))
-      } else {
-        throw err
-      }
+    const prev = items.value.find(x => String(x.id || (x as any)._id || '') === String(id)) || null
+    const body: any = { ...payload }
+    if ('__v' in body) delete body.__v
+    const expectedVersion = (prev && typeof prev.__v === 'number') ? prev.__v : null
+    conflict.value = null
+    const result = await equipmentRepository.update(String(id), body, { expectedVersion })
+    if (result.conflict) {
+      conflict.value = { current: result.current, currentVersion: result.currentVersion ?? null }
+      error.value = 'This equipment was changed by someone else. Reload to see the latest version.'
+      const err: any = new Error(error.value)
+      err.code = 'STALE_VERSION'
+      err.current = result.current
+      throw err
     }
+    const data = result.data
     const saved = { ...data, id: (data as any)._id || id }
     const idx = items.value.findIndex(x => (x.id || (x as any)._id) === id)
     if (idx !== -1) items.value[idx] = { ...items.value[idx], ...saved }
@@ -184,7 +198,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
   }
 
   async function remove(id: string) {
-    await http.delete(`${API_BASE}/${id}`)
+    await equipmentRepository.remove(id)
     items.value = items.value.filter(e => (e.id || (e as any)._id) !== id)
     try {
       const { useLogsStore } = await import('./logs')
@@ -199,7 +213,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     const desiredTag = opts?.tag || ''
     // 1) Try server-side duplicate endpoint if available
     try {
-      const { data } = await http.post(`${API_BASE}/${id}/duplicate`, { tag: desiredTag })
+      const data = await equipmentRepository.duplicate(id, desiredTag)
       const saved = { ...data, id: (data as any)._id || (data as any).id }
       if (saved.id && !items.value.some(e => (e.id || (e as any)._id) === saved.id)) items.value.push(saved as Equipment)
       return saved as Equipment
@@ -251,5 +265,5 @@ export const useEquipmentStore = defineStore('equipment', () => {
     return created
   }
 
-  return { items, loading, error, byId, fetchByProject, fetchOne, create, update, updateFields, remove, duplicate }
+  return { items, loading, error, conflict, byId, fetchByProject, fetchOne, create, update, updateFields, remove, duplicate }
 })
