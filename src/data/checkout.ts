@@ -61,10 +61,23 @@ export async function checkoutProject(
 ): Promise<CheckoutSummary> {
   const repos = opts.repos || defaultRepos
 
+  // A project's plan may disable a feature (e.g. activities on the basic tier),
+  // whose list endpoint then returns 403 FEATURE_NOT_IN_PLAN. That's an expected
+  // "no such data" signal, not a checkout failure — treat it as an empty set.
+  // Any other error still aborts the checkout.
+  const hydrate = async (fn: () => Promise<any>): Promise<any> => {
+    try {
+      return await fn()
+    } catch (e: any) {
+      if (e?.response?.status === 403 && e?.response?.data?.code === 'FEATURE_NOT_IN_PLAN') return []
+      throw e
+    }
+  }
+
   const [activities, issuesRaw, equipment] = await Promise.all([
-    repos.activities.list({ projectId }),
-    repos.issues.list({ projectId }),
-    repos.equipment.listByProject(projectId),
+    hydrate(() => repos.activities.list({ projectId })),
+    hydrate(() => repos.issues.list({ projectId })),
+    hydrate(() => repos.equipment.listByProject(projectId)),
   ])
   // Issues list may be an array or a paginated { items } shape.
   const issues = Array.isArray(issuesRaw)
