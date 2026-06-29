@@ -418,6 +418,14 @@
       </div>
 
       <div class="px-2 pt-2 pb-3 border-t border-white/10">
+        <!-- Offline checkout/check-in — project-scoped; renders only when the
+             offline beta flag is enabled. -->
+        <SidebarOfflineControl
+          v-if="currentProjectId"
+          :open="open"
+          class="mb-2"
+          @expand="$emit('toggle')"
+        />
         <RouterLink
           v-if="currentProjectId"
           :to="{ name: 'project-settings', params: { id: currentProjectId } }"
@@ -471,6 +479,7 @@ import { useRoute } from 'vue-router'
   import { useAuthStore } from '../stores/auth'
   import { useOprStore } from '../stores/opr'
 import http from '../utils/http'
+import SidebarOfflineControl from './SidebarOfflineControl.vue'
 
 const route = useRoute()
   const projectStore = useProjectStore()
