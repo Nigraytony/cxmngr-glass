@@ -198,3 +198,43 @@ Steps 1–2 ship value **in the browser with no Electron at all**, and de-risk t
 Refactor `src/stores/activities.ts` to go through a new repository abstraction and send `__v` on
 mutations, with no behavior change online. This proves the central abstraction before any IndexedDB
 or Electron work, and becomes the template every other store follows.
+
+## Phase 2 follow-ups
+
+Phase 1 shipped (feature-flagged): repository seam + `__v`, offline core (Dexie + outbox + check-in
+engine), D2 client ids, D1 advisory lock + offline grant, all four entity repos wired, and a sidebar
+UI. The items below are deliberately deferred.
+
+### Concurrency / conflict handling (the big one)
+
+The checkout lock is **advisory only** — it blocks a *second offline checkout* (`409
+PROJECT_CHECKED_OUT`) but does **not** freeze online editing. So while one person is offline, the rest
+of the team keeps editing the live project normally. On check-in the Phase-1 policy is **field-level
+last-write-wins favoring the offline device**, with the overwrites recorded in the check-in report.
+That's acceptable for a small team working on mostly-disjoint equipment/issues, but the "single
+writer" guarantee the design assumed isn't actually enforced. Options to strengthen it:
+
+- **Warn online editors** that the project (or a specific record) is checked out for offline work —
+  a passive banner, not a hard block, so the team can self-coordinate.
+- **Interactive conflict resolution** instead of silent last-write-wins: on a check-in conflict,
+  show the user both versions (theirs vs. the server's) and let them choose/merge per field, rather
+  than auto-overwriting and only reporting it afterward.
+- **Optional exclusive mode** — let checkout *also* soft-lock online edits (read-only for others)
+  for teams that prefer a hard guarantee; heavier and more disruptive, so opt-in per project.
+- **Deletion edge case** — an offline update to a record another user *deleted* online comes back
+  404 on replay and currently stays queued/flagged; define explicit handling (drop, or resurrect).
+
+### Other deferred items (from Phase-1 implementation + shakeout)
+
+- **Grant at rest** — the offline grant is stored in plaintext IndexedDB; the design called for
+  encryption. Consider scoping the redeemed token to the project rather than full user scope.
+- **Photos offline (D4)** — activity/issue photo capture is unsupported offline
+  (`OfflineUnsupportedError`); still tied to base64-in-Mongo, which needs the blob/SAS rework.
+- **Offline-created issues have no `number`** until check-in (the server assigns it); UI shows a
+  blank number in the meantime.
+- **`Simulate offline` affordance** — a testing toggle currently visible in the sidebar control;
+  hide it from non-testers (sub-flag) before a wider rollout.
+- **Expired-token reconnect** (`ensureOnlineSession` → grant redeem) is wired and API-tested but was
+  never exercised through a genuinely expired in-browser session end-to-end.
+- **Actions optimistic locking** — actions still carry no `__v` (backend PATCH uses load-modify-save);
+  finish the `__v` migration there.
