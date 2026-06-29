@@ -2066,6 +2066,28 @@
                 </div>
               </div>
             </div>
+
+            <!-- Offline mode (beta) — admin/CxA only; per-device opt-in. -->
+            <div
+              v-if="canManageTeamRoles"
+              class="mt-6 rounded p-3 bg-white/5 border border-white/10"
+            >
+              <div class="font-medium text-white/90">
+                Offline mode <span class="text-xs text-white/50">beta</span>
+              </div>
+              <p class="text-xs text-white/60 mb-2">
+                Adds a check-out / check-in control to the sidebar so you can work on this
+                project without a connection. Applies to this browser/device only.
+              </p>
+              <label class="flex items-center gap-2 text-sm text-white/80">
+                <input
+                  v-model="offlineBetaEnabled"
+                  type="checkbox"
+                  class="rounded border-white/20 bg-white/10"
+                >
+                Enable offline mode on this device
+              </label>
+            </div>
           </div>
 
           <!--
@@ -2506,6 +2528,7 @@ import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import ProjectForm from '../../components/ProjectForm.vue'
 import Modal from '../../components/Modal.vue'
 import { useUiStore } from '../../stores/ui'
+import { useOfflineStore } from '../../stores/offline'
 import { useProjectStore, fetchBillingSummary, previewPlanChange, changePlan, cancelSubscription, resumeSubscription, changeBillingAdmin, createSetupIntent, updatePaymentMethod, listPaymentMethods, detachPaymentMethod } from '../../stores/project'
 import { useRoute, useRouter } from 'vue-router'
 import http from '../../utils/http'
@@ -2546,6 +2569,12 @@ const logsPage = ref(1)
 const logsTotal = ref(0)
 const formErrors = ref<Record<string, any>>({})
 const ui = useUiStore()
+const offlineStore = useOfflineStore()
+// Offline beta opt-in (per-device flag), surfaced as an admin/CxA-only toggle.
+const offlineBetaEnabled = computed({
+  get: () => offlineStore.featureEnabled,
+  set: (v) => offlineStore.setFeatureEnabled(v),
+})
 const clientFileInput = ref<HTMLInputElement | null>(null)
 const cxaFileInput = ref<HTMLInputElement | null>(null)
 const newMember = ref({ email: '', firstName: '', lastName: '', company: '', role: 'User' })

@@ -8,6 +8,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { outbox } from '../data/outbox'
 import { setCheckedOutProject, setOnline } from '../data/offlineGate'
+import { isOfflineEnabled, setOfflineEnabled } from '../data/offlineFeature'
 import { getDeviceId } from '../data/deviceId'
 import { acquireCheckout, releaseCheckout, redeemGrant } from '../data/checkoutClient'
 import { useAuthStore } from './auth'
@@ -21,6 +22,14 @@ import {
 } from '../data/checkout'
 
 export const useOfflineStore = defineStore('offline', () => {
+  // Per-device beta opt-in (the `offline.enabled` flag), reactive so the
+  // settings toggle shows/hides the sidebar control without a reload.
+  const featureEnabled = ref(isOfflineEnabled())
+  function setFeatureEnabled(on: boolean) {
+    setOfflineEnabled(on)
+    featureEnabled.value = on
+  }
+
   const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const checkedOutProjectId = ref<string | null>(null)
   const checkedOutAt = ref<number | null>(null)
@@ -130,6 +139,8 @@ export const useOfflineStore = defineStore('offline', () => {
   }
 
   return {
+    featureEnabled,
+    setFeatureEnabled,
     isOnline,
     checkedOutProjectId,
     checkedOutAt,

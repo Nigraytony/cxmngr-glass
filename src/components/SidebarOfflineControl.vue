@@ -1,5 +1,5 @@
 <template>
-  <div v-if="enabled">
+  <div v-if="store.featureEnabled">
     <!-- Collapsed sidebar: icon + status dot; click expands the sidebar. -->
     <button
       v-if="!open"
@@ -72,16 +72,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useOfflineStore } from '../stores/offline'
 import { useProjectStore } from '../stores/project'
 import { useUiStore } from '../stores/ui'
-import { isOfflineEnabled } from '../data/offlineFeature'
 
 defineProps<{ open?: boolean }>()
 const emit = defineEmits<{ (e: 'expand'): void }>()
 
-const enabled = isOfflineEnabled()
 const store = useOfflineStore()
 const projectStore = useProjectStore()
 const ui = useUiStore()
@@ -97,9 +95,12 @@ const statusTitle = computed(() => {
     : `Offline mode (${net})`
 })
 
-onMounted(() => {
-  if (enabled) store.init().catch(() => { /* ignore */ })
-})
+// Initialize the offline store once the feature is enabled (listeners + read
+// any existing checkout). Reactive so flipping the settings toggle works
+// without a reload.
+watch(() => store.featureEnabled, (on) => {
+  if (on) store.init().catch(() => { /* ignore */ })
+}, { immediate: true })
 
 async function onCheckout() {
   if (!projectId.value) return
