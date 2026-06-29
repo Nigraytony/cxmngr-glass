@@ -10,3 +10,12 @@ export function isOfflineEnabled(): boolean {
   } catch (_) { /* ignore */ }
   return false
 }
+
+// Persist the per-device opt-in. Surfaced as an admin/CxA-only toggle in the
+// project Settings tab; reflected reactively via the offline store.
+export function setOfflineEnabled(on: boolean): void {
+  try {
+    if (on) localStorage.setItem('offline.enabled', '1')
+    else localStorage.removeItem('offline.enabled')
+  } catch (_) { /* ignore */ }
+}
