@@ -13,7 +13,7 @@ import { withVersion, staleVersionConflict, type UpdateOptions, type UpdateResul
 import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
-import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError } from './offlineGate'
+import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError, viaNetwork, shouldFallBackToLocal, setOnline } from './offlineGate'
 
 const API_BASE = `/api/equipment`
 const ENTITY = 'equipment' as const
@@ -24,68 +24,84 @@ function nowIso(): string {
 
 export const equipmentRepository = {
   async listByProject(projectId: string): Promise<any[]> {
-    if (useLocal(projectId)) {
-      return db.equipment.where('projectId').equals(String(projectId)).toArray()
-    }
-    const res = await http.get(`${API_BASE}/project/${projectId}`)
-    return Array.isArray(res.data) ? res.data : []
+    return viaNetwork(
+      async () => {
+        const res = await http.get(`${API_BASE}/project/${projectId}`)
+        return Array.isArray(res.data) ? res.data : []
+      },
+      async () => db.equipment.where('projectId').equals(String(projectId)).toArray(),
+      projectId,
+    )
   },
 
-  async get(id: string): Promise<any> {
-    if (useLocal()) {
-      return (await db.equipment.get(id)) || null
-    }
-    const res = await http.get(`${API_BASE}/${id}`)
-    return res.data
+  // `includePhotos` pulls the heavy base64 photo payload — used at checkout to
+  // hydrate full records for offline use. Offline, the local copy already holds
+  // whatever was hydrated, so the flag is a no-op on that path.
+  async get(id: string, opts: { includePhotos?: boolean } = {}): Promise<any> {
+    return viaNetwork(
+      async () => {
+        const params: any = {}
+        if (opts.includePhotos) params.includePhotos = true
+        return (await http.get(`${API_BASE}/${id}`, { params })).data
+      },
+      async () => (await db.equipment.get(id)) || null,
+    )
   },
 
   async create(payload: Partial<Equipment>): Promise<any> {
-    if (useLocal(payload.projectId)) {
-      const _id = newObjectId()
-      const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
-      await db.equipment.put(record)
-      await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
-      return record
-    }
-    const res = await http.post(API_BASE, payload)
-    return res.data
+    return viaNetwork(
+      async () => (await http.post(API_BASE, payload)).data,
+      async () => {
+        const _id = newObjectId()
+        const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
+        await db.equipment.put(record)
+        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
+        return record
+      },
+      payload.projectId,
+    )
   },
 
   async update(id: string, payload: Partial<Equipment>, opts: UpdateOptions = {}): Promise<UpdateResult> {
-    if (useLocal()) {
-      const current = await db.equipment.get(id)
-      const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-      await db.equipment.put(merged)
-      const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
-      const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
-      await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
-      return { ok: true, data: merged }
-    }
-    const body = withVersion(payload, opts.expectedVersion)
-    try {
-      const res = await http.patch(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } })
-      return { ok: true, data: res.data }
-    } catch (e: any) {
-      const conflict = staleVersionConflict(e)
-      if (conflict) return conflict
-      // Fallback to PUT if PATCH is not supported by the backend.
-      if (e?.response?.status === 404 || e?.response?.status === 405) {
-        const res = await http.put(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } })
-        return { ok: true, data: res.data }
-      }
-      throw e
-    }
+    return viaNetwork<UpdateResult>(
+      async () => {
+        const body = withVersion(payload, opts.expectedVersion)
+        try {
+          const res = await http.patch(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } })
+          return { ok: true, data: res.data }
+        } catch (e: any) {
+          const conflict = staleVersionConflict(e)
+          if (conflict) return conflict
+          // Fallback to PUT if PATCH is not supported by the backend.
+          if (e?.response?.status === 404 || e?.response?.status === 405) {
+            const res = await http.put(`${API_BASE}/${id}`, body, { headers: { 'Content-Type': 'application/json' } })
+            return { ok: true, data: res.data }
+          }
+          throw e
+        }
+      },
+      async () => {
+        const current = await db.equipment.get(id)
+        const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
+        await db.equipment.put(merged)
+        const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
+        const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
+        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
+        return { ok: true, data: merged }
+      },
+    )
   },
 
   async remove(id: string): Promise<void> {
-    if (useLocal()) {
-      const current = await db.equipment.get(id)
-      await db.equipment.delete(id)
-      const pid = String((current && current.projectId) || getCheckedOutProjectId() || '')
-      await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
-      return
-    }
-    await http.delete(`${API_BASE}/${id}`)
+    await viaNetwork<void>(
+      async () => { await http.delete(`${API_BASE}/${id}`) },
+      async () => {
+        const current = await db.equipment.get(id)
+        await db.equipment.delete(id)
+        const pid = String((current && current.projectId) || getCheckedOutProjectId() || '')
+        await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
+      },
+    )
   },
 
   // Server-side duplicate endpoint; throws if unavailable so the store can fall
@@ -93,8 +109,16 @@ export const equipmentRepository = {
   // exactly what we want, so signal unsupported here.
   async duplicate(id: string, tag: string): Promise<any> {
     if (useLocal()) throw new OfflineUnsupportedError('Server duplicate is unavailable offline')
-    const res = await http.post(`${API_BASE}/${id}/duplicate`, { tag })
-    return res.data
+    try {
+      const res = await http.post(`${API_BASE}/${id}/duplicate`, { tag })
+      return res.data
+    } catch (e: any) {
+      if (shouldFallBackToLocal(e)) {
+        setOnline(false)
+        throw new OfflineUnsupportedError('Server duplicate is unavailable offline')
+      }
+      throw e
+    }
   },
 }
 

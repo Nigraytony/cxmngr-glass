@@ -199,6 +199,37 @@ Refactor `src/stores/activities.ts` to go through a new repository abstraction a
 mutations, with no behavior change online. This proves the central abstraction before any IndexedDB
 or Electron work, and becomes the template every other store follows.
 
+## Phase 2 — shipped 2026-06-30 (offline usability fix)
+
+Beta testing surfaced that a *truly* offline device (real connectivity loss) could open the
+Issues/Activities **list** pages but not the **detail** pages, and Equipment was unusable offline.
+
+**Root cause.** Offline routing keyed entirely off `online === false`, set only from
+`navigator.onLine` + the browser online/offline events. Those report whether a network *interface*
+exists, not whether the server is reachable — so a device that drops internet but stays associated
+with Wi-Fi keeps `online === true`, and every read hits the dead network. Lists looked fine (stale
+in-memory data); fresh fetches (detail pages, equipment) failed.
+
+**Fix (failure-based fallback).**
+- `offlineGate.viaNetwork(onlineFn, localFn, projectId?)` wraps every repository op: it tries the
+  network and, on a genuine connectivity failure (`isNetworkFailure` — request made, no response)
+  while checked out, flips the gate offline and serves the local IndexedDB copy / queues the write.
+  All four repos (issues, activities, equipment, actions) now route through it.
+- `http.ts` response interceptor keeps the gate honest app-wide: success → `setOnline(true)`,
+  connectivity failure → `setOnline(false)` (while checked out).
+- A `replaying` guard (`setReplaying`, also short-circuits `useLocal`) ensures check-in replay always
+  hits the network — a drop there aborts the sync instead of re-queuing.
+- **Checkout now hydrates full detail records** (`hydrateFullRecords`, bounded concurrency) so
+  equipment components, activity photos, and issue comments are present offline — the list payloads
+  alone were too light.
+- Edit pages that fetched detail via direct `http` (`EquipmentEdit.load/loadPhotos/loadComponents`,
+  `IssuesList` comment reveal) now fall back to the offline-aware store/repo on failure.
+
+Tests: `tests/unit/repositories.fallback.test.ts` (new) + existing offline suite (40) pass.
+
+**Still deferred:** offline photo *capture* (write) remains `OfflineUnsupportedError` — only viewing
+hydrated photos works. See D4 and the photo bullet below.
+
 ## Phase 2 follow-ups
 
 Phase 1 shipped (feature-flagged): repository seam + `__v`, offline core (Dexie + outbox + check-in

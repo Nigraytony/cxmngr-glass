@@ -9,7 +9,7 @@ import { withVersion, staleVersionConflict, type UpdateOptions, type UpdateResul
 import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
-import { useLocal, getCheckedOutProjectId } from './offlineGate'
+import { getCheckedOutProjectId, viaNetwork } from './offlineGate'
 
 const API_BASE = `/api/issues`
 const ENTITY = 'issue' as const
@@ -29,68 +29,77 @@ export const issuesRepository = {
   // The store is responsible for unwrapping the shape. The local path returns a
   // plain array, which the store handles.
   async list(params: ListIssuesParams): Promise<any> {
-    if (useLocal(params.projectId)) {
-      return db.issues.where('projectId').equals(String(params.projectId)).toArray()
-    }
-    const res = await http.get(API_BASE, {
-      params: { projectId: params.projectId, page: params.page ?? 1, perPage: params.perPage ?? 200 },
-    })
-    return res.data || []
+    return viaNetwork(
+      async () => {
+        const res = await http.get(API_BASE, {
+          params: { projectId: params.projectId, page: params.page ?? 1, perPage: params.perPage ?? 200 },
+        })
+        return res.data || []
+      },
+      async () => db.issues.where('projectId').equals(String(params.projectId)).toArray(),
+      params.projectId,
+    )
   },
 
   async get(id: string): Promise<any> {
-    if (useLocal()) {
-      return (await db.issues.get(id)) || null
-    }
-    const res = await http.get(`${API_BASE}/${id}`)
-    return res.data
+    return viaNetwork(
+      async () => (await http.get(`${API_BASE}/${id}`)).data,
+      async () => (await db.issues.get(id)) || null,
+    )
   },
 
   async create(payload: Partial<Issue>): Promise<any> {
-    if (useLocal(payload.projectId)) {
-      const _id = newObjectId()
-      // Offline issues have no server-assigned `number` until check-in.
-      const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
-      await db.issues.put(record)
-      await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
-      return record
-    }
-    const res = await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })
-    return res.data
+    return viaNetwork(
+      async () => (await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })).data,
+      async () => {
+        const _id = newObjectId()
+        // Offline issues have no server-assigned `number` until check-in.
+        const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
+        await db.issues.put(record)
+        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
+        return record
+      },
+      payload.projectId,
+    )
   },
 
   async update(id: string, payload: Partial<Issue>, opts: UpdateOptions = {}): Promise<UpdateResult> {
-    if (useLocal()) {
-      const current = await db.issues.get(id)
-      const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-      await db.issues.put(merged)
-      const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
-      const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
-      await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
-      return { ok: true, data: merged }
-    }
-    try {
-      const res = await http.patch(`${API_BASE}/${id}`, withVersion(payload, opts.expectedVersion), { headers: { 'Content-Type': 'application/json' } })
-      return { ok: true, data: res.data }
-    } catch (e: any) {
-      const conflict = staleVersionConflict(e)
-      if (conflict) return conflict
-      throw e
-    }
+    return viaNetwork<UpdateResult>(
+      async () => {
+        try {
+          const res = await http.patch(`${API_BASE}/${id}`, withVersion(payload, opts.expectedVersion), { headers: { 'Content-Type': 'application/json' } })
+          return { ok: true, data: res.data }
+        } catch (e: any) {
+          const conflict = staleVersionConflict(e)
+          if (conflict) return conflict
+          throw e
+        }
+      },
+      async () => {
+        const current = await db.issues.get(id)
+        const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
+        await db.issues.put(merged)
+        const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
+        const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
+        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
+        return { ok: true, data: merged }
+      },
+    )
   },
 
   // The backend returns the removed document; the store uses it to reconcile
   // state, so the local path returns the record it removed too.
   async remove(id: string): Promise<any> {
-    if (useLocal()) {
-      const current = await db.issues.get(id)
-      await db.issues.delete(id)
-      const pid = String((current && current.projectId) || getCheckedOutProjectId() || '')
-      await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
-      return current || { _id: id }
-    }
-    const res = await http.delete(`${API_BASE}/${id}`)
-    return res.data
+    return viaNetwork(
+      async () => (await http.delete(`${API_BASE}/${id}`)).data,
+      async () => {
+        const current = await db.issues.get(id)
+        await db.issues.delete(id)
+        const pid = String((current && current.projectId) || getCheckedOutProjectId() || '')
+        await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
+        return current || { _id: id }
+      },
+    )
   },
 }
 

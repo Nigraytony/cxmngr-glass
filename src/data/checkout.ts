@@ -10,6 +10,7 @@
 // without a network. Defaults to the real repositories.
 import { db, type OutboxOp, type CheckoutMeta } from './db'
 import { outbox } from './outbox'
+import { setReplaying } from './offlineGate'
 import activitiesRepository from './activitiesRepository'
 import issuesRepository from './issuesRepository'
 import equipmentRepository from './equipmentRepository'
@@ -37,6 +38,38 @@ function repoFor(entity: string, repos: CheckInRepos): any {
     case 'action': return repos.actions
     default: throw new Error(`Unknown entity type: ${entity}`)
   }
+}
+
+// Pull full detail records (equipment components, activity/issue photos,
+// comments) so offline edit pages aren't missing the heavier fields the list
+// endpoints omit. Bounded concurrency keeps checkout from opening hundreds of
+// sockets at once; any record whose detail fetch fails keeps its lighter list
+// payload. `fetchOne` is optional so injected test repos without a get() simply
+// skip hydration.
+async function hydrateFullRecords(
+  list: any[],
+  fetchOne: ((id: string) => Promise<any>) | undefined,
+  limit = 6,
+): Promise<any[]> {
+  if (!Array.isArray(list) || !list.length || typeof fetchOne !== 'function') return list || []
+  const out = new Array(list.length)
+  let cursor = 0
+  const worker = async () => {
+    while (cursor < list.length) {
+      const idx = cursor++
+      const base = list[idx]
+      const id = String(base?._id || base?.id || '')
+      if (!id) { out[idx] = base; continue }
+      try {
+        const full = await fetchOne(id)
+        out[idx] = full ? { ...base, ...full } : base
+      } catch (e) {
+        out[idx] = base
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, () => worker()))
+  return out
 }
 
 // ---- Checkout (hydrate local store) -------------------------------------
@@ -84,6 +117,13 @@ export async function checkoutProject(
     ? issuesRaw
     : (Array.isArray(issuesRaw?.items) ? issuesRaw.items : [])
 
+  // Upgrade the light list payloads to full detail records for offline use.
+  const [fullActivities, fullIssues, fullEquipment] = await Promise.all([
+    hydrateFullRecords(activities || [], repos.activities?.get ? (id: string) => repos.activities.get(id, { includePhotos: true }) : undefined),
+    hydrateFullRecords(issues, repos.issues?.get ? (id: string) => repos.issues.get(id) : undefined),
+    hydrateFullRecords(equipment || [], repos.equipment?.get ? (id: string) => repos.equipment.get(id, { includePhotos: true }) : undefined),
+  ])
+
   // Actions are sub-records of each activity.
   const actionLists = await Promise.all(
     (activities || []).map((a: any) =>
@@ -97,9 +137,9 @@ export async function checkoutProject(
     await db.issues.where('projectId').equals(projectId).delete()
     await db.equipment.where('projectId').equals(projectId).delete()
     await db.actions.where('projectId').equals(projectId).delete()
-    if (activities?.length) await db.activities.bulkPut(activities)
-    if (issues?.length) await db.issues.bulkPut(issues)
-    if (equipment?.length) await db.equipment.bulkPut(equipment)
+    if (fullActivities?.length) await db.activities.bulkPut(fullActivities)
+    if (fullIssues?.length) await db.issues.bulkPut(fullIssues)
+    if (fullEquipment?.length) await db.equipment.bulkPut(fullEquipment)
     if (actions?.length) await db.actions.bulkPut(actions)
     await db.meta.put({
       key: 'checkout',
@@ -182,27 +222,34 @@ export async function checkInProject(opts: { repos?: CheckInRepos } = {}): Promi
   const ops = await outbox.all()
   const report: CheckInReport = { applied: 0, conflicts: [], failed: [], remaining: 0, aborted: false }
 
-  for (const op of ops) {
-    try {
-      const outcome = await replayOp(op, repos)
-      if (outcome.conflict) report.conflicts.push(outcome.conflict)
-      await outbox.remove(op.id!)
-      report.applied++
-    } catch (e: any) {
-      if (!e?.response) {
-        // No HTTP response => connectivity lost. Stop; queued ops remain for
-        // the next attempt.
-        report.aborted = true
-        break
+  // Force every replayed op onto the network (never the local fallback) for the
+  // duration of the loop. See offlineGate.useLocal / shouldFallBackToLocal.
+  setReplaying(true)
+  try {
+    for (const op of ops) {
+      try {
+        const outcome = await replayOp(op, repos)
+        if (outcome.conflict) report.conflicts.push(outcome.conflict)
+        await outbox.remove(op.id!)
+        report.applied++
+      } catch (e: any) {
+        if (!e?.response) {
+          // No HTTP response => connectivity lost. Stop; queued ops remain for
+          // the next attempt.
+          report.aborted = true
+          break
+        }
+        // Server rejected (4xx/5xx). Keep the op queued and record the failure.
+        report.failed.push({
+          entity: op.entity,
+          op: op.op,
+          entityId: op.entityId,
+          error: e?.response?.data?.error || e?.message || 'Request failed',
+        })
       }
-      // Server rejected (4xx/5xx). Keep the op queued and record the failure.
-      report.failed.push({
-        entity: op.entity,
-        op: op.op,
-        entityId: op.entityId,
-        error: e?.response?.data?.error || e?.message || 'Request failed',
-      })
     }
+  } finally {
+    setReplaying(false)
   }
 
   report.remaining = await outbox.count()
