@@ -4,6 +4,23 @@ import router from './router'
 import App from './App.vue'
 import './assets/base.css'
 import { useAuthStore } from './stores/auth'
+import { isOfflineSessionActive } from './data/offlineGate'
+
+// If a lazily-loaded route chunk fails to load — e.g. a deploy swapped hashed
+// filenames mid-session, or a transient hiccup — reload once to pick up the
+// current asset manifest. Guarded so it can't loop, and skipped when the browser
+// believes it's offline (a reload couldn't fetch anything). For offline-beta
+// devices the service worker serves chunks from cache, so this rarely fires.
+if (typeof window !== 'undefined') {
+	window.addEventListener('vite:preloadError', () => {
+		try {
+			if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+			if (sessionStorage.getItem('vite:preloadReloaded') === '1') return
+			sessionStorage.setItem('vite:preloadReloaded', '1')
+			window.location.reload()
+		} catch (e) { /* ignore */ }
+	})
+}
 
 // Ensure history.state isn't accidentally nulled by external scripts/extensions
 // If state is missing, initialize it by preserving current values
@@ -47,6 +64,8 @@ try {
 		idleTimer = setTimeout(async () => {
 			try {
 				if (!auth || !auth.isAuthenticated) return
+				// Don't tear down or network-refresh an active offline session.
+				if (isOfflineSessionActive()) { scheduleIdleLogout(); return }
 				if (typeof auth.isInactiveExceeded === 'function' && !auth.isInactiveExceeded()) return
 				// Always try to extend the session. If the refresh token is still valid
 				// (up to 30 days), silently renew and reschedule. Only a genuine network
@@ -113,6 +132,9 @@ try {
 		try {
 			if (!auth || !auth.isAuthenticated || !auth.accessToken) return false
 			if (!isDocumentVisible()) return false
+			// During an offline session (project checked out + offline) the network
+			// is unreachable; don't fire pointless /api/users/refresh calls.
+			if (isOfflineSessionActive()) return false
 			// Do NOT gate on isInactiveExceeded() — when lastActivityAt is 0 (fresh session or
 			// sessionStorage cleared), isInactiveExceeded() returns true and blocks the keepalive
 			// from ever running, causing the access token to expire and the user to be logged out.
@@ -195,3 +217,6 @@ try {
 }
 // Gantt plugin removed while the gantt view is disabled
 app.mount('#app')
+// App mounted successfully — reset the one-shot preload-error reload budget so a
+// future stale-chunk error gets a fresh recovery attempt.
+try { sessionStorage.removeItem('vite:preloadReloaded') } catch (e) { /* ignore */ }

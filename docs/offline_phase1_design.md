@@ -230,6 +230,33 @@ Tests: `tests/unit/repositories.fallback.test.ts` (new) + existing offline suite
 **Still deferred:** offline photo *capture* (write) remains `OfflineUnsupportedError` — only viewing
 hydrated photos works. See D4 and the photo bullet below.
 
+### Web shell — service worker (2nd pass, same day)
+
+Live testing in a **browser** showed the data-layer fix wasn't enough: navigating offline to a
+route the session hadn't visited yet failed with `ERR_INTERNET_DISCONNECTED` /
+`Failed to fetch dynamically imported module` — the **code-split route chunks** (`IssuesList-*.js`,
+`EquipmentList-*.js`, …) are fetched from the network on first navigation, so the page component
+never loaded and no app code ran. Phase 1 targeted Electron first precisely because a local bundle
+sidesteps this; the browser path needs a service worker (the doc's "no service worker / PWA today").
+
+Added **`vite-plugin-pwa`** (Workbox `generateSW`): precaches all hashed JS/CSS/font chunks
+(~150 entries) so any route loads offline, with `navigateFallback: /index.html` (denylist `/api`,
+`/assets`) and `autoUpdate` + `skipWaiting`/`clientsClaim` so deploys don't strand users on a stale
+bundle. `cleanupOutdatedCaches` prunes old precaches.
+
+**Scoped to the beta:** `injectRegister: null` — the SW is built but only *registered* by
+`src/data/offlineServiceWorker.ts`, called from the offline store's `init()`/`setFeatureEnabled`,
+i.e. only for devices that enabled the offline flag. Opting out unregisters it and clears its caches.
+Non-beta production users get no service worker.
+
+Also: `main.js` now (a) reloads once on a `vite:preloadError` to recover from a post-deploy stale
+manifest (guarded; skipped when offline), and (b) suspends the auth keep-alive / idle-refresh while
+an offline session is active (the repeated `POST /api/users/refresh` failures seen in testing).
+
+Follow-up: the precache is ~12 MiB because it includes export-only chunks (`xlsx`,
+`html-to-docx`, `reportTypography`) that are offline-unsupported anyway — could be excluded to slim
+the install.
+
 ## Phase 2 follow-ups
 
 Phase 1 shipped (feature-flagged): repository seam + `__v`, offline core (Dexie + outbox + check-in
