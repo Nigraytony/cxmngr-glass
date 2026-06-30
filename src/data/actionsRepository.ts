@@ -13,7 +13,7 @@ import { withVersion, type UpdateOptions } from './optimistic'
 import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
-import { useLocal, getCheckedOutProjectId } from './offlineGate'
+import { getCheckedOutProjectId, viaNetwork } from './offlineGate'
 
 const API_BASE = `/api/actions`
 const ENTITY = 'action' as const
@@ -24,49 +24,57 @@ function nowIso(): string {
 
 export const actionsRepository = {
   async list(activityId: string, projectId?: string): Promise<any[]> {
-    if (useLocal(projectId)) {
-      return db.actions.where('activityId').equals(String(activityId)).toArray()
-    }
-    const params: any = { activityId }
-    if (projectId) params.projectId = projectId
-    const res = await http.get(API_BASE, { params })
-    return Array.isArray(res.data) ? res.data : []
+    return viaNetwork(
+      async () => {
+        const params: any = { activityId }
+        if (projectId) params.projectId = projectId
+        const res = await http.get(API_BASE, { params })
+        return Array.isArray(res.data) ? res.data : []
+      },
+      async () => db.actions.where('activityId').equals(String(activityId)).toArray(),
+      projectId,
+    )
   },
 
   async create(payload: Record<string, any>): Promise<any> {
-    if (useLocal(payload.projectId)) {
-      const _id = newObjectId()
-      const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
-      await db.actions.put(record)
-      await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
-      return record
-    }
-    const res = await http.post(API_BASE, payload)
-    return res.data
+    return viaNetwork(
+      async () => (await http.post(API_BASE, payload)).data,
+      async () => {
+        const _id = newObjectId()
+        const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
+        await db.actions.put(record)
+        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
+        return record
+      },
+      payload.projectId,
+    )
   },
 
   async update(id: string, payload: Record<string, any>, opts: UpdateOptions = {}): Promise<any> {
-    if (useLocal()) {
-      const current = await db.actions.get(id)
-      const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-      await db.actions.put(merged)
-      const projectId = String((current && current.projectId) || payload.projectId || getCheckedOutProjectId() || '')
-      await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload })
-      return merged
-    }
-    const res = await http.patch(`${API_BASE}/${id}`, withVersion(payload, opts.expectedVersion))
-    return res.data
+    return viaNetwork(
+      async () => (await http.patch(`${API_BASE}/${id}`, withVersion(payload, opts.expectedVersion))).data,
+      async () => {
+        const current = await db.actions.get(id)
+        const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
+        await db.actions.put(merged)
+        const projectId = String((current && current.projectId) || payload.projectId || getCheckedOutProjectId() || '')
+        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload })
+        return merged
+      },
+      payload.projectId,
+    )
   },
 
   async remove(id: string): Promise<void> {
-    if (useLocal()) {
-      const current = await db.actions.get(id)
-      await db.actions.delete(id)
-      const pid = String((current && current.projectId) || getCheckedOutProjectId() || '')
-      await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
-      return
-    }
-    await http.delete(`${API_BASE}/${id}`)
+    await viaNetwork<void>(
+      async () => { await http.delete(`${API_BASE}/${id}`) },
+      async () => {
+        const current = await db.actions.get(id)
+        await db.actions.delete(id)
+        const pid = String((current && current.projectId) || getCheckedOutProjectId() || '')
+        await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
+      },
+    )
   },
 }
 

@@ -19,7 +19,7 @@ import { withVersion, staleVersionConflict, type UpdateOptions, type UpdateResul
 import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
-import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError } from './offlineGate'
+import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError, viaNetwork, shouldFallBackToLocal, setOnline } from './offlineGate'
 
 const API_BASE = `/api/activities`
 const ENTITY = 'activity' as const
@@ -40,112 +40,147 @@ function nowIso(): string {
 
 export const activitiesRepository = {
   async list(params: ListActivitiesParams): Promise<any[]> {
-    if (useLocal(params.projectId)) {
-      return db.activities.where('projectId').equals(String(params.projectId)).toArray()
-    }
-    const query: any = { projectId: params.projectId }
-    if (params.light) query.light = true
-    const res = await http.get(API_BASE, { params: query })
-    return res.data || []
+    return viaNetwork(
+      async () => {
+        const query: any = { projectId: params.projectId }
+        if (params.light) query.light = true
+        const res = await http.get(API_BASE, { params: query })
+        return res.data || []
+      },
+      async () => db.activities.where('projectId').equals(String(params.projectId)).toArray(),
+      params.projectId,
+    )
   },
 
   async get(id: string, opts: FetchActivityOptions = {}): Promise<any> {
-    if (useLocal()) {
-      return (await db.activities.get(id)) || null
-    }
-    const params: any = {}
-    if (opts.light) params.light = true
-    if (opts.includePhotos) params.includePhotos = true
-    const res = await http.get(`${API_BASE}/${id}`, { params })
-    return res.data
+    return viaNetwork(
+      async () => {
+        const params: any = {}
+        if (opts.light) params.light = true
+        if (opts.includePhotos) params.includePhotos = true
+        return (await http.get(`${API_BASE}/${id}`, { params })).data
+      },
+      async () => (await db.activities.get(id)) || null,
+    )
   },
 
   async getPhotos(id: string): Promise<any[]> {
-    if (useLocal()) {
-      const a = await db.activities.get(id)
-      return (a && a.photos) || []
-    }
-    const res = await http.get(`${API_BASE}/${id}/photos`)
-    return res.data || []
+    return viaNetwork(
+      async () => (await http.get(`${API_BASE}/${id}/photos`)).data || [],
+      async () => {
+        const a = await db.activities.get(id)
+        return (a && a.photos) || []
+      },
+    )
   },
 
   async create(payload: Partial<Activity>): Promise<any> {
-    if (useLocal(payload.projectId)) {
-      const _id = newObjectId()
-      const record: any = { ...payload, _id, status: payload.status || 'draft', createdAt: nowIso(), updatedAt: nowIso() }
-      await db.activities.put(record)
-      // The outbox create carries the client _id so the backend create reuses
-      // it (decision D2) and check-in replay is idempotent.
-      await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
-      return record
-    }
-    const res = await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })
-    return res.data
+    return viaNetwork(
+      async () => (await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })).data,
+      async () => {
+        const _id = newObjectId()
+        const record: any = { ...payload, _id, status: payload.status || 'draft', createdAt: nowIso(), updatedAt: nowIso() }
+        await db.activities.put(record)
+        // The outbox create carries the client _id so the backend create reuses
+        // it (decision D2) and check-in replay is idempotent.
+        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
+        return record
+      },
+      payload.projectId,
+    )
   },
 
   // Returns a discriminated result rather than throwing on 409, so the store
   // can surface a "changed by someone else" conflict instead of a generic
   // error. Other HTTP errors still throw (caller handles as before).
   async update(id: string, payload: Partial<Activity>, opts: UpdateOptions = {}): Promise<UpdateResult> {
-    if (useLocal()) {
-      const current = await db.activities.get(id)
-      const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-      await db.activities.put(merged)
-      const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
-      // Capture the version we based this edit on for check-in optimistic locking.
-      const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
-      await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
-      // Conflicts can't occur offline — they surface at check-in.
-      return { ok: true, data: merged }
-    }
-    try {
-      const res = await http.patch(`${API_BASE}/${id}`, withVersion(payload, opts.expectedVersion), { headers: { 'Content-Type': 'application/json' } })
-      return { ok: true, data: res.data }
-    } catch (e: any) {
-      const conflict = staleVersionConflict(e)
-      if (conflict) return conflict
-      throw e
-    }
+    return viaNetwork<UpdateResult>(
+      async () => {
+        try {
+          const res = await http.patch(`${API_BASE}/${id}`, withVersion(payload, opts.expectedVersion), { headers: { 'Content-Type': 'application/json' } })
+          return { ok: true, data: res.data }
+        } catch (e: any) {
+          const conflict = staleVersionConflict(e)
+          if (conflict) return conflict
+          throw e
+        }
+      },
+      async () => {
+        const current = await db.activities.get(id)
+        const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
+        await db.activities.put(merged)
+        const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
+        // Capture the version we based this edit on for check-in optimistic locking.
+        const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
+        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
+        // Conflicts can't occur offline — they surface at check-in.
+        return { ok: true, data: merged }
+      },
+    )
   },
 
   async uploadPhotos(id: string, files: FileList | File[]): Promise<any> {
     if (useLocal()) throw new OfflineUnsupportedError('Photos cannot be uploaded while offline')
-    const fd = new FormData()
-    const arr = Array.from(files as any)
-    for (const f of arr) fd.append('photos', f as Blob)
-    const res = await http.post(`${API_BASE}/${id}/photos`, fd)
-    return res.data
+    try {
+      const fd = new FormData()
+      const arr = Array.from(files as any)
+      for (const f of arr) fd.append('photos', f as Blob)
+      const res = await http.post(`${API_BASE}/${id}/photos`, fd)
+      return res.data
+    } catch (e: any) {
+      if (shouldFallBackToLocal(e)) { setOnline(false); throw new OfflineUnsupportedError('Photos cannot be uploaded while offline') }
+      throw e
+    }
   },
 
   async removePhoto(id: string, index: number): Promise<any> {
     if (useLocal()) throw new OfflineUnsupportedError('Photos cannot be edited while offline')
-    const res = await http.delete(`${API_BASE}/${id}/photos/${index}`)
-    return res.data
+    try {
+      const res = await http.delete(`${API_BASE}/${id}/photos/${index}`)
+      return res.data
+    } catch (e: any) {
+      if (shouldFallBackToLocal(e)) { setOnline(false); throw new OfflineUnsupportedError('Photos cannot be edited while offline') }
+      throw e
+    }
   },
 
   async updatePhotoCaption(id: string, index: number, caption: string): Promise<any> {
     if (useLocal()) throw new OfflineUnsupportedError('Photos cannot be edited while offline')
-    const res = await http.patch(`${API_BASE}/${id}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
-    return res.data
+    try {
+      const res = await http.patch(`${API_BASE}/${id}/photos/${index}`, { caption }, { headers: { 'Content-Type': 'application/json' } })
+      return res.data
+    } catch (e: any) {
+      if (shouldFallBackToLocal(e)) { setOnline(false); throw new OfflineUnsupportedError('Photos cannot be edited while offline') }
+      throw e
+    }
   },
 
   async remove(id: string, projectId?: string): Promise<void> {
-    if (useLocal(projectId)) {
-      const current = await db.activities.get(id)
-      await db.activities.delete(id)
-      const pid = String(projectId || (current && current.projectId) || getCheckedOutProjectId() || '')
-      await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
-      return
-    }
-    const config: any = {}
-    if (projectId) config.params = { projectId }
-    await http.delete(`${API_BASE}/${id}`, config)
+    await viaNetwork<void>(
+      async () => {
+        const config: any = {}
+        if (projectId) config.params = { projectId }
+        await http.delete(`${API_BASE}/${id}`, config)
+      },
+      async () => {
+        const current = await db.activities.get(id)
+        await db.activities.delete(id)
+        const pid = String(projectId || (current && current.projectId) || getCheckedOutProjectId() || '')
+        await outbox.recordWrite({ entity: ENTITY, op: 'delete', entityId: id, projectId: pid })
+      },
+      projectId,
+    )
   },
 
   async fetchReportBlob(id: string): Promise<Blob> {
     if (useLocal()) throw new OfflineUnsupportedError('Reports cannot be generated while offline')
-    const res = await http.get(`${API_BASE}/${id}/report`, { responseType: 'blob' })
-    return new Blob([res.data], { type: 'application/pdf' })
+    try {
+      const res = await http.get(`${API_BASE}/${id}/report`, { responseType: 'blob' })
+      return new Blob([res.data], { type: 'application/pdf' })
+    } catch (e: any) {
+      if (shouldFallBackToLocal(e)) { setOnline(false); throw new OfflineUnsupportedError('Reports cannot be generated while offline') }
+      throw e
+    }
   },
 }
 

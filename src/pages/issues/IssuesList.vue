@@ -3834,7 +3834,15 @@ async function loadRevealComments(issue: any) {
   revealLoading.value = { ...revealLoading.value, [iid]: true }
   revealError.value = { ...revealError.value, [iid]: '' }
   try {
-    const { data } = await http.get(`/api/issues/${iid}`, { params: pid ? { projectId: pid } : {} })
+    // Route through the store so a checked-out/offline device reads the comments
+    // from the hydrated local copy instead of hitting the unreachable network.
+    let data: any = null
+    try {
+      data = (await http.get(`/api/issues/${iid}`, { params: pid ? { projectId: pid } : {} })).data
+    } catch (e) {
+      data = await issuesStore.fetchIssue(iid)
+      if (!data) throw e
+    }
     setRevealComments(iid, Array.isArray(data?.comments) ? data.comments : [])
   } catch (e: any) {
     revealError.value = { ...revealError.value, [iid]: e?.response?.data?.error || e?.message || 'Failed to load comments' }

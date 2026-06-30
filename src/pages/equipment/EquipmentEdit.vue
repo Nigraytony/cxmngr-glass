@@ -2339,9 +2339,14 @@ async function loadPhotos() {
   const eid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!eid) return
   try {
-    const { data } = await http.get(`/api/equipment/${eid}`, {
-      params: { includePhotos: true },
-    })
+    let data: any = null
+    try {
+      data = (await http.get(`/api/equipment/${eid}`, { params: { includePhotos: true } })).data
+    } catch (e) {
+      // Offline: photos were hydrated into the local copy at checkout.
+      data = await equipmentStore.fetchOne(eid)
+      if (!data) throw e
+    }
     if (data) {
       form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
     }
@@ -2385,7 +2390,14 @@ async function loadComponents() {
   const eid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!eid) return
   try {
-    const { data } = await http.get(`/api/equipment/${eid}?includePhotos=true`)
+    let data: any = null
+    try {
+      data = (await http.get(`/api/equipment/${eid}?includePhotos=true`)).data
+    } catch (e) {
+      // Offline: components were hydrated into the local copy at checkout.
+      data = await equipmentStore.fetchOne(eid)
+      if (!data) throw e
+    }
     if (data) {
       form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
       componentsList.value = Array.isArray((data as any).components) ? (data as any).components : componentsList.value
@@ -3700,10 +3712,19 @@ async function load() {
   checklistOprAutoSavePrimed.value = false
   try {
     if (!id.value) return
-    // Fetch full equipment including checklists/functionalTests/photos
-    const { data } = await http.get(`/api/equipment/${id.value}`, {
-      params: { includePhotos: true, includeChecklists: true, includeFunctionalTests: true },
-    })
+    // Fetch full equipment including checklists/functionalTests/photos. Offline
+    // (project checked out, network unreachable) the request throws, so fall
+    // back to the hydrated local copy via the offline-aware store.
+    let data: any = null
+    try {
+      const res = await http.get(`/api/equipment/${id.value}`, {
+        params: { includePhotos: true, includeChecklists: true, includeFunctionalTests: true },
+      })
+      data = res.data
+    } catch (e) {
+      data = await equipmentStore.fetchOne(id.value)
+      if (!data) throw e
+    }
     const eq = data || (await equipmentStore.fetchOne(id.value))
     if (eq) {
       form.value = { ...eq, id: (eq as any)._id || (eq as any).id || id.value }

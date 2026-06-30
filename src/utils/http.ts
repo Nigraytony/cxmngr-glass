@@ -1,7 +1,7 @@
 import { api } from './api'
 import { useUiStore } from '../stores/ui'
 import { useAuthStore } from '../stores/auth'
-import { isOfflineSessionActive } from '../data/offlineGate'
+import { isOfflineSessionActive, getCheckedOutProjectId, setOnline, isNetworkFailure, isReplaying } from '../data/offlineGate'
 
 export const http = api
 
@@ -67,8 +67,21 @@ function isAuthEndpoint(url: string) {
 }
 
 http.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // A successful response proves real connectivity. While checked out, keep
+    // the offline gate in sync so reads/writes resume hitting the network once
+    // we're back (the browser's online/offline events can't be trusted alone).
+    try { if (getCheckedOutProjectId()) setOnline(true) } catch (e) { /* ignore */ }
+    return res
+  },
   async (err) => {
+    // A genuine connectivity failure while checked out flips the gate to
+    // offline so subsequent repository calls serve local data + queue writes —
+    // even when navigator.onLine wrongly reports we're up. Not during check-in
+    // replay (a network drop there must abort the sync, not look "offline").
+    try {
+      if (getCheckedOutProjectId() && !isReplaying() && isNetworkFailure(err)) setOnline(false)
+    } catch (e) { /* ignore */ }
     try {
       const status = err?.response?.status
       const payload = err?.response?.data
