@@ -3632,8 +3632,20 @@ async function fetchEquipmentPage(projectId?: string) {
       if (onlyWithChecklists.value && checklistSystemFilter.value) params.checklistSystem = checklistSystemFilter.value
       if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
       if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+    let data: any = {}
+    try {
       const res = await http.get('/api/equipment', { params })
-    const data = res && res.data ? res.data : {}
+      data = res && res.data ? res.data : {}
+    } catch (e) {
+      // Offline (project checked out, network unreachable): the server-side
+      // paginated/faceted endpoint can't be reached, so fall back to the
+      // hydrated local copy via the offline-aware store. Filters/facets aren't
+      // available offline; we show the full checked-out set.
+      const local = await equipmentStore.fetchByProject(pid).catch(() => null)
+      const arr = Array.isArray(local) ? local : (equipmentStore.items || [])
+      if (!arr.length) throw e
+      data = { items: arr, total: arr.length, totalAll: arr.length }
+    }
     const normalizeItem = (it: any) => {
       const obj: any = { ...(it || {}) }
       obj.id = it?._id || it?.id
