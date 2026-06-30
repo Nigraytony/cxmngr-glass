@@ -229,7 +229,7 @@ Tests: `tests/unit/repositories.fallback.test.ts` (new) + existing offline suite
 
 **Still deferred:** offline photo *capture* (write) remains `OfflineUnsupportedError` — only viewing
 hydrated photos works. See D4 and the photo bullet below.
-
+1
 ### Web shell — service worker (2nd pass, same day)
 
 Live testing in a **browser** showed the data-layer fix wasn't enough: navigating offline to a
@@ -252,6 +252,11 @@ Non-beta production users get no service worker.
 Also: `main.js` now (a) reloads once on a `vite:preloadError` to recover from a post-deploy stale
 manifest (guarded; skipped when offline), and (b) suspends the auth keep-alive / idle-refresh while
 an offline session is active (the repeated `POST /api/users/refresh` failures seen in testing).
+
+`vite-plugin-pwa`'s SW generation can't load `workbox-build` on Node 18, which CI still built on.
+Since Node 18 is EOL (Apr 2025) and the frontend ships on Node 20 (the SWA workflow), the Node-18
+frontend CI build was dropped (`ci.yml` → Node 20 only). This also lines up with the planned move to
+Node 22 (Node upgrade plan).
 
 Follow-up: the precache is ~12 MiB because it includes export-only chunks (`xlsx`,
 `html-to-docx`, `reportTypography`) that are offline-unsupported anyway — could be excluded to slim
