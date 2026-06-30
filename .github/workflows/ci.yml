@@ -98,7 +98,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20]
+        # Node 18 is EOL (Apr 2025) and is not a frontend deploy target — the
+        # SWA production build runs on Node 20. vite-plugin-pwa's SW generation
+        # also doesn't load on Node 18. See docs/offline_phase1_design.md.
+        node-version: [20]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -138,10 +141,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Use Node.js 18
+      - name: Use Node.js 20
         uses: actions/setup-node@v5
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install deps
         run: npm ci

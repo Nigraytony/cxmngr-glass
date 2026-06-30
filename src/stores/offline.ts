@@ -9,6 +9,7 @@ import { ref, computed } from 'vue'
 import { outbox } from '../data/outbox'
 import { setCheckedOutProject, setOnline } from '../data/offlineGate'
 import { isOfflineEnabled, setOfflineEnabled } from '../data/offlineFeature'
+import { registerOfflineServiceWorker, unregisterOfflineServiceWorker } from '../data/offlineServiceWorker'
 import { getDeviceId } from '../data/deviceId'
 import { acquireCheckout, releaseCheckout, redeemGrant } from '../data/checkoutClient'
 import { useAuthStore } from './auth'
@@ -28,6 +29,10 @@ export const useOfflineStore = defineStore('offline', () => {
   function setFeatureEnabled(on: boolean) {
     setOfflineEnabled(on)
     featureEnabled.value = on
+    // Install/tear down the asset-precaching service worker alongside the flag,
+    // so the SW only ever runs for opt-in beta devices.
+    if (on) registerOfflineServiceWorker().catch(() => {})
+    else unregisterOfflineServiceWorker().catch(() => {})
   }
 
   const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
@@ -75,6 +80,9 @@ export const useOfflineStore = defineStore('offline', () => {
   async function init() {
     setOnline(isOnline.value)
     startListening()
+    // Precache the app shell so route chunks load offline. init() only runs
+    // when the offline beta is enabled, so this stays scoped to opt-in devices.
+    registerOfflineServiceWorker().catch(() => {})
     await refresh()
   }
 
