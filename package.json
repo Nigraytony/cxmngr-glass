@@ -14,7 +14,10 @@
     "backfill:invoices": "node backend-api/scripts/backfill_invoices.js",
     "lint": "eslint --ext .js,.vue src/",
     "postinstall": "node ./scripts/patch-frappe-gantt.cjs",
-    "smoke:test": "node ./scripts/smoke-test.js"
+    "smoke:test": "node ./scripts/smoke-test.js",
+    "electron": "electron electron/main.cjs",
+    "electron:build": "VITE_API_BASE=https://api.cxma.io vite build && electron electron/main.cjs",
+    "electron:smoke": "ELECTRON_SMOKE=1 electron electron/main.cjs"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.2.9",
@@ -56,6 +59,7 @@
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.10.0",
     "chai": "^4.3.7",
+    "electron": "^41.7.1",
     "eslint": "^8.50.0",
     "eslint-plugin-vue": "^9.14.0",
     "fake-indexeddb": "^6.2.5",
