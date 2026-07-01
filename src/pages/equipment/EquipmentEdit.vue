@@ -1877,6 +1877,8 @@ import axios from 'axios'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
+import { useLocal, shouldFallBackToLocal, setOnline } from '../../data/offlineGate'
+import { savePhotoOffline, pendingPhotosFor } from '../../data/offlinePhotos'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
@@ -2351,6 +2353,7 @@ async function loadPhotos() {
       form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
     }
     photosLoaded.value = true
+    await mergeLocalPhotos()
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to load photos')
   }
@@ -2360,28 +2363,56 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   const eid = String(form.value.id || (form.value as any)._id || id.value || '')
   if (!eid) throw new Error('Save this equipment first before uploading photos')
 
+  // Offline session: stash the photo locally; it syncs on check-in.
+  const storeLocally = async () => {
+    const pid = String((form.value as any).projectId || projectStore.currentProjectId || '')
+    const entry = await savePhotoOffline({ entity: 'equipment', entityId: eid, projectId: pid, file })
+    const cur = Array.isArray((form.value as any).photos) ? (form.value as any).photos : []
+    form.value = { ...(form.value as any), photos: [...cur, entry] }
+    photosLoaded.value = true
+    onProgress(100)
+    return { photos: (form.value as any).photos }
+  }
+  if (useLocal()) return storeLocally()
+
   const body = new FormData()
   body.append('photos', file, file.name || 'photo')
 
-  const { data } = await http.post(`/api/equipment/${eid}/photos`, body, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (evt) => {
-      const total = evt.total || file.size || 0
-      if (!total) return
-      const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / total) * 100)))
-      onProgress(pct)
-    },
-  })
-
-  if (data) {
-    form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
-  } else {
-    const fresh = await equipmentStore.fetchOne(eid)
-    if (fresh) form.value = { ...fresh }
+  try {
+    const { data } = await http.post(`/api/equipment/${eid}/photos`, body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (evt) => {
+        const total = evt.total || file.size || 0
+        if (!total) return
+        const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / total) * 100)))
+        onProgress(pct)
+      },
+    })
+    if (data) {
+      form.value = { ...(form.value as any), ...data, id: data._id || data.id || eid }
+    } else {
+      const fresh = await equipmentStore.fetchOne(eid)
+      if (fresh) form.value = { ...fresh }
+    }
+    photosLoaded.value = true
+    appendLog('photo.upload', 'Uploaded photo', { filename: file.name || '' })
+    return data
+  } catch (e: any) {
+    if (shouldFallBackToLocal(e)) { setOnline(false); return storeLocally() }
+    throw e
   }
-  photosLoaded.value = true
-  appendLog('photo.upload', 'Uploaded photo', { filename: file.name || '' })
-  return data
+}
+
+// Merge locally-captured (unsynced) photos into the form so they show offline.
+async function mergeLocalPhotos() {
+  try {
+    const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+    if (!eid) return
+    const pend = await pendingPhotosFor('equipment', eid)
+    if (!pend.length) return
+    const server = (Array.isArray((form.value as any).photos) ? (form.value as any).photos : []).filter((p: any) => !(p && p.__local))
+    form.value = { ...(form.value as any), photos: [...server, ...pend] }
+  } catch (e) { /* ignore */ }
 }
 
 // Load components (fetch full record so components are included)

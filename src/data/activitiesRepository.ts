@@ -21,6 +21,7 @@ import { outbox } from './outbox'
 import { newObjectId } from './clientId'
 import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError, viaNetwork, shouldFallBackToLocal, setOnline } from './offlineGate'
 import { toPlain } from './plain'
+import { stripLocalPhotos } from './offlinePhotos'
 
 const API_BASE = `/api/activities`
 const ENTITY = 'activity' as const
@@ -80,11 +81,12 @@ export const activitiesRepository = {
       async () => (await http.post(API_BASE, payload, { headers: { 'Content-Type': 'application/json' } })).data,
       async () => {
         const _id = newObjectId()
-        const record: any = { ...payload, _id, status: payload.status || 'draft', createdAt: nowIso(), updatedAt: nowIso() }
+        const clean: any = (payload as any).photos !== undefined ? { ...payload, photos: stripLocalPhotos((payload as any).photos) } : payload
+        const record: any = { ...clean, _id, status: payload.status || 'draft', createdAt: nowIso(), updatedAt: nowIso() }
         await db.activities.put(toPlain(record))
         // The outbox create carries the client _id so the backend create reuses
         // it (decision D2) and check-in replay is idempotent.
-        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
+        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...clean, _id } })
         return record
       },
       payload.projectId,
@@ -108,12 +110,13 @@ export const activitiesRepository = {
       },
       async () => {
         const current = await db.activities.get(id)
-        const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
+        const clean: any = (payload as any).photos !== undefined ? { ...payload, photos: stripLocalPhotos((payload as any).photos) } : payload
+        const merged = { ...(current || {}), ...clean, _id: id, updatedAt: nowIso() }
         await db.activities.put(toPlain(merged))
         const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
         // Capture the version we based this edit on for check-in optimistic locking.
         const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
-        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
+        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload: clean, expectedVersion })
         // Conflicts can't occur offline — they surface at check-in.
         return { ok: true, data: merged }
       },

@@ -15,6 +15,7 @@ import { outbox } from './outbox'
 import { newObjectId } from './clientId'
 import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError, viaNetwork, shouldFallBackToLocal, setOnline } from './offlineGate'
 import { toPlain } from './plain'
+import { stripLocalPhotos } from './offlinePhotos'
 
 const API_BASE = `/api/equipment`
 const ENTITY = 'equipment' as const
@@ -54,9 +55,10 @@ export const equipmentRepository = {
       async () => (await http.post(API_BASE, payload)).data,
       async () => {
         const _id = newObjectId()
-        const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
+        const clean: any = (payload as any).photos !== undefined ? { ...payload, photos: stripLocalPhotos((payload as any).photos) } : payload
+        const record: any = { ...clean, _id, createdAt: nowIso(), updatedAt: nowIso() }
         await db.equipment.put(toPlain(record))
-        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
+        await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...clean, _id } })
         return record
       },
       payload.projectId,
@@ -83,11 +85,12 @@ export const equipmentRepository = {
       },
       async () => {
         const current = await db.equipment.get(id)
-        const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
+        const clean: any = (payload as any).photos !== undefined ? { ...payload, photos: stripLocalPhotos((payload as any).photos) } : payload
+        const merged = { ...(current || {}), ...clean, _id: id, updatedAt: nowIso() }
         await db.equipment.put(toPlain(merged))
         const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
         const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
-        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
+        await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload: clean, expectedVersion })
         return { ok: true, data: merged }
       },
     )

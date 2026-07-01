@@ -11,6 +11,7 @@
 import { db, type OutboxOp, type CheckoutMeta } from './db'
 import { outbox } from './outbox'
 import { setReplaying } from './offlineGate'
+import { syncPendingPhotos, pendingPhotoCount } from './offlinePhotos'
 import activitiesRepository from './activitiesRepository'
 import issuesRepository from './issuesRepository'
 import equipmentRepository from './equipmentRepository'
@@ -180,8 +181,10 @@ export interface CheckInReport {
   applied: number
   conflicts: CheckInConflict[]
   failed: CheckInFailure[]
-  remaining: number // ops still queued after this run
+  remaining: number // ops still queued after this run (outbox + pending photos)
   aborted: boolean // true if we stopped early (connectivity lost mid-sync)
+  photosUploaded?: number
+  photosFailed?: number
 }
 
 async function replayOp(op: OutboxOp, repos: CheckInRepos): Promise<{ conflict?: CheckInConflict }> {
@@ -252,7 +255,22 @@ export async function checkInProject(opts: { repos?: CheckInRepos } = {}): Promi
     setReplaying(false)
   }
 
-  report.remaining = await outbox.count()
+  // Replay queued offline photos via each entity's multipart endpoint. Entity
+  // creates/updates have already replayed above, so a client-generated entityId
+  // now exists on the server. Skip if the outbox replay lost connectivity.
+  if (!report.aborted) {
+    try {
+      const photoRes = await syncPendingPhotos()
+      report.photosUploaded = photoRes.uploaded
+      report.photosFailed = photoRes.failed
+    } catch (e) {
+      // Leave photos queued for the next attempt.
+    }
+  }
+
+  // `remaining` gates the caller's lock-release/discard; count both queues so a
+  // failed photo upload doesn't drop the checkout with photos still pending.
+  report.remaining = (await outbox.count()) + (await pendingPhotoCount())
   return report
 }
 

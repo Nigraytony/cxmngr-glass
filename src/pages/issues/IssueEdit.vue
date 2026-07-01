@@ -1256,6 +1256,8 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import lists from '../../lists.js'
 import { useIssuesStore } from '../../stores/issues'
 import { useIssuesNavStore } from '../../stores/issuesNav'
+import { useLocal, shouldFallBackToLocal, setOnline } from '../../data/offlineGate'
+import { savePhotoOffline, pendingPhotosFor } from '../../data/offlinePhotos'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
@@ -1958,6 +1960,7 @@ onMounted(async () => {
         photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
       })
       loaded.value = true
+      await mergeLocalPhotos()
     } catch (e: any) {
       // If the issue doesn't exist, redirect to list to avoid broken editor state
       if (e?.response?.status === 404) {
@@ -2014,6 +2017,7 @@ watch(id, async (nv, ov) => {
       photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
     })
     loaded.value = true
+    await mergeLocalPhotos()
   } catch (e: any) {
     if (e?.response?.status === 404) {
       notFound.value = true
@@ -2403,22 +2407,46 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   // Ensure we have an issue id to target
   const iid = isNew.value ? await saveAndGetId() : id.value
   const pid = isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId()
+  // Offline session: stash the photo locally; it syncs on check-in.
+  const storeLocally = async () => {
+    const entry = await savePhotoOffline({ entity: 'issue', entityId: String(iid), projectId: pid, file })
+    form.photos = [...(Array.isArray(form.photos) ? form.photos : []), entry as any]
+    onProgress(100)
+    return { photos: form.photos }
+  }
+  if (useLocal()) return storeLocally()
   const fd = new FormData()
   // include projectId in case middleware reads body (we also set server-side)
   fd.append('projectId', pid)
   fd.append('photos', file, file.name)
-  const res = await http.post(`/api/issues/${iid}/photos`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    params: { projectId: pid },
-    onUploadProgress: (ev) => {
-      if (!ev.total) return
-      const pct = Math.round((ev.loaded * 100) / ev.total)
-      onProgress(pct)
-    },
-  })
-  const updated = res.data
-  form.photos = Array.isArray(updated?.photos) ? updated.photos : form.photos
-  return updated
+  try {
+    const res = await http.post(`/api/issues/${iid}/photos`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      params: { projectId: pid },
+      onUploadProgress: (ev) => {
+        if (!ev.total) return
+        const pct = Math.round((ev.loaded * 100) / ev.total)
+        onProgress(pct)
+      },
+    })
+    const updated = res.data
+    form.photos = Array.isArray(updated?.photos) ? updated.photos : form.photos
+    return updated
+  } catch (e: any) {
+    if (shouldFallBackToLocal(e)) { setOnline(false); return storeLocally() }
+    throw e
+  }
+}
+
+// Merge locally-captured (unsynced) photos into the form so they show while
+// offline, even after navigating away and back.
+async function mergeLocalPhotos() {
+  try {
+    const pend = await pendingPhotosFor('issue', id.value)
+    if (!pend.length) return
+    const server = (Array.isArray(form.photos) ? form.photos : []).filter((p: any) => !(p && p.__local))
+    form.photos = [...server, ...(pend as any)]
+  } catch (e) { /* ignore */ }
 }
 // Counts per tab for badges
 function countForTab(t: string): number {
