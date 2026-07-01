@@ -4,7 +4,9 @@ import router from './router'
 import App from './App.vue'
 import './assets/base.css'
 import { useAuthStore } from './stores/auth'
+import { useOfflineStore } from './stores/offline'
 import { isOfflineSessionActive } from './data/offlineGate'
+import { isOfflineEnabled } from './data/offlineFeature'
 
 // If a lazily-loaded route chunk fails to load — e.g. a deploy swapped hashed
 // filenames mid-session, or a transient hiccup — reload once to pick up the
@@ -39,6 +41,18 @@ const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 app.use(router)
+
+// Initialize the offline session at boot (for offline-beta devices), NOT just
+// when the sidebar control mounts. SidebarOfflineControl is gated on
+// currentProjectId, which can be null offline when the project fetch fails —
+// leaving the routing gate's checked-out project id unpopulated, so offline
+// reads/writes never route to IndexedDB (writes then hit the dead network and
+// fail). Doing it here hydrates offlineGate from IndexedDB before any user
+// action, independent of project/sidebar state.
+if (isOfflineEnabled()) {
+	try { useOfflineStore(pinia).init() } catch (e) { /* ignore */ }
+}
+
 // Auth bootstrap: refresh cookie -> access token -> /me
 try {
 	const auth = useAuthStore(pinia)
