@@ -14,6 +14,7 @@ import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
 import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError, viaNetwork, shouldFallBackToLocal, setOnline } from './offlineGate'
+import { toPlain } from './plain'
 
 const API_BASE = `/api/equipment`
 const ENTITY = 'equipment' as const
@@ -54,7 +55,7 @@ export const equipmentRepository = {
       async () => {
         const _id = newObjectId()
         const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
-        await db.equipment.put(record)
+        await db.equipment.put(toPlain(record))
         await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
         return record
       },
@@ -83,7 +84,7 @@ export const equipmentRepository = {
       async () => {
         const current = await db.equipment.get(id)
         const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-        await db.equipment.put(merged)
+        await db.equipment.put(toPlain(merged))
         const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
         const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
         await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })

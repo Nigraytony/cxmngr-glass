@@ -20,6 +20,7 @@ import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
 import { useLocal, getCheckedOutProjectId, OfflineUnsupportedError, viaNetwork, shouldFallBackToLocal, setOnline } from './offlineGate'
+import { toPlain } from './plain'
 
 const API_BASE = `/api/activities`
 const ENTITY = 'activity' as const
@@ -80,7 +81,7 @@ export const activitiesRepository = {
       async () => {
         const _id = newObjectId()
         const record: any = { ...payload, _id, status: payload.status || 'draft', createdAt: nowIso(), updatedAt: nowIso() }
-        await db.activities.put(record)
+        await db.activities.put(toPlain(record))
         // The outbox create carries the client _id so the backend create reuses
         // it (decision D2) and check-in replay is idempotent.
         await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
@@ -108,7 +109,7 @@ export const activitiesRepository = {
       async () => {
         const current = await db.activities.get(id)
         const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-        await db.activities.put(merged)
+        await db.activities.put(toPlain(merged))
         const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
         // Capture the version we based this edit on for check-in optimistic locking.
         const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)

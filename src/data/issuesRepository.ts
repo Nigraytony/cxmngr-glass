@@ -10,6 +10,7 @@ import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
 import { getCheckedOutProjectId, viaNetwork } from './offlineGate'
+import { toPlain } from './plain'
 
 const API_BASE = `/api/issues`
 const ENTITY = 'issue' as const
@@ -55,7 +56,7 @@ export const issuesRepository = {
         const _id = newObjectId()
         // Offline issues have no server-assigned `number` until check-in.
         const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
-        await db.issues.put(record)
+        await db.issues.put(toPlain(record))
         await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
         return record
       },
@@ -78,7 +79,7 @@ export const issuesRepository = {
       async () => {
         const current = await db.issues.get(id)
         const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-        await db.issues.put(merged)
+        await db.issues.put(toPlain(merged))
         const projectId = String((current && current.projectId) || (payload as any).projectId || getCheckedOutProjectId() || '')
         const expectedVersion = opts.expectedVersion ?? (current ? current.__v : undefined)
         await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload, expectedVersion })
