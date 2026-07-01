@@ -262,6 +262,20 @@ Follow-up: the precache is ~12 MiB because it includes export-only chunks (`xlsx
 `html-to-docx`, `reportTypography`) that are offline-unsupported anyway — could be excluded to slim
 the install.
 
+### Boot-time offline init (3rd pass)
+
+Live testing showed offline **saves** failing (the PATCH hit the dead network instead of the outbox).
+Root cause: `offlineGate.checkedOutProjectId` was only ever populated by `offlineStore.init()`, which
+was wired *solely* through `SidebarOfflineControl` — and that component is gated `v-if="currentProjectId"`.
+Offline, the project fetch (`GET /api/projects/:id`) fails and `currentProjectId` can reset to `null`
+(`stores/project.ts`), so the control unmounts, `init()` never runs, the gate stays empty, and every
+repo op's `useLocal()` **and** failure-fallback no-op (both require a checked-out project) — so writes
+hit the network and throw. `online` also never flips, since the `http.ts` interceptor is gated on the
+same checkout state.
+
+Fix: call `useOfflineStore().init()` at app boot in `main.js` (for offline-beta devices), so the gate
+is hydrated from IndexedDB before any user action, independent of project/sidebar state.
+
 ## Phase 2 follow-ups
 
 Phase 1 shipped (feature-flagged): repository seam + `__v`, offline core (Dexie + outbox + check-in
