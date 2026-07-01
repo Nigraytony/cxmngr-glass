@@ -276,6 +276,16 @@ same checkout state.
 Fix: call `useOfflineStore().init()` at app boot in `main.js` (for offline-beta devices), so the gate
 is hydrated from IndexedDB before any user action, independent of project/sidebar state.
 
+### Reactive-payload DataCloneError (4th pass)
+
+With writes now routed to IndexedDB, offline saves threw
+`DataCloneError: … [object Array] could not be cloned`. The repos put the component's edit state
+(a Vue `reactive` Proxy, with nested arrays like comments/photos/labels) straight into Dexie, and the
+structured-clone algorithm can't serialize proxies. Fix: `src/data/plain.ts` `toPlain()`
+(JSON round-trip → plain, cloneable object; also strips `undefined`, matching the wire format),
+applied to every `db.*.put` in the four repos and to the outbox writes (`outbox.enqueue` /
+`recordWrite`). Regression test: `tests/unit/reactiveWrite.test.ts`.
+
 ## Phase 2 follow-ups
 
 Phase 1 shipped (feature-flagged): repository seam + `__v`, offline core (Dexie + outbox + check-in

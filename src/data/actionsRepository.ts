@@ -14,6 +14,7 @@ import { db } from './db'
 import { outbox } from './outbox'
 import { newObjectId } from './clientId'
 import { getCheckedOutProjectId, viaNetwork } from './offlineGate'
+import { toPlain } from './plain'
 
 const API_BASE = `/api/actions`
 const ENTITY = 'action' as const
@@ -42,7 +43,7 @@ export const actionsRepository = {
       async () => {
         const _id = newObjectId()
         const record: any = { ...payload, _id, createdAt: nowIso(), updatedAt: nowIso() }
-        await db.actions.put(record)
+        await db.actions.put(toPlain(record))
         await outbox.recordWrite({ entity: ENTITY, op: 'create', entityId: _id, projectId: String(payload.projectId), payload: { ...payload, _id } })
         return record
       },
@@ -56,7 +57,7 @@ export const actionsRepository = {
       async () => {
         const current = await db.actions.get(id)
         const merged = { ...(current || {}), ...payload, _id: id, updatedAt: nowIso() }
-        await db.actions.put(merged)
+        await db.actions.put(toPlain(merged))
         const projectId = String((current && current.projectId) || payload.projectId || getCheckedOutProjectId() || '')
         await outbox.recordWrite({ entity: ENTITY, op: 'update', entityId: id, projectId, payload })
         return merged

@@ -3,13 +3,15 @@
 // check-in. Ordering is the auto-increment `id`, so insertion order == replay
 // order.
 import { db, type OutboxOp } from './db'
+import { toPlain } from './plain'
 
 export type { OutboxOp }
 
 export const outbox = {
   // Append a mutation. `createdAt` defaults to now but is injectable for tests.
+  // toPlain() strips Vue reactivity so IndexedDB can clone the payload.
   async enqueue(op: Omit<OutboxOp, 'id' | 'createdAt'> & { createdAt?: number }): Promise<number> {
-    const record: OutboxOp = { createdAt: Date.now(), ...op }
+    const record: OutboxOp = toPlain({ createdAt: Date.now(), ...op })
     return db.outbox.add(record)
   },
 
@@ -35,7 +37,7 @@ export const outbox = {
     if (w.op === 'update') {
       const target = creates[0] || updates[0]
       if (target) {
-        target.payload = { ...(target.payload || {}), ...(w.payload || {}) }
+        target.payload = toPlain({ ...(target.payload || {}), ...(w.payload || {}) })
         await db.outbox.put(target)
         return target.id ?? null
       }
