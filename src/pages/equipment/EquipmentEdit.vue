@@ -2366,7 +2366,7 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
   // Offline session: stash the photo locally; it syncs on check-in.
   const storeLocally = async () => {
     const pid = String((form.value as any).projectId || projectStore.currentProjectId || '')
-    const entry = await savePhotoOffline({ entity: 'equipment', entityId: eid, projectId: pid, file })
+    const entry = await savePhotoOffline({ system: 'base64', entityType: 'equipment', entityId: eid, projectId: pid, file })
     const cur = Array.isArray((form.value as any).photos) ? (form.value as any).photos : []
     form.value = { ...(form.value as any), photos: [...cur, entry] }
     photosLoaded.value = true

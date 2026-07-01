@@ -2654,8 +2654,6 @@ import axios from 'axios'
 import http from '../../utils/http'
 import { useRoute, useRouter } from 'vue-router'
 import { useActivitiesStore } from '../../stores/activities'
-import { useLocal, shouldFallBackToLocal, setOnline } from '../../data/offlineGate'
-import { savePhotoOffline, pendingPhotosFor } from '../../data/offlinePhotos'
 import { useProjectStore } from '../../stores/project'
 import RichTextEditor from '../../components/RichTextEditor.vue'
 import ConflictBanner from '../../components/ConflictBanner.vue'
@@ -3532,7 +3530,6 @@ async function loadPhotos() {
     const photos = await store.fetchActivityPhotos(aid)
     ;(form as any).photos = Array.isArray(photos) ? photos : []
     photosLoaded.value = hasPhotoData(photos)
-    await mergeLocalPhotos(aid)
   } catch (e) {
     // non-blocking: leave current state as-is
   }
@@ -3751,45 +3748,19 @@ async function uploadPhoto(file: File, onProgress: (pct: number) => void) {
     }
     targetId = String(pendingCreatedId.value)
   }
-  // Offline session: stash the photo locally; it syncs on check-in.
-  const storeLocally = async () => {
-    const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
-    const entry = await savePhotoOffline({ entity: 'activity', entityId: String(targetId), projectId: pid, file })
-    ;(form as any).photos = [...(Array.isArray((form as any).photos) ? (form as any).photos : []), entry as any]
-    photosLoaded.value = true
-    onProgress(100)
-    return { photos: (form as any).photos }
-  }
-  if (useLocal()) return storeLocally()
   const fd = new FormData()
   fd.append('photos', file)
+  const res = await http.post(`/api/activities/${targetId}/photos`, fd, {
+    onUploadProgress: (e: any) => {
+      if (e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+    },
+  })
   try {
-    const res = await http.post(`/api/activities/${targetId}/photos`, fd, {
-      onUploadProgress: (e: any) => {
-        if (e.total) onProgress(Math.round((e.loaded / e.total) * 100))
-      },
-    })
-    try {
-      const photos = await store.fetchActivityPhotos(String(targetId))
-      ;(form as any).photos = Array.isArray(photos) ? photos : []
-      photosLoaded.value = hasPhotoData(photos)
-    } catch (e) { /* ignore */ }
-    return res.data
-  } catch (e: any) {
-    if (shouldFallBackToLocal(e)) { setOnline(false); return storeLocally() }
-    throw e
-  }
-}
-
-// Merge locally-captured (unsynced) photos into the form so they show offline.
-async function mergeLocalPhotos(activityId: string) {
-  try {
-    if (!activityId) return
-    const pend = await pendingPhotosFor('activity', activityId)
-    if (!pend.length) return
-    const server = (Array.isArray((form as any).photos) ? (form as any).photos : []).filter((p: any) => !(p && p.__local))
-    ;(form as any).photos = [...server, ...(pend as any)]
+    const photos = await store.fetchActivityPhotos(String(targetId))
+    ;(form as any).photos = Array.isArray(photos) ? photos : []
+    photosLoaded.value = hasPhotoData(photos)
   } catch (e) { /* ignore */ }
+  return res.data
 }
 
 function finalizeNewActivityIfNeeded() {
