@@ -21,9 +21,10 @@ mac:
     - dmg
     - zip
   category: public.app-category.productivity
-  # Unsigned for now — no Apple Developer cert yet. Users open via right-click →
-  # Open the first time. Signing + notarization is a later phase.
-  identity: null
+  # Signing is driven by env/secrets: set CSC_LINK (+ CSC_KEY_PASSWORD) to sign,
+  # and APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID to notarize. When no
+  # cert is configured, the electron:* scripts set CSC_IDENTITY_AUTO_DISCOVERY=false
+  # so the build stays unsigned instead of failing. See the desktop CI workflow.
 
 win:
   target:

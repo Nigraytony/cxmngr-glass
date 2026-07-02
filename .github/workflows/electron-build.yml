@@ -1,0 +1,66 @@
+name: Desktop build (Electron)
+
+# Builds the desktop installers on macOS + Windows. Runs UNSIGNED until the
+# signing secrets below are added, then signs (and notarizes macOS) automatically
+# — no workflow change needed.
+#
+# Trigger: manual (Run workflow) or pushing a `desktop-v*` tag (kept separate
+# from the web app's `v*` tags so the two release flows don't collide).
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: npm ci
+
+      - name: Build + package
+        env:
+          # Renderer API base (same value the web deploy uses).
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          # Explicit cert (CSC_LINK) is used when present; without it, no signing.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # macOS signing + notarization (leave secrets unset to build unsigned).
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          # electron-builder is happier with a token for its update metadata.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run electron:ci
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          if-no-files-found: warn
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.blockmap
+            release/latest*.yml
