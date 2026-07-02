@@ -9,6 +9,9 @@ pnpm-debug.log*
 dist/
 .vite/
 
+# Electron packaging output (electron-builder)
+release/
+
 # Env files
 .env
 .env.*

@@ -1,0 +1,39 @@
+# electron-builder config — desktop packaging (see docs/electron_pivot_plan.md).
+# Icons are auto-generated from build/icon.png (1024x1024).
+appId: io.cxma.desktop
+productName: CxMA
+copyright: © CxMA
+
+directories:
+  output: release
+  buildResources: build
+
+# Only the built renderer + the main process are needed at runtime (the renderer
+# is bundled by Vite; the main process uses only Electron/Node built-ins).
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+asar: true
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.productivity
+  # Unsigned for now — no Apple Developer cert yet. Users open via right-click →
+  # Open the first time. Signing + notarization is a later phase.
+  identity: null
+
+win:
+  target:
+    - nsis
+
+linux:
+  target:
+    - AppImage
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true

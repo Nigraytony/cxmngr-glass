@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "CxMA — commissioning management (desktop app for offline field work)",
+  "author": "CxMA <support@cxma.io>",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
@@ -18,7 +21,9 @@
     "electron": "electron electron/main.cjs",
     "electron:build": "VITE_API_BASE=https://api.cxma.io vite build && electron electron/main.cjs",
     "electron:smoke": "ELECTRON_SMOKE=1 electron electron/main.cjs",
-    "electron:dev": "ELECTRON_RENDERER_URL=http://localhost:5173 electron electron/main.cjs"
+    "electron:dev": "ELECTRON_RENDERER_URL=http://localhost:5173 electron electron/main.cjs",
+    "electron:pack": "VITE_API_BASE=https://api.cxma.io vite build && electron-builder --dir",
+    "electron:dist": "VITE_API_BASE=https://api.cxma.io vite build && electron-builder"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.2.9",
@@ -61,6 +66,7 @@
     "baseline-browser-mapping": "^2.10.0",
     "chai": "^4.3.7",
     "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^8.50.0",
     "eslint-plugin-vue": "^9.14.0",
     "fake-indexeddb": "^6.2.5",
