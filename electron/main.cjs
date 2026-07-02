@@ -1,26 +1,33 @@
-// Electron main process — Phase-0 POC (see docs/electron_pivot_plan.md).
+// Electron main process (see docs/electron_pivot_plan.md).
 //
 // Serves the built Vite `dist/` over a custom `app://` protocol instead of
 // `file://`. This keeps the app's ABSOLUTE asset paths (`/assets/…`) and the
 // history-mode router working unchanged — no web build config change needed.
 //
-// POC scope only: no packaging, no signing, no auto-update. `webSecurity:false`
-// is a POC shortcut to reach the remote API (api.cxma.io) without CORS setup;
-// it MUST be replaced (proper CORS / same-origin proxy) before shipping.
+// Security (Phase 1): renderer `webSecurity` is ON. The renderer runs on the
+// `app://bundle` origin, which the backend's CORS allowlist can't include and
+// Azure Blob's CORS won't allow. Rather than disable webSecurity, we bridge CORS
+// at the main-process (network) layer for the two hosts the app talks to:
+//   1. strip the `Origin` header on the way out — the backend explicitly allows
+//      requests with no Origin (`if (!origin) callback(null, true)`), i.e. treats
+//      it as a trusted non-browser client (no spoofing), and Azure Blob SAS PUTs
+//      don't need one;
+//   2. inject the CORS response headers on the way back so the (secure) renderer
+//      accepts the responses.
 const { app, BrowserWindow, protocol, session, shell } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs/promises')
 
 const DIST = path.join(__dirname, '..', 'dist')
 const SMOKE = process.env.ELECTRON_SMOKE === '1'
+// Dev hot-reload: when set (e.g. http://localhost:5173), load the Vite dev
+// server instead of the built dist. `npm run electron:dev` sets this.
+const DEV_URL = process.env.ELECTRON_RENDERER_URL || ''
+const RENDERER_ORIGIN = DEV_URL ? new URL(DEV_URL).origin : 'app://bundle'
+const OPEN_DEVTOOLS = Boolean(DEV_URL) || process.env.ELECTRON_DEVTOOLS === '1'
 
-// The renderer runs on the custom `app://` origin, which the backend's CORS
-// allowlist doesn't (and shouldn't) include. For the POC, present API requests
-// as coming from the real web origin the backend already trusts, so CORS +
-// the double-submit CSRF flow behave exactly as they do on the web.
-// Phase 1+ replaces this with a proper desktop auth story (see the pivot plan).
-const API_ORIGIN = 'https://api.cxma.io'
-const TRUSTED_WEB_ORIGIN = 'https://app.cxma.io'
+// Hosts the renderer legitimately talks to cross-origin (bridged below).
+const CORS_URL_PATTERNS = ['https://api.cxma.io/*', 'https://*.blob.core.windows.net/*']
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -58,19 +65,51 @@ async function serve(request) {
   }
 }
 
+// Replace any CORS headers the upstream set with ones the secure renderer
+// accepts for its credentialed requests.
+function applyCorsHeaders(responseHeaders) {
+  const headers = {}
+  for (const [k, v] of Object.entries(responseHeaders || {})) {
+    if (!/^access-control-allow-(origin|credentials|methods|headers)$/i.test(k)) headers[k] = v
+  }
+  headers['Access-Control-Allow-Origin'] = [RENDERER_ORIGIN]
+  headers['Access-Control-Allow-Credentials'] = ['true']
+  headers['Access-Control-Allow-Methods'] = ['GET,POST,PUT,PATCH,DELETE,OPTIONS']
+  headers['Access-Control-Allow-Headers'] = ['Content-Type,Authorization,X-CSRF-Token,x-ms-blob-type']
+  return headers
+}
+
+function installCorsBridge() {
+  const wr = session.defaultSession.webRequest
+  // Strip Origin/Referer so the backend treats us as a trusted non-browser
+  // client (it allows requests with no Origin) and Azure Blob doesn't reject us.
+  wr.onBeforeSendHeaders({ urls: CORS_URL_PATTERNS }, (details, callback) => {
+    const requestHeaders = { ...details.requestHeaders }
+    delete requestHeaders.Origin
+    delete requestHeaders.origin
+    delete requestHeaders.Referer
+    delete requestHeaders.referer
+    callback({ requestHeaders })
+  })
+  // Inject CORS response headers so webSecurity:true accepts the responses.
+  wr.onHeadersReceived({ urls: CORS_URL_PATTERNS }, (details, callback) => {
+    callback({ responseHeaders: applyCorsHeaders(details.responseHeaders) })
+  })
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     webPreferences: {
-      webSecurity: false, // POC only — see header note
+      webSecurity: true,
       contextIsolation: true,
       nodeIntegration: false,
     },
   })
 
   const wc = win.webContents
-  if (!SMOKE) wc.openDevTools({ mode: 'detach' })
+  if (OPEN_DEVTOOLS && !SMOKE) wc.openDevTools({ mode: 'detach' })
   wc.on('did-finish-load', () => {
     console.log('[electron] renderer finished load:', wc.getURL())
     if (SMOKE) setTimeout(() => app.quit(), 1500)
@@ -89,22 +128,13 @@ function createWindow() {
     return { action: 'allow' }
   })
 
-  win.loadURL('app://bundle/index.html')
+  if (DEV_URL) win.loadURL(DEV_URL)
+  else win.loadURL('app://bundle/index.html')
 }
 
 app.whenReady().then(() => {
   protocol.handle('app', serve)
-
-  // Make API requests look like they come from the trusted web origin so the
-  // backend's CORS allowlist + credentialed cookies accept them.
-  session.defaultSession.webRequest.onBeforeSendHeaders(
-    { urls: [`${API_ORIGIN}/*`] },
-    (details, callback) => {
-      const headers = { ...details.requestHeaders, Origin: TRUSTED_WEB_ORIGIN, Referer: `${TRUSTED_WEB_ORIGIN}/` }
-      callback({ requestHeaders: headers })
-    },
-  )
-
+  installCorsBridge()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

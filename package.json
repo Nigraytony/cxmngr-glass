@@ -17,7 +17,8 @@
     "smoke:test": "node ./scripts/smoke-test.js",
     "electron": "electron electron/main.cjs",
     "electron:build": "VITE_API_BASE=https://api.cxma.io vite build && electron electron/main.cjs",
-    "electron:smoke": "ELECTRON_SMOKE=1 electron electron/main.cjs"
+    "electron:smoke": "ELECTRON_SMOKE=1 electron electron/main.cjs",
+    "electron:dev": "ELECTRON_RENDERER_URL=http://localhost:5173 electron electron/main.cjs"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.2.9",
