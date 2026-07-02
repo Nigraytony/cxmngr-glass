@@ -2090,6 +2090,7 @@ import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import { useIssuesStore } from '../../stores/issues'
 import { issuesRepository } from '../../data/issuesRepository'
+import { useLocal } from '../../data/offlineGate'
 import { useIssuesNavStore } from '../../stores/issuesNav'
 import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
@@ -3542,18 +3543,25 @@ function fetchIssuesPage(projectId?: string | null) {
       params.includeFacets = true
 
       let data: any = {}
-      try {
-        const res = await http.get('/api/issues', { params })
-        data = res && res.data ? res.data : {}
-      } catch (e) {
-        // Offline (project checked out, network unreachable): the server-side
-        // paginated/faceted endpoint can't be reached, so fall back to the
-        // hydrated local copy. Filters/facets aren't available offline; we show
-        // the full checked-out set.
-        const local = await issuesRepository.list({ projectId: pid }).catch(() => null)
+      if (useLocal(pid)) {
+        // Offline session: read the hydrated local copy directly — no network
+        // request, no failed-request noise. Filters/facets aren't available
+        // offline; we show the full checked-out set.
+        const local = await issuesRepository.list({ projectId: pid })
         const arr = Array.isArray(local) ? local : (Array.isArray((local as any)?.items) ? (local as any).items : [])
-        if (!arr.length) throw e
         data = { items: arr, total: arr.length, totalAll: arr.length }
+      } else {
+        try {
+          const res = await http.get('/api/issues', { params })
+          data = res && res.data ? res.data : {}
+        } catch (e) {
+          // navigator.onLine can lie; if the network fails while checked out,
+          // fall back to the local copy anyway.
+          const local = await issuesRepository.list({ projectId: pid }).catch(() => null)
+          const arr = Array.isArray(local) ? local : (Array.isArray((local as any)?.items) ? (local as any).items : [])
+          if (!arr.length) throw e
+          data = { items: arr, total: arr.length, totalAll: arr.length }
+        }
       }
       const normalize = (i: any): IssueRow => {
         const obj = { ...(i || {}) }

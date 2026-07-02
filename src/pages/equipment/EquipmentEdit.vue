@@ -3743,18 +3743,22 @@ async function load() {
   checklistOprAutoSavePrimed.value = false
   try {
     if (!id.value) return
-    // Fetch full equipment including checklists/functionalTests/photos. Offline
-    // (project checked out, network unreachable) the request throws, so fall
-    // back to the hydrated local copy via the offline-aware store.
+    // Fetch full equipment including checklists/functionalTests/photos.
     let data: any = null
-    try {
-      const res = await http.get(`/api/equipment/${id.value}`, {
-        params: { includePhotos: true, includeChecklists: true, includeFunctionalTests: true },
-      })
-      data = res.data
-    } catch (e) {
+    if (useLocal()) {
+      // Offline session: read the hydrated local copy directly — no network.
       data = await equipmentStore.fetchOne(id.value)
-      if (!data) throw e
+    } else {
+      try {
+        const res = await http.get(`/api/equipment/${id.value}`, {
+          params: { includePhotos: true, includeChecklists: true, includeFunctionalTests: true },
+        })
+        data = res.data
+      } catch (e) {
+        // navigator.onLine can lie; fall back to the local copy on failure.
+        data = await equipmentStore.fetchOne(id.value)
+        if (!data) throw e
+      }
     }
     const eq = data || (await equipmentStore.fetchOne(id.value))
     if (eq) {
