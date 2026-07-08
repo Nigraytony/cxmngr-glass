@@ -4335,12 +4335,14 @@ async function downloadActivityPdf() {
           document.body.removeChild(container)
         }
       }
-      // Photos
+      // Photos: Azure Blob (AzurePhotosPanel) + any legacy base64, capped.
       if (activityReport.value.include.photos) {
-        const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
+        const azure = await fetchActivityAzurePhotoDataUrls(activityReport.value.photoLimit)
+        const legacy = (Array.isArray(current.value?.photos) ? current.value!.photos! : [])
+          .map((p: any) => p?.data || p?.url).filter(Boolean)
+        const srcs = [...azure, ...legacy].slice(0, activityReport.value.photoLimit)
         const imgs: Array<{dataUrl:string,format?:ImageFormat}> = []
-        for (let p=0; p< Math.min(activityReport.value.photoLimit, phs.length); p++) {
-          const src = phs[p]?.data || phs[p]?.url || phs[p]
+        for (const src of srcs) {
           const imgRaw = await loadImage(src)
           if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
         }
@@ -5213,6 +5215,55 @@ function getEquipAttr(eq: any, key: string): string {
   return '—'
 }
 
+// Activity photos are stored in Azure Blob via AzurePhotosPanel (docs folder
+// Photos/Activity/<id>), NOT the legacy base64 activity.photos[] the reports used
+// to read. Fetch them from the docs API and return data URLs the report embeds.
+async function fetchActivityAzurePhotoDataUrls(limit: number): Promise<string[]> {
+  const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
+  const aid = String(id.value || '')
+  if (!pid || !aid || limit <= 0) return []
+  try {
+    // Locate the docs folder Photos / Activity / <id>.
+    const tree = (await http.get(`/api/projects/${pid}/docs/folders/tree`)).data
+    const flat: Array<{ id: string; name: string; parentId: string | null }> = []
+    const walk = (node: any) => {
+      for (const c of (Array.isArray(node?.children) ? node.children : [])) {
+        if (c && c.id) flat.push({ id: String(c.id), name: String(c.name || ''), parentId: c.parentId ? String(c.parentId) : null })
+        walk(c)
+      }
+    }
+    walk(tree?.root)
+    let parentId: string | null = null
+    for (const seg of ['Photos', 'Activity', aid]) {
+      const f = flat.find((x) => (x.parentId || null) === (parentId || null) && x.name.trim() === seg)
+      if (!f) return [] // no photos folder for this activity
+      parentId = f.id
+    }
+    // List image files in the folder.
+    const filesRes = (await http.get(`/api/projects/${pid}/docs/files`, { params: { folderId: parentId } })).data
+    const files = (Array.isArray(filesRes?.files) ? filesRes.files : [])
+      .filter((f: any) => f && f.status !== 'deleted' && String(f.contentType || '').toLowerCase().startsWith('image/'))
+    // Download each (SAS) as a data URL, respecting the report's photo limit.
+    const out: string[] = []
+    for (const f of files.slice(0, Math.max(0, limit))) {
+      try {
+        const { downloadUrl } = (await http.get(`/api/projects/${pid}/docs/files/${f.id}/download-url`)).data
+        const blob = (await axios.get(downloadUrl, { responseType: 'blob', withCredentials: false })).data
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result || ''))
+          reader.onerror = () => reject(reader.error || new Error('read failed'))
+          reader.readAsDataURL(blob)
+        })
+        if (dataUrl) out.push(dataUrl)
+      } catch (_) { /* skip this photo */ }
+    }
+    return out
+  } catch (_) {
+    return []
+  }
+}
+
 // Editable Microsoft Word (.docx) export — mirrors the PDF report sections as real
 // text/tables/images instead of a flattened canvas. See utils/activityReportDocx.ts.
 async function downloadActivityDocx() {
@@ -5234,13 +5285,14 @@ async function downloadActivityDocx() {
       if (j) jumbotron = await loadImage(j).catch(() => null)
     }
 
-    // Activity photos (respect photoLimit)
+    // Activity photos: Azure Blob (AzurePhotosPanel) + any legacy base64, capped.
     const photos: any[] = []
     if (inc.photos) {
-      const phs: any[] = Array.isArray(current.value?.photos) ? current.value!.photos! : []
-      const lim = Math.min(activityReport.value.photoLimit, phs.length)
-      for (let p = 0; p < lim; p++) {
-        const src = phs[p]?.data || phs[p]?.url || phs[p]
+      const azure = await fetchActivityAzurePhotoDataUrls(activityReport.value.photoLimit)
+      const legacy = (Array.isArray(current.value?.photos) ? current.value!.photos! : [])
+        .map((p: any) => p?.data || p?.url).filter(Boolean)
+      const srcs = [...azure, ...legacy].slice(0, activityReport.value.photoLimit)
+      for (const src of srcs) {
         const im = await loadImage(src).catch(() => null)
         if (im?.dataUrl) photos.push(im)
       }
