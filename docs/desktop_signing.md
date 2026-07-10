@@ -98,7 +98,7 @@ win:
   target:
     - nsis
   azureSignOptions:
-    publisherName: "<exact CN from the certificate>"
+    publisherName: "Energy Management Consulting, LLC"  # must match the cert CN exactly (§4)
     endpoint: "https://wus3.codesigning.azure.net/"
     codeSigningAccountName: "<Artifact Signing account name>"
     certificateProfileName: "<certificate profile name>"
@@ -125,24 +125,24 @@ Windows leg.
 
 ---
 
-## 4. The open decision: whose name is on the certificate
+## 4. Certificate subject — DECIDED
 
-Public-trust certificates are issued to a **verified legal entity**, and that entity's name is
-what users see — in macOS Gatekeeper, and in the Windows UAC prompt when they run the
-installer. This is a branding decision, not a formality.
+**The certificate is issued to `Energy Management Consulting, LLC`.** CxMA ships as a product
+of EMCx; the existing LLC is the legal owner. No new entity is being formed for this (this
+supersedes the "form a CxMA entity first" option and unblocks TODO.txt #38 for signing
+purposes).
 
-TODO.txt item 38 — *"Administration: Create a Cx Manager entity for legal compliance"* — is
-still open. The options:
+Consequences, already applied where possible:
+- Windows `azureSignOptions.publisherName` and the macOS certificate CN must both read
+  **`Energy Management Consulting, LLC`** exactly.
+- `electron-builder.yml` `copyright` is set to `© Energy Management Consulting, LLC`.
+- Users installing "CxMA" will see "Energy Management Consulting, LLC" on the macOS Gatekeeper
+  and Windows UAC trust prompts. That's expected — the product name and the legal signer differ
+  by design. If you want the EMCx relationship surfaced to users, put it in the app's About /
+  footer, not the certificate.
 
-- **Sign as `Energy Management Consulting, LLC`.** Available today. Users installing "CxMA"
-  see a different company name on the trust prompt.
-- **Form a CxMA entity first.** Cleaner story, but adds incorporation lead time on top of the
-  1–20 day identity validation.
-- **Individual enrollment** (Apple, and Azure for US/Canada). Ships under a personal name.
-  Fine for internal testers, poor for a commercial B2B tool.
-
-Resolve this before starting identity validation — changing the name afterward means a **new
-validation request**, which invalidates the certificates already issued against it.
+Because this name is now fixed, identity validation can start. Do **not** change it afterward —
+that means a new validation request and invalidates any certificates already issued against it.
 
 ---
 

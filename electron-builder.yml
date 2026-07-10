@@ -2,7 +2,9 @@
 # Icons are auto-generated from build/icon.png (1024x1024).
 appId: io.cxma.desktop
 productName: CxMA
-copyright: © CxMA
+# Legal owner (matches the code-signing certificate subject). CxMA is a product
+# of Energy Management Consulting, LLC (EMCx). See docs/desktop_signing.md §4.
+copyright: © Energy Management Consulting, LLC
 
 directories:
   output: release
