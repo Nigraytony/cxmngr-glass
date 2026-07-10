@@ -76,6 +76,9 @@ Recommended immediate next step.
 1. **OS targets** — macOS + Windows (field laptops)? Linux? Affects signing + CI.
 2. **Distribution channel** — direct download, MDM, or an internal portal? Affects auto-update host.
 3. **Signing certs** — who procures Apple Developer + Windows certs (lead time/cost)?
+   See `desktop_signing.md`. Note the Windows plan changed: `WIN_CSC_LINK` (a `.pfx`) is no
+   longer obtainable for new certs, so the path is Azure Artifact Signing. Blocked on the
+   legal-entity decision (TODO.txt #38) because the entity name lands on the certificate.
 4. **Router mode under Electron** — resolve in Phase 0 (`app://` protocol vs hash history).
 
 ## 6. Decommission / freeze the web offline path
