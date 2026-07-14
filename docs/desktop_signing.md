@@ -89,29 +89,38 @@ despite `rg-cxmngr-eastus` being the resource group's name.
      --scope "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CodeSigning/codeSigningAccounts/<account>/certificateProfiles/<profile>"
    ```
 
-### Config change (once the profile exists)
+### Config — IMPLEMENTED
 
-In `electron-builder.yml`, replace the `win:` block's implicit signtool path:
+Done. The electron-builder config was ported from `electron-builder.yml` to `electron-builder.cjs`
+so the signing block can be gated at build time (a static YAML `azureSignOptions` would make every
+*local* build try to reach Azure and fail without the service-principal creds). The `win.azureSignOptions`
+object is emitted **only when `CXMA_SIGN_WIN=1`**:
 
-```yaml
-win:
-  target:
-    - nsis
-  azureSignOptions:
-    publisherName: "Energy Management Consulting, LLC"  # must match the cert CN exactly (§4)
-    endpoint: "https://wus3.codesigning.azure.net/"
-    codeSigningAccountName: "<Artifact Signing account name>"
-    certificateProfileName: "<certificate profile name>"
+```js
+// electron-builder.cjs (excerpt)
+const signWindows = process.env.CXMA_SIGN_WIN === '1'
+win: {
+  target: ['nsis'],
+  ...(signWindows && {
+    azureSignOptions: {
+      publisherName: 'Energy Management Consulting, LLC', // must match cert CN exactly (§4)
+      endpoint: 'https://wus3.codesigning.azure.net/',    // West US 3
+      codeSigningAccountName: 'emcxsigning',
+      certificateProfileName: 'emcx-public-trust',
+    },
+  }),
+}
 ```
 
-`azureSignOptions` and `signtoolOptions` are mutually exclusive. `publisherName` must match
-the certificate's CN **exactly**, or NSIS validation fails.
+`azureSignOptions` and `signtoolOptions` are mutually exclusive. `publisherName` must match the
+certificate's CN **exactly**, or NSIS validation fails. Local `electron:pack` / `electron:dist`
+(no `CXMA_SIGN_WIN`) build unsigned and never contact Azure.
 
-### Secrets to add
+### Secrets — still to add
 
-electron-builder authenticates via Azure's `EnvironmentCredential`, and shells out to the
-`TrustedSigning` PowerShell module (which it installs from PSGallery at build time — so this
-step must run on a Windows runner).
+electron-builder authenticates via Azure's `EnvironmentCredential` and shells out to the
+`TrustedSigning` PowerShell module (installed from PSGallery at build time — so this runs on a
+Windows runner). The CI workflow already reads these; they just need to be set on the repo:
 
 | Secret | Value |
 |---|---|
@@ -119,9 +128,9 @@ step must run on a Windows runner).
 | `AZURE_CLIENT_ID` | service principal app ID |
 | `AZURE_CLIENT_SECRET` | service principal secret |
 
-These need to be added to the "Build + package" step's `env:`, and the signing-mode detection
-in "Resolve signing mode" must switch from `WIN_CSC_LINK` to `AZURE_CLIENT_ID` for the
-Windows leg.
+The workflow (`.github/workflows/electron-build.yml`) is wired: "Resolve signing mode" keys the
+Windows leg off `AZURE_CLIENT_ID`, and the build step sets `CXMA_SIGN_WIN=1` + passes the three
+`AZURE_*` creds when signing. Adding the secrets + tagging a `desktop-v*` build is all that's left.
 
 ---
 

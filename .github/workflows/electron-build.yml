@@ -33,18 +33,19 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
         run: npm ci
 
-      # Whether a signing cert is available for THIS runner's OS. The `secrets`
-      # context isn't readable from a step-level `if:`, so resolve it here into a
-      # step output that later steps can branch on.
+      # Whether signing credentials are available for THIS runner's OS: a cert for
+      # macOS, an Azure service principal for Windows (Artifact Signing). The
+      # `secrets` context isn't readable from a step-level `if:`, so resolve it here
+      # into a step output that later steps can branch on.
       - name: Resolve signing mode
         id: signing
         shell: bash
         env:
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          if [ "$RUNNER_OS" = "macOS" ]; then cert="$MAC_CSC_LINK"; else cert="$WIN_CSC_LINK"; fi
-          if [ -n "$cert" ]; then echo 'signed=true' >> "$GITHUB_OUTPUT"; else echo 'signed=false' >> "$GITHUB_OUTPUT"; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then cred="$MAC_CSC_LINK"; else cred="$AZURE_CLIENT_ID"; fi
+          if [ -n "$cred" ]; then echo 'signed=true' >> "$GITHUB_OUTPUT"; else echo 'signed=false' >> "$GITHUB_OUTPUT"; fi
 
       - name: Build + package
         # Pinned to bash on BOTH runners. PowerShell (the windows-latest default)
@@ -66,9 +67,15 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows signing.
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          # Windows signing via Azure Artifact Signing. CXMA_SIGN_WIN=1 makes
+          # electron-builder.cjs emit win.azureSignOptions (only on the Windows leg
+          # when signing); the AZURE_* creds authenticate the TrustedSigning module
+          # through Azure's EnvironmentCredential. `.pfx`-based WIN_CSC_LINK is gone —
+          # public CAs no longer issue exportable keys (see docs/desktop_signing.md).
+          CXMA_SIGN_WIN: ${{ runner.os == 'Windows' && steps.signing.outputs.signed == 'true' && '1' || '' }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           # electron-builder is happier with a token for its update metadata.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # `--publish never`: electron-builder otherwise defaults `publish` to "onTag"
