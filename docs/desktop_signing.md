@@ -1,11 +1,17 @@
 # Desktop code signing — procurement + wiring
 
-**Status:** Phase 3 of `electron_pivot_plan.md`. CI is wired to sign correctly the moment
-secrets exist (PR: "make desktop CI actually sign instead of silently skipping"). Nothing
-here is blocked on code — it's blocked on certificates.
+**Status:** Phase 3 of `electron_pivot_plan.md`.
 
-Until then, `.github/workflows/electron-build.yml` builds **unsigned** installers on both
-platforms and uploads them as artifacts. That's fine for internal testers.
+- **Windows: LIVE.** Azure Artifact Signing is fully wired and verified green in CI
+  (run `desktop-v0.1.0-test.2`, 2026-07-14): electron-builder signs via the `cxma-desktop-ci`
+  service principal and the installer passes a `Get-AuthenticodeSignature` = Valid check.
+  Ship a signed build by tagging `desktop-v<version>` (no `-test` suffix).
+- **macOS: unsigned.** Builds and uploads fine, but no Apple cert yet — see §2 to enable
+  signing + notarization. Optional; only needed when distributing Mac builds.
+
+`.github/workflows/electron-build.yml` builds on both platforms and uploads installers as
+artifacts. Because it passes `--publish never`, tagging does NOT create a GitHub Release —
+downloads come from the run's artifacts.
 
 ---
 
@@ -116,21 +122,24 @@ win: {
 certificate's CN **exactly**, or NSIS validation fails. Local `electron:pack` / `electron:dist`
 (no `CXMA_SIGN_WIN`) build unsigned and never contact Azure.
 
-### Secrets — still to add
+### Secrets — DONE
 
-electron-builder authenticates via Azure's `EnvironmentCredential` and shells out to the
-`TrustedSigning` PowerShell module (installed from PSGallery at build time — so this runs on a
-Windows runner). The CI workflow already reads these; they just need to be set on the repo:
+Set on the repo (2026-07-14), sourced from the `cxma-desktop-ci` service principal:
 
 | Secret | Value |
 |---|---|
 | `AZURE_TENANT_ID` | Entra tenant GUID |
-| `AZURE_CLIENT_ID` | service principal app ID |
+| `AZURE_CLIENT_ID` | service principal app ID (`cxma-desktop-ci`) |
 | `AZURE_CLIENT_SECRET` | service principal secret |
 
-The workflow (`.github/workflows/electron-build.yml`) is wired: "Resolve signing mode" keys the
-Windows leg off `AZURE_CLIENT_ID`, and the build step sets `CXMA_SIGN_WIN=1` + passes the three
-`AZURE_*` creds when signing. Adding the secrets + tagging a `desktop-v*` build is all that's left.
+electron-builder authenticates via Azure's `EnvironmentCredential` and shells out to the
+`TrustedSigning` PowerShell module (installed from PSGallery at build time — so this runs on a
+Windows runner). The SP holds the **Artifact Signing Certificate Profile Signer** role scoped
+to the `emcx-public-trust` profile (nothing broader). To rotate the secret:
+`az ad sp credential reset --id <appId>`, then update `AZURE_CLIENT_SECRET`.
+
+The workflow (`.github/workflows/electron-build.yml`) keys the Windows leg's signing off
+`AZURE_CLIENT_ID`, sets `CXMA_SIGN_WIN=1`, and passes the three `AZURE_*` creds when signing.
 
 ---
 
