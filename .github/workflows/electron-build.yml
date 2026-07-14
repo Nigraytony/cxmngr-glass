@@ -87,7 +87,14 @@ jobs:
         # `forceCodeSigning` turns "couldn't find an identity, carrying on" into a
         # hard error (macPackager `reportError`, winPackager `didSignSuccessfully`).
         # Only meaningful when we expect to sign. Quoted so the arg survives as one token.
-        run: npm run electron:ci -- --publish never ${{ steps.signing.outputs.signed == 'true' && '"-c.forceCodeSigning=true"' || '' }}
+        run: |
+          # An unset GitHub secret renders as an EMPTY STRING, not undefined.
+          # electron-builder treats an empty CSC_LINK as "a cert file at path ''",
+          # resolves it to the repo dir, and dies "not a file" on the unsigned macOS
+          # build. Unset it (and its password) so signing is cleanly skipped when no
+          # cert is configured. A real cert makes CSC_LINK non-empty, so this no-ops.
+          if [ -z "${CSC_LINK:-}" ]; then unset CSC_LINK CSC_KEY_PASSWORD; fi
+          npm run electron:ci -- --publish never ${{ steps.signing.outputs.signed == 'true' && '"-c.forceCodeSigning=true"' || '' }}
 
       # electron-builder logs signing failures as warnings and still exits 0, so an
       # unsigned artifact reads as a green build. Assert on the artifact itself.
