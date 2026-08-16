@@ -1800,7 +1800,13 @@ function spaceName(spaceId?: string | null) {
   return sp ? (sp.title || sp.tag || '') : ''
 }
 
-// Push changes to selected instances (make equipment match current template)
+// Push changes to selected instances.
+//
+// Structure only: the server merges this template's checklist/FPT/component shape
+// and attribute keys into each instance, and leaves the instance's own title,
+// description, status, system, location and every recorded answer, test result and
+// attribute value alone. One atomic write per instance — see
+// backend-api/utils/templatePush.js for the merge rules.
 const pushing = ref(false)
 async function onPushChanges() {
   if (!selectedInstanceIds.value.length) return
@@ -1808,66 +1814,33 @@ async function onPushChanges() {
   const pid = String(form.value.projectId || projectStore.currentProjectId || '')
   if (!tid || !pid) { ui.showError('Missing template or project'); return }
 
+  const count = selectedInstanceIds.value.length
   const ok = await inlineConfirm({
     title: 'Push changes to equipment',
-    message: `This will overwrite ${selectedInstanceIds.value.length} equipment to match this template. Continue?`,
+    message: `Update ${count} equipment item(s) to match this template's checklists, tests, components and attribute keys. Recorded answers and results are kept, as are each item's own title, description and status. Questions removed from the template are removed from the instances.`,
     confirmText: 'Push changes',
     cancelText: 'Cancel',
-    variant: 'danger'
+    variant: 'default'
   })
   if (!ok) return
 
-  // Build base from template (same mapping as create)
-  const base: any = {
-    title: String(form.value.title),
-    type: String(form.value.type),
-    system: String(form.value.system || ''),
-    status: String(form.value.status || 'Not Started'),
-    description: (form.value as any).description || undefined,
-    attributes: attrsArrayFromTemplate(),
-    components: mapComponentsFromTemplate(),
-    images: mapImagesFromTemplate(),
-    attachments: mapAttachmentsFromTemplate(),
-    checklists: deepCopy((form.value as any).checklists || []),
-    functionalTests: deepCopy((form.value as any).functionalTests || []),
-    template: tid
-  }
-  const spaceId = (form.value as any).spaceId
-  if (spaceId) base.spaceId = String(spaceId)
-
   pushing.value = true
   try {
-    // Update each selected equipment sequentially to avoid server overload
-    for (const eqId of selectedInstanceIds.value) {
-      try {
-        // First, update simple fields in one call
-        const simple: any = {
-          title: base.title,
-          type: base.type,
-          status: base.status,
-          template: tid,
-        }
-        if (base.system) simple.system = base.system
-        if (base.description) simple.description = base.description
-        if (base.spaceId) simple.spaceId = base.spaceId
-        await (equipmentStore as any).updateFields(eqId, simple)
-
-        // Then patch larger nested fields separately
-  try { await (equipmentStore as any).updateFields(eqId, { attributes: base.attributes }) } catch (e) { /* best-effort */ }
-  try { await (equipmentStore as any).updateFields(eqId, { components: base.components }) } catch (e) { /* best-effort */ }
-  try { await (equipmentStore as any).updateFields(eqId, { checklists: base.checklists }) } catch (e) { /* best-effort */ }
-  try { await (equipmentStore as any).updateFields(eqId, { functionalTests: base.functionalTests }) } catch (e) { /* best-effort */ }
-  // Media last; may be disallowed by backend
-  try { if (Array.isArray(base.images)) await (equipmentStore as any).updateFields(eqId, { images: base.images }) } catch (e) { /* best-effort */ }
-  try { if (Array.isArray(base.attachments)) await (equipmentStore as any).updateFields(eqId, { attachments: base.attachments }) } catch (e) { /* best-effort */ }
-      } catch (e) {
-        // Continue with others even if one fails
-        console.warn('Failed to push to', eqId, e)
-      }
-    }
+    const res = await http.post(`/api/templates/${tid}/push`, {
+      equipmentIds: selectedInstanceIds.value.map(v => String(v)),
+    })
+    const pushed = Number((res as any)?.data?.pushed ?? 0)
+    const skipped = Array.isArray((res as any)?.data?.skipped) ? (res as any).data.skipped.length : 0
     await equipmentStore.fetchByProject(pid)
-    ui.showSuccess(`Pushed changes to ${selectedInstanceIds.value.length} instance(s)`)    
+    if (skipped) {
+      ui.showWarning(`Pushed changes to ${pushed} instance(s); ${skipped} skipped (not linked to this template)`)
+    } else {
+      ui.showSuccess(`Pushed changes to ${pushed} instance(s)`)
+    }
     selectedInstanceIds.value = []
+  } catch (e: any) {
+    // A failed push leaves every instance untouched — the server writes each one atomically.
+    ui.showError(e?.response?.data?.error || 'Failed to push changes')
   } finally {
     pushing.value = false
   }
