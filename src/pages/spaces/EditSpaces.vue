@@ -845,7 +845,7 @@ const id = computed(() => String(route.params.id || ''))
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const isNew = computed(() => id.value === 'new')
 
-const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'Roof']
+const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Campus', 'Level', 'Corridor', 'Roof']
 
 const tabs = ['Info', 'SubSpaces', 'Equipment', 'Issues', 'Attachments', 'Attributes', 'Settings', 'MetaData', 'Logs']
 const currentTab = ref('Info')
@@ -1017,14 +1017,31 @@ const children = computed(() => {
     .filter(s => !!(s && (s.title || '').trim()))
 })
 
+// Collect every descendant id of `rootId` (cycle-safe) so parent selection can
+// exclude them and a space can't become its own ancestor.
+function descendantIdSet(rootId: string, all: any[]): Set<string> {
+  const out = new Set<string>()
+  const queue: string[] = [String(rootId)]
+  let guard = 0
+  while (queue.length && guard++ < 10000) {
+    const parent = queue.shift() as string
+    for (const s of all) {
+      const sid = String((s as any).id || (s as any)._id || '')
+      if (!sid || out.has(sid)) continue
+      if (String((s as any).parentSpace || '') === parent) { out.add(sid); queue.push(sid) }
+    }
+  }
+  return out
+}
+
+// Any space may parent any other (no rigid type hierarchy); exclude only self and
+// its descendants so nesting can't create a parent-child loop.
 const parentOptions = computed(() => {
-  const selfId = id.value
-  const type = form.value.type
-  let base = spaces.items.filter(s => String(s.id || (s as any)._id) !== selfId)
-  if (type === 'Building') return []
-  if (type === 'Floor') base = base.filter(s => s.type === 'Building')
-  else if (type === 'Room') base = base.filter(s => s.type === 'Floor')
-  return base
+  const selfId = id.value ? String(id.value) : ''
+  const all = spaces.items as any[]
+  const blocked = selfId ? descendantIdSet(selfId, all) : new Set<string>()
+  if (selfId) blocked.add(selfId)
+  return all.filter((s: any) => !blocked.has(String(s.id || (s as any)._id)))
 })
 
 function spaceParentChainLabelById(pid?: string | null) {

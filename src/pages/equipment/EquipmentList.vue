@@ -1614,6 +1614,7 @@ import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
+import { useLocal } from '../../data/offlineGate'
 import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
   import { confirm as inlineConfirm } from '../../utils/confirm'
@@ -3633,18 +3634,25 @@ async function fetchEquipmentPage(projectId?: string) {
       if (myChecklistsOnly.value && currentProjectRole.value) params.checklistResponsible = currentProjectRole.value
       if (sortKey.value) { params.sortBy = sortKey.value; params.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
     let data: any = {}
-    try {
-      const res = await http.get('/api/equipment', { params })
-      data = res && res.data ? res.data : {}
-    } catch (e) {
-      // Offline (project checked out, network unreachable): the server-side
-      // paginated/faceted endpoint can't be reached, so fall back to the
-      // hydrated local copy via the offline-aware store. Filters/facets aren't
-      // available offline; we show the full checked-out set.
-      const local = await equipmentStore.fetchByProject(pid).catch(() => null)
+    if (useLocal(pid)) {
+      // Offline session: read the hydrated local copy directly — no network
+      // request, no failed-request noise. Filters/facets aren't available
+      // offline; we show the full checked-out set.
+      const local = await equipmentStore.fetchByProject(pid)
       const arr = Array.isArray(local) ? local : (equipmentStore.items || [])
-      if (!arr.length) throw e
       data = { items: arr, total: arr.length, totalAll: arr.length }
+    } else {
+      try {
+        const res = await http.get('/api/equipment', { params })
+        data = res && res.data ? res.data : {}
+      } catch (e) {
+        // navigator.onLine can lie; if the network fails while checked out,
+        // fall back to the local copy anyway.
+        const local = await equipmentStore.fetchByProject(pid).catch(() => null)
+        const arr = Array.isArray(local) ? local : (equipmentStore.items || [])
+        if (!arr.length) throw e
+        data = { items: arr, total: arr.length, totalAll: arr.length }
+      }
     }
     const normalizeItem = (it: any) => {
       const obj: any = { ...(it || {}) }

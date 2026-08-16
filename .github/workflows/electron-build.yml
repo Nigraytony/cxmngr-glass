@@ -1,0 +1,139 @@
+name: Desktop build (Electron)
+
+# Builds the desktop installers on macOS + Windows. Runs UNSIGNED until the
+# signing secrets below are added, then signs (and notarizes macOS) automatically
+# — no workflow change needed.
+#
+# Trigger: manual (Run workflow) or pushing a `desktop-v*` tag (kept separate
+# from the web app's `v*` tags so the two release flows don't collide).
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'desktop-v*'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: npm ci
+
+      # Whether signing credentials are available for THIS runner's OS: a cert for
+      # macOS, an Azure service principal for Windows (Artifact Signing). The
+      # `secrets` context isn't readable from a step-level `if:`, so resolve it here
+      # into a step output that later steps can branch on.
+      - name: Resolve signing mode
+        id: signing
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then cred="$MAC_CSC_LINK"; else cred="$AZURE_CLIENT_ID"; fi
+          if [ -n "$cred" ]; then echo 'signed=true' >> "$GITHUB_OUTPUT"; else echo 'signed=false' >> "$GITHUB_OUTPUT"; fi
+
+      - name: Build + package
+        # Pinned to bash on BOTH runners. PowerShell (the windows-latest default)
+        # splits `-c.forceCodeSigning=true` into `-c` + `.forceCodeSigning=true`
+        # on the way to a native command, which would silently drop the flag.
+        shell: bash
+        env:
+          # Renderer API base (same value the web deploy uses).
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          # electron-builder resolves the macOS identity by SEARCHING the keychain
+          # it imported CSC_LINK into. `CSC_IDENTITY_AUTO_DISCOVERY=false` short-
+          # circuits that search to null (app-builder-lib `findIdentity`), which
+          # silently skips signing even when CSC_LINK is set. So: disable discovery
+          # only when we have no cert and genuinely want an unsigned build.
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.signed }}
+          # macOS signing + notarization (leave secrets unset to build unsigned).
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing via Azure Artifact Signing. CXMA_SIGN_WIN=1 makes
+          # electron-builder.cjs emit win.azureSignOptions (only on the Windows leg
+          # when signing); the AZURE_* creds authenticate the TrustedSigning module
+          # through Azure's EnvironmentCredential. `.pfx`-based WIN_CSC_LINK is gone —
+          # public CAs no longer issue exportable keys (see docs/desktop_signing.md).
+          CXMA_SIGN_WIN: ${{ runner.os == 'Windows' && steps.signing.outputs.signed == 'true' && '1' || '' }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          # electron-builder is happier with a token for its update metadata.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # `--publish never`: electron-builder otherwise defaults `publish` to "onTag"
+        # whenever it sees a CI tag (app-builder-lib `publishManager`), so a
+        # `desktop-v*` push would implicitly create a GitHub Release and upload the
+        # installers. Releases stay a deliberate, separate step until auto-update
+        # (Phase 3) is actually wired up.
+        #
+        # `forceCodeSigning` turns "couldn't find an identity, carrying on" into a
+        # hard error (macPackager `reportError`, winPackager `didSignSuccessfully`).
+        # Only meaningful when we expect to sign. Quoted so the arg survives as one token.
+        run: |
+          # An unset GitHub secret renders as an EMPTY STRING, not undefined.
+          # electron-builder treats an empty CSC_LINK as "a cert file at path ''",
+          # resolves it to the repo dir, and dies "not a file" on the unsigned macOS
+          # build. Unset it (and its password) so signing is cleanly skipped when no
+          # cert is configured. A real cert makes CSC_LINK non-empty, so this no-ops.
+          if [ -z "${CSC_LINK:-}" ]; then unset CSC_LINK CSC_KEY_PASSWORD; fi
+          npm run electron:ci -- --publish never ${{ steps.signing.outputs.signed == 'true' && '"-c.forceCodeSigning=true"' || '' }}
+
+      # electron-builder logs signing failures as warnings and still exits 0, so an
+      # unsigned artifact reads as a green build. Assert on the artifact itself.
+      - name: Verify macOS signature
+        if: runner.os == 'macOS' && steps.signing.outputs.signed == 'true'
+        run: |
+          set -euo pipefail
+          app=$(find release -maxdepth 3 -name '*.app' -type d | head -1)
+          [ -n "$app" ] || { echo "::error::no .app found under release/"; exit 1; }
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type exec -vv "$app"
+          # Only notarized builds carry a stapled ticket; signing alone doesn't.
+          if [ -n "${APPLE_ID:-}" ]; then
+            xcrun stapler validate "$app"
+          fi
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+
+      - name: Verify Windows signature
+        if: runner.os == 'Windows' && steps.signing.outputs.signed == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Get-ChildItem release -Filter *.exe -File | Select-Object -First 1
+          if (-not $exe) { throw "no .exe found under release/" }
+          $sig = Get-AuthenticodeSignature $exe.FullName
+          Write-Host "$($exe.Name): $($sig.Status) — $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw "installer is not validly signed: $($sig.Status)" }
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.os }}
+          # A build that produced zero artifacts is a failure, not a warning.
+          if-no-files-found: error
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.blockmap
+            release/latest*.yml

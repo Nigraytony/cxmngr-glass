@@ -241,6 +241,8 @@ import PhotoUploader from '../PhotoUploader.vue'
 import Modal from '../Modal.vue'
 import { useUiStore } from '../../stores/ui'
 import { confirm } from '../../utils/confirm'
+import { useLocal, shouldFallBackToLocal, setOnline } from '../../data/offlineGate'
+import { savePhotoOffline, pendingPhotosFor, removePendingPhoto, type LocalPhotoDisplay } from '../../data/offlinePhotos'
 
 const props = defineProps<{
   projectId: string
@@ -271,13 +273,21 @@ const folderId = ref<string>('')
 const loading = ref(false)
 
 const thumbUrls = ref<Record<string, string>>({})
+// Photos captured offline (queued in db.photos), shown alongside server photos.
+const localPhotos = ref<LocalPhotoDisplay[]>([])
+async function loadLocal() {
+  try { localPhotos.value = await pendingPhotosFor(props.entityType, safeEntityId.value) }
+  catch (e) { localPhotos.value = [] }
+}
 function thumbUrlFor(fileId: string) {
+  const local = localPhotos.value.find((p) => p.id === fileId)
+  if (local) return local.data // base64 data URL — no network needed
   return thumbUrls.value[fileId] || ''
 }
 
 const photos = computed<DocFile[]>(() => {
   const list = Array.isArray(documents.files) ? documents.files : []
-  return list
+  const server = list
     .filter((f: any) => f && f.status !== 'deleted')
     .filter((f: any) => String(f.contentType || '').toLowerCase().startsWith('image/'))
     .slice()
@@ -286,6 +296,7 @@ const photos = computed<DocFile[]>(() => {
       const bt = String(b?.createdAt || '')
       return at.localeCompare(bt)
     })
+  return [...server, ...(localPhotos.value as any)]
 })
 
 watch(photos, (v) => emit('update:count', Array.isArray(v) ? v.length : 0), { immediate: true })
@@ -341,6 +352,10 @@ async function ensureFolder() {
 
 async function refresh() {
   if (!canUse.value) return
+  // Always surface locally-captured (unsynced) photos.
+  await loadLocal()
+  // Offline session: the docs API + Azure Blob are unreachable; show local only.
+  if (useLocal()) return
   loading.value = true
   try {
     const pid = safeProjectId.value
@@ -348,6 +363,8 @@ async function refresh() {
     if (!fid) return
     await documents.fetchFiles(pid, fid)
   } catch (e: any) {
+    // Network failure while checked out → treat as offline (local already shown).
+    if (shouldFallBackToLocal(e)) { setOnline(false); return }
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to load photos')
   } finally {
     loading.value = false
@@ -386,40 +403,71 @@ async function uploadOne(file: File, onProgress: (pct: number) => void) {
   if (file.size > maxBytes.value) throw new Error(`Photo must be <= ${Math.round(maxBytes.value / 1024)}KB after compression`)
   if (photos.value.length >= maxCount.value) throw new Error(`Maximum of ${maxCount.value} photos reached`)
 
+  // Offline session: queue the photo locally; it uploads to Azure on check-in.
+  const storeLocally = async () => {
+    await savePhotoOffline({ system: 'azure', entityType: props.entityType, entityId: safeEntityId.value, projectId: safeProjectId.value, file })
+    await loadLocal()
+    onProgress(100)
+    return { local: true }
+  }
+  if (useLocal()) return storeLocally()
+
   const pid = safeProjectId.value
-  const fid = folderId.value || (await ensureFolder())
+  let fid: string
+  try {
+    fid = folderId.value || (await ensureFolder())
+  } catch (e: any) {
+    if (shouldFallBackToLocal(e)) { setOnline(false); return storeLocally() }
+    throw e
+  }
   if (!fid) throw new Error('Folder not ready')
 
   const contentType = inferContentType(file)
-  const req = await documents.requestUpload(pid, {
-    folderId: fid,
-    filename: file.name,
-    contentType,
-    sizeBytes: file.size,
-  })
+  try {
+    const req = await documents.requestUpload(pid, {
+      folderId: fid,
+      filename: file.name,
+      contentType,
+      sizeBytes: file.size,
+    })
 
-  await blobHttp.put(req.uploadUrl, file, {
-    withCredentials: false,
-    headers: {
-      'x-ms-blob-type': 'BlockBlob',
-      'Content-Type': contentType,
-    },
-    onUploadProgress: (evt) => {
-      const total = evt.total || file.size || 0
-      if (!total) return
-      const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / total) * 100)))
-      onProgress(pct)
-    },
-  })
+    await blobHttp.put(req.uploadUrl, file, {
+      withCredentials: false,
+      headers: {
+        'x-ms-blob-type': 'BlockBlob',
+        'Content-Type': contentType,
+      },
+      onUploadProgress: (evt) => {
+        const total = evt.total || file.size || 0
+        if (!total) return
+        const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / total) * 100)))
+        onProgress(pct)
+      },
+    })
 
-  await documents.completeUpload(pid, req.fileId)
-  return req
+    await documents.completeUpload(pid, req.fileId)
+    return req
+  } catch (e: any) {
+    if (shouldFallBackToLocal(e)) { setOnline(false); return storeLocally() }
+    throw e
+  }
 }
 
 async function deletePhoto(file: DocFile) {
   if (props.disabled) return
   const ok = await confirm({ title: 'Delete photo?', message: `Delete "${file.originalName}"?`, confirmText: 'Delete', variant: 'danger' })
   if (!ok) return
+  // A locally-captured (unsynced) photo: just drop it from the local queue.
+  if ((file as any).__local) {
+    try {
+      await removePendingPhoto((file as any).__localId)
+      await loadLocal()
+      ui.showSuccess('Photo removed')
+    } catch (e: any) {
+      ui.showError(e?.message || 'Failed to remove photo')
+    }
+    return
+  }
   try {
     await documents.deleteFile(safeProjectId.value, file.id)
     ui.showSuccess('Photo deleted')
@@ -430,6 +478,11 @@ async function deletePhoto(file: DocFile) {
 }
 
 async function downloadPhoto(file: DocFile) {
+  if ((file as any).__local) {
+    // Not yet uploaded — open the local data URL.
+    try { window.open((file as any).data, '_blank', 'noopener') } catch (e) { /* ignore */ }
+    return
+  }
   try {
     const { downloadUrl } = await documents.getDownloadUrl(safeProjectId.value, file.id)
     window.open(downloadUrl, '_blank', 'noopener')
@@ -447,6 +500,7 @@ async function hydrateThumbUrls(list: DocFile[]) {
   thumbUrls.value = next
 
   for (const f of list) {
+    if ((f as any).__local) continue // local photos render from their base64 data
     const id = String(f.id)
     if (thumbUrls.value[id]) continue
     try {
@@ -488,6 +542,12 @@ async function openViewer(idx: number) {
 async function loadViewerUrl() {
   const f = currentPhoto.value
   if (!f) return
+  // Local (unsynced) photo: view its base64 data directly, no network.
+  if ((f as any).__local) {
+    viewerUrl.value = (f as any).data || ''
+    viewerLoading.value = false
+    return
+  }
   const pid = safeProjectId.value
   if (!pid) return
   viewerLoading.value = true

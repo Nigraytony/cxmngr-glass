@@ -5,7 +5,7 @@
 // called — nothing in app boot wires it yet, so importing it has no effect on
 // the online app.
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { outbox } from '../data/outbox'
 import { setCheckedOutProject, setOnline } from '../data/offlineGate'
 import { isOfflineEnabled, setOfflineEnabled } from '../data/offlineFeature'
@@ -13,6 +13,8 @@ import { registerOfflineServiceWorker, unregisterOfflineServiceWorker } from '..
 import { getDeviceId } from '../data/deviceId'
 import { acquireCheckout, releaseCheckout, redeemGrant } from '../data/checkoutClient'
 import { useAuthStore } from './auth'
+import { useProjectStore } from './project'
+import { useUiStore } from './ui'
 import {
   checkoutProject,
   checkInProject,
@@ -42,6 +44,28 @@ export const useOfflineStore = defineStore('offline', () => {
   const syncing = ref(false)
 
   const isCheckedOut = computed(() => !!checkedOutProjectId.value)
+
+  // Offline you can only work on the project you checked out. If the selected
+  // project has drifted to a different one (e.g. a stale localStorage selection
+  // on relaunch), switch back — otherwise the list pages query IndexedDB for the
+  // wrong project and show empty. Only intervene offline; online, browsing other
+  // projects is fine.
+  let lastPinnedNoticeFor = ''
+  watch([isCheckedOut, isOnline, checkedOutProjectId], () => {
+    if (!isCheckedOut.value || isOnline.value) return
+    const pid = checkedOutProjectId.value
+    if (!pid) return
+    try {
+      const projectStore = useProjectStore()
+      if (String(projectStore.currentProjectId || '') !== String(pid)) {
+        projectStore.setCurrentProject(pid)
+        if (lastPinnedNoticeFor !== pid) {
+          lastPinnedNoticeFor = pid
+          try { useUiStore().showWarning('Offline — switched to your checked-out project.', { duration: 5000 }) } catch (e) { /* ignore */ }
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }, { immediate: true })
 
   function handleOnline() { isOnline.value = true; setOnline(true) }
   function handleOffline() { isOnline.value = false; setOnline(false) }

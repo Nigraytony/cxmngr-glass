@@ -14,6 +14,10 @@ let registered = false
 export async function registerOfflineServiceWorker(): Promise<void> {
   if (registered) return
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+  // The service worker is a web-only concern. Under the Electron shell the app
+  // code is served locally (app:// protocol), so there is nothing to precache —
+  // and a SW would only interfere. See docs/electron_pivot_plan.md §3.
+  if (typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent)) return
   registered = true
   try {
     // Virtual module provided by vite-plugin-pwa. Dynamic import keeps it out of

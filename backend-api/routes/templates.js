@@ -15,6 +15,7 @@ const { isObjectId, requireBodyField, requireObjectIdBody, requireObjectIdParam,
 const { tryDeleteLocalUpload } = require('../utils/uploads')
 const { cascadeTemplate } = require('../utils/cascadeDelete');
 const { listPresets, getPreset, buildTemplateDoc } = require('../utils/templatePresets');
+const { buildInstanceUpdate } = require('../utils/templatePush');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
@@ -756,6 +757,82 @@ router.patch('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, re
     res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to update template' });
   }
 });
+
+// Push template structure down to the equipment instances built from it.
+//
+// Structure only: checklist/FPT/component shape and attribute keys sync; the
+// instance keeps its own identity (title, description, status, system, location)
+// and every recorded answer, test result and attribute value. See
+// utils/templatePush.js for the merge rules.
+//
+// This lives server-side so the whole push for one instance is a single atomic
+// write. The previous client-side version fired six PATCHes per instance with
+// their errors swallowed, which could leave an instance half-overwritten.
+const MAX_PUSH_TARGETS = 500
+
+router.post(
+  '/:id/push',
+  auth,
+  requireObjectIdParam('id'),
+  lookupTemplateProject,
+  requirePermission('equipment.update', { projectParam: 'projectId' }),
+  requirePermission('equipment.checklists.update', { projectParam: 'projectId' }),
+  requirePermission('equipment.functionalTests.update', { projectParam: 'projectId' }),
+  requireActiveProject,
+  requireFeature('templates'),
+  async (req, res) => {
+    try {
+      const templateId = String(req.params.id)
+      const template = await Template.findById(templateId).lean()
+      if (!template) return res.status(404).send({ error: 'Template not found' })
+
+      const rawIds = Array.isArray(req.body && req.body.equipmentIds) ? req.body.equipmentIds : null
+      if (!rawIds || rawIds.length === 0) {
+        return res.status(400).send({ error: 'equipmentIds is required' })
+      }
+      if (rawIds.length > MAX_PUSH_TARGETS) {
+        return res.status(400).send({ error: `Cannot push to more than ${MAX_PUSH_TARGETS} instances at once` })
+      }
+
+      const ids = []
+      for (const raw of rawIds) {
+        const value = String(raw == null ? '' : raw).trim()
+        if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid equipmentId' })
+        if (!ids.includes(value)) ids.push(value)
+      }
+
+      // Only ever touch equipment that is in the template's own project and already
+      // linked to this template. A stray id is reported back as skipped rather than
+      // silently adopted into the template.
+      const targets = await Equipment.find({
+        _id: { $in: ids },
+        projectId: template.projectId,
+        template: templateId,
+      })
+
+      const updated = []
+      for (const equipment of targets) {
+        const merged = buildInstanceUpdate(template, equipment.toObject())
+        equipment.checklists = merged.checklists
+        equipment.functionalTests = merged.functionalTests
+        equipment.components = merged.components
+        equipment.attributes = merged.attributes
+        equipment.markModified('checklists')
+        equipment.markModified('functionalTests')
+        equipment.markModified('components')
+        // eslint-disable-next-line no-await-in-loop
+        await equipment.save()
+        updated.push(String(equipment._id))
+      }
+
+      const skipped = ids.filter((id) => !updated.includes(id))
+      res.status(200).send({ pushed: updated.length, updated, skipped })
+    } catch (error) {
+      console.error('[templates] push error', error && (error.stack || error.message || error))
+      res.status(400).send({ error: error && error.message ? String(error.message) : 'Failed to push template changes' })
+    }
+  }
+)
 
 // Delete
 router.delete('/:id', auth, requireObjectIdParam('id'), lookupTemplateProject, requirePermission('templates.delete', { projectParam: 'projectId' }), requireActiveProject, requireFeature('templates'), async (req, res) => {

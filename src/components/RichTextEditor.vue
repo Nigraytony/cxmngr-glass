@@ -232,7 +232,9 @@ onMounted(() => {
     content: normaliseInput(props.modelValue || ''),
     editable: props.editable,
     extensions: [
-      StarterKit,
+      // StarterKit (v3) bundles Link; disable it so the explicit, configured
+      // Link below isn't a duplicate ("Duplicate extension names found: ['link']").
+      StarterKit.configure({ link: false }),
       Link.configure({ openOnClick: false }),
       Table.configure({ resizable: true, HTMLAttributes: { class: 'rte-table' } }),
       TableRow,
