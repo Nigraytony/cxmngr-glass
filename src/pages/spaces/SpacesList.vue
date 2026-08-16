@@ -1162,7 +1162,7 @@ const ui = useUiStore()
 const router = useRouter()
 const auth = useAuthStore()
 
-const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Level', 'Corridor', 'Roof']
+const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Campus', 'Level', 'Corridor', 'Roof']
 
 const search = ref('')
 const typeFilter = ref('')
@@ -1615,10 +1615,28 @@ watch(sorted, () => { if (page.value > totalPages.value) page.value = totalPages
 
 // moved project watcher and tree init watchers below after declarations
 
-// Use the full project list (store) for parent selection, not just the current page slice
+// Walk the child links to collect every descendant id of `rootId` (cycle-safe),
+// so parent selection can exclude them and a space can't become its own ancestor.
+function descendantIdSet(rootId: string, all: any[]): Set<string> {
+  const out = new Set<string>()
+  const queue: string[] = [String(rootId)]
+  let guard = 0
+  while (queue.length && guard++ < 10000) {
+    const parent = queue.shift() as string
+    for (const s of all) {
+      const sid = String((s as any).id || (s as any)._id || '')
+      if (!sid || out.has(sid)) continue
+      if (String((s as any).parentSpace || '') === parent) { out.add(sid); queue.push(sid) }
+    }
+  }
+  return out
+}
+
+// Use the full project list (store) for parent selection, not just the current page slice.
+// Any space may parent any other (no rigid type hierarchy); we exclude only the space
+// itself and its descendants so nesting can't create a parent-child loop.
 const parentOptions = computed(() => {
   const selfId = form.value.id ? String(form.value.id) : ''
-  const type = form.value.type
   const pid = projectStore.currentProjectId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedProjectId') : '') || ''
   // Merge server slice with store items, unique by id
   const merged: Record<string, any> = {}
@@ -1632,16 +1650,10 @@ const parentOptions = computed(() => {
   }
   add(serverSpaces.value as any[])
   add(spacesStore.items as any[])
-  let base = Object.values(merged).filter(s => !selfId || String((s as any).id) !== selfId)
-  if (type === 'Building') {
-    return []
-  }
-  if (type === 'Floor') {
-    base = base.filter((s: any) => s.type === 'Building')
-  } else if (type === 'Room') {
-    base = base.filter((s: any) => s.type === 'Floor')
-  }
-  return base as any[]
+  const all = Object.values(merged)
+  const blocked = selfId ? descendantIdSet(selfId, all) : new Set<string>()
+  if (selfId) blocked.add(selfId)
+  return all.filter((s: any) => !blocked.has(String((s as any).id))) as any[]
 })
 
 function openCreate() {
@@ -1907,16 +1919,8 @@ function isAncestor(ancestorId: string, nodeId: string): boolean {
 }
 
 function canReparent(source: Space, target: Space | null): boolean {
-  // Type rules
-  if (source.type === 'Building') return false
-  if (source.type === 'Floor') {
-    if (!target) return false
-    if (target.type !== 'Building') return false
-  } else if (source.type === 'Room') {
-    if (!target) return false
-    if (target.type !== 'Floor') return false
-  }
-  // Prevent cycles
+  // No rigid type hierarchy: any space may sit under any other, and any space may
+  // be dragged back out to the root. Cycles are the only thing we forbid.
   const sid = String(source.id || (source as any)._id)
   if (!sid) return false
   const tid = target ? String(target.id || (target as any)._id) : ''
@@ -2161,6 +2165,7 @@ function normalizeType(input: string): string {
   if (!v) return 'Room'
   const found = spaceTypes.find(t => t.toLowerCase() === v)
   if (found) return found
+  if (v.includes('campus')) return 'Campus'
   if (v.includes('build')) return 'Building'
   if (v.includes('floor') || v === 'level') return 'Floor'
   if (v.includes('room')) return 'Room'

@@ -522,6 +522,23 @@ router.patch('/:id', auth, requireObjectIdParam('id'), lookupSpaceProject, requi
     if (typeof incoming.notes === 'string') {
       incoming.notes = sanitizeHtml(String(incoming.notes), { allowedTags: [], allowedAttributes: {} }).trim()
     }
+
+    // Re-parenting is the only way to build a cycle, and a cycle makes the ancestor
+    // walks in buildParentChains/cascadeSpace spin. The UIs already prevent it; this
+    // covers direct API callers and the agent tools.
+    if (incoming.parentSpace !== undefined) {
+      const nextParent = String(incoming.parentSpace || '').trim()
+      incoming.parentSpace = nextParent
+      if (nextParent) {
+        if (!mongoose.Types.ObjectId.isValid(nextParent)) {
+          return res.status(400).send({ error: 'Invalid parentSpace' })
+        }
+        if (await Space.wouldCreateCycle(req.params.id, nextParent)) {
+          return res.status(400).send({ error: 'A space cannot be its own parent or descendant' })
+        }
+      }
+    }
+
     const space = await Space.findByIdAndUpdate(req.params.id, incoming, { new: true, runValidators: true });
     if (!space) {
       return res.status(404).send();
