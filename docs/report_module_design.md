@@ -1,8 +1,24 @@
 # Shared Report Module — Design
 
-Status: proposed (2026-10-15). Companion to the "Field Feedback — October 2026" section in
-`CXMA_IMPLEMENTATION_CHECKLIST.md` (shared Report module, Equipment report, list-page reporting,
-OPR reporting, Final Report build-out).
+Status: agreed (2026-10-18; proposed 2026-10-15). Companion to the "Field Feedback — October
+2026" section in `CXMA_IMPLEMENTATION_CHECKLIST.md` (shared Report module, Equipment report,
+list-page reporting, OPR reporting, Final Report build-out, custom reports).
+
+Decisions locked 2026-10-18 (with Tony):
+
+1. **`ReportDoc` frame class** (`core/frame.ts`) owns the jsPDF doc, margins, branded
+   header/footer, page numbering, and `ensureSpace(h)`. Report definitions draw inside the frame
+   and never call `doc.addPage()` directly.
+2. **Branding becomes universal in Phase 1.** All jsPDF reports adopt the branded header/footer
+   when they move onto the frame — an accepted visual change (consistency over strict
+   no-visual-change migration).
+3. **Report definitions are plain TS modules**, not renderless Vue components. Vue components are
+   reserved for UI (settings dialog, column chooser). `IssuePdfReport.vue` becomes
+   `definitions/issue.ts` over Phases 1–2.
+4. **Tables use `jspdf-autotable`** (new dependency) behind a thin adapter in `core/table.ts`
+   (brand styling, frame integration) instead of a hand-rolled table renderer.
+5. **Custom reports** (user-built, saved for reuse) are in scope — see "Custom reports" below.
+   Staged: saved list-report presets land with Phase 4; a block-based composer is Phase 7.
 
 ## Why
 
@@ -69,7 +85,7 @@ src/reports/
     text.ts        # htmlToText, normalizePdfText, splitText, setZeroCharSpace
     frame.ts       # ReportDoc: owns margins, branded header/footer (pdfBranding), pageNo,
                    # ensureSpace(h), addPage; every report draws inside this frame
-    table.ts       # column-table renderer: weighted widths, zebra rows, repeating header
+    table.ts       # jspdf-autotable adapter: brand styles, frame margins, repeating header
     cover.ts       # shared cover renderer + one CoverSettings shape
     toc.ts         # TOC builder (reserve pages, backfill page numbers)
     merge.ts       # pdf-lib: merge PDF attachments / child reports
@@ -91,6 +107,34 @@ src/reports/
     tasks.ts       # re-implemented text-based
 ```
 
+## Custom reports (user-built, saved for reuse)
+
+A saved custom report is **data, not code**: a declarative `ReportDefinition` the engine renders
+with the same `core/*` kit. Stored server-side on the project (new backend model + routes), so
+definitions sync across devices, are shared with the whole project team, and can be cached by the
+offline Electron shell like any other entity.
+
+```
+ReportDefinition {
+  name, description
+  source: module + filters + sort/grouping        // Stage 1: one module per report
+  blocks: [cover, summary tiles, entity table (picked columns),
+           per-entity detail cards (picked fields), photos, heading/text, TOC]
+  branding + page options (orientation, page breaks)
+}
+```
+
+Staged delivery:
+
+- **Stage 1 — saved presets (lands with Phase 4):** the column picks, filters, sort, and include
+  toggles on any list export can be saved under a name and re-run later. Rendered as a
+  single-table definition; the builder UI is a save/load control on the existing export dialog.
+- **Stage 2 — block composer (Phase 7):** a builder page assembling blocks, including across
+  modules. Built-in list reports become pre-made definitions where practical.
+
+Output: PDF always; table blocks also export CSV/XLSX via `data/csv.ts` / `data/xlsx.ts`.
+DOCX is out of scope for custom reports (PDF/CSV/XLSX only).
+
 Settings persistence standard:
 - **Entity reports** (Activity, Equipment, OPR Workshop): stored on the record (Activity already
   does this via `settings.report`; Equipment has `reportSettings` on the model — use it).
@@ -105,8 +149,9 @@ Each phase ships independently; nothing breaks in between.
 - **Phase 0 — bugs & dead code** (small): fix the Times-font bug; delete the pdfkit route +
   `downloadReport` + `download()`; remove unused `generateIssuePdf`.
 - **Phase 1 — extract core:** create `src/reports/core/*` by lifting the best existing copy of
-  each helper; point `equipmentReport.ts`, `IssuePdfReport.vue`, `oprWorkshopReport.ts` at them.
-  No visual changes.
+  each helper; point `equipmentReport.ts`, `IssuePdfReport.vue`, `oprWorkshopReport.ts` at them
+  and move them onto the `ReportDoc` frame. Branded header/footer applies to all three (the one
+  accepted visual change); layout otherwise unchanged. Adds `jspdf-autotable`.
 - **Phase 2 — kill duplicate reports:** `EquipmentEdit.vue` calls the shared equipment
   definition (delete ~840 local lines; equipment PDFs become consistent everywhere);
   `IssueEdit.vue` calls shared `renderIssuePage` (delete ~355 lines); dedupe the 3× issue payload
@@ -116,12 +161,15 @@ Each phase ships independently; nothing breaks in between.
   filenames/delivery via `deliver.ts`.
 - **Phase 4 — list reporting everywhere** (delivers feedback items #1 and #4): `ColumnChooser` +
   CSV/XLSX/List-PDF on Equipment, Activities (currently has no export at all), Tasks, Spaces,
-  Systems, OPR Items lists. Equipment List gets its printable report here.
+  Systems, OPR Items lists. Equipment List gets its printable report here. Includes **custom
+  report Stage 1**: save/load named presets backed by the `ReportDefinition` model.
 - **Phase 5 — Final Report build-out:** brand the Puppeteer CSS with IBM Plex + tokens; honor
   `pageBreakBefore`, `dataConfig`, `showProjectImage`; section drag-reorder UI; TOC page numbers;
   merge `referencedDocs`; optional DOCX export reusing the activity DOCX path.
 - **Phase 6 — OPR report** (feedback item): OPR item lifecycle report as a new definition on the
   kit, plus an OPR data section upgrade in the Final Report.
+- **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
+  `ReportDefinition`; cross-module blocks; CSV/XLSX export of table blocks.
 
 ## Out of scope (for now)
 
