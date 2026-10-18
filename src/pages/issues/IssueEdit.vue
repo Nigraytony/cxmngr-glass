@@ -321,13 +321,52 @@
               <div class="grid grid-cols-2 gap-3 mt-2">
                 <div>
                   <label class="block text-sm text-white/70">Location</label>
-                  <input
-                    v-model="form.location"
-                    type="text"
-                    :disabled="isClosed"
-                    class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 disabled:opacity-60"
-                    placeholder="e.g. Lobby, Level 2"
-                  >
+                  <div class="relative">
+                    <input
+                      v-model="spaceQuery"
+                      type="text"
+                      :disabled="isClosed"
+                      class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 disabled:opacity-60"
+                      placeholder="Search spaces or type a location..."
+                      @input="onSpaceInput"
+                      @keydown.down.prevent="onSpaceArrow(1)"
+                      @keydown.up.prevent="onSpaceArrow(-1)"
+                      @keydown.enter.prevent="chooseHighlightedSpace"
+                      @keydown.esc="hideSpaceSuggestions"
+                      @focus="onSpaceFocus"
+                      @blur="hideSpaceSuggestions"
+                    >
+                    <button
+                      v-if="form.spaceId && !isClosed"
+                      type="button"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+                      title="Clear selected space"
+                      @mousedown.prevent="clearSpace"
+                    >
+                      ✕
+                    </button>
+                    <div
+                      v-if="showSpaceSuggestions && filteredSpaceSuggestions.length"
+                      class="absolute left-0 right-0 mt-1 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 shadow-xl ring-1 ring-white/20 z-20 max-h-64 overflow-auto"
+                    >
+                      <div class="py-1">
+                        <button
+                          v-for="(s, i) in filteredSpaceSuggestions"
+                          :key="s.id || s._id"
+                          type="button"
+                          class="w-full px-3 py-2 text-left inline-flex items-center justify-between gap-3 text-white/90"
+                          :class="i === highlightedSpaceIndex ? 'bg-white/20' : 'hover:bg-white/10'"
+                          @mousedown.prevent="selectSpace(s)"
+                        >
+                          <span class="min-w-0 flex-1 truncate">
+                            <span class="font-medium">{{ s.tag || '(no tag)' }}</span>
+                            <span class="text-white/70 ml-2">{{ s.title }}</span>
+                          </span>
+                          <span class="text-xs text-white/60 truncate">{{ spaceParentChainLabel(s) }}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <label class="block text-sm text-white/70">System</label>
@@ -1257,6 +1296,7 @@ import lists from '../../lists.js'
 import { useIssuesStore } from '../../stores/issues'
 import { useIssuesNavStore } from '../../stores/issuesNav'
 import { useProjectStore } from '../../stores/project'
+import { useSpacesStore } from '../../stores/spaces'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
@@ -1422,6 +1462,7 @@ const form = reactive<any>({
   dueDate: '',
   assignedTo: '',
   location: '',
+  spaceId: null as string | null,
   system: '',
   recommendation: '',
   resolution: '',
@@ -1444,6 +1485,143 @@ const canSuggestIssueTags = computed(() => {
   // If project is loaded and explicitly disabled, hide the feature; otherwise allow trying.
   return projectStore.currentProject?.ai?.enabled !== false
 })
+
+// --- Location backed by the Spaces module ---
+// The visible input is `spaceQuery`; selecting a suggestion links the issue to a
+// Space (form.spaceId) and stamps its breadcrumb into form.location. Typing free
+// text still works (projects without Spaces): it updates form.location directly
+// and detaches any previously linked space.
+const spacesStore = useSpacesStore()
+const spaceQuery = ref('')
+const showSpaceSuggestions = ref(false)
+const highlightedSpaceIndex = ref(-1)
+let spacesLoadedFor = ''
+
+async function ensureSpaceDataLoaded() {
+  const pid = projectId.value
+  if (!pid || spacesLoadedFor === pid) return
+  spacesLoadedFor = pid
+  try { await spacesStore.fetchByProject(pid) } catch (e) { /* best effort; dropdown just stays empty */ }
+}
+
+function getSpaceById(id: any) {
+  const pid = id ? String(id) : ''
+  if (!pid) return null
+  const m: any = (spacesStore as any).byId || {}
+  return m[pid] || (spacesStore.items || []).find((s: any) => String((s as any).id || (s as any)._id) === pid) || null
+}
+
+function spaceParentChainLabel(s: any) {
+  try {
+    const parts: string[] = []
+    let cur: any = s
+    let depth = 0
+    while (cur && depth < 10) {
+      const title = String(cur.title || cur.tag || '')
+      if (title) parts.unshift(title)
+      const pid = cur.parentSpace || cur.parent || null
+      if (!pid) break
+      cur = getSpaceById(pid)
+      depth++
+    }
+    return parts.join(' > ')
+  } catch (e) { return '' }
+}
+
+function simpleFuzzyMatch(text: string, pattern: string) {
+  if (!pattern) return true
+  let pi = 0
+  for (let i = 0; i < text.length && pi < pattern.length; i++) {
+    if (text[i] === pattern[pi]) pi++
+  }
+  return pi === pattern.length
+}
+
+const filteredSpaceSuggestions = computed(() => {
+  const q = (spaceQuery.value || '').trim().toLowerCase()
+  const all = spacesStore.items || []
+  if (!q) return all.slice(0, 50)
+  const out: any[] = []
+  for (const s of all) {
+    const tag = String(s.tag || '').toLowerCase()
+    const title = String(s.title || '').toLowerCase()
+    const chain = String(spaceParentChainLabel(s)).toLowerCase()
+    if (tag.includes(q) || title.includes(q) || chain.includes(q) || simpleFuzzyMatch(tag + ' ' + title + ' ' + chain, q)) {
+      out.push(s)
+    }
+    if (out.length >= 200) break
+  }
+  return out
+})
+
+function onSpaceInput() {
+  // Free text: keep location in sync and detach any linked space
+  form.location = spaceQuery.value
+  form.spaceId = null
+  highlightedSpaceIndex.value = -1
+  showSpaceSuggestions.value = true
+  ensureSpaceDataLoaded().catch(() => {})
+}
+
+function onSpaceFocus() {
+  if (isClosed.value) return
+  showSpaceSuggestions.value = true
+  ensureSpaceDataLoaded().catch(() => {})
+}
+
+function onSpaceArrow(dir: number) {
+  const len = filteredSpaceSuggestions.value.length
+  if (!len) return
+  let idx = highlightedSpaceIndex.value
+  if (idx === -1) idx = dir > 0 ? -1 : 0
+  idx = (idx + dir + len) % len
+  highlightedSpaceIndex.value = idx
+}
+
+function chooseHighlightedSpace() {
+  const idx = highlightedSpaceIndex.value
+  const list = filteredSpaceSuggestions.value
+  if (idx >= 0 && idx < list.length) selectSpace(list[idx])
+  else if (list.length === 1) selectSpace(list[0])
+}
+
+function hideSpaceSuggestions() {
+  showSpaceSuggestions.value = false
+  highlightedSpaceIndex.value = -1
+}
+
+function selectSpace(s: any) {
+  try {
+    const sid = String((s as any).id || (s as any)._id || '')
+    form.spaceId = sid || null
+    const canonical = getSpaceById(sid) || s
+    const chain = spaceParentChainLabel(canonical) || (canonical?.title || canonical?.tag || '')
+    form.location = chain
+    spaceQuery.value = chain
+  } catch (e) { /* ignore */ }
+  hideSpaceSuggestions()
+}
+
+function clearSpace() {
+  form.spaceId = null
+  form.location = ''
+  spaceQuery.value = ''
+  hideSpaceSuggestions()
+}
+
+// After an issue loads, resolve the linked space into the visible breadcrumb;
+// fall back to the stored free-text location.
+async function syncSpaceQueryFromForm() {
+  if (form.spaceId) {
+    await ensureSpaceDataLoaded()
+    const sp = getSpaceById(form.spaceId)
+    const chain = sp ? (spaceParentChainLabel(sp) || String(sp.title || sp.tag || '')) : ''
+    spaceQuery.value = chain || String(form.location || '')
+    if (chain) form.location = chain
+  } else {
+    spaceQuery.value = String(form.location || '')
+  }
+}
 
 function normalizeLabels(labels: any): string[] {
   const arr = Array.isArray(labels) ? labels : []
@@ -1944,6 +2122,7 @@ onMounted(async () => {
         dueDate: i?.dueDate || '',
         assignedTo: i?.assignedTo || i?.responsible_person || '',
         location: i?.location || '',
+        spaceId: (i as any)?.spaceId ? String((i as any).spaceId?._id || (i as any).spaceId) : null,
         system: i?.system || '',
         recommendation: i?.recommendation || '',
         resolution: i?.resolution || '',
@@ -1957,6 +2136,7 @@ onMounted(async () => {
         attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
         photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
       })
+      void syncSpaceQueryFromForm()
       loaded.value = true
     } catch (e: any) {
       // If the issue doesn't exist, redirect to list to avoid broken editor state
@@ -1980,10 +2160,11 @@ watch(id, async (nv, ov) => {
     // reset to defaults for new issue
     Object.assign(form, {
       title: '', description: '', type: null, priority: 'medium', status: 'open',
-      number: null, foundBy: '', dateFound: '', dueDate: '', assignedTo: '', location: '', system: '', recommendation: '', resolution: '',
+      number: null, foundBy: '', dateFound: '', dueDate: '', assignedTo: '', location: '', spaceId: null, system: '', recommendation: '', resolution: '',
       closedBy: '', closedDate: '',
       projectId: chooseProjectId(), labels: [], oprItemIds: [], comments: [], attachments: [], photos: []
     })
+    spaceQuery.value = ''
     return
   }
   try {
@@ -2001,6 +2182,7 @@ watch(id, async (nv, ov) => {
       dueDate: i?.dueDate || '',
       assignedTo: i?.assignedTo || i?.responsible_person || '',
       location: i?.location || '',
+      spaceId: (i as any)?.spaceId ? String((i as any).spaceId?._id || (i as any).spaceId) : null,
       system: i?.system || '',
       recommendation: i?.recommendation || '',
       resolution: i?.resolution || '',
@@ -2013,6 +2195,7 @@ watch(id, async (nv, ov) => {
       attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
       photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
     })
+    void syncSpaceQueryFromForm()
     loaded.value = true
   } catch (e: any) {
     if (e?.response?.status === 404) {
@@ -2058,6 +2241,7 @@ async function save() {
     foundBy: form.foundBy || undefined,
     dueDate: form.dueDate || undefined,
     location: form.location || undefined,
+    spaceId: form.spaceId || null,
     system: form.system || undefined,
     closedBy: form.closedBy || undefined,
     closedDate: form.closedDate || undefined,
@@ -2119,6 +2303,7 @@ async function saveAndGetId(): Promise<string> {
     foundBy: form.foundBy || undefined,
     dueDate: form.dueDate || undefined,
     location: form.location || undefined,
+    spaceId: form.spaceId || null,
     system: form.system || undefined,
     recommendation: form.recommendation || undefined,
     resolution: form.resolution || undefined,

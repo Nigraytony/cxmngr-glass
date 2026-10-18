@@ -24,6 +24,8 @@ export interface Issue {
   closedBy?: string
   system?: string
   location?: string
+  // Linked Space id (Spaces module); location holds its breadcrumb or free text
+  spaceId?: string | null
   recommendation?: string
   resolution?: string
   assetId?: string
