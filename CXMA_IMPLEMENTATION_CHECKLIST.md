@@ -16,6 +16,39 @@ This document combines the high-level application specification from `cxma_app_s
 
 ---
 
+## Field Feedback — October 2026 (from extensive real-world use)
+
+Captured 2026-10-15 after several weeks of heavy app usage. Track these here until each is folded into (or promoted over) the numbered sections below.
+
+### Equipment List & Cards
+- [ ] Add a printable Equipment report to the Equipment List — this is one of the most-used lists in the app. (Relates to Section 4 TODO #19, Section 9 PDF export)
+- [ ] Expand Equipment analytics well beyond the current state — leverage all the data already collected per piece of equipment. (Relates to TODO #16, Section 9)
+- [ ] Enrich Equipment cards so users don't need to open Equipment Details for key info: checklist status/% complete, FPT status/% complete, attribute data, component counts, photo counts, open issues.
+
+### List Pages (all modules)
+- [ ] Raise the bar across all list pages: analytics data, info cards, and reporting on the list contents. Consider a shared pattern/component so every list benefits.
+
+### Bugs
+- [x] Issue Details: the Location field is not reading from the Spaces module — wire it to Spaces data. (Relates to Section 3 TODO #39) — Fixed: Location is now a Spaces autocomplete storing `spaceId` + breadcrumb; free text still supported.
+
+### AI / Agent
+- [ ] Rework the Agent — current behavior is not very helpful; redesign around the much stronger LLMs available now (model improvements over the last ~6 months).
+- [ ] Stop hard-coding AI models in Project Details; make the model list configurable/extensible.
+- [ ] Add Google Gemini and Microsoft Copilot as supported AI providers alongside the current ones.
+
+### OPR (Owner's Project Requirements)
+- [ ] Improve OPR item tracking from start to completion (lifecycle/status visibility is lacking).
+- [ ] Add reporting on OPR items. (Candidate consumer of the shared Report module below)
+
+### Project Dashboard
+- [ ] Place the project description next to the project team on the project dashboard.
+
+### Reporting
+- [ ] Final Report stops short of its potential — build it out.
+- [ ] Create a shared Report module that all other modules (Equipment, Issues, Checklists, FPTs, Final Report, etc.) use for report generation. (Supersedes piecemeal export items in Section 9 if adopted)
+
+---
+
 ## 0. Architecture & Tech Stack
 
 - [ ] Confirm frontend uses Vue 3 (Composition API), Tailwind CSS, Pinia, Vue Router, and Vite, and document any deviations. (Spec 7)
