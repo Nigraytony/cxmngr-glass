@@ -1,6 +1,9 @@
 import { jsPDF } from 'jspdf'
-import { drawBrandedFooter, drawBrandedHeader, fitImageToHeight } from './pdfBranding'
-import { ensureReportFonts, SANS, setColor as setReportColor } from './reportTypography'
+import { drawBrandedFooter, drawBrandedHeader } from '../reports/core/frame'
+import { fitImageToHeight, loadFirstAvailable, loadImage } from '../reports/core/images'
+import { formatDate as fmtDate, htmlToText, normalizePdfText, splitText } from '../reports/core/text'
+import { ensureReportFonts } from '../reports/core/fonts'
+import { SANS, setColor as setReportColor } from '../reports/core/tokens'
 import type { OprAnswer, OprCategory, OprQuestion, OprResult, OprResultsRow, OprWorkshopAttendee, OprWorkshopInfo } from '../stores/opr'
 
 export type OprWorkshopReportSettings = {
@@ -29,149 +32,6 @@ export type OprWorkshopReportData = {
   allResults: OprResultsRow[]
 }
 
-// Minimal image format enum mirroring existing usage
-type ImageFormat = 'JPEG' | 'PNG' | 'WEBP' | 'SVG' | 'GIF'
-type LoadedImage = {
-  dataUrl?: string
-  format?: ImageFormat
-  width?: number
-  height?: number
-}
-
-function mimeToFormat(mime?: string | null): ImageFormat | undefined {
-  if (!mime) return undefined
-  const m = mime.toLowerCase()
-  if (m.includes('png')) return 'PNG'
-  if (m.includes('jpeg') || m.includes('jpg')) return 'JPEG'
-  if (m.includes('webp')) return 'WEBP'
-  if (m.includes('gif')) return 'GIF'
-  if (m.includes('svg')) return 'SVG'
-  return undefined
-}
-
-async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<string | null> {
-  try {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve()
-      img.onerror = () => reject(new Error('img load fail'))
-      img.src = dataUrl
-    })
-    const canvas = document.createElement('canvas')
-    canvas.width = img.naturalWidth || img.width
-    canvas.height = img.naturalHeight || img.height
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return null
-    ctx.drawImage(img, 0, 0)
-    return canvas.toDataURL('image/jpeg', quality)
-  } catch (e) {
-    return null
-  }
-}
-
-async function loadImage(src?: string): Promise<LoadedImage> {
-  try {
-    if (!src) return {}
-    let dataUrl: string | undefined
-    let format: ImageFormat | undefined
-
-    if (src.startsWith('data:')) {
-      const mime = src.slice(5, src.indexOf(';'))
-      format = mimeToFormat(mime)
-      if (format === 'WEBP' || (mime && mime.toLowerCase().includes('svg'))) {
-        const conv = await convertDataUrlToJpeg(src)
-        if (conv) {
-          dataUrl = conv
-          format = 'JPEG'
-        }
-      }
-      if (!dataUrl) dataUrl = src
-    } else {
-      const res = await fetch(src)
-      if (!res.ok) return {}
-      const blob = await res.blob()
-      const rawDataUrl: string = await new Promise(resolve => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result || ''))
-        reader.readAsDataURL(blob)
-      })
-      format = blob.type ? mimeToFormat(blob.type) : undefined
-      if (!format || format === 'WEBP' || blob.type.toLowerCase().includes('svg')) {
-        const conv = await convertDataUrlToJpeg(rawDataUrl)
-        if (conv) {
-          dataUrl = conv
-          format = 'JPEG'
-        } else {
-          dataUrl = rawDataUrl
-        }
-      } else {
-        dataUrl = rawDataUrl
-      }
-    }
-
-    if (!dataUrl) return {}
-
-    const dims = await new Promise<{ width: number; height: number }>((resolve) => {
-      const img = new Image()
-      img.onload = () => resolve({ width: img.naturalWidth || img.width || 0, height: img.naturalHeight || img.height || 0 })
-      img.onerror = () => resolve({ width: 0, height: 0 })
-      img.src = dataUrl as string
-    })
-
-    return {
-      dataUrl,
-      format,
-      width: dims.width || undefined,
-      height: dims.height || undefined,
-    }
-  } catch (e) {
-    return {}
-  }
-}
-
-function htmlToText(html?: string): string {
-  if (!html) return ''
-  try {
-    const tmp = document.createElement('div')
-    tmp.innerHTML = String(html)
-    const t = tmp.textContent || tmp.innerText || ''
-    return t.replace(/\s+/g, ' ').trim()
-  } catch (e) {
-    return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-  }
-}
-
-function normalizePdfText(v?: string): string {
-  if (!v) return ''
-  return String(v)
-    .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
-    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')
-    .replace(/[\u2013\u2014]/g, '-')
-    .replace(/\u00A0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
-  try { return doc.splitTextToSize(text, maxWidth) as unknown as string[] } catch (e) { return [text] }
-}
-
-function fmtDate(v?: string) {
-  const raw = String(v || '').trim()
-  if (!raw) return ''
-  try {
-    // Prefer YYYY-MM-DD date-only values.
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      const d = new Date(`${raw}T00:00:00`)
-      return d.toLocaleDateString()
-    }
-    return new Date(raw).toLocaleDateString()
-  } catch (e) {
-    return raw
-  }
-}
-
 function safeTime(v?: string) {
   const t = String(v || '').trim()
   return t || ''
@@ -182,14 +42,6 @@ function deriveWorkshopTitle(data: OprWorkshopReportData, settings: OprWorkshopR
   if (name) return name
   const title = normalizePdfText(settings.coverTitle || '')
   return title || 'OPR Workshop'
-}
-
-async function loadFirstAvailable(srcs: string[]): Promise<LoadedImage> {
-  for (const s of srcs) {
-    const img = await loadImage(s)
-    if (img?.dataUrl) return img
-  }
-  return {}
 }
 
 type TocEntry = { title: string; pageNo: number; indent: number }

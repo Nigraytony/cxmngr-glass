@@ -1,37 +1,10 @@
-import { jsPDF } from 'jspdf'
-import { drawBrandedFooter, drawBrandedHeader } from './pdfBranding'
-import { ensureReportFonts, SANS, setColor } from './reportTypography'
+import { ReportDoc } from '../reports/core/frame'
+import { loadImage, type LoadedImage } from '../reports/core/images'
+import { htmlToText, splitText } from '../reports/core/text'
+import { appendPdfAttachments } from '../reports/core/merge'
+import { SANS } from '../reports/core/tokens'
 
-// Minimal image format enum mirroring existing usage
-export type ImageFormat = 'JPEG' | 'PNG' | 'WEBP' | 'GIF' | 'SVG'
-
-type LoadedImage = {
-  dataUrl?: string
-  format?: ImageFormat
-  width?: number
-  height?: number
-}
-
-function mimeToFormat(mime?: string | null): ImageFormat | undefined {
-  if (!mime) return undefined
-  const m = mime.toLowerCase()
-  if (m.includes('png')) return 'PNG'
-  if (m.includes('jpeg') || m.includes('jpg')) return 'JPEG'
-  if (m.includes('webp')) return 'WEBP'
-  if (m.includes('gif')) return 'GIF'
-  if (m.includes('svg')) return 'SVG'
-  return undefined
-}
-
-async function convertDataUrlToJpeg(dataUrl: string, quality = 0.92): Promise<string | null> {
-  try {
-    const img = new Image(); img.crossOrigin = 'anonymous'
-    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('img load fail')); img.src = dataUrl })
-    const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth || img.width; canvas.height = img.naturalHeight || img.height
-    const ctx = canvas.getContext('2d'); if (!ctx) return null; ctx.drawImage(img, 0, 0)
-    return canvas.toDataURL('image/jpeg', quality)
-  } catch (e) { return null }
-}
+export type { ImageFormat } from '../reports/core/images'
 
 export async function maybeReinkSignatureForPdf(dataUrl: string): Promise<string> {
   try {
@@ -83,82 +56,6 @@ export async function maybeReinkSignatureForPdf(dataUrl: string): Promise<string
   }
 }
 
-async function loadImage(src?: string): Promise<LoadedImage> {
-  try {
-    if (!src) return {}
-    let dataUrl: string | undefined
-    let format: ImageFormat | undefined
-
-    if (src.startsWith('data:')) {
-      const mime = src.slice(5, src.indexOf(';'))
-      format = mimeToFormat(mime)
-      if (format === 'WEBP' || (mime && mime.toLowerCase().includes('svg'))) {
-        const conv = await convertDataUrlToJpeg(src)
-        if (conv) {
-          dataUrl = conv
-          format = 'JPEG'
-        }
-      }
-      if (!dataUrl) {
-        dataUrl = src
-      }
-    } else {
-      const res = await fetch(src)
-      if (!res.ok) return {}
-      const blob = await res.blob()
-      const rawDataUrl: string = await new Promise(resolve => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result || ''))
-        reader.readAsDataURL(blob)
-      })
-      format = blob.type ? mimeToFormat(blob.type) : undefined
-      if (!format || format === 'WEBP' || blob.type.toLowerCase().includes('svg')) {
-        const conv = await convertDataUrlToJpeg(rawDataUrl)
-        if (conv) {
-          dataUrl = conv
-          format = 'JPEG'
-        } else {
-          dataUrl = rawDataUrl
-        }
-      } else {
-        dataUrl = rawDataUrl
-      }
-    }
-
-    if (!dataUrl) return {}
-
-    // Measure intrinsic dimensions to allow aspect-ratio-preserving scaling
-    const dims = await new Promise<{ width: number; height: number }>((resolve) => {
-      const img = new Image()
-      img.onload = () => resolve({ width: img.naturalWidth || img.width || 0, height: img.naturalHeight || img.height || 0 })
-      img.onerror = () => resolve({ width: 0, height: 0 })
-      img.src = dataUrl as string
-    })
-
-    return {
-      dataUrl,
-      format,
-      width: dims.width || undefined,
-      height: dims.height || undefined,
-    }
-  } catch (e) {
-    return {}
-  }
-}
-function htmlToText(html: any): string {
-  if (!html) return ''
-  try {
-    const tmp = document.createElement('div')
-    tmp.innerHTML = String(html)
-    const t = (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim()
-    return t
-  } catch (e) {
-    return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-  }
-}
-function splitText(doc: jsPDF, text: string, maxWidth: number): string[] {
-  return doc.splitTextToSize(text, maxWidth) as unknown as string[]
-}
 function passCellState(v: any): 'none' | 'pass' | 'fail' {
   const x = v
   if (x === true || x === 'true' || String(x) === '1') return 'pass'
@@ -180,61 +77,22 @@ export interface GenerateEquipmentPdfOptions {
 export async function generateEquipmentPdf(eq: any, project: any, issuesById: Record<string, any>, spacesById: Record<string, any>, opts?: GenerateEquipmentPdfOptions): Promise<ArrayBuffer> {
   const include = { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, signatures: false, issues: true, ...(opts?.include || {}) }
   const photoLimit = typeof opts?.photoLimit === 'number' ? opts.photoLimit : 6
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  await ensureReportFonts(doc)
-  setColor(doc, 'text')
-  const margin = 12
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const bottomLimit = pageHeight - 26
-  const pageDate = new Date().toLocaleDateString()
-  let pageNo = 1
-  let y = margin
+  const headTitle = (eq && (eq.tag || eq.title)) ? (eq.tag || eq.title) : 'Equipment'
+  const rd = await ReportDoc.create({
+    title: `${headTitle} Report`,
+    footerLabel: `${eq.tag || eq.title || 'Equipment'} Report`,
+    project,
+  })
+  const doc = rd.doc
+  const margin = rd.margin
+  const pageWidth = rd.pageWidth
+  const bottomLimit = rd.bottomLimit
+  let y = rd.y
 
-  const clientImg = await loadImage(project?.logo)
-  const cxaImg = await loadImage(project?.commissioning_agent?.logo)
-  // Footer branding: icon + "cxma"
-  let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
-  if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
-  if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
-
-  const drawFooter = () => {
-    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
-    const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-    drawBrandedFooter(doc, {
-      margin,
-      pageWidth,
-      pageHeight,
-      pageNo,
-      pageDate,
-      footerLogo,
-      leftLabel: `${eq.tag || eq.title || 'Equipment'} Report`,
-      setBold: () => doc.setFont(SANS, 'bold'),
-      setNormal: () => doc.setFont(SANS, 'normal'),
-    })
-    doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-  }
-  const drawHeader = () => {
-    const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
-    const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-    const headTitle = (eq && (eq.tag || eq.title)) ? (eq.tag || eq.title) : 'Equipment'
-    const res = drawBrandedHeader(doc, {
-      margin,
-      pageWidth,
-      title: `${headTitle} Report`,
-      leftLogo: clientImg,
-      rightLogo: cxaImg,
-      logoH: 12,
-      maxLogoW: 36,
-      titleFontSize: 16,
-      setTitleFont: () => doc.setFont(SANS, 'bold'),
-    })
-    y = res.nextY
-    doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-  }
-  const ensureSpace = (amount: number): boolean => { if (y + amount > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader(); return true } return false }
-  const sectionGap = (gap=6) => { ensureSpace(gap); y += gap }
-  drawHeader()
+  // rd owns pagination (header on page break, footers stamped in output());
+  // these wrappers keep the local `y` cursor and the frame's in sync.
+  const ensureSpace = (amount: number): boolean => { rd.y = y; const broke = rd.ensureSpace(amount); y = rd.y; return broke }
+  const sectionGap = (gap = 6) => { rd.y = y; rd.sectionGap(gap); y = rd.y }
 
   // Info
   if (include.info) {
@@ -735,7 +593,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         const src = a?.url || a?.data
         const img = await loadImage(src)
         if (!img.dataUrl) continue
-        drawFooter(); doc.addPage(); pageNo++; y = margin; drawHeader()
+        rd.y = y; rd.newPage(); y = rd.y
         const label = `Attachment: ${String(a?.filename || a?.url || '')}`
         doc.setFont(SANS,'bold'); doc.setFontSize(9.5); ensureSpace(8); doc.text(label, margin, y); y += 5; doc.setFont(SANS,'normal')
         const dims = await getDims(img.dataUrl)
@@ -748,36 +606,14 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
         } catch (e) {
           /* ignore */
         }
-        drawFooter()
       }
     }
   }
 
-  drawFooter()
-  // Merge PDF attachments
-  try {
-    const atts: any[] = include.attachments ? (Array.isArray(eq.attachments) ? eq.attachments : []) : []
-    const pdfAtts = atts.filter((a: any) => { const type = String(a?.type || '').toLowerCase(); const name = String(a?.filename || a?.url || '').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''; return type.includes('pdf') || ext === 'pdf' })
-    if (pdfAtts.length) {
-      const { PDFDocument } = await import('pdf-lib')
-      const baseBytes = doc.output('arraybuffer') as ArrayBuffer
-      const merged = await PDFDocument.load(baseBytes)
-      for (const a of pdfAtts) {
-        const url = String(a?.url || '')
-        if (!url) continue
-        try {
-          const res = await fetch(url)
-          if (!res.ok) continue
-          const buf = await res.arrayBuffer()
-          const attPdf = await PDFDocument.load(buf)
-          const pages = await merged.copyPages(attPdf, attPdf.getPageIndices())
-          pages.forEach((p: any) => merged.addPage(p))
-        } catch (e) {
-          /* ignore */
-        }
-      }
-      return await merged.save()
-    }
-  } catch (e) { /* ignore merge errors */ }
-  return doc.output('arraybuffer') as ArrayBuffer
+  rd.y = y
+  const baseBytes = rd.output()
+  if (include.attachments) {
+    return appendPdfAttachments(baseBytes, Array.isArray(eq.attachments) ? eq.attachments : [])
+  }
+  return baseBytes
 }

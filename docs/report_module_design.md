@@ -151,11 +151,14 @@ Each phase ships independently; nothing breaks in between.
 - **Phase 1 — extract core:** create `src/reports/core/*` by lifting the best existing copy of
   each helper; point `equipmentReport.ts`, `IssuePdfReport.vue`, `oprWorkshopReport.ts` at them
   and move them onto the `ReportDoc` frame. Branded header/footer applies to all three (the one
-  accepted visual change); layout otherwise unchanged. Adds `jspdf-autotable`.
+  accepted visual change); layout otherwise unchanged. (Done 2026-10-18 — OPR keeps its own
+  cover/TOC page orchestration until Phase 3; issue definitions moved to
+  `src/reports/definitions/issue.ts` and `IssuePdfReport.vue` was deleted.)
 - **Phase 2 — kill duplicate reports:** `EquipmentEdit.vue` calls the shared equipment
   definition (delete ~840 local lines; equipment PDFs become consistent everywhere);
   `IssueEdit.vue` calls shared `renderIssuePage` (delete ~355 lines); dedupe the 3× issue payload
-  mapping in `IssuesList.vue`.
+  mapping in `IssuesList.vue`. Adds `jspdf-autotable` behind `core/table.ts` and converts the
+  consolidated table rendering onto it.
 - **Phase 3 — shared cover/TOC/settings:** one `CoverSettings` shape + `ReportSettingsDialog`;
   migrate Activity, OPR Workshop; re-implement the Tasks PDF text-based on the kit; unify
   filenames/delivery via `deliver.ts`.

@@ -4,9 +4,8 @@
 // reports look consistent and on-brand across the AEC industry.
 //
 // Font: IBM Plex Sans (text) + IBM Plex Mono (tags / IDs / numeric data), embedded
-// from a latin + engineering-symbol subset at /fonts/IBMPlex/. The jsPDF embed
-// mirrors the established addFileToVFS/addFont pattern from
-// src/components/reports/IssuePdfReport.vue.
+// from a latin + engineering-symbol subset at /fonts/IBMPlex/ via the standard
+// jsPDF addFileToVFS/addFont pattern.
 //
 // Approved scale (SemiBold headings, 9.5pt body) and accent (#0F172A — the cxma app
 // background) are locked; tweak the constants here to restyle every report at once.

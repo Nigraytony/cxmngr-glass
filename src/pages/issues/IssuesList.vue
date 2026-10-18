@@ -2028,8 +2028,6 @@
       </template>
     </Modal>
 
-    <!-- Hidden report generator component -->
-    <IssuePdfReport ref="reportRef" />
   </section>
 </template>
 
@@ -2098,7 +2096,7 @@ import http from '../../utils/http'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
-import IssuePdfReport from '../../components/reports/IssuePdfReport.vue'
+import { generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf } from '../../reports/definitions/issue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { runCoachmarkOnce } from '../../utils/coachmarks'
 // Preferred/common export columns in desired order
@@ -2361,7 +2359,6 @@ const columnsStorageKey = computed(() => `issuesExportColumns:${projectStore.cur
 // Downloads dropdown state
 const showDownloadsMenu = ref(false)
 const downloadsRef = ref<HTMLElement | null>(null)
-const reportRef = ref<any>(null)
 const showTypeMenu = ref(false)
 const typeMenuRef = ref<HTMLElement | null>(null)
 const showPriorityMenu = ref(false)
@@ -4243,7 +4240,7 @@ async function onDownloadDetailedReport() {
       photos: Array.isArray(i.photos) ? i.photos : [],
     }))
     // Generate multi-issue detailed report
-    await reportRef.value?.generateIssuesDetailedPdf(issues)
+    await generateIssuesDetailedPdf(issues)
   } catch (e) {
     // silent; optionally show a toast
   } finally {
@@ -4273,7 +4270,7 @@ async function onDownloadCompactReport() {
       resolution: i.resolution || '',
       projectId: i.projectId || (projectStore.currentProjectId || undefined),
     }))
-    await reportRef.value?.generateIssuesCompactPdf(issues)
+    await generateIssuesCompactPdf(issues)
   } catch (e) {
     // silent; optionally show a toast
   } finally {
@@ -4311,7 +4308,7 @@ async function onDownloadListReport() {
       responsible_person: i.responsible_person || '',
       severity: i.severity || '',
     }))
-    await reportRef.value?.generateIssuesListPdf(issues, prunedCols)
+    await generateIssuesListPdf(issues, prunedCols)
   } catch (e) {
     // silent; optionally show a toast
   } finally {
