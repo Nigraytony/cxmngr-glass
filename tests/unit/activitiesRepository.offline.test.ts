@@ -77,8 +77,7 @@ describe('activitiesRepository — offline (local) path', () => {
     expect(await outbox.count()).toBe(0)
   })
 
-  it('rejects photo upload and report generation while offline', async () => {
+  it('rejects photo upload while offline', async () => {
     await expect(activitiesRepository.uploadPhotos('x', [] as any)).rejects.toThrow(/offline/i)
-    await expect(activitiesRepository.fetchReportBlob('x')).rejects.toThrow(/offline/i)
   })
 })

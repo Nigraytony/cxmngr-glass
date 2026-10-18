@@ -175,17 +175,6 @@ export const activitiesRepository = {
       projectId,
     )
   },
-
-  async fetchReportBlob(id: string): Promise<Blob> {
-    if (useLocal()) throw new OfflineUnsupportedError('Reports cannot be generated while offline')
-    try {
-      const res = await http.get(`${API_BASE}/${id}/report`, { responseType: 'blob' })
-      return new Blob([res.data], { type: 'application/pdf' })
-    } catch (e: any) {
-      if (shouldFallBackToLocal(e)) { setOnline(false); throw new OfflineUnsupportedError('Reports cannot be generated while offline') }
-      throw e
-    }
-  },
 }
 
 export default activitiesRepository

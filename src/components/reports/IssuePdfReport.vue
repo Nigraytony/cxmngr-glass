@@ -394,31 +394,8 @@ async function renderIssuePage(doc: jsPDF, issue: any, opts: { pageNoRef: { valu
   drawFooter()
 }
 
-async function generateIssuePdf(issue: any) {
-  // Open blank window to preserve user gesture
-  const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); setReportColor(doc, 'text')
-  const pageNoRef = { value: 1 }
-  await renderIssuePage(doc, issue, { pageNoRef })
-  const fname = `issue-${issue?.number || issue?.id || 'report'}.pdf`
-  try {
-    if (dlWin) {
-      const blob = doc.output('blob') as Blob
-      const url = URL.createObjectURL(blob)
-  try { dlWin.document.title = fname } catch (e) { /* ignore */ }
-      dlWin.location.href = url
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    } else {
-      doc.save(fname)
-    }
-  } catch (e) {
-    doc.save(fname)
-  }
-}
-
 async function generateIssuesDetailedPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
-  await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' }); setReportColor(doc, 'text')
   const pageNoRef = { value: 1 }
@@ -445,9 +422,10 @@ async function generateIssuesDetailedPdf(issues: any[]) {
 
 async function generateIssuesCompactPdf(issues: any[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
-  await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); setReportColor(doc, 'text')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await ensureSourceSans(doc)
+  setReportColor(doc, 'text')
   setZeroCharSpace(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -623,9 +601,10 @@ async function generateIssuesCompactPdf(issues: any[]) {
 // Flat table/list report
 async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   if (!Array.isArray(issues) || issues.length === 0) return
-  await ensureSourceSans(new jsPDF())
   const dlWin = window.open('', '_blank')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' }); setReportColor(doc, 'text')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  await ensureSourceSans(doc)
+  setReportColor(doc, 'text')
   setZeroCharSpace(doc)
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -821,7 +800,7 @@ async function generateIssuesListPdf(issues: any[], columns?: string[]) {
   }
 }
 
-defineExpose({ generateIssuePdf, generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf })
+defineExpose({ generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf })
 </script>
 
 <template>

@@ -324,16 +324,6 @@ export const useActivitiesStore = defineStore('activities', () => {
     return updated
   }
 
-  async function downloadReport(id: string) {
-    const blob = await activitiesRepository.fetchReportBlob(id)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `activity-${id}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   async function deleteActivity(id: string) {
     loading.value = true
     error.value = null
@@ -378,5 +368,5 @@ export const useActivitiesStore = defineStore('activities', () => {
     }
   }
 
-  return { activities, current, loading, error, errorCode, conflict, fetchActivities, fetchActivity, fetchActivityPhotos, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, downloadReport, deleteActivity }
+  return { activities, current, loading, error, errorCode, conflict, fetchActivities, fetchActivity, fetchActivityPhotos, createActivity, updateActivity, uploadPhotos, removePhoto, updatePhotoCaption, deleteActivity }
 })
