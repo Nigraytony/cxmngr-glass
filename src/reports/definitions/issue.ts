@@ -1,6 +1,7 @@
 // Issue report definitions (Detailed / Compact / List), built on the report
 // kit. Replaces the renderless IssuePdfReport.vue component.
 import { ReportDoc } from '../core/frame'
+import { drawTable } from '../core/table'
 import { loadImage, type ImageFormat } from '../core/images'
 import { formatDate, htmlToText, normalizePdfText, splitText } from '../core/text'
 import { SANS } from '../core/tokens'
@@ -180,6 +181,20 @@ async function renderIssueDetails(rd: ReportDoc, issue: any): Promise<void> {
   } catch (e) { /* ignore */ }
 }
 
+/** Single-issue detailed report (the issue editor's download button). */
+export async function generateIssuePdf(issue: any): Promise<void> {
+  if (!issue) return
+  const dlWin = openDeliveryWindow()
+  const project = await resolveProject(issue?.projectId)
+  const rd = await ReportDoc.create({
+    title: issueHeaderTitle(issue),
+    footerLabel: issueHeaderTitle(issue),
+    project,
+  })
+  await renderIssueDetails(rd, issue)
+  deliverPdf(rd.finish(), reportFileName([issue?.number != null ? `issue-${issue.number}` : 'issue']), dlWin)
+}
+
 /** One issue per page (or more), with full detail sections. */
 export async function generateIssuesDetailedPdf(issues: any[]): Promise<void> {
   if (!Array.isArray(issues) || issues.length === 0) return
@@ -235,8 +250,6 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
     orientation: 'landscape',
     titleFontSize: 14,
   })
-  const doc = rd.doc
-
   // Columns (filter out foundBy, dateFound, assignedTo, and severity explicitly)
   const provided = (Array.isArray(columns) && columns.length)
     ? columns.slice()
@@ -246,18 +259,14 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
     cols = ['number', 'title', 'type', 'priority', 'status', 'dueDate', 'location', 'system']
   }
 
-  // Column widths: custom weights per column
-  const tableWidth = rd.contentWidth
-  const weights = cols.map(k => {
+  const weightFor = (k: string) => {
     const key = String(k).toLowerCase()
     if (key === 'description') return 3
     if (key === 'title') return 1.5
     if (key === 'priority') return 0.625
     if (key === 'severity' || key === 'status' || key === 'number') return 0.5
     return 1
-  })
-  const totalWeight = weights.reduce((a, b) => a + b, 0) || 1
-  const widths = cols.map((_, i) => tableWidth * (weights[i] / totalWeight))
+  }
 
   const headerLabel = (key: string) => {
     if (/^responsible_person$/i.test(key)) return 'responsible'
@@ -266,24 +275,6 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
     if (/^closeddate$/i.test(key)) return 'closed date'
     return String(key)
   }
-  const textYOffset = 3.18
-
-  const drawColumnHeader = () => {
-    doc.setFont(SANS, 'bold'); doc.setFontSize(10)
-    let hx = rd.margin
-    for (let i = 0; i < cols.length; i++) {
-      doc.text(headerLabel(String(cols[i])), hx + 1, rd.y + textYOffset)
-      hx += widths[i]
-    }
-    rd.y += 4
-    doc.setDrawColor(200, 200, 200)
-    doc.line(rd.margin, rd.y, rd.margin + tableWidth, rd.y)
-    rd.y += 2
-    doc.setFont(SANS, 'normal'); doc.setFontSize(9)
-  }
-
-  const maxW = (idx: number) => widths[idx] - 2
-  const lineHeight = 4
 
   const cellText = (row: any, key: string): string => {
     const v = (row as any)?.[key]
@@ -305,33 +296,11 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
     return normalizePdfText(String(v))
   }
 
-  drawColumnHeader()
-  for (let r = 0; r < issues.length; r++) {
-    const row = issues[r]
-    const cellLines: string[][] = []
-    let rowLines = 1
-    for (let c = 0; c < cols.length; c++) {
-      const text = cellText(row, cols[c])
-      const lines = splitText(doc, text, Math.max(10, maxW(c)))
-      cellLines.push(lines)
-      rowLines = Math.max(rowLines, lines.length)
-    }
-    const rowHeight = rowLines * lineHeight + 2
-    if (rd.ensureSpace(rowHeight + textYOffset)) drawColumnHeader()
-    // Zebra stripe background (alternate rows)
-    if (r % 2 === 1) {
-      try {
-        doc.setFillColor(245, 245, 245)
-        doc.rect(rd.margin, rd.y - 1, tableWidth, rowHeight + 2, 'F')
-      } catch (e) { /* ignore */ }
-    }
-    let cx = rd.margin
-    for (let c = 0; c < cols.length; c++) {
-      doc.text(cellLines[c], cx + 1, rd.y + textYOffset)
-      cx += widths[c]
-    }
-    rd.y += rowHeight + 1
-  }
+  drawTable(rd, {
+    columns: cols.map(k => ({ key: String(k), label: headerLabel(String(k)), weight: weightFor(k) })),
+    rows: issues,
+    cellText,
+  })
 
   deliverPdf(rd.finish(), reportFileName([projName, 'issues-list']), dlWin)
 }

@@ -158,7 +158,9 @@ Each phase ships independently; nothing breaks in between.
   definition (delete ~840 local lines; equipment PDFs become consistent everywhere);
   `IssueEdit.vue` calls shared `renderIssuePage` (delete ~355 lines); dedupe the 3× issue payload
   mapping in `IssuesList.vue`. Adds `jspdf-autotable` behind `core/table.ts` and converts the
-  consolidated table rendering onto it.
+  consolidated table rendering onto it. (Done 2026-10-18 — EquipmentEdit and IssueEdit call the
+  shared definitions; `core/table.ts` exists and the Issues List PDF renders on autotable; the
+  equipment report's internal tables stay hand-drawn until its Phase 3/4 touch.)
 - **Phase 3 — shared cover/TOC/settings:** one `CoverSettings` shape + `ReportSettingsDialog`;
   migrate Activity, OPR Workshop; re-implement the Tasks PDF text-based on the kit; unify
   filenames/delivery via `deliver.ts`.

@@ -189,6 +189,16 @@ export class ReportDoc {
     this.title = title
   }
 
+  /** Where content starts below the branded header (for renderers like autotable that add their own pages). */
+  get headerBottomY(): number {
+    return this.margin + this.logoH + 20
+  }
+
+  /** Redraw the branded header on the current page (for pages added outside newPage()). */
+  drawHeaderOnCurrentPage(): void {
+    this.drawHeader()
+  }
+
   private drawHeader(): void {
     const prevFont = (this.doc as any).getFont ? (this.doc as any).getFont() : { fontName: SANS, fontStyle: 'normal' }
     const prevSize = (this.doc as any).getFontSize ? (this.doc as any).getFontSize() : 9

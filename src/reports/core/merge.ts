@@ -6,7 +6,25 @@ function isPdfAttachment(a: any): boolean {
   const type = String(a?.type || '').toLowerCase()
   const name = String(a?.filename || a?.url || '').toLowerCase()
   const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''
-  return type.includes('pdf') || ext === 'pdf'
+  const dataIsPdf = typeof a?.data === 'string' && a.data.startsWith('data:application/pdf')
+  return type.includes('pdf') || ext === 'pdf' || dataIsPdf
+}
+
+/** The attachment's PDF bytes: inline data URL or fetched (with credentials). */
+async function attachmentPdfBytes(a: any): Promise<ArrayBuffer | null> {
+  const dataStr = typeof a?.data === 'string' ? a.data : ''
+  if (dataStr.startsWith('data:application/pdf')) {
+    const base64 = dataStr.split(',')[1] || ''
+    const bin = atob(base64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return bytes.buffer
+  }
+  const url = String(a?.url || '')
+  if (!url) return null
+  const res = await fetch(url, { credentials: 'include' })
+  if (!res.ok) return null
+  return res.arrayBuffer()
 }
 
 /**
@@ -21,12 +39,9 @@ export async function appendPdfAttachments(baseBytes: ArrayBuffer, attachments: 
     const { PDFDocument } = await import('pdf-lib')
     const merged = await PDFDocument.load(baseBytes)
     for (const a of pdfAtts) {
-      const url = String(a?.url || '')
-      if (!url) continue
       try {
-        const res = await fetch(url)
-        if (!res.ok) continue
-        const buf = await res.arrayBuffer()
+        const buf = await attachmentPdfBytes(a)
+        if (!buf) continue
         const attPdf = await PDFDocument.load(buf)
         const pages = await merged.copyPages(attPdf, attPdf.getPageIndices())
         pages.forEach((p: any) => merged.addPage(p))

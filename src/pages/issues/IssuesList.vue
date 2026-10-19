@@ -4214,33 +4214,42 @@ function exportFilteredIssuesXlsx() {
   }
 }
 
+// One canonical issue payload for the PDF reports; each report reads the
+// fields it needs (Detailed also wants comments/attachments/photos, List
+// also wants timestamps and raw severity/responsible_person for columns).
+function mapIssueForReport(i: any) {
+  return {
+    id: i.id || i._id,
+    number: typeof i.number === 'number' ? i.number : (i.number ? Number(i.number) : null),
+    title: i.title || i.type || '',
+    description: i.description || '',
+    type: i.type || '',
+    priority: i.priority || i.severity || '',
+    status: i.status || '',
+    foundBy: i.foundBy || '',
+    dateFound: i.dateFound || '',
+    assignedTo: i.assignedTo || i.responsible_person || '',
+    dueDate: i.dueDate || '',
+    closedBy: i.closedBy || '',
+    closedDate: i.closedDate || '',
+    location: i.location || '',
+    system: i.system || '',
+    recommendation: i.recommendation || '',
+    resolution: i.resolution || '',
+    projectId: i.projectId || (projectStore.currentProjectId || undefined),
+    createdAt: i.createdAt || '',
+    updatedAt: i.updatedAt || '',
+    responsible_person: i.responsible_person || '',
+    severity: i.severity || '',
+    comments: Array.isArray(i.comments) ? i.comments : [],
+    attachments: Array.isArray(i.attachments) ? i.attachments : (i.documents || []),
+    photos: Array.isArray(i.photos) ? i.photos : [],
+  }
+}
+
 async function onDownloadDetailedReport() {
   try {
-    const issues = filteredIssues.value.map(i => ({
-      id: i.id || i._id,
-      number: typeof i.number === 'number' ? i.number : (i.number ? Number(i.number) : null),
-      title: i.title || i.type || '',
-      description: i.description || '',
-      type: i.type || '',
-      priority: i.priority || i.severity || '',
-      status: i.status || '',
-      foundBy: i.foundBy || '',
-      dateFound: i.dateFound || '',
-      assignedTo: i.assignedTo || i.responsible_person || '',
-      dueDate: i.dueDate || '',
-      closedBy: i.closedBy || '',
-      closedDate: i.closedDate || '',
-      location: i.location || '',
-      system: i.system || '',
-      recommendation: i.recommendation || '',
-      resolution: i.resolution || '',
-      projectId: i.projectId || (projectStore.currentProjectId || undefined),
-      comments: Array.isArray(i.comments) ? i.comments : [],
-      attachments: Array.isArray(i.attachments) ? i.attachments : (i.documents || []),
-      photos: Array.isArray(i.photos) ? i.photos : [],
-    }))
-    // Generate multi-issue detailed report
-    await generateIssuesDetailedPdf(issues)
+    await generateIssuesDetailedPdf(filteredIssues.value.map(mapIssueForReport))
   } catch (e) {
     // silent; optionally show a toast
   } finally {
@@ -4250,27 +4259,7 @@ async function onDownloadDetailedReport() {
 
 async function onDownloadCompactReport() {
   try {
-    const issues = filteredIssues.value.map(i => ({
-      id: i.id || i._id,
-      number: typeof i.number === 'number' ? i.number : (i.number ? Number(i.number) : null),
-      title: i.title || i.type || '',
-      description: i.description || '',
-      type: i.type || '',
-      priority: i.priority || i.severity || '',
-      status: i.status || '',
-      foundBy: i.foundBy || '',
-      dateFound: i.dateFound || '',
-      assignedTo: i.assignedTo || i.responsible_person || '',
-      dueDate: i.dueDate || '',
-      closedBy: i.closedBy || '',
-      closedDate: i.closedDate || '',
-      location: i.location || '',
-      system: i.system || '',
-      recommendation: i.recommendation || '',
-      resolution: i.resolution || '',
-      projectId: i.projectId || (projectStore.currentProjectId || undefined),
-    }))
-    await generateIssuesCompactPdf(issues)
+    await generateIssuesCompactPdf(filteredIssues.value.map(mapIssueForReport))
   } catch (e) {
     // silent; optionally show a toast
   } finally {
@@ -4285,30 +4274,7 @@ async function onDownloadListReport() {
       : getExportColumns(filteredIssues.value)
     // prune removed columns in case legacy selections persist
     const prunedCols = cols.filter(c => !removedColumns.includes(c))
-    const issues = filteredIssues.value.map(i => ({
-      id: i.id || i._id,
-      number: typeof i.number === 'number' ? i.number : (i.number ? Number(i.number) : null),
-      title: i.title || i.type || '',
-      description: i.description || '',
-      type: i.type || '',
-      priority: i.priority || i.severity || '',
-      status: i.status || '',
-      foundBy: i.foundBy || '',
-      dateFound: i.dateFound || '',
-      assignedTo: i.assignedTo || i.responsible_person || '',
-      dueDate: i.dueDate || '',
-      closedBy: i.closedBy || '',
-      closedDate: i.closedDate || '',
-      location: i.location || '',
-      system: i.system || '',
-      recommendation: i.recommendation || '',
-      resolution: i.resolution || '',
-      createdAt: i.createdAt || '',
-      updatedAt: i.updatedAt || '',
-      responsible_person: i.responsible_person || '',
-      severity: i.severity || '',
-    }))
-    await generateIssuesListPdf(issues, prunedCols)
+    await generateIssuesListPdf(filteredIssues.value.map(mapIssueForReport), prunedCols)
   } catch (e) {
     // silent; optionally show a toast
   } finally {

@@ -29,19 +29,39 @@ export function openDeliveryWindow(): Window | null {
   try { return window.open('', '_blank') } catch (e) { return null }
 }
 
-/** Show the finished PDF in the delivery tab, falling back to a direct save. */
-export function deliverPdf(doc: jsPDF, fname: string, dlWin?: Window | null): void {
+function saveBlob(blob: Blob, fname: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fname
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+/** Show a finished PDF blob in the delivery tab, falling back to a direct save. */
+export function deliverBlob(blob: Blob, fname: string, dlWin?: Window | null): void {
   try {
     if (dlWin) {
-      const blob = doc.output('blob') as Blob
       const url = URL.createObjectURL(blob)
       try { dlWin.document.title = fname } catch (e) { /* ignore cross-window access errors */ }
       dlWin.location.href = url
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } else {
-      doc.save(fname)
+      saveBlob(blob, fname)
     }
   } catch (e) {
-    doc.save(fname)
+    saveBlob(blob, fname)
   }
+}
+
+/** Deliver a jsPDF doc. */
+export function deliverPdf(doc: jsPDF, fname: string, dlWin?: Window | null): void {
+  let blob: Blob
+  try { blob = doc.output('blob') as Blob } catch (e) { doc.save(fname); return }
+  deliverBlob(blob, fname, dlWin)
+}
+
+/** Deliver raw PDF bytes (e.g. after a pdf-lib merge). */
+export function deliverPdfBytes(bytes: ArrayBuffer | Uint8Array, fname: string, dlWin?: Window | null): void {
+  deliverBlob(new Blob([bytes as any], { type: 'application/pdf' }), fname, dlWin)
 }
