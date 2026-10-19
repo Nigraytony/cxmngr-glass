@@ -61,10 +61,26 @@ export function drawBrandedHeader(
 
   if (opts.setTitleFont) opts.setTitleFont()
   if (typeof opts.titleFontSize === 'number') doc.setFontSize(opts.titleFontSize)
-  const titleY = opts.margin + (logoBlockH || logoH) + 6
+
+  // Title sits vertically centered between the two logos; content follows
+  // right under the logo row. A title too wide for the space between the
+  // logos drops below them instead of overlapping.
+  const rowH = logoBlockH || logoH
+  const betweenLogosW = opts.pageWidth - 2 * (opts.margin + maxLogoW + 4)
+  let titleW = betweenLogosW
+  try { titleW = doc.getTextWidth(opts.title) } catch (e) { /* ignore */ }
+  let titleY: number
+  let nextY: number
+  if (titleW <= betweenLogosW) {
+    titleY = opts.margin + rowH / 2 + 2
+    nextY = opts.margin + rowH + 8
+  } else {
+    titleY = opts.margin + rowH + 6
+    nextY = titleY + 8
+  }
   doc.text(opts.title, opts.pageWidth / 2, titleY, { align: 'center' })
 
-  return { nextY: titleY + 14 }
+  return { nextY }
 }
 
 export function drawBrandedFooter(
@@ -148,6 +164,7 @@ export class ReportDoc {
   private rightLogo: LoadedImage = {}
   private footerLogo: LoadedImage = {}
   private finished = false
+  private lastHeaderNextY: number | null = null
 
   private constructor(doc: jsPDF, opts: ReportDocOptions) {
     this.doc = doc
@@ -191,7 +208,7 @@ export class ReportDoc {
 
   /** Where content starts below the branded header (for renderers like autotable that add their own pages). */
   get headerBottomY(): number {
-    return this.margin + this.logoH + 20
+    return this.lastHeaderNextY ?? (this.margin + this.logoH + 8)
   }
 
   /** Redraw the branded header on the current page (for pages added outside newPage()). */
@@ -214,6 +231,7 @@ export class ReportDoc {
       setTitleFont: () => this.doc.setFont(SANS, 'bold'),
     })
     this.y = res.nextY
+    this.lastHeaderNextY = res.nextY
     this.doc.setFont((prevFont as any).fontName || SANS, (prevFont as any).fontStyle || 'normal')
     this.doc.setFontSize(prevSize)
   }
