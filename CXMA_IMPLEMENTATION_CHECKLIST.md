@@ -47,6 +47,7 @@ Captured 2026-10-15 after several weeks of heavy app usage. Track these here unt
 - [ ] Final Report stops short of its potential — build it out.
 - [ ] Create a shared Report module that all other modules (Equipment, Issues, Checklists, FPTs, Final Report, etc.) use for report generation. (Supersedes piecemeal export items in Section 9 if adopted)
 - [ ] Custom reports: build my own report and save it for future use (added 2026-10-18). Staged per `docs/report_module_design.md`: saved list-report presets first, block composer later; project-shared; PDF + CSV/XLSX.
+- [ ] Report sections: select which parts of each issue/equipment/activity/task/etc. are included, reorder them, and include associated attachments/documents/files at their position in the stated order (added 2026-10-19; design in `docs/report_module_design.md`, lands with Phase 3).
 
 ---
 

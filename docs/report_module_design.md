@@ -135,6 +135,29 @@ Staged delivery:
 Output: PDF always; table blocks also export CSV/XLSX via `data/csv.ts` / `data/xlsx.ts`.
 DOCX is out of scope for custom reports (PDF/CSV/XLSX only).
 
+### Section selection, ordering, and inline attachments (added 2026-10-19)
+
+Three requirements that apply to the **built-in entity reports as well as** the custom composer:
+
+1. **Section selection per entity.** Every entity report (Issue, Equipment, Activity, Task, OPR,
+   …) lets the user pick which parts are included. Equipment/Activity already have include
+   toggles; this becomes a standard capability of `ReportSettingsDialog` (Phase 3) with one
+   settings shape across entities.
+2. **Section ordering.** The included sections can be reordered, and the report renders in that
+   order. Settings therefore store an **ordered list of section keys**, not a bag of booleans —
+   `sections: [{ key, enabled }]` supersedes `include: Record<key, boolean>` (with a migration
+   that reads the old shape). The dialog gets drag-reorder. This is the same model the composer's
+   `blocks` array uses, so entity reports and custom reports share one renderer contract.
+3. **Attachments in stated order.** Associated attachments/documents/files are picked up and
+   included **at their position in the section order**, not only appended at the end: image
+   attachments render as pages at that position; PDF attachments are merged **into** the document
+   at that position (`core/merge.ts` grows insert-at-page-index alongside append); other file
+   types are listed by name. The same applies to an attachments block in the composer.
+
+Phasing: the ordered-sections settings shape and dialog land in **Phase 3** (it defines the
+settings standard anyway); ordered inline attachment merging lands with it in `core/merge.ts`.
+The composer (Phase 7) inherits all three for free via its `blocks` array.
+
 Settings persistence standard:
 - **Entity reports** (Activity, Equipment, OPR Workshop): stored on the record (Activity already
   does this via `settings.report`; Equipment has `reportSettings` on the model — use it).
@@ -161,9 +184,11 @@ Each phase ships independently; nothing breaks in between.
   consolidated table rendering onto it. (Done 2026-10-18 — EquipmentEdit and IssueEdit call the
   shared definitions; `core/table.ts` exists and the Issues List PDF renders on autotable; the
   equipment report's internal tables stay hand-drawn until its Phase 3/4 touch.)
-- **Phase 3 — shared cover/TOC/settings:** one `CoverSettings` shape + `ReportSettingsDialog`;
-  migrate Activity, OPR Workshop; re-implement the Tasks PDF text-based on the kit; unify
-  filenames/delivery via `deliver.ts`.
+- **Phase 3 — shared cover/TOC/settings:** one `CoverSettings` shape + `ReportSettingsDialog`
+  with per-section include toggles **and drag-reorder** (ordered `sections` list replaces the
+  `include` boolean bag; old shape migrated); attachments render inline at their position in the
+  section order (`core/merge.ts` insert-at-index); migrate Activity, OPR Workshop; re-implement
+  the Tasks PDF text-based on the kit; unify filenames/delivery via `deliver.ts`.
 - **Phase 4 — list reporting everywhere** (delivers feedback items #1 and #4): `ColumnChooser` +
   CSV/XLSX/List-PDF on Equipment, Activities (currently has no export at all), Tasks, Spaces,
   Systems, OPR Items lists. Equipment List gets its printable report here. Includes **custom
