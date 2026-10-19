@@ -3021,6 +3021,7 @@
   import type { OprAnswer, OprCategory, OprItem, OprQuestion, OprResult, OprResultsRow, OprWorkshopAttendee, OprWorkshopInfo } from '../../stores/opr'
   import { confirm } from '../../utils/confirm'
   import http from '../../utils/http'
+  import { deliverPdfBytes, reportFileName } from '../../reports/core/deliver'
 
 const TOOLTIP_CLASS = 'pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max opacity-0 scale-95 transform rounded-md bg-white/6 text-white/80 text-xs px-2 py-1 border border-white/10 transition-all duration-150 group-hover:opacity-100 group-focus-within:opacity-100 group-hover:scale-100 group-focus-within:scale-100'
 const TooltipWrap = defineComponent({
@@ -3257,23 +3258,7 @@ async function generateWorkshopReportPdf() {
       allResults,
     }, workshopReport.value as any)
 
-    const toSlug = (s: string) => String(s || 'opr-workshop')
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-      .slice(0, 64)
-    const date = String(opr.workshop?.date || new Date().toISOString().slice(0, 10))
-    const base = toSlug(opr.workshop?.name || 'opr-workshop') || 'opr-workshop'
-    const fname = `${base}-${date}.pdf`
-
-    const blob = new Blob([bytes], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fname
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(url), 60000)
+    deliverPdfBytes(bytes, reportFileName([opr.workshop?.name || 'opr-workshop']))
     showWorkshopReportDialog.value = false
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate workshop report')

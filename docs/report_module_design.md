@@ -189,10 +189,12 @@ Each phase ships independently; nothing breaks in between.
   `include` boolean bag; old shape migrated); attachments render inline at their position in the
   section order (`core/merge.ts` insert-at-index); migrate Activity, OPR Workshop; re-implement
   the Tasks PDF text-based on the kit; unify filenames/delivery via `deliver.ts`.
-  (Status 2026-10-19: core settings/cover/TOC/dialog shipped; Equipment, OPR Workshop and
+  (Done 2026-10-19: core settings/cover/TOC/dialog shipped; Equipment, OPR Workshop and
   Activity migrated — Activity renders in-document sections in order and merges the
-  page-granular sections + raw PDF attachments in the chosen order; its DOCX export keeps fixed
-  section order for now. Remaining: text-based Tasks PDF; OPR dialog still has its own UI.)
+  page-granular sections + raw PDF attachments in the chosen order; Tasks PDF re-implemented
+  text-based on the kit (frame + shared cover + autotable table; only the analytics charts are
+  still captured as an image); delivery unified on deliver.ts. Carve-outs: the Activity DOCX
+  export keeps fixed section order; the OPR dialog keeps its own tabbed UI.)
 - **Phase 4 — list reporting everywhere** (delivers feedback items #1 and #4): `ColumnChooser` +
   CSV/XLSX/List-PDF on Equipment, Activities (currently has no export at all), Tasks, Spaces,
   Systems, OPR Items lists. Equipment List gets its printable report here. Includes **custom

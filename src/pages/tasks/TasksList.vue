@@ -1910,7 +1910,7 @@
 
             <div
               v-if="tasksReport.include.analytics"
-              class="mt-6"
+              class="mt-6 tasks-report-analytics"
             >
               <div class="rounded-lg border border-black/10 p-3">
                 <TasksListCharts
@@ -2098,10 +2098,14 @@ import TasksListCharts from '../../components/charts/TasksListCharts.vue'
 // the sass dep. A postinstall script (scripts/patch-frappe-gantt.cjs) fixes
 // the deprecated `darken()` calls in that SCSS for modern Sass compatibility.
 import Gantt from 'frappe-gantt'
-import { jsPDF } from 'jspdf'
 import { ensureWebReportFontLoaded, REPORT_FONT_STACK } from '../../utils/reportTypography'
 import html2canvas from 'html2canvas'
 ;(window).html2canvas = (window).html2canvas || html2canvas
+import { ReportDoc } from '../../reports/core/frame'
+import { drawCoverPage } from '../../reports/core/cover'
+import { drawTable } from '../../reports/core/table'
+import { deliverPdf, reportFileName } from '../../reports/core/deliver'
+import { SANS } from '../../reports/core/tokens'
 
 const projectStore = useProjectStore()
 const ui = useUiStore()
@@ -2775,62 +2779,138 @@ function reportValue(key, t) {
   }
 }
 
+// Tasks PDF on the shared report kit (Phase 3): real selectable text for the
+// summary and task table instead of html2canvas page screenshots. Charts are
+// the one thing that can't be text — when analytics is on, the hidden report
+// renders briefly and ONLY the charts block is captured as an image.
 async function downloadTasksPdf() {
   if (downloadingTasksPdf.value) return
   downloadingTasksPdf.value = true
   loadTasksReportSettings()
   try {
-    await prepareReportLogos()
-    if (tasksReport.value.include.analytics && projectStore.currentProjectId) {
-      // Ensure analytics is loaded for charts.
-      if (!tasksAnalytics.value && !tasksAnalyticsLoading.value) await fetchTasksAnalytics(projectStore.currentProjectId)
+    const inc = tasksReport.value.include || {}
+
+    let analyticsImg = null
+    if (inc.analytics) {
+      if (projectStore.currentProjectId && !tasksAnalytics.value && !tasksAnalyticsLoading.value) {
+        await fetchTasksAnalytics(projectStore.currentProjectId)
+      }
+      await prepareReportLogos()
+      renderTasksReport.value = true
+      await nextTick()
+      // Allow charts to render.
+      await new Promise(resolve => setTimeout(resolve, 600))
+      const root = tasksReportRoot.value
+      const el = root ? root.querySelector('.tasks-report-analytics') : null
+      if (el) {
+        try {
+          await ensureWebReportFontLoaded()
+          const canvas = await html2canvas(el, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: true,
+            onclone: (clonedDoc) => {
+              try { clonedDoc.body.style.fontFamily = REPORT_FONT_STACK } catch (e) { /* ignore */ }
+            },
+          })
+          analyticsImg = { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height }
+        } catch (e) { /* charts omitted if capture fails */ }
+      }
+      renderTasksReport.value = false
     }
 
-    renderTasksReport.value = true
-    await nextTick()
-    // Allow charts to render.
-    await new Promise(resolve => setTimeout(resolve, 600))
+    const rd = await ReportDoc.create({
+      title: reportTitleResolved.value || 'Tasks Report',
+      footerLabel: 'Tasks Report',
+      project: projectStore.currentProject || {},
+    })
+    const doc = rd.doc
 
-    const root = tasksReportRoot.value
-    if (!root) throw new Error('Report container not available')
-    const pages = Array.from(root.querySelectorAll('.tasks-report-page'))
-    if (!pages.length) throw new Error('No report pages to export')
-
-    const doc = new jsPDF({ unit: 'pt', format: 'letter', compress: true })
-    const pageW = doc.internal.pageSize.getWidth()
-    const pageH = doc.internal.pageSize.getHeight()
-
-    // Render the captured pages in IBM Plex Sans like every other report.
-    await ensureWebReportFontLoaded()
-
-    for (let i = 0; i < pages.length; i += 1) {
-      const el = pages[i]
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: true,
-        onclone: (clonedDoc) => {
-          try { clonedDoc.body.style.fontFamily = REPORT_FONT_STACK } catch (e) { /* ignore */ }
-        },
+    // Cover page: drawn over page 1 (it paints its own background); content
+    // continues on a fresh page.
+    if (inc.coverPage) {
+      doc.setPage(1)
+      await drawCoverPage(doc, { margin: rd.margin, pageWidth: rd.pageWidth, pageHeight: rd.pageHeight }, {
+        title: reportTitleResolved.value || 'Tasks Report',
+        subtitle: coverSubtitleResolved.value || projectNameResolved.value,
+        byLine: String(tasksReport.value.coverByLine || ''),
+        imageDataUrl: String(tasksReport.value.coverJumbotronDataUrl || ''),
       })
-      const imgData = canvas.toDataURL('image/png')
-      if (i > 0) doc.addPage('letter', 'portrait')
-      doc.addImage(imgData, 'PNG', 0, 0, pageW, pageH)
+      rd.newPage()
     }
 
-    const safeName = projectNameResolved.value.replace(/[^a-z0-9\-_]+/gi, '-').replace(/-+/g, '-').replace(/(^-|-$)/g, '')
-    const stamp = (() => {
-      try {
-        const d = new Date()
-        const y = d.getFullYear()
-        const m = String(d.getMonth() + 1).padStart(2, '0')
-        const day = String(d.getDate()).padStart(2, '0')
-        return `${y}${m}${day}`
-      } catch (e) { return '' }
-    })()
-    const filename = `tasks-report${safeName ? `-${safeName}` : ''}${stamp ? `-${stamp}` : ''}.pdf`
-    doc.save(filename)
+    // Summary (text, not tiles)
+    if (inc.summary) {
+      doc.setFont(SANS, 'bold'); doc.setFontSize(13)
+      rd.ensureSpace(12)
+      doc.text('Summary', rd.margin, rd.y)
+      rd.y += 7
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9.5)
+      const summary = [
+        ['Total tasks', String(reportTotalTasks.value)],
+        ['Completed', String(reportCompletedTasks.value)],
+        ['Overall completion', `${reportCompletionPercent.value}%`],
+      ]
+      for (const [label, value] of summary) {
+        rd.ensureSpace(6)
+        doc.setTextColor(100)
+        doc.text(`${label}:`, rd.margin, rd.y)
+        doc.setTextColor(0)
+        doc.text(value, rd.margin + 40, rd.y)
+        rd.y += 6
+      }
+      rd.y += 2
+    }
+
+    // Analytics charts (image capture)
+    if (analyticsImg && analyticsImg.dataUrl) {
+      rd.sectionGap()
+      const maxW = rd.contentWidth
+      const maxH = rd.bottomLimit - rd.headerBottomY - 10
+      const ratio = (analyticsImg.height > 0 && analyticsImg.width > 0) ? (analyticsImg.height / analyticsImg.width) : 0.6
+      let w = maxW
+      let h = w * ratio
+      if (h > maxH) { h = maxH; w = h / ratio }
+      rd.ensureSpace(h + 8)
+      try { doc.addImage(analyticsImg.dataUrl, 'PNG', rd.margin + (maxW - w) / 2, rd.y, w, h) } catch (e) { /* ignore */ }
+      rd.y += h + 2
+      doc.setFontSize(8)
+      doc.setTextColor(120)
+      rd.ensureSpace(5)
+      doc.text('Notes: Charts are project-wide analytics.', rd.margin, rd.y)
+      doc.setTextColor(0)
+      rd.y += 5
+    }
+
+    // Task table (real text on the shared table renderer), with the totals
+    // row appended last. The name column keeps WBS indentation via spacing.
+    if (inc.table) {
+      rd.sectionGap()
+      const cols = reportSelectedColumns.value || []
+      if (cols.length) {
+        const TOTALS = { __totals: true }
+        const rows = [...(reportTasksBase.value || []), TOTALS]
+        drawTable(rd, {
+          columns: cols.map(c => ({
+            key: c.key,
+            label: c.label,
+            weight: c.key === 'name' ? 2.4 : (c.key === 'wbs' || c.key === 'percentComplete' || c.key === 'duration' ? 0.7 : 1),
+          })),
+          rows,
+          cellText: (row, key) => {
+            if (row && row.__totals) return key === 'name' ? 'Totals' : String(reportTotalsValue(key) || '')
+            if (key === 'name') {
+              const depth = Math.min(6, wbsDepth(row && row.wbs))
+              return `${'    '.repeat(depth)}${reportValue(key, row)}`
+            }
+            return String(reportValue(key, row) || '')
+          },
+        })
+      }
+    }
+
+    deliverPdf(rd.finish(), reportFileName(['tasks-report', projectNameResolved.value]))
     try { ui.showInfo('PDF downloaded') } catch (e) { /* ignore */ }
   } catch (e) {
     console.error('downloadTasksPdf error', e)
