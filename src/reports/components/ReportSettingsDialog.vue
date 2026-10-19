@@ -137,7 +137,7 @@ function save() {
             </label>
             <button
               type="button"
-              class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-xs disabled:opacity-30"
+              class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white disabled:opacity-30"
               :disabled="i === 0"
               title="Move up"
               @click="move(i, -1)"
@@ -146,7 +146,7 @@ function save() {
             </button>
             <button
               type="button"
-              class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-xs disabled:opacity-30"
+              class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white disabled:opacity-30"
               :disabled="i === draft.sections.length - 1"
               title="Move down"
               @click="move(i, 1)"
@@ -230,7 +230,7 @@ function save() {
             <button
               v-if="draft.cover.imageDataUrl"
               type="button"
-              class="px-2 py-1 rounded bg-white/10 border border-white/15 text-xs"
+              class="px-2 py-1 rounded bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white"
               @click="draft.cover.imageDataUrl = ''"
             >
               Clear image
@@ -242,20 +242,20 @@ function save() {
     <template #footer>
       <div class="flex items-center justify-between w-full">
         <button
-          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+          class="px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 hover:text-white"
           @click="reset"
         >
           Reset
         </button>
         <div class="flex items-center gap-2">
           <button
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 hover:text-white"
             @click="open = false"
           >
             Close
           </button>
           <button
-            class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
+            class="px-3 py-2 rounded-md bg-white/20 border border-white/30 text-white hover:bg-white/30"
             @click="save"
           >
             Save
