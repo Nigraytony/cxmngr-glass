@@ -2419,225 +2419,16 @@
     </Modal>
 
     <!-- Activity Report Settings Modal -->
-    <Modal
-      :model-value="showActivityReportDialog"
-      @update:model-value="showActivityReportDialog = $event"
-    >
-      <template #header>
-        <div class="flex items-center justify-between w-full">
-          <div class="text-lg">
-            Activity Report Settings
-          </div>
-        </div>
-      </template>
-      <div class="space-y-4 text-sm">
-        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm"
-            :class="reportSettingsTab === 'general' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
-            @click="reportSettingsTab = 'general'"
-          >
-            General Settings
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded-md border text-sm"
-            :class="reportSettingsTab === 'cover' ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-white/70 hover:text-white hover:bg-white/5'"
-            @click="reportSettingsTab = 'cover'"
-          >
-            Cover Page
-          </button>
-        </div>
-
-        <div
-          v-if="reportSettingsTab === 'general'"
-          class="space-y-4"
-        >
-          <div class="grid grid-cols-2 gap-3">
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.coverPage"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Cover Page</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.toc"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Table of Contents</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.info"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Info</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.description"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Description</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.photos"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Photos</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.actions"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Actions</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.issues"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Issues</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.attachments"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Attachments</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.equipmentList"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Equipment List</span>
-            </label>
-            <label class="inline-flex items-center gap-2">
-              <input
-                v-model="activityReport.include.equipmentReports"
-                type="checkbox"
-                class="rounded"
-              >
-              <span class="text-gray-300">Append Equipment Reports</span>
-            </label>
-          </div>
-          <div class="grid grid-cols-2 gap-3 items-center">
-            <label class="text-white/80">Photo limit</label>
-            <input
-              v-model.number="activityReport.photoLimit"
-              type="number"
-              min="0"
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 w-28"
-            >
-          </div>
-        </div>
-
-        <div
-          v-else
-          class="space-y-4"
-        >
-          <div class="grid grid-cols-1 gap-3">
-            <div>
-              <label class="block text-white/80 mb-1">Cover title</label>
-              <input
-                v-model="activityReport.coverTitle"
-                type="text"
-                placeholder="Activity Report"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
-              >
-            </div>
-            <div>
-              <label class="block text-white/80 mb-1">Cover subtitle</label>
-              <input
-                v-model="activityReport.coverSubtitle"
-                type="text"
-                placeholder="Activity Name"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
-              >
-            </div>
-            <div>
-              <label class="block text-white/80 mb-1">By line (optional)</label>
-              <input
-                v-model="activityReport.coverByLine"
-                type="text"
-                placeholder="By: John Doe, PE (JDE Inc.)"
-                class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 placeholder-white/40"
-              >
-              <div class="text-xs text-white/60 mt-1">
-                Printed below the Location field on the cover page.
-              </div>
-            </div>
-            <div>
-              <label class="block text-white/80 mb-1">Jumbotron photo (optional)</label>
-              <div class="flex items-center gap-3">
-                <input
-                  type="file"
-                  accept="image/*"
-                  class="block w-full text-white/80 text-sm"
-                  @change="onCoverJumbotronSelected"
-                >
-                <button
-                  v-if="activityReport.coverJumbotronDataUrl"
-                  type="button"
-                  class="px-3 py-2 rounded-md bg-red-500/20 border border-red-500/30 text-red-100 hover:bg-red-500/30 text-sm"
-                  @click="clearCoverJumbotron"
-                >
-                  Remove
-                </button>
-              </div>
-              <div
-                v-if="activityReport.coverJumbotronDataUrl"
-                class="mt-3"
-              >
-                <img
-                  :src="activityReport.coverJumbotronDataUrl"
-                  class="max-h-40 w-full object-contain rounded-md border border-white/10 bg-black/10"
-                >
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex items-center justify-between w-full">
-          <button
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-            @click="resetActivityReportSettings"
-          >
-            Reset
-          </button>
-          <div class="flex items-center gap-2">
-            <button
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-              @click="showActivityReportDialog = false"
-            >
-              Cancel
-            </button>
-            <button
-              class="px-3 py-2 rounded-md bg-indigo-500/20 border border-indigo-400/60 text-indigo-100 hover:bg-indigo-500/35"
-              @click="saveActivityReportSettings"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </template>
-    </Modal>
+    <ReportSettingsDialog
+      v-model="showActivityReportDialog"
+      title="Activity Report Settings"
+      :settings="activityReport"
+      :section-defs="ACTIVITY_REPORT_SECTIONS"
+      :defaults="ACTIVITY_REPORT_DEFAULTS"
+      show-cover
+      show-toc
+      @save="saveActivityReportSettings"
+    />
   </div>
 </template>
 
@@ -2670,6 +2461,9 @@ import { confirm as inlineConfirm } from '../../utils/confirm'
 import IssuesTable from '../../components/IssuesTable.vue'
 import IssueForm from '../../components/IssueForm.vue'
 import { generateActivityDocxBlob, type ActivityDocxData } from '../../utils/activityReportDocx'
+import ReportSettingsDialog from '../../reports/components/ReportSettingsDialog.vue'
+import { defaultReportSettings, enabledSectionKeys, normalizeReportSettings, sectionEnabled, type ReportSettings, type SectionDef } from '../../reports/core/settings'
+import { deliverPdfBytes } from '../../reports/core/deliver'
 import { useIssuesStore } from '../../stores/issues'
 import { useActionsStore } from '../../stores/actions'
 import { useTemplatesStore } from '../../stores/templates'
@@ -2753,58 +2547,51 @@ const pendingCreatedId = ref<string | null>(null)
 // -----------------------------
 // Activity Report Settings
 // -----------------------------
-interface ActivityReportSettings {
-  include: {
-    coverPage: boolean
-    toc: boolean
-    info: boolean
-    description: boolean
-    photos: boolean
-    actions: boolean
-    issues: boolean
-    attachments: boolean
-    equipmentList: boolean
-    equipmentReports: boolean
-  }
-  photoLimit: number
-  coverTitle: string
-  coverSubtitle: string
-  coverByLine: string
-  coverJumbotronDataUrl: string
-}
-const activityReport = ref<ActivityReportSettings>({
-  include: { coverPage: false, toc: false, info: true, description: true, photos: true, actions: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
-  photoLimit: 6,
-  coverTitle: 'Activity Report',
-  coverSubtitle: '',
-  coverByLine: '',
-  coverJumbotronDataUrl: '',
-})
+// Activity report settings: the shared ordered-sections ReportSettings shape
+// (Phase 3), persisted on the activity record at settings.report. A legacy
+// include-bag + flat cover fields payload is migrated on load.
+const ACTIVITY_REPORT_SECTIONS: SectionDef[] = [
+  { key: 'info', label: 'Info' },
+  { key: 'description', label: 'Description' },
+  { key: 'photos', label: 'Photos' },
+  { key: 'equipmentList', label: 'Equipment List' },
+  { key: 'actions', label: 'Actions' },
+  { key: 'issues', label: 'Issues' },
+  { key: 'equipmentReports', label: 'Equipment Reports' },
+  { key: 'attachments', label: 'Attachments' },
+]
+const ACTIVITY_REPORT_DEFAULTS = { toc: false, cover: { title: 'Activity Report' } }
+const activityReport = ref<ReportSettings>(defaultReportSettings(ACTIVITY_REPORT_SECTIONS, ACTIVITY_REPORT_DEFAULTS))
 const showActivityReportDialog = ref(false)
-const reportSettingsTab = ref<'general' | 'cover'>('general')
 function openReportSettings() {
-  reportSettingsTab.value = 'general'
   showActivityReportDialog.value = true
 }
+const reportHas = (key: string) => sectionEnabled(activityReport.value, key)
+
 function loadActivityReportSettingsFromActivitySettings() {
   try {
     const settings = (form as any).settings
     const persisted = settings && typeof settings === 'object' ? (settings as any).report : null
     if (!persisted || typeof persisted !== 'object') return false
-    activityReport.value = {
-      include: { ...activityReport.value.include, ...(persisted.include || {}) },
-      photoLimit: Math.max(0, Number(persisted.photoLimit ?? activityReport.value.photoLimit)),
-      coverTitle: typeof persisted.coverTitle === 'string' ? persisted.coverTitle : activityReport.value.coverTitle,
-      coverSubtitle: typeof persisted.coverSubtitle === 'string' ? persisted.coverSubtitle : activityReport.value.coverSubtitle,
-      coverByLine: typeof persisted.coverByLine === 'string' ? persisted.coverByLine : activityReport.value.coverByLine,
-      coverJumbotronDataUrl: typeof persisted.coverJumbotronDataUrl === 'string' ? persisted.coverJumbotronDataUrl : activityReport.value.coverJumbotronDataUrl,
+    const raw = Array.isArray(persisted.sections) ? persisted : {
+      ...persisted,
+      cover: {
+        enabled: !!persisted?.include?.coverPage,
+        title: typeof persisted.coverTitle === 'string' ? persisted.coverTitle : 'Activity Report',
+        subtitle: typeof persisted.coverSubtitle === 'string' ? persisted.coverSubtitle : '',
+        byLine: typeof persisted.coverByLine === 'string' ? persisted.coverByLine : '',
+        imageDataUrl: typeof persisted.coverJumbotronDataUrl === 'string' ? persisted.coverJumbotronDataUrl : '',
+      },
+      toc: !!persisted?.include?.toc,
     }
+    activityReport.value = normalizeReportSettings(raw, ACTIVITY_REPORT_SECTIONS, ACTIVITY_REPORT_DEFAULTS)
     return true
   } catch (_) {
     return false
   }
 }
-async function saveActivityReportSettings() {
+async function saveActivityReportSettings(next?: ReportSettings) {
+  if (next) activityReport.value = next
   // Persist to the activity record — the per-activity source of truth.
   // (No sessionStorage: a shared key leaked these settings across activities.)
   try {
@@ -2820,38 +2607,6 @@ async function saveActivityReportSettings() {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to save report settings')
   }
   showActivityReportDialog.value = false
-}
-function resetActivityReportSettings() {
-  activityReport.value = {
-    include: { coverPage: false, toc: false, info: true, description: true, photos: true, actions: true, issues: true, attachments: true, equipmentList: true, equipmentReports: true },
-    photoLimit: 6,
-    coverTitle: 'Activity Report',
-    coverSubtitle: '',
-    coverByLine: '',
-    coverJumbotronDataUrl: '',
-  }
-}
-
-async function onCoverJumbotronSelected(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input?.files?.[0]
-  if (!file) return
-  try {
-    const dataUrl: string = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result || ''))
-      reader.onerror = () => reject(new Error('Failed to read file'))
-      reader.readAsDataURL(file)
-    })
-    activityReport.value.coverJumbotronDataUrl = dataUrl
-  } catch (err: any) {
-    ui.showError(err?.message || 'Failed to load image')
-  } finally {
-    try { input.value = '' } catch (_) { /* ignore */ }
-  }
-}
-function clearCoverJumbotron() {
-  activityReport.value.coverJumbotronDataUrl = ''
 }
 
 const types = [
@@ -3584,7 +3339,7 @@ async function ensureReportData() {
   // has photos and the toggle is on. The dedicated /:id/photos endpoint
   // returns the full array and the store writes it back into current.
   try {
-    if (activityReport.value.include.photos && id.value && !isNew.value) {
+    if (reportHas('photos') && id.value && !isNew.value) {
       const cur = store.current as any
       const phs = (cur && Array.isArray(cur.photos)) ? cur.photos : []
       const hasData = phs.length > 0 && phs.some((p: any) => p && (p.data || p.url))
@@ -3985,11 +3740,12 @@ async function downloadActivityPdf() {
         return false
       }
       const sectionGap = (gap = 6) => { ensureSpace(gap); y += gap }
+      const orderedKeys = enabledSectionKeys(activityReport.value)
       // Do not include the standard report header on the cover page.
-      if (!activityReport.value.include.coverPage) drawHeader()
+      if (!activityReport.value.cover.enabled) drawHeader()
 
     // Optional cover + TOC pages (inserted before main content)
-    if (activityReport.value.include.coverPage) {
+    if (activityReport.value.cover.enabled) {
       // No header on the cover page.
       y = margin
       const projectName = String((projectStore.currentProject as any)?.name || '')
@@ -3997,10 +3753,10 @@ async function downloadActivityPdf() {
       const dateRange = [form.startDate, form.endDate].filter(Boolean).join(' – ')
 
       // Titles are fully user-controlled; if left blank, we omit them.
-      const coverTitle = String(activityReport.value.coverTitle || '').trim()
-      const coverSubtitle = String(activityReport.value.coverSubtitle || '').trim()
-      const coverByLine = String(activityReport.value.coverByLine || '').trim()
-        const coverJumboSrc = String(activityReport.value.coverJumbotronDataUrl || '').trim()
+      const coverTitle = String(activityReport.value.cover.title || '').trim()
+      const coverSubtitle = String(activityReport.value.cover.subtitle || '').trim()
+      const coverByLine = String(activityReport.value.cover.byLine || '').trim()
+        const coverJumboSrc = String(activityReport.value.cover.imageDataUrl || '').trim()
 
         // Start cover content just below logos.
         let coverY = y
@@ -4070,16 +3826,24 @@ async function downloadActivityPdf() {
         doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
       }
 
-      if (activityReport.value.include.toc) {
+      if (activityReport.value.toc) {
+        // TOC lists the enabled sections in the user's chosen order.
+        const tocLabels: Record<string, string> = {
+          info: 'Info',
+          description: 'Description',
+          photos: 'Photos',
+          equipmentList: 'Equipment List',
+          actions: 'Actions',
+          issues: 'Issues',
+          equipmentReports: 'Equipment Reports',
+          attachments: 'Attachments',
+        }
         const items: string[] = []
-        if (activityReport.value.include.info) items.push('Info')
-        if (activityReport.value.include.description) items.push('Description')
-        if (activityReport.value.include.photos) items.push('Photos')
-        if (activityReport.value.include.equipmentList && selectedEquip.value.length) items.push('Equipment List')
-        if (activityReport.value.include.actions) items.push('Actions')
-        if (activityReport.value.include.issues) items.push('Issues')
-        if (activityReport.value.include.equipmentReports && selectedEquip.value.length) items.push('Equipment Reports')
-        if (activityReport.value.include.attachments) items.push('Attachments')
+        for (const key of orderedKeys) {
+          if ((key === 'equipmentList' || key === 'equipmentReports') && !selectedEquip.value.length) continue
+          const label = tocLabels[key]
+          if (label) items.push(label)
+        }
 
         ensureSpace(14)
         setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
@@ -4111,8 +3875,12 @@ async function downloadActivityPdf() {
         doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
       }
 
+      // In-document section renderers (info/description/photos) — dispatched
+      // below in the user's chosen order. The page-granular sections
+      // (equipment list, actions, issues, equipment reports, attachments) are
+      // built as separate documents and merged in order after.
       // Info
-      if (activityReport.value.include.info) {
+      const renderInfoSection = async () => {
         setBodyFont(doc, 'bold'); doc.setFontSize(13); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
         markBodyContent()
         const projectName = String((projectStore.currentProject as any)?.name || '')
@@ -4144,7 +3912,8 @@ async function downloadActivityPdf() {
         y += rows * 8 + 2
       }
     // Description (rich HTML rendering)
-    if (activityReport.value.include.description && form.descriptionHtml) {
+    const renderDescriptionSection = async () => {
+      if (!form.descriptionHtml) return
       // Render description content without the "Description" label
       const container = document.createElement('div')
       container.style.position = 'fixed'
@@ -4324,7 +4093,7 @@ async function downloadActivityPdf() {
         }
       }
       // Photos: Azure Blob (AzurePhotosPanel) + any legacy base64, capped.
-      if (activityReport.value.include.photos) {
+      const renderPhotosSection = async () => {
         const azure = await fetchActivityAzurePhotoDataUrls(activityReport.value.photoLimit)
         const legacy = (Array.isArray(current.value?.photos) ? current.value!.photos! : [])
           .map((p: any) => p?.data || p?.url).filter(Boolean)
@@ -4351,10 +4120,18 @@ async function downloadActivityPdf() {
           y += Math.ceil(imgs.length / 3) * (thumbH + 4) + 2
         }
       }
-      // (Actions are rendered as their own section placed AFTER the Equipment List —
-      //  built into actionsBytes below and merged in after the equipment pages.)
-      // We intentionally delay issues & attachments so equipment reports can appear before them.
-      // Close out the main activity doc (without attachments yet).
+      // Render the in-document sections in the chosen order.
+      const baseRenderers: Record<string, () => Promise<void>> = {
+        info: renderInfoSection,
+        description: renderDescriptionSection,
+        photos: renderPhotosSection,
+      }
+      for (const key of orderedKeys) {
+        const fn = baseRenderers[key]
+        if (fn) await fn()
+      }
+
+      // Close out the main activity doc; the page-granular sections are merged in next.
       // If the current page has only header/footer (no body content), it can be an accidental
       // trailing blank page created by a page-break. Drop it to avoid an empty separator page
       // before the Equipment List.
@@ -4370,7 +4147,7 @@ async function downloadActivityPdf() {
       let baseBytes = doc.output('arraybuffer') as ArrayBuffer
     // Build issues doc separately (table) if needed.
     let issuesBytes: ArrayBuffer | null = null
-    if (activityReport.value.include.issues) {
+    if (reportHas('issues')) {
       // Aggregate issues from the activity and from each selected equipment (deduped by id)
       const aggregated: any[] = []
       const seen = new Set<string>()
@@ -4579,7 +4356,7 @@ async function downloadActivityPdf() {
     // Build actions doc separately (paragraphed sections: heading + meta bullets +
     // notes + photos + linked-issues grid). Merged in AFTER the Equipment List.
     let actionsBytes: ArrayBuffer | null = null
-    if (activityReport.value.include.actions) {
+    if (reportHas('actions')) {
       const reportActions = await gatherReportActions({ withPhotos: true })
       if (reportActions.length) {
         const aDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(aDoc); setReportColor(aDoc, 'text')
@@ -4689,9 +4466,9 @@ async function downloadActivityPdf() {
     // Build attachments doc separately (list + image pages) if needed.
     // Attachments come from project documents (Attachments/Activity/<id>) plus any
     // legacy inline form.attachments.
-    const reportAttachments: any[] = activityReport.value.include.attachments ? await gatherReportAttachments() : []
+    const reportAttachments: any[] = reportHas('attachments') ? await gatherReportAttachments() : []
     let attachmentsBytes: ArrayBuffer | null = null
-    if (activityReport.value.include.attachments) {
+    if (reportHas('attachments')) {
       const atts: any[] = reportAttachments
       if (atts.length) {
         const attDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(attDoc); setReportColor(attDoc, 'text')
@@ -4713,13 +4490,13 @@ async function downloadActivityPdf() {
         attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
       }
     }
-    // Merge equipment list + issues + equipment detailed reports + attachments
-    if (activityReport.value.include.equipmentReports && selectedEquip.value.length) {
+    // Build each equipment's full report as its own document; all the
+    // page-granular sections are merged in the user's order below.
+    const equipmentReportsBytes: ArrayBuffer[] = []
+    if (reportHas('equipmentReports') && selectedEquip.value.length) {
       try {
-        const { PDFDocument } = await import('pdf-lib')
         // Freeze the current equipment order (matches Equipment tab order).
         const selectedEquipSnapshot = [...(selectedEquip.value || [])]
-        // Build a PDF map of issues and spaces for richer equipment reports
         // Build a comprehensive issuesMap including all issues referenced by equipment
         const issuesMap: Record<string, any> = {}
         // Add all project issues by id
@@ -4779,178 +4556,8 @@ async function downloadActivityPdf() {
         }
         // Try to resolve project (already loaded earlier for logos)
         const projectObj: any = projectStore.currentProject || {}
-        const merged = await PDFDocument.load(baseBytes)
 
-        // --- Add Equipment List section (before equipment reports) ---
-        // Only add if there is at least one equipment selected
-        if (activityReport.value.include.equipmentList && selectedEquipSnapshot.length) {
-          const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF;
-          const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text');
-          setZeroCharSpace(eqDoc);
-          setBodyFont(eqDoc, 'normal');
-          const eqPW = eqDoc.internal.pageSize.getWidth();
-          const eqPH = eqDoc.internal.pageSize.getHeight();
-          const eqMargin = 12;
-          const eqBottom = eqPH - 26;
-          let eqY = eqMargin;
-          let eqPageNo = 1;
-          const eqPageDate = pageDate;
-
-          const drawEqFooter = () => {
-            const footerY = eqPH - 10;
-            eqDoc.setDrawColor(180,180,180); eqDoc.line(eqMargin, footerY - 6, eqPW - eqMargin, footerY - 6);
-            try {
-              if ((footerLogo as any)?.dataUrl) {
-                const lh = 5.5;
-                let lw = 12;
-                if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) {
-                  lw = lh * ((footerLogo as any).width / (footerLogo as any).height);
-                }
-                const maxW = 14;
-                if (lw > maxW) lw = maxW;
-                eqDoc.addImage((footerLogo as any).dataUrl, (footerLogo as any).format || 'PNG', eqMargin, footerY - lh, lw, lh);
-                const brandX = eqMargin + lw + 2;
-                setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8);
-                eqDoc.text('cxma', brandX, footerY - 2);
-                const tw = typeof (eqDoc as any).getTextWidth === 'function' ? (eqDoc as any).getTextWidth('cxma') : 10;
-                eqDoc.text(`${form.name || 'Activity'} Equipment`, brandX + tw + 3, footerY - 2);
-              } else {
-                eqDoc.setFillColor(220,220,220); eqDoc.rect(eqMargin, footerY - 5.5, 8,5,'F'); setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8);
-                eqDoc.text('cxma', eqMargin + 10, footerY - 2);
-                eqDoc.text(`${form.name || 'Activity'} Equipment`, eqMargin + 24, footerY - 2);
-              }
-            } catch (e) { /* ignore */ }
-            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(8); eqDoc.text(String(eqPageNo), eqPW/2, footerY - 2, { align: 'center' });
-            try { if (typeof eqPageDate === 'string') eqDoc.text(eqPageDate, eqPW - eqMargin, footerY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
-          }
-
-          const drawEqHeader = () => {
-            const res = drawBrandedHeader(eqDoc, {
-              margin: eqMargin,
-              pageWidth: eqPW,
-              title: form.name || 'Activity',
-              leftLogo: clientImg,
-              rightLogo: cxaImg,
-              logoH: 12,
-              maxLogoW: 36,
-              titleFontSize: 20,
-              setTitleFont: () => setBodyFont(eqDoc, 'bold'),
-            })
-            eqY = res.nextY
-            // Section title
-            setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(13); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
-            setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(9.5)
-          }
-
-          // Table columns
-          const columns = [
-            { label: 'Tag', width: 24 },
-            { label: 'Title', width: 60 },
-            { label: 'Status', width: 44 },
-            { label: 'Manufacturer', width: 32 },
-            { label: 'Condition', width: 22 },
-          ];
-          const totalW = columns.reduce((sum, c) => sum + c.width, 0);
-          const tableX = eqMargin;
-
-          const drawTableHeader = () => {
-            eqDoc.setFillColor(240,240,240);
-            eqDoc.rect(tableX, eqY, totalW, 7, 'F');
-            setBodyFont(eqDoc, 'bold');
-            let colX = tableX;
-            for (const col of columns) {
-              eqDoc.text(col.label, colX + 2, eqY + 5);
-              colX += col.width;
-            }
-            eqY += 9;
-            setBodyFont(eqDoc, 'normal');
-          }
-
-          drawEqHeader();
-          drawTableHeader();
-
-          // Draw rows (dynamic height for wrapped cells)
-          const rowLineH = 5
-          const rowPadBottom = 3
-          let colX = tableX;
-          for (const eq of selectedEquipSnapshot) {
-            // attributes may be an array of {key, value} objects
-            let manufacturer = '—';
-            let condition = '—';
-            if (Array.isArray(eq.attributes)) {
-              for (const attr of eq.attributes) {
-                if (attr && typeof attr === 'object') {
-                  if (attr.key === 'Manufacturer' && attr.value) manufacturer = String(attr.value);
-                  if (attr.key === 'Condition' && attr.value) condition = String(attr.value);
-                }
-              }
-            } else if (eq.attributes && typeof eq.attributes === 'object') {
-              // fallback for object form
-              manufacturer = String(eq.attributes['Manufacturer'] || '—');
-              condition = String(eq.attributes['Condition'] || '—');
-            }
-            const rowVals = [
-              String(eq.tag || '—'),
-              String(eq.title || '—'),
-              String(eq.status || '—'),
-              manufacturer,
-              condition,
-            ];
-            const cellLines = rowVals.map((v, i) => {
-              try { return eqDoc.splitTextToSize(String(v || '—'), columns[i].width - 4) as string[] } catch (e) { return [String(v || '—')] }
-            })
-            const maxLines = cellLines.reduce((m, arr) => Math.max(m, Array.isArray(arr) ? arr.length : 1), 1)
-            const rowH = Math.max(8, maxLines * rowLineH + rowPadBottom)
-
-            if (eqY + rowH > eqBottom) {
-              drawEqFooter();
-              eqDoc.addPage();
-              eqPageNo++;
-              drawEqHeader();
-              drawTableHeader();
-            }
-            colX = tableX;
-            for (let i = 0; i < columns.length; i++) {
-              const x = colX + 2
-              const baseY = eqY + 5
-              const lines = cellLines[i] || ['—']
-              for (let k = 0; k < lines.length; k++) {
-                eqDoc.text(String(lines[k] || ''), x, baseY + k * rowLineH)
-              }
-              colX += columns[i].width;
-            }
-            eqY += rowH;
-          }
-          // Footer on last page
-          drawEqFooter();
-          // Merge equipment table pages into main PDF
-          const eqBytes = eqDoc.output('arraybuffer');
-          const eqPdf = await PDFDocument.load(eqBytes);
-          const eqPages = await merged.copyPages(eqPdf, eqPdf.getPageIndices());
-          eqPages.forEach((p: any) => merged.addPage(p));
-        }
-
-        // Merge actions after the Equipment List (and before Issues)
-        if (actionsBytes) {
-          try {
-            const actPdf = await PDFDocument.load(actionsBytes)
-            const actPages = await merged.copyPages(actPdf, actPdf.getPageIndices())
-            actPages.forEach((p:any) => merged.addPage(p))
-            actionsBytes = null
-          } catch (e) { /* ignore */ }
-        }
-
-        // Merge issues after Equipment List
-        if (issuesBytes) {
-          try {
-            const issuesPdf = await PDFDocument.load(issuesBytes)
-            const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
-            issuesPages.forEach((p:any) => merged.addPage(p))
-            issuesBytes = null
-          } catch (e) { /* ignore */ }
-        }
-
-        // Generate full equipment PDFs and merge (equipment reports)
+        // Generate full equipment PDFs (merged in order below)
         // Lazy-load generator only if needed (performance improvement)
         const { generateEquipmentPdf } = await import('../../utils/equipmentReport')
         for (const eq of selectedEquipSnapshot) {
@@ -4979,36 +4586,16 @@ async function downloadActivityPdf() {
               eqOpts = { include: { ...baseInclude, issues: true, signatures: true }, photoLimit }
             }
             const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, eqOpts)
-            const eqPdf = await PDFDocument.load(eqBytes)
-            const pages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
-            pages.forEach((p: any) => merged.addPage(p))
+            equipmentReportsBytes.push(eqBytes)
            } catch (e) { /* ignore */ }
         }
-
-        // Insert attachments pages (non-PDF) after equipment reports & issues & equipment table
-        if (attachmentsBytes) {
-          try {
-            const attPdf = await PDFDocument.load(attachmentsBytes)
-            const attPages = await merged.copyPages(attPdf, attPdf.getPageIndices())
-            attPages.forEach((p:any) => merged.addPage(p))
-          } catch (e) { /* ignore */ }
-        }
-        // Append PDF attachments last
-        if (activityReport.value.include.attachments) {
-          const atts: any[] = reportAttachments
-          const pdfAtts = atts.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
-          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf, attPdf.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch (e) { /* ignore */ } }
-        }
-        baseBytes = await merged.save()
-  } catch (e) { /* fallback keep baseBytes */ }
+  } catch (e) { /* fallback: no equipment reports */ }
     }
 
-    // If equipment reports are not requested, optionally insert Equipment List before Issues.
-    if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && activityReport.value.include.equipmentList && selectedEquip.value.length) {
+    // Build the Equipment List as its own document (merged in order below).
+    let equipmentListBytes: ArrayBuffer | null = null
+    if (reportHas('equipmentList') && selectedEquip.value.length) {
       try {
-        const { PDFDocument } = await import('pdf-lib')
-        const merged = await PDFDocument.load(baseBytes)
-
         const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF
         const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text')
         setZeroCharSpace(eqDoc)
@@ -5137,62 +4724,41 @@ async function downloadActivityPdf() {
         }
         drawEqFooter()
 
-        const eqBytes = eqDoc.output('arraybuffer') as ArrayBuffer
-        const eqPdf = await PDFDocument.load(eqBytes)
-        const eqPages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
-        eqPages.forEach((p: any) => merged.addPage(p))
-        baseBytes = await merged.save()
+        equipmentListBytes = eqDoc.output('arraybuffer') as ArrayBuffer
       } catch (e) { /* ignore */ }
     }
 
-    // Append actions after the Equipment List (and before Issues), when not already
-    // merged in the equipment-reports branch above.
-    if (actionsBytes) {
-      try {
-        const { PDFDocument } = await import('pdf-lib')
-        const merged = await PDFDocument.load(baseBytes)
-        const actPdf = await PDFDocument.load(actionsBytes)
-        const actPages = await merged.copyPages(actPdf, actPdf.getPageIndices())
-        actPages.forEach((p:any) => merged.addPage(p))
-        baseBytes = await merged.save()
-        actionsBytes = null
-      } catch (e) { /* keep baseBytes as-is */ }
-    }
-    // If equipment reports are not requested, merge issues after the main report.
-    if (issuesBytes) {
-      try {
-        const { PDFDocument } = await import('pdf-lib')
-        const merged = await PDFDocument.load(baseBytes)
-        const issuesPdf = await PDFDocument.load(issuesBytes)
-        const issuesPages = await merged.copyPages(issuesPdf, issuesPdf.getPageIndices())
-        issuesPages.forEach((p:any) => merged.addPage(p))
-        baseBytes = await merged.save()
-        issuesBytes = null
-      } catch (e) { /* keep baseBytes as-is */ }
-    }
-    // If no equipment reports requested, still append attachments
-    if (!(activityReport.value.include.equipmentReports && selectedEquip.value.length) && (attachmentsBytes)) {
-      try {
-        const { PDFDocument } = await import('pdf-lib')
-        const merged = await PDFDocument.load(baseBytes)
-        if (attachmentsBytes) {
-          const attPdf = await PDFDocument.load(attachmentsBytes)
-          const attPages = await merged.copyPages(attPdf, attPdf.getPageIndices())
-          attPages.forEach((p:any) => merged.addPage(p))
+    // Merge the page-granular sections after the base document, in the
+    // user's chosen order. Raw PDF attachments merge in at the attachments
+    // section's position (the stated order), not at the end.
+    try {
+      const { PDFDocument } = await import('pdf-lib')
+      const merged = await PDFDocument.load(baseBytes)
+      const appendBytes = async (bytes: ArrayBuffer | null) => {
+        if (!bytes) return
+        try {
+          const pdf = await PDFDocument.load(bytes)
+          const pages = await merged.copyPages(pdf, pdf.getPageIndices())
+          pages.forEach((p: any) => merged.addPage(p))
+        } catch (e) { /* skip unloadable block */ }
+      }
+      for (const key of orderedKeys) {
+        if (key === 'equipmentList') await appendBytes(equipmentListBytes)
+        else if (key === 'actions') await appendBytes(actionsBytes)
+        else if (key === 'issues') await appendBytes(issuesBytes)
+        else if (key === 'equipmentReports') {
+          for (const b of equipmentReportsBytes) await appendBytes(b)
+        } else if (key === 'attachments') {
+          await appendBytes(attachmentsBytes)
+          const pdfAtts = reportAttachments.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
+          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; await appendBytes(await res.arrayBuffer()) } catch (e) { /* ignore */ } }
         }
-        // Append PDF attachments
-        if (activityReport.value.include.attachments) {
-          const atts: any[] = reportAttachments
-          const pdfAtts = atts.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
-          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; const buf = await res.arrayBuffer(); const attPdf2 = await PDFDocument.load(buf); const pages = await merged.copyPages(attPdf2, attPdf2.getPageIndices()); pages.forEach((p:any)=> merged.addPage(p)) } catch (e) { /* ignore */ } }
-        }
-        baseBytes = await merged.save()
-  } catch (e) { /* ignore */ }
-    }
+      }
+      baseBytes = await merged.save()
+    } catch (e) { /* keep baseBytes as-is */ }
+
     // Download merged
-    const blob = new Blob([baseBytes], { type: 'application/pdf' })
-    const fname = buildActivityPdfFilename()
-      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fname; a.click(); setTimeout(()=>URL.revokeObjectURL(url), 60000)
+    deliverPdfBytes(baseBytes, buildActivityPdfFilename())
     }
   } catch (e:any) {
     ui.showError(e?.message || 'Failed to generate report')
@@ -5271,7 +4837,13 @@ async function downloadActivityDocx() {
   ui.showInfo('Generating Word document…', { duration: 10000 })
   try {
     await ensureReportData()
-    const inc = activityReport.value.include
+    // The DOCX builder consumes the legacy include-bag view of the settings.
+    // (Section ORDER in the DOCX stays fixed for now; PDF honors it.)
+    const inc = {
+      ...Object.fromEntries(activityReport.value.sections.map(s => [s.key, s.enabled])),
+      coverPage: activityReport.value.cover.enabled,
+      toc: activityReport.value.toc,
+    } as any
     const project: any = projectStore.currentProject || {}
 
     const client = await loadImage(project?.logo).catch(() => null)
@@ -5280,7 +4852,7 @@ async function downloadActivityDocx() {
     // Cover jumbotron image
     let jumbotron: any = null
     if (inc.coverPage) {
-      const j = String(activityReport.value.coverJumbotronDataUrl || '').trim()
+      const j = String(activityReport.value.cover.imageDataUrl || '').trim()
       if (j) jumbotron = await loadImage(j).catch(() => null)
     }
 
@@ -5587,9 +5159,9 @@ async function downloadActivityDocx() {
       projectName: String(project?.name || ''),
       descriptionHtml: inc.description ? (form.descriptionHtml || '') : '',
       cover: {
-        title: activityReport.value.coverTitle || '',
-        subtitle: activityReport.value.coverSubtitle || '',
-        byLine: activityReport.value.coverByLine || '',
+        title: activityReport.value.cover.title || '',
+        subtitle: activityReport.value.cover.subtitle || '',
+        byLine: activityReport.value.cover.byLine || '',
         jumbotron,
       },
       photos,
