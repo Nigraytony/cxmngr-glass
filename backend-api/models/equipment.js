@@ -57,6 +57,8 @@ const equipmentSchema = new mongoose.Schema({
     images: { type: String, required: false },
     // other attachments (documents) stored as external URLs or metadata
     attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    // Per-equipment report settings (ordered sections, photo limit, cover)
+    reportSettings: { type: mongoose.Schema.Types.Mixed, default: undefined },
     history: { type: String, required: false },
     labels: { type: String, required: false },
     // Free-form tags used for filtering/grouping (stored as array of strings)

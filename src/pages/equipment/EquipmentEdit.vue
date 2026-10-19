@@ -1473,99 +1473,13 @@
     </div>
     
     <!-- Report Settings Modal -->
-    <Modal v-model="showReportDialog">
-      <template #header>
-        <div class="flex items-center justify-between w-full">
-          <div class="text-lg">
-            Equipment Report Settings
-          </div>
-        </div>
-      </template>
-      <div class="space-y-4 text-white/90">
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.info"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Info</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.attributes"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Attributes</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.components"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Components</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.photos"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Photos</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.attachments"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Attachments</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.checklists"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Checklists</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.fpt"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Functional Tests</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.signatures"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Signatures</span></label>
-          <label class="inline-flex items-center gap-2"><input
-            v-model="report.include.issues"
-            type="checkbox"
-            class="accent-emerald-400"
-          > <span>Issues</span></label>
-        </div>
-        <div class="flex items-center gap-3">
-          <label class="text-white/70 text-sm">Max photos</label>
-          <input
-            v-model.number="report.photoLimit"
-            type="number"
-            min="0"
-            max="12"
-            class="w-24 px-2 py-1 rounded-md bg-white/10 border border-white/20"
-          >
-          <span class="text-xs text-white/60">Only the first {{ report.photoLimit }} will be included</span>
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex items-center justify-between w-full">
-          <button
-            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-            @click="resetReportSettings"
-          >
-            Reset
-          </button>
-          <div class="flex items-center gap-2">
-            <button
-              class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15"
-              @click="showReportDialog = false"
-            >
-              Close
-            </button>
-            <button
-              class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30"
-              @click="saveReportSettings"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </template>
-    </Modal>
+    <ReportSettingsDialog
+      v-model="showReportDialog"
+      title="Equipment Report Settings"
+      :settings="report"
+      :section-defs="EQUIPMENT_REPORT_SECTIONS"
+      @save="saveReportSettings"
+    />
 
     <!-- Photo Viewer Modal -->
     <Modal v-model="viewerOpen">
@@ -1886,8 +1800,10 @@ import { useAuthStore } from '../../stores/auth'
 import lists from '../../lists.js'
 import http from '../../utils/http'
 import { confirm as inlineConfirm } from '../../utils/confirm'
-import { generateEquipmentPdf } from '../../utils/equipmentReport'
+import { generateEquipmentPdf, EQUIPMENT_REPORT_SECTIONS } from '../../utils/equipmentReport'
 import { deliverPdfBytes, openDeliveryWindow, reportFileName } from '../../reports/core/deliver'
+import { defaultReportSettings, normalizeReportSettings, type ReportSettings } from '../../reports/core/settings'
+import ReportSettingsDialog from '../../reports/components/ReportSettingsDialog.vue'
 import { buildEquipmentLogDetails } from '../../utils/equipmentLogDiff'
 
 const route = useRoute()
@@ -3844,48 +3760,31 @@ function goBack() { router.push({ name: 'equipment' }) }
 onMounted(load)
 watch(() => route.params.id, load)
 
-// Report settings state (persisted for the session)
-const REPORT_SESSION_KEY = 'equipmentReportSettings'
+// Report settings: ordered sections (Phase 3), persisted on the equipment
+// record (reportSettings). A legacy sessionStorage include-bag is migrated
+// when the record has no saved settings yet.
+const LEGACY_REPORT_SESSION_KEY = 'equipmentReportSettings'
 const showReportDialog = ref(false)
-const report = ref<{ include: Record<string, boolean>; photoLimit: number }>({
-  include: {
-    info: true,
-    attributes: true,
-    components: true,
-    photos: true,
-    attachments: true,
-    checklists: true,
-    fpt: true,
-    signatures: false,
-    issues: true,
-  },
-  photoLimit: 6,
-})
-function loadReportSettingsFromSession() {
-  try {
-    const raw = sessionStorage.getItem(REPORT_SESSION_KEY)
-    if (!raw) return
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') {
-      report.value = {
-        include: { ...report.value.include, ...(parsed.include || {}) },
-        photoLimit: Math.max(0, Number(parsed.photoLimit ?? report.value.photoLimit)),
-      }
-    }
-  } catch (e) { /* ignore */ }
-}
-function saveReportSettings() {
-  try { sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(report.value)) } catch (e) { /* ignore sessionStorage write errors */ }
-  showReportDialog.value = false
-}
-function resetReportSettings() {
-  report.value = {
-    include: { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, signatures: false, issues: true },
-    photoLimit: 6,
+const report = ref<ReportSettings>(defaultReportSettings(EQUIPMENT_REPORT_SECTIONS))
+
+function hydrateReportSettings(source?: any) {
+  let raw = source
+  if (!raw) {
+    try { raw = JSON.parse(sessionStorage.getItem(LEGACY_REPORT_SESSION_KEY) || 'null') } catch (e) { raw = null }
   }
+  report.value = normalizeReportSettings(raw, EQUIPMENT_REPORT_SECTIONS)
 }
-onMounted(loadReportSettingsFromSession)
-watch(report, () => { try { sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(report.value)) } catch (e) { /* ignore sessionStorage write errors */ } }, { deep: true })
+watch(() => (form.value as any)?.reportSettings, (v) => hydrateReportSettings(v), { immediate: true })
+
+async function saveReportSettings(next: ReportSettings) {
+  report.value = next
+  const eid = String(form.value.id || (form.value as any)._id || id.value || '')
+  if (!eid) return
+  try {
+    await http.patch(`/api/equipment/${eid}`, { reportSettings: next, projectId: (form.value as any).projectId })
+    ;(form.value as any).reportSettings = next
+  } catch (e) { /* settings still apply locally for this session */ }
+}
 
 // Equipment PDF: shared definition from the report kit (utils/equipmentReport).
 async function downloadEquipmentPdf() {
@@ -3897,7 +3796,7 @@ async function downloadEquipmentPdf() {
     projectStore.currentProject || {},
     issuesById.value,
     (spacesStore as any).byId || {},
-    { include: report.value.include as any, photoLimit: report.value.photoLimit },
+    { sections: report.value.sections, photoLimit: report.value.photoLimit },
   )
   const fname = reportFileName([String((form.value as any).tag || (form.value as any).title || 'equipment'), 'report'])
   deliverPdfBytes(bytes, fname, dlWin)

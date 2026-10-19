@@ -4962,12 +4962,23 @@ async function downloadActivityPdf() {
             for (const iid of issueIds) await ensureIssueInMap(iid)
             // Attempt to reuse each equipment's own saved report settings if present on object
             const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
-            const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
-            // Ensure issues are included in each equipment report (user requirement)
-            const includeSettings = { ...baseInclude, issues: true, signatures: true }
             // Use equipment's own photoLimit if available, else fall back to activity photoLimit or 6
             const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
-            const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, { include: includeSettings, photoLimit })
+            let eqOpts: any
+            if (eqSettings && Array.isArray(eqSettings.sections) && eqSettings.sections.length) {
+              // New ordered shape; issues + signatures stay on in activity bundles (user requirement)
+              const sections = eqSettings.sections.map((s: any) => (
+                (s?.key === 'issues' || s?.key === 'signatures') ? { ...s, enabled: true } : { ...s }
+              ))
+              for (const must of ['issues', 'signatures']) {
+                if (!sections.some((s: any) => s?.key === must)) sections.push({ key: must, enabled: true })
+              }
+              eqOpts = { sections, photoLimit }
+            } else {
+              const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
+              eqOpts = { include: { ...baseInclude, issues: true, signatures: true }, photoLimit }
+            }
+            const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, eqOpts)
             const eqPdf = await PDFDocument.load(eqBytes)
             const pages = await merged.copyPages(eqPdf, eqPdf.getPageIndices())
             pages.forEach((p: any) => merged.addPage(p))

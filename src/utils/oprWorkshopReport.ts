@@ -1,11 +1,15 @@
 import { jsPDF } from 'jspdf'
 import { drawBrandedFooter, drawBrandedHeader } from '../reports/core/frame'
-import { fitImageToHeight, loadFirstAvailable, loadImage } from '../reports/core/images'
+import { loadFirstAvailable, loadImage } from '../reports/core/images'
 import { formatDate as fmtDate, htmlToText, normalizePdfText, splitText } from '../reports/core/text'
 import { ensureReportFonts } from '../reports/core/fonts'
 import { SANS, setColor as setReportColor } from '../reports/core/tokens'
+import { drawCoverPage } from '../reports/core/cover'
+import { drawToc, estimateTocPages, type TocEntry } from '../reports/core/toc'
+import { enabledSectionKeys, normalizeReportSettings, type ReportSettings, type SectionDef } from '../reports/core/settings'
 import type { OprAnswer, OprCategory, OprQuestion, OprResult, OprResultsRow, OprWorkshopAttendee, OprWorkshopInfo } from '../stores/opr'
 
+/** Legacy settings shape (pre-Phase 3); still accepted and migrated. */
 export type OprWorkshopReportSettings = {
   include: {
     coverPage: boolean
@@ -19,6 +23,32 @@ export type OprWorkshopReportSettings = {
   coverSubtitle: string
   coverByLine: string
   coverJumbotronDataUrl: string
+}
+
+/** The OPR Workshop report's sections, in default order. */
+export const OPR_WORKSHOP_REPORT_SECTIONS: SectionDef[] = [
+  { key: 'info', label: 'Workshop Info' },
+  { key: 'participants', label: 'Participants' },
+  { key: 'qa', label: 'Q&A' },
+  { key: 'results', label: 'Comprehensive Results' },
+]
+
+function toReportSettings(settings: OprWorkshopReportSettings | ReportSettings | any): ReportSettings {
+  if (settings && Array.isArray(settings.sections)) {
+    return normalizeReportSettings(settings, OPR_WORKSHOP_REPORT_SECTIONS)
+  }
+  const inc = settings?.include || {}
+  return normalizeReportSettings({
+    include: inc,
+    toc: !!inc.toc,
+    cover: {
+      enabled: !!inc.coverPage,
+      title: String(settings?.coverTitle || ''),
+      subtitle: String(settings?.coverSubtitle || ''),
+      byLine: String(settings?.coverByLine || ''),
+      imageDataUrl: String(settings?.coverJumbotronDataUrl || ''),
+    },
+  }, OPR_WORKSHOP_REPORT_SECTIONS)
 }
 
 export type OprWorkshopReportData = {
@@ -37,32 +67,11 @@ function safeTime(v?: string) {
   return t || ''
 }
 
-function deriveWorkshopTitle(data: OprWorkshopReportData, settings: OprWorkshopReportSettings) {
+function deriveWorkshopTitle(data: OprWorkshopReportData, coverTitle: string) {
   const name = normalizePdfText(data?.workshop?.name || '')
   if (name) return name
-  const title = normalizePdfText(settings.coverTitle || '')
+  const title = normalizePdfText(coverTitle || '')
   return title || 'OPR Workshop'
-}
-
-type TocEntry = { title: string; pageNo: number; indent: number }
-
-function estimateTocPages(doc: jsPDF, titles: Array<{ title: string; indent: number }>, opts: { margin: number; pageWidth: number; pageHeight: number }) {
-  // Conservative layout tuned to match drawBrandedHeader() nextY.
-  const startY = 44
-  const bottomLimit = opts.pageHeight - 26
-  const lineH = 6
-  const linesPerPage = Math.max(10, Math.floor((bottomLimit - startY) / lineH))
-  doc.setFont(SANS, 'normal')
-  doc.setFontSize(11)
-  const tocW = opts.pageWidth - opts.margin * 2 - 18
-  let lines = 2 // "Table of Contents" + spacing
-  for (const t of titles) {
-    const indentW = t.indent * 5
-    const entryW = Math.max(40, tocW - indentW)
-    const titleLines = splitText(doc, normalizePdfText(t.title), entryW)
-    lines += Math.max(1, titleLines.length)
-  }
-  return Math.max(1, Math.ceil(lines / linesPerPage))
 }
 
 function questionTag(index1: number) {
@@ -93,7 +102,9 @@ function sortAllResults(rows: OprResultsRow[]) {
   })
 }
 
-export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settings: OprWorkshopReportSettings): Promise<ArrayBuffer> {
+export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settings: OprWorkshopReportSettings | ReportSettings): Promise<ArrayBuffer> {
+  const s = toReportSettings(settings)
+  const orderedKeys = enabledSectionKeys(s)
   const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -101,27 +112,28 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
   const bottomLimit = pageHeight - 26
   const pageDate = new Date().toLocaleDateString()
 
-  const workshopTitle = deriveWorkshopTitle(data, settings)
+  const workshopTitle = deriveWorkshopTitle(data, s.cover.title)
   const leftLogo = await loadImage(data?.project?.logo)
   const rightLogo = await loadImage(data?.project?.commissioning_agent?.logo)
   const footerLogo = await loadFirstAvailable(['/brand/logo-2.png', '/brand/logo-2.svg', '/brand/logo.png', '/brand/logo.svg'])
 
   const tocSkeleton: Array<{ title: string; indent: number }> = []
-  if (settings.include.info) tocSkeleton.push({ title: 'Workshop Info', indent: 0 })
-  if (settings.include.participants) tocSkeleton.push({ title: 'Participants', indent: 0 })
-  if (settings.include.qa) {
-    tocSkeleton.push({ title: 'Q&A', indent: 0 })
-    const qs = Array.isArray(data.questions) ? data.questions : []
-    qs.forEach((q, idx) => {
-      const t = `${questionTag(idx + 1)} — ${normalizePdfText(q?.prompt || '')}`.trim()
-      tocSkeleton.push({ title: t, indent: 1 })
-    })
+  for (const key of orderedKeys) {
+    if (key === 'info') tocSkeleton.push({ title: 'Workshop Info', indent: 0 })
+    else if (key === 'participants') tocSkeleton.push({ title: 'Participants', indent: 0 })
+    else if (key === 'qa') {
+      tocSkeleton.push({ title: 'Q&A', indent: 0 })
+      const qs = Array.isArray(data.questions) ? data.questions : []
+      qs.forEach((q, idx) => {
+        const t = `${questionTag(idx + 1)} — ${normalizePdfText(q?.prompt || '')}`.trim()
+        tocSkeleton.push({ title: t, indent: 1 })
+      })
+    } else if (key === 'results') tocSkeleton.push({ title: 'Comprehensive Results', indent: 0 })
   }
-  if (settings.include.results) tocSkeleton.push({ title: 'Comprehensive Results', indent: 0 })
 
-  const tocPages = settings.include.toc ? estimateTocPages(doc, tocSkeleton, { margin, pageWidth, pageHeight }) : 0
-  const reservedPages = (settings.include.coverPage ? 1 : 0) + (settings.include.toc ? tocPages : 0)
-  const tocStartPage = settings.include.coverPage ? 2 : 1
+  const tocPages = s.toc ? estimateTocPages(doc, tocSkeleton, { margin, pageWidth, pageHeight }) : 0
+  const reservedPages = (s.cover.enabled ? 1 : 0) + (s.toc ? tocPages : 0)
+  const tocStartPage = s.cover.enabled ? 2 : 1
   const contentStartPage = reservedPages ? (reservedPages + 1) : 1
 
   // Create reserved pages up-front so TOC page numbers are correct.
@@ -188,8 +200,9 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
 
   drawHeader()
 
+  // Section renderers, dispatched in the user's chosen order below.
   // Workshop Info
-  if (settings.include.info) {
+  const renderInfoSection = () => {
     markToc('Workshop Info', 0)
     sectionTitle('Workshop Info')
     const w = data.workshop || null
@@ -231,7 +244,7 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
   }
 
   // Participants
-  if (settings.include.participants) {
+  const renderParticipantsSection = () => {
     markToc('Participants', 0)
     sectionTitle('Participants')
     const rows = sortAttendees(Array.isArray(data.attendees) ? data.attendees : [])
@@ -301,7 +314,7 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
   }
 
   // Q&A
-  if (settings.include.qa) {
+  const renderQaSection = () => {
     markToc('Q&A', 0)
     sectionTitle('Q&A')
     const catNameById: Record<string, string> = {}
@@ -437,7 +450,7 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
   }
 
   // Comprehensive Results
-  if (settings.include.results) {
+  const renderResultsSection = () => {
     markToc('Comprehensive Results', 0)
     sectionTitle('Comprehensive Results')
     const rows = sortAllResults(Array.isArray(data.allResults) ? data.allResults : [])
@@ -484,110 +497,43 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
     }
   }
 
-  // Cover page
-  if (settings.include.coverPage) {
+  // Render the enabled sections in the user's chosen order.
+  const renderersByKey: Record<string, () => void> = {
+    info: renderInfoSection,
+    participants: renderParticipantsSection,
+    qa: renderQaSection,
+    results: renderResultsSection,
+  }
+  for (const key of orderedKeys) renderersByKey[key]?.()
+
+  // Cover page (shared renderer)
+  if (s.cover.enabled) {
     doc.setPage(1)
-    doc.setFillColor(255, 255, 255)
-    doc.rect(0, 0, pageWidth, pageHeight, 'F')
-
-    // Logos (top row)
-    const logoH = 14
-    let logoRowH = 0
-    try {
-      if (leftLogo?.dataUrl) {
-        const dim = fitImageToHeight(leftLogo, logoH, 45, 38)
-        doc.addImage(leftLogo.dataUrl, leftLogo.format || 'PNG', margin, margin, dim.w, dim.h)
-        logoRowH = Math.max(logoRowH, dim.h)
-      }
-    } catch (e) { /* ignore */ }
-    try {
-      if (rightLogo?.dataUrl) {
-        const dim = fitImageToHeight(rightLogo, logoH, 45, 38)
-        doc.addImage(rightLogo.dataUrl, rightLogo.format || 'PNG', pageWidth - margin - dim.w, margin, dim.w, dim.h)
-        logoRowH = Math.max(logoRowH, dim.h)
-      }
-    } catch (e) { /* ignore */ }
-
-    let cy = margin + (logoRowH || logoH) + 16
-    setBold(); doc.setFontSize(26)
-    const cTitle = normalizePdfText(settings.coverTitle || 'OPR Workshop Report')
-    doc.text(splitText(doc, cTitle, pageWidth - margin * 2), pageWidth / 2, cy, { align: 'center' })
-    cy += 16
-
-    setNormal(); doc.setFontSize(14)
-    const subtitle = normalizePdfText(settings.coverSubtitle || '') || normalizePdfText(data?.project?.name || '')
-    if (subtitle) {
-      doc.text(splitText(doc, subtitle, pageWidth - margin * 2), pageWidth / 2, cy, { align: 'center' })
-      cy += 10
-    }
-
-    // Workshop summary
     const w = data.workshop || null
-    const summaryBits = [
+    const metaLine = [
       w?.name ? normalizePdfText(w.name) : '',
       w?.date ? fmtDate(w.date) : '',
       w?.location ? normalizePdfText(w.location) : '',
     ].filter(Boolean).join('  •  ')
-    if (summaryBits) {
-      doc.setFontSize(11)
-      doc.setTextColor(80)
-      doc.text(splitText(doc, summaryBits, pageWidth - margin * 2), pageWidth / 2, cy, { align: 'center' })
-      doc.setTextColor(0)
-      cy += 12
-    }
-
-    // Cover image
-    const coverImg = await loadImage(settings.coverJumbotronDataUrl || '')
-    if (coverImg?.dataUrl) {
-      try {
-        const maxW = pageWidth - margin * 2
-        const maxH = 120
-        const dim = fitImageToHeight(coverImg, maxH, maxW, maxW)
-        const x = (pageWidth - dim.w) / 2
-        const yImg = Math.min(pageHeight - 70 - dim.h, cy + 8)
-        doc.addImage(coverImg.dataUrl, coverImg.format || 'PNG', x, yImg, dim.w, dim.h)
-      } catch (e) { /* ignore */ }
-    }
-
-    // By line
-    const by = normalizePdfText(settings.coverByLine || '')
-    if (by) {
-      setNormal(); doc.setFontSize(12)
-      doc.text(by, pageWidth / 2, pageHeight - 40, { align: 'center' })
-    }
-  }
-
-  // Table of contents
-  if (settings.include.toc) {
-    let tocPageNo = tocStartPage
-    doc.setPage(tocPageNo)
-    drawBrandedHeader(doc, {
-      margin,
-      pageWidth,
-      title: workshopTitle,
+    await drawCoverPage(doc, { margin, pageWidth, pageHeight }, {
+      title: s.cover.title || 'OPR Workshop Report',
+      subtitle: s.cover.subtitle || normalizePdfText(data?.project?.name || ''),
+      metaLine,
+      byLine: s.cover.byLine,
+      imageDataUrl: s.cover.imageDataUrl,
       leftLogo,
       rightLogo,
-      logoH: 12,
-      maxLogoW: 36,
-      titleFontSize: 18,
-      setTitleFont: () => setBold(),
     })
-    let ty = 44
-    setBold(); doc.setFontSize(14)
-    doc.text('Table of Contents', margin, ty)
-    ty += 10
-    setNormal(); doc.setFontSize(11)
+  }
 
-    const tocW = pageWidth - margin * 2 - 18
-    const lineH = 6
-    for (const e of tocEntries) {
-      const indentX = e.indent * 5
-      const entryW = Math.max(40, tocW - indentX)
-      const lines = splitText(doc, normalizePdfText(e.title), entryW)
-      // Page break within TOC
-      if (ty + (lines.length * lineH) > bottomLimit) {
-        tocPageNo++
-        doc.setPage(tocPageNo)
+  // Table of contents (shared renderer) on the reserved pages
+  if (s.toc) {
+    drawToc(doc, tocEntries, {
+      margin,
+      pageWidth,
+      pageHeight,
+      startPage: tocStartPage,
+      drawPageHeader: () => {
         drawBrandedHeader(doc, {
           margin,
           pageWidth,
@@ -599,38 +545,8 @@ export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settin
           titleFontSize: 18,
           setTitleFont: () => setBold(),
         })
-        ty = 44
-        setBold(); doc.setFontSize(14); doc.text('Table of Contents (cont.)', margin, ty); ty += 10
-        setNormal(); doc.setFontSize(11)
-      }
-      // First line with page number on the right
-      doc.text(lines[0] || '', margin + indentX, ty)
-      doc.text(String(e.pageNo), pageWidth - margin, ty, { align: 'right' })
-      ty += lineH
-      // Continuation lines without page number
-      for (let i = 1; i < lines.length; i++) {
-        if (ty + lineH > bottomLimit) {
-          tocPageNo++
-          doc.setPage(tocPageNo)
-          drawBrandedHeader(doc, {
-            margin,
-            pageWidth,
-            title: workshopTitle,
-            leftLogo,
-            rightLogo,
-            logoH: 12,
-            maxLogoW: 36,
-            titleFontSize: 18,
-            setTitleFont: () => setBold(),
-          })
-          ty = 44
-          setBold(); doc.setFontSize(14); doc.text('Table of Contents (cont.)', margin, ty); ty += 10
-          setNormal(); doc.setFontSize(11)
-        }
-        doc.text(lines[i] || '', margin + indentX + 3, ty)
-        ty += lineH
-      }
-    }
+      },
+    })
   }
 
   // Draw footers last so they land under all content.

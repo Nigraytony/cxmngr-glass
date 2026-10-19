@@ -312,6 +312,7 @@ function pickEquipmentPayload(source) {
     'labels',
     'tags',
     'metadata',
+    'reportSettings',
   ]
   for (const k of allowed) {
     if (body[k] !== undefined) out[k] = body[k]

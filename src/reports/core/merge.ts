@@ -28,23 +28,30 @@ async function attachmentPdfBytes(a: any): Promise<ArrayBuffer | null> {
 }
 
 /**
- * Append each PDF attachment's pages to `baseBytes`. Non-PDF attachments are
- * ignored; fetch/parse failures skip that attachment. Returns the original
- * bytes when there is nothing to merge or merging fails entirely.
+ * Insert each PDF attachment's pages into `baseBytes` AFTER 1-based page
+ * `afterPage` (so the section order the user chose is honored). An
+ * `afterPage` at or past the end appends. Non-PDF attachments are ignored;
+ * fetch/parse failures skip that attachment. Returns the original bytes when
+ * there is nothing to merge or merging fails entirely.
  */
-export async function appendPdfAttachments(baseBytes: ArrayBuffer, attachments: any[]): Promise<ArrayBuffer> {
+export async function insertPdfAttachmentsAt(baseBytes: ArrayBuffer, attachments: any[], afterPage: number): Promise<ArrayBuffer> {
   try {
     const pdfAtts = (Array.isArray(attachments) ? attachments : []).filter(isPdfAttachment)
     if (!pdfAtts.length) return baseBytes
     const { PDFDocument } = await import('pdf-lib')
     const merged = await PDFDocument.load(baseBytes)
+    let at = Math.min(Math.max(0, Math.floor(afterPage)), merged.getPageCount())
     for (const a of pdfAtts) {
       try {
         const buf = await attachmentPdfBytes(a)
         if (!buf) continue
         const attPdf = await PDFDocument.load(buf)
         const pages = await merged.copyPages(attPdf, attPdf.getPageIndices())
-        pages.forEach((p: any) => merged.addPage(p))
+        for (const p of pages) {
+          if (at >= merged.getPageCount()) merged.addPage(p)
+          else merged.insertPage(at, p)
+          at++
+        }
       } catch (e) {
         /* skip unloadable attachment */
       }
@@ -54,4 +61,9 @@ export async function appendPdfAttachments(baseBytes: ArrayBuffer, attachments: 
   } catch (e) {
     return baseBytes
   }
+}
+
+/** Append each PDF attachment's pages at the end of `baseBytes`. */
+export async function appendPdfAttachments(baseBytes: ArrayBuffer, attachments: any[]): Promise<ArrayBuffer> {
+  return insertPdfAttachmentsAt(baseBytes, attachments, Number.MAX_SAFE_INTEGER)
 }
