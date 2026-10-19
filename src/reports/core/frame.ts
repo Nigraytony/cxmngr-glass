@@ -8,6 +8,21 @@ import { SANS, setColor } from './tokens'
 import { fitImageToHeight, loadFirstAvailable, loadImage, type LoadedImage } from './images'
 import { setZeroCharSpace } from './text'
 
+/**
+ * Logos must never render stretched: if the browser-side measurement in
+ * loadImage didn't yield intrinsic dimensions, fall back to jsPDF's own
+ * header parsing; an image we still can't measure is skipped entirely.
+ */
+function measuredLogo(doc: any, img?: LoadedImage): LoadedImage | null {
+  if (!img?.dataUrl) return null
+  if (img.width && img.height) return img
+  try {
+    const p = doc.getImageProperties(img.dataUrl)
+    if (p?.width && p?.height) return { ...img, width: p.width, height: p.height }
+  } catch (e) { /* ignore */ }
+  return null
+}
+
 export function drawBrandedHeader(
   doc: any,
   opts: {
@@ -27,17 +42,19 @@ export function drawBrandedHeader(
   let logoBlockH = 0
 
   try {
-    if (opts.leftLogo?.dataUrl) {
-      const dim = fitImageToHeight(opts.leftLogo, logoH, maxLogoW, maxLogoW)
-      doc.addImage(opts.leftLogo.dataUrl, opts.leftLogo.format || 'PNG', opts.margin, opts.margin, dim.w, dim.h)
+    const leftLogo = measuredLogo(doc, opts.leftLogo)
+    if (leftLogo?.dataUrl) {
+      const dim = fitImageToHeight(leftLogo, logoH, maxLogoW, maxLogoW)
+      doc.addImage(leftLogo.dataUrl, leftLogo.format || 'PNG', opts.margin, opts.margin, dim.w, dim.h)
       logoBlockH = Math.max(logoBlockH, dim.h)
     }
   } catch (e) { /* ignore */ }
 
   try {
-    if (opts.rightLogo?.dataUrl) {
-      const dim = fitImageToHeight(opts.rightLogo, logoH, maxLogoW, maxLogoW)
-      doc.addImage(opts.rightLogo.dataUrl, opts.rightLogo.format || 'PNG', opts.pageWidth - opts.margin - dim.w, opts.margin, dim.w, dim.h)
+    const rightLogo = measuredLogo(doc, opts.rightLogo)
+    if (rightLogo?.dataUrl) {
+      const dim = fitImageToHeight(rightLogo, logoH, maxLogoW, maxLogoW)
+      doc.addImage(rightLogo.dataUrl, rightLogo.format || 'PNG', opts.pageWidth - opts.margin - dim.w, opts.margin, dim.w, dim.h)
       logoBlockH = Math.max(logoBlockH, dim.h)
     }
   } catch (e) { /* ignore */ }
@@ -69,10 +86,11 @@ export function drawBrandedFooter(
   doc.line(opts.margin, footerY - 6, opts.pageWidth - opts.margin, footerY - 6)
 
   try {
-    if (opts.footerLogo?.dataUrl) {
+    const footerLogo = measuredLogo(doc, opts.footerLogo)
+    if (footerLogo?.dataUrl) {
       const lh = 5.5
-      const dim = fitImageToHeight(opts.footerLogo, lh, 14, 12)
-      doc.addImage(opts.footerLogo.dataUrl, opts.footerLogo.format || 'PNG', opts.margin, footerY - lh, dim.w, lh)
+      const dim = fitImageToHeight(footerLogo, lh, 14, 12)
+      doc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', opts.margin, footerY - dim.h, dim.w, dim.h)
       const brandX = opts.margin + dim.w + 2
       if (opts.setBold) opts.setBold()
       doc.setFontSize(8)
