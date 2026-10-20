@@ -576,10 +576,10 @@ function renderSection(section, sectionData) {
 
 function buildStyles() {
   return `
-    @page { size: letter; margin: 0.85in 0.7in 0.85in 0.7in; }
+    @page { size: letter; margin: 0.6in 0.7in 0.65in 0.7in; }
     @page :first { margin: 0; }
     /* Landscape named page for wide tabular sections (Issues Log). */
-    @page landscape { size: letter landscape; margin: 0.85in 0.7in 0.85in 0.7in; }
+    @page landscape { size: letter landscape; margin: 0.6in 0.7in 0.65in 0.7in; }
     .section-landscape { page: landscape; page-break-before: always; }
     * { box-sizing: border-box; }
     body {
@@ -641,7 +641,7 @@ function buildStyles() {
     .section-divider h1 { font-size: 24pt; color: #1e3a8a; text-align: center; border: none; }
 
     /* ----- TOC ----- */
-    .toc { page-break-after: always; padding-top: 0.2in; }
+    .toc { page-break-after: always; padding-top: 0.05in; }
     .toc-list { list-style: none; padding-left: 0; counter-reset: tocnum; }
     .toc-list li { padding: 0.35em 0; border-bottom: 1px dotted #cbd5e1; }
     .toc-list a { color: #1f2937; text-decoration: none; }
@@ -651,7 +651,7 @@ function buildStyles() {
     /* pageBreakBefore is honored per section (Phase 5); sections otherwise
        flow with a gap. Existing reports are migrated to break=true so their
        one-section-per-page look is preserved until the author changes it. */
-    .section { padding-top: 0.2in; margin-top: 0.4in; }
+    .section { padding-top: 0.05in; margin-top: 0.35in; }
     .section.break-before { page-break-before: always; margin-top: 0; }
     .section-title { border-bottom: 2px solid #1e3a8a; padding-bottom: 0.15em; margin-bottom: 0.6em; }
 
@@ -761,27 +761,30 @@ function buildStyles() {
  * Note: puppeteer renders headers/footers with a small default font and
  * doesn't inherit body styles, so we inline-style everything here.
  */
-function buildHeaderTemplate(projectName, projectNumber) {
-  return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#475569; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-    <span>${escapeHtml(projectName)}</span>
-    <span>${escapeHtml(projectNumber || '')}</span>
+/**
+ * Branded running header: client logo left, project name centered, CxA logo
+ * right — matching the module reports' header. Logos must be DATA URIS: the
+ * header renders in an isolated mini-document that cannot fetch URLs.
+ */
+function buildHeaderTemplate(projectName, logos = {}) {
+  const img = (uri, align) => (uri
+    ? `<img src="${uri}" style="height:0.26in; max-width:1.5in; object-fit:contain; object-position:${align};" />`
+    : '<span></span>')
+  return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#475569; display:flex; justify-content:space-between; align-items:center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+    <div style="width:1.6in; text-align:left;">${img(logos.leftLogoDataUri, 'left')}</div>
+    <span style="font-size:8pt;">${escapeHtml(projectName)}</span>
+    <div style="width:1.6in; text-align:right;">${img(logos.rightLogoDataUri, 'right')}</div>
   </div>`
 }
 
-function buildFooterTemplate(reportTitle, opts = {}) {
-  // NB: Chromium resets the header/footer font-size to 0 by default, and the text it
-  // injects into .pageNumber/.totalPages doesn't reliably inherit the parent size on
-  // every Chromium build — so set font-size explicitly on those spans too, or the
-  // page numbers render blank ("Page  of ").
-  // When the report is rendered in segments (documents merged at position),
-  // Chromium's per-render page numbers would restart per segment — omit them
-  // here and the PDF pipeline stamps continuous numbers post-merge instead.
-  const pageSpan = opts.omitPageNumbers
-    ? ''
-    : `<span style="font-size:8pt;">Page <span class="pageNumber" style="font-size:8pt;"></span> of <span class="totalPages" style="font-size:8pt;"></span></span>`
+function buildFooterTemplate(reportTitle) {
+  // Page numbers are NOT rendered here: Chromium's injected .pageNumber /
+  // .totalPages counters proved unreliable (rendered blank on some builds,
+  // and restart per render in the segmented documents path). The PDF
+  // pipeline stamps continuous "Page N of M" post-render via pdf-lib instead.
   return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#94a3b8; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
     <span style="font-size:8pt;"><span style="font-weight:600; color:#1e3a8a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
-    ${pageSpan}
+    <span></span>
   </div>`
 }
 

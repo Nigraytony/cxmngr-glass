@@ -66,15 +66,14 @@ async function renderHtmlToPdfBuffer(html, { headerHtml, footerHtml }) {
       printBackground: true,
       // Margins set in the body HTML's `@page` rules, but puppeteer
       // also needs explicit values for header/footer to slot in.
-      margin: { top: '0.85in', right: '0.7in', bottom: '0.85in', left: '0.7in' },
+      margin: { top: '0.6in', right: '0.7in', bottom: '0.65in', left: '0.7in' },
       displayHeaderFooter: true,
       headerTemplate: headerHtml || '<div></div>',
       footerTemplate: footerHtml || '<div></div>',
-      // Phase 5: navigable PDF — document outline (bookmarks) from the
-      // heading structure, tagged so the TOC's in-document anchors become
-      // working link annotations.
-      tagged: true,
-      outline: true,
+      // NOTE: no `tagged`/`outline` — the deployed Puppeteer doesn't support
+      // `outline`, and `tagged` broke Chromium's header/footer page-counter
+      // substitution. Page numbers are stamped post-render via pdf-lib; TOC
+      // anchors still become internal links in Chromium's PDF export.
       // Honor CSS @page sizes so the Issues Log's landscape named page works;
       // every other page keeps the letter-portrait default declared in CSS.
       preferCSSPageSize: true,
@@ -94,6 +93,48 @@ async function renderHtmlToPdfBuffer(html, { headerHtml, footerHtml }) {
     throw err
   } finally {
     try { if (browser) await browser.close() } catch (_) { /* ignore */ }
+  }
+}
+
+/**
+ * Resolve an image (URL or data URI) to a data URI for the Puppeteer header
+ * template, which renders in an isolated document that cannot fetch URLs.
+ * Returns '' on any failure — the header just omits the logo.
+ */
+async function fetchImageAsDataUri(src) {
+  try {
+    const s = String(src || '').trim()
+    if (!s) return ''
+    if (s.startsWith('data:')) return s
+    const res = await fetch(s)
+    if (!res.ok) return ''
+    const type = String(res.headers.get('content-type') || 'image/png').split(';')[0]
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.length > 2 * 1024 * 1024) return '' // keep header payload sane
+    return `data:${type};base64,${buf.toString('base64')}`
+  } catch (e) {
+    return ''
+  }
+}
+
+/**
+ * Stamp continuous "Page N of M" onto every page (bottom-right, inside the
+ * footer band). Chromium's injected counters proved unreliable and restart
+ * per render in the segmented path, so numbering is always done here.
+ * `skipFirstPage` keeps the full-bleed cover clean (mirrors the old
+ * behavior where @page :first { margin: 0 } suppressed the footer).
+ */
+async function stampPageNumbers(pdfLibDoc, { skipFirstPage = false } = {}) {
+  const { StandardFonts, rgb } = require('pdf-lib')
+  const font = await pdfLibDoc.embedFont(StandardFonts.Helvetica)
+  const total = pdfLibDoc.getPageCount()
+  for (let i = 0; i < total; i++) {
+    if (skipFirstPage && i === 0) continue
+    const page = pdfLibDoc.getPage(i)
+    const { width } = page.getSize()
+    const label = `Page ${i + 1} of ${total}`
+    const textWidth = font.widthOfTextAtSize(label, 8)
+    page.drawText(label, { x: width - 50.4 - textWidth, y: 22, size: 8, font, color: rgb(0.58, 0.64, 0.72) })
   }
 }
 
@@ -127,7 +168,7 @@ async function appendPdfBuffer(merged, buffer) {
  * the single-render path with bookmarks + Chromium numbering.
  */
 async function renderSegmentedPdf({ report, project, sectionData, headerHtml }) {
-  const { PDFDocument, StandardFonts, rgb } = require('pdf-lib')
+  const { PDFDocument } = require('pdf-lib')
   const byOrder = (a, b) => Number(a.order || 0) - Number(b.order || 0)
   const enabled = (Array.isArray(report.sections) ? [...report.sections] : [])
     .sort(byOrder)
@@ -145,7 +186,7 @@ async function renderSegmentedPdf({ report, project, sectionData, headerHtml }) 
   }
   if (current.length) segments.push({ sections: current, docsSection: null })
 
-  const footerHtml = buildFooterTemplate('Cx Final Report', { omitPageNumbers: true })
+  const footerHtml = buildFooterTemplate('Cx Final Report')
   const merged = await PDFDocument.create()
   const reportObj = report.toObject ? report.toObject() : report
 
@@ -175,15 +216,8 @@ async function renderSegmentedPdf({ report, project, sectionData, headerHtml }) 
   }
 
   // Continuous page numbers across report pages AND inserted documents.
-  const font = await merged.embedFont(StandardFonts.Helvetica)
-  const total = merged.getPageCount()
-  for (let i = 0; i < total; i++) {
-    const page = merged.getPage(i)
-    const { width } = page.getSize()
-    const label = `Page ${i + 1} of ${total}`
-    const textWidth = font.widthOfTextAtSize(label, 8)
-    page.drawText(label, { x: width - 50.4 - textWidth, y: 22, size: 8, font, color: rgb(0.58, 0.64, 0.72) })
-  }
+  const coverEnabled = !report.cover || report.cover.enabled !== false
+  await stampPageNumbers(merged, { skipFirstPage: coverEnabled })
   const out = await merged.save()
   return Buffer.from(out)
 }
@@ -250,18 +284,31 @@ async function generateFinalReportPdf(projectId, opts = {}) {
   }
 
   const sectionData = await fetchAllSectionData(report)
-  const headerHtml = buildHeaderTemplate(project.name || '', project.number || '')
+  // Branded running header: client logo left, CxA logo right (as data URIs —
+  // Puppeteer header templates cannot fetch URLs), project name centered.
+  const [leftLogoDataUri, rightLogoDataUri] = await Promise.all([
+    fetchImageAsDataUri(project.logo),
+    fetchImageAsDataUri(project.commissioning_agent && project.commissioning_agent.logo),
+  ])
+  const headerHtml = buildHeaderTemplate(project.name || '', { leftLogoDataUri, rightLogoDataUri })
 
   const hasDocumentsSections = (report.sections || []).some(
     (s) => s.enabled !== false && s.type === 'data' && s.dataSource === 'documents',
   )
+  const coverEnabled = !report.cover || report.cover.enabled !== false
   let buffer
   if (hasDocumentsSections) {
     buffer = await renderSegmentedPdf({ report, project, sectionData, headerHtml })
   } else {
     const html = buildReportHtml({ report: report.toObject ? report.toObject() : report, project, sectionData })
     const footerHtml = buildFooterTemplate('Cx Final Report')
-    buffer = await renderHtmlToPdfBuffer(html, { headerHtml, footerHtml })
+    const rendered = await renderHtmlToPdfBuffer(html, { headerHtml, footerHtml })
+    // Stamp page numbers post-render (Chromium's injected counters proved
+    // unreliable). load + save preserves the TOC's internal link annotations.
+    const { PDFDocument } = require('pdf-lib')
+    const doc = await PDFDocument.load(rendered, { ignoreEncryption: true })
+    await stampPageNumbers(doc, { skipFirstPage: coverEnabled })
+    buffer = Buffer.from(await doc.save())
   }
 
   // Stable path per project + per generation; the latest one is kept
