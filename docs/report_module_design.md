@@ -208,6 +208,19 @@ Each phase ships independently; nothing breaks in between.
 - **Phase 5 — Final Report build-out:** brand the Puppeteer CSS with IBM Plex + tokens; honor
   `pageBreakBefore`, `dataConfig`, `showProjectImage`; section drag-reorder UI; TOC page numbers;
   merge `referencedDocs`; optional DOCX export reusing the activity DOCX path.
+  Requirements agreed 2026-10-20 (with Tony):
+  1. **Drag-reorder sections** in the editor (API already stores `order`; UI was missing).
+  2. **Editable data sections**: new `editedHtml` override on data sections — Refresh
+     materializes the live data into editable HTML (rendered by the same code the PDF uses);
+     the PDF prefers the edited copy when present; "revert to live data" clears it; Refresh
+     over an edited section replaces the edits after a confirm dialog.
+  3. **Add/remove sections**: add custom prose sections and re-add removed standard sections
+     from the default catalog; true delete with confirm (enable/disable stays). Duplicating
+     data sections with their own filters is deferred to the Phase 7 composer.
+  4. **Cover page**: already renders (title/subtitle/logo); honor `showProjectImage` and bring
+     the layout onto the brand (final polish in Phase 8).
+  Deferred within Phase 5 unless time allows: TOC page numbers (needs two-pass rendering),
+  DOCX export.
 - **Phase 6 — OPR report** (feedback item): OPR item lifecycle report as a new definition on the
   kit, plus an OPR data section upgrade in the Final Report.
 - **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
