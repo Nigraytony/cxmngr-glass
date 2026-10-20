@@ -50,6 +50,16 @@
           </div>
         </div>
 
+        <ListReportMenu
+          entity="systems"
+          :column-defs="SYSTEM_COLUMNS"
+          :title="systemsReportTitle"
+          :file-base="[projectNameForReport, 'systems-list']"
+          :project-id="projectStore.currentProjectId || ''"
+          :project="projectStore.currentProject"
+          :fetch-rows="fetchAllFilteredSystems"
+        />
+
         <!-- Lightweight filters -->
         <div class="hidden md:flex items-center gap-3 gap-y-2 flex-wrap">
           <!-- Type filter -->
@@ -762,6 +772,8 @@ import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useSystemsStore, type SystemRecord } from '../../stores/systems'
 import { confirm as inlineConfirm } from '../../utils/confirm'
+import ListReportMenu from '../../reports/components/ListReportMenu.vue'
+import { SYSTEM_COLUMNS } from '../../reports/data/columns'
 
 const projectStore = useProjectStore()
 const systemsStore = useSystemsStore()
@@ -773,6 +785,13 @@ const systemsXlsxInputRef = ref<HTMLInputElement | null>(null)
 const uploadingXlsx = ref(false)
 
 const search = ref('')
+
+// List report (Phase 4): the systems list is client-filtered.
+const projectNameForReport = computed(() => String((projectStore.currentProject as any)?.name || ''))
+const systemsReportTitle = computed(() => projectNameForReport.value ? `${projectNameForReport.value} - Systems` : 'Systems')
+async function fetchAllFilteredSystems(): Promise<any[]> {
+  return Array.isArray(filtered.value) ? [...filtered.value] : []
+}
 
 // Toolbar filters
 const typeFilter = ref('All')

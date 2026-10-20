@@ -199,6 +199,12 @@ Each phase ships independently; nothing breaks in between.
   CSV/XLSX/List-PDF on Equipment, Activities (currently has no export at all), Tasks, Spaces,
   Systems, OPR Items lists. Equipment List gets its printable report here. Includes **custom
   report Stage 1**: save/load named presets backed by the `ReportDefinition` model.
+  (Status 2026-10-20: ReportDefinition backend + tests shipped; the shared `ListReportMenu`
+  component [column picker + List PDF + CSV + XLSX + project-shared presets] is live on the
+  Equipment, Activities, Spaces, Systems and OPR Items lists — server-paginated lists page
+  through the API with current filters, capped at 5000 rows. Tasks keeps its own rebuilt report
+  + CSV; IssuesList keeps its original export suite. Remaining: optionally converge Issues/Tasks
+  onto ListReportMenu so they gain saved presets.)
 - **Phase 5 — Final Report build-out:** brand the Puppeteer CSS with IBM Plex + tokens; honor
   `pageBreakBefore`, `dataConfig`, `showProjectImage`; section drag-reorder UI; TOC page numbers;
   merge `referencedDocs`; optional DOCX export reusing the activity DOCX path.

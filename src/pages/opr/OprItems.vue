@@ -308,6 +308,17 @@
             </div>
           </div>
 
+          <ListReportMenu
+            entity="oprItems"
+            :column-defs="OPR_ITEM_COLUMNS"
+            :title="oprItemsReportTitle"
+            :file-base="[projectNameForReport, 'opr-items']"
+            :project-id="projectId"
+            :project="projectStore.currentProject"
+            :fetch-rows="fetchAllFilteredOprItems"
+            :ctx="oprItemsReportCtx"
+          />
+
           <div class="relative inline-block group shrink-0">
             <button
               :disabled="submitting || !projectId"
@@ -1132,6 +1143,8 @@ import { useAuthStore } from '../../stores/auth'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
 import { useOprLinkEvaluationsStore, type OprCoverageRow } from '../../stores/oprLinkEvaluations'
+import ListReportMenu from '../../reports/components/ListReportMenu.vue'
+import { OPR_ITEM_COLUMNS } from '../../reports/data/columns'
 
 type OprCategory = { id: string; name: string; sortOrder?: number }
 type OprItem = { id: string; categoryId: string | null; text: string; score: number; rank: number; status: 'active' | 'archived' }
@@ -1170,6 +1183,22 @@ const addOpen = ref(false)
 const importFileInput = ref<HTMLInputElement | null>(null)
 
 const categories = ref<OprCategory[]>([])
+
+// List report (Phase 4): OPR items are client-filtered; categories resolve
+// through the ctx lookup for the Category column.
+const projectNameForReport = computed(() => String((projectStore.currentProject as any)?.name || ''))
+const oprItemsReportTitle = computed(() => projectNameForReport.value ? `${projectNameForReport.value} - OPR Items` : 'OPR Items')
+const oprItemsReportCtx = () => {
+  const byId: Record<string, any> = {}
+  for (const c of (categories.value || [])) {
+    const id = String((c as any).id || (c as any)._id || '')
+    if (id) byId[id] = c
+  }
+  return { categoriesById: byId }
+}
+async function fetchAllFilteredOprItems(): Promise<any[]> {
+  return Array.isArray(filtered.value) ? [...filtered.value] : []
+}
 const items = ref<OprItem[]>([])
 const coverage = ref<Record<string, OprCoverageRow>>({})
 

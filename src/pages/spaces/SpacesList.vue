@@ -77,6 +77,17 @@
             </div>
           </div>
 
+          <ListReportMenu
+            entity="spaces"
+            :column-defs="SPACE_COLUMNS"
+            :title="spacesReportTitle"
+            :file-base="[projectNameForReport, 'spaces-list']"
+            :project-id="projectStore.currentProjectId || ''"
+            :project="projectStore.currentProject"
+            :fetch-rows="fetchAllFilteredSpaces"
+            :ctx="spacesReportCtx"
+          />
+
           <!-- Types filter styled like Issues status filter -->
           <div class="flex items-center gap-2">
             <label class="text-white/70 text-sm">Type</label>
@@ -1148,6 +1159,8 @@ import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import http from '../../utils/http'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore, type Space } from '../../stores/spaces'
+import ListReportMenu from '../../reports/components/ListReportMenu.vue'
+import { SPACE_COLUMNS } from '../../reports/data/columns'
 import { useUiStore } from '../../stores/ui'
 import lists from '../../lists.js'
 	import { useAuthStore } from '../../stores/auth'
@@ -1161,6 +1174,40 @@ const spacesStore = useSpacesStore()
 const ui = useUiStore()
 const router = useRouter()
 const auth = useAuthStore()
+
+// List report (Phase 4): the spaces list is server-paginated, so the report
+// pages through /api/spaces with the current filters (cap 5000 rows).
+const projectNameForReport = computed(() => String((projectStore.currentProject as any)?.name || ''))
+const spacesReportTitle = computed(() => projectNameForReport.value ? `${projectNameForReport.value} - Spaces` : 'Spaces')
+const spacesReportCtx = () => ({ spacesById: (spacesStore as any).byId || {} })
+async function fetchAllFilteredSpaces(): Promise<any[]> {
+  const pid = String(projectStore.currentProjectId || '')
+  if (!pid) return []
+  const baseParams: any = { projectId: pid }
+  if (search.value) baseParams.search = search.value
+  if (typeFilter.value && typeFilter.value !== 'All') baseParams.type = typeFilter.value
+  if (sortKey.value) { baseParams.sortBy = sortKey.value; baseParams.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+  const out: any[] = []
+  const perPage = 200
+  try {
+    for (let p = 1; p <= 25; p++) {
+      const { data } = await http.get('/api/spaces', { params: { ...baseParams, page: p, perPage } })
+      const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+      out.push(...items)
+      const total = Number(data?.total ?? data?.count ?? 0)
+      if (!items.length || (total && out.length >= total) || items.length < perPage) break
+    }
+    return out
+  } catch (e) {
+    // Fall back to the store copy (offline/local sessions)
+    try {
+      const local = await spacesStore.fetchByProject(pid)
+      return Array.isArray(local) ? local : (spacesStore.items || [])
+    } catch (err) {
+      return spacesStore.items || []
+    }
+  }
+}
 
 const spaceTypes = ['Building', 'Floor', 'Room', 'Area', 'Campus', 'Level', 'Corridor', 'Roof']
 

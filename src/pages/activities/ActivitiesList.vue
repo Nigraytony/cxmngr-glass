@@ -64,6 +64,16 @@
             </svg>
           </RouterLink>
 
+          <ListReportMenu
+            entity="activities"
+            :column-defs="ACTIVITY_COLUMNS"
+            :title="activitiesReportTitle"
+            :file-base="[projectNameForReport, 'activities-list']"
+            :project-id="projectStore.currentProjectId || ''"
+            :project="projectStore.currentProject"
+            :fetch-rows="fetchAllFilteredActivities"
+          />
+
           <div class="flex items-center gap-2">
             <label class="text-white/70 text-sm">Type</label>
             <div
@@ -920,6 +930,8 @@ import { onMounted, onBeforeUnmount, computed, ref, watch } from 'vue'
 	import { useUiStore } from '../../stores/ui'
 	import { useAuthStore } from '../../stores/auth'
 	import { useSpacesStore } from '../../stores/spaces'
+	import ListReportMenu from '../../reports/components/ListReportMenu.vue'
+	import { ACTIVITY_COLUMNS } from '../../reports/data/columns'
 import lists from '../../lists.js'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import SearchPill from '../../components/SearchPill.vue'
@@ -935,6 +947,14 @@ const store = useActivitiesStore()
 const projectStore = useProjectStore()
 const spacesStore = useSpacesStore()
 const auth = useAuthStore()
+
+// List report (Phase 4): the activities list is client-filtered, so the
+// report exports exactly what the user sees across all pages.
+const projectNameForReport = computed(() => String((projectStore.currentProject as any)?.name || ''))
+const activitiesReportTitle = computed(() => projectNameForReport.value ? `${projectNameForReport.value} - Activities` : 'Activities')
+async function fetchAllFilteredActivities(): Promise<any[]> {
+  return Array.isArray(filtered.value) ? [...filtered.value] : []
+}
 const q = ref('')
 const qTrimmed = computed(() => String(q.value || '').trim())
 const typeFilter = ref<string>('')

@@ -77,6 +77,66 @@ export const EQUIPMENT_COLUMNS: ColumnDef[] = [
   { key: 'updatedAt', label: 'Updated', enabled: false, accessor: r => dateCell(r?.updatedAt) },
 ]
 
+export const ACTIVITY_COLUMNS: ColumnDef[] = [
+  { key: 'name', label: 'Name', weight: 1.6 },
+  { key: 'type', label: 'Type' },
+  { key: 'startDate', label: 'Start', weight: 0.7, accessor: r => dateCell(r?.startDate) },
+  { key: 'endDate', label: 'End', weight: 0.7, accessor: r => dateCell(r?.endDate) },
+  { key: 'location', label: 'Location' },
+  { key: 'description', label: 'Description', weight: 2.4, enabled: false, accessor: r => htmlToText(r?.descriptionHtml || r?.description) },
+  { key: 'equipmentCount', label: 'Equipment', weight: 0.6, enabled: false, accessor: r => String(Array.isArray(r?.equipment) ? r.equipment.length : 0) },
+  { key: 'issuesCount', label: 'Issues', weight: 0.6, enabled: false, accessor: r => String(Array.isArray(r?.issues) ? r.issues.length : 0) },
+  { key: 'updatedAt', label: 'Updated', weight: 0.7, enabled: false, accessor: r => dateCell(r?.updatedAt) },
+]
+
+export const SPACE_COLUMNS: ColumnDef[] = [
+  { key: 'tag', label: 'Tag', weight: 0.8 },
+  { key: 'title', label: 'Title', weight: 1.6 },
+  { key: 'type', label: 'Type' },
+  { key: 'parentChain', label: 'Parent', weight: 1.6, accessor: (r, ctx) => {
+    const chain = String(r?.parentChain || '').trim()
+    if (chain) return chain
+    const byId = ctx?.spacesById || {}
+    const parts: string[] = []
+    let cur: any = r?.parentSpace ? byId[String(r.parentSpace)] : null
+    let depth = 0
+    while (cur && depth < 10) {
+      parts.unshift(String(cur.title || cur.tag || ''))
+      cur = cur.parentSpace ? byId[String(cur.parentSpace)] : null
+      depth++
+    }
+    return parts.filter(Boolean).join(' > ')
+  } },
+  { key: 'equipmentCount', label: 'Equipment', weight: 0.6, enabled: false, accessor: r => (r?.equipmentCount == null ? '' : String(r.equipmentCount)) },
+  { key: 'subspacesCount', label: 'Sub-spaces', weight: 0.6, enabled: false, accessor: r => (r?.subspacesCount == null ? '' : String(r.subspacesCount)) },
+  { key: 'issuesCount', label: 'Issues', weight: 0.6, enabled: false, accessor: r => (r?.issuesCount == null ? '' : String(r.issuesCount)) },
+  { key: 'description', label: 'Description', weight: 2, enabled: false, accessor: r => htmlToText(r?.description) },
+]
+
+export const SYSTEM_COLUMNS: ColumnDef[] = [
+  { key: 'tag', label: 'Tag', weight: 0.8 },
+  { key: 'name', label: 'Name', weight: 1.6 },
+  { key: 'type', label: 'Type' },
+  { key: 'description', label: 'Description', weight: 2.4, accessor: r => htmlToText(r?.description) },
+  { key: 'equipment', label: 'Equipment', weight: 0.6, enabled: false, accessor: r => String(Array.isArray(r?.equipmentIds) ? r.equipmentIds.length : 0) },
+  { key: 'issues', label: 'Issues', weight: 0.6, enabled: false, accessor: r => String(Array.isArray(r?.issueIds) ? r.issueIds.length : 0) },
+  { key: 'tags', label: 'Tags', enabled: false },
+  { key: 'updatedAt', label: 'Updated', weight: 0.7, enabled: false, accessor: r => dateCell(r?.updatedAt) },
+]
+
+export const OPR_ITEM_COLUMNS: ColumnDef[] = [
+  { key: 'rank', label: 'Rank', weight: 0.5 },
+  { key: 'text', label: 'OPR Item', weight: 3.2 },
+  { key: 'category', label: 'Category', accessor: (r, ctx) => {
+    const byId = ctx?.categoriesById || {}
+    const c = r?.categoryId ? byId[String(r.categoryId)] : null
+    return c ? String(c.name || '') : ''
+  } },
+  { key: 'score', label: 'Score', weight: 0.5, enabled: false },
+  { key: 'status', label: 'Status', weight: 0.6 },
+  { key: 'createdAt', label: 'Created', weight: 0.7, enabled: false, accessor: r => dateCell(r?.createdAt) },
+]
+
 /** Resolve a cell to display text (shared by CSV/XLSX/PDF). */
 export function cellValue(col: ColumnDef, row: any, ctx?: Record<string, any>): string {
   try {
