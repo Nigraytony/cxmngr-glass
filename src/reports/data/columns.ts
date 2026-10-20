@@ -124,6 +124,20 @@ export const SYSTEM_COLUMNS: ColumnDef[] = [
   { key: 'updatedAt', label: 'Updated', weight: 0.7, enabled: false, accessor: r => dateCell(r?.updatedAt) },
 ]
 
+export const TEMPLATE_COLUMNS: ColumnDef[] = [
+  { key: 'tag', label: 'Tag', weight: 0.8 },
+  { key: 'title', label: 'Title', weight: 1.6 },
+  { key: 'type', label: 'Type' },
+  { key: 'system', label: 'System' },
+  { key: 'status', label: 'Status' },
+  { key: 'instancesCount', label: 'Instances', weight: 0.6, accessor: r => (r?.instancesCount == null ? '' : String(r.instancesCount)) },
+  { key: 'checklists', label: 'Checklists', weight: 0.6, enabled: false, accessor: r => String(Array.isArray(r?.checklists) ? r.checklists.length : 0) },
+  { key: 'functionalTests', label: 'FPTs', weight: 0.6, enabled: false, accessor: r => String(Array.isArray(r?.functionalTests) ? r.functionalTests.length : 0) },
+  { key: 'description', label: 'Description', weight: 2, enabled: false, accessor: r => htmlToText(r?.description) },
+  { key: 'tags', label: 'Tags', enabled: false },
+  { key: 'updatedAt', label: 'Updated', weight: 0.7, enabled: false, accessor: r => dateCell(r?.updatedAt) },
+]
+
 export const OPR_ITEM_COLUMNS: ColumnDef[] = [
   { key: 'rank', label: 'Rank', weight: 0.5 },
   { key: 'text', label: 'OPR Item', weight: 3.2 },

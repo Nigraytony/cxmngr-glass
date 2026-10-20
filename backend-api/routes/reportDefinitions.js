@@ -15,7 +15,7 @@ const ReportDefinition = require('../models/reportDefinition');
 const { isProjectMember } = require('../utils/projectMembership');
 
 const ALLOWED_ENTITIES = new Set([
-  'issues', 'equipment', 'activities', 'tasks', 'spaces', 'systems', 'opritems', 'composite',
+  'issues', 'equipment', 'activities', 'tasks', 'spaces', 'systems', 'opritems', 'templates', 'composite',
 ]);
 // A definition is a settings payload, not a document store.
 const MAX_DEFINITION_JSON = 64 * 1024;

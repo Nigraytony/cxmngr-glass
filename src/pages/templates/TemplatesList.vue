@@ -76,6 +76,17 @@
             </div>
           </div>
 
+          <ListReportMenu
+            entity="templates"
+            :column-defs="TEMPLATE_COLUMNS"
+            :title="templatesReportTitle"
+            :file-base="[projectNameForReport, 'templates-list']"
+            :project-id="projectStore.currentProjectId || ''"
+            :project="projectStore.currentProject"
+            :fetch-rows="fetchAllFilteredTemplates"
+            :ctx="templatesReportCtx"
+          />
+
           <div class="relative inline-block group">
             <button
               :disabled="!projectStore.currentProjectId"
@@ -980,6 +991,8 @@ import { getApiBase } from '../../utils/api'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
 import { useTemplatesStore, type Template } from '../../stores/templates'
+import ListReportMenu from '../../reports/components/ListReportMenu.vue'
+import { TEMPLATE_COLUMNS } from '../../reports/data/columns'
 import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
 import { confirm as inlineConfirm } from '../../utils/confirm'
@@ -997,6 +1010,36 @@ const statuses = ['Ordered','Shipped','In Storage','Installed','Tested','Operati
 const search = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
+
+// List report (Phase 4): the templates list is server-paginated, so exports
+// page through /api/templates with the current filters (cap 5000 rows).
+const projectNameForReport = computed(() => String((projectStore.currentProject as any)?.name || ''))
+const templatesReportTitle = computed(() => projectNameForReport.value ? `${projectNameForReport.value} - Templates` : 'Templates')
+const templatesReportCtx = () => ({ spacesById: (spacesStore as any).byId || {} })
+async function fetchAllFilteredTemplates(): Promise<any[]> {
+  const pid = String(projectStore.currentProjectId || '')
+  if (!pid) return []
+  const baseParams: any = { projectId: pid }
+  if (search.value) baseParams.search = search.value
+  if (typeFilter.value) baseParams.type = typeFilter.value
+  if (systemFilter.value) baseParams.system = systemFilter.value
+  if (statusFilter.value) baseParams.status = statusFilter.value
+  if (sortKey.value) { baseParams.sortBy = sortKey.value; baseParams.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+  const out: any[] = []
+  const perPage = 200
+  try {
+    for (let p = 1; p <= 25; p++) {
+      const { data } = await http.get('/api/templates', { params: { ...baseParams, page: p, perPage } })
+      const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+      out.push(...items)
+      const total = Number(data?.total ?? 0)
+      if (!items.length || (total && out.length >= total) || items.length < perPage) break
+    }
+    return out
+  } catch (e) {
+    return filtered.value || []
+  }
+}
 const systemFilter = ref('')
 const modalOpen = ref(false)
 const editing = ref(false)
