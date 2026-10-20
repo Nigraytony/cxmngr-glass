@@ -195,6 +195,23 @@ function safeISO(d) {
  * OPR — active items only, sorted by rank ascending, joined to category name.
  * Returns { rows: [{ rank, text, score, category }], totalCount }
  */
+/** Roll link evaluations up to a per-item verification verdict (Phase 6). */
+function oprVerdict(evals) {
+  const list = Array.isArray(evals) ? evals : []
+  if (!list.length) return { state: 'unverified', label: 'Unverified' }
+  const c = { pass: 0, fail: 0, na: 0, unverified: 0 }
+  for (const e of list) {
+    const s = asString(e && e.status) || 'unverified'
+    if (c[s] !== undefined) c[s]++
+    else c.unverified++
+  }
+  if (c.fail > 0) return { state: 'fail', label: `Fail (${c.fail})` }
+  if (c.pass > 0 && c.unverified === 0) return { state: 'verified', label: 'Verified' }
+  if (c.pass > 0) return { state: 'partial', label: `Partial (${c.pass}/${list.length})` }
+  if (c.na === list.length) return { state: 'na', label: 'N/A' }
+  return { state: 'unverified', label: 'Unverified' }
+}
+
 async function fetchOpr({ projectId }) {
   const items = await OprItem.find({ projectId, status: 'active' })
     .sort({ rank: 1 })
@@ -204,13 +221,28 @@ async function fetchOpr({ projectId }) {
     .select('name')
     .lean()
   const catName = new Map(cats.map((c) => [String(c._id), c.name]))
+  // Phase 6 lifecycle upgrade: fold the verification evidence rollup in.
+  const evals = await OprLinkEvaluation.find({ projectId })
+    .select('oprItemId status')
+    .lean()
+  const evalsByItem = new Map()
+  for (const e of evals) {
+    const key = String(e.oprItemId)
+    if (!evalsByItem.has(key)) evalsByItem.set(key, [])
+    evalsByItem.get(key).push(e)
+  }
   return {
-    rows: items.map((i) => ({
-      rank: i.rank,
-      text: i.text || '',
-      score: typeof i.score === 'number' ? i.score : 0,
-      category: catName.get(String(i.categoryId)) || '',
-    })),
+    rows: items.map((i) => {
+      const v = oprVerdict(evalsByItem.get(String(i._id)))
+      return {
+        rank: i.rank,
+        text: i.text || '',
+        score: typeof i.score === 'number' ? i.score : 0,
+        category: catName.get(String(i.categoryId)) || '',
+        verification: v.label,
+        verificationState: v.state,
+      }
+    }),
     totalCount: items.length,
   }
 }

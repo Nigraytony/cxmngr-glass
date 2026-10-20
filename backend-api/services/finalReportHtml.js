@@ -133,18 +133,27 @@ function renderRevisions(data) {
   return `${tableOpen()}<thead><tr><th>Version</th><th>Summary</th><th>Reviser</th><th>Date</th></tr></thead><tbody>${body}</tbody></table>`
 }
 
+function oprVerificationPill(state, label) {
+  const cls = state === 'verified' ? 'pill-pass'
+    : state === 'fail' ? 'pill-fail'
+      : state === 'partial' ? 'pill-warn'
+        : state === 'na' ? 'pill-na'
+          : 'pill-unverified'
+  return `<span class="pill ${cls}">${escapeHtml(label || '—')}</span>`
+}
+
 function renderOpr(data) {
   const rows = data && Array.isArray(data.rows) ? data.rows : []
   if (!rows.length) {
-    return `${tableOpen()}<thead><tr><th class="r w-rank">Rank</th><th>Item</th><th>Score</th><th>Category</th></tr></thead><tbody>${emptyRow(4, 'No active OPR items.')}</tbody></table>`
+    return `${tableOpen()}<thead><tr><th class="r w-rank">Rank</th><th>Item</th><th>Score</th><th>Category</th><th>Verification</th></tr></thead><tbody>${emptyRow(5, 'No active OPR items.')}</tbody></table>`
   }
   const body = rows
     .map(
       (r) =>
-        `<tr><td class="r">${escapeHtml(r.rank)}</td><td>${escapeHtml(r.text)}</td><td class="r">${escapeHtml(r.score)}</td><td>${escapeHtml(r.category)}</td></tr>`,
+        `<tr><td class="r">${escapeHtml(r.rank)}</td><td>${escapeHtml(r.text)}</td><td class="r">${escapeHtml(r.score)}</td><td>${escapeHtml(r.category)}</td><td>${oprVerificationPill(r.verificationState, r.verification)}</td></tr>`,
     )
     .join('')
-  return `${tableOpen()}<thead><tr><th class="r w-rank">Rank</th><th>Item</th><th class="r w-score">Score</th><th class="w-cat">Category</th></tr></thead><tbody>${body}</tbody></table>`
+  return `${tableOpen()}<thead><tr><th class="r w-rank">Rank</th><th>Item</th><th class="r w-score">Score</th><th class="w-cat">Category</th><th class="w-status">Verification</th></tr></thead><tbody>${body}</tbody></table>`
 }
 
 function renderTasks(data) {

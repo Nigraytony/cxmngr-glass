@@ -319,6 +319,16 @@
             :ctx="oprItemsReportCtx"
           />
 
+          <button
+            type="button"
+            class="px-3 py-2 rounded-md bg-white/10 border border-white/20 text-white/90 hover:bg-white/15 hover:text-white inline-flex items-center gap-2 disabled:opacity-40"
+            :disabled="!projectId || generatingLifecycle"
+            :title="projectId ? 'OPR lifecycle report: every item from origin to verification, with the evidence trail' : 'Select a project'"
+            @click="downloadOprLifecycle"
+          >
+            <span class="text-sm">{{ generatingLifecycle ? 'Generating…' : 'Lifecycle Report' }}</span>
+          </button>
+
           <div class="relative inline-block group shrink-0">
             <button
               :disabled="submitting || !projectId"
@@ -1198,6 +1208,37 @@ const oprItemsReportCtx = () => {
 }
 async function fetchAllFilteredOprItems(): Promise<any[]> {
   return Array.isArray(filtered.value) ? [...filtered.value] : []
+}
+
+// OPR lifecycle report (Phase 6): the items currently in view (honoring the
+// category/search/archived filters) with their full verification evidence.
+const generatingLifecycle = ref(false)
+async function downloadOprLifecycle() {
+  if (generatingLifecycle.value || !projectId.value) return
+  generatingLifecycle.value = true
+  try {
+    const rows = Array.isArray(filtered.value) ? [...filtered.value] : []
+    if (!rows.length) { ui.showInfo('No OPR items match the current filters'); return }
+    const { generateOprLifecyclePdf } = await import('../../reports/definitions/oprLifecycle')
+    const allEvals = await evals.fetchEvaluations(projectId.value, {})
+    const evaluationsByItemId: Record<string, any[]> = {}
+    for (const e of allEvals) {
+      const key = String(e.oprItemId || '')
+      if (!key) continue
+      if (!evaluationsByItemId[key]) evaluationsByItemId[key] = []
+      evaluationsByItemId[key].push(e)
+    }
+    await generateOprLifecyclePdf({
+      project: projectStore.currentProject || {},
+      items: rows,
+      categoriesById: oprItemsReportCtx().categoriesById,
+      evaluationsByItemId,
+    })
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the lifecycle report')
+  } finally {
+    generatingLifecycle.value = false
+  }
 }
 const items = ref<OprItem[]>([])
 const coverage = ref<Record<string, OprCoverageRow>>({})
