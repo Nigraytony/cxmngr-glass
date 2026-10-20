@@ -376,7 +376,38 @@ function renderTeam(data) {
   return `${caBlock}${tableOpen()}<thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Role</th></tr></thead><tbody>${body}</tbody></table>`
 }
 
+function formatBytes(n) {
+  const b = Number(n || 0)
+  if (!b) return '—'
+  if (b < 1024) return `${b} B`
+  if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Documents section (Phase 5d): lists the configured folder's files. */
+function renderDocuments(data) {
+  if (data && data.unconfigured) {
+    return '<p class="muted">No Documents folder selected for this section yet.</p>'
+  }
+  const rows = (data && data.rows) || []
+  const head = data && data.folderPath
+    ? `<p class="meta-row">Folder: <strong>${escapeHtml(data.folderPath)}</strong></p>`
+    : ''
+  if (!rows.length) return `${head}<p class="muted">No documents in the selected folder.</p>`
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.contentType || '—')}</td><td class="r">${escapeHtml(formatBytes(r.sizeBytes))}</td><td>${r.isPdf ? '<span class="pill pill-progress">merged</span>' : '<span class="pill pill-na">listed</span>'}</td></tr>`,
+    )
+    .join('')
+  const note = data && data.pdfCount
+    ? '<p class="small muted">PDF documents are merged into the report immediately after this section.</p>'
+    : ''
+  return `${head}${tableOpen()}<thead><tr><th>Document</th><th>Type</th><th class="r">Size</th><th>In report</th></tr></thead><tbody>${body}</tbody></table>${note}`
+}
+
 const DATA_RENDERERS = {
+  documents: renderDocuments,
   'project-description': renderProjectDescription,
   revisions: renderRevisions,
   opr: renderOpr,
@@ -693,14 +724,20 @@ function buildHeaderTemplate(projectName, projectNumber) {
   </div>`
 }
 
-function buildFooterTemplate(reportTitle) {
+function buildFooterTemplate(reportTitle, opts = {}) {
   // NB: Chromium resets the header/footer font-size to 0 by default, and the text it
   // injects into .pageNumber/.totalPages doesn't reliably inherit the parent size on
   // every Chromium build — so set font-size explicitly on those spans too, or the
   // page numbers render blank ("Page  of ").
+  // When the report is rendered in segments (documents merged at position),
+  // Chromium's per-render page numbers would restart per segment — omit them
+  // here and the PDF pipeline stamps continuous numbers post-merge instead.
+  const pageSpan = opts.omitPageNumbers
+    ? ''
+    : `<span style="font-size:8pt;">Page <span class="pageNumber" style="font-size:8pt;"></span> of <span class="totalPages" style="font-size:8pt;"></span></span>`
   return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#94a3b8; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
     <span style="font-size:8pt;"><span style="font-weight:600; color:#1e3a8a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
-    <span style="font-size:8pt;">Page <span class="pageNumber" style="font-size:8pt;"></span> of <span class="totalPages" style="font-size:8pt;"></span></span>
+    ${pageSpan}
   </div>`
 }
 
@@ -716,17 +753,22 @@ function buildFooterTemplate(reportTitle) {
  * @param {object} args.sectionData - Map of sectionKey -> data-source payload
  * @returns {string} self-contained HTML
  */
-function buildReportHtml({ report, project, sectionData }) {
-  const sections = Array.isArray(report.sections) ? [...report.sections] : []
-  // Sort by `order` for deterministic output regardless of save order.
-  sections.sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
-  const sectionsHtml = sections
+function buildReportHtml({ report, project, sectionData, sectionsOverride, includeFrontMatter = true, tocSections }) {
+  const byOrder = (a, b) => Number(a.order || 0) - Number(b.order || 0)
+  const all = Array.isArray(report.sections) ? [...report.sections] : []
+  all.sort(byOrder)
+  // Segmented rendering (Phase 5d) passes a subset as sectionsOverride while
+  // the TOC keeps listing every enabled section of the whole report.
+  const bodySections = Array.isArray(sectionsOverride) ? [...sectionsOverride].sort(byOrder) : all
+  const sectionsHtml = bodySections
     .filter((s) => s.enabled !== false)
     .map((s) => renderSection(s, sectionData && sectionData[s.key]))
     .join('')
+  const tocList = Array.isArray(tocSections) ? [...tocSections].sort(byOrder) : all
   const cover = report.cover || {}
-  const coverHtml = cover.enabled !== false ? renderCover(project || {}, report) : ''
-  const titlePageHtml = cover.titlePageEnabled === true ? renderTitlePage(project || {}, report) : ''
+  const coverHtml = includeFrontMatter && cover.enabled !== false ? renderCover(project || {}, report) : ''
+  const titlePageHtml = includeFrontMatter && cover.titlePageEnabled === true ? renderTitlePage(project || {}, report) : ''
+  const tocHtml = includeFrontMatter ? renderToc(tocList) : ''
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -738,7 +780,7 @@ ${buildStyles()}</style>
 <body>
 ${coverHtml}
 ${titlePageHtml}
-${renderToc(sections)}
+${tocHtml}
 ${sectionsHtml}
 </body>
 </html>`

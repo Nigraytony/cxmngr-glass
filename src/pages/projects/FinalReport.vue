@@ -383,10 +383,10 @@
                   v-if="canEdit && canSelectData"
                   type="button"
                   class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm"
-                  title="Choose which equipment this section includes"
-                  @click="openDataSelect"
+                  :title="isDocumentsSection ? 'Pick the Documents folder this section includes' : 'Choose which equipment this section includes'"
+                  @click="onSelectData"
                 >
-                  ☰ Select data…
+                  {{ isDocumentsSection ? '📁 Select folder…' : '☰ Select data…' }}
                 </button>
                 <template v-if="canEdit && hasEditedCopy">
                   <button
@@ -533,6 +533,56 @@
               Apply selection
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Folder selection modal (documents sections) -->
+    <div
+      v-if="showFolderSelectModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      @click.self="showFolderSelectModal = false"
+    >
+      <div class="w-full max-w-md rounded-2xl bg-slate-900/95 border border-white/15 p-5 space-y-3">
+        <div class="text-lg font-semibold text-white">
+          Select folder — {{ selectedSection?.title }}
+        </div>
+        <p class="text-xs text-white/60">
+          The section lists this folder's documents; its PDF files are merged into the report at this position.
+        </p>
+        <div
+          v-if="folderSelectLoading"
+          class="p-3 text-white/60 text-sm text-center"
+        >
+          Loading folders…
+        </div>
+        <select
+          v-else
+          v-model="folderSelectId"
+          class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+          size="8"
+        >
+          <option
+            v-for="f in folderOptions"
+            :key="f.id"
+            :value="f.id"
+          >
+            {{ f.path }}
+          </option>
+        </select>
+        <div class="flex items-center justify-end gap-2">
+          <button
+            class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm"
+            @click="showFolderSelectModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-white text-sm"
+            @click="applyFolderSelect"
+          >
+            Use this folder
+          </button>
         </div>
       </div>
     </div>
@@ -1123,6 +1173,11 @@ const availableStandardSections = computed(() => {
   return sectionCatalog.value.filter((c: any) => !keys.has(c.key))
 })
 const dataSourceOptions = computed(() => {
+  const catalog = (report.value as any)?.dataSourceCatalog
+  if (Array.isArray(catalog) && catalog.length) {
+    return catalog.map((d: any) => ({ value: String(d.value), label: String(d.label || d.value) }))
+  }
+  // Fallback for older backends: derive from the section catalog.
   const seen = new Set<string>()
   const out: Array<{ value: string; label: string }> = []
   for (const c of sectionCatalog.value) {
@@ -1221,13 +1276,67 @@ function onRevertEdited() {
   markDirty()
 }
 
-// --- Data selection (which equipment a data section includes) ---
+// --- Data selection (which equipment / which Documents folder) ---
 const DATA_SELECTABLE_SOURCES = ['equipment', 'fpt-results', 'checklist-summary']
-const canSelectData = computed(() => DATA_SELECTABLE_SOURCES.includes(String(selectedSection.value?.dataSource || '')))
+const isDocumentsSection = computed(() => String(selectedSection.value?.dataSource || '') === 'documents')
+const canSelectData = computed(() =>
+  DATA_SELECTABLE_SOURCES.includes(String(selectedSection.value?.dataSource || '')) || isDocumentsSection.value,
+)
 const selectionCount = computed(() => {
   const ids = (selectedSection.value as any)?.dataConfig?.equipmentIds
   return Array.isArray(ids) ? ids.length : 0
 })
+
+// Folder picker for documents sections
+const showFolderSelectModal = ref(false)
+const folderSelectLoading = ref(false)
+const folderOptions = ref<Array<{ id: string; path: string }>>([])
+const folderSelectId = ref('')
+
+async function openFolderSelect() {
+  showFolderSelectModal.value = true
+  folderSelectId.value = String((selectedSection.value as any)?.dataConfig?.folderId || '')
+  if (!folderOptions.value.length) {
+    folderSelectLoading.value = true
+    try {
+      const { data } = await http.get(`/api/projects/${projectId.value}/docs/folders/tree`)
+      const out: Array<{ id: string; path: string }> = []
+      const walk = (nodes: any[]) => {
+        for (const n of nodes || []) {
+          if (n && n.id) out.push({ id: String(n.id), path: String(n.path || n.name || '') })
+          if (n && Array.isArray(n.children)) walk(n.children)
+        }
+      }
+      walk(Array.isArray(data?.root) ? data.root : [])
+      out.sort((a, b) => a.path.localeCompare(b.path))
+      folderOptions.value = out
+    } catch (e) {
+      ui.showError('Failed to load the Documents folders')
+      showFolderSelectModal.value = false
+      return
+    } finally {
+      folderSelectLoading.value = false
+    }
+  }
+  if (!folderSelectId.value && folderOptions.value.length) folderSelectId.value = folderOptions.value[0].id
+}
+
+async function applyFolderSelect() {
+  const s = selectedSection.value as any
+  if (!s) return
+  if (!folderSelectId.value) { ui.showError('Pick a folder'); return }
+  s.dataConfig = { ...(s.dataConfig || {}), folderId: folderSelectId.value }
+  markDirty()
+  showFolderSelectModal.value = false
+  try { await store.refreshSection(s.key, s.dataConfig) } catch (e) { /* non-fatal preview refresh */ }
+  const picked = folderOptions.value.find((f) => f.id === folderSelectId.value)
+  ui.showInfo(`Section now points at "${picked?.path || 'folder'}" — Save to persist. PDF files in it merge into the report at this position.`)
+}
+
+function onSelectData() {
+  if (isDocumentsSection.value) openFolderSelect()
+  else openDataSelect()
+}
 
 const showDataSelectModal = ref(false)
 const dataSelectLoading = ref(false)

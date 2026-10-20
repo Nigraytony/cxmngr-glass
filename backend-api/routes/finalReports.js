@@ -24,6 +24,7 @@ const FinalReport = require('../models/finalReport')
 
 const { fetchDataSource } = require('../utils/finalReportDataSources')
 const { renderDataSectionHtml } = require('../services/finalReportHtml')
+const { fileReleasePdf } = require('../utils/finalReportDocs')
 const { generateFinalReportPdf } = require('../services/finalReportPdfService')
 const { generateBlobSasUrl } = require('../utils/blobSas')
 
@@ -247,6 +248,17 @@ function serializeReport(report, { permissions } = {}) {
     // Catalog of standard sections (for the Add-section dialog: re-adding
     // removed standards, and the list of available data sources).
     sectionCatalog: FinalReport.DEFAULT_SECTIONS || [],
+    // Data sources an added section can use (standard ones + extras).
+    dataSourceCatalog: [
+      ...Array.from(
+        new Map(
+          (FinalReport.DEFAULT_SECTIONS || [])
+            .filter((d) => d.type === 'data' && d.dataSource)
+            .map((d) => [d.dataSource, { value: d.dataSource, label: d.title }]),
+        ).values(),
+      ),
+      { value: 'documents', label: 'Documents (pick a folder)' },
+    ],
   }
 }
 
@@ -506,7 +518,20 @@ router.post('/lock', loadOrCreateReport, requireEditAccess, async (req, res) => 
     // and the user can re-trigger PDF generation via the /pdf endpoint.
     if (next === 'final') {
       try {
-        await generateFinalReportPdf(String(report.projectId), { persistOnReport: true })
+        const pdfResult = await generateFinalReportPdf(String(report.projectId), { persistOnReport: true })
+        // Phase 5d: file the released PDF into the project's Documents module
+        // ("Final Reports" folder). Best-effort — the lock already succeeded.
+        try {
+          await fileReleasePdf({
+            projectId: String(report.projectId),
+            userId: req.user._id || req.user.id,
+            blobName: pdfResult.blobName,
+            sizeBytes: pdfResult.sizeBytes,
+            version: report.currentVersion,
+          })
+        } catch (fileErr) {
+          console.error('[final-report] filing release PDF into Documents failed', fileErr && (fileErr.message || fileErr))
+        }
       } catch (pdfErr) {
         console.error('[final-report] auto-PDF on lock-final failed', pdfErr)
         // Surface a warning in the response so the UI can prompt for manual retry,

@@ -19,7 +19,7 @@ const crypto = require('crypto')
 
 const FinalReport = require('../models/finalReport')
 const Project = require('../models/project')
-const { fetchDataSource } = require('../utils/finalReportDataSources')
+const { fetchDataSource, fetchDocumentsSectionPdfFiles } = require('../utils/finalReportDataSources')
 const { buildReportHtml, buildHeaderTemplate, buildFooterTemplate } = require('./finalReportHtml')
 const { generateBlobSasUrl, blobExists } = require('../utils/blobSas')
 const { launchBrowser } = require('../utils/puppeteerLauncher')
@@ -94,6 +94,97 @@ async function renderHtmlToPdfBuffer(html, { headerHtml, footerHtml }) {
   }
 }
 
+/** Download a blob's bytes via a short-lived read SAS URL. */
+async function downloadBlobBuffer(blobName) {
+  const sas = await generateBlobSasUrl({ blobName, permissions: 'r', expiresInSec: 300 })
+  const res = await fetch(sas.url)
+  if (!res.ok) {
+    const err = new Error(`Blob download failed (${res.status})`)
+    err.status = res.status
+    throw err
+  }
+  return Buffer.from(await res.arrayBuffer())
+}
+
+/** Append every page of a PDF buffer onto a pdf-lib document. */
+async function appendPdfBuffer(merged, buffer) {
+  const { PDFDocument } = require('pdf-lib')
+  const src = await PDFDocument.load(buffer, { ignoreEncryption: true })
+  const pages = await merged.copyPages(src, src.getPageIndices())
+  for (const p of pages) merged.addPage(p)
+}
+
+/**
+ * Render the report in SEGMENTS when it contains documents sections (Phase
+ * 5d): each documents section's PDF files are merged in right after the
+ * segment that ends with it, so the stated section order is honored. Page
+ * numbers are stamped post-merge (continuous across the inserted documents);
+ * Chromium's per-segment numbers are omitted. Trade-off: the merged PDF has
+ * no outline (pdf-lib drops it) — reports without documents sections keep
+ * the single-render path with bookmarks + Chromium numbering.
+ */
+async function renderSegmentedPdf({ report, project, sectionData, headerHtml }) {
+  const { PDFDocument, StandardFonts, rgb } = require('pdf-lib')
+  const byOrder = (a, b) => Number(a.order || 0) - Number(b.order || 0)
+  const enabled = (Array.isArray(report.sections) ? [...report.sections] : [])
+    .sort(byOrder)
+    .filter((s) => s.enabled !== false)
+
+  // Split at each documents section (the section itself closes its segment).
+  const segments = []
+  let current = []
+  for (const s of enabled) {
+    current.push(s)
+    if (s.type === 'data' && s.dataSource === 'documents') {
+      segments.push({ sections: current, docsSection: s })
+      current = []
+    }
+  }
+  if (current.length) segments.push({ sections: current, docsSection: null })
+
+  const footerHtml = buildFooterTemplate('Cx Final Report', { omitPageNumbers: true })
+  const merged = await PDFDocument.create()
+  const reportObj = report.toObject ? report.toObject() : report
+
+  for (let i = 0; i < segments.length; i++) {
+    const html = buildReportHtml({
+      report: reportObj,
+      project,
+      sectionData,
+      sectionsOverride: segments[i].sections,
+      includeFrontMatter: i === 0,
+      tocSections: enabled,
+    })
+    const buf = await renderHtmlToPdfBuffer(html, { headerHtml, footerHtml })
+    await appendPdfBuffer(merged, buf)
+    if (segments[i].docsSection) {
+      const pdfFiles = await fetchDocumentsSectionPdfFiles(String(report.projectId), segments[i].docsSection)
+      for (const f of pdfFiles) {
+        try {
+          const bytes = await downloadBlobBuffer(f.blobName)
+          await appendPdfBuffer(merged, bytes)
+        } catch (e) {
+          // A missing/corrupt attachment never aborts the report.
+          console.error('[final-report] skipping unmergeable document', f && f.originalName, e && e.message)
+        }
+      }
+    }
+  }
+
+  // Continuous page numbers across report pages AND inserted documents.
+  const font = await merged.embedFont(StandardFonts.Helvetica)
+  const total = merged.getPageCount()
+  for (let i = 0; i < total; i++) {
+    const page = merged.getPage(i)
+    const { width } = page.getSize()
+    const label = `Page ${i + 1} of ${total}`
+    const textWidth = font.widthOfTextAtSize(label, 8)
+    page.drawText(label, { x: width - 50.4 - textWidth, y: 22, size: 8, font, color: rgb(0.58, 0.64, 0.72) })
+  }
+  const out = await merged.save()
+  return Buffer.from(out)
+}
+
 /**
  * Upload a Buffer to Azure Blob using a short-lived SAS URL.
  * Mirrors the upload step in docsPreview.uploadFileToBlob but works
@@ -156,11 +247,19 @@ async function generateFinalReportPdf(projectId, opts = {}) {
   }
 
   const sectionData = await fetchAllSectionData(report)
-  const html = buildReportHtml({ report: report.toObject ? report.toObject() : report, project, sectionData })
   const headerHtml = buildHeaderTemplate(project.name || '', project.number || '')
-  const footerHtml = buildFooterTemplate('Cx Final Report')
 
-  const buffer = await renderHtmlToPdfBuffer(html, { headerHtml, footerHtml })
+  const hasDocumentsSections = (report.sections || []).some(
+    (s) => s.enabled !== false && s.type === 'data' && s.dataSource === 'documents',
+  )
+  let buffer
+  if (hasDocumentsSections) {
+    buffer = await renderSegmentedPdf({ report, project, sectionData, headerHtml })
+  } else {
+    const html = buildReportHtml({ report: report.toObject ? report.toObject() : report, project, sectionData })
+    const footerHtml = buildFooterTemplate('Cx Final Report')
+    buffer = await renderHtmlToPdfBuffer(html, { headerHtml, footerHtml })
+  }
 
   // Stable path per project + per generation; the latest one is kept
   // forever via Release.pdfBlobUrl, intermediate "preview" generations

@@ -27,6 +27,8 @@ const Equipment = require('../models/equipment')
 const Issue = require('../models/issue')
 const System = require('../models/system')
 const FinalReport = require('../models/finalReport')
+const DocFile = require('../models/docFile')
+const DocFolder = require('../models/docFolder')
 
 function asString(v) {
   return typeof v === 'string' ? v : v == null ? '' : String(v)
@@ -37,6 +39,65 @@ function asString(v) {
  * dataConfig carries a non-empty equipmentIds selection, only those items are
  * included; otherwise all project equipment.
  */
+/**
+ * Mongo filter for a documents-backed section (Phase 5d): explicit file ids
+ * win; otherwise everything in the configured folder. Returns null when the
+ * section hasn't been pointed at anything yet.
+ */
+function documentsQuery(projectId, config) {
+  const folderId = asString(config && config.folderId).trim()
+  const fileIds = (Array.isArray(config && config.docFileIds) ? config.docFileIds : [])
+    .map((v) => asString(v).trim())
+    .filter((v) => mongoose.Types.ObjectId.isValid(v))
+  const q = { projectId, deletedAt: null, status: 'ready' }
+  if (fileIds.length) return { ...q, _id: { $in: fileIds } }
+  if (folderId && mongoose.Types.ObjectId.isValid(folderId)) return { ...q, folderId }
+  return null
+}
+
+function docIsPdf(f) {
+  return asString(f && f.contentType).includes('pdf') || /\.pdf(\?|#|$)/i.test(asString(f && f.originalName))
+}
+
+/**
+ * Documents section (Phase 5d): lists the files of a Documents-module folder
+ * (or an explicit file selection). The PDF pipeline merges the PDF files into
+ * the report right after this section.
+ */
+async function fetchDocuments({ projectId, config }) {
+  const q = documentsQuery(projectId, config)
+  if (!q) return { rows: [], totalCount: 0, folderPath: '', pdfCount: 0, unconfigured: true }
+  const files = await DocFile.find(q)
+    .select('originalName contentType sizeBytes updatedAt')
+    .sort({ originalName: 1 })
+    .lean()
+  let folderPath = ''
+  const folderId = asString(config && config.folderId).trim()
+  if (folderId && mongoose.Types.ObjectId.isValid(folderId)) {
+    const folder = await DocFolder.findById(folderId).select('path name').lean()
+    folderPath = (folder && (folder.path || folder.name)) || ''
+  }
+  const rows = files.map((f) => ({
+    name: f.originalName || 'Document',
+    contentType: f.contentType || '',
+    sizeBytes: Number(f.sizeBytes || 0),
+    updatedAt: safeISO(f.updatedAt),
+    isPdf: docIsPdf(f),
+  }))
+  return { rows, totalCount: rows.length, folderPath, pdfCount: rows.filter((r) => r.isPdf).length }
+}
+
+/** The PDF files a documents section merges (used by the PDF pipeline). */
+async function fetchDocumentsSectionPdfFiles(projectId, section) {
+  const q = documentsQuery(projectId, (section && section.dataConfig) || {})
+  if (!q) return []
+  const files = await DocFile.find(q)
+    .select('originalName contentType sizeBytes blobName')
+    .sort({ originalName: 1 })
+    .lean()
+  return files.filter(docIsPdf)
+}
+
 function equipmentQuery(projectId, config) {
   const raw = Array.isArray(config && config.equipmentIds) ? config.equipmentIds : []
   const ids = raw
@@ -921,6 +982,8 @@ const PROVIDERS = {
   'training-sessions': fetchTrainingSessions,
   recommendations: fetchRecommendations,
   'warranty-review': fetchWarrantyReview,
+  // Phase 5d ---------------------------------------------------------------
+  documents: fetchDocuments,
 }
 
 /**
@@ -938,6 +1001,7 @@ async function fetchDataSource(key, { projectId, config } = {}) {
 
 module.exports = {
   fetchDataSource,
+  fetchDocumentsSectionPdfFiles,
   // Exported individually so tests can exercise them without the dispatcher
   _providers: PROVIDERS,
 }
