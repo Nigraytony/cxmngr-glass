@@ -43,6 +43,9 @@ Captured 2026-10-15 after several weeks of heavy app usage. Track these here unt
 ### Project Dashboard
 - [ ] Place the project description next to the project team on the project dashboard.
 
+### UI/UX Consistency
+- [ ] Close the UX gaps across pages: some modals don't render like the others, and some dropdown lists are custom themed while others are native/unthemed. Audit modals and dropdowns app-wide and converge on the shared Modal component and one themed dropdown pattern (added 2026-10-20).
+
 ### Reporting
 - [ ] Final Report stops short of its potential — build it out.
 - [ ] Create a shared Report module that all other modules (Equipment, Issues, Checklists, FPTs, Final Report, etc.) use for report generation. (Supersedes piecemeal export items in Section 9 if adopted)
