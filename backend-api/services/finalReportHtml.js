@@ -326,6 +326,48 @@ function renderIssues(data) {
   return `<table class="data-table dense"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
 }
 
+function entityLabel(d) {
+  return [d.tag, d.name].filter(Boolean).join(' — ') || 'Item'
+}
+
+function passPill(state, label) {
+  const cls = state === 'pass' ? 'pill-pass' : state === 'fail' ? 'pill-fail' : 'pill-na'
+  return `<span class="pill ${cls}">${escapeHtml(label)}</span>`
+}
+
+/** The actual FPT evidence: every test with its steps / result tables. */
+function renderFptDetails(details) {
+  if (!Array.isArray(details) || !details.length) return ''
+  const blocks = details.map((d) => {
+    const tests = (d.tests || []).map((t) => {
+      const numberBit = t.number != null ? `#${t.number} ` : ''
+      const statusPill = t.pass === 'pass' ? passPill('pass', 'PASS') : t.pass === 'fail' ? passPill('fail', 'FAIL') : ''
+      let body = ''
+      if (t.description) body += `<p class="small">${escapeHtml(t.description)}</p>`
+      if (t.notes) body += `<p class="small muted">Notes: ${escapeHtml(t.notes)}</p>`
+      if (Array.isArray(t.steps) && t.steps.length) {
+        const rows = t.steps
+          .map((s) => `<tr><td>${escapeHtml(s.step || '—')}</td><td>${escapeHtml(s.expected || '—')}</td><td>${escapeHtml(s.actual || '—')}</td><td>${s.pass === 'pass' ? '<span class="pass-text">PASS</span>' : s.pass === 'fail' ? '<span class="fail-text">FAIL</span>' : '—'}</td></tr>`)
+          .join('')
+        body += `<table class="data-table dense"><thead><tr><th>Step</th><th>Expected</th><th>Actual</th><th class="w-sev">Result</th></tr></thead><tbody>${rows}</tbody></table>`
+      } else if (t.table && Array.isArray(t.table.columns) && t.table.columns.length) {
+        const head = t.table.columns.map((c) => `<th>${escapeHtml(c.name || c.key)}</th>`).join('')
+        const rows = (t.table.rows || [])
+          .map((r) => `<tr>${t.table.columns.map((c) => {
+            const cell = r[c.key] || { text: '', state: 'none' }
+            const cls = cell.state === 'pass' ? ' class="pass-text"' : cell.state === 'fail' ? ' class="fail-text"' : ''
+            return `<td${cls}>${escapeHtml(cell.text || '—')}</td>`
+          }).join('')}</tr>`)
+          .join('')
+        body += `<table class="data-table dense"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`
+      }
+      return `<h4 class="evidence-sub">${escapeHtml(numberBit)}${escapeHtml(t.name)} ${statusPill}</h4>${body}`
+    }).join('')
+    return `<h3 class="evidence-title">${escapeHtml(entityLabel(d))}</h3>${tests}`
+  }).join('')
+  return `<h2 class="evidence-heading">Test Detail</h2>${blocks}`
+}
+
 function renderFptResults(data) {
   const rows = data && Array.isArray(data.rows) ? data.rows : []
   if (!rows.length) return '<p class="muted">No FPTs recorded.</p>'
@@ -335,7 +377,29 @@ function renderFptResults(data) {
         `<tr><td>${escapeHtml(r.tag || '—')}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.system || '—')}</td><td class="r">${r.total}</td><td class="r pass-text">${r.pass}</td><td class="r fail-text">${r.fail}</td><td class="r muted">${r.na}</td><td class="r warn-text">${r.pending}</td><td>${r.hasSignatures ? '✓' : '—'}</td></tr>`,
     )
     .join('')
-  return `${tableOpen()}<thead><tr><th>Tag</th><th>Name</th><th>System</th><th class="r">Total</th><th class="r">Pass</th><th class="r">Fail</th><th class="r">N/A</th><th class="r">Pending</th><th>Signed</th></tr></thead><tbody>${body}</tbody></table>`
+  const summary = `${tableOpen()}<thead><tr><th>Tag</th><th>Name</th><th>System</th><th class="r">Total</th><th class="r">Pass</th><th class="r">Fail</th><th class="r">N/A</th><th class="r">Pending</th><th>Signed</th></tr></thead><tbody>${body}</tbody></table>`
+  return summary + renderFptDetails(data && data.details)
+}
+
+/** The actual checklist evidence: every section's questions/answers/notes. */
+function renderChecklistDetails(details) {
+  if (!Array.isArray(details) || !details.length) return ''
+  const doneCell = (done) => {
+    if (done === 'done') return '<td class="pass-text" style="text-align:center;">✓</td>'
+    if (done === 'na') return '<td class="muted" style="text-align:center;">N/A</td>'
+    return '<td class="muted" style="text-align:center;">—</td>'
+  }
+  const blocks = details.map((d) => {
+    const sections = (d.sections || []).map((sec) => {
+      const rows = (sec.questions || [])
+        .map((q) => `<tr>${doneCell(q.done)}<td>${escapeHtml(q.text || '—')}</td><td>${escapeHtml(q.notes || '')}</td></tr>`)
+        .join('')
+      const pill = sec.isComplete ? passPill('pass', 'Complete') : ''
+      return `<h4 class="evidence-sub">${escapeHtml(sec.title)} ${pill}</h4><table class="data-table dense"><thead><tr><th class="w-done">Done</th><th>Question</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>`
+    }).join('')
+    return `<h3 class="evidence-title">${escapeHtml(entityLabel(d))}</h3>${sections}`
+  }).join('')
+  return `<h2 class="evidence-heading">Checklist Detail</h2>${blocks}`
 }
 
 function renderChecklistSummary(data) {
@@ -347,7 +411,8 @@ function renderChecklistSummary(data) {
         `<tr><td>${escapeHtml(r.tag || '—')}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.system || '—')}</td><td class="r">${r.totalSections}</td><td class="r pass-text">${r.completeSections}</td><td class="r warn-text">${r.partialSections}</td><td class="r muted">${r.notStarted}</td><td class="r">${r.completionPct}%</td></tr>`,
     )
     .join('')
-  return `${tableOpen()}<thead><tr><th>Tag</th><th>Name</th><th>System</th><th class="r">Total</th><th class="r">Complete</th><th class="r">Partial</th><th class="r">Not Started</th><th class="r">%</th></tr></thead><tbody>${body}</tbody></table>`
+  const summary = `${tableOpen()}<thead><tr><th>Tag</th><th>Name</th><th>System</th><th class="r">Total</th><th class="r">Complete</th><th class="r">Partial</th><th class="r">Not Started</th><th class="r">%</th></tr></thead><tbody>${body}</tbody></table>`
+  return summary + renderChecklistDetails(data && data.details)
 }
 
 function renderTrainingSessions(data) {
@@ -683,6 +748,7 @@ function buildStyles() {
     .data-table .r { text-align: right; }
     .data-table .empty-row { text-align: center; color: #6b7280; font-style: italic; padding: 1.2em; }
     .data-table .w-rank { width: 3em; }
+    .data-table .w-done { width: 3.2em; }
     .data-table .w-cat  { width: 8em; }
     .data-table .w-wbs  { width: 6em; }
     .data-table .w-score{ width: 4em; }
@@ -696,6 +762,11 @@ function buildStyles() {
     .fail-text { color: #991b1b; }
     .warn-text { color: #92400e; }
     .meta-row { font-size: 9pt; color: #475569; margin-bottom: 0.6em; }
+
+    /* ----- Evidence detail (full checklists / FPTs after the summaries) ----- */
+    .evidence-heading { font-size: 13pt; margin-top: 1.2em; padding-top: 0.4em; border-top: 1px solid #cbd5e1; page-break-after: avoid; }
+    .evidence-title { font-size: 11.5pt; margin-top: 1em; page-break-after: avoid; }
+    .evidence-sub { font-size: 10pt; margin: 0.8em 0 0.2em; page-break-after: avoid; }
 
     /* ----- Pills ----- */
     .pill {

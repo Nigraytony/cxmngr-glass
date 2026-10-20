@@ -98,6 +98,82 @@ async function fetchDocumentsSectionPdfFiles(projectId, section) {
   return files.filter(docIsPdf)
 }
 
+/** Tolerant pass/fail parsing (mirrors the equipment report's). */
+function passState(v) {
+  if (v === true || v === 'true' || String(v) === '1') return 'pass'
+  if (v === false || v === 'false' || String(v) === '0') return 'fail'
+  const s = asString(v).trim().toLowerCase()
+  if (!s) return 'none'
+  if (s === 'yes' || s === 'ok' || s === 'success' || s.startsWith('pass') || s.includes(' pass')) return 'pass'
+  if (s === 'no' || s === 'failed' || s.startsWith('fail') || s.includes(' fail')) return 'fail'
+  return 'none'
+}
+
+/** Full checklist detail for one entity (sections → questions/answers/notes). */
+function checklistDetails(checklists) {
+  const sections = Array.isArray(checklists) ? checklists : []
+  return sections.map((sec) => {
+    const items = Array.isArray(sec && sec.questions) ? sec.questions : (Array.isArray(sec && sec.items) ? sec.items : [])
+    return {
+      title: asString(sec && sec.title) || 'Section',
+      isComplete: Boolean(sec && sec.is_complete === true),
+      questions: items.map((q) => {
+        let done = ''
+        if (q && typeof q.done !== 'undefined') done = q.done ? 'done' : 'open'
+        else if (q && typeof q.answer !== 'undefined' && q.answer !== null) {
+          const ans = asString(q.answer).toLowerCase()
+          done = ans === 'yes' ? 'done' : (ans === 'na' ? 'na' : 'open')
+        } else done = 'open'
+        return {
+          text: asString(q && (q.question_text ?? q.text)),
+          done,
+          notes: asString(q && q.notes),
+        }
+      }),
+    }
+  }).filter((s) => s.questions.length || s.title !== 'Section')
+}
+
+/** Full FPT detail for one entity (tests → steps / result tables). */
+function fptDetails(functionalTests) {
+  const tests = Array.isArray(functionalTests) ? functionalTests : []
+  return tests.map((t) => {
+    const hasStepRows = Array.isArray(t && t.rows) && t.rows.length > 0 && t.kind !== 'table' && t.kind !== 'points'
+    const tbl = t && t.table && Array.isArray(t.table.columns) ? t.table : null
+    const out = {
+      number: t && t.number != null ? t.number : null,
+      name: asString(t && (t.name || t.title)) || 'Test',
+      pass: t && (t.pass === true ? 'pass' : t.pass === false ? 'fail' : 'none'),
+      description: asString(t && t.description),
+      notes: asString(t && t.notes),
+      steps: [],
+      table: null,
+    }
+    if (hasStepRows) {
+      out.steps = t.rows.map((r) => ({
+        step: asString(r && r.step),
+        expected: asString(r && r.expected),
+        actual: asString(r && r.actual),
+        pass: passState(r && r.pass),
+      }))
+    } else if (tbl && Array.isArray(tbl.rows)) {
+      out.table = {
+        columns: tbl.columns.map((c) => ({ key: asString(c && c.key), name: asString(c && c.name) })),
+        rows: tbl.rows.map((r) => {
+          const row = {}
+          for (const c of tbl.columns) {
+            const key = asString(c && c.key)
+            const isPassCol = ['pass', 'result', 'status'].includes(asString(c && c.name).trim().toLowerCase())
+            row[key] = isPassCol ? { text: asString(r && r[key]), state: passState(r && r[key]) } : { text: asString(r && r[key]), state: 'none' }
+          }
+          return row
+        }),
+      }
+    }
+    return out
+  })
+}
+
 function equipmentQuery(projectId, config) {
   const raw = Array.isArray(config && config.equipmentIds) ? config.equipmentIds : []
   const ids = raw
@@ -801,7 +877,22 @@ async function fetchFptResults({ projectId, config }) {
       lastTestedAt: null,
     })
   }
-  return { rows, totalCount: rows.length }
+
+  // Full FPT evidence (per final-report requirement): every test with its
+  // steps / result tables, after the summary. Opt-out via
+  // dataConfig.includeDetails = false.
+  let details = []
+  if (!config || config.includeDetails !== false) {
+    details = [
+      ...equipment
+        .filter((e) => Array.isArray(e.functionalTests) && e.functionalTests.length)
+        .map((e) => ({ tag: e.tag || '', name: e.title || '', kind: 'equipment', tests: fptDetails(e.functionalTests) })),
+      ...systems
+        .filter((s2) => Array.isArray(s2.functionalTests) && s2.functionalTests.length)
+        .map((s2) => ({ tag: '', name: s2.name || '', kind: 'system', tests: fptDetails(s2.functionalTests) })),
+    ].filter((d) => d.tests.length)
+  }
+  return { rows, totalCount: rows.length, details }
 }
 
 /**
@@ -863,7 +954,22 @@ async function fetchChecklistSummary({ projectId, config }) {
       completionPct: Math.round((s.completeSections / s.totalSections) * 100),
     })
   }
-  return { rows, totalCount: rows.length }
+
+  // Full checklist evidence (per final-report requirement): the actual
+  // sections/questions/answers per entity, after the summary. Opt-out via
+  // dataConfig.includeDetails = false.
+  let details = []
+  if (!config || config.includeDetails !== false) {
+    details = [
+      ...equipment
+        .filter((e) => Array.isArray(e.checklists) && e.checklists.length)
+        .map((e) => ({ tag: e.tag || '', name: e.title || '', kind: 'equipment', sections: checklistDetails(e.checklists) })),
+      ...systems
+        .filter((s2) => Array.isArray(s2.checklists) && s2.checklists.length)
+        .map((s2) => ({ tag: '', name: s2.name || '', kind: 'system', sections: checklistDetails(s2.checklists) })),
+    ].filter((d) => d.sections.length)
+  }
+  return { rows, totalCount: rows.length, details }
 }
 
 /**

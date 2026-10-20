@@ -515,6 +515,17 @@
             </label>
           </template>
         </div>
+        <label
+          v-if="supportsDetailToggle"
+          class="flex items-center gap-2 cursor-pointer text-sm text-white/85"
+        >
+          <input
+            v-model="dataSelectIncludeDetails"
+            type="checkbox"
+            class="accent-emerald-400"
+          >
+          <span>Include the full {{ selectedSection?.dataSource === 'fpt-results' ? 'test results (steps, expected/actual, pass/fail)' : 'checklists (questions, answers, notes)' }} after the summary</span>
+        </label>
         <div class="flex items-center justify-between gap-2">
           <div class="text-xs text-white/50">
             {{ dataSelectCheckedCount }} of {{ dataSelectRows.length }} selected
@@ -1431,6 +1442,9 @@ function onSelectData() {
 
 const showDataSelectModal = ref(false)
 const dataSelectLoading = ref(false)
+// Checklists/FPTs can also include the full evidence tables after the summary.
+const supportsDetailToggle = computed(() => ['checklist-summary', 'fpt-results'].includes(String(selectedSection.value?.dataSource || '')))
+const dataSelectIncludeDetails = ref(true)
 const dataSelectRows = ref<Array<{ id: string; tag: string; title: string; system: string }>>([])
 const dataSelectChecked = ref<Record<string, boolean>>({})
 const dataSelectSearch = ref('')
@@ -1475,6 +1489,7 @@ async function openDataSelect() {
   const checked: Record<string, boolean> = {}
   for (const r of dataSelectRows.value) checked[r.id] = ids.length ? ids.includes(r.id) : true
   dataSelectChecked.value = checked
+  dataSelectIncludeDetails.value = s.dataConfig?.includeDetails !== false
 }
 
 function dataSelectAll(v: boolean) {
@@ -1489,6 +1504,7 @@ async function applyDataSelect() {
   const all = ids.length === dataSelectRows.value.length
   // Empty list = all equipment (keeps new equipment flowing in automatically).
   s.dataConfig = { ...(s.dataConfig || {}), equipmentIds: all ? [] : ids }
+  if (supportsDetailToggle.value) s.dataConfig.includeDetails = dataSelectIncludeDetails.value
   markDirty()
   showDataSelectModal.value = false
   try { await store.refreshSection(s.key, s.dataConfig) } catch (e) { /* non-fatal preview refresh */ }
