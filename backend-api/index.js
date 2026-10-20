@@ -52,6 +52,7 @@ const agentRoutes = require('./routes/agent');
 const projectDocsRoutes = require('./routes/projectDocs');
 const oprRoutes = require('./routes/opr');
 const finalReportRoutes = require('./routes/finalReports');
+const reportDefinitionRoutes = require('./routes/reportDefinitions');
 const { securityHeaders } = require('./middleware/securityHeaders');
 const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -246,6 +247,8 @@ app.use('/api/projects/:projectId/docs', projectDocsRoutes);
 app.use('/api/projects/:projectId/opr', oprRoutes);
 // Project-scoped Final Cx Report (ASHRAE G0 §7.2.15 / §8.2.5)
 app.use('/api/projects/:projectId/final-report', finalReportRoutes);
+// Project-scoped saved report definitions (custom reports / list presets)
+app.use('/api/projects/:projectId/report-definitions', reportDefinitionRoutes);
 app.use('/api/issues', 
   issueRoutes
 );
