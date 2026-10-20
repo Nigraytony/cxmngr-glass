@@ -692,7 +692,9 @@ function buildStyles() {
 
     /* ----- Section content (prose) ----- */
     .section p, .section li { font-size: 11pt; }
-    .section ul, .section ol { padding-left: 1.3em; }
+    /* 2.2em so two-digit ordered-list markers ("10.", "17.") don't clip at
+       the content edge — 1.3em truncated them to ".0." in print. */
+    .section ul, .section ol { padding-left: 2.2em; }
     .section table {
       width: 100%;
       border-collapse: collapse;
