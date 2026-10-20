@@ -70,6 +70,11 @@ async function renderHtmlToPdfBuffer(html, { headerHtml, footerHtml }) {
       displayHeaderFooter: true,
       headerTemplate: headerHtml || '<div></div>',
       footerTemplate: footerHtml || '<div></div>',
+      // Phase 5: navigable PDF — document outline (bookmarks) from the
+      // heading structure, tagged so the TOC's in-document anchors become
+      // working link annotations.
+      tagged: true,
+      outline: true,
     })
     await page.close()
     return Buffer.from(buf)

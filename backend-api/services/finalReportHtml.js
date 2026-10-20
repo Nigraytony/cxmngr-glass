@@ -9,10 +9,41 @@
  * template can be unit-tested without spinning up a browser.
  */
 
+const fs = require('fs')
+const path = require('path')
 const sanitizeHtml = require('sanitize-html')
 
 function asString(v) {
   return typeof v === 'string' ? v : v == null ? '' : String(v)
+}
+
+// ---------------------------------------------------------------------------
+// Brand typography: IBM Plex (the app-wide report font), embedded as base64
+// @font-face so Puppeteer renders offline with no asset server. Files are
+// latin subsets (~60KB each); the CSS is built once per process.
+// ---------------------------------------------------------------------------
+let fontCssCache = null
+function buildFontCss() {
+  if (fontCssCache !== null) return fontCssCache
+  const dir = path.join(__dirname, '..', 'assets', 'fonts', 'IBMPlex')
+  const faces = [
+    ['IBMPlexSans-Regular.ttf', 'IBM Plex Sans', 400, 'normal'],
+    ['IBMPlexSans-Italic.ttf', 'IBM Plex Sans', 400, 'italic'],
+    ['IBMPlexSans-SemiBold.ttf', 'IBM Plex Sans', 600, 'normal'],
+    ['IBMPlexSans-SemiBoldItalic.ttf', 'IBM Plex Sans', 600, 'italic'],
+    ['IBMPlexMono-Regular.ttf', 'IBM Plex Mono', 400, 'normal'],
+  ]
+  try {
+    fontCssCache = faces
+      .map(([file, family, weight, style]) => {
+        const b64 = fs.readFileSync(path.join(dir, file)).toString('base64')
+        return `@font-face{font-family:'${family}';font-weight:${weight};font-style:${style};src:url(data:font/ttf;base64,${b64}) format('truetype');}`
+      })
+      .join('\n')
+  } catch (e) {
+    fontCssCache = '' // fall back to the system stack below
+  }
+  return fontCssCache
 }
 
 function escapeHtml(s) {
@@ -405,11 +436,16 @@ function renderCover(project, report) {
   const generated = formatDate(new Date())
   const version = report.currentVersion ? `Version v${report.currentVersion}` : 'Draft'
   const logo = pickCoverLogo(project, cover)
+  // Honor cover.showProjectImage (first project photo) — previously ignored.
+  const projectPhoto = cover.showProjectImage !== false && project && Array.isArray(project.photos) && project.photos[0]
+    ? String(project.photos[0])
+    : ''
   return `
     <section class="cover">
       <div class="cover-brand">
         ${logo ? `<img class="cover-logo" src="${escapeHtml(logo)}" alt="" />` : ''}
       </div>
+      ${projectPhoto ? `<div class="cover-photo-wrap"><img class="cover-photo" src="${escapeHtml(projectPhoto)}" alt="" /></div>` : ''}
       <div class="cover-body">
         <h1 class="cover-title">${escapeHtml(title)}</h1>
         <h2 class="cover-project">${escapeHtml(projectName)}</h2>
@@ -418,6 +454,24 @@ function renderCover(project, report) {
         <p class="cover-meta">${escapeHtml(generated)} &nbsp;·&nbsp; ${escapeHtml(version)}</p>
         ${caName ? `<p class="cover-cxa">Commissioning Authority<br><strong>${escapeHtml(caName)}</strong>${caCompany ? `<br>${escapeHtml(caCompany)}` : ''}</p>` : ''}
       </div>
+    </section>
+  `
+}
+
+/** Formal title page (opt-in): report title, project, version, date — no imagery. */
+function renderTitlePage(project, report) {
+  const cover = report.cover || {}
+  const title = cover.title || 'Commissioning Final Report'
+  const projectName = (project && project.name) || ''
+  const subtitle = cover.subtitle || (project && project.client) || ''
+  const version = report.currentVersion ? `Version v${report.currentVersion}` : 'Draft'
+  const generated = formatDate(new Date())
+  return `
+    <section class="title-page">
+      <h1>${escapeHtml(title)}</h1>
+      ${projectName ? `<h2>${escapeHtml(projectName)}</h2>` : ''}
+      ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ''}
+      <p class="muted">${escapeHtml(version)} &nbsp;·&nbsp; ${escapeHtml(generated)}</p>
     </section>
   `
 }
@@ -438,9 +492,19 @@ function renderSection(section, sectionData) {
   if (section.type === 'prose') {
     body = section.contentHtml ? safeProse(section.contentHtml) : '<p class="muted">No content provided for this section.</p>'
   } else if (section.type === 'data') {
-    body = renderDataSection(section.dataSource, sectionData)
+    // Phase 5: an edited copy (materialized + hand-edited) wins over live data.
+    const edited = asString(section.editedHtml).trim()
+    body = edited ? safeProse(edited) : renderDataSection(section.dataSource, sectionData)
   }
-  return `<section class="section" id="${anchor}"><h1 class="section-title">${escapeHtml(section.title)}</h1>${body}</section>`
+  // Optional divider/title page before the section; the section itself then
+  // starts on the following page without needing its own break.
+  const divider = section.titlePage
+    ? `<section class="section-divider"><h1>${escapeHtml(section.title)}</h1></section>`
+    : ''
+  const classes = ['section']
+  if (!section.titlePage && section.pageBreakBefore === true) classes.push('break-before')
+  const heading = section.showTitle === false ? '' : `<h1 class="section-title">${escapeHtml(section.title)}</h1>`
+  return `${divider}<section class="${classes.join(' ')}" id="${anchor}">${heading}${body}</section>`
 }
 
 function buildStyles() {
@@ -449,12 +513,13 @@ function buildStyles() {
     @page :first { margin: 0; }
     * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       font-size: 11pt;
       color: #1f2937;
       line-height: 1.4;
       margin: 0;
     }
+    code, pre { font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
     h1, h2, h3, h4 { color: #1e3a8a; font-weight: 600; margin: 0 0 0.4em; }
     h1 { font-size: 18pt; }
     h2 { font-size: 14pt; }
@@ -481,6 +546,29 @@ function buildStyles() {
     .cover-subtitle { font-size: 14pt; color: #475569; }
     .cover-meta { font-size: 12pt; color: #475569; margin: 0.2em 0; }
     .cover-cxa { margin-top: 2em; font-size: 11pt; color: #475569; }
+    .cover-photo-wrap { margin: 0.5in 0 0; text-align: center; }
+    .cover-photo { max-width: 100%; max-height: 4.2in; object-fit: contain; border-radius: 6px; }
+
+    /* ----- Title page (opt-in, formal) ----- */
+    .title-page {
+      page-break-after: always;
+      padding-top: 3in;
+      text-align: center;
+    }
+    .title-page h1 { font-size: 26pt; color: #1e3a8a; margin-bottom: 0.4em; }
+    .title-page h2 { font-size: 16pt; color: #1f2937; margin-bottom: 0.6em; }
+    .title-page p { font-size: 12pt; color: #475569; }
+
+    /* ----- Section divider/title pages (opt-in per section) ----- */
+    .section-divider {
+      page-break-before: always;
+      page-break-after: always;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 8.5in;
+    }
+    .section-divider h1 { font-size: 24pt; color: #1e3a8a; text-align: center; border: none; }
 
     /* ----- TOC ----- */
     .toc { page-break-after: always; padding-top: 0.2in; }
@@ -490,7 +578,11 @@ function buildStyles() {
     .toc-num { color: #94a3b8; font-variant-numeric: tabular-nums; display: inline-block; min-width: 1.6em; }
 
     /* ----- Sections ----- */
-    .section { page-break-before: always; padding-top: 0.2in; }
+    /* pageBreakBefore is honored per section (Phase 5); sections otherwise
+       flow with a gap. Existing reports are migrated to break=true so their
+       one-section-per-page look is preserved until the author changes it. */
+    .section { padding-top: 0.2in; margin-top: 0.4in; }
+    .section.break-before { page-break-before: always; margin-top: 0; }
     .section-title { border-bottom: 2px solid #1e3a8a; padding-bottom: 0.15em; margin-bottom: 0.6em; }
 
     /* ----- Tables ----- */
@@ -632,25 +724,40 @@ function buildReportHtml({ report, project, sectionData }) {
     .filter((s) => s.enabled !== false)
     .map((s) => renderSection(s, sectionData && sectionData[s.key]))
     .join('')
+  const cover = report.cover || {}
+  const coverHtml = cover.enabled !== false ? renderCover(project || {}, report) : ''
+  const titlePageHtml = cover.titlePageEnabled === true ? renderTitlePage(project || {}, report) : ''
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Final Cx Report — ${escapeHtml((project && project.name) || '')}</title>
-<style>${buildStyles()}</style>
+<style>${buildFontCss()}
+${buildStyles()}</style>
 </head>
 <body>
-${renderCover(project || {}, report)}
+${coverHtml}
+${titlePageHtml}
 ${renderToc(sections)}
 ${sectionsHtml}
 </body>
 </html>`
 }
 
+/**
+ * Render ONE data section's live data to HTML (Phase 5 "materialize"):
+ * the exact markup the PDF would produce, handed to the editor as the
+ * starting point for an edited copy.
+ */
+function renderDataSectionHtml(section, data) {
+  return renderDataSection(section && section.dataSource, data)
+}
+
 module.exports = {
   buildReportHtml,
   buildHeaderTemplate,
   buildFooterTemplate,
+  renderDataSectionHtml,
   // Exported for tests / debugging
   _renderers: DATA_RENDERERS,
 }

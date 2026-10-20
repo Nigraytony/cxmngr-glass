@@ -32,10 +32,20 @@ const sectionSubSchema = new mongoose.Schema(
     dataSource: { type: String, default: null },
     /** Free-form provider config — filters, sort, column visibility, etc. */
     dataConfig: { type: mongoose.Schema.Types.Mixed, default: {} },
-    /** Force a page break before this section in the PDF. */
-    pageBreakBefore: { type: Boolean, default: false },
+    /** Force a page break before this section in the PDF (honored since Phase 5). */
+    pageBreakBefore: { type: Boolean, default: true },
     /** Include this section in the table of contents. */
     includeInToc: { type: Boolean, default: true },
+    /**
+     * Edited override for DATA sections (Phase 5): Refresh materializes the
+     * live data into editable HTML; when non-empty the renderer uses this
+     * instead of computing. "Revert to live data" clears it.
+     */
+    editedHtml: { type: String, default: '' },
+    /** Render the section heading (title) in the PDF. */
+    showTitle: { type: Boolean, default: true },
+    /** Insert a divider/title page before this section. */
+    titlePage: { type: Boolean, default: false },
   },
   { _id: true },
 )
@@ -60,6 +70,10 @@ const releaseSubSchema = new mongoose.Schema(
 
 const coverSubSchema = new mongoose.Schema(
   {
+    /** Render the designed cover page (opt-in going forward; default keeps the existing look). */
+    enabled: { type: Boolean, default: true },
+    /** Render a formal title page (report title / project / version / date). Opt-in. */
+    titlePageEnabled: { type: Boolean, default: false },
     title: { type: String, default: '' },
     subtitle: { type: String, default: '' },
     // Which logo to show on the cover page.
@@ -143,6 +157,19 @@ const finalReportSchema = new mongoose.Schema(
     },
     // External docs referenced from the report — see referencedDocSubSchema.
     referencedDocs: { type: [referencedDocSubSchema], default: [] },
+    /**
+     * Standard sections the user explicitly deleted (Phase 5). The default-
+     * section backfill skips these so deletions stick; re-adding a section
+     * from the catalog clears its key from this list.
+     */
+    removedSectionKeys: { type: [String], default: [] },
+    /**
+     * One-time Phase 5 migration marker: reports created before per-section
+     * page breaks had an unconditional break-every-section renderer. On first
+     * load we set pageBreakBefore=true on their sections to preserve that
+     * look, then never touch it again.
+     */
+    pageBreakMigrated: { type: Boolean, default: false },
   },
   { timestamps: true },
 )
@@ -207,6 +234,7 @@ finalReportSchema.statics.buildDefault = function buildDefault(projectId) {
   return new this({
     projectId,
     status: 'draft',
+    pageBreakMigrated: true, // new reports are born on the honored-flag model
     sections: this.DEFAULT_SECTIONS.map((s) => ({
       key: s.key,
       title: s.title,
@@ -216,8 +244,11 @@ finalReportSchema.statics.buildDefault = function buildDefault(projectId) {
       contentHtml: s.type === 'prose' ? '' : '',
       dataSource: s.type === 'data' ? s.dataSource : null,
       dataConfig: {},
-      pageBreakBefore: false,
+      pageBreakBefore: true,
       includeInToc: true,
+      editedHtml: '',
+      showTitle: true,
+      titlePage: false,
     })),
   })
 }

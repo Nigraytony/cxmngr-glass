@@ -23,6 +23,7 @@ const Project = require('../models/project')
 const FinalReport = require('../models/finalReport')
 
 const { fetchDataSource } = require('../utils/finalReportDataSources')
+const { renderDataSectionHtml } = require('../services/finalReportHtml')
 const { generateFinalReportPdf } = require('../services/finalReportPdfService')
 const { generateBlobSasUrl } = require('../utils/blobSas')
 
@@ -137,8 +138,22 @@ async function loadOrCreateReport(req, res, next) {
       // On every GET, compare existing keys vs DEFAULT_SECTIONS and append
       // anything missing. Idempotent and preserves user-customised content.
       const existingKeys = new Set((report.sections || []).map((s) => s.key))
-      const missing = (FinalReport.DEFAULT_SECTIONS || []).filter((d) => !existingKeys.has(d.key))
+      // Deleted-by-the-user sections must stay deleted (Phase 5).
+      const removedKeys = new Set((report.removedSectionKeys || []).map(String))
+      const missing = (FinalReport.DEFAULT_SECTIONS || []).filter((d) => !existingKeys.has(d.key) && !removedKeys.has(d.key))
       let changed = false
+
+      // One-time Phase 5 migration: the old renderer page-broke before every
+      // section unconditionally; now the per-section flag is honored. Set the
+      // flag on legacy sections so existing reports keep their look.
+      if (!report.pageBreakMigrated) {
+        for (const s of report.sections || []) {
+          if (s.pageBreakBefore !== true) { s.pageBreakBefore = true }
+        }
+        report.pageBreakMigrated = true
+        changed = true
+      }
+
       if (missing.length) {
         for (const d of missing) {
           report.sections.push({
@@ -229,6 +244,9 @@ function serializeReport(report, { permissions } = {}) {
     createdAt: obj.createdAt,
     updatedAt: obj.updatedAt,
     permissions: permissions || null,
+    // Catalog of standard sections (for the Add-section dialog: re-adding
+    // removed standards, and the list of available data sources).
+    sectionCatalog: FinalReport.DEFAULT_SECTIONS || [],
   }
 }
 
@@ -285,8 +303,24 @@ router.put('/', loadOrCreateReport, requireEditAccess, requireUnlockedForEdit, a
           dataConfig: s.dataConfig && typeof s.dataConfig === 'object' ? s.dataConfig : {},
           pageBreakBefore: Boolean(s.pageBreakBefore),
           includeInToc: s.includeInToc !== false,
+          // Phase 5: edited override for data sections + per-section title options.
+          editedHtml: s.type === 'data' ? asString(s.editedHtml || '') : '',
+          showTitle: s.showTitle !== false,
+          titlePage: Boolean(s.titlePage),
         })
       }
+      // Track deletions of STANDARD sections so the default backfill doesn't
+      // resurrect them; re-adding a section clears it from the ledger.
+      const prevKeys = new Set((report.sections || []).map((s) => s.key))
+      const nextKeys = new Set(next.map((s) => s.key))
+      const defaultKeys = new Set((FinalReport.DEFAULT_SECTIONS || []).map((d) => d.key))
+      const removed = new Set((report.removedSectionKeys || []).map(String))
+      for (const k of prevKeys) {
+        if (defaultKeys.has(k) && !nextKeys.has(k)) removed.add(k)
+      }
+      for (const k of nextKeys) removed.delete(k)
+      report.removedSectionKeys = Array.from(removed)
+
       report.sections = next
     }
 
@@ -294,6 +328,8 @@ router.put('/', loadOrCreateReport, requireEditAccess, requireUnlockedForEdit, a
       const sources = ['commissioning_agent', 'client', 'custom', 'none']
       const logoSource = sources.includes(body.cover.logoSource) ? body.cover.logoSource : 'commissioning_agent'
       report.cover = {
+        enabled: body.cover.enabled !== false,
+        titlePageEnabled: body.cover.titlePageEnabled === true,
         title: asString(body.cover.title || '').trim(),
         subtitle: asString(body.cover.subtitle || '').trim(),
         logoSource,
@@ -379,6 +415,38 @@ router.post(
       return res.json({ key, dataSource: section.dataSource, data })
     } catch (e) {
       return res.status(500).json({ error: 'Failed to refresh section' })
+    }
+  },
+)
+
+/**
+ * POST /api/projects/:projectId/final-report/sections/:key/materialize
+ * Phase 5 "edit the data": render the section's LIVE data to the exact HTML
+ * the PDF would produce and return it. The client puts it in the editor and
+ * saves it back as the section's editedHtml override (via PUT). Nothing is
+ * persisted here.
+ */
+router.post(
+  '/sections/:key/materialize',
+  loadOrCreateReport,
+  requireEditAccess,
+  requireUnlockedForEdit,
+  async (req, res) => {
+    try {
+      const key = asString(req.params.key).trim()
+      const section = (req.finalReport.sections || []).find((s) => s.key === key)
+      if (!section) return res.status(404).json({ error: 'Section not found' })
+      if (section.type !== 'data' || !section.dataSource) {
+        return res.status(400).json({ error: 'Section is not a data section' })
+      }
+      const data = await fetchDataSource(section.dataSource, {
+        projectId: req.finalReportProjectId,
+        config: section.dataConfig || {},
+      })
+      const html = renderDataSectionHtml(section, data)
+      return res.json({ key, dataSource: section.dataSource, html })
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to materialize section' })
     }
   },
 )
