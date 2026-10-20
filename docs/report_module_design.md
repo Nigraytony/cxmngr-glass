@@ -250,6 +250,10 @@ Each phase ships independently; nothing breaks in between.
   continuously post-merge]; reports without them keep bookmarks + Chromium numbering.)
 - **Phase 6 — OPR report** (feedback item): OPR item lifecycle report as a new definition on the
   kit, plus an OPR data section upgrade in the Final Report.
+  (Done 2026-10-20, f34fbb4: Lifecycle Report button on the OPR Items page —
+  `definitions/oprLifecycle.ts` with verification summary, summary table, and per-item evidence
+  trail from OprLinkEvaluation; the Final Report's OPR section gained a Verification pill
+  column from the same rollup.)
 - **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
   `ReportDefinition`; cross-module blocks; CSV/XLSX export of table blocks.
 - **Phase 8 — visual design pass** (added 2026-10-20): revisit the look & feel of every PDF —
