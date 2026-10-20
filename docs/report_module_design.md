@@ -206,6 +206,10 @@ Each phase ships independently; nothing breaks in between.
   kit, plus an OPR data section upgrade in the Final Report.
 - **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
   `ReportDefinition`; cross-module blocks; CSV/XLSX export of table blocks.
+- **Phase 8 — visual design pass** (added 2026-10-20): revisit the look & feel of every PDF —
+  typography, colors, texture, covers, table styling. Deliberately last: all reports draw from
+  `core/tokens.ts` and the shared frame/cover/table renderers, so the restyle is one centralized
+  change, not sixteen. Goal: functional AND attractive.
 
 ## Out of scope (for now)
 

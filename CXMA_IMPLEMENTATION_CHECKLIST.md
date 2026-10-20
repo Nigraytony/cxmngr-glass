@@ -48,6 +48,7 @@ Captured 2026-10-15 after several weeks of heavy app usage. Track these here unt
 - [ ] Create a shared Report module that all other modules (Equipment, Issues, Checklists, FPTs, Final Report, etc.) use for report generation. (Supersedes piecemeal export items in Section 9 if adopted)
 - [ ] Custom reports: build my own report and save it for future use (added 2026-10-18). Staged per `docs/report_module_design.md`: saved list-report presets first, block composer later; project-shared; PDF + CSV/XLSX.
 - [ ] Report sections: select which parts of each issue/equipment/activity/task/etc. are included, reorder them, and include associated attachments/documents/files at their position in the stated order (added 2026-10-19; design in `docs/report_module_design.md`, lands with Phase 3).
+- [ ] Report look & feel pass: revisit font, colors, texture/visual polish across all PDF reports — functional first, attractive at the end; final state must be both (added 2026-10-20; Phase 8 in `docs/report_module_design.md`). Cheap to do late: all reports share `core/tokens.ts` + the frame/table renderers, so restyling is centralized.
 
 ---
 
