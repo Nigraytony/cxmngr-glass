@@ -164,13 +164,14 @@ export const useFinalReportStore = defineStore('finalReport', () => {
    * Pull live data for a single data section. Caches in sectionData; the
    * caller can read from store.sectionData[key] after this resolves.
    */
-  async function refreshSection(key: string): Promise<DataSourceResult> {
+  async function refreshSection(key: string, config?: Record<string, any>): Promise<DataSourceResult> {
     const projectId = report.value?.projectId
     if (!projectId) throw new Error('Report not loaded')
     error.value = null
     try {
       const { data } = await http.post<DataSourceResult>(
         `/api/projects/${projectId}/final-report/sections/${encodeURIComponent(key)}/refresh`,
+        config ? { config } : {},
       )
       sectionData.value = { ...sectionData.value, [key]: data.data }
       return data
@@ -185,13 +186,14 @@ export const useFinalReportStore = defineStore('finalReport', () => {
    * produce (Phase 5 "edit the data"). Returns the HTML; nothing persists
    * until the caller saves it back as the section's editedHtml.
    */
-  async function materializeSection(key: string): Promise<string> {
+  async function materializeSection(key: string, config?: Record<string, any>): Promise<string> {
     const projectId = report.value?.projectId
     if (!projectId) throw new Error('Report not loaded')
     error.value = null
     try {
       const { data } = await http.post<{ key: string; html: string }>(
         `/api/projects/${projectId}/final-report/sections/${encodeURIComponent(key)}/materialize`,
+        config ? { config } : {},
       )
       return String(data.html || '')
     } catch (e) {

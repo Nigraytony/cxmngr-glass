@@ -32,6 +32,19 @@ function asString(v) {
   return typeof v === 'string' ? v : v == null ? '' : String(v)
 }
 
+/**
+ * Mongo filter for equipment-backed sections (Phase 5c). When the section's
+ * dataConfig carries a non-empty equipmentIds selection, only those items are
+ * included; otherwise all project equipment.
+ */
+function equipmentQuery(projectId, config) {
+  const raw = Array.isArray(config && config.equipmentIds) ? config.equipmentIds : []
+  const ids = raw
+    .map((v) => asString(v).trim())
+    .filter((v) => mongoose.Types.ObjectId.isValid(v))
+  return ids.length ? { projectId, _id: { $in: ids } } : { projectId }
+}
+
 function safeISO(d) {
   try {
     if (!d) return null
@@ -209,8 +222,8 @@ function deriveScopedSystemProgress(checklists, fpts) {
  * synthetic "Unassigned" group.
  * Returns { groups: [{ system, rows: [...] }], totalCount }
  */
-async function fetchEquipment({ projectId }) {
-  const list = await Equipment.find({ projectId })
+async function fetchEquipment({ projectId, config }) {
+  const list = await Equipment.find(equipmentQuery(projectId, config))
     .select('tag title type system status location')
     .sort({ system: 1, tag: 1 })
     .lean()
@@ -638,8 +651,8 @@ async function fetchOprDeviations({ projectId }) {
  * Returns { rows: [{ tag, name, system, total, pass, fail, na, pending,
  *           hasSignatures, lastTestedAt }], totalCount }
  */
-async function fetchFptResults({ projectId }) {
-  const equipment = await Equipment.find({ projectId })
+async function fetchFptResults({ projectId, config }) {
+  const equipment = await Equipment.find(equipmentQuery(projectId, config))
     .select('tag title system functionalTests fptSignatures testDate')
     .sort({ system: 1, tag: 1 })
     .lean()
@@ -706,8 +719,8 @@ async function fetchFptResults({ projectId }) {
  * Returns { rows: [{ tag, name, system, totalSections, completeSections,
  *           partialSections, notStarted, completionPct }], totalCount }
  */
-async function fetchChecklistSummary({ projectId }) {
-  const equipment = await Equipment.find({ projectId })
+async function fetchChecklistSummary({ projectId, config }) {
+  const equipment = await Equipment.find(equipmentQuery(projectId, config))
     .select('tag title system checklists')
     .sort({ system: 1, tag: 1 })
     .lean()

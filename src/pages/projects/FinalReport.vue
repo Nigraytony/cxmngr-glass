@@ -373,8 +373,21 @@
                 <span
                   v-if="!hasEditedCopy && dataMeta(selectedSection.key)?.totalCount != null"
                 >· {{ dataMeta(selectedSection.key).totalCount }} row{{ dataMeta(selectedSection.key).totalCount === 1 ? '' : 's' }}</span>
+                <span
+                  v-if="selectionCount"
+                  class="text-indigo-200"
+                > · filtered to {{ selectionCount }} item{{ selectionCount === 1 ? '' : 's' }}</span>
               </div>
               <div class="flex items-center gap-2 flex-wrap">
+                <button
+                  v-if="canEdit && canSelectData"
+                  type="button"
+                  class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm"
+                  title="Choose which equipment this section includes"
+                  @click="openDataSelect"
+                >
+                  ☰ Select data…
+                </button>
                 <template v-if="canEdit && hasEditedCopy">
                   <button
                     type="button"
@@ -438,6 +451,87 @@
               @add-revision="onAddRevision"
               @delete-revision="onDeleteRevision"
             />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data selection modal (which equipment a data section includes) -->
+    <div
+      v-if="showDataSelectModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      @click.self="showDataSelectModal = false"
+    >
+      <div class="w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-slate-900/95 border border-white/15 p-5 space-y-3">
+        <div class="text-lg font-semibold text-white">
+          Select data — {{ selectedSection?.title }}
+        </div>
+        <p class="text-xs text-white/60">
+          Pick the equipment this section includes. System-level rows (where the source has them) are always included.
+        </p>
+        <div class="flex items-center gap-2">
+          <input
+            v-model="dataSelectSearch"
+            type="text"
+            placeholder="Filter by tag, title, system…"
+            class="flex-1 px-3 py-1.5 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+          >
+          <button
+            type="button"
+            class="px-2 py-1.5 rounded-md bg-white/10 border border-white/15 text-white/80 text-xs hover:bg-white/15"
+            @click="dataSelectAll(true)"
+          >
+            All
+          </button>
+          <button
+            type="button"
+            class="px-2 py-1.5 rounded-md bg-white/10 border border-white/15 text-white/80 text-xs hover:bg-white/15"
+            @click="dataSelectAll(false)"
+          >
+            None
+          </button>
+        </div>
+        <div class="flex-1 min-h-0 overflow-y-auto rounded-lg border border-white/10 divide-y divide-white/5">
+          <div
+            v-if="dataSelectLoading"
+            class="p-4 text-white/60 text-sm text-center"
+          >
+            Loading equipment…
+          </div>
+          <template v-else>
+            <label
+              v-for="r in dataSelectFiltered"
+              :key="r.id"
+              class="flex items-center gap-2 px-3 py-1.5 text-sm text-white/85 cursor-pointer hover:bg-white/5"
+            >
+              <input
+                v-model="dataSelectChecked[r.id]"
+                type="checkbox"
+                class="accent-emerald-400"
+              >
+              <span class="font-medium">{{ r.tag || '(no tag)' }}</span>
+              <span class="flex-1 min-w-0 truncate text-white/60">{{ r.title }}</span>
+              <span class="text-xs text-white/40">{{ r.system }}</span>
+            </label>
+          </template>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-white/50">
+            {{ dataSelectCheckedCount }} of {{ dataSelectRows.length }} selected
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm"
+              @click="showDataSelectModal = false"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-3 py-1.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-white text-sm"
+              @click="applyDataSelect"
+            >
+              Apply selection
+            </button>
           </div>
         </div>
       </div>
@@ -788,6 +882,7 @@ import DataSectionTable from '../../components/finalReport/DataSectionTable.vue'
 import { useFinalReportStore, type FinalReportSection, type FinalReportCover } from '../../stores/finalReport'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
+import http from '../../utils/http'
 
 const props = defineProps<{ id?: string }>()
 const route = useRoute()
@@ -1091,7 +1186,7 @@ async function onEditData() {
   if (!s) return
   materializing.value = true
   try {
-    const html = await store.materializeSection(s.key)
+    const html = await store.materializeSection(s.key, s.dataConfig || undefined)
     s.editedHtml = html || '<p></p>'
     markDirty()
     ui.showInfo('Live data loaded as editable content. Edit as needed, then Save — the PDF will use your edited copy.')
@@ -1108,7 +1203,7 @@ async function onRefreshEdited() {
   if (!confirm('Replace your edited copy with fresh live data? Your edits to this section will be lost.')) return
   materializing.value = true
   try {
-    const html = await store.materializeSection(s.key)
+    const html = await store.materializeSection(s.key, s.dataConfig || undefined)
     s.editedHtml = html || '<p></p>'
     markDirty()
   } catch (e: any) {
@@ -1124,6 +1219,80 @@ function onRevertEdited() {
   if (!confirm('Discard the edited copy? The PDF will render live data for this section again.')) return
   s.editedHtml = ''
   markDirty()
+}
+
+// --- Data selection (which equipment a data section includes) ---
+const DATA_SELECTABLE_SOURCES = ['equipment', 'fpt-results', 'checklist-summary']
+const canSelectData = computed(() => DATA_SELECTABLE_SOURCES.includes(String(selectedSection.value?.dataSource || '')))
+const selectionCount = computed(() => {
+  const ids = (selectedSection.value as any)?.dataConfig?.equipmentIds
+  return Array.isArray(ids) ? ids.length : 0
+})
+
+const showDataSelectModal = ref(false)
+const dataSelectLoading = ref(false)
+const dataSelectRows = ref<Array<{ id: string; tag: string; title: string; system: string }>>([])
+const dataSelectChecked = ref<Record<string, boolean>>({})
+const dataSelectSearch = ref('')
+const dataSelectFiltered = computed(() => {
+  const q = dataSelectSearch.value.trim().toLowerCase()
+  if (!q) return dataSelectRows.value
+  return dataSelectRows.value.filter((r) => `${r.tag} ${r.title} ${r.system}`.toLowerCase().includes(q))
+})
+const dataSelectCheckedCount = computed(() => dataSelectRows.value.filter((r) => dataSelectChecked.value[r.id]).length)
+
+async function openDataSelect() {
+  const s = selectedSection.value as any
+  if (!s) return
+  showDataSelectModal.value = true
+  dataSelectSearch.value = ''
+  if (!dataSelectRows.value.length) {
+    dataSelectLoading.value = true
+    try {
+      const out: any[] = []
+      for (let p = 1; p <= 25; p++) {
+        const { data } = await http.get('/api/equipment', { params: { projectId: projectId.value, page: p, perPage: 200 } })
+        const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+        out.push(...items)
+        const total = Number(data?.total || 0)
+        if (!items.length || (total && out.length >= total) || items.length < 200) break
+      }
+      dataSelectRows.value = out.map((e: any) => ({
+        id: String(e._id || e.id || ''),
+        tag: String(e.tag || ''),
+        title: String(e.title || ''),
+        system: String(e.system || ''),
+      })).filter((r) => r.id)
+    } catch (e) {
+      ui.showError('Failed to load the equipment list')
+      showDataSelectModal.value = false
+      return
+    } finally {
+      dataSelectLoading.value = false
+    }
+  }
+  const ids: string[] = Array.isArray(s.dataConfig?.equipmentIds) ? s.dataConfig.equipmentIds.map(String) : []
+  const checked: Record<string, boolean> = {}
+  for (const r of dataSelectRows.value) checked[r.id] = ids.length ? ids.includes(r.id) : true
+  dataSelectChecked.value = checked
+}
+
+function dataSelectAll(v: boolean) {
+  for (const r of dataSelectFiltered.value) dataSelectChecked.value[r.id] = v
+}
+
+async function applyDataSelect() {
+  const s = selectedSection.value as any
+  if (!s) return
+  const ids = dataSelectRows.value.filter((r) => dataSelectChecked.value[r.id]).map((r) => r.id)
+  if (!ids.length) { ui.showError('Select at least one item'); return }
+  const all = ids.length === dataSelectRows.value.length
+  // Empty list = all equipment (keeps new equipment flowing in automatically).
+  s.dataConfig = { ...(s.dataConfig || {}), equipmentIds: all ? [] : ids }
+  markDirty()
+  showDataSelectModal.value = false
+  try { await store.refreshSection(s.key, s.dataConfig) } catch (e) { /* non-fatal preview refresh */ }
+  ui.showInfo(all ? 'Including all equipment — Save to persist.' : `Including ${ids.length} selected item${ids.length === 1 ? '' : 's'} — Save to persist.`)
 }
 
 function syncFromStore() {
@@ -1174,7 +1343,9 @@ function onDiscard() {
 async function onRefreshSection(key: string) {
   refreshingKey.value = key
   try {
-    await store.refreshSection(key)
+    // Pass the working (possibly unsaved) dataConfig so selection previews.
+    const s = workingSections.value.find((x) => x.key === key) as any
+    await store.refreshSection(key, s?.dataConfig || undefined)
   } catch (e: any) {
     ui.showError(store.error || 'Failed to refresh section')
   } finally {

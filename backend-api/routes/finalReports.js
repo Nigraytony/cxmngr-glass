@@ -408,9 +408,11 @@ router.post(
       if (section.type !== 'data' || !section.dataSource) {
         return res.status(400).json({ error: 'Section is not a data section' })
       }
+      // Optional config override lets the editor preview an unsaved selection.
+      const cfgOverride = req.body && typeof req.body.config === 'object' && req.body.config ? req.body.config : null
       const data = await fetchDataSource(section.dataSource, {
         projectId: req.finalReportProjectId,
-        config: section.dataConfig || {},
+        config: cfgOverride || section.dataConfig || {},
       })
       return res.json({ key, dataSource: section.dataSource, data })
     } catch (e) {
@@ -439,9 +441,10 @@ router.post(
       if (section.type !== 'data' || !section.dataSource) {
         return res.status(400).json({ error: 'Section is not a data section' })
       }
+      const cfgOverride = req.body && typeof req.body.config === 'object' && req.body.config ? req.body.config : null
       const data = await fetchDataSource(section.dataSource, {
         projectId: req.finalReportProjectId,
-        config: section.dataConfig || {},
+        config: cfgOverride || section.dataConfig || {},
       })
       const html = renderDataSectionHtml(section, data)
       return res.json({ key, dataSource: section.dataSource, html })
