@@ -245,6 +245,9 @@ Each phase ships independently; nothing breaks in between.
   brand fonts, cover/title-page flags, PDF outline) → 5b editor UI (reorder, add/remove/
   duplicate, per-section toggles) → 5c data selection UIs + providers → 5d Documents
   integration + publish-to-Documents.
+  (Phase 5 COMPLETE 2026-10-20: e19fde8 / 8c21fea / 4087391 / 545772f. Notes: reports with
+  documents sections render segmented and lose the PDF outline [page numbers stamped
+  continuously post-merge]; reports without them keep bookmarks + Chromium numbering.)
 - **Phase 6 — OPR report** (feedback item): OPR item lifecycle report as a new definition on the
   kit, plus an OPR data section upgrade in the Final Report.
 - **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
