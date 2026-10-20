@@ -55,6 +55,8 @@ export const EQUIPMENT_COLUMNS: ColumnDef[] = [
   { key: 'system', label: 'System' },
   { key: 'status', label: 'Status' },
   { key: 'space', label: 'Space', accessor: (r, ctx) => {
+    const chain = String(r?.spaceChain || '').trim()
+    if (chain) return chain
     const sid = r?.spaceId ? String((r.spaceId as any)?._id || r.spaceId) : ''
     const sp = sid && ctx?.spacesById ? ctx.spacesById[sid] : null
     return sp ? String(sp.title || sp.tag || '') : String(r?.location || '')

@@ -595,6 +595,16 @@
                 Download editable XLSX
               </div>
             </div>
+            <ListReportMenu
+              entity="equipment"
+              :column-defs="EQUIPMENT_COLUMNS"
+              :title="equipmentReportTitle"
+              :file-base="[projectNameForReport, 'equipment-list']"
+              :project-id="projectStore.currentProjectId || ''"
+              :project="projectStore.currentProject"
+              :fetch-rows="fetchAllFilteredEquipment"
+              :ctx="equipmentReportCtx"
+            />
             <button
               type="button"
               class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
@@ -1614,6 +1624,8 @@ import { useProjectStore } from '../../stores/project'
 import { useAuthStore } from '../../stores/auth'
 import { useSpacesStore } from '../../stores/spaces'
 import { useEquipmentStore, type Equipment } from '../../stores/equipment'
+import ListReportMenu from '../../reports/components/ListReportMenu.vue'
+import { EQUIPMENT_COLUMNS } from '../../reports/data/columns'
 import { useLocal } from '../../data/offlineGate'
 import lists from '../../lists.js'
 import { useUiStore } from '../../stores/ui'
@@ -4088,6 +4100,47 @@ function downloadUploadTemplate() {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+// --- List report (Phase 4): shared ListReportMenu inputs -------------------
+const projectNameForReport = computed(() => String((projectStore.currentProject as any)?.name || ''))
+const equipmentReportTitle = computed(() => projectNameForReport.value ? `${projectNameForReport.value} - Equipment List` : 'Equipment List')
+const equipmentReportCtx = () => ({ spacesById: (spacesStore as any).byId || {} })
+
+// All equipment matching the current filters. The list is server-paginated,
+// so reports page through the API (mirroring fetchEquipmentPage's params)
+// instead of exporting just the visible page. Hard cap: 5000 rows.
+async function fetchAllFilteredEquipment(): Promise<any[]> {
+  const pid = String(projectStore.currentProjectId || '')
+  if (!pid) return []
+  if (useLocal(pid)) {
+    const local = await equipmentStore.fetchByProject(pid)
+    return Array.isArray(local) ? local : (equipmentStore.items || [])
+  }
+  const baseParams: any = { projectId: pid }
+  if (search.value) baseParams.search = search.value
+  if (typeFilter.value) baseParams.type = typeFilter.value
+  if (systemFilter.value) baseParams.system = systemFilter.value
+  if (statusFilter.value) baseParams.status = statusFilter.value
+  if (String(locationFilter.value || '').trim()) baseParams.location = String(locationFilter.value || '').trim()
+  if (String(tagsFilter.value || '').trim()) baseParams.tags = String(tagsFilter.value || '').trim()
+  if (onlyWithChecklists.value) baseParams.hasChecklists = '1'
+  if (onlyWithFpt.value) baseParams.hasFpt = '1'
+  if (onlyWithIssues.value) baseParams.hasIssues = '1'
+  if (onlyWithChecklists.value && checklistSystemFilter.value) baseParams.checklistSystem = checklistSystemFilter.value
+  if (myChecklistsOnly.value && currentProjectRole.value) baseParams.checklistResponsible = currentProjectRole.value
+  if (sortKey.value) { baseParams.sortBy = sortKey.value; baseParams.sortDir = sortDir.value === 1 ? 'asc' : 'desc' }
+
+  const out: any[] = []
+  const perPage = 200
+  for (let p = 1; p <= 25; p++) {
+    const { data } = await http.get('/api/equipment', { params: { ...baseParams, page: p, perPage } })
+    const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : [])
+    out.push(...items)
+    const total = Number(data?.total || 0)
+    if (!items.length || (total && out.length >= total) || items.length < perPage) break
+  }
+  return out
 }
 
 async function downloadEquipmentList() {
