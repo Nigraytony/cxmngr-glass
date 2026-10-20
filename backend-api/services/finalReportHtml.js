@@ -279,18 +279,51 @@ function severityClass(sev) {
   }
 }
 
+/**
+ * Issues Log column registry — labels + cell rendering per key. Which
+ * columns render (and in what order) comes from the provider's resolved
+ * data.columns (section dataConfig). Keep keys in sync with
+ * utils/finalReportDataSources.js and the editor's column picker.
+ */
+const ISSUE_COLUMNS = {
+  number: { label: '#', th: 'r w-rank', cell: (r) => `<td class="r">${r.number ?? '—'}</td>` },
+  title: { label: 'Title', cell: (r) => `<td><strong>${escapeHtml(r.title || '—')}</strong></td>` },
+  description: { label: 'Description', cell: (r) => `<td>${escapeHtml(r.description || '—')}</td>` },
+  type: { label: 'Type', cell: (r) => `<td>${escapeHtml(r.type || '—')}</td>` },
+  severity: { label: 'Priority', th: 'w-sev', cell: (r) => `<td><span class="pill ${severityClass(r.severity)}">${escapeHtml(r.severity || '—')}</span></td>` },
+  status: { label: 'Status', th: 'w-status', cell: (r) => `<td>${escapeHtml(r.status || '—')}</td>` },
+  system: { label: 'System', th: 'w-sys', cell: (r) => `<td>${escapeHtml(r.system || '—')}</td>` },
+  location: { label: 'Location', cell: (r) => `<td>${escapeHtml(r.location || '—')}</td>` },
+  foundBy: { label: 'Found By', cell: (r) => `<td>${escapeHtml(r.foundBy || '—')}</td>` },
+  dateFound: { label: 'Date Found', th: 'w-date', cell: (r) => `<td>${escapeHtml(r.dateFound || '—')}</td>` },
+  assignedTo: { label: 'Assigned To', cell: (r) => `<td>${escapeHtml(r.assignedTo || '—')}</td>` },
+  dueDate: { label: 'Due', th: 'w-date', cell: (r) => `<td>${escapeHtml(r.dueDate || '—')}</td>` },
+  closedBy: { label: 'Closed By', cell: (r) => `<td>${escapeHtml(r.closedBy || '—')}</td>` },
+  closedDate: { label: 'Closed', th: 'w-date', cell: (r) => `<td>${escapeHtml(r.closedDate || '—')}</td>` },
+  recommendation: { label: 'Recommendation', cell: (r) => `<td>${escapeHtml(r.recommendation || '—')}</td>` },
+  resolution: { label: 'Resolution', cell: (r) => `<td>${escapeHtml(r.resolution || '—')}</td>` },
+}
+const DEFAULT_ISSUE_COLUMN_KEYS = [
+  'number', 'title', 'description', 'type', 'severity', 'status', 'system',
+  'location', 'dateFound', 'assignedTo', 'closedDate', 'recommendation', 'resolution',
+]
+
 function renderIssues(data) {
   const rows = data && Array.isArray(data.rows) ? data.rows : []
   if (!rows.length) {
     return '<p class="muted">No issues recorded on this project.</p>'
   }
-  const body = rows
-    .map(
-      (r) =>
-        `<tr><td class="r">${r.number ?? '—'}</td><td><strong>${escapeHtml(r.title)}</strong>${r.resolution ? `<div class="preview pass-text">Resolved: ${escapeHtml(r.resolution)}</div>` : ''}</td><td><span class="pill ${severityClass(r.severity)}">${escapeHtml(r.severity || '—')}</span></td><td>${escapeHtml(r.status || '—')}</td><td>${escapeHtml(r.system || '—')}</td><td>${escapeHtml(r.dateFound || '—')}</td><td>${escapeHtml(r.closedDate || '—')}</td></tr>`,
-    )
+  const keys = (Array.isArray(data.columns) && data.columns.length ? data.columns : DEFAULT_ISSUE_COLUMN_KEYS)
+    .filter((k) => ISSUE_COLUMNS[k])
+  const head = keys
+    .map((k) => `<th${ISSUE_COLUMNS[k].th ? ` class="${ISSUE_COLUMNS[k].th}"` : ''}>${escapeHtml(ISSUE_COLUMNS[k].label)}</th>`)
     .join('')
-  return `${tableOpen()}<thead><tr><th class="r w-rank">#</th><th>Issue</th><th class="w-sev">Severity</th><th class="w-status">Status</th><th class="w-sys">System</th><th class="w-date">Date Found</th><th class="w-date">Closed</th></tr></thead><tbody>${body}</tbody></table>`
+  const body = rows
+    .map((r) => `<tr>${keys.map((k) => ISSUE_COLUMNS[k].cell(r)).join('')}</tr>`)
+    .join('')
+  // The comprehensive set is wide — render dense; the section page itself is
+  // landscape (see renderSection / the landscape named page).
+  return `<table class="data-table dense"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
 }
 
 function renderFptResults(data) {
@@ -534,6 +567,9 @@ function renderSection(section, sectionData) {
     : ''
   const classes = ['section']
   if (!section.titlePage && section.pageBreakBefore === true) classes.push('break-before')
+  // The Issues Log renders landscape (comprehensive column set needs the
+  // width); CSS named pages flip just this section's pages.
+  if (section.type === 'data' && section.dataSource === 'issues') classes.push('section-landscape')
   const heading = section.showTitle === false ? '' : `<h1 class="section-title">${escapeHtml(section.title)}</h1>`
   return `${divider}<section class="${classes.join(' ')}" id="${anchor}">${heading}${body}</section>`
 }
@@ -542,6 +578,9 @@ function buildStyles() {
   return `
     @page { size: letter; margin: 0.85in 0.7in 0.85in 0.7in; }
     @page :first { margin: 0; }
+    /* Landscape named page for wide tabular sections (Issues Log). */
+    @page landscape { size: letter landscape; margin: 0.85in 0.7in 0.85in 0.7in; }
+    .section-landscape { page: landscape; page-break-before: always; }
     * { box-sizing: border-box; }
     body {
       font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -638,6 +677,9 @@ function buildStyles() {
       letter-spacing: 0.03em;
     }
     .data-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .data-table.dense { font-size: 8pt; }
+    .data-table.dense th, .data-table.dense td { padding: 0.3em 0.4em; }
+    .data-table.dense thead th { font-size: 7.5pt; }
     .data-table .r { text-align: right; }
     .data-table .empty-row { text-align: center; color: #6b7280; font-style: italic; padding: 1.2em; }
     .data-table .w-rank { width: 3em; }

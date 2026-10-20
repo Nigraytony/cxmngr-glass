@@ -75,6 +75,9 @@ async function renderHtmlToPdfBuffer(html, { headerHtml, footerHtml }) {
       // working link annotations.
       tagged: true,
       outline: true,
+      // Honor CSS @page sizes so the Issues Log's landscape named page works;
+      // every other page keeps the letter-portrait default declared in CSS.
+      preferCSSPageSize: true,
     })
     await page.close()
     return Buffer.from(buf)

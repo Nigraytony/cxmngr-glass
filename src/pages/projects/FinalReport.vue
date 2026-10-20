@@ -383,10 +383,10 @@
                   v-if="canEdit && canSelectData"
                   type="button"
                   class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm"
-                  :title="isDocumentsSection ? 'Pick the Documents folder this section includes' : 'Choose which equipment this section includes'"
+                  :title="isDocumentsSection ? 'Pick the Documents folder this section includes' : (isIssuesSection ? 'Choose which columns the Issues Log shows (renders landscape)' : 'Choose which equipment this section includes')"
                   @click="onSelectData"
                 >
-                  {{ isDocumentsSection ? '📁 Select folder…' : '☰ Select data…' }}
+                  {{ isDocumentsSection ? '📁 Select folder…' : (isIssuesSection ? '☰ Columns…' : '☰ Select data…') }}
                 </button>
                 <template v-if="canEdit && hasEditedCopy">
                   <button
@@ -533,6 +533,50 @@
               Apply selection
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Issues Log column picker -->
+    <div
+      v-if="showIssueColumnsModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      @click.self="showIssueColumnsModal = false"
+    >
+      <div class="w-full max-w-md rounded-2xl bg-slate-900/95 border border-white/15 p-5 space-y-3">
+        <div class="text-lg font-semibold text-white">
+          Issues Log columns
+        </div>
+        <p class="text-xs text-white/60">
+          The Issues Log renders in landscape so the comprehensive set fits. Pick the columns to include.
+        </p>
+        <div class="grid grid-cols-2 gap-1.5">
+          <label
+            v-for="c in ISSUE_SECTION_COLUMNS"
+            :key="c.key"
+            class="inline-flex items-center gap-2 text-sm text-white/85 cursor-pointer"
+          >
+            <input
+              v-model="issueColumnsChecked[c.key]"
+              type="checkbox"
+              class="accent-emerald-400"
+            >
+            <span>{{ c.label }}</span>
+          </label>
+        </div>
+        <div class="flex items-center justify-end gap-2">
+          <button
+            class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm"
+            @click="showIssueColumnsModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-white text-sm"
+            @click="applyIssueColumns"
+          >
+            Apply columns
+          </button>
         </div>
       </div>
     </div>
@@ -1276,12 +1320,58 @@ function onRevertEdited() {
   markDirty()
 }
 
-// --- Data selection (which equipment / which Documents folder) ---
+// --- Data selection (equipment / Documents folder / issue columns) ---
 const DATA_SELECTABLE_SOURCES = ['equipment', 'fpt-results', 'checklist-summary']
 const isDocumentsSection = computed(() => String(selectedSection.value?.dataSource || '') === 'documents')
+const isIssuesSection = computed(() => String(selectedSection.value?.dataSource || '') === 'issues')
 const canSelectData = computed(() =>
-  DATA_SELECTABLE_SOURCES.includes(String(selectedSection.value?.dataSource || '')) || isDocumentsSection.value,
+  DATA_SELECTABLE_SOURCES.includes(String(selectedSection.value?.dataSource || '')) || isDocumentsSection.value || isIssuesSection.value,
 )
+
+// Issues Log column picker (keys mirror the backend registry; the section
+// renders landscape so the comprehensive set fits).
+const ISSUE_SECTION_COLUMNS: Array<{ key: string; label: string; default: boolean }> = [
+  { key: 'number', label: '#', default: true },
+  { key: 'title', label: 'Title', default: true },
+  { key: 'description', label: 'Description', default: true },
+  { key: 'type', label: 'Type', default: true },
+  { key: 'severity', label: 'Priority', default: true },
+  { key: 'status', label: 'Status', default: true },
+  { key: 'system', label: 'System', default: true },
+  { key: 'location', label: 'Location', default: true },
+  { key: 'foundBy', label: 'Found By', default: false },
+  { key: 'dateFound', label: 'Date Found', default: true },
+  { key: 'assignedTo', label: 'Assigned To', default: true },
+  { key: 'dueDate', label: 'Due Date', default: false },
+  { key: 'closedBy', label: 'Closed By', default: false },
+  { key: 'closedDate', label: 'Closed Date', default: true },
+  { key: 'recommendation', label: 'Recommendation', default: true },
+  { key: 'resolution', label: 'Resolution', default: true },
+]
+const showIssueColumnsModal = ref(false)
+const issueColumnsChecked = ref<Record<string, boolean>>({})
+
+function openIssueColumnsSelect() {
+  const s = selectedSection.value as any
+  if (!s) return
+  const saved: string[] = Array.isArray(s.dataConfig?.columns) ? s.dataConfig.columns.map(String) : []
+  const checked: Record<string, boolean> = {}
+  for (const c of ISSUE_SECTION_COLUMNS) checked[c.key] = saved.length ? saved.includes(c.key) : c.default
+  issueColumnsChecked.value = checked
+  showIssueColumnsModal.value = true
+}
+
+async function applyIssueColumns() {
+  const s = selectedSection.value as any
+  if (!s) return
+  const keys = ISSUE_SECTION_COLUMNS.filter((c) => issueColumnsChecked.value[c.key]).map((c) => c.key)
+  if (!keys.length) { ui.showError('Select at least one column'); return }
+  s.dataConfig = { ...(s.dataConfig || {}), columns: keys }
+  markDirty()
+  showIssueColumnsModal.value = false
+  try { await store.refreshSection(s.key, s.dataConfig) } catch (e) { /* non-fatal preview refresh */ }
+  ui.showInfo(`Issues Log set to ${keys.length} column${keys.length === 1 ? '' : 's'} — Save to persist.`)
+}
 const selectionCount = computed(() => {
   const ids = (selectedSection.value as any)?.dataConfig?.equipmentIds
   return Array.isArray(ids) ? ids.length : 0
@@ -1335,6 +1425,7 @@ async function applyFolderSelect() {
 
 function onSelectData() {
   if (isDocumentsSection.value) openFolderSelect()
+  else if (isIssuesSection.value) openIssueColumnsSelect()
   else openDataSelect()
 }
 

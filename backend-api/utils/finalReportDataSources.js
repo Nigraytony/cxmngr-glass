@@ -317,10 +317,38 @@ async function fetchEquipment({ projectId, config }) {
  * commissioning issue-log fields.
  * Returns { rows: [{ number, title, severity, status, ... }] }
  */
-async function fetchIssues({ projectId }) {
+/**
+ * Issues Log columns (Phase 5 follow-up): the comprehensive set, selectable
+ * per section via dataConfig.columns (ordered keys). Keep the keys in sync
+ * with ISSUE_COLUMNS in services/finalReportHtml.js and the Final Report
+ * editor's picker.
+ */
+const ISSUE_COLUMN_KEYS = [
+  'number', 'title', 'description', 'type', 'severity', 'status', 'system',
+  'location', 'foundBy', 'dateFound', 'assignedTo', 'dueDate', 'closedBy',
+  'closedDate', 'recommendation', 'resolution',
+]
+const DEFAULT_ISSUE_COLUMNS = [
+  'number', 'title', 'description', 'type', 'severity', 'status', 'system',
+  'location', 'dateFound', 'assignedTo', 'closedDate', 'recommendation', 'resolution',
+]
+
+function resolveIssueColumns(config) {
+  const allowed = new Set(ISSUE_COLUMN_KEYS)
+  const req = Array.isArray(config && config.columns)
+    ? config.columns.map((k) => asString(k).trim()).filter((k) => allowed.has(k))
+    : []
+  return req.length ? req : [...DEFAULT_ISSUE_COLUMNS]
+}
+
+function htmlToPlain(v) {
+  return asString(v).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+async function fetchIssues({ projectId, config }) {
   const issues = await Issue.find({ projectId })
     .select(
-      'number title severity status system location dateFound closedDate assignedTo resolution dueDate',
+      'number title description type severity status system location foundBy dateFound assignedTo dueDate closedBy closedDate recommendation resolution',
     )
     // Sort by numeric `number` asc; nulls go last
     .sort({ number: 1 })
@@ -329,19 +357,23 @@ async function fetchIssues({ projectId }) {
     rows: issues.map((i) => ({
       number: typeof i.number === 'number' ? i.number : null,
       title: i.title || '',
+      description: htmlToPlain(i.description),
+      type: i.type || '',
       severity: i.severity || '',
       status: i.status || '',
       system: i.system || '',
       location: i.location || '',
-      // 'Found By' dropped per user feedback — replaced by closed-date in the
-      // final report; foundBy is still visible on the issue detail page.
+      foundBy: i.foundBy || '',
       dateFound: i.dateFound || '',
-      closedDate: i.closedDate || '',
       assignedTo: i.assignedTo || '',
       dueDate: i.dueDate || '',
-      resolution: i.resolution || '',
+      closedBy: i.closedBy || '',
+      closedDate: i.closedDate || '',
+      recommendation: htmlToPlain(i.recommendation),
+      resolution: htmlToPlain(i.resolution),
     })),
     totalCount: issues.length,
+    columns: resolveIssueColumns(config),
   }
 }
 
