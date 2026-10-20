@@ -179,6 +179,11 @@
           <li
             v-for="(s, idx) in workingSections"
             :key="s.key"
+            :class="dragIndex === idx ? 'opacity-50' : ''"
+            :draggable="canEdit"
+            @dragstart="onSectionDragStart(idx, $event)"
+            @dragover.prevent
+            @drop.prevent="onSectionDrop(idx)"
           >
             <button
               type="button"
@@ -191,9 +196,33 @@
               ]"
               @click="selectedKey = s.key"
             >
+              <span
+                v-if="canEdit"
+                class="cursor-grab text-white/30 shrink-0 select-none"
+                title="Drag to reorder"
+              >⋮⋮</span>
               <span class="text-white/50 text-xs w-6 text-right shrink-0">{{ idx + 1 }}.</span>
               <span class="shrink-0">{{ s.type === 'data' ? '📊' : '📝' }}</span>
               <span class="flex-1 min-w-0 truncate">{{ s.title }}</span>
+              <span
+                v-if="canEdit && selectedKey === s.key"
+                class="shrink-0 inline-flex items-center gap-0.5"
+              >
+                <button
+                  type="button"
+                  class="px-1 rounded bg-white/10 text-[10px] text-white/70 hover:text-white disabled:opacity-30"
+                  :disabled="idx === 0"
+                  title="Move up"
+                  @click.stop="moveSection(idx, -1)"
+                >↑</button>
+                <button
+                  type="button"
+                  class="px-1 rounded bg-white/10 text-[10px] text-white/70 hover:text-white disabled:opacity-30"
+                  :disabled="idx === workingSections.length - 1"
+                  title="Move down"
+                  @click.stop="moveSection(idx, 1)"
+                >↓</button>
+              </span>
               <input
                 v-if="canEdit"
                 type="checkbox"
@@ -206,6 +235,14 @@
             </button>
           </li>
         </ul>
+        <button
+          v-if="canEdit"
+          type="button"
+          class="mt-2 w-full px-2 py-2 rounded-lg border border-dashed border-white/20 text-white/70 hover:text-white hover:bg-white/10 text-sm"
+          @click="openAddSection"
+        >
+          + Add section…
+        </button>
       </aside>
 
       <!-- Section editor (main pane) -->
@@ -235,6 +272,62 @@
             <div class="text-xs text-white/50">
               {{ selectedSection.type === 'data' ? 'Computed from project data' : 'Free-form prose' }}
             </div>
+          </div>
+
+          <!-- Per-section options + actions (Phase 5) -->
+          <div
+            v-if="canEdit"
+            class="flex items-center gap-4 flex-wrap text-xs text-white/75 border-b border-white/10 pb-3"
+          >
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                v-model="selectedSection.pageBreakBefore"
+                type="checkbox"
+                @change="markDirty"
+              >
+              <span>Page break before</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="selectedSection.showTitle !== false"
+                @change="onToggleSectionFlag('showTitle', ($event.target as HTMLInputElement).checked)"
+              >
+              <span>Show title</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="selectedSection.titlePage === true"
+                @change="onToggleSectionFlag('titlePage', ($event.target as HTMLInputElement).checked)"
+              >
+              <span>Section title page</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="selectedSection.includeInToc !== false"
+                @change="onToggleSectionFlag('includeInToc', ($event.target as HTMLInputElement).checked)"
+              >
+              <span>In TOC</span>
+            </label>
+            <span class="flex-1" />
+            <button
+              type="button"
+              class="px-2 py-1 rounded-md bg-white/10 border border-white/15 text-white/80 hover:text-white hover:bg-white/15"
+              title="Duplicate this section"
+              @click="onDuplicateSection"
+            >
+              ⧉ Duplicate
+            </button>
+            <button
+              type="button"
+              class="px-2 py-1 rounded-md bg-red-500/15 border border-red-400/30 text-red-200 hover:bg-red-500/25"
+              title="Delete this section from the report"
+              @click="onDeleteSection"
+            >
+              Delete…
+            </button>
           </div>
 
           <!-- Prose editor -->
@@ -278,21 +371,67 @@
               <div class="text-xs text-white/50">
                 Source: <span class="text-white/80 font-medium">{{ selectedSection.dataSource }}</span>
                 <span
-                  v-if="dataMeta(selectedSection.key)?.totalCount != null"
+                  v-if="!hasEditedCopy && dataMeta(selectedSection.key)?.totalCount != null"
                 >· {{ dataMeta(selectedSection.key).totalCount }} row{{ dataMeta(selectedSection.key).totalCount === 1 ? '' : 's' }}</span>
               </div>
-              <button
-                v-if="canEdit"
-                type="button"
-                :disabled="refreshingKey === selectedSection.key"
-                class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm disabled:opacity-50"
-                @click="onRefreshSection(selectedSection.key)"
-              >
-                {{ refreshingKey === selectedSection.key ? 'Refreshing…' : '↻ Refresh data' }}
-              </button>
+              <div class="flex items-center gap-2 flex-wrap">
+                <template v-if="canEdit && hasEditedCopy">
+                  <button
+                    type="button"
+                    :disabled="materializing"
+                    class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm disabled:opacity-50"
+                    title="Replace the edited copy with fresh live data"
+                    @click="onRefreshEdited"
+                  >
+                    {{ materializing ? 'Refreshing…' : '↻ Refresh from live data…' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm"
+                    title="Discard the edited copy; the PDF goes back to live data"
+                    @click="onRevertEdited"
+                  >
+                    Revert to live data…
+                  </button>
+                </template>
+                <template v-else-if="canEdit">
+                  <button
+                    type="button"
+                    :disabled="materializing"
+                    class="px-3 py-1.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 hover:bg-indigo-500/30 text-indigo-100 text-sm disabled:opacity-50"
+                    title="Turn the live data into editable content"
+                    @click="onEditData"
+                  >
+                    {{ materializing ? 'Preparing…' : '✎ Edit this data' }}
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="refreshingKey === selectedSection.key"
+                    class="px-3 py-1.5 rounded-md bg-white/10 border border-white/15 hover:bg-white/15 text-white/85 text-sm disabled:opacity-50"
+                    @click="onRefreshSection(selectedSection.key)"
+                  >
+                    {{ refreshingKey === selectedSection.key ? 'Refreshing…' : '↻ Refresh data' }}
+                  </button>
+                </template>
+              </div>
             </div>
 
+            <div
+              v-if="hasEditedCopy"
+              class="space-y-2"
+            >
+              <div class="rounded-lg px-3 py-2 bg-indigo-500/10 border border-indigo-400/30 text-indigo-100 text-xs">
+                Edited copy — the PDF uses this content instead of live data. Refresh replaces it with fresh data; Revert goes back to live data.
+              </div>
+              <RichTextEditor
+                v-model="selectedSection.editedHtml"
+                :editable="canEdit"
+                class="h-[28rem]"
+                @update:model-value="markDirty"
+              />
+            </div>
             <DataSectionTable
+              v-else
               :data-source="selectedSection.dataSource"
               :data="sectionData[selectedSection.key]"
               :editable="canEdit && !isLocked"
@@ -300,6 +439,127 @@
               @delete-revision="onDeleteRevision"
             />
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add section modal -->
+    <div
+      v-if="showAddSectionModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      @click.self="showAddSectionModal = false"
+    >
+      <div class="w-full max-w-md rounded-2xl bg-slate-900/95 border border-white/15 p-5 space-y-4">
+        <div class="text-lg font-semibold text-white">
+          Add section
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-start gap-2 cursor-pointer text-sm text-white">
+            <input
+              v-model="addMode"
+              type="radio"
+              value="blank"
+              class="mt-1"
+            >
+            <div>
+              <div>Blank section</div>
+              <div class="text-xs text-white/60">A new narrative section you write yourself.</div>
+            </div>
+          </label>
+          <label
+            class="flex items-start gap-2 cursor-pointer text-sm text-white"
+            :class="!availableStandardSections.length && 'opacity-50'"
+          >
+            <input
+              v-model="addMode"
+              type="radio"
+              value="standard"
+              class="mt-1"
+              :disabled="!availableStandardSections.length"
+            >
+            <div>
+              <div>Standard section</div>
+              <div class="text-xs text-white/60">
+                {{ availableStandardSections.length ? 'Re-add a removed standard section.' : 'All standard sections are already in the report.' }}
+              </div>
+            </div>
+          </label>
+          <label class="flex items-start gap-2 cursor-pointer text-sm text-white">
+            <input
+              v-model="addMode"
+              type="radio"
+              value="data"
+              class="mt-1"
+            >
+            <div>
+              <div>App data</div>
+              <div class="text-xs text-white/60">A new section over any data source in the app.</div>
+            </div>
+          </label>
+        </div>
+
+        <div
+          v-if="addMode === 'blank' || addMode === 'data'"
+          class="space-y-1"
+        >
+          <label class="block text-xs text-white/60">Section title</label>
+          <input
+            v-model="addTitle"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+            placeholder="e.g. Envelope Commissioning Summary"
+            @keydown.enter.prevent="onAddSection"
+          >
+        </div>
+        <div
+          v-if="addMode === 'standard'"
+          class="space-y-1"
+        >
+          <label class="block text-xs text-white/60">Section</label>
+          <select
+            v-model="addStandardKey"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+          >
+            <option
+              v-for="c in availableStandardSections"
+              :key="c.key"
+              :value="c.key"
+            >
+              {{ c.title }}
+            </option>
+          </select>
+        </div>
+        <div
+          v-if="addMode === 'data'"
+          class="space-y-1"
+        >
+          <label class="block text-xs text-white/60">Data source</label>
+          <select
+            v-model="addDataSource"
+            class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+          >
+            <option
+              v-for="d in dataSourceOptions"
+              :key="d.value"
+              :value="d.value"
+            >
+              {{ d.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="flex items-center justify-end gap-2">
+          <button
+            class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-sm"
+            @click="showAddSectionModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="px-3 py-1.5 rounded-md bg-indigo-500/30 border border-indigo-400/40 hover:bg-indigo-500/40 text-white text-sm"
+            @click="onAddSection"
+          >
+            Add section
+          </button>
         </div>
       </div>
     </div>
@@ -381,6 +641,23 @@
       <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-900/95 border border-white/15 p-5 space-y-4">
         <div class="text-lg font-semibold text-white">
           Cover page settings
+        </div>
+
+        <div class="flex flex-col gap-2 pb-1 border-b border-white/10">
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-white/85">
+            <input
+              v-model="coverDraft.enabled"
+              type="checkbox"
+            >
+            <span>Include the cover page</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-white/85">
+            <input
+              v-model="coverDraft.titlePageEnabled"
+              type="checkbox"
+            >
+            <span>Include a formal title page (report title, project, version, date)</span>
+          </label>
         </div>
 
         <div class="space-y-1">
@@ -536,7 +813,7 @@ const lockNote = ref('')
 // --- Cover page settings ---
 const showCoverModal = ref(false)
 const coverDraft = ref<FinalReportCover>({
-  title: '', subtitle: '', logoSource: 'commissioning_agent', customLogoUrl: null, ownerLogoBlobUrl: null, showProjectImage: true,
+  enabled: true, titlePageEnabled: false, title: '', subtitle: '', logoSource: 'commissioning_agent', customLogoUrl: null, ownerLogoBlobUrl: null, showProjectImage: true,
 })
 const caLogo = computed(() => String((project.value && project.value.commissioning_agent && project.value.commissioning_agent.logo) || ''))
 const clientLogo = computed(() => String((project.value && project.value.logo) || ''))
@@ -551,6 +828,8 @@ const coverLogoPreview = computed(() => {
 function openCoverModal() {
   const c: any = (report.value && report.value.cover) || {}
   coverDraft.value = {
+    enabled: c.enabled !== false,
+    titlePageEnabled: c.titlePageEnabled === true,
     title: c.title || '',
     subtitle: c.subtitle || '',
     logoSource: c.logoSource || 'commissioning_agent',
@@ -658,6 +937,192 @@ function onToggleEnabled(key: string, enabled: boolean) {
   const s = workingSections.value.find((x) => x.key === key)
   if (!s) return
   s.enabled = enabled
+  markDirty()
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5: reorder, per-section options, add/duplicate/delete, edit-data flow
+// ---------------------------------------------------------------------------
+
+function renumberSections() {
+  workingSections.value.forEach((s, i) => { s.order = (i + 1) * 10 })
+}
+
+const dragIndex = ref<number | null>(null)
+function onSectionDragStart(idx: number, e: DragEvent) {
+  dragIndex.value = idx
+  try { e.dataTransfer?.setData('text/plain', String(idx)) } catch (err) { /* ignore */ }
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+function onSectionDrop(idx: number) {
+  const from = dragIndex.value
+  dragIndex.value = null
+  if (from === null || from === idx || !canEdit.value) return
+  const [row] = workingSections.value.splice(from, 1)
+  workingSections.value.splice(idx, 0, row)
+  renumberSections()
+  markDirty()
+}
+function moveSection(idx: number, dir: number) {
+  const next = idx + dir
+  if (next < 0 || next >= workingSections.value.length) return
+  const [row] = workingSections.value.splice(idx, 1)
+  workingSections.value.splice(next, 0, row)
+  renumberSections()
+  markDirty()
+}
+
+function onToggleSectionFlag(flag: 'showTitle' | 'titlePage' | 'includeInToc', value: boolean) {
+  const s = selectedSection.value as any
+  if (!s) return
+  s[flag] = value
+  markDirty()
+}
+
+function slugifyKey(title: string): string {
+  return String(title || 'section').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'section'
+}
+function uniqueSectionKey(base: string): string {
+  const keys = new Set(workingSections.value.map((s) => s.key))
+  let k = base
+  let i = 2
+  while (keys.has(k)) k = `${base}-${i++}`
+  return k
+}
+
+function onDuplicateSection() {
+  const s = selectedSection.value
+  if (!s) return
+  const idx = workingSections.value.findIndex((x) => x.key === s.key)
+  const copy: any = JSON.parse(JSON.stringify(s))
+  delete copy._id
+  copy.key = uniqueSectionKey(`${s.key}-copy`)
+  copy.title = `${s.title} (copy)`
+  workingSections.value.splice(idx + 1, 0, copy)
+  renumberSections()
+  selectedKey.value = copy.key
+  markDirty()
+}
+
+function onDeleteSection() {
+  const s = selectedSection.value
+  if (!s) return
+  if (!confirm(`Delete "${s.title}" from the report?\n\nStandard sections can be re-added later via "Add section". Save to make the deletion permanent.`)) return
+  const idx = workingSections.value.findIndex((x) => x.key === s.key)
+  workingSections.value.splice(idx, 1)
+  renumberSections()
+  selectedKey.value = workingSections.value[Math.min(idx, workingSections.value.length - 1)]?.key || null
+  markDirty()
+}
+
+// --- Add section ---
+const showAddSectionModal = ref(false)
+const addMode = ref<'blank' | 'standard' | 'data'>('blank')
+const addTitle = ref('')
+const addStandardKey = ref('')
+const addDataSource = ref('')
+
+const sectionCatalog = computed<any[]>(() => ((report.value as any)?.sectionCatalog || []))
+const availableStandardSections = computed(() => {
+  const keys = new Set(workingSections.value.map((s) => s.key))
+  return sectionCatalog.value.filter((c: any) => !keys.has(c.key))
+})
+const dataSourceOptions = computed(() => {
+  const seen = new Set<string>()
+  const out: Array<{ value: string; label: string }> = []
+  for (const c of sectionCatalog.value) {
+    if (c.type === 'data' && c.dataSource && !seen.has(c.dataSource)) {
+      seen.add(c.dataSource)
+      out.push({ value: String(c.dataSource), label: `${c.title}` })
+    }
+  }
+  return out
+})
+
+function openAddSection() {
+  addMode.value = 'blank'
+  addTitle.value = ''
+  addStandardKey.value = availableStandardSections.value[0]?.key || ''
+  addDataSource.value = dataSourceOptions.value[0]?.value || ''
+  showAddSectionModal.value = true
+}
+
+function onAddSection() {
+  const base = {
+    enabled: true,
+    contentHtml: '',
+    dataSource: null as string | null,
+    dataConfig: {},
+    pageBreakBefore: true,
+    includeInToc: true,
+    editedHtml: '',
+    showTitle: true,
+    titlePage: false,
+    order: 0,
+  }
+  let added: any = null
+  if (addMode.value === 'standard') {
+    const c = sectionCatalog.value.find((x: any) => x.key === addStandardKey.value)
+    if (!c) { ui.showError('Pick a section to add'); return }
+    added = { ...base, key: c.key, title: c.title, type: c.type, dataSource: c.type === 'data' ? c.dataSource || null : null }
+  } else {
+    const title = addTitle.value.trim()
+    if (!title) { ui.showError('Give the section a title'); return }
+    if (addMode.value === 'data') {
+      if (!addDataSource.value) { ui.showError('Pick a data source'); return }
+      added = { ...base, key: uniqueSectionKey(`custom-${slugifyKey(title)}`), title, type: 'data', dataSource: addDataSource.value }
+    } else {
+      added = { ...base, key: uniqueSectionKey(`custom-${slugifyKey(title)}`), title, type: 'prose' }
+    }
+  }
+  workingSections.value.push(added)
+  renumberSections()
+  selectedKey.value = added.key
+  showAddSectionModal.value = false
+  markDirty()
+}
+
+// --- Edit-data flow (materialize → edit → PDF prefers the edited copy) ---
+const materializing = ref(false)
+const hasEditedCopy = computed(() => !!String((selectedSection.value as any)?.editedHtml || '').trim())
+
+async function onEditData() {
+  const s = selectedSection.value as any
+  if (!s) return
+  materializing.value = true
+  try {
+    const html = await store.materializeSection(s.key)
+    s.editedHtml = html || '<p></p>'
+    markDirty()
+    ui.showInfo('Live data loaded as editable content. Edit as needed, then Save — the PDF will use your edited copy.')
+  } catch (e: any) {
+    ui.showError(store.error || 'Failed to prepare the data for editing')
+  } finally {
+    materializing.value = false
+  }
+}
+
+async function onRefreshEdited() {
+  const s = selectedSection.value as any
+  if (!s) return
+  if (!confirm('Replace your edited copy with fresh live data? Your edits to this section will be lost.')) return
+  materializing.value = true
+  try {
+    const html = await store.materializeSection(s.key)
+    s.editedHtml = html || '<p></p>'
+    markDirty()
+  } catch (e: any) {
+    ui.showError(store.error || 'Failed to refresh from live data')
+  } finally {
+    materializing.value = false
+  }
+}
+
+function onRevertEdited() {
+  const s = selectedSection.value as any
+  if (!s) return
+  if (!confirm('Discard the edited copy? The PDF will render live data for this section again.')) return
+  s.editedHtml = ''
   markDirty()
 }
 

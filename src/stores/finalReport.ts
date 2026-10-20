@@ -21,6 +21,21 @@ export type FinalReportSection = {
   dataConfig: Record<string, any>
   pageBreakBefore: boolean
   includeInToc: boolean
+  /** Edited override for data sections — the PDF prefers this when non-empty. */
+  editedHtml?: string
+  /** Render the section heading in the PDF (default true). */
+  showTitle?: boolean
+  /** Insert a divider/title page before the section (default false). */
+  titlePage?: boolean
+}
+
+/** Static descriptor of a standard section (from the backend catalog). */
+export type FinalReportCatalogEntry = {
+  key: string
+  title: string
+  order: number
+  type: 'prose' | 'data'
+  dataSource?: string | null
 }
 
 export type FinalReportRelease = {
@@ -33,6 +48,10 @@ export type FinalReportRelease = {
 
 export type FinalReportCoverLogoSource = 'commissioning_agent' | 'client' | 'custom' | 'none'
 export type FinalReportCover = {
+  /** Render the designed cover page (default true). */
+  enabled?: boolean
+  /** Render the formal title page (default false). */
+  titlePageEnabled?: boolean
   title: string
   subtitle: string
   logoSource: FinalReportCoverLogoSource
@@ -60,6 +79,8 @@ export type FinalReport = {
   createdAt: string
   updatedAt: string
   permissions: FinalReportPermissions | null
+  /** Standard-section catalog (for the Add-section dialog). */
+  sectionCatalog?: FinalReportCatalogEntry[]
 }
 
 /** Data returned from POST /sections/:key/refresh — shape varies per source. */
@@ -155,6 +176,26 @@ export const useFinalReportStore = defineStore('finalReport', () => {
       return data
     } catch (e) {
       setError(e, `Failed to refresh ${key}`)
+      throw e
+    }
+  }
+
+  /**
+   * Render a data section's LIVE data to the exact HTML the PDF would
+   * produce (Phase 5 "edit the data"). Returns the HTML; nothing persists
+   * until the caller saves it back as the section's editedHtml.
+   */
+  async function materializeSection(key: string): Promise<string> {
+    const projectId = report.value?.projectId
+    if (!projectId) throw new Error('Report not loaded')
+    error.value = null
+    try {
+      const { data } = await http.post<{ key: string; html: string }>(
+        `/api/projects/${projectId}/final-report/sections/${encodeURIComponent(key)}/materialize`,
+      )
+      return String(data.html || '')
+    } catch (e) {
+      setError(e, `Failed to materialize ${key}`)
       throw e
     }
   }
@@ -301,6 +342,7 @@ export const useFinalReportStore = defineStore('finalReport', () => {
     save,
     refreshSection,
     refreshAllSections,
+    materializeSection,
     lock,
     unlock,
     generatePdf,
