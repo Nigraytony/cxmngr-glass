@@ -219,8 +219,32 @@ Each phase ships independently; nothing breaks in between.
      data sections with their own filters is deferred to the Phase 7 composer.
   4. **Cover page**: already renders (title/subtitle/logo); honor `showProjectImage` and bring
      the layout onto the brand (final polish in Phase 8).
-  Deferred within Phase 5 unless time allows: TOC page numbers (needs two-pass rendering),
+  Additional requirements (Tony's list, 2026-10-20) — supersede earlier deferrals where they
+  conflict:
+  5. **TOC hyperlinks + PDF bookmarks**: TOC entries link to their sections inside the PDF and
+     the PDF carries a navigable outline (Puppeteer `outline`/`tagged` + the existing anchors).
+  6. **Title page (opt-in)** — a formal first page (report title, project, version, date) —
+     and **cover page becomes opt-in** too; both independently toggleable, both customizable.
+  7. **Per-section data selection**: pick WHICH equipment / checklists / functional tests a data
+     section includes (stored in the section's `dataConfig`; providers honor it). This is the
+     `dataConfig` work, with selection UIs.
+  8. **Add section from app resources**: the Add dialog offers a blank prose section, any
+     removed standard section, or a new data section over any data source — which, with #7,
+     also covers duplicating a data section with different filters (un-deferred from Phase 7).
+  9. **Documents integration**: a section can point at a Documents-module folder (or picked
+     files) — the section lists those documents and merges the PDFs into the report at that
+     position; `referencedDocs` fold into this.
+  10. **Per-section title options (opt-in)**: show/hide the section heading, and an optional
+      section title page (divider page) before the section.
+  11. **Duplicate a section** (prose content or data source + config copied under a new key).
+  12. **Publish to Documents**: a finished (locked/released) report PDF is filed into a
+      "Final Reports" folder in the project's Documents module automatically.
+  Still deferred: TOC page numbers (two-pass rendering; bookmarks + links cover navigation),
   DOCX export.
+  Delivery order: 5a backend core (editedHtml/materialize, pageBreak honor + lazy migration,
+  brand fonts, cover/title-page flags, PDF outline) → 5b editor UI (reorder, add/remove/
+  duplicate, per-section toggles) → 5c data selection UIs + providers → 5d Documents
+  integration + publish-to-Documents.
 - **Phase 6 — OPR report** (feedback item): OPR item lifecycle report as a new definition on the
   kit, plus an OPR data section upgrade in the Final Report.
 - **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
