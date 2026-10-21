@@ -160,26 +160,59 @@ export async function generateOprLifecyclePdf(opts: OprLifecycleOptions): Promis
     return cy + r + 9
   }
 
+  // Horizontal bar chart: label | bar | count per row, caption underneath.
+  const drawBarChart = (
+    x: number,
+    y: number,
+    w: number,
+    rows: Array<{ label: string; value: number; color: [number, number, number] }>,
+    caption: string,
+  ) => {
+    const rowH = 7
+    const barH = 3.6
+    const labelW = 17
+    const valueW = 8
+    const maxV = Math.max(...rows.map((r) => r.value), 1)
+    let yy = y
+    doc.setFont(SANS, 'normal')
+    for (const r of rows) {
+      doc.setFontSize(7.5)
+      doc.setTextColor(100)
+      doc.text(r.label, x + labelW, yy + barH - 0.6, { align: 'right' })
+      const bw = Math.max(0.8, (r.value / maxV) * (w - labelW - valueW - 4))
+      doc.setFillColor(r.color[0], r.color[1], r.color[2])
+      doc.rect(x + labelW + 2, yy, bw, barH, 'F')
+      doc.setTextColor(0)
+      doc.text(String(r.value), x + labelW + 2 + bw + 1.5, yy + barH - 0.6)
+      yy += rowH
+    }
+    doc.setFontSize(8)
+    doc.setTextColor(120)
+    doc.text(caption, x + w / 2, yy + 2.5, { align: 'center' })
+    doc.setTextColor(0)
+    return yy + 5.5
+  }
+
   const coverageSegments = (['verified', 'partial', 'fail', 'na', 'unverified'] as VerdictState[])
     .map((s) => ({ value: count(s), color: COVERAGE_COLORS[s] }))
     .filter((s) => s.value > 0)
   // All evidence checks across every item, by result.
   const allEvals = enriched.flatMap((e) => e.evals)
   const evalCount = (status: string) => allEvals.filter((ev) => String(ev?.status || 'unverified') === status).length
-  const evalSegments: Array<{ value: number; color: [number, number, number] }> = [
-    { value: evalCount('pass'), color: COVERAGE_COLORS.verified },
-    { value: evalCount('fail'), color: COVERAGE_COLORS.fail },
-    { value: evalCount('na'), color: COVERAGE_COLORS.na },
-    { value: evalCount('unverified'), color: COVERAGE_COLORS.unverified },
-  ].filter((s) => s.value > 0)
+  const evalBars: Array<{ label: string; value: number; color: [number, number, number] }> = [
+    { label: 'Pass', value: evalCount('pass'), color: COVERAGE_COLORS.verified },
+    { label: 'Fail', value: evalCount('fail'), color: COVERAGE_COLORS.fail },
+    { label: 'N/A', value: evalCount('na'), color: COVERAGE_COLORS.na },
+    { label: 'Open', value: evalCount('unverified'), color: COVERAGE_COLORS.unverified },
+  ]
 
   if (enriched.length) {
     const cy = statsTop + 18
     let bottom = statY
     if (allEvals.length) {
-      // Side by side: items by coverage, evaluations by result.
-      bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.52, cy, coverageSegments, enriched.length, 'OPR items', 'Items by coverage'))
-      bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.82, cy, evalSegments, allEvals.length, 'evaluations', 'Evaluations by result'))
+      // Side by side: items-by-coverage donut, evaluations-by-result bars.
+      bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.5, cy, coverageSegments, enriched.length, 'OPR items', 'Items by coverage'))
+      bottom = Math.max(bottom, drawBarChart(rd.margin + rd.contentWidth * 0.66, statsTop + 2, rd.contentWidth * 0.33, evalBars, `Evaluations by result (${allEvals.length})`))
     } else {
       bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.72, cy, coverageSegments, enriched.length, 'OPR items', 'Items by coverage'))
     }
