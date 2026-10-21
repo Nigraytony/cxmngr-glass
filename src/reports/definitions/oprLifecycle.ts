@@ -77,30 +77,88 @@ export async function generateOprLifecyclePdf(opts: OprLifecycleOptions): Promis
     }
   })
 
-  // --- Summary stats -------------------------------------------------------
+  // --- Summary stats + coverage donut --------------------------------------
   const count = (s: VerdictState) => enriched.filter((e) => e.verdict.state === s).length
   const archived = enriched.filter((e) => e.status === 'archived').length
+  const COVERAGE_COLORS: Record<VerdictState, [number, number, number]> = {
+    verified: [21, 128, 61],
+    partial: [217, 119, 6],
+    fail: [185, 28, 28],
+    na: [148, 163, 184],
+    unverified: [222, 226, 232],
+  }
+
   doc.setFont(SANS, 'bold'); doc.setFontSize(13)
-  rd.ensureSpace(12)
+  rd.ensureSpace(58)
   doc.text('Verification Summary', rd.margin, rd.y)
   rd.y += 7
+
+  const statsTop = rd.y
   doc.setFont(SANS, 'normal'); doc.setFontSize(9.5)
-  const stats: Array<[string, string]> = [
-    ['OPR items', String(enriched.length)],
-    ['Verified', String(count('verified'))],
-    ['Partially verified', String(count('partial'))],
-    ['Failing', String(count('fail'))],
-    ['N/A', String(count('na'))],
-    ['Unverified', String(count('unverified'))],
-    ['Archived', String(archived)],
+  const stats: Array<[string, string, VerdictState | null]> = [
+    ['OPR items', String(enriched.length), null],
+    ['Verified', String(count('verified')), 'verified'],
+    ['Partially verified', String(count('partial')), 'partial'],
+    ['Failing', String(count('fail')), 'fail'],
+    ['N/A', String(count('na')), 'na'],
+    ['Unverified', String(count('unverified')), 'unverified'],
+    ['Archived', String(archived), null],
   ]
-  for (const [label, value] of stats) {
-    rd.ensureSpace(6)
+  let statY = statsTop
+  for (const [label, value, state] of stats) {
+    if (state) {
+      const [cr, cg, cb] = COVERAGE_COLORS[state]
+      doc.setFillColor(cr, cg, cb)
+      doc.rect(rd.margin, statY - 2.6, 3, 3, 'F')
+    }
     doc.setTextColor(100)
-    doc.text(`${label}:`, rd.margin, rd.y)
+    doc.text(`${label}:`, rd.margin + 5, statY)
     doc.setTextColor(0)
-    doc.text(value, rd.margin + 38, rd.y)
-    rd.y += 6
+    doc.text(value, rd.margin + 43, statY)
+    statY += 6
+  }
+
+  // Items-by-coverage donut in the otherwise-empty right half. Drawn as a
+  // vector wedge fan (crisp at any zoom; no chart library needed).
+  const donutSegments = (['verified', 'partial', 'fail', 'na', 'unverified'] as VerdictState[])
+    .map((s) => ({ value: count(s), color: COVERAGE_COLORS[s] }))
+    .filter((s) => s.value > 0)
+  if (enriched.length) {
+    const r = 17
+    const cx = rd.margin + rd.contentWidth * 0.72
+    const cy = statsTop + 18
+    let angle = -90
+    const total = donutSegments.reduce((a, s) => a + s.value, 0) || 1
+    for (const seg of donutSegments) {
+      const sweep = (seg.value / total) * 360
+      doc.setFillColor(seg.color[0], seg.color[1], seg.color[2])
+      const step = 2.5
+      for (let a = angle; a < angle + sweep; a += step) {
+        const a2 = Math.min(a + step, angle + sweep)
+        const x1 = cx + r * Math.cos((a * Math.PI) / 180)
+        const y1 = cy + r * Math.sin((a * Math.PI) / 180)
+        const x2 = cx + r * Math.cos((a2 * Math.PI) / 180)
+        const y2 = cy + r * Math.sin((a2 * Math.PI) / 180)
+        doc.triangle(cx, cy, x1, y1, x2, y2, 'F')
+      }
+      angle += sweep
+    }
+    // Donut hole + center total
+    doc.setFillColor(255, 255, 255)
+    doc.circle(cx, cy, 10, 'F')
+    doc.setFont(SANS, 'bold'); doc.setFontSize(15)
+    doc.setTextColor(0)
+    doc.text(String(enriched.length), cx, cy + 1.5, { align: 'center' })
+    doc.setFont(SANS, 'normal'); doc.setFontSize(7)
+    doc.setTextColor(120)
+    doc.text('OPR items', cx, cy + 6, { align: 'center' })
+    // Caption under the chart
+    doc.setFontSize(8)
+    doc.text('Items by coverage', cx, cy + r + 6, { align: 'center' })
+    doc.setTextColor(0)
+    rd.y = Math.max(statY, cy + r + 9)
+  } else {
+    rd.y = statY
   }
   rd.sectionGap()
 
