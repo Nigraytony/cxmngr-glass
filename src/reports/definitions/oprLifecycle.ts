@@ -118,18 +118,21 @@ export async function generateOprLifecyclePdf(opts: OprLifecycleOptions): Promis
     statY += 6
   }
 
-  // Items-by-coverage donut in the otherwise-empty right half. Drawn as a
-  // vector wedge fan (crisp at any zoom; no chart library needed).
-  const donutSegments = (['verified', 'partial', 'fail', 'na', 'unverified'] as VerdictState[])
-    .map((s) => ({ value: count(s), color: COVERAGE_COLORS[s] }))
-    .filter((s) => s.value > 0)
-  if (enriched.length) {
+  // Coverage + evaluations donuts in the otherwise-empty right half. Drawn
+  // as vector wedge fans (crisp at any zoom; no chart library needed).
+  const drawDonut = (
+    cx: number,
+    cy: number,
+    segments: Array<{ value: number; color: [number, number, number] }>,
+    centerCount: number,
+    centerLabel: string,
+    caption: string,
+  ) => {
     const r = 17
-    const cx = rd.margin + rd.contentWidth * 0.72
-    const cy = statsTop + 18
     let angle = -90
-    const total = donutSegments.reduce((a, s) => a + s.value, 0) || 1
-    for (const seg of donutSegments) {
+    const total = segments.reduce((a, s) => a + s.value, 0) || 1
+    for (const seg of segments) {
+      if (!seg.value) continue
       const sweep = (seg.value / total) * 360
       doc.setFillColor(seg.color[0], seg.color[1], seg.color[2])
       const step = 2.5
@@ -143,20 +146,44 @@ export async function generateOprLifecyclePdf(opts: OprLifecycleOptions): Promis
       }
       angle += sweep
     }
-    // Donut hole + center total
     doc.setFillColor(255, 255, 255)
     doc.circle(cx, cy, 10, 'F')
     doc.setFont(SANS, 'bold'); doc.setFontSize(15)
     doc.setTextColor(0)
-    doc.text(String(enriched.length), cx, cy + 1.5, { align: 'center' })
+    doc.text(String(centerCount), cx, cy + 1.5, { align: 'center' })
     doc.setFont(SANS, 'normal'); doc.setFontSize(7)
     doc.setTextColor(120)
-    doc.text('OPR items', cx, cy + 6, { align: 'center' })
-    // Caption under the chart
+    doc.text(centerLabel, cx, cy + 6, { align: 'center' })
     doc.setFontSize(8)
-    doc.text('Items by coverage', cx, cy + r + 6, { align: 'center' })
+    doc.text(caption, cx, cy + r + 6, { align: 'center' })
     doc.setTextColor(0)
-    rd.y = Math.max(statY, cy + r + 9)
+    return cy + r + 9
+  }
+
+  const coverageSegments = (['verified', 'partial', 'fail', 'na', 'unverified'] as VerdictState[])
+    .map((s) => ({ value: count(s), color: COVERAGE_COLORS[s] }))
+    .filter((s) => s.value > 0)
+  // All evidence checks across every item, by result.
+  const allEvals = enriched.flatMap((e) => e.evals)
+  const evalCount = (status: string) => allEvals.filter((ev) => String(ev?.status || 'unverified') === status).length
+  const evalSegments: Array<{ value: number; color: [number, number, number] }> = [
+    { value: evalCount('pass'), color: COVERAGE_COLORS.verified },
+    { value: evalCount('fail'), color: COVERAGE_COLORS.fail },
+    { value: evalCount('na'), color: COVERAGE_COLORS.na },
+    { value: evalCount('unverified'), color: COVERAGE_COLORS.unverified },
+  ].filter((s) => s.value > 0)
+
+  if (enriched.length) {
+    const cy = statsTop + 18
+    let bottom = statY
+    if (allEvals.length) {
+      // Side by side: items by coverage, evaluations by result.
+      bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.52, cy, coverageSegments, enriched.length, 'OPR items', 'Items by coverage'))
+      bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.82, cy, evalSegments, allEvals.length, 'evaluations', 'Evaluations by result'))
+    } else {
+      bottom = Math.max(bottom, drawDonut(rd.margin + rd.contentWidth * 0.72, cy, coverageSegments, enriched.length, 'OPR items', 'Items by coverage'))
+    }
+    rd.y = bottom
   } else {
     rd.y = statY
   }
