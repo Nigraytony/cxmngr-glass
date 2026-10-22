@@ -5,7 +5,18 @@
 import { normalizePdfText, splitText } from './text'
 import { SANS } from './tokens'
 
-export type TocEntry = { title: string; pageNo: number; indent: number }
+export type TocEntry = {
+  title: string
+  /** Page number PRINTED in the TOC (final position, after any PDF merges). */
+  pageNo: number
+  indent: number
+  /**
+   * Page the link annotation targets, as numbered in THIS jsPDF document
+   * (pre-merge). Links bind to the page object, so they stay correct after
+   * pdf-lib inserts pages ahead of it. Defaults to pageNo.
+   */
+  linkPageNo?: number
+}
 
 export interface TocFrame {
   margin: number
@@ -75,9 +86,12 @@ export function drawToc(
     const entryW = Math.max(40, tocW - indentX)
     const lines = splitText(doc, normalizePdfText(e.title), entryW)
     if (ty + lines.length * LINE_H > bottomLimit) nextTocPage()
-    // First line with the page number on the right
+    // First line with the page number on the right, the whole row clickable
     doc.text(lines[0] || '', opts.margin + indentX, ty)
     doc.text(String(e.pageNo), opts.pageWidth - opts.margin, ty, { align: 'right' })
+    doc.link(opts.margin + indentX, ty - 4.2, opts.pageWidth - opts.margin * 2 - indentX, 5.4, {
+      pageNumber: e.linkPageNo ?? e.pageNo,
+    })
     ty += LINE_H
     for (let i = 1; i < lines.length; i++) {
       if (ty + LINE_H > bottomLimit) nextTocPage()

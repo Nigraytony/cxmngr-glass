@@ -214,7 +214,14 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
   const pushTocEntry = (b: ComposerBlock) => {
     const title = tocEntryTitle(b)
     if (!title) return
-    tocEntries.push({ title, pageNo: rd.pageNo + insertOffset, indent: b.type === 'heading' && b.level === 2 ? 1 : 0 })
+    tocEntries.push({
+      title,
+      pageNo: rd.pageNo + insertOffset,
+      // Link to the page as numbered in the jsPDF doc (pre-merge); the
+      // annotation follows the page object when merged PDFs shift it later.
+      linkPageNo: rd.pageNo,
+      indent: b.type === 'heading' && b.level === 2 ? 1 : 0,
+    })
   }
 
   for (let i = 0; i < blocks.length; i++) {
