@@ -111,6 +111,57 @@ export async function loadImage(src?: string): Promise<LoadedImage> {
   }
 }
 
+/**
+ * Load a PHOTO for report embedding: applies EXIF orientation (the browser
+ * decodes it; jsPDF would otherwise embed the raw sideways bytes), downscales
+ * to `maxEdge` on the long edge and re-encodes as JPEG. This is what keeps
+ * phone photos upright and reports emailable (~20 MB -> ~2 MB). Use loadImage
+ * for logos/graphics, which must keep transparency and exact pixels.
+ */
+export async function loadPhoto(src?: string, opts: { maxEdge?: number; quality?: number } = {}): Promise<LoadedImage> {
+  const maxEdge = opts.maxEdge ?? 1600
+  const quality = opts.quality ?? 0.8
+  try {
+    if (!src) return {}
+    // Normalize to a data URL first (remote fetches avoid canvas CORS taint).
+    let dataUrl = src
+    if (!src.startsWith('data:')) {
+      const res = await fetch(src)
+      if (!res.ok) return {}
+      const blob = await res.blob()
+      dataUrl = await new Promise<string>(resolve => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.readAsDataURL(blob)
+      })
+    }
+    const img = new Image()
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = () => reject(new Error('img load fail'))
+      img.src = dataUrl
+    })
+    // naturalWidth/Height and drawImage honor EXIF orientation in Chromium.
+    const w0 = img.naturalWidth || img.width
+    const h0 = img.naturalHeight || img.height
+    if (!w0 || !h0) return loadImage(src)
+    const scale = Math.min(1, maxEdge / Math.max(w0, h0))
+    const w = Math.max(1, Math.round(w0 * scale))
+    const h = Math.max(1, Math.round(h0 * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return loadImage(src)
+    ctx.fillStyle = '#ffffff' // JPEG has no alpha channel
+    ctx.fillRect(0, 0, w, h)
+    ctx.drawImage(img, 0, 0, w, h)
+    return { dataUrl: canvas.toDataURL('image/jpeg', quality), format: 'JPEG', width: w, height: h }
+  } catch (e) {
+    return loadImage(src)
+  }
+}
+
 /** Try several sources in order; first one that loads wins. */
 export async function loadFirstAvailable(srcs: string[]): Promise<LoadedImage> {
   for (const s of srcs) {

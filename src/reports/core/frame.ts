@@ -202,7 +202,10 @@ export class ReportDoc {
 
   /** Create the doc, embed fonts, load logos, and draw the first page header. */
   static async create(opts: ReportDocOptions): Promise<ReportDoc> {
-    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: opts.orientation || 'portrait' })
+    // US Letter everywhere (locked with Tony 2026-10-22): projects are US-based
+    // and the Puppeteer Final Report is already Letter. Layouts are margin-
+    // relative, so they reflow to the 216x279mm page automatically.
+    const doc = new jsPDF({ unit: 'mm', format: 'letter', orientation: opts.orientation || 'portrait' })
     await ensureReportFonts(doc)
     setColor(doc, 'text')
     setZeroCharSpace(doc)

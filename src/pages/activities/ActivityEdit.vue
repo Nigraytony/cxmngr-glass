@@ -3673,7 +3673,7 @@ async function downloadActivityPdf() {
   ui.showInfo(generatingToast, { duration: 10000 })
   try {
     await ensureReportData()
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
+    const doc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
     // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
     setZeroCharSpace(doc)
     setBodyFont(doc, 'normal')
@@ -4197,7 +4197,7 @@ async function downloadActivityPdf() {
       } catch (e) { /* ignore */ }
       const issues = aggregated
       if (issues.length) {
-        const iDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(iDoc); setReportColor(iDoc, 'text')
+        const iDoc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(iDoc); setReportColor(iDoc, 'text')
         // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
         setZeroCharSpace(iDoc)
         setBodyFont(iDoc, 'normal')
@@ -4359,7 +4359,7 @@ async function downloadActivityPdf() {
     if (reportHas('actions')) {
       const reportActions = await gatherReportActions({ withPhotos: true })
       if (reportActions.length) {
-        const aDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(aDoc); setReportColor(aDoc, 'text')
+        const aDoc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(aDoc); setReportColor(aDoc, 'text')
         setZeroCharSpace(aDoc); setBodyFont(aDoc, 'normal')
         const aPW = aDoc.internal.pageSize.getWidth(); const aPH = aDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
         const contentW = aPW - margin * 2
@@ -4471,7 +4471,7 @@ async function downloadActivityPdf() {
     if (reportHas('attachments')) {
       const atts: any[] = reportAttachments
       if (atts.length) {
-        const attDoc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(attDoc); setReportColor(attDoc, 'text')
+        const attDoc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(attDoc); setReportColor(attDoc, 'text')
         // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
         setZeroCharSpace(attDoc)
         setBodyFont(attDoc, 'normal')
@@ -4597,7 +4597,7 @@ async function downloadActivityPdf() {
     if (reportHas('equipmentList') && selectedEquip.value.length) {
       try {
         const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF
-        const eqDoc = new jsPDFmod({ unit: 'mm', format: 'a4' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text')
+        const eqDoc = new jsPDFmod({ unit: 'mm', format: 'letter' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text')
         setZeroCharSpace(eqDoc)
         setBodyFont(eqDoc, 'normal')
         const eqPW = eqDoc.internal.pageSize.getWidth()

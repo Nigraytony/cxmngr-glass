@@ -105,7 +105,7 @@ function sortAllResults(rows: OprResultsRow[]) {
 export async function generateOprWorkshopPdf(data: OprWorkshopReportData, settings: OprWorkshopReportSettings | ReportSettings): Promise<ArrayBuffer> {
   const s = toReportSettings(settings)
   const orderedKeys = enabledSectionKeys(s)
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
+  const doc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
   const margin = 12
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()

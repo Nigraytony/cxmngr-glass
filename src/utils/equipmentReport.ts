@@ -1,5 +1,5 @@
 import { ReportDoc } from '../reports/core/frame'
-import { loadImage, type LoadedImage } from '../reports/core/images'
+import { loadImage, loadPhoto, type LoadedImage } from '../reports/core/images'
 import { htmlToText, splitText } from '../reports/core/text'
 import { insertPdfAttachmentsAt } from '../reports/core/merge'
 import { SANS } from '../reports/core/tokens'
@@ -83,12 +83,34 @@ function passCellState(v: any): 'none' | 'pass' | 'fail' {
 }
 function passLabel(state: 'none' | 'pass' | 'fail') { return state === 'pass' ? 'PASS' : state === 'fail' ? 'FAIL' : '—' }
 
+// User-entered attribute keys often already end in a colon ("Serial No:");
+// the renderer appends its own, printing "Serial No::". Strip trailing ones.
+function cleanLabel(s: any): string { return String(s ?? '').replace(/[\s:]+$/, '') }
+
+/** True when a functional test carries any RECORDED result (an overall pass/fail,
+ * a filled Actual/pass on a step row, or data in a result-ish table column). */
+function fptHasResults(t: any): boolean {
+  if (t?.pass === true || t?.pass === false) return true
+  const rows: any[] = Array.isArray(t?.rows) ? t.rows : []
+  if (rows.some((r: any) => String(r?.actual ?? '').trim() !== '' || r?.pass === true || r?.pass === false || String(r?.pass ?? '').trim() !== '' || String(r?.result ?? '').trim() !== '')) return true
+  const tbl = t?.table
+  if (tbl && Array.isArray(tbl.columns) && Array.isArray(tbl.rows)) {
+    const resultCols = tbl.columns.filter((c: any) => /actual|measured|result|reading|recorded/i.test(String(c?.key || c?.name || '')))
+    const cols = resultCols.length ? resultCols : tbl.columns
+    if (tbl.rows.some((r: any) => cols.some((c: any) => String((r || {})[c?.key] ?? '').trim() !== ''))) return true
+  }
+  return false
+}
+
 export interface GenerateEquipmentPdfOptions {
   /** Legacy include bag; migrated via normalizeReportSettings. */
   include?: Partial<Record<'info'|'attributes'|'components'|'photos'|'attachments'|'checklists'|'fpt'|'signatures'|'issues', boolean>>
   /** Ordered sections; wins over `include` when present. */
   sections?: ReportSection[]
   photoLimit?: number
+  /** Print functional tests that have no recorded results (blank field forms).
+   *  Default false: blank FPT tables bloat bundled reports (Activity redesign). */
+  includeBlankFpt?: boolean
 }
 
 export async function generateEquipmentPdf(eq: any, project: any, issuesById: Record<string, any>, spacesById: Record<string, any>, opts?: GenerateEquipmentPdfOptions): Promise<ArrayBuffer> {
@@ -131,12 +153,12 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
   // Attributes
   const renderAttributes = async () => {
     const attrs: Array<{key:string;value:string}> = Array.isArray(eq.attributes) ? eq.attributes.filter((r:any)=> (String(r?.key||'').trim()||String(r?.value||'').trim())) : []
-    if (attrs.length) { sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Attributes', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); for (const a of attrs) { const line = `${a.key}: ${a.value}`; const lines = splitText(doc, line, pageWidth - margin*2); for (const l of lines) { ensureSpace(7); doc.text(l, margin + 2, y); y += 6 } } }
+    if (attrs.length) { sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Attributes', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); for (const a of attrs) { const line = `${cleanLabel(a.key)}: ${a.value}`; const lines = splitText(doc, line, pageWidth - margin*2); for (const l of lines) { ensureSpace(7); doc.text(l, margin + 2, y); y += 6 } } }
   }
   // Components
   const renderComponents = async () => {
     const comps: any[] = Array.isArray(eq.components)? eq.components : []
-    if (comps.length) { sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Components', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); const toPairs = (obj:any)=> { if(!obj) return []; if(Array.isArray(obj)) return obj.map((r:any)=> ({k:String(r?.key??r?.title??''), v:String(r?.value??'')})).filter((p:any)=>p.k); if(typeof obj==='object') return Object.entries(obj).map(([k,v])=> ({k:String(k), v:String(v??'')})); return [] }; for (const c of comps){ const header = `${c.tag ? c.tag + ' — ' : ''}${c.title || c.type || 'Component'}`; const hLines = splitText(doc, header, pageWidth - margin*2); doc.setFont(SANS,'bold'); for(const l of hLines){ ensureSpace(7); doc.text(l, margin+2, y); y +=5 } doc.setFont(SANS,'normal'); const metaBits: string[] = []; if(c.type) metaBits.push(`Type: ${c.type}`); if(c.status) metaBits.push(`Status: ${c.status}`); const meta = metaBits.join('  •  '); if(meta){ const mLines = splitText(doc, meta, pageWidth - margin*2 -4); for(const l of mLines){ ensureSpace(6); doc.text(l, margin+4, y); y +=5 } } const attrs = toPairs(c?.attributes); for(const p of attrs){ const txt = `${p.k}: ${p.v}`; const aLines = splitText(doc, txt, pageWidth - margin*2 -6); for(const l of aLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } if(c.notes){ const nLines = splitText(doc, `Notes: ${c.notes}`, pageWidth - margin*2 -6); for(const l of nLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } y +=3 } }
+    if (comps.length) { sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Components', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5); const toPairs = (obj:any)=> { if(!obj) return []; if(Array.isArray(obj)) return obj.map((r:any)=> ({k:String(r?.key??r?.title??''), v:String(r?.value??'')})).filter((p:any)=>p.k); if(typeof obj==='object') return Object.entries(obj).map(([k,v])=> ({k:String(k), v:String(v??'')})); return [] }; for (const c of comps){ const header = `${c.tag ? c.tag + ' — ' : ''}${c.title || c.type || 'Component'}`; const hLines = splitText(doc, header, pageWidth - margin*2); doc.setFont(SANS,'bold'); for(const l of hLines){ ensureSpace(7); doc.text(l, margin+2, y); y +=5 } doc.setFont(SANS,'normal'); const metaBits: string[] = []; if(c.type) metaBits.push(`Type: ${c.type}`); if(c.status) metaBits.push(`Status: ${c.status}`); const meta = metaBits.join('  •  '); if(meta){ const mLines = splitText(doc, meta, pageWidth - margin*2 -4); for(const l of mLines){ ensureSpace(6); doc.text(l, margin+4, y); y +=5 } } const attrs = toPairs(c?.attributes); for(const p of attrs){ const txt = `${cleanLabel(p.k)}: ${p.v}`; const aLines = splitText(doc, txt, pageWidth - margin*2 -6); for(const l of aLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } if(c.notes){ const nLines = splitText(doc, `Notes: ${c.notes}`, pageWidth - margin*2 -6); for(const l of nLines){ ensureSpace(6); doc.text(l, margin+6, y); y +=5 } } y +=3 } }
   }
   // Photos
   const renderPhotos = async () => {
@@ -144,7 +166,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
     const imgs: LoadedImage[] = []
     for (let p = 0; p < Math.min(photoLimit, phs.length); p++) {
       const src = phs[p]?.data || phs[p]?.url || phs[p]
-      const imgRaw = await loadImage(src)
+      const imgRaw = await loadPhoto(src)
       if (imgRaw.dataUrl) imgs.push(imgRaw)
     }
     if (imgs.length) {
@@ -198,7 +220,9 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
   }
   // Functional Tests
   const renderFpt = async () => {
-    const tests: any[] = Array.isArray(eq.functionalTests)? eq.functionalTests : []
+    const allTests: any[] = Array.isArray(eq.functionalTests)? eq.functionalTests : []
+    // Blank forms (no recorded results) are skipped unless explicitly requested.
+    const tests: any[] = opts?.includeBlankFpt === true ? allTests : allTests.filter(fptHasResults)
     if (tests.length) {
       sectionGap(); ensureSpace(12); doc.setFont(SANS,'bold'); doc.setFontSize(13); doc.text('Functional Tests', margin, y); y += 6; doc.setFont(SANS,'normal'); doc.setFontSize(9.5)
       for (const t of tests) {
@@ -615,7 +639,7 @@ export async function generateEquipmentPdf(eq: any, project: any, issuesById: Re
       for (const a of atts) {
         if (!isImage(a)) continue
         const src = a?.url || a?.data
-        const img = await loadImage(src)
+        const img = await loadPhoto(src)
         if (!img.dataUrl) continue
         rd.y = y; rd.newPage(); y = rd.y
         const label = `Attachment: ${String(a?.filename || a?.url || '')}`

@@ -3,7 +3,7 @@
 // title in white over an emerald rule, the project image framed below, and
 // a structured meta block anchored at the bottom. Draws on the CURRENT page;
 // the caller reserves/selects the page (doc.setPage) before calling.
-import { fitImageToHeight, loadImage, type LoadedImage } from './images'
+import { fitImageToHeight, loadPhoto, type LoadedImage } from './images'
 import { normalizePdfText, splitText } from './text'
 import { COLORS, SANS } from './tokens'
 
@@ -101,7 +101,7 @@ export async function drawCoverPage(
   // ---- Cover image (framed, below the band) ------------------------------
   const bottomBlockTop = pageHeight - 46
   if (data.imageDataUrl) {
-    const coverImg = await loadImage(data.imageDataUrl)
+    const coverImg = await loadPhoto(data.imageDataUrl)
     if (coverImg?.dataUrl) {
       try {
         const maxW = pageWidth - margin * 2
