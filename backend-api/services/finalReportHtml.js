@@ -578,19 +578,25 @@ function renderCover(project, report) {
   const projectPhoto = cover.showProjectImage !== false && project && Array.isArray(project.photos) && project.photos[0]
     ? String(project.photos[0])
     : ''
+  // Phase 8 "slate band" cover matching the client-side report kit: logo up
+  // top, a full-bleed dark slate title band with an emerald rule, the project
+  // photo framed below, and a structured meta block at the bottom.
   return `
     <section class="cover">
       <div class="cover-brand">
         ${logo ? `<img class="cover-logo" src="${escapeHtml(logo)}" alt="" />` : ''}
       </div>
-      ${projectPhoto ? `<div class="cover-photo-wrap"><img class="cover-photo" src="${escapeHtml(projectPhoto)}" alt="" /></div>` : ''}
-      <div class="cover-body">
+      <div class="cover-band">
         <h1 class="cover-title">${escapeHtml(title)}</h1>
-        <h2 class="cover-project">${escapeHtml(projectName)}</h2>
+        <div class="cover-rule"></div>
+        ${projectName ? `<h2 class="cover-project">${escapeHtml(projectName)}</h2>` : ''}
         ${subtitle ? `<p class="cover-subtitle">${escapeHtml(subtitle)}</p>` : ''}
-        ${location ? `<p class="cover-meta">${escapeHtml(location)}</p>` : ''}
-        <p class="cover-meta">${escapeHtml(generated)} &nbsp;·&nbsp; ${escapeHtml(version)}</p>
-        ${caName ? `<p class="cover-cxa">Commissioning Authority<br><strong>${escapeHtml(caName)}</strong>${caCompany ? `<br>${escapeHtml(caCompany)}` : ''}</p>` : ''}
+      </div>
+      ${projectPhoto ? `<div class="cover-photo-wrap"><img class="cover-photo" src="${escapeHtml(projectPhoto)}" alt="" /></div>` : ''}
+      <div class="cover-bottom">
+        <div class="cover-bottom-rule"><span class="tick"></span></div>
+        ${caName ? `<p class="cover-cxa"><strong>${escapeHtml(caName)}</strong>${caCompany ? ` · ${escapeHtml(caCompany)}` : ''}<br><span class="muted">Commissioning Authority</span></p>` : ''}
+        <p class="cover-meta">${location ? `${escapeHtml(location)} &nbsp;·&nbsp; ` : ''}${escapeHtml(generated)} &nbsp;·&nbsp; ${escapeHtml(version)}</p>
       </div>
     </section>
   `
@@ -656,42 +662,52 @@ function buildStyles() {
     @page landscape { size: letter landscape; margin: 0.6in 0.7in 0.65in 0.7in; }
     .section-landscape { page: landscape; page-break-before: always; }
     * { box-sizing: border-box; }
+    /* Phase 8 palette (matches the client report kit): slate structure
+       (#0f172a) + emerald brand accent (#10b981), slate grays throughout. */
     body {
       font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       font-size: 11pt;
-      color: #1f2937;
+      color: #1e293b;
       line-height: 1.4;
       margin: 0;
     }
     code, pre { font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
-    h1, h2, h3, h4 { color: #1e3a8a; font-weight: 600; margin: 0 0 0.4em; }
+    h1, h2, h3, h4 { color: #0f172a; font-weight: 600; margin: 0 0 0.4em; }
     h1 { font-size: 18pt; }
     h2 { font-size: 14pt; }
     h3.phase-heading { font-size: 12pt; margin-top: 1.2em; padding-bottom: 0.2em; border-bottom: 1px solid #cbd5e1; }
     p { margin: 0.4em 0; }
-    .muted { color: #6b7280; }
+    .muted { color: #64748b; }
     .small { font-size: 9pt; }
 
-    /* ----- Cover ----- */
+    /* ----- Cover (slate band) ----- */
     .cover {
       page-break-after: always;
       height: 100vh;
-      padding: 1in 1in;
+      padding: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      background: linear-gradient(180deg, #f8fafc 0%, #e0e7ff 100%);
+      background: #fff;
     }
-    .cover-brand { min-height: 90px; }
-    .cover-logo { max-height: 110px; max-width: 320px; object-fit: contain; }
-    .cover-body { margin-top: auto; }
-    .cover-title { font-size: 32pt; color: #1e3a8a; margin-bottom: 0.3em; }
-    .cover-project { font-size: 22pt; color: #1f2937; margin-bottom: 0.3em; font-weight: 600; }
-    .cover-subtitle { font-size: 14pt; color: #475569; }
-    .cover-meta { font-size: 12pt; color: #475569; margin: 0.2em 0; }
-    .cover-cxa { margin-top: 2em; font-size: 11pt; color: #475569; }
-    .cover-photo-wrap { margin: 0.5in 0 0; text-align: center; }
-    .cover-photo { max-width: 100%; max-height: 4.2in; object-fit: contain; border-radius: 6px; }
+    .cover-brand { min-height: 90px; padding: 0.7in 1in 0; }
+    .cover-logo { max-height: 100px; max-width: 320px; object-fit: contain; }
+    .cover-band {
+      background: #0f172a;
+      color: #fff;
+      padding: 0.55in 1in;
+      margin-top: 0.45in;
+    }
+    .cover-title { font-size: 30pt; color: #fff; margin-bottom: 0; }
+    .cover-rule { width: 1.2in; height: 5px; background: #10b981; margin: 0.22in 0 0.26in; }
+    .cover-project { font-size: 19pt; color: #e2e8f0; margin-bottom: 0.15em; font-weight: 600; }
+    .cover-subtitle { font-size: 13pt; color: #94a3b8; margin: 0; }
+    .cover-photo-wrap { margin: 0.45in 1in 0; text-align: center; }
+    .cover-photo { max-width: 100%; max-height: 3.9in; object-fit: contain; border: 1px solid #cbd5e1; }
+    .cover-bottom { margin-top: auto; padding: 0 1in 0.7in; }
+    .cover-bottom-rule { position: relative; border-bottom: 1px solid #cbd5e1; margin-bottom: 0.14in; }
+    .cover-bottom-rule .tick { position: absolute; left: 0; bottom: -2px; width: 0.24in; height: 3.5px; background: #10b981; }
+    .cover-meta { font-size: 11pt; color: #64748b; margin: 0.2em 0; }
+    .cover-cxa { margin: 0.1in 0 0; font-size: 11.5pt; color: #0f172a; }
 
     /* ----- Title page (opt-in, formal) ----- */
     .title-page {
@@ -699,9 +715,10 @@ function buildStyles() {
       padding-top: 3in;
       text-align: center;
     }
-    .title-page h1 { font-size: 26pt; color: #1e3a8a; margin-bottom: 0.4em; }
-    .title-page h2 { font-size: 16pt; color: #1f2937; margin-bottom: 0.6em; }
-    .title-page p { font-size: 12pt; color: #475569; }
+    .title-page h1 { font-size: 26pt; color: #0f172a; margin-bottom: 0.4em; }
+    .title-page h2 { font-size: 16pt; color: #1e293b; margin-bottom: 0.6em; }
+    .title-page p { font-size: 12pt; color: #64748b; }
+    .title-page::after { content: ''; display: block; width: 1in; height: 4px; background: #10b981; margin: 0.4in auto 0; }
 
     /* ----- Section divider/title pages (opt-in per section) ----- */
     .section-divider {
@@ -712,14 +729,14 @@ function buildStyles() {
       justify-content: center;
       min-height: 8.5in;
     }
-    .section-divider h1 { font-size: 24pt; color: #1e3a8a; text-align: center; border: none; }
+    .section-divider h1 { font-size: 24pt; color: #0f172a; text-align: center; border: none; }
 
     /* ----- TOC ----- */
     .toc { page-break-after: always; padding-top: 0.05in; }
     .toc-list { list-style: none; padding-left: 0; counter-reset: tocnum; }
     .toc-list li { padding: 0.35em 0; border-bottom: 1px dotted #cbd5e1; }
-    .toc-list a { color: #1f2937; text-decoration: none; }
-    .toc-num { color: #94a3b8; font-variant-numeric: tabular-nums; display: inline-block; min-width: 1.6em; }
+    .toc-list a { color: #1e293b; text-decoration: none; }
+    .toc-num { color: #10b981; font-weight: 600; font-variant-numeric: tabular-nums; display: inline-block; min-width: 1.6em; }
 
     /* ----- Sections ----- */
     /* pageBreakBefore is honored per section (Phase 5); sections otherwise
@@ -727,9 +744,23 @@ function buildStyles() {
        one-section-per-page look is preserved until the author changes it. */
     .section { padding-top: 0.05in; margin-top: 0.35in; }
     .section.break-before { page-break-before: always; margin-top: 0; }
-    .section-title { border-bottom: 2px solid #1e3a8a; padding-bottom: 0.15em; margin-bottom: 0.6em; }
+    .section-title {
+      position: relative;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 0.18em;
+      margin-bottom: 0.6em;
+    }
+    .section-title::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      width: 0.55in;
+      height: 3.5px;
+      background: #10b981;
+    }
 
-    /* ----- Tables ----- */
+    /* ----- Tables: slate header band, horizontal hairlines, faint zebra ----- */
     .data-table {
       width: 100%;
       border-collapse: collapse;
@@ -737,25 +768,27 @@ function buildStyles() {
       font-size: 10pt;
     }
     .data-table th, .data-table td {
-      border: 1px solid #cbd5e1;
-      padding: 0.4em 0.55em;
+      border: none;
+      border-bottom: 1px solid #cbd5e1;
+      padding: 0.42em 0.55em;
       text-align: left;
       vertical-align: top;
     }
     .data-table thead th {
-      background: #e0e7ff;
-      color: #1e3a8a;
+      background: #0f172a;
+      color: #fff;
+      border-bottom: none;
       font-weight: 600;
       font-size: 9pt;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
     }
     .data-table tbody tr:nth-child(even) { background: #f8fafc; }
     .data-table.dense { font-size: 8pt; }
     .data-table.dense th, .data-table.dense td { padding: 0.3em 0.4em; }
     .data-table.dense thead th { font-size: 7.5pt; }
     .data-table .r { text-align: right; }
-    .data-table .empty-row { text-align: center; color: #6b7280; font-style: italic; padding: 1.2em; }
+    .data-table .empty-row { text-align: center; color: #64748b; font-style: italic; padding: 1.2em; }
     .data-table .w-rank { width: 3em; }
     .data-table .w-done { width: 3.2em; }
     .data-table .w-cat  { width: 8em; }
@@ -765,7 +798,7 @@ function buildStyles() {
     .data-table .w-status { width: 7em; }
     .data-table .w-sys  { width: 7em; }
     .data-table .w-date { width: 7em; }
-    .preview { font-size: 9pt; color: #6b7280; margin-top: 0.2em; }
+    .preview { font-size: 9pt; color: #64748b; margin-top: 0.2em; }
     .failure-row { font-size: 9pt; color: #991b1b; margin-top: 0.2em; }
     .pass-text { color: #065f46; }
     .fail-text { color: #991b1b; }
@@ -790,7 +823,7 @@ function buildStyles() {
     .pill-fail { background: #fee2e2; color: #991b1b; border-color: #ef4444; }
     .pill-warn { background: #fed7aa; color: #92400e; border-color: #f59e0b; }
     .pill-progress { background: #e0e7ff; color: #3730a3; border-color: #6366f1; }
-    .pill-na { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+    .pill-na { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
     .pill-unverified { background: #fef3c7; color: #92400e; border-color: #f59e0b; }
     .summary-pills { display: flex; gap: 0.5em; margin: 0.5em 0 0.8em; flex-wrap: wrap; }
 
@@ -802,7 +835,7 @@ function buildStyles() {
       margin-bottom: 0.6em;
       page-break-inside: avoid;
     }
-    .training-card h4 { color: #1e3a8a; font-size: 11pt; margin: 0 0 0.2em; }
+    .training-card h4 { color: #0f172a; font-size: 11pt; margin: 0 0 0.2em; }
     .cxa-block {
       background: #ecfdf5;
       border: 1px solid #6ee7b7;
@@ -824,12 +857,14 @@ function buildStyles() {
       font-size: 10pt;
     }
     .section th, .section td {
-      border: 1px solid #cbd5e1;
+      border: none;
+      border-bottom: 1px solid #cbd5e1;
       padding: 0.4em 0.55em;
       text-align: left;
       vertical-align: top;
     }
-    .section th { background: #f3f4f6; font-weight: 600; }
+    .section th { background: #f1f5f9; color: #0f172a; font-weight: 600; }
+    .section tbody tr:nth-child(even) { background: #f8fafc; }
   `
 }
 
@@ -850,9 +885,11 @@ function buildHeaderTemplate(projectName, logos = {}) {
   const img = (uri, align) => (uri
     ? `<img src="${uri}" style="height:0.26in; max-width:1.5in; object-fit:contain; object-position:${align};" />`
     : '<span></span>')
-  return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#475569; display:flex; justify-content:space-between; align-items:center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+  // Hairline + emerald tick under the header, matching the client report kit.
+  return `<div style="-webkit-print-color-adjust:exact; width:100%; margin:0 0.7in; position:relative; border-bottom:1px solid #cbd5e1; padding-bottom:4px; font-size:8pt; color:#475569; display:flex; justify-content:space-between; align-items:center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+    <div style="position:absolute; left:0; bottom:-2px; width:0.24in; height:3px; background:#10b981;"></div>
     <div style="width:1.6in; text-align:left;">${img(logos.leftLogoDataUri, 'left')}</div>
-    <span style="font-size:8pt;">${escapeHtml(projectName)}</span>
+    <span style="font-size:8pt; color:#0f172a; font-weight:600;">${escapeHtml(projectName)}</span>
     <div style="width:1.6in; text-align:right;">${img(logos.rightLogoDataUri, 'right')}</div>
   </div>`
 }
@@ -862,8 +899,9 @@ function buildFooterTemplate(reportTitle) {
   // .totalPages counters proved unreliable (rendered blank on some builds,
   // and restart per render in the segmented documents path). The PDF
   // pipeline stamps continuous "Page N of M" post-render via pdf-lib instead.
-  return `<div style="font-size:8pt; width:100%; padding:0 0.7in; color:#94a3b8; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
-    <span style="font-size:8pt;"><span style="font-weight:600; color:#1e3a8a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
+  return `<div style="-webkit-print-color-adjust:exact; width:100%; margin:0 0.7in; position:relative; border-top:1px solid #cbd5e1; padding-top:4px; font-size:8pt; color:#64748b; display:flex; justify-content:space-between; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+    <div style="position:absolute; left:0; top:-2px; width:0.24in; height:3px; background:#10b981;"></div>
+    <span style="font-size:8pt;"><span style="font-weight:600; color:#0f172a;">cxma.io</span> | ${escapeHtml(reportTitle || 'Cx Final Report')}</span>
     <span></span>
   </div>`
 }
