@@ -78,6 +78,8 @@ const routes = [
       // The route lives under /app so it shares the DashboardLayout chrome.
       // :id is the project id (matches the existing project-settings pattern).
       { path: 'projects/:id/final-report', name: 'final-report', component: () => import('../pages/projects/FinalReport.vue'), props: true },
+      // Custom report composer (Phase 7) — project-shared block-based reports.
+      { path: 'reports/custom', name: 'custom-reports', component: () => import('../pages/reports/ReportComposer.vue') },
       { path: 'admin/webhooks', name: 'admin-webhooks', component: WebhookEvents, meta: { adminOnly: true } },
   { path: 'admin/roles', name: 'admin-roles', component: AdminRoles, meta: { adminOnly: true } },
         { path: 'admin', name: 'admin', component: AdminDashboard, meta: { adminOnly: true } },

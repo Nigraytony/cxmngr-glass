@@ -414,6 +414,19 @@
             <span class="i">📄</span>
             <span v-if="open">Final Report</span>
           </RouterLink>
+          <!-- Custom Reports — composer for project-shared block-based reports -->
+          <RouterLink
+            v-if="currentProjectId"
+            :to="{ name: 'custom-reports' }"
+            :class="[
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-white/90 border border-white/10',
+              isRouteName('custom-reports') ? 'bg-white/20 text-white border-white/20' : 'hover:bg-white/20'
+            ]"
+            :aria-current="isRouteName('custom-reports') ? 'page' : null"
+          >
+            <span class="i">📑</span>
+            <span v-if="open">Custom Reports</span>
+          </RouterLink>
         </nav>
       </div>
 

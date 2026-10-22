@@ -151,6 +151,27 @@ export const OPR_ITEM_COLUMNS: ColumnDef[] = [
   { key: 'createdAt', label: 'Created', weight: 0.7, enabled: false, accessor: r => dateCell(r?.createdAt) },
 ]
 
+/** Entity key → column definitions (for the composer and other cross-module consumers). */
+export const ENTITY_COLUMNS: Record<string, ColumnDef[]> = {
+  issues: ISSUE_COLUMNS,
+  equipment: EQUIPMENT_COLUMNS,
+  activities: ACTIVITY_COLUMNS,
+  spaces: SPACE_COLUMNS,
+  systems: SYSTEM_COLUMNS,
+  oprItems: OPR_ITEM_COLUMNS,
+  templates: TEMPLATE_COLUMNS,
+}
+
+export const ENTITY_LABELS: Record<string, string> = {
+  issues: 'Issues',
+  equipment: 'Equipment',
+  activities: 'Activities',
+  spaces: 'Spaces',
+  systems: 'Systems',
+  oprItems: 'OPR Items',
+  templates: 'Templates',
+}
+
 /** Resolve a cell to display text (shared by CSV/XLSX/PDF). */
 export function cellValue(col: ColumnDef, row: any, ctx?: Record<string, any>): string {
   try {

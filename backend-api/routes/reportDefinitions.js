@@ -17,8 +17,9 @@ const { isProjectMember } = require('../utils/projectMembership');
 const ALLOWED_ENTITIES = new Set([
   'issues', 'equipment', 'activities', 'tasks', 'spaces', 'systems', 'opritems', 'templates', 'composite',
 ]);
-// A definition is a settings payload, not a document store.
-const MAX_DEFINITION_JSON = 64 * 1024;
+// A definition is a settings payload, not a document store — but composite
+// definitions may carry a cover image as a data URI, so allow up to 1MB.
+const MAX_DEFINITION_JSON = 1024 * 1024;
 
 router.param('id', (req, res, next, value) => {
   if (!isObjectId(value)) return res.status(400).send({ error: 'Invalid id' });
