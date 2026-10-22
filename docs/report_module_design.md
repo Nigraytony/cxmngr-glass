@@ -256,6 +256,11 @@ Each phase ships independently; nothing breaks in between.
   column from the same rollup.)
 - **Phase 7 — custom report composer** (custom reports Stage 2): block-based builder page over
   `ReportDefinition`; cross-module blocks; CSV/XLSX export of table blocks.
+  (Done 2026-10-22, cd07868: Custom Reports page at /app/reports/custom — blocks: cover,
+  heading, text, page break, entity table [any module + column picker + sort + limit], summary
+  [counts grouped by any column]; project-shared saves as entity 'composite'; PDF on the kit,
+  XLSX one sheet per table block; cross-module fetch in reports/data/fetchRows.ts. Deferred:
+  per-block filters beyond sort/limit, TOC block, CSV per block.)
 - **Phase 8 — visual design pass** (added 2026-10-20): revisit the look & feel of every PDF —
   typography, colors, texture, covers, table styling. Deliberately last: all reports draw from
   `core/tokens.ts` and the shared frame/cover/table renderers, so the restyle is one centralized
