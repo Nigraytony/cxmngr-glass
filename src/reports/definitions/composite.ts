@@ -5,6 +5,7 @@
 import { ReportDoc } from '../core/frame'
 import { drawTable } from '../core/table'
 import { drawCoverPage } from '../core/cover'
+import { drawToc, estimateTocPages, type TocEntry } from '../core/toc'
 import { dateStamp, deliverPdf, deliverPdfBytes, openDeliveryWindow, reportFileName } from '../core/deliver'
 import { normalizePdfText, splitText } from '../core/text'
 import { SANS } from '../core/tokens'
@@ -14,7 +15,7 @@ import http from '../../utils/http'
 
 export type ComposerBlock = {
   id: string
-  type: 'cover' | 'heading' | 'text' | 'pageBreak' | 'summary' | 'table' | 'documents'
+  type: 'cover' | 'heading' | 'text' | 'pageBreak' | 'summary' | 'table' | 'documents' | 'toc'
   // cover
   title?: string
   subtitle?: string
@@ -148,6 +149,44 @@ async function fetchFileBytes(projectId: string, fileId: string): Promise<ArrayB
   }
 }
 
+type DocsBlockData = { files: FolderFile[]; pdfBytes: ArrayBuffer[]; pdfPages: number }
+
+/**
+ * Fetch every documents block's file list AND its PDF bytes up front, so
+ * (a) the merge phase doesn't refetch and (b) the TOC can offset its page
+ * numbers by the pages each merge will insert.
+ */
+async function prefetchDocumentsBlocks(definition: CompositeDefinition, projectId: string): Promise<Map<string, DocsBlockData>> {
+  const docBlocks = (definition.blocks || []).filter((b) => b.type === 'documents' && b.folderId)
+  const out = new Map<string, DocsBlockData>()
+  if (!docBlocks.length) return out
+  const { PDFDocument } = await import('pdf-lib')
+  await Promise.all(docBlocks.map(async (b) => {
+    const files = await fetchFolderFiles(projectId, String(b.folderId))
+    const pdfBytes: ArrayBuffer[] = []
+    let pdfPages = 0
+    for (const f of files.filter(fileIsPdf)) {
+      const bytes = await fetchFileBytes(projectId, f.id)
+      if (!bytes) continue
+      try {
+        const src = await PDFDocument.load(bytes, { ignoreEncryption: true })
+        pdfPages += src.getPageCount()
+        pdfBytes.push(bytes)
+      } catch (e) { /* skip unloadable file */ }
+    }
+    out.set(b.id, { files, pdfBytes, pdfPages })
+  }))
+  return out
+}
+
+function tocEntryTitle(b: ComposerBlock): string | null {
+  if (b.type === 'heading') return String(b.text || 'Heading')
+  if (b.type === 'table') return b.title || ENTITY_LABELS[String(b.entity)] || 'Table'
+  if (b.type === 'summary') return b.title || `Summary — ${ENTITY_LABELS[String(b.entity)] || b.entity || ''}`
+  if (b.type === 'documents') return b.title || 'Documents'
+  return null
+}
+
 export async function generateCompositePdf(opts: GenerateCompositeOptions): Promise<void> {
   const blocks = Array.isArray(opts.definition?.blocks) ? opts.definition.blocks : []
   if (!blocks.length) return
@@ -160,9 +199,23 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
     orientation: opts.definition?.orientation === 'landscape' ? 'landscape' : 'portrait',
   })
   const doc = rd.doc
+  const docsCache = await prefetchDocumentsBlocks(opts.definition, opts.projectId)
   // PDF files from documents blocks merge in AFTER rendering, at the page
   // each block ended on (the stated order).
-  const pdfInserts: Array<{ afterPage: number; fileIds: string[] }> = []
+  const pdfInserts: Array<{ afterPage: number; bytesList: ArrayBuffer[] }> = []
+  // TOC bookkeeping: entries carry FINAL-document page numbers, so every
+  // entry is offset by the pages that earlier documents blocks will insert.
+  const tocEntries: TocEntry[] = []
+  let insertOffset = 0
+  let tocStartPage = 0
+  const tocTitles = blocks
+    .map((b) => ({ title: tocEntryTitle(b), indent: b.type === 'heading' && b.level === 2 ? 1 : 0 }))
+    .filter((t): t is { title: string; indent: number } => !!t.title)
+  const pushTocEntry = (b: ComposerBlock) => {
+    const title = tocEntryTitle(b)
+    if (!title) return
+    tocEntries.push({ title, pageNo: rd.pageNo + insertOffset, indent: b.type === 'heading' && b.level === 2 ? 1 : 0 })
+  }
 
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i]
@@ -183,11 +236,28 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
       rd.newPage()
       continue
     }
+    if (b.type === 'toc') {
+      // The TOC gets its own reserved page(s); entries are backfilled after
+      // the whole report has rendered (so page numbers are known).
+      if (rd.y > rd.headerBottomY + 1) rd.newPage()
+      tocStartPage = rd.pageNo
+      const est = estimateTocPages(doc, tocTitles, {
+        margin: rd.margin,
+        pageWidth: rd.pageWidth,
+        pageHeight: rd.pageHeight,
+        startY: rd.headerBottomY + 2,
+        bottomLimit: rd.bottomLimit,
+      })
+      for (let k = 1; k < est; k++) rd.newPage()
+      if (i < blocks.length - 1) rd.newPage()
+      continue
+    }
     if (b.type === 'heading') {
       const size = b.level === 2 ? 11.5 : 13
       doc.setFont(SANS, 'bold'); doc.setFontSize(size)
       const lines = splitText(doc, normalizePdfText(String(b.text || '')), rd.contentWidth)
       rd.ensureSpace(lines.length * (size * 0.5) + 6)
+      pushTocEntry(b)
       doc.text(lines, rd.margin, rd.y)
       rd.y += lines.length * (size * 0.5) + 3
       doc.setFont(SANS, 'normal')
@@ -213,6 +283,7 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
       const groupLabel = defs.find((d) => d.key === b.groupBy)?.label || b.groupBy || ''
       doc.setFont(SANS, 'bold'); doc.setFontSize(11.5)
       rd.ensureSpace(10)
+      pushTocEntry(b)
       doc.text(normalizePdfText(b.title || `${ENTITY_LABELS[String(b.entity)] || b.entity} by ${groupLabel}`), rd.margin, rd.y)
       rd.y += 6
       doc.setFont(SANS, 'normal'); doc.setFontSize(9.5)
@@ -236,9 +307,11 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
       continue
     }
     if (b.type === 'documents') {
-      const files = await fetchFolderFiles(opts.projectId, String(b.folderId || ''))
+      const cached = docsCache.get(b.id) || { files: [], pdfBytes: [], pdfPages: 0 }
+      const files = cached.files
       doc.setFont(SANS, 'bold'); doc.setFontSize(11.5)
       rd.ensureSpace(10)
+      pushTocEntry(b)
       doc.text(normalizePdfText(b.title || 'Documents'), rd.margin, rd.y)
       rd.y += 6
       if (b.folderPath) {
@@ -271,8 +344,10 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
             return String(row[key] ?? '')
           },
         })
-        const pdfFiles = files.filter(fileIsPdf)
-        if (pdfFiles.length) pdfInserts.push({ afterPage: doc.getNumberOfPages(), fileIds: pdfFiles.map((f) => f.id) })
+        if (cached.pdfBytes.length) {
+          pdfInserts.push({ afterPage: doc.getNumberOfPages(), bytesList: cached.pdfBytes })
+          insertOffset += cached.pdfPages
+        }
       }
       rd.y += 2
       continue
@@ -283,6 +358,7 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
       const rows = tableRowsFor(b, data)
       doc.setFont(SANS, 'bold'); doc.setFontSize(11.5)
       rd.ensureSpace(10)
+      pushTocEntry(b)
       doc.text(normalizePdfText(b.title || ENTITY_LABELS[String(b.entity)] || String(b.entity)), rd.margin, rd.y)
       rd.y += 6
       if (!rows.length) {
@@ -308,24 +384,38 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
     }
   }
 
+  // Backfill the TOC onto its reserved page(s), now that every entry's
+  // final page number (render page + merge-insert offsets) is known.
+  if (tocStartPage > 0 && tocEntries.length) {
+    drawToc(doc, tocEntries, {
+      margin: rd.margin,
+      pageWidth: rd.pageWidth,
+      pageHeight: rd.pageHeight,
+      startPage: tocStartPage,
+      startY: rd.headerBottomY + 2,
+      bottomLimit: rd.bottomLimit,
+      // Reserved pages already carry the branded header from rd.newPage().
+      drawPageHeader: () => {},
+    })
+    try { doc.setPage(doc.getNumberOfPages()) } catch (e) { /* ignore */ }
+  }
+
   const fname = reportFileName([String(opts.project?.name || ''), opts.name || 'custom-report'])
   if (!pdfInserts.length) {
     deliverPdf(rd.finish(), fname, dlWin)
     return
   }
 
-  // Merge each documents block's PDF files in at its recorded position.
-  // Process inserts in DESCENDING page order so earlier insertions don't
-  // shift the positions still to be processed.
+  // Merge each documents block's (prefetched) PDF files in at its recorded
+  // position. Process inserts in DESCENDING page order so earlier
+  // insertions don't shift the positions still to be processed.
   let bytes = rd.output()
   const { PDFDocument } = await import('pdf-lib')
   for (const ins of [...pdfInserts].sort((a, b) => b.afterPage - a.afterPage)) {
     const base = await PDFDocument.load(bytes, { ignoreEncryption: true })
     let at = Math.min(ins.afterPage, base.getPageCount())
     let changed = false
-    for (const fid of ins.fileIds) {
-      const buf = await fetchFileBytes(opts.projectId, fid)
-      if (!buf) continue
+    for (const buf of ins.bytesList) {
       try {
         const src = await PDFDocument.load(buf, { ignoreEncryption: true })
         const pages = await base.copyPages(src, src.getPageIndices())

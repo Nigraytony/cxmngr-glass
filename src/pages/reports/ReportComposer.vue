@@ -274,6 +274,14 @@
             Forces the next block onto a new page.
           </div>
 
+          <!-- Table of contents -->
+          <div
+            v-else-if="selectedBlock.type === 'toc'"
+            class="text-white/60 text-sm"
+          >
+            Lists every heading, table, summary and documents block with its page number — numbers account for merged document pages. Typically placed right after the cover.
+          </div>
+
           <!-- Summary -->
           <div
             v-else-if="selectedBlock.type === 'summary'"
@@ -490,9 +498,11 @@ const BLOCK_TYPE_LABELS: Record<ComposerBlock['type'], string> = {
   summary: 'Summary',
   table: 'Table',
   documents: 'Documents',
+  toc: 'Table of contents',
 }
 const BLOCK_TYPES: Array<{ type: ComposerBlock['type']; label: string }> = [
   { type: 'cover', label: 'Cover' },
+  { type: 'toc', label: 'Contents' },
   { type: 'heading', label: 'Heading' },
   { type: 'text', label: 'Text' },
   { type: 'table', label: 'Table' },
@@ -508,7 +518,7 @@ function markDirty() { dirty.value = true }
 function entityColumns(entity?: string) { return ENTITY_COLUMNS[String(entity || '')] || [] }
 
 function blockIcon(b: ComposerBlock): string {
-  return { cover: '🖼️', heading: '🔤', text: '📝', pageBreak: '↡', summary: '∑', table: '📊', documents: '📁' }[b.type] || '▫'
+  return { cover: '🖼️', heading: '🔤', text: '📝', pageBreak: '↡', summary: '∑', table: '📊', documents: '📁', toc: '🗂️' }[b.type] || '▫'
 }
 function blockLabel(b: ComposerBlock): string {
   if (b.type === 'table') return b.title || `Table — ${ENTITY_LABELS[String(b.entity)] || b.entity || '?'}`
@@ -517,6 +527,7 @@ function blockLabel(b: ComposerBlock): string {
   if (b.type === 'text') return (b.text || 'Text').slice(0, 40) || 'Text'
   if (b.type === 'cover') return b.title || 'Cover page'
   if (b.type === 'documents') return b.title || (b.folderPath ? `Documents — ${b.folderPath}` : 'Documents')
+  if (b.type === 'toc') return 'Table of Contents'
   return 'Page break'
 }
 
