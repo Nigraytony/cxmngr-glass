@@ -265,6 +265,11 @@ Each phase ships independently; nothing breaks in between.
   typography, colors, texture, covers, table styling. Deliberately last: all reports draw from
   `core/tokens.ts` and the shared frame/cover/table renderers, so the restyle is one centralized
   change, not sixteen. Goal: functional AND attractive.
+  (Implemented 2026-10-22, pending field review: slate #0F172A structure + emerald #10B981
+  accent, locked with Tony. Client kit — slate table header bands with white text, horizontal
+  hairlines + faint zebra, slate-band cover with emerald rule, hairline + emerald tick page
+  header/footer, restyled TOC with dotted leaders and bold level-0 entries. Final Report —
+  same theme replaces the old blue across CSS, cover, and Puppeteer header/footer templates.)
 
 ## Out of scope (for now)
 
