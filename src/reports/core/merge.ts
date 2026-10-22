@@ -67,3 +67,40 @@ export async function insertPdfAttachmentsAt(baseBytes: ArrayBuffer, attachments
 export async function appendPdfAttachments(baseBytes: ArrayBuffer, attachments: any[]): Promise<ArrayBuffer> {
   return insertPdfAttachmentsAt(baseBytes, attachments, Number.MAX_SAFE_INTEGER)
 }
+
+/**
+ * Stamp continuous "Page N of M" on every page of a (possibly merged) PDF,
+ * right-aligned on the footer baseline. Used by reports that merge appendix
+ * PDFs after rendering: the frame suppresses its own page numbers
+ * (ReportDoc pageNumbers: false) and this runs on the final bytes so the
+ * count is continuous across appendices. Mirrors the backend Final Report
+ * technique (services/finalReportPdfService.js stampPageNumbers).
+ */
+export async function stampPageXofY(
+  bytes: ArrayBuffer | Uint8Array,
+  opts: { skipFirstPage?: boolean; marginMm?: number } = {},
+): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib')
+  const doc = await PDFDocument.load(bytes as ArrayBuffer, { ignoreEncryption: true })
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const pages = doc.getPages()
+  const total = pages.length
+  const MM = 72 / 25.4
+  const marginPt = (opts.marginMm ?? 12) * MM
+  for (let i = 0; i < total; i++) {
+    if (opts.skipFirstPage && i === 0) continue
+    const page = pages[i]
+    const { width } = page.getSize()
+    const label = `Page ${i + 1} of ${total}`
+    const size = 8
+    const textWidth = font.widthOfTextAtSize(label, size)
+    page.drawText(label, {
+      x: width - marginPt - textWidth,
+      y: 12 * MM - 2 * MM, // the kit footer's text baseline (pageHeight - 12mm)
+      size,
+      font,
+      color: rgb(100 / 255, 116 / 255, 139 / 255), // muted slate, matches COLORS.muted
+    })
+  }
+  return doc.save()
+}

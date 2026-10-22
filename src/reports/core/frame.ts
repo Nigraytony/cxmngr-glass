@@ -164,6 +164,14 @@ export interface ReportDocOptions {
   logoH?: number
   maxLogoW?: number
   titleFontSize?: number
+  /** Draw the branded header on page 1 (default true). Pass false when the
+   *  report draws a custom cover/first page (e.g. the Activity report). */
+  firstPageHeader?: boolean
+  /** Print the page number in the footer (default true). Pass false when the
+   *  document is merged with appendices and numbers are stamped post-merge. */
+  pageNumbers?: boolean
+  /** Print the date on the footer's right edge (default true). */
+  footerDate?: boolean
 }
 
 export class ReportDoc {
@@ -178,6 +186,8 @@ export class ReportDoc {
 
   private title: string
   private readonly footerLabel: string
+  private readonly pageNumbers: boolean
+  private readonly footerDate: boolean
   private readonly logoH: number
   private readonly maxLogoW: number
   private readonly titleFontSize: number
@@ -191,6 +201,8 @@ export class ReportDoc {
     this.doc = doc
     this.title = opts.title
     this.footerLabel = opts.footerLabel
+    this.pageNumbers = opts.pageNumbers !== false
+    this.footerDate = opts.footerDate !== false
     this.margin = typeof opts.margin === 'number' ? opts.margin : 12
     this.logoH = typeof opts.logoH === 'number' ? opts.logoH : 12
     this.maxLogoW = typeof opts.maxLogoW === 'number' ? opts.maxLogoW : 36
@@ -213,8 +225,14 @@ export class ReportDoc {
     rd.leftLogo = await loadImage(opts.project?.logo)
     rd.rightLogo = await loadImage(opts.project?.commissioning_agent?.logo)
     rd.footerLogo = await loadFirstAvailable(['/brand/logo-2.png', '/brand/logo-2.svg', '/brand/logo.png', '/brand/logo.svg'])
-    rd.drawHeader()
+    if (opts.firstPageHeader !== false) rd.drawHeader()
+    else rd.y = rd.margin
     return rd
+  }
+
+  /** The project logos the frame loaded (for custom first pages/covers). */
+  get logos(): { left: LoadedImage; right: LoadedImage } {
+    return { left: this.leftLogo, right: this.rightLogo }
   }
 
   get contentWidth(): number {
@@ -296,8 +314,8 @@ export class ReportDoc {
           margin: this.margin,
           pageWidth: this.pageWidth,
           pageHeight: this.pageHeight,
-          pageNo: p,
-          pageDate,
+          pageNo: this.pageNumbers ? p : '',
+          pageDate: this.footerDate ? pageDate : undefined,
           footerLogo: this.footerLogo,
           leftLabel: this.footerLabel,
           setBold: () => this.doc.setFont(SANS, 'bold'),

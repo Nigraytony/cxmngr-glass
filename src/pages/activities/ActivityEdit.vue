@@ -2550,14 +2550,19 @@ const pendingCreatedId = ref<string | null>(null)
 // Activity report settings: the shared ordered-sections ReportSettings shape
 // (Phase 3), persisted on the activity record at settings.report. A legacy
 // include-bag + flat cover fields payload is migrated on load.
+// Keys are stable for persisted settings; labels follow the redesigned report
+// (docs/activity_report_redesign.md). Equipment Reports became the optional
+// appendix and defaults OFF — full spec sheets no longer belong in the core
+// report. 'info'/'actions' remain for legacy persisted settings and the DOCX
+// export, which still renders the old section layout.
 const ACTIVITY_REPORT_SECTIONS: SectionDef[] = [
-  { key: 'info', label: 'Info' },
-  { key: 'description', label: 'Description' },
-  { key: 'photos', label: 'Photos' },
-  { key: 'equipmentList', label: 'Equipment List' },
-  { key: 'actions', label: 'Actions' },
-  { key: 'issues', label: 'Issues' },
-  { key: 'equipmentReports', label: 'Equipment Reports' },
+  { key: 'info', label: 'Info (Word export)' },
+  { key: 'description', label: 'Meeting Minutes' },
+  { key: 'photos', label: 'Photo Log' },
+  { key: 'equipmentList', label: 'Equipment Status' },
+  { key: 'actions', label: 'Actions (Word export)' },
+  { key: 'issues', label: 'Issues Log' },
+  { key: 'equipmentReports', label: 'Equipment Reports (Appendix)', enabled: false },
   { key: 'attachments', label: 'Attachments' },
 ]
 const ACTIVITY_REPORT_DEFAULTS = { toc: false, cover: { title: 'Activity Report' } }
@@ -3666,1101 +3671,124 @@ function buildActivityPdfFilename(): string {
   return `${base}.pdf`
 }
 
+// Activity report PDF (Stage 1 redesign — docs/activity_report_redesign.md).
+// Gathers data per the scope rules, assembles the section view-model, and
+// renders via reports/definitions/activity. Equipment detail is an optional
+// appendix (settings key 'equipmentReports', default off); PDF attachments
+// append at the end; page numbers are stamped continuously post-merge.
 async function downloadActivityPdf() {
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
-  const generatingToast = 'Generating PDF… this can take up to 5 minutes for large reports.'
-  ui.showInfo(generatingToast, { duration: 10000 })
+  ui.showInfo('Generating PDF…', { duration: 8000 })
   try {
     await ensureReportData()
-    const doc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(doc); setReportColor(doc, 'text')
-    // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
-    setZeroCharSpace(doc)
-    setBodyFont(doc, 'normal')
-      const margin = 12
-      const pageWidth = doc.internal.pageSize.getWidth()
-      const pageHeight = doc.internal.pageSize.getHeight()
-      const bottomLimit = pageHeight - 26
-      const pageDate = new Date().toLocaleDateString()
-      let pageNo = 1
-      let y = margin
-      let pageHasBodyContent = false
-      const markBodyContent = () => { pageHasBodyContent = true }
-      // Resolve project logos (reuse current project store)
-      const project: any = projectStore.currentProject || {}
-      const clientImg = await loadImage((project as any)?.logo)
-      const cxaImg = await loadImage((project as any)?.commissioning_agent?.logo)
-      // Footer branding: icon + "cxma"
-      let footerLogo = await loadImage('/brand/logo-2.png'); if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo-2.svg')
-      if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.png')
-      if (!footerLogo.dataUrl) footerLogo = await loadImage('/brand/logo.svg')
-      const drawFooter = () => {
-      const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
-      const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-      drawBrandedFooter(doc, {
-        margin,
-        pageWidth,
-        pageHeight,
-        pageNo,
-        pageDate,
-        footerLogo,
-        leftLabel: `${form.name || 'Activity'} Report`,
-        setBold: () => setBodyFont(doc, 'bold'),
-        setNormal: () => setBodyFont(doc, 'normal'),
-        })
-        doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-      }
-      const drawHeader = () => {
-        const prevFont = (doc as any).getFont ? (doc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
-        const prevSize = (doc as any).getFontSize ? (doc as any).getFontSize() : 9
-        const res = drawBrandedHeader(doc, {
-          margin,
-          pageWidth,
-          title: form.name || 'Activity',
-        leftLogo: clientImg,
-        rightLogo: cxaImg,
-        logoH: 12,
-        maxLogoW: 36,
-          titleFontSize: 20,
-          setTitleFont: () => setBodyFont(doc, 'bold'),
-        })
-        y = res.nextY
-        doc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); doc.setFontSize(prevSize)
-      }
-      const ensureSpace = (amount: number): boolean => {
-        if (y + amount > bottomLimit) {
-          drawFooter()
-          doc.addPage()
-          pageNo++
-          y = margin
-          pageHasBodyContent = false
-          drawHeader()
-          return true
-        }
-        return false
-      }
-      const sectionGap = (gap = 6) => { ensureSpace(gap); y += gap }
-      const orderedKeys = enabledSectionKeys(activityReport.value)
-      // Do not include the standard report header on the cover page.
-      if (!activityReport.value.cover.enabled) drawHeader()
+    const project: any = projectStore.currentProject || {}
+    const activityIdStr = String(id.value || '')
+    const pid = String(form.projectId || projectStore.currentProjectId || '')
 
-    // Optional cover + TOC pages (inserted before main content)
-    if (activityReport.value.cover.enabled) {
-      // No header on the cover page.
-      y = margin
-      const projectName = String((projectStore.currentProject as any)?.name || '')
-      const projectLabel = projectName || String(form.projectId || '')
-      const dateRange = [form.startDate, form.endDate].filter(Boolean).join(' – ')
-
-      // Titles are fully user-controlled; if left blank, we omit them.
-      const coverTitle = String(activityReport.value.cover.title || '').trim()
-      const coverSubtitle = String(activityReport.value.cover.subtitle || '').trim()
-      const coverByLine = String(activityReport.value.cover.byLine || '').trim()
-        const coverJumboSrc = String(activityReport.value.cover.imageDataUrl || '').trim()
-
-        // Start cover content just below logos.
-        let coverY = y
-        if (coverTitle) {
-          setBodyFont(doc, 'bold')
-          doc.setFontSize(22)
-          doc.text(coverTitle, pageWidth / 2, coverY + 10, { align: 'center' })
-          coverY += 14
-        }
-        if (coverSubtitle) {
-          setBodyFont(doc, 'bold')
-          doc.setFontSize(18)
-          doc.text(coverSubtitle, pageWidth / 2, coverY + 10, { align: 'center' })
-          coverY += 12
-        }
-        if (coverTitle || coverSubtitle) markBodyContent()
-        setBodyFont(doc, 'normal')
-        doc.setFontSize(9.5)
-
-      const meta: Array<[string, string]> = [
-        ['Project', projectLabel],
-        ['Type', String(form.type || '')],
-        ['Dates', dateRange || '—'],
-        ['Location', String(form.location || '—')],
-      ]
-      if (coverByLine) meta.push(['By', coverByLine])
-
-      const lineH = 7
-      const metaBlockH = meta.length * lineH
-        const metaStartY = Math.max(coverY + 18, bottomLimit - metaBlockH - 10)
-
-        // Jumbotron photo in the middle of the page (optional)
-        if (coverJumboSrc) {
-          const boxX = margin
-          const boxW = pageWidth - margin * 2
-          const boxTop = coverY + 6
-          const boxBottom = metaStartY - 8
-          const boxH = boxBottom - boxTop
-          if (boxH > 20) {
-            const img = await loadImage(coverJumboSrc)
-            if (img?.dataUrl) {
-            const iw = Number((img as any).width || 0)
-            const ih = Number((img as any).height || 0)
-            const aspect = (iw > 0 && ih > 0) ? (iw / ih) : 1.6
-            let drawW = boxW
-            let drawH = drawW / aspect
-              if (drawH > boxH) { drawH = boxH; drawW = drawH * aspect }
-              const dx = boxX + (boxW - drawW) / 2
-              const dy = boxTop + (boxH - drawH) / 2
-              try { doc.addImage(img.dataUrl, img.format || 'JPEG', dx, dy, drawW, drawH) } catch (e) { /* ignore */ }
-              markBodyContent()
-            }
-          }
-        }
-
-        let cy = metaStartY
-        for (const [k, v] of meta) {
-          doc.setTextColor(100)
-          doc.text(`${k}:`, margin, cy)
-          doc.setTextColor(0)
-          doc.text(String(v || '—'), margin + 26, cy)
-          markBodyContent()
-          cy += lineH
-        }
-        y = cy + 2
-        drawFooter()
-        doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-      }
-
-      if (activityReport.value.toc) {
-        // TOC lists the enabled sections in the user's chosen order.
-        const tocLabels: Record<string, string> = {
-          info: 'Info',
-          description: 'Description',
-          photos: 'Photos',
-          equipmentList: 'Equipment List',
-          actions: 'Actions',
-          issues: 'Issues',
-          equipmentReports: 'Equipment Reports',
-          attachments: 'Attachments',
-        }
-        const items: string[] = []
-        for (const key of orderedKeys) {
-          if ((key === 'equipmentList' || key === 'equipmentReports') && !selectedEquip.value.length) continue
-          const label = tocLabels[key]
-          if (label) items.push(label)
-        }
-
-        ensureSpace(14)
-        setBodyFont(doc, 'bold'); doc.setFontSize(16); doc.text('Table of Contents', margin, y); y += 10
-        markBodyContent()
-        setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
-        for (const it of items) {
-          ensureSpace(7)
-          doc.text(`• ${it}`, margin + 2, y)
-          markBodyContent()
-          y += 7
-
-          // For "Equipment Reports", include sub-bullets for each equipment in current order.
-          if (it === 'Equipment Reports' && selectedEquip.value.length) {
-            const eqItems = [...(selectedEquip.value || [])]
-            for (const eq of eqItems) {
-              const tag = String(eq?.tag || '').trim()
-              const title = String(eq?.title || '').trim()
-              const label = [tag, title].filter(Boolean).join(' — ') || 'Equipment'
-              ensureSpace(6)
-              doc.text(`- ${label}`, margin + 8, y)
-              markBodyContent()
-              y += 6
-            }
-            y += 2
-          }
-        }
-        y += 2
-        drawFooter()
-        doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-      }
-
-      // In-document section renderers (info/description/photos) — dispatched
-      // below in the user's chosen order. The page-granular sections
-      // (equipment list, actions, issues, equipment reports, attachments) are
-      // built as separate documents and merged in order after.
-      // Info
-      const renderInfoSection = async () => {
-        setBodyFont(doc, 'bold'); doc.setFontSize(13); doc.text('Info', margin, y); y += 6; setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
-        markBodyContent()
-        const projectName = String((projectStore.currentProject as any)?.name || '')
-        const projectLabel = projectName || String(form.projectId || '')
-        const info: Array<[string,string]> = [
-          ['Type', form.type],
-          ['Start', form.startDate],
-          ['End', form.endDate],
-        ['Location', form.location],
-          ['Project', projectLabel]
-        ]
-        const colW = (pageWidth - margin*2) / 2
-        let i = 0
-        for (const [label, value] of info) {
-          const col = i % 2
-          const row = Math.floor(i / 2)
-          const x = margin + col * colW
-          const yy = y + row * 8
-          ensureSpace(11)
-          doc.setTextColor(100)
-          doc.text(label + ':', x, yy)
-          doc.setTextColor(0)
-          const lines = doc.splitTextToSize(String(value || '—'), colW - 24) as string[]
-          doc.text(lines, x + 24, yy)
-          markBodyContent()
-          i++
-        }
-        const rows = Math.ceil(info.length / 2)
-        y += rows * 8 + 2
-      }
-    // Description (rich HTML rendering)
-    const renderDescriptionSection = async () => {
-      if (!form.descriptionHtml) return
-      // Render description content without the "Description" label
-      const container = document.createElement('div')
-      container.style.position = 'fixed'
-      container.style.left = '-10000px'
-      container.style.top = '0'
-      // Use px width for consistency with html2canvas
-      const widthPx = Math.round((pageWidth - margin*2) / 0.264583) // mm -> px
-      container.style.width = widthPx + 'px'
-      container.style.color = '#1a1a1a'
-      container.style.background = '#fff'
-      // Match the rest of the report: render the Description in IBM Plex Sans.
-      container.style.fontFamily = REPORT_FONT_STACK
-      await ensureWebReportFontLoaded()
-      container.innerHTML = form.descriptionHtml
-        .replace(/<h1/gi,'<h1 style="font-size:17px; margin:4px 0; font-weight:600;"')
-        .replace(/<h2/gi,'<h2 style="font-size:14px; margin:4px 0; font-weight:600;"')
-        .replace(/<h3/gi,'<h3 style="font-size:12.5px; margin:3px 0; font-weight:600;"')
-        // Body ~13px (≈ the report's 9.5pt). Keep the editor's paragraph/list
-        // spacing so the PDF reads with the same breaks the user sees while editing.
-        .replace(/<p/gi,'<p style="font-size:13px; margin:6px 0; line-height:1.4;"')
-        .replace(/<ul/gi,'<ul style="margin:6px 0; padding-left:18px; list-style-type:disc; list-style-position:outside;"')
-        .replace(/<ol/gi,'<ol style="margin:6px 0; padding-left:18px; list-style-type:decimal; list-style-position:outside;"')
-        .replace(/<li/gi,'<li style="font-size:13px; margin:3px 0;"')
-        // Tables — the rich-text editor (TipTap) now lets the user add tables,
-        // and the Cx Plan starter emits several. Without explicit borders /
-        // padding here, html2canvas paints them as a single jammed line of
-        // text with no grid. Apply print-safe styles for the four table tags.
-        .replace(/<table/gi,'<table style="width:100%; border-collapse:collapse; margin:6px 0 10px; font-size:13px; table-layout:auto;"')
-        .replace(/<thead/gi,'<thead style="background:#f3f4f6;"')
-        .replace(/<tr/gi,'<tr style="page-break-inside:avoid;"')
-        .replace(/<th/gi,'<th style="border:1px solid #4b5563; padding:5px 7px; text-align:left; vertical-align:top; background:#f3f4f6; font-weight:600; font-size:13px;"')
-        .replace(/<td/gi,'<td style="border:1px solid #4b5563; padding:5px 7px; text-align:left; vertical-align:top; font-size:13px;"')
-        // Misc block tags that the editor produces.
-        .replace(/<hr/gi,'<hr style="border:0; border-top:1px solid #9ca3af; margin:8px 0;"')
-        .replace(/<blockquote/gi,'<blockquote style="margin:4px 0 4px 8px; padding:0 0 0 10px; border-left:3px solid #9ca3af; color:#374151; font-size:15px;"')
-        .replace(/<a /gi,'<a style="color:#2563eb; text-decoration:underline;" ')
-        // The Cx Plan section-marker sentinels (<div data-cx-plan-marker="…">)
-        // are invisible in the editor but render as a blank line of default
-        // div height in print. Squash them.
-        .replace(/<div\s+data-cx-plan-marker=/gi,'<div style="display:none;" data-cx-plan-marker=')
-      document.body.appendChild(container)
-      const pxPerMm = 3.7795275591
-      const mmPerPx = 1 / pxPerMm
-      const targetWidthMm = pageWidth - margin*2
-      const targetWidthPx = Math.round(targetWidthMm * pxPerMm)
-        try {
-          // Render with html2canvas and paginate manually for reliable output
-          const canvas = await (window as any).html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
-          const scale = targetWidthPx / canvas.width
-        // html2canvas can include a large amount of trailing whitespace; trim it to avoid
-        // generating an extra "blank" page at the end of the Description section.
-        const trimTrailingWhitespace = (srcCanvas: HTMLCanvasElement): number => {
-          try {
-            const ctx2d = srcCanvas.getContext('2d', { willReadFrequently: true } as any)
-            if (!ctx2d) return srcCanvas.height
-            const w = srcCanvas.width
-            const maxInk = 0.01
-            const stepX = 8
-            const blockH = 220
-            for (let blockStart = Math.max(0, srcCanvas.height - blockH); blockStart >= 0; blockStart -= blockH) {
-              const regionH = Math.min(blockH, srcCanvas.height - blockStart)
-              const img = ctx2d.getImageData(0, blockStart, w, regionH)
-              const data = img.data
-              // Search within this block from bottom-up for any "ink" row
-              for (let ry = regionH - 2; ry >= 1; ry--) {
-                let ink = 0
-                let samples = 0
-                const rowBase = ry * w * 4
-                for (let x = 0; x < w; x += stepX) {
-                  const idx = rowBase + x * 4
-                  const a = data[idx + 3]
-                  if (a < 16) { samples++; continue }
-                  const r = data[idx]
-                  const g = data[idx + 1]
-                  const b = data[idx + 2]
-                  if (r < 245 || g < 245 || b < 245) ink++
-                  samples++
-                }
-                if (samples && (ink / samples) > maxInk) {
-                  // Keep a small buffer below the last ink row.
-                  return Math.min(srcCanvas.height, blockStart + ry + 24)
-                }
-              }
-            }
-          } catch (_) { /* ignore */ }
-          return canvas.height
-        }
-        const contentHeightPx = trimTrailingWhitespace(canvas)
-        let offsetPx = 0
-        // Leave a small bottom padding to avoid clipping the last line on page breaks.
-        // 6pt ≈ 2.12mm (half a typical 12pt line height).
-        const descBottomPadMm = 2.2
-        const findWhitespaceCut = (srcCanvas: HTMLCanvasElement, startPx: number, desiredLenPx: number): number => {
-          try {
-            const ctx2d = srcCanvas.getContext('2d', { willReadFrequently: true } as any)
-            if (!ctx2d) return desiredLenPx
-            // Search near the bottom of the slice for a mostly-white horizontal row
-            const searchWindow = Math.min(90, Math.max(0, desiredLenPx))
-            const searchStart = Math.max(0, desiredLenPx - searchWindow)
-            const regionY = startPx + searchStart
-            if (regionY < 0 || regionY >= srcCanvas.height) return desiredLenPx
-            const regionH = Math.min(searchWindow, srcCanvas.height - regionY)
-            if (regionH <= 2) return desiredLenPx
-            const img = ctx2d.getImageData(0, regionY, srcCanvas.width, regionH)
-            const w = img.width
-            const h = img.height
-            const data = img.data
-            const stepX = 6 // sample stride
-            // A row is "blank" if < ~1% of sampled pixels are non-white
-            const maxInk = 0.01
-            for (let ry = h - 2; ry >= 2; ry--) {
-              let ink = 0
-              let samples = 0
-              const rowBase = ry * w * 4
-              for (let x = 0; x < w; x += stepX) {
-                const idx = rowBase + x * 4
-                const a = data[idx + 3]
-                if (a < 16) { samples++; continue }
-                const r = data[idx]
-                const g = data[idx + 1]
-                const b = data[idx + 2]
-                // treat near-white as background
-                if (r < 245 || g < 245 || b < 245) ink++
-                samples++
-              }
-              if (samples && (ink / samples) <= maxInk) {
-                // Cut at this row to avoid splitting a line of text.
-                const cutLen = searchStart + ry
-                // Ensure we don't return 0-length slices.
-                return Math.max(1, cutLen)
-              }
-            }
-          } catch (_) { /* ignore */ }
-          return desiredLenPx
-        }
-        while (offsetPx < contentHeightPx - 1) {
-          const availableMm = Math.max(0, bottomLimit - y - descBottomPadMm)
-          // If we don't have enough vertical space for a reasonable slice, advance to next page
-          // to avoid rounding/scale artifacts that can clip the last line.
-          if (availableMm < 6) {
-            drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; drawHeader()
-            continue
-          }
-            const availableTargetPx = Math.max(10, Math.floor(availableMm * pxPerMm))
-            // Pick the segment height in source pixels such that after scaling it stays
-            // strictly within the available target height (avoid rounding up causing clipping).
-            const maxSrcPx = Math.max(1, Math.floor((availableTargetPx - 1) / scale))
-            const desiredSrcPx = Math.min(maxSrcPx, contentHeightPx - offsetPx)
-          const segmentSrcPx = findWhitespaceCut(canvas, offsetPx, desiredSrcPx)
-          // Create a segment canvas to crop
-            const seg = document.createElement('canvas'); seg.width = canvas.width; seg.height = segmentSrcPx
-            const segCtx = seg.getContext('2d')!
-            segCtx.fillStyle = '#ffffff'; segCtx.fillRect(0,0,seg.width,seg.height)
-            segCtx.drawImage(canvas, 0, offsetPx, canvas.width, segmentSrcPx, 0, 0, seg.width, seg.height)
-            const segUrl = seg.toDataURL('image/png')
-            const segmentTargetHeightPx = segmentSrcPx * scale
-            const segmentTargetHeightMm = segmentTargetHeightPx * mmPerPx
-            try { doc.addImage(segUrl, 'PNG', margin, y, targetWidthMm, segmentTargetHeightMm); markBodyContent() } catch (e) { /* ignore */ }
-            y += segmentTargetHeightMm
-            offsetPx += segmentSrcPx
-            // Do not force a page break here. In cases where `findWhitespaceCut` returns a shorter
-            // slice (to avoid splitting a line), we may still have plenty of space on the current
-            // page for the remaining lines. The `availableMm` check at the top of the loop will
-            // advance to the next page only when needed.
-          }
-          y += 2
-        } catch (e) {
-          // Fallback to text if html render fails
-          setBodyFont(doc, 'normal'); doc.setFontSize(9.5)
-          const lines = htmlToLines(form.descriptionHtml)
-          for (const l of lines) {
-            const wrapped = doc.splitTextToSize(l, pageWidth - margin * 2) as string[]
-            for (const w of wrapped) { ensureSpace(7); doc.text(w, margin, y); markBodyContent(); y += 6 }
-          }
-        } finally {
-          document.body.removeChild(container)
-        }
-      }
-      // Photos: Azure Blob (AzurePhotosPanel) + any legacy base64, capped.
-      const renderPhotosSection = async () => {
-        const azure = await fetchActivityAzurePhotoDataUrls(activityReport.value.photoLimit)
-        const legacy = (Array.isArray(current.value?.photos) ? current.value!.photos! : [])
-          .map((p: any) => p?.data || p?.url).filter(Boolean)
-        const srcs = [...azure, ...legacy].slice(0, activityReport.value.photoLimit)
-        const imgs: Array<{dataUrl:string,format?:ImageFormat}> = []
-        for (const src of srcs) {
-          const imgRaw = await loadImage(src)
-          if (imgRaw.dataUrl) imgs.push({ dataUrl: imgRaw.dataUrl, format: imgRaw.format })
-        }
-        if (imgs.length) {
-          sectionGap(); ensureSpace(10); setBodyFont(doc, 'bold'); doc.setFontSize(13); doc.text('Photos', margin, y); y += 4
-          markBodyContent()
-          const thumbW = (pageWidth - margin * 2 - 8) / 3
-          const thumbH = thumbW * 0.75
-          for (let idx = 0; idx < imgs.length; idx++) {
-            const col = idx % 3
-            const row = Math.floor(idx / 3)
-            const x = margin + col * (thumbW + 4)
-            const yy = y + row * (thumbH + 4)
-            if (yy + thumbH > bottomLimit) { drawFooter(); doc.addPage(); pageNo++; y = margin; pageHasBodyContent = false; idx -= (idx % 3); continue }
-            doc.addImage(imgs[idx].dataUrl, imgs[idx].format || 'JPEG', x, yy, thumbW, thumbH)
-            markBodyContent()
-          }
-          y += Math.ceil(imgs.length / 3) * (thumbH + 4) + 2
-        }
-      }
-      // Render the in-document sections in the chosen order.
-      const baseRenderers: Record<string, () => Promise<void>> = {
-        info: renderInfoSection,
-        description: renderDescriptionSection,
-        photos: renderPhotosSection,
-      }
-      for (const key of orderedKeys) {
-        const fn = baseRenderers[key]
-        if (fn) await fn()
-      }
-
-      // Close out the main activity doc; the page-granular sections are merged in next.
-      // If the current page has only header/footer (no body content), it can be an accidental
-      // trailing blank page created by a page-break. Drop it to avoid an empty separator page
-      // before the Equipment List.
-      let skipFinalFooter = false
-      try {
-          const totalPages = (doc as any).getNumberOfPages ? (doc as any).getNumberOfPages() : 1
-          if (totalPages > 1 && !pageHasBodyContent && typeof (doc as any).deletePage === 'function') {
-            (doc as any).deletePage(totalPages)
-            skipFinalFooter = true
-          }
-        } catch (e) { /* ignore */ }
-      if (!skipFinalFooter) drawFooter()
-      let baseBytes = doc.output('arraybuffer') as ArrayBuffer
-    // Build issues doc separately (table) if needed.
-    let issuesBytes: ArrayBuffer | null = null
-    if (reportHas('issues')) {
-      // Aggregate issues from the activity and from each selected equipment (deduped by id)
-      const aggregated: any[] = []
-      const seen = new Set<string>()
-      const makeKey = (obj: any) => {
-        const id = String((obj && (obj.id || obj._id)) || '')
-        if (id) return id
-        const num = (obj && (obj.number != null)) ? String(obj.number) : ''
-        const title = (obj && obj.title) ? String(obj.title).slice(0,40) : ''
-        const type = (obj && obj.type) ? String(obj.type) : ''
-        return [num,type,title].filter(Boolean).join('|') || Math.random().toString(36).slice(2)
-      }
-      const pushIssue = (obj: any, source: string) => {
-        if (!obj) return
-        const key = makeKey(obj)
-        if (seen.has(key)) return
-        seen.add(key)
-        // Clone to avoid mutating store objects and annotate source for rendering
-        const annotated = { ...(obj || {}), __source: source }
-        aggregated.push(annotated)
-      }
-      // Activity issues
-      for (const it of (issuesForActivity.value || [])) pushIssue(it, 'Activity')
-      // Equipment issues (ensure full equipment fetched if list version lacks issues)
-      try {
-        for (const eq of (selectedEquip.value || [])) {
-          let eqObj: any = eq
-          const hasInlineIssues = Array.isArray(eqObj?.issues) && eqObj.issues.length > 0
-          if (!hasInlineIssues && (eqObj?.id || eqObj?._id)) {
-            try { const full = await equipmentStore.fetchOne(String(eqObj.id || eqObj._id)); if (full) eqObj = full } catch (e) { /* ignore */ }
-          }
-          const srcLabel = String(eqObj?.tag || eqObj?.title || 'Equipment')
-          const refs: any[] = Array.isArray(eqObj?.issues) ? eqObj.issues : []
-          for (const ref of refs) {
-            const id = String((ref && (ref.id || ref._id)) || ref || '')
-            const obj = id ? issuesById.value[id] : (typeof ref === 'object' ? ref : null)
-            if (obj) pushIssue(obj, srcLabel)
-          }
-          // Fallback: include issues linked by assetId to this equipment
-          const eqId = String((eqObj?.id || eqObj?._id) || '')
-          if (eqId) {
-            for (const it of (issuesStore.issues || [])) {
-              const linked = String((it as any)?.assetId || '')
-              if (linked === eqId) pushIssue(it, srcLabel)
-            }
-          }
-        }
-      } catch (e) { /* ignore */ }
-      const issues = aggregated
-      if (issues.length) {
-        const iDoc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(iDoc); setReportColor(iDoc, 'text')
-        // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
-        setZeroCharSpace(iDoc)
-        setBodyFont(iDoc, 'normal')
-        const iPW = iDoc.internal.pageSize.getWidth(); const iPH = iDoc.internal.pageSize.getHeight(); const iBottom = iPH - 26; let iy = margin; let iPageNo = 1
-        // Reuse logos from outer scope if available for consistent branding
-        const drawIFooter = () => {
-          const prevFont = (iDoc as any).getFont ? (iDoc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
-          const prevSize = (iDoc as any).getFontSize ? (iDoc as any).getFontSize() : 9
-          const fY = iPH - 10
-          iDoc.setDrawColor(180,180,180); iDoc.line(margin, fY - 6, iPW - margin, fY - 6)
-          try {
-            if (footerLogo?.dataUrl) {
-              const lh = 5.5
-              let lw = 12
-              if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) {
-                lw = lh * ((footerLogo as any).width / (footerLogo as any).height)
-              }
-              const maxW = 14
-              if (lw > maxW) lw = maxW
-              iDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh)
-              const brandX = margin + lw + 2
-              setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8)
-              iDoc.text('cxma', brandX, fY - 2)
-              const tw = typeof (iDoc as any).getTextWidth === 'function' ? (iDoc as any).getTextWidth('cxma') : 10
-              iDoc.text(`${form.name || 'Activity'} Issues`, brandX + tw + 3, fY - 2)
-            } else {
-              iDoc.setFillColor(220,220,220); iDoc.rect(margin, fY - 5.5, 8,5,'F'); setBodyFont(iDoc, 'bold'); iDoc.setFontSize(8)
-              iDoc.text('cxma', margin + 10, fY - 2)
-              iDoc.text(`${form.name || 'Activity'} Issues`, margin + 24, fY - 2)
-            }
-          } catch (e) { /* ignore */ }
-          setBodyFont(iDoc, 'normal'); iDoc.text(String(iPageNo), iPW/2, fY - 2, { align: 'center' });
-          try { if (typeof pageDate === 'string') iDoc.text(pageDate, iPW - margin, fY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
-          iDoc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); iDoc.setFontSize(prevSize)
-        }
-        const drawIHeader = () => {
-          const res = drawBrandedHeader(iDoc, {
-            margin,
-            pageWidth: iPW,
-            title: 'Issues',
-            leftLogo: clientImg,
-            rightLogo: cxaImg,
-            logoH: 12,
-            maxLogoW: 36,
-            titleFontSize: 20,
-            setTitleFont: () => setBodyFont(iDoc, 'bold'),
-          })
-          // Reset to body font after header
-          iy = res.nextY
-          setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9.5)
-        }
-        const ensureISpace = (h:number) => { if (iy + h > iBottom) { drawIFooter(); iDoc.addPage(); iPageNo++; drawIHeader(); return true } return false }
-        drawIHeader()
-        // --- Updated Issues Table: with Recommendation column ---
-        const totalW = iPW - margin*2 - 2;
-        const numW = 14;
-        const typeW = Math.round(22 * 0.75); // 25% reduction
-        const sourceW = 20; // compact
-        const titleW = Math.round(40 * 0.75); // 25% reduction
-        const descW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.45);
-        const recW = Math.round((totalW - numW - typeW - sourceW - titleW) * 0.35);
-        const statusW = Math.round(22 * 0.75);
-        const restW = totalW - numW - typeW - sourceW - titleW - descW - recW - statusW;
-        const finalDescW = descW + restW;
-        const tableX = margin + 1;
-        const drawIssuesHeader = () => {
-          ensureISpace(8);
-          setBodyFont(iDoc, 'bold');
-          const headerH = 7;
-          iDoc.setFillColor(250,236,236);
-          iDoc.rect(tableX, iy, totalW, headerH, 'F');
-          iDoc.rect(tableX, iy, totalW, headerH);
-          const colXs = [
-            tableX,
-            tableX+numW,
-            tableX+numW+typeW,
-            tableX+numW+typeW+sourceW,
-            tableX+numW+typeW+sourceW+titleW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW+statusW
-          ];
-          for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; iDoc.line(vx, iy, vx, iy+headerH) }
-          iDoc.text('#', tableX+1.5, iy+5);
-          iDoc.text('Type', tableX+numW+1.5, iy+5);
-          iDoc.text('Source', tableX+numW+typeW+1.5, iy+5);
-          iDoc.text('Title', tableX+numW+typeW+sourceW+1.5, iy+5);
-          iDoc.text('Description', tableX+numW+typeW+sourceW+titleW+1.5, iy+5);
-          iDoc.text('Recommendation', tableX+numW+typeW+sourceW+titleW+finalDescW+1.5, iy+5);
-          iDoc.text('Status', tableX+numW+typeW+sourceW+titleW+finalDescW+recW+1.5, iy+5);
-          iy += headerH; setBodyFont(iDoc, 'normal'); iDoc.setFontSize(9.5)
-        };
-        drawIssuesHeader();
-        for (const it of issues) {
-          const numTxt = '#' + (it.number ?? '—');
-          const typeLines = iDoc.splitTextToSize(String(it.type||'—'), typeW - 3) as string[];
-          const sourceLines = iDoc.splitTextToSize(String((it as any).__source || (it as any).assetTag || (it as any).asset || '—'), sourceW - 3) as string[];
-          const titleLines = iDoc.splitTextToSize(String(it.title||'—'), titleW - 3) as string[];
-          const descText = htmlToText((it as any).description || (it as any).descriptionHtml || '') || '—';
-          const descLines = iDoc.splitTextToSize(descText, finalDescW - 3) as string[];
-          const recTxt = String(it.recommendation || it.recommendationText || it.recommendation_text || '—');
-          const recLines = iDoc.splitTextToSize(recTxt, recW - 3) as string[];
-          const statusTxt = String(it.status || 'Open');
-          const statusLines = iDoc.splitTextToSize(statusTxt, statusW - 3) as string[];
-          const hLines = Math.max(1, typeLines.length, sourceLines.length, titleLines.length, descLines.length, recLines.length, statusLines.length);
-          const rowH = Math.max(8, hLines*5 + 2);
-          if (ensureISpace(rowH + 2)) drawIssuesHeader();
-          // Fill closed rows with a light gray background
-          const isClosedRow = String(it.status || '').toLowerCase().startsWith('closed');
-          if (isClosedRow) {
-            iDoc.setFillColor(230, 230, 230);
-            iDoc.rect(tableX, iy, totalW, rowH, 'F');
-          }
-          // Draw row borders
-          iDoc.setDrawColor(0, 0, 0);
-          iDoc.rect(tableX, iy, totalW, rowH);
-          const colXs = [
-            tableX,
-            tableX+numW,
-            tableX+numW+typeW,
-            tableX+numW+typeW+sourceW,
-            tableX+numW+typeW+sourceW+titleW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW,
-            tableX+numW+typeW+sourceW+titleW+finalDescW+recW+statusW
-          ];
-          for (let i=1;i<colXs.length;i++){ const vx = colXs[i]; iDoc.line(vx, iy, vx, iy+rowH) }
-          // Ensure text is black on all rows (especially closed ones)
-          iDoc.setTextColor(0, 0, 0);
-          let cx = tableX + 1.5;
-          iDoc.text(numTxt, cx, iy+5);
-          cx += numW;
-          let tyY = iy+5;
-          for (const l of typeLines) { iDoc.text(l, cx+1.5, tyY); tyY += 5 }
-          cx += typeW;
-          let soY = iy+5;
-          for (const l of sourceLines) { iDoc.text(l, cx+1.5, soY); soY += 5 }
-          cx += sourceW;
-          let tlY = iy+5;
-          for (const l of titleLines) { iDoc.text(l, cx+1.5, tlY); tlY += 5 }
-          cx += titleW;
-          let dlY = iy+5;
-          for (const l of descLines) { iDoc.text(l, cx+1.5, dlY); dlY += 5 }
-          cx += finalDescW;
-          let rlY = iy+5;
-          for (const l of recLines) { iDoc.text(l, cx+1.5, rlY); rlY += 5 }
-          cx += recW;
-          let slY = iy+5;
-          for (const l of statusLines) { iDoc.text(l, cx+1.5, slY); slY += 5 }
-          iy += rowH;
-        }
-        drawIFooter();
-        issuesBytes = iDoc.output('arraybuffer') as ArrayBuffer;
-      }
-    }
-    // Build actions doc separately (paragraphed sections: heading + meta bullets +
-    // notes + photos + linked-issues grid). Merged in AFTER the Equipment List.
-    let actionsBytes: ArrayBuffer | null = null
-    if (reportHas('actions')) {
-      const reportActions = await gatherReportActions({ withPhotos: true })
-      if (reportActions.length) {
-        const aDoc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(aDoc); setReportColor(aDoc, 'text')
-        setZeroCharSpace(aDoc); setBodyFont(aDoc, 'normal')
-        const aPW = aDoc.internal.pageSize.getWidth(); const aPH = aDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
-        const contentW = aPW - margin * 2
-        const drawAFooter = () => {
-          const prevFont = (aDoc as any).getFont ? (aDoc as any).getFont() : { fontName: 'helvetica', fontStyle: 'normal' }
-          const prevSize = (aDoc as any).getFontSize ? (aDoc as any).getFontSize() : 9
-          const fY = aPH - 10
-          aDoc.setDrawColor(180, 180, 180); aDoc.line(margin, fY - 6, aPW - margin, fY - 6)
-          try {
-            if (footerLogo?.dataUrl) {
-              const lh = 5.5; let lw = 12
-              if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) lw = lh * ((footerLogo as any).width / (footerLogo as any).height)
-              if (lw > 14) lw = 14
-              aDoc.addImage(footerLogo.dataUrl, footerLogo.format || 'PNG', margin, fY - lh, lw, lh)
-              const brandX = margin + lw + 2
-              setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8); aDoc.text('cxma', brandX, fY - 2)
-              const tw = typeof (aDoc as any).getTextWidth === 'function' ? (aDoc as any).getTextWidth('cxma') : 10
-              aDoc.text(`${form.name || 'Activity'} Actions`, brandX + tw + 3, fY - 2)
-            } else {
-              aDoc.setFillColor(220, 220, 220); aDoc.rect(margin, fY - 5.5, 8, 5, 'F'); setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8)
-              aDoc.text('cxma', margin + 10, fY - 2); aDoc.text(`${form.name || 'Activity'} Actions`, margin + 24, fY - 2)
-            }
-          } catch (e) { /* ignore */ }
-          setBodyFont(aDoc, 'normal'); aDoc.text(String(aPageNo), aPW / 2, fY - 2, { align: 'center' })
-          try { if (typeof pageDate === 'string') aDoc.text(pageDate, aPW - margin, fY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
-          aDoc.setFont((prevFont as any).fontName || 'helvetica', (prevFont as any).fontStyle || 'normal'); aDoc.setFontSize(prevSize)
-        }
-        const drawAHeader = () => {
-          const res = drawBrandedHeader(aDoc, { margin, pageWidth: aPW, title: 'Actions', leftLogo: clientImg, rightLogo: cxaImg, logoH: 12, maxLogoW: 36, titleFontSize: 20, setTitleFont: () => setBodyFont(aDoc, 'bold') })
-          ay = res.nextY; setBodyFont(aDoc, 'normal'); aDoc.setFontSize(9.5)
-        }
-        const ensureASpace = (h: number) => { if (ay + h > aBottom) { drawAFooter(); aDoc.addPage(); aPageNo++; drawAHeader(); return true } return false }
-        drawAHeader()
-        for (let i = 0; i < reportActions.length; i++) {
-          const a = reportActions[i]
-          ensureASpace(12)
-          setBodyFont(aDoc, 'bold'); aDoc.setFontSize(12); setReportColor(aDoc, 'text')
-          const headLines = aDoc.splitTextToSize(`${i + 1}. ${a.title || 'Action'}`, contentW) as string[]
-          aDoc.text(headLines, margin, ay + 4); ay += headLines.length * 5.5 + 1
-          // Meta bullets
-          setBodyFont(aDoc, 'normal'); aDoc.setFontSize(9); setReportColor(aDoc, 'muted')
-          const meta: string[] = []
-          if (a.type) meta.push(`Type: ${a.type}`)
-          if (a.status) meta.push(`Status: ${a.status}`)
-          if (a.date) meta.push(`Date: ${a.date}`)
-          if (a.performedBy) meta.push(`Performed by: ${a.performedBy}`)
-          if (a.location) meta.push(`Location: ${a.location}`)
-          for (const m of meta) { ensureASpace(5); aDoc.text(`•  ${m}`, margin + 2, ay + 3); ay += 4.6 }
-          ay += 1; setReportColor(aDoc, 'text')
-          // Notes narrative
-          if (a.notes && String(a.notes).trim()) {
-            setBodyFont(aDoc, 'normal'); aDoc.setFontSize(9.5)
-            const noteLines = aDoc.splitTextToSize(String(a.notes), contentW) as string[]
-            for (const ln of noteLines) { ensureASpace(5); aDoc.text(ln, margin, ay + 3.5); ay += 4.8 }
-            ay += 1
-          }
-          // Photos (3 per row)
-          const photos = Array.isArray(a.photos) ? a.photos.filter((p: any) => p && p.dataUrl) : []
-          if (photos.length) {
-            const colsN = 3; const gap = 3; const thumbW = (contentW - gap * (colsN - 1)) / colsN; const thumbH = thumbW * 0.72
-            let idx = 0
-            while (idx < photos.length) {
-              ensureASpace(thumbH + 3)
-              for (let c = 0; c < colsN && idx < photos.length; c++, idx++) {
-                const p = photos[idx]; const px = margin + c * (thumbW + gap)
-                try { aDoc.addImage(p.dataUrl, p.format || 'JPEG', px, ay, thumbW, thumbH) } catch (_) { /* skip */ }
-              }
-              ay += thumbH + 3
-            }
-          }
-          // Linked issues grid
-          const issues = Array.isArray(a.issues) ? a.issues : []
-          if (issues.length) {
-            ensureASpace(10)
-            setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8.5); aDoc.text('Linked issues', margin, ay + 3); ay += 5
-            const cw = [contentW * 0.10, contentW * 0.20, contentW * 0.52, contentW * 0.18]
-            const cx = [margin, margin + cw[0], margin + cw[0] + cw[1], margin + cw[0] + cw[1] + cw[2]]
-            const drawIssHead = () => {
-              setBodyFont(aDoc, 'bold'); aDoc.setFontSize(8); aDoc.setFillColor(250, 236, 236)
-              aDoc.rect(margin, ay, contentW, 6, 'F'); aDoc.rect(margin, ay, contentW, 6)
-              ;['#', 'Type', 'Title', 'Status'].forEach((h, k) => { if (k > 0) aDoc.line(cx[k], ay, cx[k], ay + 6); aDoc.text(h, cx[k] + 1.5, ay + 4) })
-              ay += 6; setBodyFont(aDoc, 'normal'); aDoc.setFontSize(8)
-            }
-            drawIssHead()
-            for (const it of issues) {
-              const titleLines = aDoc.splitTextToSize(String(it.title || '—'), cw[2] - 3) as string[]
-              const rowH = Math.max(6, titleLines.length * 4 + 2)
-              if (ensureASpace(rowH)) drawIssHead()
-              aDoc.rect(margin, ay, contentW, rowH)
-              const cellVals: any[] = [it.number != null ? `#${it.number}` : '—', String(it.type || '—'), titleLines, String(it.status || 'Open')]
-              ;[0, 1, 2, 3].forEach((k) => { if (k > 0) aDoc.line(cx[k], ay, cx[k], ay + rowH); aDoc.text(cellVals[k], cx[k] + 1.5, ay + 4) })
-              ay += rowH
-            }
-          }
-          // Separator between actions
-          ay += 2; ensureASpace(4); aDoc.setDrawColor(210, 210, 210); aDoc.line(margin, ay, aPW - margin, ay); ay += 5
-        }
-        drawAFooter()
-        actionsBytes = aDoc.output('arraybuffer') as ArrayBuffer
-      }
-    }
-    // Defer issues merge until after the Equipment List section so ordering is:
-    // main report -> Equipment List -> Issues -> Equipment Reports -> Attachments
-    // Build attachments doc separately (list + image pages) if needed.
-    // Attachments come from project documents (Attachments/Activity/<id>) plus any
-    // legacy inline form.attachments.
-    const reportAttachments: any[] = reportHas('attachments') ? await gatherReportAttachments() : []
-    let attachmentsBytes: ArrayBuffer | null = null
-    if (reportHas('attachments')) {
-      const atts: any[] = reportAttachments
-      if (atts.length) {
-        const attDoc = new jsPDF({ unit: 'mm', format: 'letter' }); await ensureReportFonts(attDoc); setReportColor(attDoc, 'text')
-        // IBM Plex Sans embedded via ensureReportFonts (see reportTypography.ts)
-        setZeroCharSpace(attDoc)
-        setBodyFont(attDoc, 'normal')
-        const aPW = attDoc.internal.pageSize.getWidth(); const aPH = attDoc.internal.pageSize.getHeight(); const aBottom = aPH - 26; let ay = margin; let aPageNo = 1
-        const drawAttFooter = () => { const footerY = aPH - 10; attDoc.setDrawColor(180,180,180); attDoc.line(margin, footerY - 6, aPW - margin, footerY - 6); setBodyFont(attDoc, 'normal'); attDoc.setFontSize(8); attDoc.text(String(aPageNo), aPW/2, footerY - 2, { align: 'center' }) }
-        const drawAttHeader = () => { setBodyFont(attDoc, 'bold'); attDoc.setFontSize(16); attDoc.text('Attachments', aPW/2, margin + 6, { align: 'center' }); ay = margin + 16; setBodyFont(attDoc, 'normal'); attDoc.setFontSize(9.5) }
-        const ensureAttSpace = (h:number) => { if (ay + h > aBottom) { drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); return true } return false }
-        drawAttHeader()
-        // Listing first
-        for (let a=0; a< Math.min(8, atts.length); a++) { const name = String(atts[a]?.filename || atts[a]?.url || 'Attachment'); const lines = attDoc.splitTextToSize(name, aPW - margin*2) as string[]; for (const l of lines) { ensureAttSpace(6); attDoc.text(l, margin + 2, ay); ay += 4 } }
-        // Image full pages
-        const isImage = (a:any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.startsWith('image/') || ['png','jpg','jpeg','webp'].includes(ext) }
-  const getDims = async (dataUrl:string): Promise<{w:number;h:number}> => { return new Promise(res => { const img = new Image(); img.onload=()=>res({ w: img.naturalWidth||img.width, h: img.naturalHeight||img.height }); img.onerror=()=>res({w:0,h:0}); img.src = dataUrl }) }
-        for (const a of atts) { if (!isImage(a)) continue; const src = a?.url || a?.data; const img = await loadImage(src); if (!img.dataUrl) continue; drawAttFooter(); attDoc.addPage(); aPageNo++; drawAttHeader(); setBodyFont(attDoc, 'bold'); attDoc.setFontSize(9.5); const label = `Attachment: ${String(a?.filename || a?.url || '')}`; ensureAttSpace(8); attDoc.text(label, margin, ay); ay += 6; setBodyFont(attDoc, 'normal'); const dims = await getDims(img.dataUrl); const maxW = aPW - margin*2; const maxH = aBottom - ay; let drawW = maxW, drawH = maxH; if (dims.w>0 && dims.h>0) { const sc = Math.min(maxW/dims.w, maxH/dims.h); drawW = dims.w*sc; drawH = dims.h*sc } const imgX = margin + (maxW - drawW)/2; const imgY = ay + (maxH - drawH)/2; try { attDoc.addImage(img.dataUrl, img.format || 'JPEG', imgX, imgY, drawW, drawH) } catch (e) {   drawAttFooter() }
-        drawAttFooter()
-        attachmentsBytes = attDoc.output('arraybuffer') as ArrayBuffer
-      }
-    }
-    // Build each equipment's full report as its own document; all the
-    // page-granular sections are merged in the user's order below.
-    const equipmentReportsBytes: ArrayBuffer[] = []
-    if (reportHas('equipmentReports') && selectedEquip.value.length) {
-      try {
-        // Freeze the current equipment order (matches Equipment tab order).
-        const selectedEquipSnapshot = [...(selectedEquip.value || [])]
-        // Build a comprehensive issuesMap including all issues referenced by equipment
-        const issuesMap: Record<string, any> = {}
-        // Add all project issues by id
-        for (const it of (issuesStore.issues || [])) {
-          const key = String((it?.id || it?._id) || '')
-          if (key) issuesMap[key] = it
-        }
-
-        const ensureIssueInMap = async (issueId: string) => {
-          const id = String(issueId || '').trim()
-          if (!id || issuesMap[id]) return
-          const found = (issuesStore.issues || []).find((it: any) => String(it?.id || it?._id || '') === id)
-          if (found) {
-            issuesMap[id] = found
-            return
-          }
-          try {
-            const fetched = await issuesStore.fetchIssue(id)
-            const key = String((fetched as any)?.id || (fetched as any)?._id || id)
-            if (key) issuesMap[key] = fetched
-          } catch (e) { /* ignore missing issues */ }
-        }
-
-        const collectIssueIdsFromEquipment = (eqObj: any): string[] => {
-          const ids = new Set<string>()
-          try {
-            const addRef = (ref: any) => {
-              const iid = issueRefToId(ref)
-              if (iid) ids.add(iid)
-            }
-            const addRefList = (list: any) => {
-              const arr = Array.isArray(list) ? list : []
-              for (const it of arr) addRef(it)
-            }
-
-            addRefList(eqObj?.issues)
-
-            const fpts: any[] = Array.isArray(eqObj?.functionalTests) ? eqObj.functionalTests : []
-            for (const f of fpts) addRefList(f?.issues)
-
-            const chks: any[] = Array.isArray(eqObj?.checklists) ? eqObj.checklists : []
-            for (const c of chks) {
-              const items: any[] = Array.isArray(c?.questions) ? c.questions : (Array.isArray(c?.items) ? c.items : [])
-              for (const q of items) addRefList(q?.issues)
-            }
-
-            const comps: any[] = Array.isArray(eqObj?.components) ? eqObj.components : []
-            for (const c of comps) addRefList(c?.issues)
-          } catch (e) { /* ignore */ }
-          return Array.from(ids)
-        }
-
-        const spacesMap: Record<string, any> = {}
-        for (const sp of (spacesStore.items || [])) {
-          const key = String((sp as any).id || (sp as any)._id || '')
-          if (key) spacesMap[key] = sp
-        }
-        // Try to resolve project (already loaded earlier for logos)
-        const projectObj: any = projectStore.currentProject || {}
-
-        // Generate full equipment PDFs (merged in order below)
-        // Lazy-load generator only if needed (performance improvement)
-        const { generateEquipmentPdf } = await import('../../utils/equipmentReport')
-        for (const eq of selectedEquipSnapshot) {
-          try {
-            const eqId = String((eq as any)?.id || (eq as any)?._id || '')
-            const fullEq = eqId ? (await fetchFullEquipmentForReport(eqId)) || eq : eq
-            // Ensure any issue ids referenced in this equipment are resolved to canonical issues via the store.
-            const issueIds = collectIssueIdsFromEquipment(fullEq)
-            for (const iid of issueIds) await ensureIssueInMap(iid)
-            // Attempt to reuse each equipment's own saved report settings if present on object
-            const eqSettings = (fullEq && (fullEq as any).reportSettings) ? (fullEq as any).reportSettings : null
-            // Use equipment's own photoLimit if available, else fall back to activity photoLimit or 6
-            const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
-            let eqOpts: any
-            if (eqSettings && Array.isArray(eqSettings.sections) && eqSettings.sections.length) {
-              // New ordered shape; issues + signatures stay on in activity bundles (user requirement)
-              const sections = eqSettings.sections.map((s: any) => (
-                (s?.key === 'issues' || s?.key === 'signatures') ? { ...s, enabled: true } : { ...s }
-              ))
-              for (const must of ['issues', 'signatures']) {
-                if (!sections.some((s: any) => s?.key === must)) sections.push({ key: must, enabled: true })
-              }
-              eqOpts = { sections, photoLimit }
-            } else {
-              const baseInclude = eqSettings && typeof eqSettings === 'object' && eqSettings.include ? eqSettings.include : { info: true, attributes: true, components: true, photos: true, attachments: true, checklists: true, fpt: true, issues: true }
-              eqOpts = { include: { ...baseInclude, issues: true, signatures: true }, photoLimit }
-            }
-            const eqBytes = await generateEquipmentPdf(fullEq, projectObj, issuesMap, spacesMap, eqOpts)
-            equipmentReportsBytes.push(eqBytes)
-           } catch (e) { /* ignore */ }
-        }
-  } catch (e) { /* fallback: no equipment reports */ }
+    // ---- equipment (full records) --------------------------------------
+    const equipment: any[] = []
+    for (const eq of (selectedEquip.value || [])) {
+      const eqId = String((eq as any)?.id || (eq as any)?._id || '')
+      try { equipment.push(eqId ? ((await fetchFullEquipmentForReport(eqId)) || eq) : eq) }
+      catch (e) { equipment.push(eq) }
     }
 
-    // Build the Equipment List as its own document (merged in order below).
-    let equipmentListBytes: ArrayBuffer | null = null
-    if (reportHas('equipmentList') && selectedEquip.value.length) {
-      try {
-        const jsPDFmod = (await import('jspdf')).jsPDF || jsPDF
-        const eqDoc = new jsPDFmod({ unit: 'mm', format: 'letter' }); await ensureReportFonts(eqDoc); setReportColor(eqDoc, 'text')
-        setZeroCharSpace(eqDoc)
-        setBodyFont(eqDoc, 'normal')
-        const eqPW = eqDoc.internal.pageSize.getWidth()
-        const eqPH = eqDoc.internal.pageSize.getHeight()
-        const eqMargin = 12
-        const eqBottom = eqPH - 26
-        let eqY = eqMargin
-        let eqPageNo = 1
-        const eqPageDate = pageDate
-
-        const drawEqFooter = () => {
-          const footerY = eqPH - 10
-          eqDoc.setDrawColor(180, 180, 180); eqDoc.line(eqMargin, footerY - 6, eqPW - eqMargin, footerY - 6)
-          try {
-            if ((footerLogo as any)?.dataUrl) {
-              const lh = 5.5
-              let lw = 12
-              if ((footerLogo as any).width && (footerLogo as any).height && (footerLogo as any).height > 0) {
-                lw = lh * ((footerLogo as any).width / (footerLogo as any).height)
-              }
-              const maxW = 14
-              if (lw > maxW) lw = maxW
-              eqDoc.addImage((footerLogo as any).dataUrl, (footerLogo as any).format || 'PNG', eqMargin, footerY - lh, lw, lh)
-              const brandX = eqMargin + lw + 2
-              setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8)
-              eqDoc.text('cxma', brandX, footerY - 2)
-              const tw = typeof (eqDoc as any).getTextWidth === 'function' ? (eqDoc as any).getTextWidth('cxma') : 10
-              eqDoc.text(`${form.name || 'Activity'} Equipment`, brandX + tw + 3, footerY - 2)
-            } else {
-              eqDoc.setFillColor(220, 220, 220); eqDoc.rect(eqMargin, footerY - 5.5, 8, 5, 'F'); setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(8)
-              eqDoc.text('cxma', eqMargin + 10, footerY - 2)
-              eqDoc.text(`${form.name || 'Activity'} Equipment`, eqMargin + 24, footerY - 2)
-            }
-          } catch (e) { /* ignore */ }
-          setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(8); eqDoc.text(String(eqPageNo), eqPW / 2, footerY - 2, { align: 'center' })
-          try { if (typeof eqPageDate === 'string') eqDoc.text(eqPageDate, eqPW - eqMargin, footerY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
-        }
-
-        const drawEqHeader = () => {
-          const res = drawBrandedHeader(eqDoc, {
-            margin: eqMargin,
-            pageWidth: eqPW,
-            title: form.name || 'Activity',
-            leftLogo: clientImg,
-            rightLogo: cxaImg,
-            logoH: 12,
-            maxLogoW: 36,
-            titleFontSize: 20,
-            setTitleFont: () => setBodyFont(eqDoc, 'bold'),
-          })
-          eqY = res.nextY
-          setBodyFont(eqDoc, 'bold'); eqDoc.setFontSize(13); eqDoc.text('Equipment List', eqMargin, eqY); eqY += 6
-          setBodyFont(eqDoc, 'normal'); eqDoc.setFontSize(9.5)
-        }
-
-        const columns = [
-          { label: 'Tag', width: 24 },
-          { label: 'Title', width: 60 },
-          { label: 'Status', width: 44 },
-          { label: 'Manufacturer', width: 32 },
-          { label: 'Condition', width: 22 },
-        ]
-        const totalW = columns.reduce((sum, c) => sum + c.width, 0)
-        const tableX = eqMargin
-        const drawTableHeader = () => {
-          eqDoc.setFillColor(240, 240, 240)
-          eqDoc.rect(tableX, eqY, totalW, 7, 'F')
-          setBodyFont(eqDoc, 'bold')
-          let colX = tableX
-          for (const col of columns) { eqDoc.text(col.label, colX + 2, eqY + 5); colX += col.width }
-          eqY += 9
-          setBodyFont(eqDoc, 'normal')
-        }
-
-        drawEqHeader()
-        drawTableHeader()
-        const rowLineH = 5
-        const rowPadBottom = 3
-        for (const eq of selectedEquip.value) {
-          let manufacturer = '—'
-          let condition = '—'
-          if (Array.isArray(eq.attributes)) {
-            for (const attr of eq.attributes) {
-              if (attr && typeof attr === 'object') {
-                if (attr.key === 'Manufacturer' && attr.value) manufacturer = String(attr.value)
-                if (attr.key === 'Condition' && attr.value) condition = String(attr.value)
-              }
-            }
-          } else if (eq.attributes && typeof eq.attributes === 'object') {
-            manufacturer = String(eq.attributes['Manufacturer'] || '—')
-            condition = String(eq.attributes['Condition'] || '—')
-          }
-          const rowVals = [
-            String(eq.tag || '—'),
-            String(eq.title || '—'),
-            String(eq.status || '—'),
-            manufacturer,
-            condition,
-          ]
-          const cellLines = rowVals.map((v, i) => {
-            try { return eqDoc.splitTextToSize(String(v || '—'), columns[i].width - 4) as string[] } catch (e) { return [String(v || '—')] }
-          })
-          const maxLines = cellLines.reduce((m, arr) => Math.max(m, Array.isArray(arr) ? arr.length : 1), 1)
-          const rowH = Math.max(8, maxLines * rowLineH + rowPadBottom)
-
-          if (eqY + rowH > eqBottom) {
-            drawEqFooter()
-            eqDoc.addPage()
-            eqPageNo++
-            drawEqHeader()
-            drawTableHeader()
-          }
-          let colX = tableX
-          for (let i = 0; i < columns.length; i++) {
-            const x = colX + 2
-            const baseY = eqY + 5
-            const lines = cellLines[i] || ['—']
-            for (let k = 0; k < lines.length; k++) {
-              eqDoc.text(String(lines[k] || ''), x, baseY + k * rowLineH)
-            }
-            colX += columns[i].width
-          }
-          eqY += rowH
-        }
-        drawEqFooter()
-
-        equipmentListBytes = eqDoc.output('arraybuffer') as ArrayBuffer
-      } catch (e) { /* ignore */ }
+    // ---- issues per the scope rule: directly linked + open on scoped equipment
+    try { if (pid && !issuesLoaded.value) { await issuesStore.fetchIssues(pid); issuesLoaded.value = true } } catch (e) { /* ignore */ }
+    const allIssues: any[] = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+    const directIds = new Set<string>((Array.isArray((form as any).issues) ? (form as any).issues : []).map((v: any) => String((v as any)?.id || (v as any)?._id || v)))
+    const scopeTags = new Set(equipment.map((e: any) => String(e?.tag || '').toLowerCase()).filter(Boolean))
+    const eqIssueIds = new Set<string>()
+    for (const eq of equipment) {
+      const collect = (list: any) => { for (const ref of (Array.isArray(list) ? list : [])) { const idv = String((ref as any)?.id || (ref as any)?._id || ref || ''); if (idv) eqIssueIds.add(idv) } }
+      collect((eq as any)?.issues)
+      for (const t of (Array.isArray((eq as any)?.functionalTests) ? (eq as any).functionalTests : [])) collect((t as any)?.issues)
+      for (const s of (Array.isArray((eq as any)?.checklists) ? (eq as any).checklists : [])) collect((s as any)?.issues)
+      for (const cp of (Array.isArray((eq as any)?.components) ? (eq as any).components : [])) collect((cp as any)?.issues)
     }
+    const scopedIssues = allIssues.filter((it: any) => {
+      const iid = String((it as any)?.id || (it as any)?._id || '')
+      if (directIds.has(iid)) return true
+      if (String((it as any)?.activityId || '') === activityIdStr) { directIds.add(iid); return true }
+      const open = !['closed', 'cancelled'].includes(String((it as any)?.status || '').toLowerCase())
+      if (!open) return false
+      if (eqIssueIds.has(iid)) return true
+      return scopeTags.has(String((it as any)?.tag || '').toLowerCase())
+    })
 
-    // Merge the page-granular sections after the base document, in the
-    // user's chosen order. Raw PDF attachments merge in at the attachments
-    // section's position (the stated order), not at the end.
+    // ---- photos (Azure docs folder + legacy base64, captions preserved) -
+    const photoCap = 60
+    const reportPhotos: Array<{ dataUrl: string; caption?: string }> = []
     try {
-      const { PDFDocument } = await import('pdf-lib')
-      const merged = await PDFDocument.load(baseBytes)
-      const appendBytes = async (bytes: ArrayBuffer | null) => {
-        if (!bytes) return
-        try {
-          const pdf = await PDFDocument.load(bytes)
-          const pages = await merged.copyPages(pdf, pdf.getPageIndices())
-          pages.forEach((p: any) => merged.addPage(p))
-        } catch (e) { /* skip unloadable block */ }
-      }
-      for (const key of orderedKeys) {
-        if (key === 'equipmentList') await appendBytes(equipmentListBytes)
-        else if (key === 'actions') await appendBytes(actionsBytes)
-        else if (key === 'issues') await appendBytes(issuesBytes)
-        else if (key === 'equipmentReports') {
-          for (const b of equipmentReportsBytes) await appendBytes(b)
-        } else if (key === 'attachments') {
-          await appendBytes(attachmentsBytes)
-          const pdfAtts = reportAttachments.filter((a: any) => { const type = String(a?.type||'').toLowerCase(); const name = String(a?.filename||a?.url||'').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop()||''; return type.includes('pdf') || ext==='pdf' })
-          for (const a of pdfAtts) { const url = String(a?.url || ''); if (!url) continue; try { const res = await fetch(url); if (!res.ok) continue; await appendBytes(await res.arrayBuffer()) } catch (e) { /* ignore */ } }
-        }
-      }
-      baseBytes = await merged.save()
-    } catch (e) { /* keep baseBytes as-is */ }
-
-    // Download merged
-    deliverPdfBytes(baseBytes, buildActivityPdfFilename())
+      for (const u of await fetchActivityAzurePhotoDataUrls(photoCap)) reportPhotos.push({ dataUrl: u })
+    } catch (e) { /* ignore */ }
+    for (const p of (Array.isArray((form as any).photos) ? (form as any).photos : [])) {
+      if (reportPhotos.length >= photoCap) break
+      const src = (p as any)?.data || (p as any)?.url
+      if (src) reportPhotos.push({ dataUrl: String(src), caption: String((p as any)?.caption || '') })
     }
-  } catch (e:any) {
+
+    // ---- actions (reviews-completed KPI) --------------------------------
+    let acts: any[] = Array.isArray(actions.value) ? actions.value : []
+    if (!acts.length) { try { acts = await actionsStore.list(activityIdStr, pid) } catch (e) { acts = [] } }
+
+    // ---- assemble + render ---------------------------------------------
+    const { assembleActivityReportModel } = await import('../../reports/definitions/activity/model')
+    const { generateActivityReportPdf } = await import('../../reports/definitions/activity/pdf')
+    const model = assembleActivityReportModel({
+      activity: { ...form, id: activityIdStr },
+      project,
+      equipment,
+      issues: scopedIssues,
+      directIssueIds: directIds,
+      actions: acts,
+      photos: reportPhotos,
+    })
+
+    // Equipment appendix — full per-unit reports, only when enabled (default off).
+    const equipmentAppendixBytes: ArrayBuffer[] = []
+    if (reportHas('equipmentReports') && equipment.length) {
+      const issuesMap: Record<string, any> = {}
+      for (const it of allIssues) { const iid = String((it as any)?.id || (it as any)?._id || ''); if (iid) issuesMap[iid] = it }
+      const spacesMap: Record<string, any> = {}
+      for (const sp of (spacesStore.items || [])) { const key = String((sp as any).id || (sp as any)._id || ''); if (key) spacesMap[key] = sp }
+      const { generateEquipmentPdf } = await import('../../utils/equipmentReport')
+      for (const eq of equipment) {
+        try {
+          const eqSettings = (eq as any)?.reportSettings || null
+          const photoLimit = (eqSettings && typeof eqSettings.photoLimit === 'number') ? eqSettings.photoLimit : activityReport.value.photoLimit
+          equipmentAppendixBytes.push(await generateEquipmentPdf(eq, project, issuesMap, spacesMap, { sections: eqSettings?.sections, photoLimit }))
+        } catch (e) { /* skip this unit */ }
+      }
+    }
+
+    // Raw PDF attachments, appended after everything else when enabled.
+    const attachmentsPdfBytes: ArrayBuffer[] = []
+    if (reportHas('attachments')) {
+      const reportAttachments: any[] = Array.isArray((form as any).attachments) ? (form as any).attachments : []
+      const pdfAtts = reportAttachments.filter((a: any) => { const type = String(a?.type || '').toLowerCase(); const name = String(a?.filename || a?.url || '').toLowerCase(); const ext = name.split('?')[0].split('#')[0].split('.').pop() || ''; return type.includes('pdf') || ext === 'pdf' })
+      for (const a of pdfAtts) {
+        const url = String((a as any)?.url || '')
+        if (!url) continue
+        try { const res = await fetch(url); if (res.ok) attachmentsPdfBytes.push(await res.arrayBuffer()) } catch (e) { /* ignore */ }
+      }
+    }
+
+    const bytes = await generateActivityReportPdf(model, {
+      project,
+      sections: {
+        minutes: reportHas('description'),
+        issues: reportHas('issues'),
+        equipment: reportHas('equipmentList'),
+        photos: reportHas('photos'),
+      },
+      photoLogLimit: typeof activityReport.value.photoLimit === 'number' ? Math.min(activityReport.value.photoLimit, 8) : 6,
+      equipmentAppendixBytes,
+      attachmentsPdfBytes,
+    })
+    deliverPdfBytes(bytes.buffer as ArrayBuffer, buildActivityPdfFilename())
+  } catch (e: any) {
     ui.showError(e?.message || 'Failed to generate report')
   } finally {
     downloading.value = false
