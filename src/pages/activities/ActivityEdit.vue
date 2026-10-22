@@ -717,6 +717,14 @@
               </div>
             </div>
 
+            <!-- Report content (Stage 3): summary, report details, sessions, attendance -->
+            <div class="md:col-span-2">
+              <ActivityReportPanel
+                :form="form"
+                :import-candidates="attendeeImportCandidates"
+              />
+            </div>
+
             <div class="md:col-span-2">
               <div class="flex items-center gap-3 mt-2 justify-end md:justify-start">
                 <button
@@ -977,6 +985,11 @@
                 </tbody>
               </table>
             </div>
+            <ActivityActionItemsPanel
+              v-if="!isNew"
+              :project-id="String(form.projectId || '')"
+              :activity-id="String(id || '')"
+            />
           </div>
 
           <div v-else-if="currentTab === 'Photos'">
@@ -988,6 +1001,15 @@
               :max-bytes="256 * 1024"
               :concurrency="3"
               @update:count="azurePhotosCount = $event"
+            />
+            <ActivityPhotoMetaPanel
+              v-if="!isNew"
+              :project-id="String(form.projectId || '')"
+              :activity-id="String(id || '')"
+              :photo-meta="form.photoMeta"
+              :issues="photoIssueOptions"
+              :saving="saving"
+              @save="save()"
             />
           </div>
 
@@ -2467,6 +2489,9 @@ import { deliverPdfBytes } from '../../reports/core/deliver'
 import { useIssuesStore } from '../../stores/issues'
 import { useActionsStore } from '../../stores/actions'
 import { useActionItemsStore } from '../../stores/actionItems'
+import ActivityReportPanel from '../../components/activity/ActivityReportPanel.vue'
+import ActivityActionItemsPanel from '../../components/activity/ActivityActionItemsPanel.vue'
+import ActivityPhotoMetaPanel from '../../components/activity/ActivityPhotoMetaPanel.vue'
 import { useTemplatesStore } from '../../stores/templates'
 import { useEquipmentStore } from '../../stores/equipment'
   import { useSpacesStore } from '../../stores/spaces'
@@ -2664,6 +2689,13 @@ const form = reactive({
   samplePercentage: null as number | null,
   backcheckComplete: false as boolean,
   attendees: [] as Array<{ name: string; company: string; email: string; role: string; signedIn?: boolean }>,
+  // Activity report redesign Stage 2 fields (docs/activity_report_redesign.md)
+  summary: '' as string,
+  reportId: '' as string,
+  nextVisitDate: '' as string,
+  revisions: [] as Array<{ rev: number; date: string; description: string; by: string }>,
+  sessions: [] as Array<{ name: string; time: string; location: string; bullets: string[] }>,
+  photoMeta: {} as Record<string, any>,
 })
 
 function addAttendee() {
@@ -4747,6 +4779,19 @@ function closeIssueModal() { showIssueModal.value = false; issueModalActionId.va
 // --- Actions: sub-records of work under this activity --------------------------
 const actionsStore = useActionsStore()
 const actionItemsStore = useActionItemsStore()
+
+// Other activities in this project whose attendee lists can be imported
+// (Stage 3: "allow import from a previous activity's list").
+const attendeeImportCandidates = computed(() => (store.activities || [])
+  .filter((a: any) => String(a?.id || a?._id || '') !== String(id.value || '') && Array.isArray(a?.attendees) && a.attendees.length)
+  .map((a: any) => ({ id: String(a.id || a._id), name: String(a.name || ''), attendees: a.attendees })))
+
+// Project issues offered for photo linking (Stage 3 photo meta panel).
+const photoIssueOptions = computed(() => (issuesStore.issues || [])
+  .filter((it: any) => String(it?.projectId || '') === String(form.projectId || projectStore.currentProjectId || ''))
+  .map((it: any) => ({ id: String(it.id || it._id), number: it.number ?? '', title: String(it.title || '') }))
+  .sort((a: any, b: any) => (Number(b.number) || 0) - (Number(a.number) || 0))
+  .slice(0, 200))
 const templatesStore = useTemplatesStore()
 const ACTION_TYPES = ['Submittal', 'Meeting', 'Review', 'Checklist Verification', 'Training Review', 'As-Built Review', 'Other']
 const ACTION_STATUSES = ['Not Started', 'In Progress', 'Complete']
