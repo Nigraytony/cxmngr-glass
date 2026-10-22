@@ -2466,6 +2466,7 @@ import { defaultReportSettings, enabledSectionKeys, normalizeReportSettings, sec
 import { deliverPdfBytes } from '../../reports/core/deliver'
 import { useIssuesStore } from '../../stores/issues'
 import { useActionsStore } from '../../stores/actions'
+import { useActionItemsStore } from '../../stores/actionItems'
 import { useTemplatesStore } from '../../stores/templates'
 import { useEquipmentStore } from '../../stores/equipment'
   import { useSpacesStore } from '../../stores/spaces'
@@ -3717,21 +3718,44 @@ async function downloadActivityPdf() {
       return scopeTags.has(String((it as any)?.tag || '').toLowerCase())
     })
 
-    // ---- photos (Azure docs folder + legacy base64, captions preserved) -
+    // ---- photos (Azure docs folder + legacy base64), with photoMeta ------
+    // (caption / equipment tags / issue links / cover flag / include flag)
     const photoCap = 60
-    const reportPhotos: Array<{ dataUrl: string; caption?: string }> = []
+    const issueNoById = new Map<string, string>()
+    for (const it of allIssues) { const iid = String((it as any)?.id || (it as any)?._id || ''); if (iid) issueNoById.set(iid, String((it as any)?.number ?? '')) }
+    const metaBag: any = (form as any).photoMeta && typeof (form as any).photoMeta === 'object' ? (form as any).photoMeta : {}
+    type ReportPhoto = { dataUrl: string; caption?: string; tags?: string[]; issueRefs?: string[]; isCover?: boolean }
+    const reportPhotos: ReportPhoto[] = []
+    const pushPhoto = (dataUrl: string, meta: any) => {
+      if (!dataUrl || meta?.includeInReport === false) return
+      const issueRefs = (Array.isArray(meta?.issueIds) ? meta.issueIds : [])
+        .map((iid: any) => issueNoById.get(String((iid as any)?.id || (iid as any)?._id || iid)) || '')
+        .filter(Boolean)
+        .map((n: string) => `#${n}`)
+      reportPhotos.push({
+        dataUrl,
+        caption: String(meta?.caption || ''),
+        tags: (Array.isArray(meta?.equipmentTags) ? meta.equipmentTags : []).map((t: any) => String(t)).filter(Boolean),
+        issueRefs,
+        isCover: meta?.isCover === true,
+      })
+    }
     try {
-      for (const u of await fetchActivityAzurePhotoDataUrls(photoCap)) reportPhotos.push({ dataUrl: u })
+      for (const p of await fetchActivityAzurePhotos(photoCap)) pushPhoto(p.dataUrl, metaBag[p.fileId] || {})
     } catch (e) { /* ignore */ }
     for (const p of (Array.isArray((form as any).photos) ? (form as any).photos : [])) {
       if (reportPhotos.length >= photoCap) break
       const src = (p as any)?.data || (p as any)?.url
-      if (src) reportPhotos.push({ dataUrl: String(src), caption: String((p as any)?.caption || '') })
+      if (src) pushPhoto(String(src), p)
     }
+    // Cover-flagged photo first (it becomes the hero), then issue-linked, then the rest.
+    reportPhotos.sort((a, b) => Number(!!b.isCover) - Number(!!a.isCover) || Number(!!(b.issueRefs && b.issueRefs.length)) - Number(!!(a.issueRefs && a.issueRefs.length)))
 
-    // ---- actions (reviews-completed KPI) --------------------------------
+    // ---- actions (reviews-completed KPI) + action items ------------------
     let acts: any[] = Array.isArray(actions.value) ? actions.value : []
     if (!acts.length) { try { acts = await actionsStore.list(activityIdStr, pid) } catch (e) { acts = [] } }
+    let actionItems: any[] = []
+    try { actionItems = await actionItemsStore.list(activityIdStr, pid) } catch (e) { actionItems = [] }
 
     // ---- assemble + render ---------------------------------------------
     const { assembleActivityReportModel } = await import('../../reports/definitions/activity/model')
@@ -3743,6 +3767,7 @@ async function downloadActivityPdf() {
       issues: scopedIssues,
       directIssueIds: directIds,
       actions: acts,
+      actionItems,
       photos: reportPhotos,
     })
 
@@ -3810,8 +3835,9 @@ function getEquipAttr(eq: any, key: string): string {
 
 // Activity photos are stored in Azure Blob via AzurePhotosPanel (docs folder
 // Photos/Activity/<id>), NOT the legacy base64 activity.photos[] the reports used
-// to read. Fetch them from the docs API and return data URLs the report embeds.
-async function fetchActivityAzurePhotoDataUrls(limit: number): Promise<string[]> {
+// to read. Fetch them from the docs API; fileId keys into activity.photoMeta
+// (caption/tags/issue links/cover flag — Stage 2).
+async function fetchActivityAzurePhotos(limit: number): Promise<Array<{ dataUrl: string; fileId: string; name: string }>> {
   const pid = String(form.projectId || projectStore.currentProjectId || localStorage.getItem('selectedProjectId') || '')
   const aid = String(id.value || '')
   if (!pid || !aid || limit <= 0) return []
@@ -3837,7 +3863,7 @@ async function fetchActivityAzurePhotoDataUrls(limit: number): Promise<string[]>
     const files = (Array.isArray(filesRes?.files) ? filesRes.files : [])
       .filter((f: any) => f && f.status !== 'deleted' && String(f.contentType || '').toLowerCase().startsWith('image/'))
     // Download each (SAS) as a data URL, respecting the report's photo limit.
-    const out: string[] = []
+    const out: Array<{ dataUrl: string; fileId: string; name: string }> = []
     for (const f of files.slice(0, Math.max(0, limit))) {
       try {
         const { downloadUrl } = (await http.get(`/api/projects/${pid}/docs/files/${f.id}/download-url`)).data
@@ -3848,7 +3874,7 @@ async function fetchActivityAzurePhotoDataUrls(limit: number): Promise<string[]>
           reader.onerror = () => reject(reader.error || new Error('read failed'))
           reader.readAsDataURL(blob)
         })
-        if (dataUrl) out.push(dataUrl)
+        if (dataUrl) out.push({ dataUrl, fileId: String(f.id), name: String(f.name || '') })
       } catch (_) { /* skip this photo */ }
     }
     return out
@@ -3887,7 +3913,7 @@ async function downloadActivityDocx() {
     // Activity photos: Azure Blob (AzurePhotosPanel) + any legacy base64, capped.
     const photos: any[] = []
     if (inc.photos) {
-      const azure = await fetchActivityAzurePhotoDataUrls(activityReport.value.photoLimit)
+      const azure = (await fetchActivityAzurePhotos(activityReport.value.photoLimit)).map((p) => p.dataUrl)
       const legacy = (Array.isArray(current.value?.photos) ? current.value!.photos! : [])
         .map((p: any) => p?.data || p?.url).filter(Boolean)
       const srcs = [...azure, ...legacy].slice(0, activityReport.value.photoLimit)
@@ -4720,6 +4746,7 @@ function closeIssueModal() { showIssueModal.value = false; issueModalActionId.va
 
 // --- Actions: sub-records of work under this activity --------------------------
 const actionsStore = useActionsStore()
+const actionItemsStore = useActionItemsStore()
 const templatesStore = useTemplatesStore()
 const ACTION_TYPES = ['Submittal', 'Meeting', 'Review', 'Checklist Verification', 'Training Review', 'As-Built Review', 'Other']
 const ACTION_STATUSES = ['Not Started', 'In Progress', 'Complete']

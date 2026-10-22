@@ -25,6 +25,11 @@ const issueSchema = new mongoose.Schema({
   location: { type: String, required: false },
   recommendation: { type: String, required: false },
   resolution: { type: String, required: false },
+  // Where the issue came from: 'checklist' (raised from a checklist answer),
+  // 'site walk', 'fpt', '' (unknown/manual). Checklist-origin issues require
+  // a recommendation (enforced in the create route); the Activity report
+  // prints this as the issue's source.
+  origin: { type: String, default: '' },
   // Free-form tags for filtering/grouping
   labels: { type: [String], default: [] },
   // OPR Items linked for traceability (OPR Workshop add-on)

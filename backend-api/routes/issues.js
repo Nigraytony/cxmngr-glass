@@ -188,7 +188,7 @@ function getBackendBaseUrl(req) {
 
 // Light projection for list responses to avoid pulling large blobs.
 // Includes __v so clients can send it back for optimistic-lock updates.
-const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation oprItemIds __v';
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation origin oprItemIds __v';
 
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
@@ -222,6 +222,12 @@ router.post(
     }
     if (req.body && req.body.resolution) {
       req.body.resolution = sanitizeHtml(String(req.body.resolution), { allowedTags: [], allowedAttributes: {} }).trim()
+    }
+
+    // Checklist-raised issues must carry a recommendation (Activity report
+    // redesign: checklist-generated issues #15-17 shipped without one).
+    if (String((req.body || {}).origin || '').toLowerCase() === 'checklist' && !String((req.body || {}).recommendation || '').trim()) {
+      return res.status(400).send({ error: 'A recommendation is required for issues raised from a checklist' });
     }
 
     // Accept a client-supplied _id for offline creates (idempotent replay).

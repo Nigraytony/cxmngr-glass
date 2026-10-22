@@ -55,7 +55,7 @@ const activitySchema = new mongoose.Schema({
   // comments include user identity and optional avatar for display
   comments: [{ userId: mongoose.Schema.Types.ObjectId, name: String, avatar: String, text: String, createdAt: { type: Date, default: Date.now } }],
   // photos stored in DB as base64 strings (note: keep sizes small)
-  photos: [{ filename: String, data: String, contentType: String, size: Number, uploadedBy: mongoose.Schema.Types.ObjectId, uploadedByName: String, uploadedByAvatar: String, caption: { type: String, default: '' }, createdAt: { type: Date, default: Date.now } }],
+  photos: [{ filename: String, data: String, contentType: String, size: Number, uploadedBy: mongoose.Schema.Types.ObjectId, uploadedByName: String, uploadedByAvatar: String, caption: { type: String, default: '' }, equipmentTags: { type: [String], default: [] }, issueIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Issue' }], includeInReport: { type: Boolean, default: true }, isCover: { type: Boolean, default: false }, createdAt: { type: Date, default: Date.now } }],
   // other attachments (documents) can be stored as external URLs or metadata
   // Use Mixed to be backward compatible with any legacy string-based attachments
   attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
@@ -104,6 +104,48 @@ const activitySchema = new mongoose.Schema({
     ],
     default: [],
   },
+  // -------------------------------------------------------------------------
+  // Activity report redesign, Stage 2 (docs/activity_report_redesign.md).
+  // All optional: old activities render sensibly with these sections omitted.
+  // -------------------------------------------------------------------------
+  // "Summary of findings" — rich-text HTML, separate from the meeting notes.
+  // Never auto-generated; the report omits the section when empty.
+  summary: { type: String, default: '' },
+  // Short report id printed on the cover/footer (e.g. "SV-03"). Derived from
+  // type + activity number when empty.
+  reportId: { type: String, default: '' },
+  // Next visit, free text ("week of July 13") or a date string.
+  nextVisitDate: { type: String, default: '' },
+  // Revision history; the latest row is the issued revision.
+  revisions: {
+    type: [
+      {
+        rev: { type: Number, default: 0 },
+        date: { type: String, default: '' },
+        description: { type: String, default: '' },
+        by: { type: String, default: '' },
+      },
+    ],
+    default: [],
+  },
+  // Structured meeting-minutes sessions. Legacy activities without them fall
+  // back to parsing H3 blocks out of descriptionHtml.
+  sessions: {
+    type: [
+      {
+        name: { type: String, default: '' },
+        time: { type: String, default: '' },
+        location: { type: String, default: '' },
+        bullets: { type: [String], default: [] },
+      },
+    ],
+    default: [],
+  },
+  // Caption/links/report flags for Azure-stored activity photos, keyed by
+  // doc-file id: { [fileId]: { caption, equipmentTags[], issueIds[],
+  // includeInReport, isCover } }. Legacy base64 photos carry the same fields
+  // on their subdocuments below.
+  photoMeta: { type: mongoose.Schema.Types.Mixed, default: {} },
   // Flexible settings bucket (e.g., report settings) persisted per activity
   settings: { type: mongoose.Schema.Types.Mixed, default: {} },
   metadata: { type: mongoose.Schema.Types.Mixed, default: {} },

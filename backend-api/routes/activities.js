@@ -155,6 +155,14 @@ function pickActivityPayload(source) {
     'settings',
     'metadata',
     'labels',
+    // Activity report redesign Stage 2 (docs/activity_report_redesign.md)
+    'summary',
+    'reportId',
+    'nextVisitDate',
+    'revisions',
+    'sessions',
+    'photoMeta',
+    'attendees',
   ]
   for (const k of allowed) {
     if (body[k] !== undefined) out[k] = body[k]

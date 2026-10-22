@@ -53,6 +53,19 @@ export interface EquipmentRowVM {
 export interface PhotoVM {
   dataUrl: string
   caption: string
+  /** Equipment tag chips (mono, gray). */
+  tags: string[]
+  /** Linked issue chips ("#15"), rendered in the severity red. */
+  issueRefs: string[]
+}
+
+export interface ActionItemVM {
+  id: string // "A-1"
+  action: string
+  owner: string
+  due: string
+  ref: string // issue numbers or a free note ("Obs."), "—" when none
+  done: boolean
 }
 
 export interface AttendeeVM {
@@ -72,7 +85,9 @@ export interface ActivityReportModel {
   metaStrip: Array<{ label: string; value: string; mono?: boolean }>
   kpis: Array<{ value: string; label: string; warn?: boolean }>
   summaryItems: string[]
+  nextVisit: string
   sessions: SessionVM[]
+  actionItems: ActionItemVM[]
   issues: IssueVM[]
   issueCounts: { high: number; medium: number; low: number; fromWalk: number; fromChecklists: number }
   observations: string[]
@@ -97,8 +112,10 @@ export interface ActivityReportInput {
   directIssueIds: Set<string>
   /** Action sub-records (for the "reviews completed" KPI). */
   actions: any[]
-  /** Activity photos, already as data URLs (Azure + legacy base64). */
-  photos: Array<{ dataUrl: string; caption?: string }>
+  /** ActionItem records (A-1 … work owed; Stage 2). */
+  actionItems?: any[]
+  /** Activity photos, already as data URLs (Azure + legacy base64), with meta. */
+  photos: Array<{ dataUrl: string; caption?: string; tags?: string[]; issueRefs?: string[]; isCover?: boolean }>
 }
 
 // ---------------------------------------------------------------------------
@@ -270,9 +287,15 @@ function fptRecorded(t: any): boolean {
 
 export function assembleActivityReportModel(input: ActivityReportInput): ActivityReportModel {
   const { activity, project, equipment, actions } = input
-  const reportId = deriveReportId(activity)
+  const reportId = String(activity?.reportId || '').trim() || deriveReportId(activity)
   const issued = fmtShortDate(new Date())
   const typeLabel = String(activity?.type || 'Activity').replace(/\s*Review$/, '')
+
+  // Revision history (Stage 2); the latest row is the issued revision.
+  const revs = (Array.isArray(activity?.revisions) ? activity.revisions : [])
+    .filter((r: any) => r && (r.description || r.date || typeof r.rev === 'number'))
+  const currentRev = revs.length ? revs[revs.length - 1] : null
+  const revLabel = `Rev ${currentRev ? Number(currentRev.rev ?? 0) : 0} · Issued ${(currentRev && currentRev.date) || issued}`
 
   // ---- issues (already scoped by the caller; normalize, sort, collapse)
   const observations: string[] = []
@@ -287,8 +310,12 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
       if (txt) observations.push(txt)
       continue
     }
+    const originRaw = String(i?.origin || '').trim()
+    const source = originRaw
+      ? originRaw[0].toUpperCase() + originRaw.slice(1)
+      : (direct ? 'Site walk' : 'Checklist')
     const metaBits = [
-      direct ? 'Site walk' : 'Checklist',
+      source,
       i?.dateFound ? `Raised ${fmtShortDate(i.dateFound) || String(i.dateFound)}` : '',
       i?.assignedTo ? `Resp. ${i.assignedTo}` : '',
       i?.dueDate ? `Due ${i.dueDate}` : '',
@@ -324,13 +351,36 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
     }
   }
   const issues: IssueVM[] = normalized.map(({ _sortSev, _num, ...v }) => v)
+  const fromChecklists = issues.filter(i => i.metaLine.toLowerCase().startsWith('checklist')).length
   const issueCounts = {
     high: issues.filter(i => i.severity === 'High').length,
     medium: issues.filter(i => i.severity === 'Medium').length,
     low: issues.filter(i => i.severity === 'Low').length,
-    fromWalk: issues.filter(i => i.metaLine.startsWith('Site walk')).length,
-    fromChecklists: issues.filter(i => i.metaLine.startsWith('Checklist')).length,
+    fromWalk: issues.length - fromChecklists,
+    fromChecklists,
   }
+
+  // ---- action items (Stage 2 collection) --------------------------------
+  const issueNoById = new Map<string, string>(
+    (input.issues || []).map((i: any) => [String(i?.id || i?._id || ''), String(i?.number ?? '')]),
+  )
+  const actionItems: ActionItemVM[] = (input.actionItems || [])
+    .slice()
+    .sort((a: any, b: any) => (Number(a?.sequence) || 0) - (Number(b?.sequence) || 0))
+    .map((ai: any, idx: number) => {
+      const refs = (Array.isArray(ai?.issueIds) ? ai.issueIds : [])
+        .map((iid: any) => issueNoById.get(String((iid as any)?.id || (iid as any)?._id || iid)) || '')
+        .filter(Boolean)
+        .map((n: string) => `#${n}`)
+      return {
+        id: `A-${Number(ai?.sequence) || idx + 1}`,
+        action: plainText(ai?.description),
+        owner: String(ai?.owner || ''),
+        due: String(ai?.due || ''),
+        ref: refs.join(' ') || String(ai?.refNote || '') || '—',
+        done: String(ai?.status || '') === 'Complete',
+      }
+    })
 
   // ---- equipment matrix + remaining-by-trade rollup
   const sevRank: Record<SeverityBucket, number> = { High: 0, Medium: 1, Low: 2 }
@@ -378,8 +428,43 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
   // ---- photos
   const allPhotos: PhotoVM[] = (input.photos || [])
     .filter(p => p && p.dataUrl)
-    .map(p => ({ dataUrl: p.dataUrl, caption: String(p.caption || '').trim() }))
+    .map(p => ({
+      dataUrl: p.dataUrl,
+      caption: plainText(p.caption || ''),
+      tags: (Array.isArray(p.tags) ? p.tags : []).map(t => String(t)).filter(Boolean),
+      issueRefs: (Array.isArray(p.issueRefs) ? p.issueRefs : []).map(r => String(r)).filter(Boolean),
+    }))
   const heroPhoto = allPhotos.length ? allPhotos[0] : null
+
+  // ---- summary of findings (Stage 2 rich-text field; never auto-generated)
+  const summaryItems: string[] = []
+  const summaryHtml = String(activity?.summary || '').trim()
+  if (summaryHtml && typeof document !== 'undefined') {
+    try {
+      const d = new DOMParser().parseFromString(summaryHtml, 'text/html')
+      const lis = Array.from(d.querySelectorAll('li'))
+      const nodes = lis.length ? lis : Array.from(d.body.querySelectorAll('p'))
+      for (const el of nodes) {
+        const t = textOf(el)
+        if (t) summaryItems.push(t)
+      }
+      if (!summaryItems.length) {
+        const t = String(d.body.textContent || '').replace(/\s+/g, ' ').trim()
+        if (t) summaryItems.push(t)
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // ---- sessions: structured list (Stage 2) wins; legacy H3 parse fallback
+  const structuredSessions: SessionVM[] = (Array.isArray(activity?.sessions) ? activity.sessions : [])
+    .map((s: any) => ({
+      name: String(s?.name || ''),
+      meta: [String(s?.time || ''), String(s?.location || '')].map(v => v.trim()).filter(Boolean),
+      bullets: (Array.isArray(s?.bullets) ? s.bullets : [])
+        .map((b: any) => toBullet(plainText(b)))
+        .filter(Boolean) as SessionBullet[],
+    }))
+    .filter((s: SessionVM) => s.name || s.bullets.length)
 
   // ---- attendance
   const attendees: AttendeeVM[] = (Array.isArray(activity?.attendees) ? activity.attendees : [])
@@ -412,6 +497,7 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
     warn: openCount > 0,
   })
   if (actionsTotal) kpis.push({ value: `${actionsDone} / ${actionsTotal}`, label: 'Reviews completed' })
+  if (actionItems.length) kpis.push({ value: String(actionItems.length), label: 'Action items assigned' })
 
   const projectNo = String(project?.number || project?.projectNumber || project?.metadata?.number || '')
 
@@ -421,17 +507,19 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
     title: String(project?.name || 'Project'),
     subtitle: subtitleBits.join(' · '),
     issuedDate: issued,
-    footerLabel: `${reportId} · Rev 0 · Issued ${issued}`,
+    footerLabel: `${reportId} · ${revLabel}`,
     runningTitle: [String(project?.name || ''), reportId, fmtShortDate(activity?.startDate)].filter(Boolean).join(' · '),
     metaStrip: [
       { label: 'Project No.', value: projectNo || '—', mono: true },
       { label: 'Prepared by', value: preparedBy || caName || '—' },
       { label: 'Cx phase', value: cxPhase || String(activity?.type || '—') },
-      { label: 'Revision', value: `Rev 0 · Issued ${issued}` },
+      { label: 'Revision', value: revLabel },
     ],
     kpis,
-    summaryItems: [], // Stage 2: editable Activity.summary field
-    sessions: parseSessionsFromHtml(String(activity?.descriptionHtml || '')),
+    summaryItems,
+    nextVisit: String(activity?.nextVisitDate || '').trim(),
+    sessions: structuredSessions.length ? structuredSessions : parseSessionsFromHtml(String(activity?.descriptionHtml || '')),
+    actionItems,
     issues,
     issueCounts,
     observations,
@@ -440,7 +528,9 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
     photos: allPhotos,
     heroPhoto,
     attendees,
-    revisionRows: [{ rev: '0', date: issued, description: 'Issued for distribution', by: preparedBy || caName || '' }],
+    revisionRows: revs.length
+      ? revs.map((r: any) => ({ rev: String(r.rev ?? 0), date: String(r.date || ''), description: String(r.description || ''), by: String(r.by || '') }))
+      : [{ rev: '0', date: issued, description: 'Issued for distribution', by: preparedBy || caName || '' }],
     preparedBy: [preparedBy || caName, ca?.company].filter(Boolean).join(', '),
     reviewedBy: '',
   }

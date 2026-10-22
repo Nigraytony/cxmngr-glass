@@ -199,6 +199,14 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
       y += tileH + 7
     }
 
+    // Next site visit (when scheduled)
+    if (model.nextVisit) {
+      doc.setFont(SANS, 'normal'); doc.setFontSize(9); setInk(COLORS.muted)
+      doc.text(normalizePdfText(`Next site visit: ${model.nextVisit}`), margin, y)
+      setInk(COLORS.text)
+      y += 7
+    }
+
     // Summary of findings (Stage 2 field; renders when present)
     if (model.summaryItems.length) {
       doc.setFont(SANS, 'bold'); doc.setFontSize(12); setInk(COLORS.heading)
@@ -286,6 +294,58 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
         rd.y += 5
       }
     }
+  }
+
+  // ---- Action items (Stage 2) — rides with the minutes section, or stands
+  // alone when there are no sessions.
+  if (model.actionItems.length) {
+    if (!(on('minutes') && model.sessions.length)) {
+      rd.newPage()
+      sectionHeading('Action items')
+    } else {
+      rd.y += 3
+      subHeading('Action items')
+    }
+    const cols = { id: 13, owner: 32, due: 26, ref: 18 }
+    const actionW = contentW - cols.id - cols.owner - cols.due - cols.ref
+    const headRow = () => {
+      doc.setFillColor(...c(COLORS.accent))
+      doc.rect(margin, rd.y, contentW, 7, 'F')
+      doc.setFont(SANS, 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255)
+      let hx = margin + 2
+      doc.text('ID', hx, rd.y + 4.8); hx += cols.id
+      doc.text('ACTION', hx, rd.y + 4.8); hx += actionW
+      doc.text('OWNER', hx, rd.y + 4.8); hx += cols.owner
+      doc.text('DUE', hx, rd.y + 4.8); hx += cols.due
+      doc.text('REF', hx, rd.y + 4.8)
+      rd.y += 9
+      doc.setFont(SANS, 'normal'); setInk(COLORS.text)
+    }
+    headRow()
+    for (const ai of model.actionItems) {
+      doc.setFontSize(8.8)
+      const actionLines = splitText(doc, normalizePdfText(ai.action), actionW - 4)
+      const ownerLines = splitText(doc, normalizePdfText(ai.owner || '—'), cols.owner - 3)
+      const dueLines = splitText(doc, normalizePdfText(ai.due || '—'), cols.due - 3)
+      const refLines = splitText(doc, normalizePdfText(ai.ref), cols.ref - 2)
+      const rowH = Math.max(7, Math.max(actionLines.length, ownerLines.length, dueLines.length, refLines.length) * 4.2 + 3)
+      if (rd.y + rowH > rd.bottomLimit) { rd.newPage(); headRow() }
+      const top = rd.y
+      let x = margin + 2
+      doc.setFont(MONO, 'normal'); setInk(ai.done ? COLORS.muted : COLORS.heading)
+      doc.text(ai.id, x, top + 4); x += cols.id
+      doc.setFont(SANS, 'normal'); setInk(ai.done ? COLORS.muted : COLORS.text)
+      actionLines.forEach((l: string, i: number) => doc.text(l, x, top + 4 + i * 4.2)); x += actionW
+      ownerLines.forEach((l: string, i: number) => doc.text(l, x, top + 4 + i * 4.2)); x += cols.owner
+      dueLines.forEach((l: string, i: number) => doc.text(l, x, top + 4 + i * 4.2)); x += cols.due
+      setInk(COLORS.muted)
+      refLines.forEach((l: string, i: number) => doc.text(l, x, top + 4 + i * 4.2))
+      setInk(COLORS.text)
+      rd.y = top + rowH
+      hairline(); doc.line(margin, rd.y, pageW - margin, rd.y)
+      rd.y += 1.5
+    }
+    rd.y += 4
   }
 
   // =====================================================================
@@ -520,7 +580,16 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
       hairline(); doc.rect(x, rowTop, dim.w, dim.h, 'S')
       let cy = rowTop + dim.h + 4.5
       doc.setFont(SANS, 'bold'); doc.setFontSize(8.8); setInk(COLORS.heading)
-      doc.text(`Fig. ${startFig + i}`, x, cy)
+      const figLabel = `Fig. ${startFig + i}`
+      doc.text(figLabel, x, cy)
+      // Equipment tag + linked-issue chips after the figure number (Stage 2 meta)
+      let chipX = x + doc.getTextWidth(figLabel) + 2.5
+      for (const t of (p.tags || []).slice(0, 3)) {
+        chipX += chip(chipX, cy - 3.4, t, { text: c(COLORS.heading), bg: c(COLORS.zebra) }, 6.6) + 1.6
+      }
+      for (const r of (p.issueRefs || []).slice(0, 3)) {
+        chipX += chip(chipX, cy - 3.4, r, SEV_STYLE.High, 6.6) + 1.6
+      }
       doc.setFont(SANS, 'normal'); setInk(COLORS.text)
       cy += 4.4
       doc.setFontSize(8.5)

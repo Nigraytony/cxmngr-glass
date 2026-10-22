@@ -36,6 +36,7 @@ const templateRoutes = require('./routes/templates');
 const taskRoutes = require('./routes/tasks');
 const activityRoutes = require('./routes/activities');
 const actionRoutes = require('./routes/actions');
+const actionItemRoutes = require('./routes/actionItems');
 const userRoutes = require('./routes/users');
 const spaceRoutes = require('./routes/spaces');
 const { authorize } = require('./middleware/auth');
@@ -268,6 +269,7 @@ app.use('/api/activities',
   activityRoutes
 );
 app.use('/api/actions', actionRoutes);
+app.use('/api/action-items', actionItemRoutes);
 app.use('/api/spaces', 
   spaceRoutes
 );
