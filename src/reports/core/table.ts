@@ -44,21 +44,27 @@ export function drawTable(rd: ReportDoc, opts: DrawTableOptions): void {
     },
     head: [columns.map(c => c.label)],
     body: rows.map(r => columns.map(c => cellText(r, c.key))),
+    // Phase 8 look: slate header band with white text, horizontal hairline
+    // row separators only (no vertical grid), faint slate-50 zebra.
+    theme: 'plain',
     styles: {
       font: SANS,
       fontSize: SIZES.tableCell,
       textColor: COLORS.text as unknown as number[],
-      cellPadding: 1.5,
+      cellPadding: { top: 1.8, right: 2, bottom: 1.8, left: 2 },
       overflow: 'linebreak',
+      lineColor: COLORS.hairline as unknown as number[],
+      lineWidth: { bottom: 0.15 } as any,
     },
     headStyles: {
       font: SANS,
       fontStyle: 'bold',
       fontSize: SIZES.tableHeader,
-      fillColor: COLORS.headerTint as unknown as number[],
-      textColor: COLORS.text as unknown as number[],
+      fillColor: COLORS.accent as unknown as number[],
+      textColor: COLORS.white as unknown as number[],
+      lineWidth: 0,
     },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
+    alternateRowStyles: { fillColor: COLORS.zebra as unknown as number[] },
     columnStyles,
     didDrawPage: () => {
       // autotable added this page itself; stamp the branded header on it.

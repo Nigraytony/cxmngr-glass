@@ -76,16 +76,23 @@ export async function ensureReportFonts(doc: jsPDF): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
-// Color tokens (RGB). accent = #0F172A (cxma app background).
+// Color tokens (RGB). Phase 8 palette (locked with Tony 2026-10-22):
+// slate structure + emerald brand accent, matching the cxma app
+// (slate-900 #0F172A surfaces, emerald-500 #10B981 actions).
+// accent = structural slate (bands, rules, table head fill);
+// brand  = emerald, used sparingly (header tick, heading rules, TOC dots).
 // ---------------------------------------------------------------------------
 export const COLORS = {
-  text: [26, 26, 26],
-  muted: [90, 90, 90],
-  hairline: [208, 208, 208],
-  headerTint: [242, 244, 247],
+  text: [30, 41, 59], // slate-800 body ink
+  heading: [15, 23, 42], // slate-900
+  muted: [100, 116, 139], // slate-500
+  hairline: [203, 213, 225], // slate-300
+  headerTint: [241, 245, 249], // slate-100 (legacy light band)
+  zebra: [248, 250, 252], // slate-50 table stripe
   pass: [21, 128, 61],
   fail: [185, 28, 28],
-  accent: [15, 23, 42],
+  accent: [15, 23, 42], // slate-900 structure
+  brand: [16, 185, 129], // emerald-500 accent
   white: [255, 255, 255],
 } as const
 export type ColorToken = keyof typeof COLORS

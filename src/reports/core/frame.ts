@@ -4,7 +4,7 @@
 // definitions only lay out content and never call doc.addPage() directly.
 import { jsPDF } from 'jspdf'
 import { ensureReportFonts } from './fonts'
-import { SANS, setColor } from './tokens'
+import { COLORS, SANS, setColor } from './tokens'
 import { fitImageToHeight, loadFirstAvailable, loadImage, type LoadedImage } from './images'
 import { setZeroCharSpace } from './text'
 
@@ -70,17 +70,27 @@ export function drawBrandedHeader(
   let titleW = betweenLogosW
   try { titleW = doc.getTextWidth(opts.title) } catch (e) { /* ignore */ }
   let titleY: number
-  let nextY: number
+  let ruleY: number
   if (titleW <= betweenLogosW) {
     titleY = opts.margin + rowH / 2 + 2
-    nextY = opts.margin + rowH + 8
+    ruleY = opts.margin + rowH + 3.5
   } else {
     titleY = opts.margin + rowH + 6
-    nextY = titleY + 8
+    ruleY = titleY + 3.5
   }
+  setColor(doc, 'heading')
   doc.text(opts.title, opts.pageWidth / 2, titleY, { align: 'center' })
+  setColor(doc, 'text')
 
-  return { nextY }
+  // Hairline under the header with a short emerald brand tick on the left.
+  const tickW = 16
+  doc.setFillColor(COLORS.brand[0], COLORS.brand[1], COLORS.brand[2])
+  doc.rect(opts.margin, ruleY - 0.45, tickW, 0.9, 'F')
+  doc.setDrawColor(COLORS.hairline[0], COLORS.hairline[1], COLORS.hairline[2])
+  doc.setLineWidth(0.2)
+  doc.line(opts.margin + tickW + 2, ruleY, opts.pageWidth - opts.margin, ruleY)
+
+  return { nextY: ruleY + 5.5 }
 }
 
 export function drawBrandedFooter(
@@ -98,8 +108,13 @@ export function drawBrandedFooter(
   }
 ) {
   const footerY = opts.pageHeight - 10
-  doc.setDrawColor(180, 180, 180)
-  doc.line(opts.margin, footerY - 6, opts.pageWidth - opts.margin, footerY - 6)
+  // Mirror of the page header: emerald tick + slate hairline.
+  const tickW = 16
+  doc.setFillColor(COLORS.brand[0], COLORS.brand[1], COLORS.brand[2])
+  doc.rect(opts.margin, footerY - 6.45, tickW, 0.9, 'F')
+  doc.setDrawColor(COLORS.hairline[0], COLORS.hairline[1], COLORS.hairline[2])
+  doc.setLineWidth(0.2)
+  doc.line(opts.margin + tickW + 2, footerY - 6, opts.pageWidth - opts.margin, footerY - 6)
 
   try {
     const footerLogo = measuredLogo(doc, opts.footerLogo)
@@ -110,25 +125,31 @@ export function drawBrandedFooter(
       const brandX = opts.margin + dim.w + 2
       if (opts.setBold) opts.setBold()
       doc.setFontSize(8)
+      setColor(doc, 'heading')
       doc.text('cxma', brandX, footerY - 2)
       const tw = typeof doc.getTextWidth === 'function' ? doc.getTextWidth('cxma') : 10
+      setColor(doc, 'muted')
+      if (opts.setNormal) opts.setNormal()
       doc.text(opts.leftLabel, brandX + tw + 3, footerY - 2)
     } else {
-      doc.setFillColor(220, 220, 220)
-      doc.rect(opts.margin, footerY - 5.5, 8, 5, 'F')
       if (opts.setBold) opts.setBold()
       doc.setFontSize(8)
-      doc.text('cxma', opts.margin + 10, footerY - 2)
-      doc.text(opts.leftLabel, opts.margin + 24, footerY - 2)
+      setColor(doc, 'heading')
+      doc.text('cxma', opts.margin, footerY - 2)
+      setColor(doc, 'muted')
+      if (opts.setNormal) opts.setNormal()
+      doc.text(opts.leftLabel, opts.margin + 14, footerY - 2)
     }
   } catch (e) { /* ignore */ }
 
   if (opts.setNormal) opts.setNormal()
   doc.setFontSize(8)
+  setColor(doc, 'muted')
   doc.text(String(opts.pageNo), opts.pageWidth / 2, footerY - 2, { align: 'center' })
   if (opts.pageDate) {
     try { doc.text(String(opts.pageDate), opts.pageWidth - opts.margin, footerY - 2, { align: 'right' }) } catch (e) { /* ignore */ }
   }
+  setColor(doc, 'text')
 }
 
 export interface ReportDocOptions {
