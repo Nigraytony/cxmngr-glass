@@ -148,6 +148,18 @@ export function severityBucket(sev: any): SeverityBucket | 'Observation' {
 
 const isClosed = (st: any) => ['closed', 'cancelled'].includes(String(st || '').toLowerCase())
 
+/** Issue fields are sometimes rich text; the report prints plain text only. */
+function plainText(v: any): string {
+  const s = String(v ?? '')
+  if (!/[<&]/.test(s)) return s.trim()
+  try {
+    const d = new DOMParser().parseFromString(s, 'text/html')
+    return String(d.body.textContent || '').replace(/\s+/g, ' ').trim()
+  } catch (e) {
+    return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+}
+
 // ---- description HTML -> sessions (fallback until structured sessions[] ship)
 
 function textOf(el: Element): string {
@@ -271,7 +283,7 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
     const id = String(i?.id || i?._id || '')
     const direct = input.directIssueIds.has(id)
     if (bucket === 'Observation') {
-      const txt = [String(i?.title || ''), String(i?.description || '')].filter(Boolean).join(' — ')
+      const txt = [plainText(i?.title), plainText(i?.description)].filter(Boolean).join(' — ')
       if (txt) observations.push(txt)
       continue
     }
@@ -284,9 +296,9 @@ export function assembleActivityReportModel(input: ActivityReportInput): Activit
     normalized.push({
       number: String(i?.number ?? ''),
       tag: String(i?.tag || ''),
-      title: String(i?.title || ''),
-      description: String(i?.description || ''),
-      recommendation: String(i?.recommendation || ''),
+      title: plainText(i?.title),
+      description: plainText(i?.description),
+      recommendation: plainText(i?.recommendation),
       severity: bucket,
       status: String(i?.status || 'Open'),
       metaLine: metaBits.join(' · '),

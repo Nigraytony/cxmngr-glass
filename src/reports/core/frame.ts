@@ -108,13 +108,15 @@ export function drawBrandedFooter(
   }
 ) {
   const footerY = opts.pageHeight - 10
-  // Mirror of the page header: emerald tick + slate hairline.
+  // Mirror of the page header: emerald tick + slate hairline. The rule sits
+  // at footerY - 7.4 so it clears the footer logo (top edge footerY - 5.5)
+  // instead of touching it.
   const tickW = 16
   doc.setFillColor(COLORS.brand[0], COLORS.brand[1], COLORS.brand[2])
-  doc.rect(opts.margin, footerY - 6.45, tickW, 0.9, 'F')
+  doc.rect(opts.margin, footerY - 7.85, tickW, 0.9, 'F')
   doc.setDrawColor(COLORS.hairline[0], COLORS.hairline[1], COLORS.hairline[2])
   doc.setLineWidth(0.2)
-  doc.line(opts.margin + tickW + 2, footerY - 6, opts.pageWidth - opts.margin, footerY - 6)
+  doc.line(opts.margin + tickW + 2, footerY - 7.4, opts.pageWidth - opts.margin, footerY - 7.4)
 
   try {
     const footerLogo = measuredLogo(doc, opts.footerLogo)
