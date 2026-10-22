@@ -5,15 +5,16 @@
 import { ReportDoc } from '../core/frame'
 import { drawTable } from '../core/table'
 import { drawCoverPage } from '../core/cover'
-import { dateStamp, deliverPdf, openDeliveryWindow, reportFileName } from '../core/deliver'
+import { dateStamp, deliverPdf, deliverPdfBytes, openDeliveryWindow, reportFileName } from '../core/deliver'
 import { normalizePdfText, splitText } from '../core/text'
 import { SANS } from '../core/tokens'
 import { cellValue, columnsForKeys, defaultColumnKeys, ENTITY_COLUMNS, ENTITY_LABELS } from '../data/columns'
 import { fetchEntityRows, type ComposerEntity, type EntityRowsResult } from '../data/fetchRows'
+import http from '../../utils/http'
 
 export type ComposerBlock = {
   id: string
-  type: 'cover' | 'heading' | 'text' | 'pageBreak' | 'summary' | 'table'
+  type: 'cover' | 'heading' | 'text' | 'pageBreak' | 'summary' | 'table' | 'documents'
   // cover
   title?: string
   subtitle?: string
@@ -29,6 +30,9 @@ export type ComposerBlock = {
   sortBy?: string
   sortDir?: 'asc' | 'desc'
   limit?: number
+  // documents
+  folderId?: string
+  folderPath?: string
 }
 
 export interface CompositeDefinition {
@@ -99,6 +103,51 @@ export interface GenerateCompositeOptions {
   definition: CompositeDefinition
 }
 
+type FolderFile = { id: string; originalName: string; contentType: string; sizeBytes: number }
+
+function fileIsPdf(f: FolderFile): boolean {
+  return String(f.contentType || '').includes('pdf') || /\.pdf$/i.test(String(f.originalName || ''))
+}
+
+function formatBytes(n: number): string {
+  const b = Number(n || 0)
+  if (!b) return '—'
+  if (b < 1024) return `${b} B`
+  if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`
+}
+
+async function fetchFolderFiles(projectId: string, folderId: string): Promise<FolderFile[]> {
+  if (!folderId) return []
+  try {
+    const { data } = await http.get(`/api/projects/${projectId}/docs/files`, { params: { folderId } })
+    return (Array.isArray(data?.files) ? data.files : [])
+      .filter((f: any) => f && f.status === 'ready')
+      .map((f: any) => ({
+        id: String(f.id || ''),
+        originalName: String(f.originalName || 'Document'),
+        contentType: String(f.contentType || ''),
+        sizeBytes: Number(f.sizeBytes || 0),
+      }))
+  } catch (e) {
+    return []
+  }
+}
+
+/** Fetch a Documents-module file's bytes via its short-lived download URL. */
+async function fetchFileBytes(projectId: string, fileId: string): Promise<ArrayBuffer | null> {
+  try {
+    const { data } = await http.get(`/api/projects/${projectId}/docs/files/${fileId}/download-url`)
+    const url = String(data?.downloadUrl || '')
+    if (!url) return null
+    const res = await fetch(url)
+    if (!res.ok) return null
+    return await res.arrayBuffer()
+  } catch (e) {
+    return null
+  }
+}
+
 export async function generateCompositePdf(opts: GenerateCompositeOptions): Promise<void> {
   const blocks = Array.isArray(opts.definition?.blocks) ? opts.definition.blocks : []
   if (!blocks.length) return
@@ -111,6 +160,9 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
     orientation: opts.definition?.orientation === 'landscape' ? 'landscape' : 'portrait',
   })
   const doc = rd.doc
+  // PDF files from documents blocks merge in AFTER rendering, at the page
+  // each block ended on (the stated order).
+  const pdfInserts: Array<{ afterPage: number; fileIds: string[] }> = []
 
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i]
@@ -183,6 +235,48 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
       rd.y += 2
       continue
     }
+    if (b.type === 'documents') {
+      const files = await fetchFolderFiles(opts.projectId, String(b.folderId || ''))
+      doc.setFont(SANS, 'bold'); doc.setFontSize(11.5)
+      rd.ensureSpace(10)
+      doc.text(normalizePdfText(b.title || 'Documents'), rd.margin, rd.y)
+      rd.y += 6
+      if (b.folderPath) {
+        doc.setFont(SANS, 'normal'); doc.setFontSize(8.5)
+        doc.setTextColor(100)
+        rd.ensureSpace(5)
+        doc.text(`Folder: ${normalizePdfText(b.folderPath)}`, rd.margin, rd.y)
+        doc.setTextColor(0)
+        rd.y += 5
+      }
+      if (!files.length) {
+        doc.setFont(SANS, 'normal'); doc.setFontSize(9)
+        doc.setTextColor(120)
+        rd.ensureSpace(6)
+        doc.text(b.folderId ? 'No documents in the selected folder.' : 'No folder selected.', rd.margin, rd.y)
+        doc.setTextColor(0)
+        rd.y += 6
+      } else {
+        drawTable(rd, {
+          columns: [
+            { key: 'originalName', label: 'Document', weight: 2.6 },
+            { key: 'contentType', label: 'Type', weight: 1.2 },
+            { key: 'sizeBytes', label: 'Size', weight: 0.6 },
+            { key: 'inReport', label: 'In report', weight: 0.7 },
+          ],
+          rows: files,
+          cellText: (row: any, key) => {
+            if (key === 'sizeBytes') return formatBytes(row.sizeBytes)
+            if (key === 'inReport') return fileIsPdf(row) ? 'merged' : 'listed'
+            return String(row[key] ?? '')
+          },
+        })
+        const pdfFiles = files.filter(fileIsPdf)
+        if (pdfFiles.length) pdfInserts.push({ afterPage: doc.getNumberOfPages(), fileIds: pdfFiles.map((f) => f.id) })
+      }
+      rd.y += 2
+      continue
+    }
     if (b.type === 'table' && b.entity) {
       const data = cache.get(String(b.entity)) || { rows: [], ctx: {} }
       const cols = resolveTableColumns(b)
@@ -214,7 +308,43 @@ export async function generateCompositePdf(opts: GenerateCompositeOptions): Prom
     }
   }
 
-  deliverPdf(rd.finish(), reportFileName([String(opts.project?.name || ''), opts.name || 'custom-report']), dlWin)
+  const fname = reportFileName([String(opts.project?.name || ''), opts.name || 'custom-report'])
+  if (!pdfInserts.length) {
+    deliverPdf(rd.finish(), fname, dlWin)
+    return
+  }
+
+  // Merge each documents block's PDF files in at its recorded position.
+  // Process inserts in DESCENDING page order so earlier insertions don't
+  // shift the positions still to be processed.
+  let bytes = rd.output()
+  const { PDFDocument } = await import('pdf-lib')
+  for (const ins of [...pdfInserts].sort((a, b) => b.afterPage - a.afterPage)) {
+    const base = await PDFDocument.load(bytes, { ignoreEncryption: true })
+    let at = Math.min(ins.afterPage, base.getPageCount())
+    let changed = false
+    for (const fid of ins.fileIds) {
+      const buf = await fetchFileBytes(opts.projectId, fid)
+      if (!buf) continue
+      try {
+        const src = await PDFDocument.load(buf, { ignoreEncryption: true })
+        const pages = await base.copyPages(src, src.getPageIndices())
+        for (const p of pages) {
+          if (at >= base.getPageCount()) base.addPage(p)
+          else base.insertPage(at, p)
+          at++
+        }
+        changed = true
+      } catch (e) {
+        /* skip unmergeable file */
+      }
+    }
+    if (changed) {
+      const out = await base.save()
+      bytes = out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer
+    }
+  }
+  deliverPdfBytes(bytes, fname, dlWin)
 }
 
 /** Export every table block as a sheet in one XLSX workbook. */

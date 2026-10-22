@@ -317,6 +317,42 @@
             >
           </div>
 
+          <!-- Documents -->
+          <div
+            v-else-if="selectedBlock.type === 'documents'"
+            class="space-y-3"
+          >
+            <p class="text-xs text-white/60">
+              Lists a Documents-module folder's files at this position; its PDF files are merged into the generated report right here.
+            </p>
+            <div class="flex items-center gap-3 flex-wrap">
+              <select
+                v-model="selectedBlock.folderId"
+                class="px-2 py-2 rounded-md bg-white/10 border border-white/15 text-white/90 text-sm min-w-[16rem]"
+                @focus="loadFolders"
+                @change="onFolderPicked"
+              >
+                <option value="">
+                  {{ foldersLoading ? 'Loading folders…' : '— pick a folder —' }}
+                </option>
+                <option
+                  v-for="f in folderOptions"
+                  :key="f.id"
+                  :value="f.id"
+                >
+                  {{ f.path }}
+                </option>
+              </select>
+            </div>
+            <input
+              v-model="selectedBlock.title"
+              type="text"
+              placeholder="Block title (optional — defaults to 'Documents')"
+              class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/15 text-white text-sm"
+              @input="markDirty"
+            >
+          </div>
+
           <!-- Table -->
           <div
             v-else-if="selectedBlock.type === 'table'"
@@ -414,6 +450,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import BreadCrumbs from '../../components/BreadCrumbs.vue'
 import { useProjectStore } from '../../stores/project'
 import { useUiStore } from '../../stores/ui'
+import http from '../../utils/http'
 import { ENTITY_COLUMNS, ENTITY_LABELS } from '../../reports/data/columns'
 import { COMPOSER_ENTITIES, type ComposerEntity } from '../../reports/data/fetchRows'
 import {
@@ -452,6 +489,7 @@ const BLOCK_TYPE_LABELS: Record<ComposerBlock['type'], string> = {
   pageBreak: 'Page break',
   summary: 'Summary',
   table: 'Table',
+  documents: 'Documents',
 }
 const BLOCK_TYPES: Array<{ type: ComposerBlock['type']; label: string }> = [
   { type: 'cover', label: 'Cover' },
@@ -459,6 +497,7 @@ const BLOCK_TYPES: Array<{ type: ComposerBlock['type']; label: string }> = [
   { type: 'text', label: 'Text' },
   { type: 'table', label: 'Table' },
   { type: 'summary', label: 'Summary' },
+  { type: 'documents', label: 'Documents' },
   { type: 'pageBreak', label: 'Page break' },
 ]
 
@@ -469,7 +508,7 @@ function markDirty() { dirty.value = true }
 function entityColumns(entity?: string) { return ENTITY_COLUMNS[String(entity || '')] || [] }
 
 function blockIcon(b: ComposerBlock): string {
-  return { cover: '🖼️', heading: '🔤', text: '📝', pageBreak: '↡', summary: '∑', table: '📊' }[b.type] || '▫'
+  return { cover: '🖼️', heading: '🔤', text: '📝', pageBreak: '↡', summary: '∑', table: '📊', documents: '📁' }[b.type] || '▫'
 }
 function blockLabel(b: ComposerBlock): string {
   if (b.type === 'table') return b.title || `Table — ${ENTITY_LABELS[String(b.entity)] || b.entity || '?'}`
@@ -477,6 +516,7 @@ function blockLabel(b: ComposerBlock): string {
   if (b.type === 'heading') return b.text || 'Heading'
   if (b.type === 'text') return (b.text || 'Text').slice(0, 40) || 'Text'
   if (b.type === 'cover') return b.title || 'Cover page'
+  if (b.type === 'documents') return b.title || (b.folderPath ? `Documents — ${b.folderPath}` : 'Documents')
   return 'Page break'
 }
 
@@ -487,8 +527,42 @@ function addBlock(type: ComposerBlock['type']) {
   if (type === 'text') Object.assign(base, { text: '' })
   if (type === 'table') Object.assign(base, { entity: 'issues' as ComposerEntity, columns: [], sortBy: '', sortDir: 'asc', limit: 0, title: '' })
   if (type === 'summary') Object.assign(base, { entity: 'issues' as ComposerEntity, groupBy: 'status', title: '' })
+  if (type === 'documents') Object.assign(base, { folderId: '', folderPath: '', title: '' })
   blocks.value.push(base)
   selectedBlockId.value = base.id
+  markDirty()
+  if (type === 'documents') loadFolders()
+}
+
+// Documents-module folders for documents blocks (loaded lazily, once).
+const folderOptions = ref<Array<{ id: string; path: string }>>([])
+const foldersLoading = ref(false)
+async function loadFolders() {
+  if (folderOptions.value.length || foldersLoading.value || !projectId.value) return
+  foldersLoading.value = true
+  try {
+    const { data } = await http.get(`/api/projects/${projectId.value}/docs/folders/tree`)
+    const out: Array<{ id: string; path: string }> = []
+    const walk = (nodes: any[]) => {
+      for (const n of nodes || []) {
+        if (n && n.id) out.push({ id: String(n.id), path: String(n.path || n.name || '') })
+        if (n && Array.isArray(n.children)) walk(n.children)
+      }
+    }
+    walk(Array.isArray(data?.root) ? data.root : [])
+    out.sort((a, b) => a.path.localeCompare(b.path))
+    folderOptions.value = out
+  } catch (e) {
+    ui.showError('Failed to load the Documents folders')
+  } finally {
+    foldersLoading.value = false
+  }
+}
+function onFolderPicked() {
+  const b = selectedBlock.value
+  if (!b || b.type !== 'documents') return
+  const picked = folderOptions.value.find((f) => f.id === b.folderId)
+  b.folderPath = picked?.path || ''
   markDirty()
 }
 
