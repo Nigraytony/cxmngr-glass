@@ -166,6 +166,7 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
     rd.y = y
 
     drawFactsGrid(rd, model.facts, 3)
+    rd.y += 4 // breathing room between the facts grid and the first section
 
     if (model.condition) {
       subHeading('Condition observed')
