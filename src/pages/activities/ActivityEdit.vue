@@ -722,6 +722,7 @@
               <ActivityReportPanel
                 :form="form"
                 :team="projectTeam"
+                :role-options="attendeeRoleOptions"
                 :import-candidates="attendeeImportCandidates"
               />
             </div>
@@ -3246,6 +3247,20 @@ onMounted(async () => {
         labels: normalizeLabels((activityData as any)?.labels),
         issues: Array.isArray((activityData as any)?.issues) ? (activityData as any).issues : [],
         oprItemIds: normalizeOprItemIds((activityData as any)?.oprItemIds),
+        // Cx tagging + report redesign fields. MUST hydrate everything save()
+        // sends: the payload spreads the whole form, so a field that loads as
+        // its empty default would overwrite the persisted value on Save.
+        phase: (activityData as any)?.phase ?? null,
+        milestone: (activityData as any)?.milestone || '',
+        samplePercentage: (activityData as any)?.samplePercentage ?? null,
+        backcheckComplete: !!(activityData as any)?.backcheckComplete,
+        attendees: Array.isArray((activityData as any)?.attendees) ? (activityData as any).attendees : [],
+        summary: (activityData as any)?.summary || '',
+        reportId: (activityData as any)?.reportId || '',
+        nextVisitDate: (activityData as any)?.nextVisitDate || '',
+        revisions: Array.isArray((activityData as any)?.revisions) ? (activityData as any).revisions : [],
+        sessions: Array.isArray((activityData as any)?.sessions) ? (activityData as any).sessions : [],
+        photoMeta: ((activityData as any)?.photoMeta && typeof (activityData as any).photoMeta === 'object') ? (activityData as any).photoMeta : {},
       })
       // Persisted settings bucket (e.g., report settings)
       ;(form as any).settings = ((activityData as any)?.settings && typeof (activityData as any).settings === 'object')
@@ -4793,6 +4808,15 @@ const projectTeam = computed(() => {
       role: String(m.role || ''),
     }))
     .filter((m: any) => m.name)
+})
+
+// Attendee role choices: the project's team role options, with a standard
+// AEC fallback list when none are configured.
+const DEFAULT_ATTENDEE_ROLES = ['Owner', 'Project Manager', 'Architect', 'Engineer', 'General Contractor', 'Mechanical Contractor', 'Electrical Contractor', 'Controls Contractor', 'TAB', 'CxA', 'Facilities', 'Vendor']
+const attendeeRoleOptions = computed(() => {
+  const opts: any[] = Array.isArray((projectStore.currentProject as any)?.teamRoleOptions) ? (projectStore.currentProject as any).teamRoleOptions : []
+  const cleaned = opts.map((r: any) => String(r || '').trim()).filter(Boolean)
+  return cleaned.length ? cleaned : DEFAULT_ATTENDEE_ROLES
 })
 
 // Other activities in this project whose attendee lists can be imported

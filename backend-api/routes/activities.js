@@ -345,6 +345,19 @@ router.get('/', auth, requireFeature('activities'), requirePermission('activitie
           createdAt: 1,
           updatedAt: 1,
           __v: 1,
+          // Cx tagging + Activity report redesign fields (small; the heavy
+          // arrays — photos/comments/attachments — stay counts-only).
+          phase: 1,
+          milestone: 1,
+          samplePercentage: 1,
+          backcheckComplete: 1,
+          attendees: 1,
+          summary: 1,
+          reportId: 1,
+          nextVisitDate: 1,
+          revisions: 1,
+          sessions: 1,
+          photoMeta: 1,
           issuesCount: { $size: { $ifNull: ['$issues', []] } },
           photosCount: { $size: { $ifNull: ['$photos', []] } },
           commentsCount: { $size: { $ifNull: ['$comments', []] } },
@@ -500,7 +513,7 @@ router.get('/:id', auth, requireObjectIdParam('id'), loadActivityProjectId, requ
     const includePhotos = String(req.query.includePhotos || '').toLowerCase() === 'true' || String(req.query.includePhotos || '') === '1'
 
     // Include __v so clients can send it back for optimistic-lock updates.
-    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues oprItemIds __v'
+    const lightFields = 'name type status startDate endDate projectId createdBy location spaceId systems settings metadata labels reviewer createdAt updatedAt descriptionHtml issues oprItemIds phase milestone samplePercentage backcheckComplete attendees summary reportId nextVisitDate revisions sessions photoMeta __v'
     let query = Activity.findById(req.params.id)
     if (isLight) {
       // lightweight projection; optionally include photos

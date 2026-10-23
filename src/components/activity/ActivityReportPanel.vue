@@ -230,12 +230,21 @@
               placeholder="Company"
               class="col-span-5 md:col-span-3 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
             >
-            <input
+            <select
               v-model="a.role"
-              type="text"
-              placeholder="Role"
-              class="col-span-5 md:col-span-4 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+              class="col-span-5 md:col-span-4 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm [&>option]:bg-slate-800"
             >
+              <option value="">
+                Role…
+              </option>
+              <option
+                v-for="r in roleChoices(a)"
+                :key="r"
+                :value="r"
+              >
+                {{ r }}
+              </option>
+            </select>
             <button
               type="button"
               class="col-span-2 md:col-span-1 text-rose-300/80 hover:text-rose-300 text-sm"
@@ -292,6 +301,8 @@ const props = defineProps<{
   form: any
   /** Project team members (name/company/email/role) — the distribution list. */
   team: Array<{ name: string; company: string; email: string; role: string }>
+  /** Role choices for attendees (from project teamRoleOptions). */
+  roleOptions: string[]
   /** Other activities offering attendee lists to copy. */
   importCandidates: Array<{ id: string; name: string; attendees: any[] }>
 }>()
@@ -299,8 +310,21 @@ const props = defineProps<{
 const normKey = (a: any) => (String(a?.email || '').trim().toLowerCase())
   || `${String(a?.name || '').trim().toLowerCase()}|${String(a?.company || '').trim().toLowerCase()}`
 
-function attendeeKey(a: any): string {
-  return normKey(a) || String(props.form.attendees.indexOf(a))
+// Row keys must be STABLE while typing — a key derived from the name/email
+// recreates the input on every keystroke and drops focus. Key by object
+// identity instead.
+const uidMap = new WeakMap<object, number>()
+let uidSeq = 0
+function attendeeKey(a: any): number {
+  if (!uidMap.has(a)) uidMap.set(a, ++uidSeq)
+  return uidMap.get(a) as number
+}
+
+/** The row's role plus the project options (so a custom value still shows). */
+function roleChoices(a: any): string[] {
+  const cur = String(a?.role || '').trim()
+  const base = props.roleOptions.filter(Boolean)
+  return cur && !base.includes(cur) ? [cur, ...base] : base
 }
 
 const teamKeys = computed(() => new Set(props.team.map(normKey).filter(k => k && k !== '|')))
