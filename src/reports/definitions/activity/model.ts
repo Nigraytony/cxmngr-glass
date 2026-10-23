@@ -16,11 +16,30 @@ export interface SessionBullet {
   closed?: boolean
 }
 
+/** A styled run of inline text (bold/italic honored from the rich editor;
+ *  accent = trailing "→ …" cross-reference, green = trailing "Closed"). */
+export interface RichRun {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  accent?: boolean
+  green?: boolean
+}
+
+/** A block of session content parsed from the description HTML. */
+export type ContentBlock =
+  | { kind: 'paragraph'; runs: RichRun[] }
+  | { kind: 'bullet'; depth: number; marker: string; runs: RichRun[] }
+  | { kind: 'subheading'; text: string }
+
 export interface SessionVM {
   name: string
   /** Muted meta lines under the name (time, location/participants). */
   meta: string[]
+  /** Structured-session bullets (Stage 2 sessions[] editor). */
   bullets: SessionBullet[]
+  /** Rich blocks parsed from descriptionHtml — wins over bullets when set. */
+  blocks?: ContentBlock[]
 }
 
 export interface IssueVM {
@@ -205,6 +224,110 @@ function toBullet(text: string): SessionBullet | null {
   return b
 }
 
+// ---- rich-run extraction (honors b/strong + i/em through the HTML walk)
+
+function collectRuns(node: Node, ctx: { bold: boolean; italic: boolean }, out: RichRun[], skip?: (el: Element) => boolean): void {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const t = String(node.textContent || '').replace(/\s+/g, ' ')
+    if (t) out.push({ text: t, bold: ctx.bold || undefined, italic: ctx.italic || undefined })
+    return
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) return
+  const el = node as Element
+  if (skip && skip(el)) return
+  const tag = el.tagName.toLowerCase()
+  if (tag === 'br') {
+    out.push({ text: ' ' })
+    return
+  }
+  const next = {
+    bold: ctx.bold || tag === 'b' || tag === 'strong',
+    italic: ctx.italic || tag === 'i' || tag === 'em',
+  }
+  for (const child of Array.from(el.childNodes)) collectRuns(child, next, out, skip)
+}
+
+/** Concatenated plain text of a run list. */
+const runsText = (runs: RichRun[]) => runs.map(r => r.text).join('')
+
+/** Split a run list at a character offset of its concatenated text. */
+function splitRunsAt(runs: RichRun[], idx: number): [RichRun[], RichRun[]] {
+  const head: RichRun[] = []
+  const tail: RichRun[] = []
+  let pos = 0
+  for (const r of runs) {
+    const end = pos + r.text.length
+    if (end <= idx) head.push(r)
+    else if (pos >= idx) tail.push(r)
+    else {
+      head.push({ ...r, text: r.text.slice(0, idx - pos) })
+      tail.push({ ...r, text: r.text.slice(idx - pos) })
+    }
+    pos = end
+  }
+  return [head, tail]
+}
+
+/** Trim/collapse whitespace and mark trailing "→ …" (accent) / "Closed" (green). */
+function finishRuns(raw: RichRun[]): RichRun[] {
+  let runs = raw.filter(r => r.text)
+  // trim leading/trailing whitespace across the block
+  while (runs.length && !runs[0].text.trim()) runs.shift()
+  while (runs.length && !runs[runs.length - 1].text.trim()) runs.pop()
+  if (runs.length) {
+    runs[0] = { ...runs[0], text: runs[0].text.replace(/^\s+/, '') }
+    const last = runs.length - 1
+    runs[last] = { ...runs[last], text: runs[last].text.replace(/\s+$/, '') }
+  }
+  const full = runsText(runs)
+  if (!full.trim()) return []
+  const refIdx = full.lastIndexOf('→')
+  if (refIdx > 0) {
+    const [head, tail] = splitRunsAt(runs, refIdx)
+    runs = [...head, ...tail.map(r => ({ ...r, accent: true }))]
+  } else {
+    const m = full.match(/\bClosed\.?\s*$/)
+    if (m && typeof m.index === 'number') {
+      const [head, tail] = splitRunsAt(runs, m.index)
+      runs = [...head, ...tail.map(r => ({ ...r, green: true }))]
+    }
+  }
+  return runs
+}
+
+const isList = (el: Element) => ['ul', 'ol'].includes(el.tagName.toLowerCase())
+
+function parseBlocksInto(el: Element, blocks: ContentBlock[], depth = 0): void {
+  const tag = el.tagName.toLowerCase()
+  if (tag === 'p' || tag === 'blockquote') {
+    const raw: RichRun[] = []
+    collectRuns(el, { bold: false, italic: false }, raw)
+    const runs = finishRuns(raw)
+    if (runs.length) blocks.push({ kind: 'paragraph', runs })
+  } else if (tag === 'h4' || tag === 'h5' || tag === 'h6') {
+    const t = textOf(el)
+    if (t) blocks.push({ kind: 'subheading', text: t })
+  } else if (tag === 'ul' || tag === 'ol') {
+    let n = 1
+    for (const li of Array.from(el.querySelectorAll(':scope > li'))) {
+      const raw: RichRun[] = []
+      collectRuns(li, { bold: false, italic: false }, raw, isList)
+      const runs = finishRuns(raw)
+      if (runs.length) blocks.push({ kind: 'bullet', depth, marker: tag === 'ol' ? `${n}.` : '•', runs })
+      n++
+      for (const nested of Array.from(li.querySelectorAll(':scope > ul, :scope > ol'))) {
+        parseBlocksInto(nested, blocks, depth + 1)
+      }
+    }
+  } else if (tag === 'div' || tag === 'section' || tag === 'article') {
+    for (const child of Array.from(el.children)) parseBlocksInto(child, blocks, depth)
+  } else {
+    // Unknown block (table, pre, …): fall back to its plain text.
+    const t = textOf(el)
+    if (t) blocks.push({ kind: 'paragraph', runs: finishRuns([{ text: t }]) })
+  }
+}
+
 export function parseSessionsFromHtml(html: string): SessionVM[] {
   const out: SessionVM[] = []
   if (!html || typeof document === 'undefined') return out
@@ -215,31 +338,23 @@ export function parseSessionsFromHtml(html: string): SessionVM[] {
     return out
   }
   let current: SessionVM | null = null
-  const push = (b: SessionBullet | null) => {
-    if (!b) return
+  const ensure = (): SessionVM => {
     if (!current) {
-      current = { name: 'Notes', meta: [], bullets: [] }
+      current = { name: 'Notes', meta: [], bullets: [], blocks: [] }
       out.push(current)
     }
-    current.bullets.push(b)
+    return current
   }
-  const walk = (nodes: Element[]) => {
-    for (const el of nodes) {
-      const tag = el.tagName.toLowerCase()
-      if (tag === 'h1' || tag === 'h2' || tag === 'h3' || tag === 'h4') {
-        current = { name: textOf(el), meta: [], bullets: [] }
-        out.push(current)
-      } else if (tag === 'ul' || tag === 'ol') {
-        for (const li of Array.from(el.querySelectorAll(':scope > li'))) push(toBullet(textOf(li)))
-      } else if (tag === 'p') {
-        push(toBullet(textOf(el)))
-      } else if (tag === 'div' || tag === 'section') {
-        walk(Array.from(el.children))
-      }
+  for (const el of Array.from(doc.body.children)) {
+    const tag = el.tagName.toLowerCase()
+    if (tag === 'h1' || tag === 'h2' || tag === 'h3') {
+      current = { name: textOf(el), meta: [], bullets: [], blocks: [] }
+      out.push(current)
+    } else {
+      parseBlocksInto(el, ensure().blocks as ContentBlock[])
     }
   }
-  walk(Array.from(doc.body.children))
-  return out.filter(s => s.bullets.length || s.meta.length)
+  return out.filter(s => (s.blocks && s.blocks.length) || s.meta.length)
 }
 
 // ---- equipment helpers

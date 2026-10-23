@@ -10,7 +10,7 @@ import { fitImageToHeight, loadPhoto } from '../../core/images'
 import { normalizePdfText, splitText } from '../../core/text'
 import { drawTable } from '../../core/table'
 import { stampPageXofY } from '../../core/merge'
-import type { ActivityReportModel, PhotoVM, SeverityBucket } from './model'
+import type { ActivityReportModel, PhotoVM, RichRun, SeverityBucket } from './model'
 
 export interface ActivityPdfOptions {
   project?: any
@@ -226,6 +226,51 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
     sectionNo = 1 // the cover is section 1
   }
 
+  // ---- styled-run text layout (honors bold/italic from the rich editor,
+  // plus the accent/green decorations) with word wrap.
+  type RunSeg = { text: string; run: RichRun }
+  const setRunFont = (run: RichRun, size = 9.5) => {
+    const style = (run.accent || run.green || run.bold) ? (run.italic ? 'bolditalic' : 'bold') : (run.italic ? 'italic' : 'normal')
+    doc.setFont(SANS, style)
+    doc.setFontSize(size)
+  }
+  const runInk = (run: RichRun) => {
+    if (run.accent) doc.setTextColor(...ACCENT_REF)
+    else if (run.green) doc.setTextColor(...GREEN)
+    else setInk(COLORS.text)
+  }
+  const layoutRuns = (runs: RichRun[], width: number, size = 9.5): RunSeg[][] => {
+    const lines: RunSeg[][] = []
+    let line: RunSeg[] = []
+    let curW = 0
+    const flush = () => { if (line.length) lines.push(line); line = []; curW = 0 }
+    for (const run of runs) {
+      const tokens = normalizePdfText(String(run.text || '')).split(/(\s+)/)
+      for (const t of tokens) {
+        if (!t) continue
+        const isSpace = /^\s+$/.test(t)
+        if (isSpace && curW === 0) continue // no leading spaces on a line
+        setRunFont(run, size)
+        const w = doc.getTextWidth(t)
+        if (!isSpace && curW > 0 && curW + w > width) flush()
+        if (isSpace && curW === 0) continue
+        line.push({ text: t, run })
+        curW += w
+      }
+    }
+    flush()
+    // merge adjacent segments of the same run for fewer draw calls
+    return lines.map(segs => {
+      const merged: RunSeg[] = []
+      for (const s of segs) {
+        const last = merged[merged.length - 1]
+        if (last && last.run === s.run) last.text += s.text
+        else merged.push({ ...s })
+      }
+      return merged
+    })
+  }
+
   // =====================================================================
   // 2. Meeting minutes
   // =====================================================================
@@ -248,10 +293,49 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
         for (const l of splitText(doc, normalizePdfText(m), railW)) { doc.text(l, margin, railY); railY += 4 }
       }
       setInk(COLORS.text)
-      // bullets
+      // body content
       let by = topY
       doc.setFontSize(9.5)
-      for (const b of sess.bullets) {
+      if (sess.blocks && sess.blocks.length) {
+        // Rich blocks parsed from the description HTML: paragraphs, nested
+        // bulleted/numbered lists and sub-headings, with inline bold/italic.
+        const LINE_H = 4.8
+        const drawRunBlock = (runs: RichRun[], x: number, width: number) => {
+          for (const segs of layoutRuns(runs, width)) {
+            if (by + LINE_H > rd.bottomLimit) { rd.newPage(); by = rd.y }
+            let cx = x
+            for (const s of segs) {
+              setRunFont(s.run)
+              runInk(s.run)
+              doc.text(s.text, cx, by)
+              cx += doc.getTextWidth(s.text)
+            }
+            by += LINE_H
+          }
+          setInk(COLORS.text)
+        }
+        for (const blk of sess.blocks) {
+          if (blk.kind === 'subheading') {
+            if (by + 6 > rd.bottomLimit) { rd.newPage(); by = rd.y }
+            doc.setFont(SANS, 'bold'); doc.setFontSize(10); setInk(COLORS.heading)
+            doc.text(normalizePdfText(blk.text), bodyX, by)
+            doc.setFont(SANS, 'normal'); doc.setFontSize(9.5); setInk(COLORS.text)
+            by += 5.6
+          } else if (blk.kind === 'bullet') {
+            const indent = blk.depth * 5
+            if (by + LINE_H > rd.bottomLimit) { rd.newPage(); by = rd.y }
+            doc.setFont(SANS, 'normal'); doc.setFontSize(9.5); setInk(COLORS.muted)
+            doc.text(blk.marker, bodyX + indent, by)
+            setInk(COLORS.text)
+            const markerW = Math.max(4, doc.getTextWidth(blk.marker) + 1.5)
+            drawRunBlock(blk.runs, bodyX + indent + markerW, bodyW - indent - markerW - 2)
+            by += 1
+          } else {
+            drawRunBlock(blk.runs, bodyX, bodyW - 2)
+            by += 1.8
+          }
+        }
+      } else for (const b of sess.bullets) {
         const leadW = b.lead ? (doc.setFont(SANS, 'bold'), doc.getTextWidth(b.lead + ' ')) : 0
         doc.setFont(SANS, 'normal')
         const full = (b.lead ? b.lead + ' ' : '') + b.text
