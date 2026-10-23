@@ -181,18 +181,16 @@ async function renderIssueDetails(rd: ReportDoc, issue: any): Promise<void> {
   } catch (e) { /* ignore */ }
 }
 
-/** Single-issue detailed report (the issue editor's download button). */
+/** Single-issue detailed report (the issue editor's download button).
+ *  Redesigned (issue-mockup.pdf): delegates to definitions/issue/report,
+ *  which fetches the full record + photos + logs and renders the two-page
+ *  issue sheet. The multi-issue batch exports below keep the legacy layout
+ *  until the batch-export phase of the redesign. */
 export async function generateIssuePdf(issue: any): Promise<void> {
   if (!issue) return
-  const dlWin = openDeliveryWindow()
   const project = await resolveProject(issue?.projectId)
-  const rd = await ReportDoc.create({
-    title: issueHeaderTitle(issue),
-    footerLabel: issueHeaderTitle(issue),
-    project,
-  })
-  await renderIssueDetails(rd, issue)
-  deliverPdf(rd.finish(), reportFileName([issue?.number != null ? `issue-${issue.number}` : 'issue']), dlWin)
+  const { generateIssueDetailReport } = await import('./issue/report')
+  await generateIssueDetailReport(issue, project)
 }
 
 /** One issue per page (or more), with full detail sections. */
