@@ -322,10 +322,9 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
     const byW = 28
     const textW = contentW - dateW - byW - 6
     for (const h of model.history) {
-      doc.setFontSize(9)
+      doc.setFont(SANS, h.bold ? 'bold' : 'normal'); doc.setFontSize(9)
       const lines = splitText(doc, normalizePdfText(h.text), textW)
-      const rowH = Math.max(1, lines.length) * 4.4 + 2.6
-      if (rd.y + rowH > rd.bottomLimit) rd.newPage()
+      if (rd.y + lines.length * 4.4 + 7.4 > rd.bottomLimit) rd.newPage()
       const top = rd.y
       doc.setFont(SANS, h.red ? 'bold' : 'normal'); doc.setFontSize(8.5)
       if (h.red) doc.setTextColor(...RED); else setInk(COLORS.muted)
@@ -336,10 +335,14 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
       doc.setFont(SANS, 'normal'); doc.setFontSize(8.5); setInk(COLORS.muted)
       doc.text(normalizePdfText(h.by), pageW - margin, top, { align: 'right' })
       setInk(COLORS.text)
-      rd.y = top + rowH
-      hairline(); doc.line(margin, rd.y - 1.6, pageW - margin, rd.y - 1.6)
+      // The separator sits clear below the row's LAST wrapped line, with
+      // padding before the next row so it never clips ascenders.
+      const lastBaseline = top + (lines.length - 1) * 4.4
+      const ruleY = lastBaseline + 2.6
+      hairline(); doc.line(margin, ruleY, pageW - margin, ruleY)
+      rd.y = ruleY + 4.8
     }
-    rd.y += 4
+    rd.y += 3
   }
 
   // Comments

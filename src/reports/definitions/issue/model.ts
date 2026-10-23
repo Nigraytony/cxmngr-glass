@@ -191,7 +191,7 @@ function describeDetails(details: any, activityName?: string): string {
     if (k === 'activityId') {
       parts.push(details[k] ? `Linked to activity ${activityName || ''}`.trim() : 'Unlinked from activity')
     } else if (k === 'photos' && Array.isArray(details[k])) {
-      parts.push(`${details[k].length} photo${details[k].length === 1 ? '' : 's'} saved`)
+      if (details[k].length) parts.push(`${details[k].length} photo${details[k].length === 1 ? '' : 's'} saved`)
     } else if (k === 'assignedTo' && details[k]) {
       parts.push(`Assigned to ${plainText(details[k])}`)
     } else if (k === 'status' && details[k]) {
