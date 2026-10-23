@@ -1399,6 +1399,13 @@
           <p class="text-sm text-white/70 mb-4">
             Project-specific settings and flags.
           </p>
+          <div class="mb-4">
+            <ProjectReportSettingsCard
+              v-if="projectIdString"
+              :project-id="projectIdString"
+              :report-settings="project?.reportSettings || null"
+            />
+          </div>
           <div class="rounded p-3">
             <div class="mb-6 rounded p-3 bg-white/5 border border-white/10">
               <div class="flex items-start justify-between">
@@ -2535,6 +2542,7 @@ import http from '../../utils/http'
 import { apiUrl, getApiBase } from '../../utils/api'
 import { confirm } from '../../utils/confirm'
 import PermissionsModal from '../../components/PermissionsModal.vue'
+import ProjectReportSettingsCard from '../../components/projects/ProjectReportSettingsCard.vue'
 import BillingCardForm from '../../components/BillingCardForm.vue'
 import Spinner from '../../components/Spinner.vue'
 // inlineConfirm removed (unused in this file)

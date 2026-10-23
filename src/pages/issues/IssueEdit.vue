@@ -458,13 +458,139 @@
                 />
               </div>
               <div>
-                <label class="block text-sm text-white/70">Resolution</label>
+                <label class="block text-sm text-white/70">Contractor response — corrective action</label>
                 <textarea
-                  v-model="form.resolution"
+                  v-model="form.response.correctiveAction"
                   rows="3"
-                  :disabled="isClosed"
-                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400 disabled:opacity-60"
-                  placeholder="Resolution"
+                  class="w-full px-3 py-2 rounded-md bg-white/10 border border-white/20 placeholder-gray-400"
+                  placeholder="Corrective action taken (prints in the report's response block)"
+                />
+                <div class="grid grid-cols-2 gap-2 mt-1.5">
+                  <input
+                    v-model="form.response.completedDate"
+                    type="date"
+                    title="Date completed"
+                    class="rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm"
+                  >
+                  <input
+                    v-model="form.response.respondedBy"
+                    type="text"
+                    placeholder="Responded by (name · company)"
+                    class="rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- Report details + CxA verification (Issue report redesign Step 3) -->
+            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+              <div class="rounded-lg bg-white/5 border border-white/10 p-3 space-y-2">
+                <div class="text-white/80 text-sm font-medium">
+                  Report details
+                </div>
+                <div>
+                  <label class="block text-xs text-white/60 mb-1">Linked equipment (prints in the facts grid)</label>
+                  <div
+                    v-if="form.equipmentIds.length"
+                    class="flex flex-wrap gap-1.5 mb-1.5"
+                  >
+                    <span
+                      v-for="eid in form.equipmentIds"
+                      :key="eid"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 border border-white/15 text-xs font-mono text-white/90"
+                    >
+                      {{ equipmentLabel(eid) }}
+                      <button
+                        type="button"
+                        class="text-rose-300/80 hover:text-rose-300"
+                        title="Unlink equipment"
+                        @click="removeEquipment(eid)"
+                      >✕</button>
+                    </span>
+                  </div>
+                  <select
+                    class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white/80 text-sm [&>option]:bg-slate-800"
+                    @change="addEquipment(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
+                  >
+                    <option value="">
+                      Link equipment…
+                    </option>
+                    <option
+                      v-for="eq in equipmentOptions"
+                      :key="eq.id"
+                      :value="eq.id"
+                    >
+                      {{ eq.label }}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs text-white/60">Reference (spec section / code)</label>
+                  <input
+                    v-model="form.reference"
+                    type="text"
+                    placeholder="Spec 236416 · ASHRAE 15"
+                    class="mt-1 w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+                  >
+                </div>
+                <div>
+                  <label class="inline-flex items-center gap-2 text-white/80 text-sm">
+                    <input
+                      v-model="form.lifeSafety"
+                      type="checkbox"
+                      class="rounded bg-white/10 border-white/20"
+                    >
+                    Life-safety issue (red banner on the report)
+                  </label>
+                  <input
+                    v-if="form.lifeSafety"
+                    v-model="form.lifeSafetyNote"
+                    type="text"
+                    placeholder="One line: why this is life safety"
+                    class="mt-1.5 w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+                  >
+                </div>
+              </div>
+              <div class="rounded-lg bg-white/5 border border-white/10 p-3 space-y-2">
+                <div class="text-white/80 text-sm font-medium">
+                  CxA verification <span class="text-white/40 text-xs font-normal">· closing an issue requires an outcome; a closing outcome closes it on Save</span>
+                </div>
+                <select
+                  v-model="form.verification.outcome"
+                  class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white/90 text-sm [&>option]:bg-slate-800"
+                >
+                  <option value="">
+                    No outcome recorded
+                  </option>
+                  <option value="verified_closed">
+                    Verified, issue closed
+                  </option>
+                  <option value="not_resolved">
+                    Not resolved, remains open
+                  </option>
+                  <option value="accepted_as_is">
+                    Accepted by Owner as-is
+                  </option>
+                </select>
+                <div class="grid grid-cols-2 gap-2">
+                  <input
+                    v-model="form.verification.verifiedBy"
+                    type="text"
+                    placeholder="Verified by"
+                    class="rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+                  >
+                  <input
+                    v-model="form.verification.verifiedDate"
+                    type="date"
+                    title="Verified date"
+                    class="rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm"
+                  >
+                </div>
+                <textarea
+                  v-model="form.verification.notes"
+                  rows="2"
+                  placeholder="Verification notes / back-check"
+                  class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
                 />
               </div>
             </div>
@@ -785,6 +911,14 @@
               :max-bytes="256 * 1024"
               :concurrency="3"
               @update:count="azurePhotosCount = $event"
+            />
+            <IssuePhotoCaptionsPanel
+              v-if="!isNew"
+              :project-id="String(form.projectId || '')"
+              :issue-id="String(id || '')"
+              :photo-meta="form.photoMeta"
+              :saving="saving"
+              @save="save()"
             />
           </div>
 
@@ -1314,12 +1448,14 @@ import Modal from '../../components/Modal.vue'
 import Spinner from '../../components/Spinner.vue'
 import AzureAttachmentsPanel from '../../components/attachments/AzureAttachmentsPanel.vue'
 import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
+import IssuePhotoCaptionsPanel from '../../components/issues/IssuePhotoCaptionsPanel.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import lists from '../../lists.js'
 import { useIssuesStore } from '../../stores/issues'
 import { useIssuesNavStore } from '../../stores/issuesNav'
 import { useProjectStore } from '../../stores/project'
 import { useSpacesStore } from '../../stores/spaces'
+import { useEquipmentStore } from '../../stores/equipment'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
@@ -1497,7 +1633,40 @@ const form = reactive<any>({
   comments: [] as any[],
   attachments: [] as any[],
   photos: [] as any[],
+  // Issue report redesign Step 2 fields (see backend models/issue.js)
+  equipmentIds: [] as string[],
+  lifeSafety: false,
+  lifeSafetyNote: '',
+  reference: '',
+  response: { correctiveAction: '', completedDate: '', respondedBy: '' },
+  verification: { outcome: '', verifiedBy: '', verifiedDate: '', notes: '' },
+  photoMeta: {} as Record<string, any>,
 })
+
+// Hydrate the Step 2 fields from a fetched issue. The legacy free-text
+// Resolution prefills the contractor response's corrective action when no
+// response was recorded yet (the agreed resolution -> response migration).
+function issueExtrasFrom(i: any) {
+  return {
+    equipmentIds: (Array.isArray(i?.equipmentIds) ? i.equipmentIds : [])
+      .map((v: any) => String((v && (v._id || v.id)) || v || '')).filter(Boolean),
+    lifeSafety: !!i?.lifeSafety,
+    lifeSafetyNote: i?.lifeSafetyNote || '',
+    reference: i?.reference || '',
+    response: {
+      correctiveAction: i?.response?.correctiveAction || i?.resolution || '',
+      completedDate: i?.response?.completedDate || '',
+      respondedBy: i?.response?.respondedBy || '',
+    },
+    verification: {
+      outcome: i?.verification?.outcome || '',
+      verifiedBy: i?.verification?.verifiedBy || '',
+      verifiedDate: i?.verification?.verifiedDate || '',
+      notes: i?.verification?.notes || '',
+    },
+    photoMeta: (i?.photoMeta && typeof i.photoMeta === 'object') ? i.photoMeta : {},
+  }
+}
 
 const labelInput = ref('')
 const suggestingTags = ref(false)
@@ -1508,6 +1677,26 @@ const canSuggestIssueTags = computed(() => {
   // If project is loaded and explicitly disabled, hide the feature; otherwise allow trying.
   return projectStore.currentProject?.ai?.enabled !== false
 })
+
+// --- Equipment links (Issue report redesign Step 3) ---
+const equipmentStore = useEquipmentStore()
+watch(projectId, (pid) => {
+  if (pid) equipmentStore.fetchByProject(pid).catch(() => { /* picker stays empty */ })
+}, { immediate: true })
+const equipmentOptions = computed(() => (equipmentStore.items || [])
+  .map((e: any) => ({ id: String(e.id || e._id || ''), label: [e.tag, e.title].filter(Boolean).join(' — ') || '(untitled)' }))
+  .filter((e: any) => e.id && !form.equipmentIds.includes(e.id))
+  .sort((a: any, b: any) => a.label.localeCompare(b.label)))
+function equipmentLabel(eid: string): string {
+  const e: any = (equipmentStore.byId as any)?.[eid]
+  return e ? String(e.tag || e.title || eid) : '…'
+}
+function addEquipment(eid: string) {
+  if (eid && !form.equipmentIds.includes(eid)) form.equipmentIds.push(eid)
+}
+function removeEquipment(eid: string) {
+  form.equipmentIds = form.equipmentIds.filter((v: string) => v !== eid)
+}
 
 // --- Location backed by the Spaces module ---
 // The visible input is `spaceQuery`; selecting a suggestion links the issue to a
@@ -1822,6 +2011,7 @@ onMounted(async () => {
         // Prefer attachments from backend; fall back to legacy documents field if present
         attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
         photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
+        ...issueExtrasFrom(i),
       })
       void syncSpaceQueryFromForm()
       loaded.value = true
@@ -1849,7 +2039,8 @@ watch(id, async (nv, ov) => {
       title: '', description: '', type: null, priority: 'medium', status: 'open',
       number: null, foundBy: '', dateFound: '', dueDate: '', assignedTo: '', location: '', spaceId: null, system: '', recommendation: '', resolution: '',
       closedBy: '', closedDate: '',
-      projectId: chooseProjectId(), labels: [], oprItemIds: [], comments: [], attachments: [], photos: []
+      projectId: chooseProjectId(), labels: [], oprItemIds: [], comments: [], attachments: [], photos: [],
+      ...issueExtrasFrom(null),
     })
     spaceQuery.value = ''
     return
@@ -1881,6 +2072,7 @@ watch(id, async (nv, ov) => {
       comments: Array.isArray(i?.comments) ? normalizeComments(i?.comments) : [],
       attachments: Array.isArray((i as any)?.attachments) ? (i as any).attachments : (i as any)?.documents || [],
       photos: Array.isArray((i as any)?.photos) ? (i as any).photos : [],
+      ...issueExtrasFrom(i),
     })
     void syncSpaceQueryFromForm()
     loaded.value = true
@@ -1907,6 +2099,12 @@ async function save() {
       ui.showError('Select a project')
       return
     }
+  }
+  // Closing requires a recorded CxA verification outcome (backend enforces
+  // the same rule); surface it here with a pointer to the Verification card.
+  if (String(form.status || '').toLowerCase() === 'closed' && !String(form.verification?.outcome || '').trim()) {
+    ui.showError('Record a CxA verification outcome before closing this issue (see the CxA verification card)')
+    return
   }
   // If closing, ensure closedDate/closedBy are populated
   if (String(form.status || '').toLowerCase() === 'closed') {
@@ -1939,6 +2137,14 @@ async function save() {
     comments: form.comments,
     documents: form.attachments,
     photos: form.photos,
+    // Issue report redesign Step 2 fields
+    equipmentIds: Array.isArray(form.equipmentIds) ? form.equipmentIds : [],
+    lifeSafety: !!form.lifeSafety,
+    lifeSafetyNote: form.lifeSafetyNote || '',
+    reference: form.reference || '',
+    response: { ...form.response },
+    verification: { ...form.verification },
+    photoMeta: (form.photoMeta && typeof form.photoMeta === 'object') ? form.photoMeta : {},
     // Ensure backend sees projectId for subscription guard
     projectId: isValidProjectId(form.projectId) ? String(form.projectId) : chooseProjectId(),
   }
@@ -2589,11 +2795,18 @@ async function persistStatusFromDropdown(nextStatusKey: string, prevStatusKey: s
       return
     }
 
+    // Closing requires a verification outcome (backend enforces it too).
+    if (String(nextStatusKey) === 'closed' && !String(form.verification?.outcome || '').trim()) {
+      ui.showError('Record a CxA verification outcome before closing (see the CxA verification card on the Info tab)')
+      form.status = prevStatusKey || 'open'
+      return
+    }
     // Build minimal payload: status + closed metadata so disabled views show something.
     const payload: any = {
       projectId: pid,
       status: (toApiStatus(form.status) as any) || undefined,
     }
+    if (form.verification?.outcome) payload.verification = { ...form.verification }
     ensureClosedMetaForDisabledStatus()
     payload.closedDate = form.closedDate || undefined
     payload.closedBy = form.closedBy || undefined
@@ -2649,6 +2862,12 @@ async function persistClosedStatus(next: boolean, prev: boolean) {
     const user = auth.user
     const name = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || ''
     const payload: any = { projectId: pid, status: (toApiStatus(form.status) as any) || undefined }
+    if (next && !String(form.verification?.outcome || '').trim()) {
+      ui.showError('Record a CxA verification outcome before closing (see the CxA verification card on the Info tab)')
+      form.status = prev ? 'closed' : 'open'
+      return
+    }
+    if (next && form.verification?.outcome) payload.verification = { ...form.verification }
     if (next) {
       if (!form.closedDate) form.closedDate = isoDate(new Date())
       if (!form.closedBy) form.closedBy = name
