@@ -702,11 +702,30 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
     rd.newPage()
     if (model.attendees.length) {
       sectionHeading('Attendance & distribution')
+      // Legend — the markers are DRAWN circles, not font glyphs: the IBM
+      // Plex subset lacks U+25CF/U+25CB, which rendered as nothing.
+      const legendY = rd.y
+      const dot = (cx: number, cy: number, present: boolean) => {
+        if (present) {
+          doc.setFillColor(...c(COLORS.heading))
+          doc.circle(cx, cy, 1.05, 'F')
+        } else {
+          doc.setDrawColor(...c(COLORS.muted))
+          doc.setLineWidth(0.3)
+          doc.circle(cx, cy, 1.05, 'S')
+        }
+      }
       doc.setFontSize(8.5); setInk(COLORS.muted)
-      doc.text('● present · ○ distribution only', margin, rd.y)
-      rd.y += 6
+      dot(margin + 1.1, legendY - 1.2, true)
+      doc.text('present', margin + 4, legendY)
+      dot(margin + 20.1, legendY - 1.2, false)
+      doc.text('distribution only', margin + 23, legendY)
+      rd.y += 6.5
       setInk(COLORS.text)
+
       const colW = (contentW - 8) / 2
+      const orgX = 46
+      const ORG_LH = 3.8
       const half = Math.ceil(model.attendees.length / 2)
       const colsArr = [model.attendees.slice(0, half), model.attendees.slice(half)]
       const topY = rd.y
@@ -715,21 +734,25 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
         const x = margin + ci * (colW + 8)
         let ay = topY
         for (const a of list) {
-          const nameTxt = `${a.present ? '●' : '○'}  ${a.name}`
+          doc.setFont(SANS, 'normal'); doc.setFontSize(8.3)
+          const orgLines = splitText(doc, normalizePdfText(a.org || ''), colW - orgX).slice(0, 2)
+          dot(x + 1.1, ay - 1.2, a.present)
           doc.setFont(SANS, a.present ? 'bold' : 'normal'); doc.setFontSize(9.3)
           if (!a.present) setInk(COLORS.muted); else setInk(COLORS.heading)
-          doc.text(normalizePdfText(nameTxt), x, ay)
+          doc.text(normalizePdfText(a.name), x + 4.5, ay)
           doc.setFont(SANS, 'normal'); doc.setFontSize(8.3); setInk(COLORS.muted)
-          const orgLines = splitText(doc, normalizePdfText(a.org || ''), colW - 44)
-          orgLines.slice(0, 2).forEach((l: string, li: number) => doc.text(l, x + 44, ay + li * 3.8))
-          const rowH = Math.max(1, orgLines.slice(0, 2).length) * 3.8 + 2.6
-          ay += rowH
-          hairline(); doc.line(x, ay - 1.8, x + colW, ay - 1.8)
+          orgLines.forEach((l: string, li: number) => doc.text(l, x + orgX, ay + li * ORG_LH))
+          // The separator sits clear below the LAST text line of the row
+          // (name or wrapped org), never through it.
+          const lastBaseline = ay + Math.max(0, orgLines.length - 1) * ORG_LH
+          const ruleY = lastBaseline + 2.6
+          hairline(); doc.line(x, ruleY, x + colW, ruleY)
+          ay = ruleY + 4.6
         }
         maxY = Math.max(maxY, ay)
       })
       setInk(COLORS.text)
-      rd.y = maxY + 6
+      rd.y = maxY + 4
     } else {
       sectionNo++
     }
