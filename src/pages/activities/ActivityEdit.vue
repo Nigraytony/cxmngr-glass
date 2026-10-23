@@ -721,6 +721,7 @@
             <div class="md:col-span-2">
               <ActivityReportPanel
                 :form="form"
+                :team="projectTeam"
                 :import-candidates="attendeeImportCandidates"
               />
             </div>
@@ -4779,6 +4780,20 @@ function closeIssueModal() { showIssueModal.value = false; issueModalActionId.va
 // --- Actions: sub-records of work under this activity --------------------------
 const actionsStore = useActionsStore()
 const actionItemsStore = useActionItemsStore()
+
+// Project team (Project Settings > Team) — the attendance distribution list.
+const projectTeam = computed(() => {
+  const team: any[] = Array.isArray((projectStore.currentProject as any)?.team) ? (projectStore.currentProject as any).team : []
+  return team
+    .filter((m: any) => m && !['declined', 'removed'].includes(String(m.status || '').toLowerCase()))
+    .map((m: any) => ({
+      name: [m.firstName, m.lastName].filter(Boolean).join(' ').trim() || String(m.email || ''),
+      company: String(m.company || ''),
+      email: String(m.email || ''),
+      role: String(m.role || ''),
+    }))
+    .filter((m: any) => m.name)
+})
 
 // Other activities in this project whose attendee lists can be imported
 // (Stage 3: "allow import from a previous activity's list").

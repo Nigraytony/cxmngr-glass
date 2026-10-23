@@ -159,76 +159,117 @@
     <details class="rounded-xl bg-white/5 border border-white/10">
       <summary class="px-4 py-2.5 cursor-pointer select-none text-white/90 font-medium">
         Attendance & distribution
-        <span class="text-white/50 text-xs ml-2">● present · ○ distribution only</span>
+        <span class="text-white/50 text-xs ml-2">project team is the distribution list · check who was present</span>
       </summary>
-      <div class="p-4 pt-2 space-y-2">
-        <div
-          v-for="(a, i) in form.attendees"
-          :key="i"
-          class="grid grid-cols-12 gap-2 items-center"
-        >
-          <label
-            class="col-span-2 md:col-span-1 inline-flex items-center gap-1 text-white/70 text-xs"
-            title="Present at this activity"
+      <div class="p-4 pt-2 space-y-3">
+        <!-- Project team (from Project Settings > Team) -->
+        <div v-if="teamRows.length">
+          <div class="text-white/60 text-xs mb-1.5">
+            Project team — ● prints as present, ○ as distribution only
+          </div>
+          <div
+            v-for="a in teamRows"
+            :key="attendeeKey(a)"
+            class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-b-0"
           >
-            <input
-              v-model="a.signedIn"
-              type="checkbox"
-              class="rounded bg-white/10 border-white/20"
+            <label
+              class="inline-flex items-center gap-2 text-white/80 text-sm cursor-pointer min-w-24"
+              title="Present at this activity"
             >
-            <span class="hidden md:inline">Pres.</span>
-          </label>
-          <input
-            v-model="a.name"
-            type="text"
-            placeholder="Name"
-            class="col-span-10 md:col-span-3 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
-          >
-          <input
-            v-model="a.company"
-            type="text"
-            placeholder="Company"
-            class="col-span-5 md:col-span-3 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
-          >
-          <input
-            v-model="a.role"
-            type="text"
-            placeholder="Role"
-            class="col-span-5 md:col-span-4 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
-          >
-          <button
-            type="button"
-            class="col-span-2 md:col-span-1 text-rose-300/80 hover:text-rose-300 text-sm"
-            title="Remove attendee"
-            @click="form.attendees.splice(i, 1)"
-          >
-            ✕
-          </button>
+              <input
+                v-model="a.signedIn"
+                type="checkbox"
+                class="rounded bg-white/10 border-white/20"
+              >
+              Present
+            </label>
+            <span
+              class="text-sm"
+              :class="a.signedIn ? 'text-white font-medium' : 'text-white/60'"
+            >{{ a.name }}</span>
+            <span class="text-white/40 text-xs truncate">{{ [a.company, a.role].filter(Boolean).join(' · ') }}</span>
+          </div>
         </div>
-        <div class="flex items-center gap-2 flex-wrap pt-1">
-          <button
-            type="button"
-            class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/80 text-xs"
-            @click="form.attendees.push({ name: '', company: '', email: '', role: '', signedIn: true })"
+        <div
+          v-else
+          class="text-white/40 text-xs"
+        >
+          No team members yet — add them under Project Settings → Team and they'll appear here.
+        </div>
+
+        <!-- Additional attendees (not on the project team) -->
+        <div>
+          <div class="text-white/60 text-xs mb-1.5 mt-1">
+            Additional attendees
+          </div>
+          <div
+            v-for="a in guestRows"
+            :key="attendeeKey(a)"
+            class="grid grid-cols-12 gap-2 items-center mb-1.5"
           >
-            + Add attendee
-          </button>
-          <select
-            v-if="importCandidates.length"
-            class="rounded-md bg-white/10 border border-white/15 px-2 py-1 text-white/80 text-xs [&>option]:bg-slate-800"
-            @change="importFrom(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
-          >
-            <option value="">
-              Import from another activity…
-            </option>
-            <option
-              v-for="c in importCandidates"
-              :key="c.id"
-              :value="c.id"
+            <label
+              class="col-span-2 md:col-span-1 inline-flex items-center gap-1 text-white/70 text-xs"
+              title="Present at this activity"
             >
-              {{ c.name }} ({{ c.attendees.length }})
-            </option>
-          </select>
+              <input
+                v-model="a.signedIn"
+                type="checkbox"
+                class="rounded bg-white/10 border-white/20"
+              >
+              <span class="hidden md:inline">Pres.</span>
+            </label>
+            <input
+              v-model="a.name"
+              type="text"
+              placeholder="Name"
+              class="col-span-10 md:col-span-3 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+            >
+            <input
+              v-model="a.company"
+              type="text"
+              placeholder="Company"
+              class="col-span-5 md:col-span-3 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+            >
+            <input
+              v-model="a.role"
+              type="text"
+              placeholder="Role"
+              class="col-span-5 md:col-span-4 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm placeholder-white/30"
+            >
+            <button
+              type="button"
+              class="col-span-2 md:col-span-1 text-rose-300/80 hover:text-rose-300 text-sm"
+              title="Remove attendee"
+              @click="removeAttendee(a)"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap pt-1">
+            <button
+              type="button"
+              class="px-2 py-1 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/80 text-xs"
+              @click="form.attendees.push({ name: '', company: '', email: '', role: '', signedIn: true })"
+            >
+              + Add attendee
+            </button>
+            <select
+              v-if="importCandidates.length"
+              class="rounded-md bg-white/10 border border-white/15 px-2 py-1 text-white/80 text-xs [&>option]:bg-slate-800"
+              @change="importFrom(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
+            >
+              <option value="">
+                Import from another activity…
+              </option>
+              <option
+                v-for="c in importCandidates"
+                :key="c.id"
+                :value="c.id"
+              >
+                {{ c.name }} ({{ c.attendees.length }})
+              </option>
+            </select>
+          </div>
         </div>
       </div>
     </details>
@@ -239,13 +280,58 @@
 // Stage 3 of the Activity report redesign: edits the Stage 2 fields on the
 // activity form (summary, reportId, nextVisitDate, revisions, sessions,
 // attendees). Mutates the parent's reactive `form`; the page's Save persists.
+//
+// Attendance model: the PROJECT TEAM (Project Settings > Team) is the
+// distribution list. Team members sync into form.attendees automatically
+// (distribution-only until their Present box is checked); ad-hoc guests are
+// added below and default to present.
+import { computed, watch } from 'vue'
 import RichTextEditor from '../RichTextEditor.vue'
 
 const props = defineProps<{
   form: any
+  /** Project team members (name/company/email/role) — the distribution list. */
+  team: Array<{ name: string; company: string; email: string; role: string }>
   /** Other activities offering attendee lists to copy. */
   importCandidates: Array<{ id: string; name: string; attendees: any[] }>
 }>()
+
+const normKey = (a: any) => (String(a?.email || '').trim().toLowerCase())
+  || `${String(a?.name || '').trim().toLowerCase()}|${String(a?.company || '').trim().toLowerCase()}`
+
+function attendeeKey(a: any): string {
+  return normKey(a) || String(props.form.attendees.indexOf(a))
+}
+
+const teamKeys = computed(() => new Set(props.team.map(normKey).filter(k => k && k !== '|')))
+
+/** Attendee rows that correspond to project team members. */
+const teamRows = computed(() => props.form.attendees.filter((a: any) => teamKeys.value.has(normKey(a))))
+/** Everyone else (ad-hoc guests). */
+const guestRows = computed(() => props.form.attendees.filter((a: any) => !teamKeys.value.has(normKey(a))))
+
+// Keep every team member on the attendee list (distribution-only by default);
+// refreshes when the team loads or changes. Never removes rows.
+watch(() => props.team, (team) => {
+  const have = new Set(props.form.attendees.map(normKey))
+  for (const m of (team || [])) {
+    const k = normKey(m)
+    if (!k || k === '|' || have.has(k)) continue
+    have.add(k)
+    props.form.attendees.push({
+      name: String(m.name || ''),
+      company: String(m.company || ''),
+      email: String(m.email || ''),
+      role: String(m.role || ''),
+      signedIn: false,
+    })
+  }
+}, { immediate: true, deep: true })
+
+function removeAttendee(a: any) {
+  const i = props.form.attendees.indexOf(a)
+  if (i >= 0) props.form.attendees.splice(i, 1)
+}
 
 function addRevision() {
   const last = props.form.revisions[props.form.revisions.length - 1]
@@ -261,10 +347,10 @@ function importFrom(activityId: string) {
   if (!activityId) return
   const c = props.importCandidates.find(x => x.id === activityId)
   if (!c) return
-  const existing = new Set(props.form.attendees.map((a: any) => `${a.name}|${a.company}`.toLowerCase()))
+  const existing = new Set(props.form.attendees.map(normKey))
   for (const a of c.attendees) {
-    const key = `${a?.name || ''}|${a?.company || ''}`.toLowerCase()
-    if (!a?.name || existing.has(key)) continue
+    const key = normKey(a)
+    if (!a?.name || !key || key === '|' || existing.has(key)) continue
     existing.add(key)
     props.form.attendees.push({
       name: String(a.name || ''),
