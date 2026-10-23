@@ -183,6 +183,7 @@ function pickProjectPayload(source) {
     'building_type',
     'description',
     'settings',
+    'reportSettings',
     'photos',
     'documents',
     'logo',

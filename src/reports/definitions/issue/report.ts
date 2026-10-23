@@ -99,10 +99,20 @@ export async function assembleIssueModelFor(issueLike: any, project: any): Promi
     if (src) photos.push({ dataUrl: String(src), caption: String(p?.caption || '') })
   }
 
-  // Equipment tags: Step 2 equipmentIds resolve here later; the tag field now.
-  const equipmentTags = (Array.isArray(issue?.equipmentTags) && issue.equipmentTags.length)
-    ? issue.equipmentTags.map((t: any) => String(t))
-    : (issue?.tag ? [String(issue.tag)] : [])
+  // Equipment tags: linked equipmentIds (Step 2) win; the tag field is the
+  // fallback for issues that predate equipment linking.
+  let equipmentTags: string[] = []
+  const eqIds = (Array.isArray(issue?.equipmentIds) ? issue.equipmentIds : [])
+    .map((v: any) => String((v && (v._id || v.id)) || v || ''))
+    .filter(Boolean)
+  for (const eid of eqIds.slice(0, 10)) {
+    try {
+      const res = await http.get(`/api/equipment/${eid}`)
+      const t = res.data?.tag || res.data?.title
+      if (t) equipmentTags.push(String(t))
+    } catch (e) { /* skip */ }
+  }
+  if (!equipmentTags.length && issue?.tag) equipmentTags = [String(issue.tag)]
 
   return assembleIssueReportModel({ issue, project, activityName, equipmentTags, logs, photos })
 }

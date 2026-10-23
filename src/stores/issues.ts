@@ -171,7 +171,29 @@ export const useIssuesStore = defineStore('issues', () => {
       try {
         const { useLogsStore } = await import('./logs')
         const logs = useLogsStore()
-        await logs.appendLog('issues', String(updated.id || updated._id), { type: 'update', message: `Issue updated: ${updated.title || ''}`, details: payload })
+        // Structured {field, from, to} diffs (Issue report redesign Step 2)
+        // so the report's History section can say "Priority changed High →
+        // Critical" instead of dumping the payload. A save that changed
+        // nothing logs empty changes, which the history hides.
+        const summarize = (v: any): string => {
+          if (v == null) return ''
+          if (Array.isArray(v)) return `${v.length} item${v.length === 1 ? '' : 's'}`
+          if (typeof v === 'object') return '[data]'
+          const s = String(v).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+          return s.length > 60 ? s.slice(0, 57) + '…' : s
+        }
+        const SKIP = new Set(['projectId', 'expectedVersion', '__v', 'updatedAt', 'id', '_id'])
+        const changes = prev
+          ? Object.keys(payload as any)
+            .filter(k => !SKIP.has(k))
+            .filter(k => JSON.stringify((prev as any)[k] ?? null) !== JSON.stringify((payload as any)[k] ?? null))
+            .map(k => ({ field: k, from: summarize((prev as any)[k]), to: summarize((payload as any)[k]) }))
+          : null
+        await logs.appendLog('issues', String(updated.id || updated._id), {
+          type: 'update',
+          message: `Issue updated: ${updated.title || ''}`,
+          details: changes ? { changes } : payload,
+        })
       } catch (e) { /* non-blocking */ }
       return updated
     } catch (err: any) {

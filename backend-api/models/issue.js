@@ -30,6 +30,34 @@ const issueSchema = new mongoose.Schema({
   // a recommendation (enforced in the create route); the Activity report
   // prints this as the issue's source.
   origin: { type: String, default: '' },
+  // -------------------------------------------------------------------------
+  // Issue report redesign Step 2 (issue-mockup.pdf). All optional.
+  // -------------------------------------------------------------------------
+  // Equipment this issue applies to (the report's facts grid + QA checks).
+  equipmentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Equipment' }],
+  // Life-safety banner: defaults ON for Critical issues at create, editable.
+  lifeSafety: { type: Boolean, default: false },
+  lifeSafetyNote: { type: String, default: '' },
+  // Spec section / code reference printed under Required action.
+  reference: { type: String, default: '' },
+  // Contractor response (supersedes the free-text `resolution`; legacy
+  // resolution text renders as the recorded response until edited).
+  response: {
+    correctiveAction: { type: String, default: '' },
+    completedDate: { type: String, default: '' },
+    respondedBy: { type: String, default: '' },
+  },
+  // CxA verification; a closing outcome is required to close the issue and
+  // stamps closedDate/closedBy automatically (routes/issues.js).
+  verification: {
+    outcome: { type: String, enum: ['', 'verified_closed', 'not_resolved', 'accepted_as_is'], default: '' },
+    verifiedBy: { type: String, default: '' },
+    verifiedDate: { type: String, default: '' },
+    notes: { type: String, default: '' },
+  },
+  // Caption/flags for Azure-stored issue photos, keyed by doc-file id
+  // (mirrors Activity.photoMeta).
+  photoMeta: { type: mongoose.Schema.Types.Mixed, default: {} },
   // Free-form tags for filtering/grouping
   labels: { type: [String], default: [] },
   // OPR Items linked for traceability (OPR Workshop add-on)

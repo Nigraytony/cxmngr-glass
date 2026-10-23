@@ -11,6 +11,10 @@ const projectSchema = new mongoose.Schema({
   building_type: { type: String },
   description: { type: String },
   settings: [{ type: String }],
+  // Report-wide project preferences (Issue report redesign Step 2):
+  //   companyShortNames: { "Full Company Name": "Short" } — compact display
+  //   issueDistribution: [{ name, company }] — the standard issue CC list
+  reportSettings: { type: mongoose.Schema.Types.Mixed, default: {} },
   photos: [{ type: String }],
   documents: [{ type: String }],
   team: [{

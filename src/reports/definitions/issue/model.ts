@@ -275,7 +275,7 @@ export function buildHistory(logs: any[], opts: { activityName?: string; issue?:
 export function assembleIssueReportModel(input: IssueReportInput): IssueReportModel {
   const { issue, project } = input
   const now = input.generatedAt || new Date()
-  const shortMap: Record<string, string> = (project?.settings && typeof project.settings === 'object' && project.settings.companyShortNames) || {}
+  const shortMap: Record<string, string> = (project?.reportSettings && typeof project.reportSettings === 'object' && project.reportSettings.companyShortNames) || {}
   const number = String(issue?.number ?? '')
   const title = plainText(issue?.title)
   const priority = priorityBucket(issue?.severity)
@@ -325,7 +325,7 @@ export function assembleIssueReportModel(input: IssueReportInput): IssueReportMo
 
   const distribution = [
     issue?.assignedTo ? `${formatPerson(issue.assignedTo, shortMap)} (assigned)` : '',
-    ...(Array.isArray(project?.settings?.issueDistribution) ? project.settings.issueDistribution : [])
+    ...(Array.isArray(project?.reportSettings?.issueDistribution) ? project.reportSettings.issueDistribution : [])
       .map((d: any) => typeof d === 'string' ? d : [d?.name, shortCompany(d?.company, shortMap)].filter(Boolean).join(', ')),
   ].filter(Boolean).join(' · ')
 

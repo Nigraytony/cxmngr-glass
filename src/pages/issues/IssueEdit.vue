@@ -669,11 +669,34 @@
                   <span>Save</span>
                 </button>
                 <button
-                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
-                  title="Download PDF report"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="downloadingReport"
+                  :title="downloadingReport ? 'Generating report…' : 'Download PDF report'"
                   @click="downloadIssuePdf"
                 >
                   <svg
+                    v-if="downloadingReport"
+                    class="w-4 h-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="3"
+                    />
+                    <path
+                      class="opacity-90"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"
+                    />
+                  </svg>
+                  <svg
+                    v-else
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -700,7 +723,7 @@
                       stroke-width="1.5"
                     />
                   </svg>
-                  <span>Download PDF</span>
+                  <span>{{ downloadingReport ? 'Generating…' : 'Download PDF' }}</span>
                 </button>
               </div>
             </div>
@@ -1747,8 +1770,19 @@ function formatDateTime(dt?: string): string {
 }
 
 // Issue PDF: shared definition from the report kit (reports/definitions/issue).
+// The button disables + spins while generating so repeated clicks can't queue
+// duplicate reports (gathering photos/logs takes a few seconds).
+const downloadingReport = ref(false)
 async function downloadIssuePdf() {
-  await generateIssuePdf({ ...form, id: id.value })
+  if (downloadingReport.value) return
+  downloadingReport.value = true
+  try {
+    await generateIssuePdf({ ...form, id: id.value })
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate report')
+  } finally {
+    downloadingReport.value = false
+  }
 }
 
 onMounted(async () => {

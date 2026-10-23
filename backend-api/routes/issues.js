@@ -77,6 +77,46 @@ function normalizeBoolFlag(value) {
 // filters/aggregations against the UI names never match.
 // The frontend already maps severity→priority and assignedTo→responsible_person
 // on read (src/stores/issues.ts:51-54), so responses don't need adjustment.
+// --- Issue report redesign Step 2 helpers ---------------------------------
+const CLOSING_OUTCOMES = new Set(['verified_closed', 'accepted_as_is'])
+
+function stripHtml(v) {
+  return sanitizeHtml(String(v), { allowedTags: [], allowedAttributes: {} }).trim()
+}
+
+/** Sanitize the Step 2 text fields in place (plain text only). */
+function sanitizeIssueExtras(body) {
+  if (!body || typeof body !== 'object') return
+  for (const k of ['lifeSafetyNote', 'reference']) {
+    if (typeof body[k] === 'string') body[k] = stripHtml(body[k])
+  }
+  if (body.response && typeof body.response === 'object') {
+    for (const k of ['correctiveAction', 'completedDate', 'respondedBy']) {
+      if (typeof body.response[k] === 'string') body.response[k] = stripHtml(body.response[k])
+    }
+  }
+  if (body.verification && typeof body.verification === 'object') {
+    for (const k of ['outcome', 'verifiedBy', 'verifiedDate', 'notes']) {
+      if (typeof body.verification[k] === 'string') body.verification[k] = stripHtml(body.verification[k])
+    }
+  }
+}
+
+/** Normalize + project-validate equipmentIds; returns {error} or {ids}/{}. */
+async function validateEquipmentIds(body, projectId) {
+  if (!body || !Object.prototype.hasOwnProperty.call(body, 'equipmentIds')) return {}
+  const ids = (Array.isArray(body.equipmentIds) ? body.equipmentIds : [])
+    .map((v) => String((v && (v._id || v.id)) || v || '').trim())
+    .filter((v) => mongoose.Types.ObjectId.isValid(v))
+  if (ids.length > 50) return { error: 'Too many equipment links (max 50)' }
+  if (ids.length) {
+    const Equipment = require('../models/equipment')
+    const count = await Equipment.countDocuments({ _id: { $in: ids }, projectId })
+    if (count !== ids.length) return { error: 'One or more equipment links are invalid for this project' }
+  }
+  return { ids }
+}
+
 function denormalizeIssuePayload(body) {
   if (!body || typeof body !== 'object') return body
   if (body.priority !== undefined && body.severity === undefined) {
@@ -188,7 +228,7 @@ function getBackendBaseUrl(req) {
 
 // Light projection for list responses to avoid pulling large blobs.
 // Includes __v so clients can send it back for optimistic-lock updates.
-const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation origin oprItemIds __v';
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation origin oprItemIds equipmentIds lifeSafety lifeSafetyNote reference response verification __v';
 
 // runMiddleware extracted to ../middleware/runMiddleware.js
 
@@ -228,6 +268,17 @@ router.post(
     // redesign: checklist-generated issues #15-17 shipped without one).
     if (String((req.body || {}).origin || '').toLowerCase() === 'checklist' && !String((req.body || {}).recommendation || '').trim()) {
       return res.status(400).send({ error: 'A recommendation is required for issues raised from a checklist' });
+    }
+
+    // Issue report redesign Step 2: sanitize the new fields, validate
+    // equipment links, and default the life-safety flag ON for Critical.
+    sanitizeIssueExtras(req.body)
+    const eqCheck = await validateEquipmentIds(req.body, projectId)
+    if (eqCheck.error) return res.status(400).send({ error: eqCheck.error })
+    if (eqCheck.ids !== undefined) req.body.equipmentIds = eqCheck.ids
+    const sevIn = String((req.body || {}).severity || (req.body || {}).priority || '').toLowerCase()
+    if (sevIn === 'critical' && typeof (req.body || {}).lifeSafety === 'undefined') {
+      req.body.lifeSafety = true
     }
 
     // Accept a client-supplied _id for offline creates (idempotent replay).
@@ -769,8 +820,37 @@ router.patch('/:id', auth, requireObjectIdParam('id'), loadIssueProjectId, requi
         } catch (_) { return undefined }
       }
 
-      const isClosing = nextStatus === 'closed' && prevStatus !== 'closed';
-      const isReopening = nextStatus !== 'closed' && prevStatus === 'closed';
+      // --- Issue report redesign Step 2 --------------------------------
+      sanitizeIssueExtras(incoming)
+      const eqCheck = await validateEquipmentIds(incoming, issue.projectId)
+      if (eqCheck.error) return res.status(400).send({ error: eqCheck.error })
+      if (eqCheck.ids !== undefined) incoming.equipmentIds = eqCheck.ids
+
+      // A closing verification outcome closes the issue and stamps the
+      // closed metadata automatically.
+      const incomingOutcome = incoming.verification && typeof incoming.verification === 'object'
+        ? String(incoming.verification.outcome || '')
+        : ''
+      if (incomingOutcome && CLOSING_OUTCOMES.has(incomingOutcome)) {
+        if (typeof incoming.status !== 'string') incoming.status = 'Closed'
+        if (!incoming.closedDate) incoming.closedDate = String(incoming.verification.verifiedDate || '') || isoDate(new Date())
+        if (!incoming.closedBy) {
+          const u = req.user || {}
+          incoming.closedBy = String(incoming.verification.verifiedBy || '') || [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || u.email || 'System'
+        }
+      }
+
+      // Closing requires a verification outcome (incoming or already recorded).
+      const effectiveNext = typeof incoming.status === 'string' ? String(incoming.status).toLowerCase() : prevStatus
+      if (effectiveNext === 'closed' && prevStatus !== 'closed') {
+        const effOutcome = incomingOutcome || String((issue.verification && issue.verification.outcome) || '')
+        if (!CLOSING_OUTCOMES.has(effOutcome)) {
+          return res.status(400).send({ error: 'A verification outcome is required to close an issue (verify it, or record Accepted by Owner as-is)' })
+        }
+      }
+
+      const isClosing = effectiveNext === 'closed' && prevStatus !== 'closed';
+      const isReopening = effectiveNext !== 'closed' && prevStatus === 'closed';
 
       if (isClosing) {
         // If client didn't provide, stamp closedDate/closedBy
