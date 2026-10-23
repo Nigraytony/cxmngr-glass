@@ -79,10 +79,10 @@
 </template>
 
 <script setup lang="ts">
-// Stage 4 of the Activity report redesign: the pre-issue QA panel. Pure
-// presentation — checks run in reports/definitions/activity/qa.ts and the
-// page owns dismissal persistence and navigation.
-import type { QaWarning } from '../../reports/definitions/activity/qa'
+// Shared pre-download QA panel (born in the Activity report redesign, reused
+// by the Issue Detail report). Pure presentation — the checks run in each
+// report's qa module and the page owns dismissal persistence and navigation.
+import type { QaWarning } from '../../reports/qaTypes'
 
 defineProps<{ warnings: QaWarning[] }>()
 defineEmits<{

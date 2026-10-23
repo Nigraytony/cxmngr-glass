@@ -4,20 +4,8 @@
 // These surface conflicts in the UI before generating — they never block and
 // are NEVER printed in the report.
 
-export interface QaWarning {
-  /** Stable id so a dismissal survives regeneration (category + refs). */
-  id: string
-  category:
-    | 'checklist-vs-issue'
-    | 'fpt-expected'
-    | 'attr-vs-component'
-    | 'duplicate-identifiers'
-    | 'issue-fields'
-    | 'photo-meta'
-  message: string
-  /** Jump target for the Open button. */
-  link?: { type: 'issue' | 'equipment' | 'photos'; id: string }
-}
+import type { QaWarning } from '../../qaTypes'
+export type { QaWarning } from '../../qaTypes'
 
 export interface QaInput {
   equipment: any[]

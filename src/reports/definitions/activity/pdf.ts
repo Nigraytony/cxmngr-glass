@@ -10,6 +10,7 @@ import { fitImageToHeight, loadPhoto } from '../../core/images'
 import { normalizePdfText, splitText } from '../../core/text'
 import { drawTable } from '../../core/table'
 import { stampPageXofY } from '../../core/merge'
+import { ACCENT_REF, GREEN, SEV_STYLE, chip as chipOn, drawPhotoGrid as drawGridOn, type GridPhoto } from '../../core/blocks'
 import type { ActivityReportModel, PhotoVM, RichRun, SeverityBucket } from './model'
 
 export interface ActivityPdfOptions {
@@ -24,14 +25,6 @@ export interface ActivityPdfOptions {
   /** Raw PDF attachments appended at the very end. */
   attachmentsPdfBytes?: ArrayBuffer[]
 }
-
-const SEV_STYLE: Record<SeverityBucket, { text: [number, number, number]; bg: [number, number, number] }> = {
-  High: { text: [185, 28, 28], bg: [254, 226, 226] },
-  Medium: { text: [180, 83, 9], bg: [254, 243, 199] },
-  Low: { text: [71, 85, 105], bg: [241, 245, 249] },
-}
-const ACCENT_REF: [number, number, number] = [180, 83, 9]
-const GREEN: [number, number, number] = [21, 128, 61]
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
 
@@ -86,18 +79,8 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
     setInk(COLORS.text)
   }
 
-  const chip = (x: number, yTop: number, label: string, style: { text: [number, number, number]; bg: [number, number, number] }, size = 7): number => {
-    doc.setFont(SANS, 'bold'); doc.setFontSize(size)
-    const w = doc.getTextWidth(label) + 3.6
-    const h = size * 0.55 + 1.8
-    doc.setFillColor(...style.bg)
-    doc.roundedRect(x, yTop, w, h, 1, 1, 'F')
-    doc.setTextColor(...style.text)
-    doc.text(label, x + 1.8, yTop + h - 1.3)
-    setInk(COLORS.text)
-    doc.setFont(SANS, 'normal')
-    return w
-  }
+  const chip = (x: number, yTop: number, label: string, style: { text: [number, number, number]; bg: [number, number, number] }, size = 7): number =>
+    chipOn(doc, x, yTop, label, style, size)
 
   // =====================================================================
   // Page 1 — cover + summary
@@ -641,52 +624,17 @@ export async function generateActivityReportPdf(model: ActivityReportModel, opts
   const wantPhotoAppendix = opts.includePhotoAppendix ?? (appendixPhotos.length > logPhotos.length)
   const figStart = model.heroPhoto ? 2 : 1
 
+  // Shared captioned grid (core/blocks); chips carry tags + issue refs.
   const drawPhotoGrid = async (photos: PhotoVM[], startFig: number) => {
-    const gap = 6
-    const cellW = (contentW - gap) / 2
-    let col = 0
-    let rowTop = rd.y
-    let rowMaxH = 0
-    for (let i = 0; i < photos.length; i++) {
-      const p = photos[i]
-      const img = await loadPhoto(p.dataUrl)
-      if (!img.dataUrl) continue
-      const dim = fitImageToHeight(img, 58, cellW, cellW)
-      doc.setFontSize(8.5)
-      const capLines = p.caption ? splitText(doc, normalizePdfText(p.caption), cellW).slice(0, 3) : []
-      const cellH = dim.h + 6 + capLines.length * 4 + 4
-      if (col === 0 && rowTop + cellH > rd.bottomLimit) {
-        rd.newPage()
-        rowTop = rd.y
-      }
-      const x = margin + col * (cellW + gap)
-      doc.addImage(img.dataUrl, 'JPEG', x, rowTop, dim.w, dim.h)
-      hairline(); doc.rect(x, rowTop, dim.w, dim.h, 'S')
-      let cy = rowTop + dim.h + 4.5
-      doc.setFont(SANS, 'bold'); doc.setFontSize(8.8); setInk(COLORS.heading)
-      const figLabel = `Fig. ${startFig + i}`
-      doc.text(figLabel, x, cy)
-      // Equipment tag + linked-issue chips after the figure number (Stage 2 meta)
-      let chipX = x + doc.getTextWidth(figLabel) + 2.5
-      for (const t of (p.tags || []).slice(0, 3)) {
-        chipX += chip(chipX, cy - 3.4, t, { text: c(COLORS.heading), bg: c(COLORS.zebra) }, 6.6) + 1.6
-      }
-      for (const r of (p.issueRefs || []).slice(0, 3)) {
-        chipX += chip(chipX, cy - 3.4, r, SEV_STYLE.High, 6.6) + 1.6
-      }
-      doc.setFont(SANS, 'normal'); setInk(COLORS.text)
-      cy += 4.4
-      doc.setFontSize(8.5)
-      for (const l of capLines) { doc.text(l, x, cy); cy += 4 }
-      rowMaxH = Math.max(rowMaxH, cellH)
-      if (col === 1 || i === photos.length - 1) {
-        rowTop += rowMaxH + 4
-        rowMaxH = 0
-        rd.y = rowTop
-      }
-      col = col === 1 ? 0 : col + 1
-    }
-    rd.y = rowTop + (rowMaxH ? rowMaxH + 4 : 0)
+    const grid: GridPhoto[] = photos.map(p => ({
+      dataUrl: p.dataUrl,
+      caption: p.caption,
+      chips: [
+        ...(p.tags || []).slice(0, 3).map(t => ({ label: t, style: { text: c(COLORS.heading), bg: c(COLORS.zebra) } })),
+        ...(p.issueRefs || []).slice(0, 3).map(r => ({ label: r, style: SEV_STYLE.High })),
+      ],
+    }))
+    await drawGridOn(rd, grid, { cols: 2, figStart: startFig, maxH: 58 })
   }
 
   if (on('photos') && logPhotos.length) {

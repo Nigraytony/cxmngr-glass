@@ -2456,7 +2456,7 @@
 
     <!-- Pre-issue QA panel (Stage 4): data conflicts surfaced before the
          report generates. Never blocks, never printed. -->
-    <ActivityReportQaModal
+    <ReportQaModal
       v-if="showQaModal"
       :warnings="qaWarnings"
       @proceed="onQaProceed"
@@ -2504,8 +2504,8 @@ import { useActionItemsStore } from '../../stores/actionItems'
 import ActivityReportPanel from '../../components/activity/ActivityReportPanel.vue'
 import ActivityActionItemsPanel from '../../components/activity/ActivityActionItemsPanel.vue'
 import ActivityPhotoMetaPanel from '../../components/activity/ActivityPhotoMetaPanel.vue'
-import ActivityReportQaModal from '../../components/activity/ActivityReportQaModal.vue'
-import type { QaWarning } from '../../reports/definitions/activity/qa'
+import ReportQaModal from '../../components/reports/ReportQaModal.vue'
+import type { QaWarning } from '../../reports/qaTypes'
 import { useTemplatesStore } from '../../stores/templates'
 import { useEquipmentStore } from '../../stores/equipment'
   import { useSpacesStore } from '../../stores/spaces'
