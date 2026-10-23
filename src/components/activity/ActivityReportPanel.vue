@@ -1,4 +1,7 @@
 <template>
+  <!-- eslint-disable vue/no-mutating-props -- ActivityEdit passes its reactive
+       `form` on purpose: this panel is a page-private extension of that form
+       and the page's Save button persists the mutations. -->
   <div class="mt-4 space-y-4">
     <!-- Summary of findings -->
     <details
@@ -286,6 +289,8 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable vue/no-mutating-props -- see template note: the parent's
+   reactive form is mutated by design; the page's Save persists. */
 // Stage 3 of the Activity report redesign: edits the Stage 2 fields on the
 // activity form (summary, reportId, nextVisitDate, revisions, sessions,
 // attendees). Mutates the parent's reactive `form`; the page's Save persists.

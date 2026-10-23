@@ -103,6 +103,8 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable vue/no-mutating-props -- the parent passes its reactive
+   form.photoMeta by design; its Save button persists the mutations. */
 // Stage 3 of the Activity report redesign: edits activity.photoMeta — the
 // caption/tags/issue-links/cover flag for Azure-stored activity photos,
 // keyed by doc-file id. Mutates the parent's reactive photoMeta object;
