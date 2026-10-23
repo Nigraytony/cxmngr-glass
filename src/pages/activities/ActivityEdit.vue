@@ -2453,6 +2453,17 @@
       show-toc
       @save="saveActivityReportSettings"
     />
+
+    <!-- Pre-issue QA panel (Stage 4): data conflicts surfaced before the
+         report generates. Never blocks, never printed. -->
+    <ActivityReportQaModal
+      v-if="showQaModal"
+      :warnings="qaWarnings"
+      @proceed="onQaProceed"
+      @cancel="onQaCancel"
+      @dismiss="onQaDismiss"
+      @open="onQaOpen"
+    />
   </div>
 </template>
 
@@ -2494,6 +2505,8 @@ import { useActionItemsStore } from '../../stores/actionItems'
 import ActivityReportPanel from '../../components/activity/ActivityReportPanel.vue'
 import ActivityActionItemsPanel from '../../components/activity/ActivityActionItemsPanel.vue'
 import ActivityPhotoMetaPanel from '../../components/activity/ActivityPhotoMetaPanel.vue'
+import ActivityReportQaModal from '../../components/activity/ActivityReportQaModal.vue'
+import type { QaWarning } from '../../reports/definitions/activity/qa'
 import { useTemplatesStore } from '../../stores/templates'
 import { useEquipmentStore } from '../../stores/equipment'
   import { useSpacesStore } from '../../stores/spaces'
@@ -3725,6 +3738,41 @@ function buildActivityPdfFilename(): string {
 // renders via reports/definitions/activity. Equipment detail is an optional
 // appendix (settings key 'equipmentReports', default off); PDF attachments
 // append at the end; page numbers are stamped continuously post-merge.
+// ---- Pre-issue QA panel state (Stage 4). Dismissals persist per activity. ----
+const qaWarnings = ref<QaWarning[]>([])
+const showQaModal = ref(false)
+let qaResolver: ((proceed: boolean) => void) | null = null
+const qaDismissedKey = () => `activityQa:dismissed:${String(id.value || '')}`
+function loadQaDismissed(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(qaDismissedKey()) || '[]')) } catch (e) { return new Set() }
+}
+function onQaDismiss(w: QaWarning) {
+  try {
+    const s = loadQaDismissed()
+    s.add(w.id)
+    localStorage.setItem(qaDismissedKey(), JSON.stringify([...s]))
+  } catch (e) { /* ignore */ }
+  qaWarnings.value = qaWarnings.value.filter(x => x.id !== w.id)
+}
+function onQaOpen(w: QaWarning) {
+  showQaModal.value = false
+  qaResolver?.(false)
+  qaResolver = null
+  if (w.link?.type === 'issue' && w.link.id) router.push({ name: 'issue-edit', params: { id: w.link.id } })
+  else if (w.link?.type === 'equipment' && w.link.id) router.push({ name: 'equipment-edit', params: { id: w.link.id } })
+  else if (w.link?.type === 'photos') currentTab.value = 'Photos'
+}
+function onQaProceed() {
+  showQaModal.value = false
+  qaResolver?.(true)
+  qaResolver = null
+}
+function onQaCancel() {
+  showQaModal.value = false
+  qaResolver?.(false)
+  qaResolver = null
+}
+
 async function downloadActivityPdf() {
   if (!id.value || isNew.value || downloading.value) return
   downloading.value = true
@@ -3804,6 +3852,21 @@ async function downloadActivityPdf() {
     if (!acts.length) { try { acts = await actionsStore.list(activityIdStr, pid) } catch (e) { acts = [] } }
     let actionItems: any[] = []
     try { actionItems = await actionItemsStore.list(activityIdStr, pid) } catch (e) { actionItems = [] }
+
+    // ---- Stage 4: pre-issue QA panel. Surfaces data conflicts before the
+    // report generates; dismissable, never blocking, never printed.
+    try {
+      const { runActivityQaChecks } = await import('../../reports/definitions/activity/qa')
+      const dismissed = loadQaDismissed()
+      const found = runActivityQaChecks({ equipment, issues: scopedIssues, photos: reportPhotos })
+        .filter(w => !dismissed.has(w.id))
+      if (found.length) {
+        qaWarnings.value = found
+        showQaModal.value = true
+        const proceed = await new Promise<boolean>(resolve => { qaResolver = resolve })
+        if (!proceed) return
+      }
+    } catch (e) { /* QA must never break report generation */ }
 
     // ---- assemble + render ---------------------------------------------
     const { assembleActivityReportModel } = await import('../../reports/definitions/activity/model')
