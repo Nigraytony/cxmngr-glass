@@ -62,6 +62,15 @@ export async function generateIssuesCompactPdf(issues: any[]): Promise<void> {
   await generateIssueSheetsReport(issues, project)
 }
 
+/** Issues Log (Batch-Log mockup): landscape table with the summary band,
+ *  plain-words filter line, chips, and no-split rows. */
+export async function generateIssuesLogPdf(issues: any[], opts: Record<string, any> = {}): Promise<void> {
+  if (!Array.isArray(issues) || issues.length === 0) return
+  const project = await resolveProject(issues[0]?.projectId)
+  const { generateIssuesLogReport } = await import('./issue/log')
+  await generateIssuesLogReport(issues, project, opts)
+}
+
 /** Landscape flat table of issues with the caller's column selection. */
 export async function generateIssuesListPdf(issues: any[], columns?: string[]): Promise<void> {
   if (!Array.isArray(issues) || issues.length === 0) return

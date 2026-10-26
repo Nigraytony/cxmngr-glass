@@ -59,6 +59,24 @@ original prompt text lives with Tony's attachments.
   date-only values formatted via the new shared core/dates.ts helper
   (read-time TZ fix). Full Issues Log redesign (summary tiles, filter line,
   grouping) still pending.
-- Pending, in the prompt's order: Step 0 date audit/migration (gated),
-  export dialog, Issues Log, Full Detail cover upgrade, Data exports,
-  checklist-issue cleanup (gated), batch QA, list-page UI changes.
+- 2026-10-26 (second slice): **Issues Log** shipped (definitions/issue/log.ts:
+  summary band with open count / red overdue tile / priority stacked bar /
+  responsible counts with red Unassigned, filter line, mockup columns with
+  bold-title + gray summary-line Issue cell, chips, pale-red tint for
+  unassigned/no-due, group-by, no row splits, repeated headers).
+  **Export dialog** shipped (components/issues/IssueExportDialog.vue): report
+  picker, options, grouped columns + presets + width warning, remembered per
+  project; new Export N… button on the Issues list dispatches Log / Sheets /
+  Full Detail / Data (CSV + Excel via the existing exporters). The legacy
+  Downloads menu remains alongside until the dialog is field-validated.
+  **Step 0 migration script** delivered as
+  backend-api/scripts/migrate_issue_dates.js — DRY-RUN by default, prints
+  before/after for every value and explicitly for issues #1/#13/#20,
+  normalizes to YYYY-MM-DD (UTC-midnight → date part; real timestamps → the
+  --tz calendar date, default America/New_York). GATE: Tony reviews the
+  dry-run output before anyone runs --apply.
+- Pending: run the date migration (gated on dry-run review), Excel upgrade
+  (real date cells, frozen panes, autofilter), Full Detail cover upgrade
+  (summary row + page-number column), checklist-issue cleanup (gated),
+  batch QA panel, remaining list-page UI (row checkboxes, overdue chip,
+  removing the legacy Downloads menu), per-party zip for Sheets.

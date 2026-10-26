@@ -631,6 +631,32 @@
                 class="min-w-5 px-1.5 py-0.5 rounded-full bg-amber-500/25 text-amber-200 text-xs text-center font-semibold"
               >{{ healthCount }}</span>
             </button>
+            <button
+              class="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 text-sm border border-emerald-400/40 inline-flex items-center gap-2"
+              title="Export the issues matching the current filters"
+              @click="showExportDialog = true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 3v11M8 10l4 4 4-4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M4 19h16"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Export {{ filteredIssues.length }}…</span>
+            </button>
             <div
               ref="downloadsRef"
               class="relative"
@@ -1853,6 +1879,32 @@
                 class="min-w-5 px-1.5 py-0.5 rounded-full bg-amber-500/25 text-amber-200 text-xs text-center font-semibold"
               >{{ healthCount }}</span>
             </button>
+            <button
+              class="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 text-sm border border-emerald-400/40 inline-flex items-center gap-2"
+              title="Export the issues matching the current filters"
+              @click="showExportDialog = true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 3v11M8 10l4 4 4-4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M4 19h16"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <span>Export {{ filteredIssues.length }}…</span>
+            </button>
             <div
               ref="downloadsRef"
               class="relative"
@@ -2100,6 +2152,18 @@
       @dismiss="onHealthDismiss"
       @open="onHealthOpen"
     />
+
+    <!-- Export dialog (Issues batch redesign): report picker, options,
+         grouped columns + presets, remembered per project. -->
+    <IssueExportDialog
+      v-if="showExportDialog"
+      :project-id="String(projectStore.currentProjectId || '')"
+      :match-count="filteredIssues.length"
+      :filter-summary="buildFilterSummary()"
+      :busy="detailedReportBusy"
+      @close="showExportDialog = false"
+      @export="onExportRun"
+    />
   </section>
 </template>
 
@@ -2173,7 +2237,8 @@ import http from '../../utils/http'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
 import * as XLSX from 'xlsx'
-import { generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf } from '../../reports/definitions/issue'
+import { generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf, generateIssuesLogPdf } from '../../reports/definitions/issue'
+import IssueExportDialog, { type IssueExportPayload } from '../../components/issues/IssueExportDialog.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { runCoachmarkOnce } from '../../utils/coachmarks'
 // Preferred/common export columns in desired order
@@ -4321,6 +4386,49 @@ function mapIssueForReport(i: any) {
     comments: Array.isArray(i.comments) ? i.comments : [],
     attachments: Array.isArray(i.attachments) ? i.attachments : (i.documents || []),
     photos: Array.isArray(i.photos) ? i.photos : [],
+  }
+}
+
+// ---- Export dialog (Issues batch redesign) -------------------------------
+const showExportDialog = ref(false)
+function buildFilterSummary(): string {
+  const bits: string[] = []
+  if (typeFilter.value && typeFilter.value !== 'All') bits.push(`type ${typeFilter.value}`)
+  if (statusFilter.value && statusFilter.value !== 'All') bits.push(`status ${statusFilter.value}`)
+  if (priorityFilter.value && priorityFilter.value !== 'All') bits.push(`priority ${priorityFilter.value}`)
+  return bits.join(' · ')
+}
+async function onExportRun(p: IssueExportPayload) {
+  if (detailedReportBusy.value) return
+  detailedReportBusy.value = true
+  const rows = filteredIssues.value.map(mapIssueForReport)
+  try {
+    if (p.report === 'log') {
+      ui.showInfo(`Generating Issues Log (${rows.length} issue${rows.length === 1 ? '' : 's'})…`, { duration: 6000 })
+      await generateIssuesLogPdf(rows, {
+        columns: p.columns,
+        groupBy: p.groupBy,
+        closedLast: p.closedLast,
+        summaryBand: p.summaryBand,
+        filterLine: `${buildFilterSummary() || 'all issues'} · sorted by priority, then due date${p.closedLast ? ' · closed shown last' : ''}`,
+      })
+    } else if (p.report === 'sheets') {
+      ui.showInfo(`Generating issue sheets (${rows.length} issue${rows.length === 1 ? '' : 's'})… photos load per issue.`, { duration: 8000 })
+      await generateIssuesCompactPdf(rows)
+    } else if (p.report === 'detail') {
+      ui.showInfo(`Generating full detail report (${rows.length} issue${rows.length === 1 ? '' : 's'})… this can take a minute.`, { duration: 8000 })
+      await generateIssuesDetailedPdf(rows)
+    } else {
+      // Data: route the dialog's column choice through the existing exporters.
+      selectedColumns.value = p.columns.slice()
+      if (p.format === 'csv') exportFilteredIssuesCsv()
+      else exportFilteredIssuesXlsx()
+    }
+    showExportDialog.value = false
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Export failed')
+  } finally {
+    detailedReportBusy.value = false
   }
 }
 
