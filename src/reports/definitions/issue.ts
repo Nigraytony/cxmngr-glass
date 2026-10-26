@@ -98,6 +98,15 @@ export async function generateIssuePdf(issue: any, opts: { sections?: Record<str
   await generateIssueDetailReport(issue, project, opts)
 }
 
+/** Editable Word (.docx) version of the Issue Detail report — same model
+ *  and section toggles as the PDF. */
+export async function generateIssueDocx(issue: any, opts: { sections?: Record<string, boolean> } = {}): Promise<void> {
+  if (!issue) return
+  const project = await resolveProject(issue?.projectId)
+  const { generateIssueDetailDocx } = await import('./issue/report')
+  await generateIssueDetailDocx(issue, project, opts)
+}
+
 /** Batch export (Issue report redesign Step 5): a cover table followed by
  *  each selected issue's full redesigned sheet, continuous page numbers.
  *  Honors the per-project section preferences from IssueEdit's ▾ menu. */
