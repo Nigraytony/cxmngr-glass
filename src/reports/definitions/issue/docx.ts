@@ -36,8 +36,12 @@ const h2 = (text: string, rightNote = '') => `<table style="width:100%; border:0
   ${rightNote ? td(`<p style="font-size:9px; color:${MUTED}; text-align:right; margin:0;">${esc(rightNote)}</p>`, 'padding-right:0;') : ''}
 </tr></table>`
 const small = (text: string) => `<p style="font-size:9px; color:${MUTED}; margin:0 0 6px;">${esc(text)}</p>`
+// A writable rule: paragraph bottom-borders do NOT survive the html-to-docx
+// conversion, but table-cell borders do — each line is a one-cell table
+// whose cell draws only its bottom border.
+const ruleLine = () => `<table style="width:98%; border-collapse:collapse;"><tr><td style="border-bottom:1px solid ${MUTED}; padding:16px 2px 0;">&nbsp;</td></tr></table>`
 const ruled = (label: string, lines = 1) => `<p style="font-size:9px; color:${MUTED}; margin:6px 0 0;">${esc(label)}</p>` +
-  Array.from({ length: lines }, () => `<p style="border-bottom:1px solid ${MUTED}; margin:14px 4px 0;">&nbsp;</p>`).join('')
+  Array.from({ length: lines }, ruleLine).join('')
 
 async function photoTag(src: string | undefined, widthPx: number, maxEdge = 1200): Promise<string> {
   if (!src) return ''
@@ -234,7 +238,9 @@ export async function buildIssueDocxHtml(model: IssueReportModel, opts: IssueDoc
     ${td(`<p style="font-size:9px; font-weight:bold; color:${SLATE}; text-align:center; margin:0;">${esc(model.runningTitle)}</p>`, 'text-align:center;')}
     ${td(opts.logos?.cxa ? `<img src="${opts.logos.cxa}" width="70" />` : '', 'text-align:right; width:22%;')}
   </tr></table>`
-  const footer = `<p style="font-size:9px; color:${MUTED};">${esc(model.footerLabel)}</p>`
+  // The converter appends its PAGE field right after the footer text, so the
+  // label ends with "· Page " to read "· Page 1" instead of "…cxma1".
+  const footer = `<p style="font-size:9px; color:${MUTED};">${esc(model.footerLabel)} · Page&#160;</p>`
   return { html, header, footer }
 }
 

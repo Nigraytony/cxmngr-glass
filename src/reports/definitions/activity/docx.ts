@@ -303,7 +303,9 @@ export async function buildActivityDocxHtml(model: ActivityReportModel, opts: Ac
     ${td(`<p style="font-size:9px; font-weight:bold; color:${SLATE}; text-align:center; margin:0;">${esc(model.runningTitle)}</p>`, 'text-align:center;')}
     ${td(opts.logos?.cxa ? `<img src="${opts.logos.cxa}" width="80" />` : '', 'text-align:right; width:25%;')}
   </tr></table>`
-  const footer = `<p style="font-size:9px; color:${MUTED};">${esc(model.footerLabel)}</p>`
+  // The converter appends its PAGE field right after the footer text, so the
+  // label ends with "· Page " to read "· Page 1" instead of "…datePAGE".
+  const footer = `<p style="font-size:9px; color:${MUTED};">${esc(model.footerLabel)} · Page&#160;</p>`
   return { html, header, footer }
 }
 
