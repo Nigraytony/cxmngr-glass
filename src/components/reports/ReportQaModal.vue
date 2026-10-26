@@ -7,10 +7,10 @@
       <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
         <div>
           <div class="text-white font-medium">
-            Pre-issue QA · {{ warnings.length }} data conflict{{ warnings.length === 1 ? '' : 's' }} found
+            {{ title || 'Pre-issue QA' }} · {{ warnings.length }} finding{{ warnings.length === 1 ? '' : 's' }}
           </div>
           <div class="text-white/50 text-xs mt-0.5">
-            Shown to you only — never printed in the issued report. Generating is not blocked.
+            {{ subtitle || 'Shown to you only — never printed in the issued report. Generating is not blocked.' }}
           </div>
         </div>
         <button
@@ -64,13 +64,14 @@
             class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/80 text-sm"
             @click="$emit('cancel')"
           >
-            Cancel
+            {{ showProceed === false ? 'Close' : 'Cancel' }}
           </button>
           <button
+            v-if="showProceed !== false"
             class="px-3 py-2 rounded-md bg-emerald-500/20 border border-emerald-400/60 text-emerald-100 hover:bg-emerald-500/30 text-sm"
             @click="$emit('proceed')"
           >
-            Generate anyway
+            {{ proceedLabel || 'Generate anyway' }}
           </button>
         </div>
       </div>
@@ -84,7 +85,14 @@
 // report's qa module and the page owns dismissal persistence and navigation.
 import type { QaWarning } from '../../reports/qaTypes'
 
-defineProps<{ warnings: QaWarning[] }>()
+defineProps<{
+  warnings: QaWarning[]
+  title?: string
+  subtitle?: string
+  proceedLabel?: string
+  /** false hides the proceed button (pure review panels, e.g. Data health). */
+  showProceed?: boolean
+}>()
 defineEmits<{
   (e: 'proceed'): void
   (e: 'cancel'): void

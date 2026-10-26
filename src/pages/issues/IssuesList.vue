@@ -601,6 +601,36 @@
 
         <div class="mt-3 flex items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-2">
+            <button
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
+              title="Scan every issue for data-health problems — dismissable findings, never blocks anything"
+              @click="openIssueHealth"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M9 12l2 2 4-4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Data health</span>
+              <span
+                v-if="healthCount > 0"
+                class="min-w-5 px-1.5 py-0.5 rounded-full bg-amber-500/25 text-amber-200 text-xs text-center font-semibold"
+              >{{ healthCount }}</span>
+            </button>
             <div
               ref="downloadsRef"
               class="relative"
@@ -1793,6 +1823,36 @@
       <template #footer>
         <div class="flex items-center justify-between gap-2 w-full">
           <div class="flex flex-wrap items-center gap-2">
+            <button
+              class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
+              title="Scan every issue for data-health problems — dismissable findings, never blocks anything"
+              @click="openIssueHealth"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M9 12l2 2 4-4"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <span>Data health</span>
+              <span
+                v-if="healthCount > 0"
+                class="min-w-5 px-1.5 py-0.5 rounded-full bg-amber-500/25 text-amber-200 text-xs text-center font-semibold"
+              >{{ healthCount }}</span>
+            </button>
             <div
               ref="downloadsRef"
               class="relative"
@@ -2028,6 +2088,18 @@
       </template>
     </Modal>
 
+    <!-- Issues Data health: standalone project-wide hygiene scan.
+         Dismissable findings, jump-to-issue links, never blocks anything. -->
+    <ReportQaModal
+      v-if="showIssueHealth"
+      :warnings="healthWarnings"
+      title="Issues data health"
+      subtitle="A hygiene scan of every issue in this project. Dismissed findings stay hidden; nothing here blocks your work."
+      :show-proceed="false"
+      @cancel="showIssueHealth = false"
+      @dismiss="onHealthDismiss"
+      @open="onHealthOpen"
+    />
   </section>
 </template>
 
@@ -2086,6 +2158,8 @@ import BulkAutoTagModal from '../../components/BulkAutoTagModal.vue'
 import Comments from '../../components/Comments.vue'
 import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
+import ReportQaModal from '../../components/reports/ReportQaModal.vue'
+import type { QaWarning } from '../../reports/qaTypes'
 import { useIssuesStore } from '../../stores/issues'
 import { issuesRepository } from '../../data/issuesRepository'
 import { useLocal } from '../../data/offlineGate'
@@ -4245,6 +4319,39 @@ function mapIssueForReport(i: any) {
     attachments: Array.isArray(i.attachments) ? i.attachments : (i.documents || []),
     photos: Array.isArray(i.photos) ? i.photos : [],
   }
+}
+
+// ---- Issues Data health (standalone scan; never blocks anything) --------
+const showIssueHealth = ref(false)
+const healthWarnings = ref<QaWarning[]>([])
+const healthDismissedKey = () => `issueHealthDismissed:${String(projectStore.currentProjectId || 'global')}`
+function loadHealthDismissed(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(healthDismissedKey()) || '[]')) } catch (e) { return new Set() }
+}
+async function runIssueHealthScan() {
+  const { runIssueDataHealth } = await import('../../qa/issueDataHealth')
+  const dismissed = loadHealthDismissed()
+  const all = Array.isArray(issuesStore.issues) ? issuesStore.issues : []
+  healthWarnings.value = runIssueDataHealth(all).filter(w => !dismissed.has(w.id))
+}
+const healthCount = computed(() => healthWarnings.value.length)
+// Keep the toolbar badge current as the list loads/changes.
+watch(() => (Array.isArray(issuesStore.issues) ? issuesStore.issues.length : 0), () => { void runIssueHealthScan() }, { immediate: true })
+async function openIssueHealth() {
+  await runIssueHealthScan()
+  showIssueHealth.value = true
+}
+function onHealthDismiss(w: QaWarning) {
+  try {
+    const s = loadHealthDismissed()
+    s.add(w.id)
+    localStorage.setItem(healthDismissedKey(), JSON.stringify([...s]))
+  } catch (e) { /* ignore */ }
+  healthWarnings.value = healthWarnings.value.filter(x => x.id !== w.id)
+}
+function onHealthOpen(w: QaWarning) {
+  showIssueHealth.value = false
+  if (w.link?.type === 'issue' && w.link.id) router.push({ name: 'issue-edit', params: { id: w.link.id } })
 }
 
 const detailedReportBusy = ref(false)
