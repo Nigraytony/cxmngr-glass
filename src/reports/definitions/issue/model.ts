@@ -375,7 +375,9 @@ export function assembleIssueReportModel(input: IssueReportInput): IssueReportMo
       .map((cm: any) => ({ author: plainText(cm?.name), date: fmtDate(cm?.createdAt), text: plainText(cm?.text) }))
       .filter((cm: any) => cm.text),
     distribution,
-    runningTitle: [String(project?.name || ''), `Issue #${number}`, title].filter(Boolean).join(' · '),
+    // Running-header title: long issue titles are trimmed so the header stays
+    // one tidy line in the common case (the frame still wraps if needed).
+    runningTitle: [String(project?.name || ''), `Issue #${number}`, title.length > 70 ? title.slice(0, 67).replace(/\s*\S*$/, '') + ' …' : title].filter(Boolean).join(' · '),
     footerLabel: `Issue #${number} · Status as of ${statusAsOf} · Generated in cxma`,
     statusAsOf,
   }

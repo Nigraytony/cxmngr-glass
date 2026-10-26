@@ -6,7 +6,7 @@ import { jsPDF } from 'jspdf'
 import { ensureReportFonts } from './fonts'
 import { COLORS, SANS, setColor } from './tokens'
 import { fitImageToHeight, loadFirstAvailable, loadImage, type LoadedImage } from './images'
-import { setZeroCharSpace } from './text'
+import { normalizePdfText, setZeroCharSpace, splitText } from './text'
 
 /**
  * Logos must never render stretched: if the browser-side measurement in
@@ -67,19 +67,32 @@ export function drawBrandedHeader(
   // logos drops below them instead of overlapping.
   const rowH = logoBlockH || logoH
   const betweenLogosW = opts.pageWidth - 2 * (opts.margin + maxLogoW + 4)
+  const title = normalizePdfText(opts.title)
   let titleW = betweenLogosW
-  try { titleW = doc.getTextWidth(opts.title) } catch (e) { /* ignore */ }
-  let titleY: number
+  try { titleW = doc.getTextWidth(title) } catch (e) { /* ignore */ }
   let ruleY: number
+  setColor(doc, 'heading')
   if (titleW <= betweenLogosW) {
-    titleY = opts.margin + rowH / 2 + 2
+    doc.text(title, opts.pageWidth / 2, opts.margin + rowH / 2 + 2, { align: 'center' })
     ruleY = opts.margin + rowH + 3.5
   } else {
-    titleY = opts.margin + rowH + 6
-    ruleY = titleY + 3.5
+    // A title too wide for the space between the logos drops below them and
+    // WRAPS to the content width (max two lines, ellipsized) — long issue /
+    // section titles must never run off the page edges.
+    const contentW = opts.pageWidth - opts.margin * 2
+    let lines: string[] = splitText(doc, title, contentW)
+    if (lines.length > 2) {
+      lines = lines.slice(0, 2)
+      lines[1] = lines[1].replace(/\s*\S*$/, '') + ' …'
+    }
+    const lineH = Math.max(5, (opts.titleFontSize || 16) * 0.42)
+    let ty = opts.margin + rowH + 6
+    for (const l of lines) {
+      doc.text(l, opts.pageWidth / 2, ty, { align: 'center' })
+      ty += lineH
+    }
+    ruleY = ty - lineH + 3.5
   }
-  setColor(doc, 'heading')
-  doc.text(opts.title, opts.pageWidth / 2, titleY, { align: 'center' })
   setColor(doc, 'text')
 
   // Hairline under the header with a short emerald brand tick on the left.
