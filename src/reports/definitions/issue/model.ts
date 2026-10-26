@@ -66,7 +66,7 @@ export interface IssueReportInput {
 
 // ---------------------------------------------------------------------------
 
-function plainText(v: any): string {
+export function plainText(v: any): string {
   const s = String(v ?? '')
   if (!/[<&]/.test(s)) return s.trim()
   try {
@@ -77,14 +77,11 @@ function plainText(v: any): string {
   }
 }
 
-function fmtDate(v: any): string {
-  if (!v) return ''
-  const d = new Date(v)
-  if (isNaN(d.getTime())) return String(v)
-  return d.toLocaleDateString('en-US')
-}
+import { daysPast, formatDateOnly } from '../../core/dates'
 
-const DAY = 24 * 60 * 60 * 1000
+// Date-only fields (dateFound/dueDate/closedDate) format WITHOUT a timezone
+// shift — see core/dates.ts (the 10/15 → 10/14 bug).
+const fmtDate = (v: any): string => formatDateOnly(v)
 
 /** Display labels for stored issue-type keys; unknown keys title-case. */
 const TYPE_LABELS: Record<string, string> = {
@@ -292,10 +289,10 @@ export function buildHistory(logs: any[], opts: { activityName?: string; issue?:
   // system overdue event
   const iss = opts.issue || {}
   const open = !['closed', 'cancelled'].includes(String(iss.status || '').toLowerCase())
-  const due = iss.dueDate ? new Date(iss.dueDate) : null
   const now = opts.generatedAt || new Date()
   const hasResponse = !!plainText(iss.response?.correctiveAction || iss.resolution)
-  if (open && due && !isNaN(due.getTime()) && now.getTime() > due.getTime() && !hasResponse) {
+  const overdueDays = daysPast(iss.dueDate, now)
+  if (open && overdueDays !== null && overdueDays > 0 && !hasResponse) {
     out.push({ date: fmtDate(iss.dueDate), text: 'Due date passed, no contractor response recorded', by: 'System', red: true, bold: true })
   }
   return out
@@ -319,13 +316,12 @@ export function assembleIssueReportModel(input: IssueReportInput): IssueReportMo
     accepted_as_is: 'Accepted by Owner as-is',
   }
 
-  // due line
+  // due line (whole days in local time — the shared date-only helpers)
   let dueLine: IssueReportModel['dueLine'] = null
-  const due = issue?.dueDate ? new Date(issue.dueDate) : null
+  const days = daysPast(issue?.dueDate, now)
   if (closed) {
     dueLine = { text: `Closed ${fmtDate(issue?.closedDate) || ''}`.trim(), red: false }
-  } else if (due && !isNaN(due.getTime())) {
-    const days = Math.round((now.getTime() - due.getTime()) / DAY)
+  } else if (days !== null) {
     dueLine = days > 0
       ? { text: `Overdue ${days} day${days === 1 ? '' : 's'} · due ${fmtDate(issue.dueDate)}`, red: true }
       : { text: `Due ${days === 0 ? 'today' : `in ${-days} day${days === -1 ? '' : 's'}`} · ${fmtDate(issue.dueDate)}`, red: false }

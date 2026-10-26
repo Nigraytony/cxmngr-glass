@@ -1,10 +1,11 @@
 // Issue report definitions (Detailed / Compact / List), built on the report
 // kit. Replaces the renderless IssuePdfReport.vue component.
 import { ReportDoc } from '../core/frame'
+import { formatDateOnly } from '../core/dates'
 import { drawTable } from '../core/table'
-import { loadImage, type ImageFormat } from '../core/images'
-import { formatDate, htmlToText, normalizePdfText, splitText } from '../core/text'
-import { SANS } from '../core/tokens'
+
+import { htmlToText, normalizePdfText } from '../core/text'
+
 import { deliverPdf, openDeliveryWindow, reportFileName } from '../core/deliver'
 import { useProjectStore } from '../../stores/project'
 
@@ -17,73 +18,6 @@ async function resolveProject(preferredPid?: any): Promise<any> {
     try { if (targetPid) project = await projectStore.fetchProject(String(targetPid)) } catch (e) { /* ignore optional project fetch */ }
   }
   return project || {}
-}
-
-/** "Issue # N — title" heading plus the two-column key-fields grid. */
-function renderIssueTitleAndFields(rd: ReportDoc, issue: any): void {
-  const doc = rd.doc
-  const numberText = issue.number != null ? `Issue # ${issue.number}` : 'Issue'
-  const titleText = issue.title ? ` — ${normalizePdfText(String(issue.title))}` : ''
-  doc.setFont(SANS, 'bold'); doc.setFontSize(14)
-  const titleLines = splitText(doc, numberText + titleText, rd.contentWidth)
-  rd.ensureSpace(Math.max(10, titleLines.length * 7) + 2)
-  doc.text(titleLines, rd.margin, rd.y)
-  rd.y += Math.max(10, titleLines.length * 7) + 2
-
-  doc.setFont(SANS, 'normal'); doc.setFontSize(10)
-  const info: Array<[string, string]> = [
-    ['Type', normalizePdfText(String(issue.type || ''))],
-    ['Priority', normalizePdfText(String(issue.priority || ''))],
-    ['Status', normalizePdfText(String(issue.status || ''))],
-    ['Found By', normalizePdfText(String(issue.foundBy || ''))],
-    ['Date Found', formatDate(issue.dateFound)],
-    ['Assigned To', normalizePdfText(String(issue.assignedTo || ''))],
-    ['Due Date', formatDate(issue.dueDate)],
-    ['Closed By', normalizePdfText(String(issue.closedBy || ''))],
-    ['Closed Date', formatDate(issue.closedDate)],
-    ['Location', normalizePdfText(String(issue.location || ''))],
-    ['System', normalizePdfText(String(issue.system || ''))],
-  ]
-  const colW = rd.contentWidth / 2
-  const rows = Math.ceil(info.length / 2)
-  rd.ensureSpace(rows * 7 + 2)
-  let i = 0
-  for (const [label, value] of info) {
-    const col = i % 2
-    const row = Math.floor(i / 2)
-    const x = rd.margin + col * colW
-    const yy = rd.y + row * 7
-    doc.setTextColor(100)
-    doc.text(label + ':', x, yy)
-    doc.setTextColor(0)
-    const vLines = splitText(doc, value, colW - 24)
-    doc.text(vLines, x + 24, yy)
-    i++
-  }
-  rd.y += rows * 7 + 2
-}
-
-/** A heading + paginated body-text section; skipped when the content is empty. */
-function renderTextSection(rd: ReportDoc, heading: string, content?: string): void {
-  const doc = rd.doc
-  const text = normalizePdfText(htmlToText(content || ''))
-  if (!text) return
-  rd.ensureSpace(12)
-  doc.setFont(SANS, 'bold'); doc.setFontSize(12)
-  doc.text(heading, rd.margin, rd.y)
-  rd.y += 6
-  doc.setFont(SANS, 'normal'); doc.setFontSize(10)
-  const lines = splitText(doc, text, rd.contentWidth)
-  const lineHeight = 5
-  let idx = 0
-  while (idx < lines.length) {
-    const remaining = Math.floor((rd.bottomLimit - rd.y) / lineHeight)
-    if (remaining <= 0) { rd.newPage(); continue }
-    const chunk = lines.slice(idx, idx + remaining)
-    doc.text(chunk, rd.margin, rd.y)
-    rd.y += chunk.length * lineHeight + 4
-    idx += chunk.length
-  }
 }
 
 /** Single-issue detailed report (the issue editor's download button).
@@ -118,25 +52,14 @@ export async function generateIssuesDetailedPdf(issues: any[]): Promise<void> {
   await generateIssuesBatchReport(issues, project, { sections: loadIssueReportSections(pid) })
 }
 
-/** Dense multi-issue report: fields + text sections only, flowing continuously. */
+/** Issue Sheets (Issues batch redesign): the compact card deck — priority
+ *  top borders, chips, clamped Condition/Action, photo thumbnails, a card
+ *  never split across pages. Replaces the old run-together compact layout. */
 export async function generateIssuesCompactPdf(issues: any[]): Promise<void> {
   if (!Array.isArray(issues) || issues.length === 0) return
-  const dlWin = openDeliveryWindow()
   const project = await resolveProject(issues[0]?.projectId)
-  const rd = await ReportDoc.create({
-    title: 'Issues Report',
-    footerLabel: 'Issues Report',
-    project,
-  })
-  for (let k = 0; k < issues.length; k++) {
-    if (k > 0) rd.sectionGap(3)
-    const issue = issues[k]
-    renderIssueTitleAndFields(rd, issue)
-    renderTextSection(rd, 'Description', issue.description)
-    renderTextSection(rd, 'Recommendation', issue.recommendation)
-    renderTextSection(rd, 'Resolution', issue.resolution)
-  }
-  deliverPdf(rd.finish(), reportFileName(['issues-compact']), dlWin)
+  const { generateIssueSheetsReport } = await import('./issue/sheets')
+  await generateIssueSheetsReport(issues, project)
 }
 
 /** Landscape flat table of issues with the caller's column selection. */
@@ -161,21 +84,48 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
     cols = ['number', 'title', 'type', 'priority', 'status', 'dueDate', 'location', 'system']
   }
 
+  // Weights sized so short enum/date columns NEVER break words mid-word
+  // ("Mediu/m", "Clos/ed"): each gets room for its longest value + header.
   const weightFor = (k: string) => {
     const key = String(k).toLowerCase()
-    if (key === 'description') return 3
-    if (key === 'title') return 1.5
-    if (key === 'priority') return 0.625
-    if (key === 'severity' || key === 'status' || key === 'number') return 0.5
-    return 1
+    if (key === 'description' || key === 'recommendation' || key === 'resolution') return 3
+    if (key === 'title') return 1.8
+    if (key === 'number') return 0.4
+    if (key === 'priority' || key === 'severity' || key === 'status' || key === 'type') return 0.85
+    if (/(date|created|updated)/.test(key)) return 0.95
+    if (key === 'tag' || key === 'system') return 0.8
+    return 1.1
   }
 
+  // Display labels, never raw field names (createdAt, responsible_person…).
+  const HEADER_LABELS: Record<string, string> = {
+    number: '#',
+    title: 'Title',
+    description: 'Description',
+    type: 'Type',
+    priority: 'Priority',
+    severity: 'Priority',
+    status: 'Status',
+    responsible_person: 'Responsible',
+    assignedto: 'Responsible',
+    foundby: 'Found by',
+    datefound: 'Date found',
+    duedate: 'Due date',
+    closeddate: 'Closed date',
+    closedby: 'Closed by',
+    createdat: 'Created',
+    updatedat: 'Updated',
+    location: 'Location',
+    system: 'System',
+    tag: 'Equipment',
+    recommendation: 'Recommendation',
+    resolution: 'Resolution',
+    labels: 'Tags',
+  }
   const headerLabel = (key: string) => {
-    if (/^responsible_person$/i.test(key)) return 'responsible'
-    if (/^number$/i.test(key)) return '#'
-    if (/^duedate$/i.test(key)) return 'due date'
-    if (/^closeddate$/i.test(key)) return 'closed date'
-    return String(key)
+    const hit = HEADER_LABELS[String(key).toLowerCase()]
+    if (hit) return hit
+    return String(key).replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^\w/, ch => ch.toUpperCase())
   }
 
   const cellText = (row: any, key: string): string => {
@@ -193,7 +143,8 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
       try { return JSON.stringify(v) } catch (e) { return String(v) }
     }
     if (/(date|created|updated)/i.test(key)) {
-      try { return v ? new Date(v).toLocaleDateString() : '' } catch (e) { return String(v) }
+      // Date-only fields must not shift a day across timezones (core/dates).
+      return formatDateOnly(v)
     }
     return normalizePdfText(String(v))
   }

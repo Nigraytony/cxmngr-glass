@@ -4373,12 +4373,17 @@ async function onDownloadDetailedReport() {
 }
 
 async function onDownloadCompactReport() {
+  if (detailedReportBusy.value) return
+  detailedReportBusy.value = true
+  showDownloadsMenu.value = false
+  const count = filteredIssues.value.length
+  ui.showInfo(`Generating issue sheets (${count} issue${count === 1 ? '' : 's'})… photos load per issue, so this can take a moment.`, { duration: 8000 })
   try {
     await generateIssuesCompactPdf(filteredIssues.value.map(mapIssueForReport))
-  } catch (e) {
-    // silent; optionally show a toast
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the issue sheets')
   } finally {
-    showDownloadsMenu.value = false
+    detailedReportBusy.value = false
   }
 }
 

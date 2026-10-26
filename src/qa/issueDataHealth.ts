@@ -4,6 +4,7 @@
 // Pure data-in/warnings-out over the light issues list, so the whole project
 // scans instantly client-side; the panel UI lives in IssuesList.vue.
 import type { QaWarning } from '../reports/qaTypes'
+import { daysPast } from '../reports/core/dates'
 
 const DAY = 24 * 60 * 60 * 1000
 const STALE_DAYS = 30
@@ -55,11 +56,10 @@ export function runIssueDataHealth(issues: any[], opts: { now?: Date } = {}): Qa
       })
     }
 
-    // 3. Overdue with no contractor response recorded.
-    const due = i?.dueDate ? new Date(i.dueDate) : null
+    // 3. Overdue with no contractor response recorded (date-only safe math).
+    const days = daysPast(i?.dueDate, now)
     const hasResponse = !!plain(i?.response?.correctiveAction) || !!plain(i?.resolution)
-    if (open && due && !isNaN(due.getTime()) && now.getTime() > due.getTime() && !hasResponse) {
-      const days = Math.round((now.getTime() - due.getTime()) / DAY)
+    if (open && days !== null && days > 0 && !hasResponse) {
       out.push({
         id: `overdue-no-response:${id}`,
         category: 'overdue-no-response',
