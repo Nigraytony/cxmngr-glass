@@ -25,10 +25,12 @@ describe('runIssueDataHealth', () => {
     expect(scan([base()])).toEqual([])
   })
 
-  it('flags recommendation language buried in the description', () => {
-    const found = cats([base({ description: 'We recommend starting the system ASAP.', recommendation: 'Fix it.' })])
+  it('flags recommendation language only when the Recommendation field is EMPTY', () => {
+    const found = cats([base({ description: 'We recommend starting the system ASAP.', recommendation: '' })])
     expect(found).toContain('rec-language')
-    // a substantial Recommendation clears it
+    // ANY written recommendation clears it — even a short one (a short
+    // recommendation is a style choice, not a data defect)
+    expect(cats([base({ description: 'We recommend starting the system ASAP.', recommendation: 'Fix it.' })])).not.toContain('rec-language')
     expect(cats([base({ description: 'We recommend starting the system ASAP.' })])).not.toContain('rec-language')
   })
 

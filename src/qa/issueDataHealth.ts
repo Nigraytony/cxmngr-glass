@@ -30,14 +30,16 @@ export function runIssueDataHealth(issues: any[], opts: { now?: Date } = {}): Qa
     const link = { type: 'issue' as const, id }
 
     // 1. Recommendation language hiding in the description while the
-    //    Recommendation field is thin.
+    //    Recommendation field is EMPTY. Any written recommendation counts —
+    //    a short one is a style choice, not a data defect (field feedback:
+    //    the earlier under-15-words heuristic produced false alarms).
     const desc = plain(i?.description)
     const rec = plain(i?.recommendation)
-    if (open && REC_LANGUAGE.test(desc) && rec.split(/\s+/).filter(Boolean).length < 15) {
+    if (open && REC_LANGUAGE.test(desc) && !rec) {
       out.push({
         id: `rec-language:${id}`,
         category: 'rec-language',
-        message: `${num}: the description contains recommendation language but the Recommendation field is ${rec ? 'thin' : 'empty'} — the contractor reads the Recommendation.`,
+        message: `${num}: the description contains recommendation language but the Recommendation field is empty — the contractor reads the Recommendation.`,
         link,
       })
     }
