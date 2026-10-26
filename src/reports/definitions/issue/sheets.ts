@@ -195,7 +195,10 @@ export async function generateIssueSheetsReport(issuesLike: any[], project: any,
     const actLines = card.action ? clamp(`Action: ${card.action}`, textW, 3, 9.3) : []
     doc.setFontSize(8.3)
     const metaText = [card.meta, card.sameCondition].filter(Boolean).join(' · ')
-    const metaLines = splitText(doc, normalizePdfText(metaText), contentW - PAD * 2).slice(0, 2)
+    // The meta line stays inside the text column too — the thumbnail owns
+    // the right rail for the card's full height (field fix: it ran under
+    // the photo and collided with the "+N more photos" caption).
+    const metaLines = splitText(doc, normalizePdfText(metaText), textW).slice(0, 2)
     const textH = 4 + titleLines.length * 5.2 + 5.5 // title + chips row
       + (condLines.length ? condLines.length * 4.4 + 1.5 : 0)
       + (actLines.length ? actLines.length * 4.4 + 1.5 : 0)
