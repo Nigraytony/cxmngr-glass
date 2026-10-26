@@ -11,26 +11,29 @@ import { COLORS, MONO, SANS } from '../../core/tokens'
 import { normalizePdfText, splitText } from '../../core/text'
 import { stampPageXofY } from '../../core/merge'
 import { fitImageToHeight } from '../../core/images'
+import { drawTable } from '../../core/table'
 import {
   CRITICAL_STYLE, GREEN, GREEN_STYLE, RED, SEV_STYLE,
-  chip, drawPhotoGrid, drawFactsGrid, outlineChip,
+  chip, drawBrandHeading, drawPhotoGrid, drawFactsGrid, outlineChip,
 } from '../../core/blocks'
 import type { IssueReportModel } from './model'
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
 
-export async function generateIssueDetailPdf(model: IssueReportModel, opts: { project?: any; sections?: Record<string, boolean> } = {}): Promise<Uint8Array> {
-  // Section toggles (IssueEdit's report-sections menu); everything on by default.
+export interface IssuePdfOptions {
+  project?: any
+  /** Section toggles (IssueEdit's report-sections menu); all on by default. */
+  sections?: Record<string, boolean>
+}
+
+/**
+ * Draw one issue sheet into an existing ReportDoc. The current page must be
+ * BARE (no branded header) — the sheet draws its own page-1 header block;
+ * continuation pages get the branded running header via rd.newPage().
+ * The batch export reuses this per issue.
+ */
+export async function renderIssueDetailInto(rd: ReportDoc, model: IssueReportModel, opts: IssuePdfOptions = {}): Promise<void> {
   const on = (k: string) => opts.sections?.[k] !== false
-  const rd = await ReportDoc.create({
-    title: model.runningTitle,
-    footerLabel: model.footerLabel,
-    project: opts.project,
-    firstPageHeader: false,
-    pageNumbers: false, // stamped as "Page X of Y" post-render
-    footerDate: false,
-    titleFontSize: 10,
-  })
   const doc = rd.doc as any
   const margin = rd.margin
   const contentW = rd.contentWidth
@@ -414,6 +417,68 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
     }
   }
 
-  const bytes = rd.output()
-  return stampPageXofY(bytes)
+}
+
+/** Single-issue report: one sheet in its own document, Page X of Y stamped. */
+export async function generateIssueDetailPdf(model: IssueReportModel, opts: IssuePdfOptions = {}): Promise<Uint8Array> {
+  const rd = await ReportDoc.create({
+    title: model.runningTitle,
+    footerLabel: model.footerLabel,
+    project: opts.project,
+    firstPageHeader: false,
+    pageNumbers: false, // stamped as "Page X of Y" post-render
+    footerDate: false,
+    titleFontSize: 10,
+  })
+  await renderIssueDetailInto(rd, model, opts)
+  return stampPageXofY(rd.output())
+}
+
+/**
+ * Batch export (Issue report redesign Step 5): one PDF with a cover table
+ * (number, title, priority, status, assigned to, due) followed by each
+ * issue's full sheet starting on a new page, with continuous page numbers.
+ */
+export async function generateIssuesBatchPdf(models: IssueReportModel[], opts: IssuePdfOptions = {}): Promise<Uint8Array> {
+  const statusAsOf = new Date().toLocaleDateString('en-US')
+  const projectName = String(opts.project?.name || '')
+  const rd = await ReportDoc.create({
+    title: [projectName, 'Issues report'].filter(Boolean).join(' · '),
+    footerLabel: `Issues report · Status as of ${statusAsOf} · Generated in cxma`,
+    project: opts.project,
+    pageNumbers: false,
+    footerDate: false,
+    titleFontSize: 11,
+  })
+
+  // Cover table
+  drawBrandHeading(rd, 'Issues report', `${models.length} issue${models.length === 1 ? '' : 's'} · status as of ${statusAsOf}`)
+  drawTable(rd, {
+    columns: [
+      { key: 'number', label: '#', weight: 0.6 },
+      { key: 'title', label: 'Issue', weight: 3.2 },
+      { key: 'priority', label: 'Priority', weight: 0.9 },
+      { key: 'status', label: 'Status', weight: 0.9 },
+      { key: 'assigned', label: 'Assigned to', weight: 1.6 },
+      { key: 'due', label: 'Due', weight: 1 },
+    ],
+    rows: models.map(m => ({
+      number: `#${m.number}`,
+      title: m.title,
+      priority: m.priority,
+      status: m.statusLabel,
+      assigned: m.assignedTo || '—',
+      due: m.dueDate || '—',
+    })),
+  })
+
+  // One sheet per issue, each starting on a fresh bare page with its own
+  // header block; the running header on continuation pages tracks the issue.
+  for (const m of models) {
+    rd.setTitle(m.runningTitle)
+    rd.newBarePage()
+    await renderIssueDetailInto(rd, m, opts)
+  }
+
+  return stampPageXofY(rd.output())
 }

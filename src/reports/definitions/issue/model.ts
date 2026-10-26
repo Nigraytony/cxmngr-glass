@@ -27,6 +27,9 @@ export interface IssueReportModel {
   closed: boolean
   verified: boolean
   dueLine: { text: string; red: boolean } | null
+  /** Plain formatted values for the batch cover table. */
+  assignedTo: string
+  dueDate: string
   lifeSafetyNote: string
   facts: Array<{ label: string; value: string; mono?: boolean }>
   condition: string
@@ -313,8 +316,9 @@ export function assembleIssueReportModel(input: IssueReportInput): IssueReportMo
     ? input.equipmentTags
     : (issue?.tag ? [String(issue.tag)] : [])
 
+  const assignedTo = formatPerson(issue?.assignedTo, shortMap)
   const facts: IssueReportModel['facts'] = [
-    { label: 'Assigned to', value: formatPerson(issue?.assignedTo, shortMap) },
+    { label: 'Assigned to', value: assignedTo },
     { label: 'Found by', value: formatPerson(issue?.foundBy, shortMap) },
     { label: 'Found / due', value: [fmtDate(issue?.dateFound), fmtDate(issue?.dueDate)].filter(Boolean).join(' → ') },
     { label: 'Equipment', value: equipmentTags.join(' · '), mono: true },
@@ -345,6 +349,8 @@ export function assembleIssueReportModel(input: IssueReportInput): IssueReportMo
     closed,
     verified: !!verification,
     dueLine,
+    assignedTo,
+    dueDate: fmtDate(issue?.dueDate),
     lifeSafetyNote: issue?.lifeSafety ? plainText(issue?.lifeSafetyNote || 'This issue carries a life-safety aspect.') : '',
     facts,
     condition: plainText(issue?.description),

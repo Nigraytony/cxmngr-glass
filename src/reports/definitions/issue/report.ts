@@ -154,3 +154,32 @@ export async function generateIssueDetailReport(issueLike: any, project: any, op
   const bytes = await generateIssueDetailPdf(model, { project, sections: opts.sections })
   deliverPdfBytes(bytes, reportFileName([`issue-${model.number}`, model.title]))
 }
+
+/** The Issues list's per-project section preferences (set in IssueEdit's ▾ menu). */
+export function loadIssueReportSections(projectId: string): Record<string, boolean> | undefined {
+  try {
+    const raw = localStorage.getItem(`issueReportSections:${projectId || 'global'}`)
+    const parsed = raw ? JSON.parse(raw) : null
+    return parsed && typeof parsed === 'object' ? parsed : undefined
+  } catch (e) {
+    return undefined
+  }
+}
+
+/**
+ * Batch export (Step 5): one PDF with a cover table and each selected issue
+ * as its own full sheet. Gathers every issue's photos/logs/links, so large
+ * selections take a while — the caller shows progress.
+ */
+export async function generateIssuesBatchReport(issuesLike: any[], project: any, opts: IssueReportOptions = {}): Promise<void> {
+  const models = []
+  for (const il of issuesLike) {
+    try {
+      models.push(await assembleIssueModelFor(il, project))
+    } catch (e) { /* skip an unloadable issue rather than failing the batch */ }
+  }
+  if (!models.length) return
+  const { generateIssuesBatchPdf } = await import('./pdf')
+  const bytes = await generateIssuesBatchPdf(models, { project, sections: opts.sections })
+  deliverPdfBytes(bytes, reportFileName([String(project?.name || ''), 'issues-report']))
+}

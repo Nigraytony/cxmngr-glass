@@ -19,10 +19,6 @@ async function resolveProject(preferredPid?: any): Promise<any> {
   return project || {}
 }
 
-function issueHeaderTitle(issue: any): string {
-  return issue?.number != null ? `Issue ${issue.number} Report` : 'Issue Report'
-}
-
 /** "Issue # N — title" heading plus the two-column key-fields grid. */
 function renderIssueTitleAndFields(rd: ReportDoc, issue: any): void {
   const doc = rd.doc
@@ -90,97 +86,6 @@ function renderTextSection(rd: ReportDoc, heading: string, content?: string): vo
   }
 }
 
-/** Full single-issue layout: fields, text sections, comments, photos, attachments. */
-async function renderIssueDetails(rd: ReportDoc, issue: any): Promise<void> {
-  const doc = rd.doc
-  renderIssueTitleAndFields(rd, issue)
-  renderTextSection(rd, 'Description', issue.description)
-  renderTextSection(rd, 'Recommendation', issue.recommendation)
-  renderTextSection(rd, 'Resolution', issue.resolution)
-
-  // Comments
-  try {
-    const commentsArr: any[] = Array.isArray(issue.comments) ? issue.comments : []
-    if (commentsArr.length) {
-      const drawCommentsHeader = (continued = false) => {
-        rd.ensureSpace(12)
-        doc.setFont(SANS, 'bold'); doc.setFontSize(12)
-        doc.text(continued ? 'Comments (continued)' : 'Comments', rd.margin, rd.y)
-        rd.y += 6
-        doc.setFont(SANS, 'normal'); doc.setFontSize(9)
-      }
-      drawCommentsHeader(false)
-      for (const cm of commentsArr) {
-        const namePart = cm?.name ? String(cm.name) : ''
-        const datePart = cm?.createdAt ? formatDate(String(cm.createdAt)) : ''
-        const prefix = namePart ? `${namePart}${datePart ? ` (${datePart})` : ''}: ` : ''
-        const line = `${prefix}${htmlToText(cm?.text || '')}`
-        const lines = splitText(doc, line, rd.contentWidth)
-        const needed = Math.min(12, lines.length * 4) + 2
-        if (rd.ensureSpace(needed)) drawCommentsHeader(true)
-        doc.text(lines, rd.margin, rd.y)
-        rd.y += needed
-      }
-    }
-  } catch (e) { /* ignore */ }
-
-  // Photos (up to 6 thumbnails, 3 per row)
-  try {
-    const phs: any[] = Array.isArray(issue.photos) ? issue.photos : []
-    const imgs: Array<{ dataUrl: string, format?: ImageFormat }> = []
-    for (let p = 0; p < Math.min(6, phs.length); p++) {
-      const src = typeof phs[p] === 'string' ? phs[p] : (phs[p]?.data || phs[p]?.url || phs[p]?.src)
-      const img = await loadImage(src)
-      if (img.dataUrl) imgs.push({ dataUrl: img.dataUrl, format: img.format })
-    }
-    if (imgs.length) {
-      rd.ensureSpace(10)
-      doc.setFont(SANS, 'bold'); doc.setFontSize(12)
-      doc.text('Photos', rd.margin, rd.y)
-      rd.y += 4
-      const thumbW = (rd.contentWidth - 8) / 3
-      const thumbH = thumbW * 0.75
-      let rowStart = 0
-      while (rowStart < imgs.length) {
-        const rowImgs = imgs.slice(rowStart, rowStart + 3)
-        rd.ensureSpace(thumbH + 4)
-        rowImgs.forEach((it, idxInRow) => {
-          const x = rd.margin + idxInRow * (thumbW + 4)
-          try { doc.addImage(it.dataUrl, it.format || 'JPEG', x, rd.y, thumbW, thumbH) } catch (e) { /* ignore */ }
-        })
-        rd.y += thumbH + 4
-        rowStart += 3
-      }
-      rd.y += 2
-    }
-  } catch (e) { /* ignore */ }
-
-  // Attachments (list up to 5)
-  try {
-    const atts: any[] = Array.isArray(issue.attachments) ? issue.attachments : (issue as any)?.documents || []
-    if (atts.length) {
-      rd.ensureSpace(12)
-      doc.setFont(SANS, 'bold'); doc.setFontSize(12)
-      doc.text('Attachments', rd.margin, rd.y)
-      rd.y += 6
-      doc.setFont(SANS, 'normal'); doc.setFontSize(9)
-      for (let a = 0; a < Math.min(5, atts.length); a++) {
-        const att = atts[a]
-        const name = (typeof att === 'string') ? att.split('/').pop() : (att?.name || att?.filename || att?.url || 'Attachment')
-        const lines = splitText(doc, String(name), rd.contentWidth)
-        if (rd.ensureSpace(10)) {
-          doc.setFont(SANS, 'bold'); doc.setFontSize(12)
-          doc.text('Attachments (continued)', rd.margin, rd.y)
-          rd.y += 6
-          doc.setFont(SANS, 'normal'); doc.setFontSize(9)
-        }
-        doc.text(lines, rd.margin + 2, rd.y)
-        rd.y += Math.min(10, lines.length * 4) + 1
-      }
-    }
-  } catch (e) { /* ignore */ }
-}
-
 /** Single-issue detailed report (the issue editor's download button).
  *  Redesigned (issue-mockup.pdf): delegates to definitions/issue/report,
  *  which fetches the full record + photos + logs and renders the two-page
@@ -193,25 +98,15 @@ export async function generateIssuePdf(issue: any, opts: { sections?: Record<str
   await generateIssueDetailReport(issue, project, opts)
 }
 
-/** One issue per page (or more), with full detail sections. */
+/** Batch export (Issue report redesign Step 5): a cover table followed by
+ *  each selected issue's full redesigned sheet, continuous page numbers.
+ *  Honors the per-project section preferences from IssueEdit's ▾ menu. */
 export async function generateIssuesDetailedPdf(issues: any[]): Promise<void> {
   if (!Array.isArray(issues) || issues.length === 0) return
-  const dlWin = openDeliveryWindow()
   const project = await resolveProject(issues[0]?.projectId)
-  const rd = await ReportDoc.create({
-    title: issueHeaderTitle(issues[0]),
-    footerLabel: 'Issues Report',
-    project,
-  })
-  for (let idx = 0; idx < issues.length; idx++) {
-    const issue = issues[idx]
-    if (idx > 0) {
-      rd.setTitle(issueHeaderTitle(issue))
-      rd.newPage()
-    }
-    await renderIssueDetails(rd, issue)
-  }
-  deliverPdf(rd.finish(), reportFileName(['issues-detailed']), dlWin)
+  const { generateIssuesBatchReport, loadIssueReportSections } = await import('./issue/report')
+  const pid = String(issues[0]?.projectId || project?._id || project?.id || '')
+  await generateIssuesBatchReport(issues, project, { sections: loadIssueReportSections(pid) })
 }
 
 /** Dense multi-issue report: fields + text sections only, flowing continuously. */

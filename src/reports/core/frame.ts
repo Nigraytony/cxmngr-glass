@@ -287,6 +287,14 @@ export class ReportDoc {
     this.drawHeader()
   }
 
+  /** Start a new page WITHOUT the branded header (custom first pages in
+   *  batch reports, e.g. each issue sheet's own header block). */
+  newBarePage(): void {
+    this.doc.addPage()
+    setZeroCharSpace(this.doc)
+    this.y = this.margin
+  }
+
   /** Page-break if `h` mm won't fit above the footer. Returns true if it broke. */
   ensureSpace(h: number): boolean {
     if (this.y + h > this.bottomLimit) {
