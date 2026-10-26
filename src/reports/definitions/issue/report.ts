@@ -36,19 +36,30 @@ async function fetchActivityName(activityId: string): Promise<string> {
   }
 }
 
+// The docs folder tree is fetched once per project and reused for ~30s so a
+// batch export of N issues doesn't refetch it N times.
+const treeCache = new Map<string, { ts: number; flat: Array<{ id: string; name: string; parentId: string | null }> }>()
+async function docsTreeFlat(projectId: string): Promise<Array<{ id: string; name: string; parentId: string | null }>> {
+  const hit = treeCache.get(projectId)
+  if (hit && Date.now() - hit.ts < 30_000) return hit.flat
+  const tree = (await http.get(`/api/projects/${projectId}/docs/folders/tree`)).data
+  const flat: Array<{ id: string; name: string; parentId: string | null }> = []
+  const walk = (node: any) => {
+    for (const ch of (Array.isArray(node?.children) ? node.children : [])) {
+      if (ch && ch.id) flat.push({ id: String(ch.id), name: String(ch.name || ''), parentId: ch.parentId ? String(ch.parentId) : null })
+      walk(ch)
+    }
+  }
+  walk(tree?.root)
+  treeCache.set(projectId, { ts: Date.now(), flat })
+  return flat
+}
+
 /** Azure docs photos for the issue (Photos/Issue/<id>), as data URLs. */
 async function fetchAzureIssuePhotos(projectId: string, issueId: string, limit = 12): Promise<Array<{ dataUrl: string; fileId: string }>> {
   if (!projectId || !issueId) return []
   try {
-    const tree = (await http.get(`/api/projects/${projectId}/docs/folders/tree`)).data
-    const flat: Array<{ id: string; name: string; parentId: string | null }> = []
-    const walk = (node: any) => {
-      for (const ch of (Array.isArray(node?.children) ? node.children : [])) {
-        if (ch && ch.id) flat.push({ id: String(ch.id), name: String(ch.name || ''), parentId: ch.parentId ? String(ch.parentId) : null })
-        walk(ch)
-      }
-    }
-    walk(tree?.root)
+    const flat = await docsTreeFlat(projectId)
     let parentId: string | null = null
     for (const seg of ['Photos', 'Issue', issueId]) {
       const f = flat.find((x) => (x.parentId || null) === (parentId || null) && x.name.trim() === seg)

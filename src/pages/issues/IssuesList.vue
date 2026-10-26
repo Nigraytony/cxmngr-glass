@@ -737,7 +737,7 @@
                     Reports
                   </div>
                   <button
-                    :disabled="!filteredIssues.length"
+                    :disabled="!filteredIssues.length || detailedReportBusy"
                     role="menuitem"
                     class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
                     @click="onDownloadDetailedReport"
@@ -762,7 +762,7 @@
                         stroke-width="1.5"
                       />
                     </svg>
-                    <span>Detailed PDF (one per issue)</span>
+                    <span>{{ detailedReportBusy ? 'Generating…' : 'Detailed PDF (one per issue)' }}</span>
                   </button>
                   <button
                     :disabled="!filteredIssues.length"
@@ -1929,7 +1929,7 @@
                     Reports
                   </div>
                   <button
-                    :disabled="!filteredIssues.length"
+                    :disabled="!filteredIssues.length || detailedReportBusy"
                     role="menuitem"
                     class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
                     @click="onDownloadDetailedReport"
@@ -1954,7 +1954,7 @@
                         stroke-width="1.5"
                       />
                     </svg>
-                    <span>Detailed PDF (one per issue)</span>
+                    <span>{{ detailedReportBusy ? 'Generating…' : 'Detailed PDF (one per issue)' }}</span>
                   </button>
                   <button
                     :disabled="!filteredIssues.length"
@@ -4247,13 +4247,21 @@ function mapIssueForReport(i: any) {
   }
 }
 
+const detailedReportBusy = ref(false)
 async function onDownloadDetailedReport() {
+  if (detailedReportBusy.value) return
+  detailedReportBusy.value = true
+  showDownloadsMenu.value = false
+  const count = filteredIssues.value.length
+  // Each issue fetches its full record, photos, logs and links — give the
+  // user feedback instead of a long silent gather.
+  ui.showInfo(`Generating issues report (${count} issue${count === 1 ? '' : 's'})… this can take a minute for large selections.`, { duration: 8000 })
   try {
     await generateIssuesDetailedPdf(filteredIssues.value.map(mapIssueForReport))
-  } catch (e) {
-    // silent; optionally show a toast
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the issues report')
   } finally {
-    showDownloadsMenu.value = false
+    detailedReportBusy.value = false
   }
 }
 
