@@ -83,13 +83,13 @@ export async function buildIssueDocxHtml(model: IssueReportModel, opts: IssueDoc
     ? `<span style="font-weight:bold; font-size:10px; color:${GREEN}; background-color:#d1fae5;">&nbsp;CLOSED&nbsp;</span>`
     : `<span style="font-weight:bold; font-size:10px; color:${sev.text}; background-color:${sev.bg};">&nbsp;${esc(model.priority.toUpperCase())}&nbsp;</span>`
   const statusChip = closedVerified ? '' : ` <span style="font-weight:bold; font-size:10px; color:${SLATE};">[${esc(model.statusLabel)}]</span>`
-  const dueLine = model.dueLine
-    ? `<p style="font-weight:bold; font-size:10px; color:${model.dueLine.red ? RED : MUTED}; text-align:right; margin:2px 0 0;">${esc(model.dueLine.text)}</p>`
+  // Chips + due line on their own full-width right-aligned line (a narrow
+  // side cell wraps badly in Word); the title gets the full width below.
+  const dueInline = model.dueLine
+    ? ` &nbsp;·&nbsp; <span style="font-weight:bold; font-size:10px; color:${model.dueLine.red ? RED : MUTED};">${esc(model.dueLine.text)}</span>`
     : ''
-  parts.push(`<table style="width:100%; border:0;"><tr>
-    ${td(`<h1 style="font-size:20px; margin:0;"><span style="font-family:Consolas,monospace; color:${MUTED};">#${esc(model.number)}</span> <span style="color:${SLATE};">${esc(model.title)}</span></h1>`)}
-    ${td(`<p style="text-align:right; margin:0;">${priChip}${statusChip}</p>${dueLine}`, 'width:30%;')}
-  </tr></table>`)
+  parts.push(`<p style="text-align:right; margin:0 0 3px;">${priChip}${statusChip}${dueInline}</p>`)
+  parts.push(`<h1 style="font-size:20px; margin:0 0 4px;"><span style="font-family:Consolas,monospace; color:${MUTED};">#${esc(model.number)}</span> <span style="color:${SLATE};">${esc(model.title)}</span></h1>`)
 
   if (model.lifeSafetyNote) {
     parts.push(`<table style="width:100%; border-collapse:collapse; margin:6px 0;"><tr>
@@ -106,7 +106,7 @@ export async function buildIssueDocxHtml(model: IssueReportModel, opts: IssueDoc
       grid += '<tr>' + row.map(f => td(
         `<p style="font-size:8.5px; color:${MUTED}; margin:0;">${esc(f.label)}</p>
          <p style="font-size:10.5px; color:${SLATE}; font-weight:bold; margin:1px 0 0;${f.mono ? ' font-family:Consolas,monospace;' : ''}">${esc(f.value)}</p>`,
-        `border:1px solid ${HAIRLINE};`,
+        `border:1px solid ${HAIRLINE}; width:33%;`,
       )).join('') + '</tr>'
     }
     if (grid) parts.push(`<table style="width:100%; border-collapse:collapse; margin:8px 0;">${grid}</table>`)
@@ -212,7 +212,7 @@ export async function buildIssueDocxHtml(model: IssueReportModel, opts: IssueDoc
     const rows = model.history.map(hr => {
       const color = hr.red ? RED : (hr.bold ? SLATE : INK)
       return `<tr>
-        <td style="border-bottom:1px solid ${HAIRLINE}; padding:4px 6px; font-size:9px; color:${hr.red ? RED : MUTED}; width:18%;${hr.red ? ' font-weight:bold;' : ''}">${esc(hr.date)}</td>
+        <td style="border-bottom:1px solid ${HAIRLINE}; padding:4px 6px; font-size:9px; color:${hr.red ? RED : MUTED}; width:20%;${hr.red ? ' font-weight:bold;' : ''}">${esc(hr.date)}</td>
         <td style="border-bottom:1px solid ${HAIRLINE}; padding:4px 6px; font-size:10px; color:${color};${(hr.bold || hr.red) ? ' font-weight:bold;' : ''}">${esc(hr.text)}</td>
         <td style="border-bottom:1px solid ${HAIRLINE}; padding:4px 6px; font-size:9px; color:${MUTED}; text-align:right; width:15%;">${esc(hr.by)}</td>
       </tr>`

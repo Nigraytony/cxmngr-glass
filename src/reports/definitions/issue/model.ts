@@ -174,22 +174,46 @@ const FIELD_LABELS: Record<string, string> = {
   closedDate: 'Closed date',
   closedBy: 'Closed by',
   lifeSafety: 'Life-safety flag',
+  lifeSafetyNote: 'Life-safety note',
   reference: 'Reference',
+  equipmentIds: 'Equipment links',
+  oprItemIds: 'OPR links',
+  documents: 'Attachments',
+  attachments: 'Attachments',
+  response: 'Contractor response',
+  verification: 'CxA verification',
 }
-const IGNORED_KEYS = new Set(['projectId', 'updatedAt', 'createdAt', '_id', 'id', '__v', 'number', 'clientId', 'expectedVersion'])
+// Internal/bookkeeping fields never worth a history line.
+const IGNORED_KEYS = new Set(['projectId', 'updatedAt', 'createdAt', '_id', 'id', '__v', 'number', 'clientId', 'expectedVersion', 'photoMeta'])
 
 function describeDetails(details: any, activityName?: string): string {
   if (!details || typeof details !== 'object') return ''
   const keys = Object.keys(details).filter(k => !IGNORED_KEYS.has(k))
   if (!keys.length) return ''
   const parts: string[] = []
-  // structured diffs {field, from, to} (logged going forward)
+  // structured diffs {field, from, to} (logged going forward). Fields with
+  // no display label are internal and stay out of the history; a diff whose
+  // truncated values read identically collapses to "<label> edited".
   if (Array.isArray(details.changes)) {
+    const editedLabels: string[] = []
     for (const ch of details.changes) {
-      const label = FIELD_LABELS[String(ch?.field)] || String(ch?.field || '')
-      if (ch?.from !== undefined && ch?.to !== undefined && String(ch.from) && String(ch.to)) {
-        parts.push(`${label} changed ${plainText(ch.from).slice(0, 40)} → ${plainText(ch.to).slice(0, 40)}`)
-      } else if (label) parts.push(`${label} edited`)
+      const field = String(ch?.field || '')
+      if (IGNORED_KEYS.has(field)) continue
+      const label = FIELD_LABELS[field]
+      if (!label) continue
+      const from = plainText(ch?.from).slice(0, 40)
+      const to = plainText(ch?.to).slice(0, 40)
+      if (from && to && from !== to) {
+        parts.push(`${label} changed ${from} → ${to}`)
+      } else if (!editedLabels.includes(label)) {
+        editedLabels.push(label)
+      }
+    }
+    if (editedLabels.length) {
+      const list = editedLabels.length > 2
+        ? `${editedLabels.slice(0, -1).join(', ')} and ${editedLabels[editedLabels.length - 1]}`
+        : editedLabels.join(' and ')
+      parts.push(`${list} edited`)
     }
     return parts.join('; ')
   }

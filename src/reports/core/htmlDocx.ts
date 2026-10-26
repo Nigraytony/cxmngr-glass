@@ -57,6 +57,9 @@ export async function convertHtmlToDocxBlob(html: string, header: string, footer
     header: true,
     footer: true,
     pageNumber: true,
+    // Our report pages draw their own page-1 header block (logos + project),
+    // so the running header/footer starts on page 2 — same as the PDFs.
+    skipFirstHeaderFooter: true,
     // Match the PDF reports — IBM Plex Sans as the document default (Word falls
     // back to a clean sans for anyone who doesn't have it installed).
     font: 'IBM Plex Sans',
