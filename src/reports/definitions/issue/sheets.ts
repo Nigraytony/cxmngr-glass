@@ -72,7 +72,10 @@ function buildCard(i: any, shortMap: Record<string, string>, now: Date, sameOf: 
   const id = String(i?.id || i?._id || '')
   const same = sameOf.get(id)
 
-  const photos: any[] = Array.isArray(i?.photos) ? i.photos.filter((p: any) => p && (p.data || p.url)) : []
+  // Thumbnail + count resolved by the gather (Azure docs photos + legacy
+  // base64 subdocs); stashed on the row as _photoSrc/_photoCount.
+  const photoSrc: string | undefined = i?._photoSrc || undefined
+  const photoCount: number = typeof i?._photoCount === 'number' ? i._photoCount : 0
   return {
     number: i?.number != null ? `#${i.number}` : '',
     title,
@@ -86,8 +89,8 @@ function buildCard(i: any, shortMap: Record<string, string>, now: Date, sameOf: 
     action: plainText(i?.recommendation),
     meta: metaBits.join(' · '),
     sameCondition: same && same.length ? `Same condition: ${same.join(', ')}` : '',
-    photo: photos[0] ? String(photos[0].data || photos[0].url) : undefined,
-    morePhotos: Math.max(0, photos.length - 1),
+    photo: photoSrc,
+    morePhotos: Math.max(0, photoCount - 1),
   }
 }
 
@@ -101,18 +104,29 @@ export async function generateIssueSheetsReport(issuesLike: any[], project: any,
   const statusAsOf = now.toLocaleDateString('en-US')
   const shortMap: Record<string, string> = (project?.reportSettings && project.reportSettings.companyShortNames) || {}
 
-  // Full records (photos ride on the full issue document); a failed fetch
-  // falls back to the light row — the card just has no thumbnail.
+  // Full records plus each issue's photos: Azure docs photos (where uploads
+  // live now) win; legacy base64 subdocs are the fallback. Only the FIRST
+  // photo downloads — the card shows one thumbnail and a "+N more" count.
+  const { listAzureIssuePhotoFiles, downloadDocFileDataUrl } = await import('./report')
+  const projectId = String(project?._id || project?.id || issuesLike[0]?.projectId || '')
   const full: any[] = []
   for (const row of issuesLike) {
     const id = String(row?.id || row?._id || '')
-    if (!id) { full.push(row); continue }
-    try {
-      const res = await http.get(`/api/issues/${id}`)
-      full.push(res.data && typeof res.data === 'object' ? res.data : row)
-    } catch (e) {
-      full.push(row)
+    let rec: any = row
+    if (id) {
+      try {
+        const res = await http.get(`/api/issues/${id}`)
+        if (res.data && typeof res.data === 'object') rec = res.data
+      } catch (e) { /* light row fallback */ }
     }
+    try {
+      const azure = id ? await listAzureIssuePhotoFiles(projectId, id) : []
+      const legacy: any[] = (Array.isArray(rec?.photos) ? rec.photos : []).filter((p: any) => p && (p.data || p.url))
+      rec._photoCount = azure.length + legacy.length
+      if (azure.length) rec._photoSrc = await downloadDocFileDataUrl(projectId, azure[0].id)
+      if (!rec._photoSrc && legacy[0]) rec._photoSrc = String(legacy[0].data || legacy[0].url)
+    } catch (e) { /* card just has no thumbnail */ }
+    full.push(rec)
   }
 
   // Sort: priority (Critical first) then due date ascending; closed last.

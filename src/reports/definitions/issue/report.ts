@@ -56,8 +56,8 @@ async function docsTreeFlat(projectId: string): Promise<Array<{ id: string; name
   return flat
 }
 
-/** Azure docs photos for the issue (Photos/Issue/<id>), as data URLs. */
-async function fetchAzureIssuePhotos(projectId: string, issueId: string, limit = 12): Promise<Array<{ dataUrl: string; fileId: string }>> {
+/** The issue's Azure photo FILES (Photos/Issue/<id>), metadata only. */
+export async function listAzureIssuePhotoFiles(projectId: string, issueId: string): Promise<Array<{ id: string; name: string }>> {
   if (!projectId || !issueId) return []
   try {
     const flat = await docsTreeFlat(projectId)
@@ -68,26 +68,39 @@ async function fetchAzureIssuePhotos(projectId: string, issueId: string, limit =
       parentId = f.id
     }
     const filesRes = (await http.get(`/api/projects/${projectId}/docs/files`, { params: { folderId: parentId } })).data
-    const files = (Array.isArray(filesRes?.files) ? filesRes.files : [])
+    return (Array.isArray(filesRes?.files) ? filesRes.files : [])
       .filter((f: any) => f && f.status !== 'deleted' && String(f.contentType || '').toLowerCase().startsWith('image/'))
-    const out: Array<{ dataUrl: string; fileId: string }> = []
-    for (const f of files.slice(0, limit)) {
-      try {
-        const { downloadUrl } = (await http.get(`/api/projects/${projectId}/docs/files/${f.id}/download-url`)).data
-        const blob = (await axios.get(downloadUrl, { responseType: 'blob', withCredentials: false })).data
-        const dataUrl: string = await new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(String(reader.result || ''))
-          reader.onerror = () => reject(reader.error || new Error('read failed'))
-          reader.readAsDataURL(blob)
-        })
-        if (dataUrl) out.push({ dataUrl, fileId: String(f.id) })
-      } catch (e) { /* skip this photo */ }
-    }
-    return out
+      .map((f: any) => ({ id: String(f.id), name: String(f.name || '') }))
   } catch (e) {
     return []
   }
+}
+
+/** One Azure doc file as a data URL ('' on failure). */
+export async function downloadDocFileDataUrl(projectId: string, fileId: string): Promise<string> {
+  try {
+    const { downloadUrl } = (await http.get(`/api/projects/${projectId}/docs/files/${fileId}/download-url`)).data
+    const blob = (await axios.get(downloadUrl, { responseType: 'blob', withCredentials: false })).data
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(reader.error || new Error('read failed'))
+      reader.readAsDataURL(blob)
+    })
+  } catch (e) {
+    return ''
+  }
+}
+
+/** Azure docs photos for the issue (Photos/Issue/<id>), as data URLs. */
+async function fetchAzureIssuePhotos(projectId: string, issueId: string, limit = 12): Promise<Array<{ dataUrl: string; fileId: string }>> {
+  const files = await listAzureIssuePhotoFiles(projectId, issueId)
+  const out: Array<{ dataUrl: string; fileId: string }> = []
+  for (const f of files.slice(0, limit)) {
+    const dataUrl = await downloadDocFileDataUrl(projectId, f.id)
+    if (dataUrl) out.push({ dataUrl, fileId: f.id })
+  }
+  return out
 }
 
 /** OPR items linked to the issue (best effort — the OPR module is an add-on). */

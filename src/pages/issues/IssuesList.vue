@@ -2113,11 +2113,13 @@ type IssueRow = (Partial<Issue> & {
   project?: any
 }) & Record<string, any>
 
-// Utility: format a date string to a readable format
+// Utility: format a date string to a readable format. Date-only values
+// (YYYY-MM-DD / UTC-midnight ISO) parse at LOCAL midnight via the shared
+// helper so the list never shows a day earlier than the reports do.
 function formatDate(date: string | number | Date | null | undefined): string {
   if (!date) return ''
-  const d = new Date(date)
-  if (Number.isNaN(d.getTime())) return ''
+  const d = dateOnlyToLocal(date)
+  if (!d || Number.isNaN(d.getTime())) return ''
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
@@ -2160,6 +2162,7 @@ import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import ReportQaModal from '../../components/reports/ReportQaModal.vue'
 import type { QaWarning } from '../../reports/qaTypes'
+import { dateOnlyToLocal } from '../../reports/core/dates'
 import { useIssuesStore } from '../../stores/issues'
 import { issuesRepository } from '../../data/issuesRepository'
 import { useLocal } from '../../data/offlineGate'
