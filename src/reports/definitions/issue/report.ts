@@ -4,7 +4,8 @@
 // the PDF. IssueEdit and the issues list both come through here.
 import axios from 'axios'
 import http from '../../../utils/http'
-import { deliverPdfBytes, reportFileName } from '../../core/deliver'
+import { deliverBlob, deliverPdfBytes, reportFileName } from '../../core/deliver'
+import { loadImage } from '../../core/images'
 import { assembleIssueReportModel, type IssueReportModel } from './model'
 import { generateIssueDetailPdf } from './pdf'
 
@@ -164,6 +165,21 @@ export async function generateIssueDetailReport(issueLike: any, project: any, op
   const model = await assembleIssueModelFor(issueLike, project)
   const bytes = await generateIssueDetailPdf(model, { project, sections: opts.sections })
   deliverPdfBytes(bytes, reportFileName([`issue-${model.number}`, model.title]))
+}
+
+/** Generate + deliver the Issue Detail report as an editable Word document.
+ *  Same model and section toggles as the PDF, so the two cannot drift. */
+export async function generateIssueDetailDocx(issueLike: any, project: any, opts: IssueReportOptions = {}): Promise<void> {
+  const model = await assembleIssueModelFor(issueLike, project)
+  const { generateIssueReportDocx } = await import('./docx')
+  const client = await loadImage(project?.logo)
+  const cxa = await loadImage(project?.commissioning_agent?.logo)
+  const blob = await generateIssueReportDocx(model, {
+    project,
+    sections: opts.sections,
+    logos: { client: client?.dataUrl, cxa: cxa?.dataUrl },
+  })
+  deliverBlob(blob, reportFileName([`issue-${model.number}`, model.title], 'docx'))
 }
 
 /** The Issues list's per-project section preferences (set in IssueEdit's ▾ menu). */

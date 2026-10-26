@@ -851,6 +851,58 @@
                   </svg>
                   <span>{{ downloadingReport ? 'Generating…' : 'Download PDF' }}</span>
                 </button>
+                <button
+                  class="px-3 py-2 rounded-md bg-sky-500/20 border border-sky-400/50 text-sky-100 hover:bg-sky-500/30 inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="downloadingWord"
+                  :title="downloadingWord ? 'Generating Word document…' : 'Download an editable Word (.docx) version of this report'"
+                  @click="downloadIssueDocx"
+                >
+                  <svg
+                    v-if="downloadingWord"
+                    class="w-4 h-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="3"
+                    />
+                    <path
+                      class="opacity-90"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"
+                    />
+                  </svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      d="M6 2h7l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M13 2v6h6"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M7 12l1.5 6 1.5-4 1.5 4 1.5-6"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  <span>{{ downloadingWord ? 'Generating…' : 'Download Word' }}</span>
+                </button>
                 <div class="relative">
                   <button
                     type="button"
@@ -1491,7 +1543,7 @@ import { useEquipmentStore } from '../../stores/equipment'
 import { useUiStore } from '../../stores/ui'
 import { useAuthStore } from '../../stores/auth'
 import { useAiStore, type SuggestedTag } from '../../stores/ai'
-import { generateIssuePdf } from '../../reports/definitions/issue'
+import { generateIssueDocx, generateIssuePdf } from '../../reports/definitions/issue'
 import { htmlToText } from '../../reports/core/text'
 import http from '../../utils/http'
 
@@ -2029,6 +2081,21 @@ async function downloadIssuePdf() {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate report')
   } finally {
     downloadingReport.value = false
+  }
+}
+
+// Editable Word (.docx) — same model and section toggles as the PDF.
+const downloadingWord = ref(false)
+async function downloadIssueDocx() {
+  if (downloadingWord.value) return
+  downloadingWord.value = true
+  showReportSections.value = false
+  try {
+    await generateIssueDocx({ ...form, id: id.value }, { sections: { ...reportSections } })
+  } catch (e: any) {
+    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate Word document')
+  } finally {
+    downloadingWord.value = false
   }
 }
 
