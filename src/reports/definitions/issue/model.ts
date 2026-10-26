@@ -34,6 +34,8 @@ export interface IssueReportModel {
   referenceLine: string
   photos: Array<{ dataUrl: string; caption: string }>
   photosNote: string
+  /** Related OPR items ("#3 · text · category"). */
+  oprItems: Array<{ ref: string; text: string; category: string }>
   response: { correctiveAction: string; completedDate: string; respondedBy: string } | null
   verification: { outcomeLabel: string; verifiedBy: string; verifiedDate: string; notes: string } | null
   history: HistoryLine[]
@@ -54,6 +56,8 @@ export interface IssueReportInput {
   logs?: any[]
   /** Azure + legacy photos, already as data URLs with captions when known. */
   photos?: Array<{ dataUrl: string; caption?: string }>
+  /** Resolved OPR items linked to the issue. */
+  oprItems?: Array<{ ref: string; text: string; category: string }>
   generatedAt?: Date
 }
 
@@ -348,6 +352,7 @@ export function assembleIssueReportModel(input: IssueReportInput): IssueReportMo
     referenceLine: plainText(issue?.reference || ''),
     photos,
     photosNote: photos.length ? `${photos.length} photo${photos.length === 1 ? '' : 's'}${takenDate ? ` · taken ${takenDate}` : ''}` : '',
+    oprItems: (input.oprItems || []).filter(o => o && o.text),
     response: responseRaw ? {
       correctiveAction: plainText(responseRaw.correctiveAction),
       completedDate: fmtDate(responseRaw.completedDate),

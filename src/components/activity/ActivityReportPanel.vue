@@ -235,7 +235,7 @@
             >
             <select
               v-model="a.role"
-              class="col-span-5 md:col-span-4 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm [&>option]:bg-slate-800"
+              class="col-span-5 md:col-span-4 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm [&>option]:bg-slate-800 [&>option]:text-white"
             >
               <option value="">
                 Role…
@@ -267,7 +267,7 @@
             </button>
             <select
               v-if="importCandidates.length"
-              class="rounded-md bg-white/10 border border-white/15 px-2 py-1 text-white/80 text-xs [&>option]:bg-slate-800"
+              class="rounded-md bg-white/10 border border-white/15 px-2 py-1 text-white/80 text-xs [&>option]:bg-slate-800 [&>option]:text-white"
               @change="importFrom(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
             >
               <option value="">

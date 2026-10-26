@@ -186,11 +186,11 @@ async function renderIssueDetails(rd: ReportDoc, issue: any): Promise<void> {
  *  which fetches the full record + photos + logs and renders the two-page
  *  issue sheet. The multi-issue batch exports below keep the legacy layout
  *  until the batch-export phase of the redesign. */
-export async function generateIssuePdf(issue: any): Promise<void> {
+export async function generateIssuePdf(issue: any, opts: { sections?: Record<string, boolean> } = {}): Promise<void> {
   if (!issue) return
   const project = await resolveProject(issue?.projectId)
   const { generateIssueDetailReport } = await import('./issue/report')
-  await generateIssueDetailReport(issue, project)
+  await generateIssueDetailReport(issue, project, opts)
 }
 
 /** One issue per page (or more), with full detail sections. */

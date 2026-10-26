@@ -509,7 +509,7 @@
                     </span>
                   </div>
                   <select
-                    class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white/80 text-sm [&>option]:bg-slate-800"
+                    class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white/80 text-sm [&>option]:bg-slate-800 [&>option]:text-white"
                     @change="addEquipment(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
                   >
                     <option value="">
@@ -557,7 +557,7 @@
                 </div>
                 <select
                   v-model="form.verification.outcome"
-                  class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white/90 text-sm [&>option]:bg-slate-800"
+                  class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white/90 text-sm [&>option]:bg-slate-800 [&>option]:text-white"
                 >
                   <option value="">
                     No outcome recorded
@@ -851,6 +851,38 @@
                   </svg>
                   <span>{{ downloadingReport ? 'Generating…' : 'Download PDF' }}</span>
                 </button>
+                <div class="relative">
+                  <button
+                    type="button"
+                    class="px-2.5 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 text-white/70"
+                    title="Choose which sections print in the PDF"
+                    @click.stop="showReportSections = !showReportSections"
+                  >
+                    ▾
+                  </button>
+                  <div
+                    v-if="showReportSections"
+                    class="absolute right-0 z-20 mt-1 w-64 rounded-lg bg-slate-900/95 border border-white/15 shadow-xl p-3 space-y-1.5"
+                    @click.stop
+                  >
+                    <div class="text-white/60 text-xs mb-1">
+                      Sections in the issue PDF — remembered per project
+                    </div>
+                    <label
+                      v-for="s in ISSUE_REPORT_SECTIONS"
+                      :key="s.key"
+                      class="flex items-center gap-2 text-white/85 text-sm"
+                    >
+                      <input
+                        v-model="reportSections[s.key]"
+                        type="checkbox"
+                        class="rounded bg-white/10 border-white/20"
+                        @change="persistReportSections"
+                      >
+                      {{ s.label }}
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1960,13 +1992,39 @@ function formatDateTime(dt?: string): string {
 
 // Issue PDF: shared definition from the report kit (reports/definitions/issue).
 // The button disables + spins while generating so repeated clicks can't queue
-// duplicate reports (gathering photos/logs takes a few seconds).
+// duplicate reports (gathering photos/logs takes a few seconds). The ▾ menu
+// picks which sections print, remembered per project.
+const ISSUE_REPORT_SECTIONS: Array<{ key: string; label: string }> = [
+  { key: 'condition', label: 'Condition observed' },
+  { key: 'requiredAction', label: 'Required action' },
+  { key: 'oprItems', label: 'Related OPR items' },
+  { key: 'photos', label: 'Photos' },
+  { key: 'response', label: 'Contractor response' },
+  { key: 'verification', label: 'CxA verification' },
+  { key: 'history', label: 'History' },
+  { key: 'comments', label: 'Comments' },
+  { key: 'distribution', label: 'Distribution' },
+]
+const showReportSections = ref(false)
+const reportSections = reactive<Record<string, boolean>>({})
+const reportSectionsKey = () => `issueReportSections:${projectId.value || 'global'}`
+function loadReportSections() {
+  let saved: Record<string, any> = {}
+  try { saved = JSON.parse(localStorage.getItem(reportSectionsKey()) || '{}') } catch (e) { saved = {} }
+  for (const s of ISSUE_REPORT_SECTIONS) reportSections[s.key] = saved[s.key] !== false
+}
+function persistReportSections() {
+  try { localStorage.setItem(reportSectionsKey(), JSON.stringify({ ...reportSections })) } catch (e) { /* ignore */ }
+}
+watch(projectId, loadReportSections, { immediate: true })
+
 const downloadingReport = ref(false)
 async function downloadIssuePdf() {
   if (downloadingReport.value) return
   downloadingReport.value = true
+  showReportSections.value = false
   try {
-    await generateIssuePdf({ ...form, id: id.value })
+    await generateIssuePdf({ ...form, id: id.value }, { sections: { ...reportSections } })
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate report')
   } finally {

@@ -63,7 +63,7 @@
         <select
           multiple
           :size="3"
-          class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1 text-white/80 text-xs [&>option]:bg-slate-800"
+          class="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1 text-white/80 text-xs [&>option]:bg-slate-800 [&>option]:text-white"
           title="Linked issues (ctrl/cmd-click for several)"
           @change="setMeta(f.id, 'issueIds', Array.from(($event.target as HTMLSelectElement).selectedOptions).map(o => o.value))"
         >

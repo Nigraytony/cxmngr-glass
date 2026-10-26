@@ -48,7 +48,7 @@
         >
         <select
           v-model="it.status"
-          class="col-span-3 md:col-span-2 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm [&>option]:bg-slate-800"
+          class="col-span-3 md:col-span-2 rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-white text-sm [&>option]:bg-slate-800 [&>option]:text-white"
           @change="saveItem(it)"
         >
           <option

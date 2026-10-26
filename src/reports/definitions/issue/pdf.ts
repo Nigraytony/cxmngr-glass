@@ -19,7 +19,9 @@ import type { IssueReportModel } from './model'
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
 
-export async function generateIssueDetailPdf(model: IssueReportModel, opts: { project?: any } = {}): Promise<Uint8Array> {
+export async function generateIssueDetailPdf(model: IssueReportModel, opts: { project?: any; sections?: Record<string, boolean> } = {}): Promise<Uint8Array> {
+  // Section toggles (IssueEdit's report-sections menu); everything on by default.
+  const on = (k: string) => opts.sections?.[k] !== false
   const rd = await ReportDoc.create({
     title: model.runningTitle,
     footerLabel: model.footerLabel,
@@ -168,13 +170,13 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
     drawFactsGrid(rd, model.facts, 3)
     rd.y += 4 // breathing room between the facts grid and the first section
 
-    if (model.condition) {
+    if (on('condition') && model.condition) {
       subHeading('Condition observed')
       bodyText(model.condition)
       rd.y += 4
     }
 
-    if (model.requiredAction.length) {
+    if (on('requiredAction') && model.requiredAction.length) {
       subHeading('Required action')
       doc.setFontSize(10)
       if (model.requiredAction.length === 1) {
@@ -201,8 +203,35 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
       rd.y += 4
     }
 
+    // Related OPR items (owner requirements this deficiency violates).
+    if (on('oprItems') && model.oprItems.length) {
+      subHeading('Related OPR items')
+      doc.setFontSize(9.5)
+      for (const o of model.oprItems) {
+        const prefix = o.ref ? `${o.ref}  ` : ''
+        doc.setFont(MONO, 'normal'); setInk(COLORS.muted)
+        const prefW = prefix ? doc.getTextWidth(prefix) : 0
+        const text = o.text + (o.category ? ` · ${o.category}` : '')
+        doc.setFont(SANS, 'normal')
+        const lines = splitText(doc, normalizePdfText(text), contentW - prefW)
+        rd.ensureSpace(lines.length * 4.6 + 2)
+        if (prefix) {
+          doc.setFont(MONO, 'normal')
+          doc.text(prefix, margin, rd.y)
+          doc.setFont(SANS, 'normal')
+        }
+        setInk(COLORS.text)
+        for (const l of lines) {
+          doc.text(l, margin + prefW, rd.y)
+          rd.y += 4.6
+        }
+        rd.y += 1.2
+      }
+      rd.y += 3
+    }
+
     // Verification moves to page 1 for closed + verified issues.
-    if (model.closed && model.verified && model.verification) {
+    if (on('verification') && model.closed && model.verified && model.verification) {
       subHeading('CxA verification')
       doc.setFont(SANS, 'bold'); doc.setFontSize(10); doc.setTextColor(...GREEN)
       rd.ensureSpace(6)
@@ -217,18 +246,25 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
       setInk(COLORS.text)
     }
 
-    if (model.photos.length) {
+    if (on('photos') && model.photos.length) {
       subHeading('Photos', model.photosNote)
       await drawPhotoGrid(rd, model.photos, { cols: 3, figStart: 1, maxH: 45 })
     }
   }
 
   // =====================================================================
-  // Page 2 — response, verification, history, comments, distribution
+  // Page 2 — response, verification, history, comments, distribution.
+  // Disabled or empty sections are skipped; no page 2 when nothing remains.
   // =====================================================================
-  rd.newPage()
+  const respWanted = on('response') && (!!model.response || !(model.closed && model.verified))
+  const verWanted = on('verification') && !(model.closed && model.verified)
+  const histWanted = on('history') && model.history.length > 0
+  const comWanted = on('comments') && model.comments.length > 0
+  const distWanted = on('distribution') && !!model.distribution
+  if (respWanted || verWanted || histWanted || comWanted || distWanted) rd.newPage()
 
   // Contractor response
+  if (respWanted) {
   subHeading('Contractor response')
   if (model.response) {
     bodyText(model.response.correctiveAction)
@@ -240,7 +276,7 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
     ].filter(Boolean).join(' · ') || 'Recorded in cxma'), margin, rd.y)
     rd.y += 7
     setInk(COLORS.text)
-  } else if (!(model.closed && model.verified)) {
+  } else {
     doc.setFontSize(8.5); setInk(COLORS.muted)
     doc.text('To be completed by the assigned party and returned to the CxA, or entered directly in cxma.', margin, rd.y)
     rd.y += 5
@@ -262,9 +298,10 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
     setInk(COLORS.text)
     rd.y = boxTop + boxH + 8
   }
+  }
 
   // CxA verification (page 2 unless already shown on page 1)
-  if (!(model.closed && model.verified)) {
+  if (verWanted) {
     subHeading('CxA verification')
     if (model.verification) {
       doc.setFont(SANS, 'bold'); doc.setFontSize(10); setInk(COLORS.heading)
@@ -310,7 +347,7 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
   }
 
   // History
-  if (model.history.length) {
+  if (histWanted) {
     subHeading('History')
     doc.setFontSize(8.3); setInk(COLORS.muted)
     for (const l of splitText(doc, 'Plain-language summary of the change log. Repeated edits within an hour are combined; saves with no changes are hidden.', contentW)) {
@@ -346,7 +383,7 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
   }
 
   // Comments
-  if (model.comments.length) {
+  if (comWanted) {
     subHeading('Comments')
     for (const cm of model.comments) {
       doc.setFont(SANS, 'bold'); doc.setFontSize(9); setInk(COLORS.heading)
@@ -364,7 +401,7 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: { pr
   }
 
   // Distribution
-  if (model.distribution) {
+  if (distWanted) {
     rd.ensureSpace(12)
     rd.y += 2
     doc.setFont(SANS, 'bold'); doc.setFontSize(9); setInk(COLORS.heading)

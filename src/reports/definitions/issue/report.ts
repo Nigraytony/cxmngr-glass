@@ -78,6 +78,28 @@ async function fetchAzureIssuePhotos(projectId: string, issueId: string, limit =
   }
 }
 
+/** OPR items linked to the issue (best effort — the OPR module is an add-on). */
+async function fetchOprItems(projectId: string, ids: string[]): Promise<Array<{ ref: string; text: string; category: string }>> {
+  if (!projectId || !ids.length) return []
+  try {
+    const res = await http.get(`/api/projects/${projectId}/opr/items`, { params: { ids: ids.join(','), includeArchived: true } })
+    const items: any[] = Array.isArray(res.data?.items) ? res.data.items : (Array.isArray(res.data) ? res.data : [])
+    const cats: Record<string, string> = {}
+    try {
+      const cres = await http.get(`/api/projects/${projectId}/opr/categories`)
+      const list: any[] = Array.isArray(cres.data?.categories) ? cres.data.categories : (Array.isArray(cres.data) ? cres.data : [])
+      for (const cat of list) cats[String(cat._id || cat.id || '')] = String(cat.name || cat.title || '')
+    } catch (e) { /* category names are decoration */ }
+    return items.map((it: any) => ({
+      ref: it?.rank != null ? `#${it.rank}` : '',
+      text: String(it?.text || ''),
+      category: cats[String(it?.categoryId || '')] || '',
+    }))
+  } catch (e) {
+    return []
+  }
+}
+
 export async function assembleIssueModelFor(issueLike: any, project: any): Promise<IssueReportModel> {
   const issueId = String(issueLike?.id || issueLike?._id || '')
   const projectId = String(issueLike?.projectId || project?._id || project?.id || '')
@@ -114,12 +136,21 @@ export async function assembleIssueModelFor(issueLike: any, project: any): Promi
   }
   if (!equipmentTags.length && issue?.tag) equipmentTags = [String(issue.tag)]
 
-  return assembleIssueReportModel({ issue, project, activityName, equipmentTags, logs, photos })
+  const oprIds = (Array.isArray(issue?.oprItemIds) ? issue.oprItemIds : [])
+    .map((v: any) => String((v && (v._id || v.id)) || v || '')).filter(Boolean)
+  const oprItems = await fetchOprItems(projectId, oprIds)
+
+  return assembleIssueReportModel({ issue, project, activityName, equipmentTags, logs, photos, oprItems })
+}
+
+export interface IssueReportOptions {
+  /** Section toggles (all on when omitted); keys match the pdf renderer. */
+  sections?: Record<string, boolean>
 }
 
 /** Generate + deliver the redesigned Issue Detail PDF. */
-export async function generateIssueDetailReport(issueLike: any, project: any): Promise<void> {
+export async function generateIssueDetailReport(issueLike: any, project: any, opts: IssueReportOptions = {}): Promise<void> {
   const model = await assembleIssueModelFor(issueLike, project)
-  const bytes = await generateIssueDetailPdf(model, { project })
+  const bytes = await generateIssueDetailPdf(model, { project, sections: opts.sections })
   deliverPdfBytes(bytes, reportFileName([`issue-${model.number}`, model.title]))
 }
