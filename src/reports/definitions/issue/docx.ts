@@ -164,14 +164,14 @@ export async function buildIssueDocxHtml(model: IssueReportModel, opts: IssueDoc
   }
 
   // ---- Page 2: response, verification, history, comments, distribution --
+  // Unlike the PDF (whose mockup design fixes the response/paper-trail on
+  // its own page), the editable Word version flows continuously — a forced
+  // break just strands whitespace and repaginates badly once edited.
   const respWanted = on('response') && (!!model.response || !closedVerified)
   const verWanted = on('verification') && !closedVerified
   const histWanted = on('history') && model.history.length > 0
   const comWanted = on('comments') && model.comments.length > 0
   const distWanted = on('distribution') && !!model.distribution
-  if (respWanted || verWanted || histWanted || comWanted || distWanted) {
-    parts.push('<p style="page-break-after:always; font-size:2px; margin:0;">&nbsp;</p>')
-  }
 
   if (respWanted) {
     parts.push(h2('Contractor response'))
