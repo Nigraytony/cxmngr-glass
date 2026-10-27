@@ -24,6 +24,26 @@ if (typeof window !== 'undefined') {
 	})
 }
 
+// Same recovery for lazy ROUTE chunks, which the handler above does NOT
+// cover: a failed route import rejects through vue-router's onError and
+// never fires vite:preloadError (that event only covers a chunk's
+// dependency preloads). After a deploy swaps hashed filenames, the host
+// answers old asset URLs with index.html (HTTP 200), so the import fails
+// with a module/MIME error mid-session — exactly what stranded open tabs
+// at login on the v0.10.0 rollout. Full-page navigate (not an SPA retry)
+// so the browser picks up the new asset manifest; once per session via the
+// same budget key, skipped while offline.
+const CHUNK_LOAD_ERROR = /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|failed to load module script|not a valid javascript mime type/i
+router.onError((error, to) => {
+	try {
+		if (!CHUNK_LOAD_ERROR.test(String((error && error.message) || error || ''))) return
+		if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+		if (sessionStorage.getItem('vite:preloadReloaded') === '1') return
+		sessionStorage.setItem('vite:preloadReloaded', '1')
+		window.location.assign(to && to.fullPath ? to.fullPath : window.location.href)
+	} catch (e) { /* ignore */ }
+})
+
 // Ensure history.state isn't accidentally nulled by external scripts/extensions
 // If state is missing, initialize it by preserving current values
 if (typeof window !== 'undefined') {
