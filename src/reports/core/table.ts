@@ -19,6 +19,10 @@ export interface DrawTableOptions {
   rows: Array<Record<string, any>>
   /** Per-cell text override; defaults to String(row[key] ?? ''). */
   cellText?: (row: Record<string, any>, key: string) => string
+  /** Called after each BODY cell draws, with its page-space position and the
+   *  document page it landed on — lets a caller come back and stamp values
+   *  that are only known later (e.g. the batch cover's Page column). */
+  onCellDrawn?: (key: string, rowIndex: number, pos: { x: number; y: number; w: number; h: number; pageNumber: number }) => void
 }
 
 export function drawTable(rd: ReportDoc, opts: DrawTableOptions): void {
@@ -70,6 +74,17 @@ export function drawTable(rd: ReportDoc, opts: DrawTableOptions): void {
       // autotable added this page itself; stamp the branded header on it.
       if (rd.pageNo > startPage) rd.drawHeaderOnCurrentPage()
     },
+    didDrawCell: opts.onCellDrawn
+      ? (data: any) => {
+        if (data.section !== 'body') return
+        const pageNumber = (rd.doc as any).getCurrentPageInfo
+          ? (rd.doc as any).getCurrentPageInfo().pageNumber
+          : rd.pageNo
+        opts.onCellDrawn!(columns[data.column.index].key, data.row.index, {
+          x: data.cell.x, y: data.cell.y, w: data.cell.width, h: data.cell.height, pageNumber,
+        })
+      }
+      : undefined,
   })
 
   const finalY = (rd.doc as any).lastAutoTable?.finalY

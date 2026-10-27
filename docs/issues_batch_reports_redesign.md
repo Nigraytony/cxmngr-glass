@@ -87,8 +87,17 @@ original prompt text lives with Tony's attachments.
   definitions/issue/summaryBand.ts and drawn atop the Issue Sheets deck and
   the Full Detail cover (both on by default; the dialog's "Summary block"
   checkbox now shows for all three PDF reports).
-- Pending: run the date migration (gated on dry-run review), Excel upgrade
-  (real date cells, frozen panes, autofilter), Full Detail cover page-number
-  column, checklist-issue cleanup (gated), batch QA panel, remaining
-  list-page UI (row checkboxes, overdue chip, removing the legacy Downloads
-  menu), per-party zip for Sheets.
+- 2026-10-27 (fourth slice): **Data export upgrade**
+  (definitions/issue/data.ts): Excel gets typed date cells (local-midnight
+  Dates via core/dates — no TZ shift; m/d/yyyy formats), display-label
+  headers (shared labels.ts, also used by the legacy list PDF), a frozen
+  header row (SheetJS CE can't write panes, so the pane XML is injected
+  into the finished zip via jszip — now a direct dependency; falls back to
+  unfrozen on any surprise), an autofilter, and content-fitted widths; CSV
+  gets labels + full plain text. **Full Detail cover Page column**:
+  drawTable gained an onCellDrawn hook; the cover's Page cells are recorded
+  while empty and stamped once every sheet's start page is known.
+- Pending: run the date migration (gated on dry-run review),
+  checklist-issue cleanup (gated), batch QA panel, remaining list-page UI
+  (row checkboxes, overdue chip, removing the legacy Downloads menu),
+  per-party zip for Sheets, Issue.summary field, project timezone setting.

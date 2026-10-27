@@ -2236,7 +2236,6 @@ import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
-import * as XLSX from 'xlsx'
 import { generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf, generateIssuesLogPdf } from '../../reports/definitions/issue'
 import IssueExportDialog, { type IssueExportPayload } from '../../components/issues/IssueExportDialog.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
@@ -4317,47 +4316,14 @@ function togglePriority(name: string) {
   }
 }
 
+// Data exports (batch redesign): display-label headers, real Excel date
+// cells, frozen header + autofilter, fitted widths \u2014 definitions/issue/data.
 async function exportFilteredIssuesCsv() {
   try {
     const rows = await fetchAllFilteredIssues()
     if (!rows.length) return
-    const cols = getExportColumns(rows)
-
-    // CSV escaping
-    const cell = (v: unknown): string => {
-      if (v === null || v === undefined) return ''
-      let s: string
-      if (Array.isArray(v) || typeof v === 'object') {
-        try { s = JSON.stringify(v) } catch (e) { s = String(v) }
-      } else { s = String(v) }
-      s = s.replace(/"/g, '""')
-      return `"${s}"`
-    }
-
-    const lines = []
-    lines.push(cols.map(c => cell(c)).join(','))
-    for (const it of rows) {
-      const obj = it || {}
-      const line = cols.map(c => {
-        let val = obj[c]
-        if (c === 'description') val = htmlToText(val)
-        return cell(val)
-      })
-      lines.push(line.join(','))
-    }
-    const bom = '\uFEFF'
-    const csv = bom + lines.join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const href = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    const dt = new Date()
-    const fn = `issues-${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}.csv`
-    a.href = href
-    a.download = fn
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(href)
+    const { exportIssuesCsv } = await import('../../reports/definitions/issue/data')
+    exportIssuesCsv(rows, getExportColumns(rows))
   } catch (e) {
     ui.showError('Failed to export CSV')
   }
@@ -4367,37 +4333,8 @@ async function exportFilteredIssuesXlsx() {
   try {
     const rows = await fetchAllFilteredIssues()
     if (!rows.length) return
-    const cols = getExportColumns(rows)
-
-    // Build an array of objects mapping description to text-only
-    const data = rows.map((it: any) => {
-      const obj: Record<string, any> = {}
-      for (const c of cols) {
-        let val = it?.[c]
-        if (c === 'description') val = htmlToText(val)
-        obj[c] = val
-      }
-      return obj
-    })
-
-    const ws = XLSX.utils.json_to_sheet(data, { header: cols })
-    // Fit columns: set width based on header length (simple heuristic)
-    const colWidths = cols.map(c => ({ wch: Math.max(10, Math.min(40, String(c).length + 2)) }))
-    ws['!cols'] = colWidths
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Issues')
-    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-    const blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const href = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    const dt = new Date()
-    const fn = `issues-${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}.xlsx`
-    a.href = href
-    a.download = fn
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(href)
+    const { exportIssuesXlsx } = await import('../../reports/definitions/issue/data')
+    await exportIssuesXlsx(rows, getExportColumns(rows))
   } catch (e) {
     ui.showError('Failed to export Excel')
   }

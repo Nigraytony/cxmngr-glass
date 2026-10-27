@@ -7,7 +7,7 @@
 // distribution line. Closed + verified issues show the verification on
 // page 1 and skip the fill-ins.
 import { ReportDoc } from '../../core/frame'
-import { COLORS, MONO, SANS } from '../../core/tokens'
+import { COLORS, MONO, SANS, SIZES } from '../../core/tokens'
 import { normalizePdfText, splitText } from '../../core/text'
 import { stampPageXofY } from '../../core/merge'
 import { fitImageToHeight } from '../../core/images'
@@ -464,14 +464,19 @@ export async function generateIssuesBatchPdf(
     const shortMap: Record<string, string> = (opts.project?.reportSettings && opts.project.reportSettings.companyShortNames) || {}
     drawIssuesSummaryBand(rd, opts.bandIssues, shortMap, now)
   }
+  // The Page column is empty while the table draws — each cell's position is
+  // recorded and the numbers are stamped in once the sheets have rendered
+  // and every issue's start page is known.
+  const pageCells: Array<{ row: number; x: number; y: number; h: number; page: number }> = []
   drawTable(rd, {
     columns: [
       { key: 'number', label: '#', weight: 0.6 },
-      { key: 'title', label: 'Issue', weight: 3.2 },
+      { key: 'title', label: 'Issue', weight: 3 },
       { key: 'priority', label: 'Priority', weight: 0.9 },
       { key: 'status', label: 'Status', weight: 0.9 },
       { key: 'assigned', label: 'Assigned to', weight: 1.6 },
       { key: 'due', label: 'Due', weight: 1 },
+      { key: 'page', label: 'Page', weight: 0.6 },
     ],
     rows: models.map(m => ({
       number: `#${m.number}`,
@@ -480,16 +485,34 @@ export async function generateIssuesBatchPdf(
       status: m.statusLabel,
       assigned: m.assignedTo || '—',
       due: m.dueDate || '—',
+      page: '',
     })),
+    onCellDrawn: (key, rowIndex, pos) => {
+      if (key === 'page') pageCells.push({ row: rowIndex, x: pos.x, y: pos.y, h: pos.h, page: pos.pageNumber })
+    },
   })
 
   // One sheet per issue, each starting on a fresh bare page with its own
   // header block; the running header on continuation pages tracks the issue.
+  const startPages: number[] = []
   for (const m of models) {
     rd.setTitle(m.runningTitle)
     rd.newBarePage()
+    startPages.push(rd.pageNo)
     await renderIssueDetailInto(rd, m, opts)
   }
+
+  // Fill the cover's Page column at the recorded cell positions.
+  const doc = rd.doc as any
+  const lastPage = doc.getCurrentPageInfo ? doc.getCurrentPageInfo().pageNumber : null
+  doc.setFont(SANS, 'normal'); doc.setFontSize(SIZES.tableCell); doc.setTextColor(...c(COLORS.text))
+  for (const cell of pageCells) {
+    const n = startPages[cell.row]
+    if (!n) continue
+    doc.setPage(cell.page)
+    doc.text(String(n), cell.x + 2, cell.y + cell.h / 2 + 1.2)
+  }
+  if (lastPage) doc.setPage(lastPage)
 
   return stampPageXofY(rd.output())
 }

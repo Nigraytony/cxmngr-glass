@@ -5,6 +5,7 @@ import { formatDateOnly } from '../core/dates'
 import { drawTable } from '../core/table'
 
 import { htmlToText, normalizePdfText } from '../core/text'
+import { issueColumnLabel } from './issue/labels'
 
 import { deliverPdf, openDeliveryWindow, reportFileName } from '../core/deliver'
 import { useProjectStore } from '../../stores/project'
@@ -106,36 +107,8 @@ export async function generateIssuesListPdf(issues: any[], columns?: string[]): 
     return 1.1
   }
 
-  // Display labels, never raw field names (createdAt, responsible_person…).
-  const HEADER_LABELS: Record<string, string> = {
-    number: '#',
-    title: 'Title',
-    description: 'Description',
-    type: 'Type',
-    priority: 'Priority',
-    severity: 'Priority',
-    status: 'Status',
-    responsible_person: 'Responsible',
-    assignedto: 'Responsible',
-    foundby: 'Found by',
-    datefound: 'Date found',
-    duedate: 'Due date',
-    closeddate: 'Closed date',
-    closedby: 'Closed by',
-    createdat: 'Created',
-    updatedat: 'Updated',
-    location: 'Location',
-    system: 'System',
-    tag: 'Equipment',
-    recommendation: 'Recommendation',
-    resolution: 'Resolution',
-    labels: 'Tags',
-  }
-  const headerLabel = (key: string) => {
-    const hit = HEADER_LABELS[String(key).toLowerCase()]
-    if (hit) return hit
-    return String(key).replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^\w/, ch => ch.toUpperCase())
-  }
+  // Display labels, never raw field names — shared with the Data exports.
+  const headerLabel = issueColumnLabel
 
   const cellText = (row: any, key: string): string => {
     const v = (row as any)?.[key]
