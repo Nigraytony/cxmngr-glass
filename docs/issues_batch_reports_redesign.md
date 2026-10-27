@@ -75,8 +75,20 @@ original prompt text lives with Tony's attachments.
   normalizes to YYYY-MM-DD (UTC-midnight → date part; real timestamps → the
   --tz calendar date, default America/New_York). GATE: Tony reviews the
   dry-run output before anyone runs --apply.
+- 2026-10-27 (third slice, field feedback): **full filtered set in every
+  export** — the list fetch is server-paginated, so exports used to cover
+  only the visible page. fetchAllFilteredIssues (IssuesList.vue) walks every
+  page with the same server filter params, then runs the same client-side
+  filter pipeline (applyListFilters, extracted from the filteredIssues
+  computed) over the result; every export path (dialog, legacy Downloads
+  menu, CSV/Excel) and the Export button's count now use it. **Summary band
+  everywhere** — the Issues Log's analytic tiles (open count, red overdue,
+  priority stacked bar, by-responsible) extracted into
+  definitions/issue/summaryBand.ts and drawn atop the Issue Sheets deck and
+  the Full Detail cover (both on by default; the dialog's "Summary block"
+  checkbox now shows for all three PDF reports).
 - Pending: run the date migration (gated on dry-run review), Excel upgrade
-  (real date cells, frozen panes, autofilter), Full Detail cover upgrade
-  (summary row + page-number column), checklist-issue cleanup (gated),
-  batch QA panel, remaining list-page UI (row checkboxes, overdue chip,
-  removing the legacy Downloads menu), per-party zip for Sheets.
+  (real date cells, frozen panes, autofilter), Full Detail cover page-number
+  column, checklist-issue cleanup (gated), batch QA panel, remaining
+  list-page UI (row checkboxes, overdue chip, removing the legacy Downloads
+  menu), per-party zip for Sheets.

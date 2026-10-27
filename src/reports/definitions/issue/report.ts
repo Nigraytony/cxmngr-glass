@@ -171,6 +171,8 @@ export async function assembleIssueModelFor(issueLike: any, project: any): Promi
 export interface IssueReportOptions {
   /** Section toggles (all on when omitted); keys match the pdf renderer. */
   sections?: Record<string, boolean>
+  /** Batch cover's analytic summary band (shared with the Issues Log); on by default. */
+  summaryBand?: boolean
 }
 
 /** Generate + deliver the redesigned Issue Detail PDF. */
@@ -220,6 +222,6 @@ export async function generateIssuesBatchReport(issuesLike: any[], project: any,
   }
   if (!models.length) return
   const { generateIssuesBatchPdf } = await import('./pdf')
-  const bytes = await generateIssuesBatchPdf(models, { project, sections: opts.sections })
+  const bytes = await generateIssuesBatchPdf(models, { project, sections: opts.sections, summaryBand: opts.summaryBand, bandIssues: issuesLike })
   deliverPdfBytes(bytes, reportFileName([String(project?.name || ''), 'issues-report']))
 }

@@ -439,8 +439,12 @@ export async function generateIssueDetailPdf(model: IssueReportModel, opts: Issu
  * (number, title, priority, status, assigned to, due) followed by each
  * issue's full sheet starting on a new page, with continuous page numbers.
  */
-export async function generateIssuesBatchPdf(models: IssueReportModel[], opts: IssuePdfOptions = {}): Promise<Uint8Array> {
-  const statusAsOf = new Date().toLocaleDateString('en-US')
+export async function generateIssuesBatchPdf(
+  models: IssueReportModel[],
+  opts: IssuePdfOptions & { bandIssues?: any[]; summaryBand?: boolean } = {},
+): Promise<Uint8Array> {
+  const now = new Date()
+  const statusAsOf = now.toLocaleDateString('en-US')
   const projectName = String(opts.project?.name || '')
   const rd = await ReportDoc.create({
     title: [projectName, 'Issues report'].filter(Boolean).join(' · '),
@@ -451,8 +455,15 @@ export async function generateIssuesBatchPdf(models: IssueReportModel[], opts: I
     titleFontSize: 11,
   })
 
-  // Cover table
+  // Cover: brand heading, the analytic summary band (same tiles as the
+  // Issues Log — drawn from the raw list rows the caller hands over), then
+  // the index table.
   drawBrandHeading(rd, 'Issues report', `${models.length} issue${models.length === 1 ? '' : 's'} · status as of ${statusAsOf}`)
+  if (opts.summaryBand !== false && Array.isArray(opts.bandIssues) && opts.bandIssues.length > 1) {
+    const { drawIssuesSummaryBand } = await import('./summaryBand')
+    const shortMap: Record<string, string> = (opts.project?.reportSettings && opts.project.reportSettings.companyShortNames) || {}
+    drawIssuesSummaryBand(rd, opts.bandIssues, shortMap, now)
+  }
   drawTable(rd, {
     columns: [
       { key: 'number', label: '#', weight: 0.6 },

@@ -99,7 +99,7 @@
             Closed issues last
           </label>
           <label
-            v-if="report === 'log'"
+            v-if="report !== 'data'"
             class="flex items-center gap-1.5 text-white/75 text-sm"
           >
             <input

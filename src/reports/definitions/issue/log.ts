@@ -11,15 +11,10 @@ import { stampPageXofY } from '../../core/merge'
 import { deliverPdfBytes, reportFileName } from '../../core/deliver'
 import { CRITICAL_STYLE, RED, SEV_STYLE, chip } from '../../core/blocks'
 import { daysPast, formatDateOnly } from '../../core/dates'
-import { formatPerson, plainText, priorityBucket, shortCompany, type PriorityKey } from './model'
+import { drawIssuesSummaryBand } from './summaryBand'
+import { formatPerson, plainText, priorityBucket, type PriorityKey } from './model'
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
-const PRIORITY_COLOR: Record<PriorityKey, [number, number, number]> = {
-  Critical: [185, 28, 28],
-  High: [220, 38, 38],
-  Medium: [217, 119, 6],
-  Low: [148, 163, 184],
-}
 const rank: Record<PriorityKey, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
 const isClosed = (i: any) => ['closed', 'cancelled'].includes(String(i?.status || '').toLowerCase())
 
@@ -86,19 +81,6 @@ export async function generateIssuesLogReport(issuesLike: any[], project: any, o
     sameNote.set(String(first?.id || first?._id || ''), `Same condition: ${rest.map((r: any) => `#${r?.number ?? '?'}${r?.tag ? ` ${r.tag}` : ''}`).join(', ')}`)
   }
 
-  // ---- stats for the summary band ----------------------------------------
-  const open = issues.filter(i => !isClosed(i))
-  const overdue = open.filter(i => (daysPast(i?.dueDate, now) ?? -1) > 0)
-  const byPriority: Record<PriorityKey, number> = { Critical: 0, High: 0, Medium: 0, Low: 0 }
-  for (const i of open) byPriority[priorityBucket(i?.severity || i?.priority)]++
-  const byParty = new Map<string, number>()
-  for (const i of open) {
-    const who = plainText(i?.assignedTo || i?.responsible_person)
-    const m = who.match(/\(([^)]+)\)\s*$/)
-    const key = who ? shortCompany(m ? m[1] : who.split('·').pop() || who, shortMap) : 'Unassigned'
-    byParty.set(key, (byParty.get(key) || 0) + 1)
-  }
-
   const projectName = String(project?.name || '')
   const rd = await ReportDoc.create({
     title: [projectName, 'Issues Log'].filter(Boolean).join(' · '),
@@ -116,62 +98,9 @@ export async function generateIssuesLogReport(issuesLike: any[], project: any, o
   const setInk = (t: readonly number[]) => doc.setTextColor(t[0], t[1], t[2])
   const hairline = () => { doc.setDrawColor(...c(COLORS.hairline)); doc.setLineWidth(0.2) }
 
-  // ---- summary band -------------------------------------------------------
+  // ---- summary band (shared with Issue Sheets + Full Detail cover) --------
   if (opts.summaryBand !== false) {
-    const tileH = 16
-    const gap = 4
-    const tileW = (contentW - gap * 3) / 4
-    const tile = (x: number, fill: [number, number, number], big: string, bigColor: [number, number, number], label: string) => {
-      doc.setFillColor(...fill)
-      doc.rect(x, rd.y, tileW, tileH, 'F')
-      doc.setFont(SANS, 'bold'); doc.setFontSize(13); doc.setTextColor(...bigColor)
-      doc.text(big, x + 3, rd.y + 7.5)
-      doc.setFont(SANS, 'normal'); doc.setFontSize(7.4); setInk(COLORS.muted)
-      doc.text(label, x + 3, rd.y + 12.5)
-    }
-    tile(margin, c(COLORS.zebra), `${open.length} of ${issues.length}`, c(COLORS.heading), 'Open issues')
-    tile(margin + tileW + gap, [254, 226, 226], String(overdue.length), RED, 'Overdue')
-    // open by priority: stacked bar + counts
-    {
-      const x = margin + (tileW + gap) * 2
-      doc.setFillColor(...c(COLORS.zebra))
-      doc.rect(x, rd.y, tileW, tileH, 'F')
-      const total = Math.max(1, open.length)
-      let bx = x + 3
-      const barW = tileW - 6
-      const keys: PriorityKey[] = ['Critical', 'High', 'Medium', 'Low']
-      for (const k of keys) {
-        const w = (byPriority[k] / total) * barW
-        if (w > 0.1) {
-          doc.setFillColor(...PRIORITY_COLOR[k])
-          doc.rect(bx, rd.y + 3, w, 2.6, 'F')
-          bx += w
-        }
-      }
-      doc.setFont(SANS, 'normal'); doc.setFontSize(7.2); setInk(COLORS.text)
-      doc.text(keys.map(k => `${k[0]} ${byPriority[k]}`).join('   '), x + 3, rd.y + 9.8)
-      doc.setFontSize(7.4); setInk(COLORS.muted)
-      doc.text('Open by priority', x + 3, rd.y + 13.6)
-    }
-    // open by responsible party
-    {
-      const x = margin + (tileW + gap) * 3
-      doc.setFillColor(...c(COLORS.zebra))
-      doc.rect(x, rd.y, tileW, tileH, 'F')
-      const entries = [...byParty.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
-      doc.setFont(SANS, 'normal'); doc.setFontSize(7.2)
-      let px = x + 3
-      for (const [who, n] of entries) {
-        const seg = `${who} ${n}`
-        if (who === 'Unassigned') doc.setTextColor(...RED); else setInk(COLORS.text)
-        doc.text(seg, px, rd.y + 6.5)
-        px += doc.getTextWidth(seg + '   ')
-      }
-      doc.setFontSize(7.4); setInk(COLORS.muted)
-      doc.text('Open by responsible party', x + 3, rd.y + 12.5)
-    }
-    setInk(COLORS.text)
-    rd.y += tileH + 4
+    drawIssuesSummaryBand(rd, issues, shortMap, now)
   }
 
   if (opts.filterLine) {

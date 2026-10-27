@@ -655,7 +655,7 @@
                   stroke-linecap="round"
                 />
               </svg>
-              <span>Export {{ filteredIssues.length }}…</span>
+              <span>Export {{ totalItems }}…</span>
             </button>
             <div
               ref="downloadsRef"
@@ -1903,7 +1903,7 @@
                   stroke-linecap="round"
                 />
               </svg>
-              <span>Export {{ filteredIssues.length }}…</span>
+              <span>Export {{ totalItems }}…</span>
             </button>
             <div
               ref="downloadsRef"
@@ -2158,7 +2158,7 @@
     <IssueExportDialog
       v-if="showExportDialog"
       :project-id="String(projectStore.currentProjectId || '')"
-      :match-count="filteredIssues.length"
+      :match-count="totalItems"
       :filter-summary="buildFilterSummary()"
       :busy="detailedReportBusy"
       @close="showExportDialog = false"
@@ -3466,13 +3466,11 @@ function isMyIssueRow(i: any) {
 }
 
 // Apply client-side filter over the server-returned page so exports and UI behave
-const filteredIssues = computed<IssueRow[]>(() => {
+// The full client-side filter pipeline over a given base list. The visible
+// list runs it over the current page buffer; exports run it over the WHOLE
+// fetched set (fetchAllFilteredIssues), so both agree on what "filtered" means.
+function applyListFilters(baseAll: IssueRow[]): IssueRow[] {
   const q = (effectiveSearch.value || '').trim().toLowerCase()
-  // prefer server-provided page when available; otherwise fall back to full store list
-  const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
-  const baseAll: IssueRow[] = useServer
-    ? serverIssues.value
-    : (Array.isArray(issuesStore.issues) ? (issuesStore.issues as any as IssueRow[]) : [])
   const list = (!priorityFilter.value || priorityFilter.value === 'All')
     ? baseAll
     : baseAll.filter(i => (i.priority || '').toLowerCase() === priorityFilter.value.toLowerCase())
@@ -3559,6 +3557,15 @@ const filteredIssues = computed<IssueRow[]>(() => {
       .map(f => String(f).toLowerCase())
     return fields.some(f => f.includes(q))
   })
+}
+
+const filteredIssues = computed<IssueRow[]>(() => {
+  // prefer server-provided page when available; otherwise fall back to full store list
+  const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
+  const baseAll: IssueRow[] = useServer
+    ? serverIssues.value
+    : (Array.isArray(issuesStore.issues) ? (issuesStore.issues as any as IssueRow[]) : [])
+  return applyListFilters(baseAll)
 })
 
 function clearSearch() {
@@ -3608,6 +3615,76 @@ watch(showAnalytics, (open) => {
 })
 
 // Fetch when paging/sort/search/filter changes (debounced)
+// Server-side filter params shared by the page fetch and the export
+// full-set fetch — everything EXCEPT page/perPage/includeFacets.
+function buildListFilterParams(pid?: string | null): any {
+  const params: any = {}
+  if (pid) params.projectId = pid
+  if (effectiveSearch.value) params.search = effectiveSearch.value
+  if (sortKey.value) {
+    params.sortBy = sortKey.value
+    params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
+  }
+  if (hideClosed.value) params.hideClosed = 1
+  if (myIssuesOnly.value) params.mine = 1
+  if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
+  if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
+  if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
+  if (hasOprFilter.value) params.hasOpr = 1
+  if (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') params.oprCategoryId = oprCategoryFilter.value
+  if (oprItemFilter.value && oprItemFilter.value !== 'All') params.oprItemId = oprItemFilter.value
+  if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value).trim()
+  if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value).trim()
+  if (String(systemFilter.value || '').trim()) params.system = String(systemFilter.value).trim()
+  if (String(dateFoundFrom.value || '').trim()) params.dateFoundFrom = String(dateFoundFrom.value).trim()
+  if (String(dateFoundTo.value || '').trim()) params.dateFoundTo = String(dateFoundTo.value).trim()
+  if (String(dueDateFrom.value || '').trim()) params.dueDateFrom = String(dueDateFrom.value).trim()
+  if (String(dueDateTo.value || '').trim()) params.dueDateTo = String(dueDateTo.value).trim()
+  if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value).trim()
+  return params
+}
+
+function normalizeIssueRow(i: any): IssueRow {
+  const obj = { ...(i || {}) }
+  obj.id = i?._id || i?.id
+  obj.priority = obj.priority || obj.severity || 'Unspecified'
+  obj.responsible_person = obj.responsible_person || obj.assignedTo || obj.responsible || ''
+  return obj
+}
+
+// Exports must cover the WHOLE filtered set, not just the visible page: the
+// list fetch is server-paginated (perPage caps at 200 server-side), so walk
+// every page with the same filter params, then run the same client-side
+// pipeline over the result. Falls back to the on-screen page if the walk
+// fails, so an export still produces something.
+async function fetchAllFilteredIssues(): Promise<IssueRow[]> {
+  const pid = preferredProjectId.value ? String(preferredProjectId.value) : ''
+  // Store/offline modes already hold the full project set.
+  if (listMode.value !== 'api') return filteredIssues.value.slice()
+  try {
+    if (useLocal(pid)) {
+      const local = await issuesRepository.list({ projectId: pid })
+      const arr = Array.isArray(local) ? local : (Array.isArray((local as any)?.items) ? (local as any).items : [])
+      return applyListFilters(arr.map(normalizeIssueRow))
+    }
+    const params = buildListFilterParams(pid)
+    params.perPage = 200
+    const out: IssueRow[] = []
+    for (let pg = 1; pg <= 100; pg++) {
+      params.page = pg
+      const res = await http.get('/api/issues', { params })
+      const data = res && res.data ? res.data : {}
+      const items: any[] = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : [])
+      out.push(...items.map(normalizeIssueRow))
+      const total = Number(data.total ?? out.length)
+      if (!items.length || out.length >= total) break
+    }
+    return applyListFilters(out)
+  } catch (e) {
+    return filteredIssues.value.slice()
+  }
+}
+
 function fetchIssuesPage(projectId?: string | null) {
   return (async () => {
     loading.value = true
@@ -3653,32 +3730,9 @@ function fetchIssuesPage(projectId?: string | null) {
         // ignore env access errors and continue
       }
 
-      const params: any = {
-        page: page.value,
-        perPage: pageSize.value,
-      }
-      if (pid) params.projectId = pid
-      if (effectiveSearch.value) params.search = effectiveSearch.value
-      if (sortKey.value) {
-        params.sortBy = sortKey.value
-        params.sortDir = sortDir.value === 1 ? 'asc' : 'desc'
-      }
-        if (hideClosed.value) params.hideClosed = 1
-        if (myIssuesOnly.value) params.mine = 1
-        if (statusFilter.value && statusFilter.value !== 'All') params.status = statusFilter.value
-        if (priorityFilter.value && priorityFilter.value !== 'All') params.priority = priorityFilter.value
-        if (typeFilter.value && typeFilter.value !== 'All') params.type = typeFilter.value
-      if (hasOprFilter.value) params.hasOpr = 1
-      if (oprCategoryFilter.value && oprCategoryFilter.value !== 'All') params.oprCategoryId = oprCategoryFilter.value
-      if (oprItemFilter.value && oprItemFilter.value !== 'All') params.oprItemId = oprItemFilter.value
-      if (String(locationFilter.value || '').trim()) params.location = String(locationFilter.value).trim()
-      if (String(responsibleFilter.value || '').trim()) params.responsible = String(responsibleFilter.value).trim()
-      if (String(systemFilter.value || '').trim()) params.system = String(systemFilter.value).trim()
-      if (String(dateFoundFrom.value || '').trim()) params.dateFoundFrom = String(dateFoundFrom.value).trim()
-      if (String(dateFoundTo.value || '').trim()) params.dateFoundTo = String(dateFoundTo.value).trim()
-      if (String(dueDateFrom.value || '').trim()) params.dueDateFrom = String(dueDateFrom.value).trim()
-      if (String(dueDateTo.value || '').trim()) params.dueDateTo = String(dueDateTo.value).trim()
-      if (String(tagsFilter.value || '').trim()) params.tags = String(tagsFilter.value).trim()
+      const params: any = buildListFilterParams(pid)
+      params.page = page.value
+      params.perPage = pageSize.value
       params.includeFacets = true
 
       let data: any = {}
@@ -3702,17 +3756,10 @@ function fetchIssuesPage(projectId?: string | null) {
           data = { items: arr, total: arr.length, totalAll: arr.length }
         }
       }
-      const normalize = (i: any): IssueRow => {
-        const obj = { ...(i || {}) }
-        obj.id = i?._id || i?.id
-        obj.priority = obj.priority || obj.severity || 'Unspecified'
-        obj.responsible_person = obj.responsible_person || obj.assignedTo || obj.responsible || ''
-        return obj
-      }
       if (Array.isArray(data.items)) {
-        serverIssues.value = data.items.map(normalize)
+        serverIssues.value = data.items.map(normalizeIssueRow)
       } else if (Array.isArray(data)) {
-        serverIssues.value = data.map(normalize)
+        serverIssues.value = data.map(normalizeIssueRow)
       } else {
         serverIssues.value = []
       }
@@ -4270,9 +4317,9 @@ function togglePriority(name: string) {
   }
 }
 
-function exportFilteredIssuesCsv() {
+async function exportFilteredIssuesCsv() {
   try {
-    const rows = filteredIssues.value || []
+    const rows = await fetchAllFilteredIssues()
     if (!rows.length) return
     const cols = getExportColumns(rows)
 
@@ -4316,9 +4363,9 @@ function exportFilteredIssuesCsv() {
   }
 }
 
-function exportFilteredIssuesXlsx() {
+async function exportFilteredIssuesXlsx() {
   try {
-    const rows = filteredIssues.value || []
+    const rows = await fetchAllFilteredIssues()
     if (!rows.length) return
     const cols = getExportColumns(rows)
 
@@ -4401,8 +4448,9 @@ function buildFilterSummary(): string {
 async function onExportRun(p: IssueExportPayload) {
   if (detailedReportBusy.value) return
   detailedReportBusy.value = true
-  const rows = filteredIssues.value.map(mapIssueForReport)
   try {
+    // Every export covers the full filtered set, not just the visible page.
+    const rows = (await fetchAllFilteredIssues()).map(mapIssueForReport)
     if (p.report === 'log') {
       ui.showInfo(`Generating Issues Log (${rows.length} issue${rows.length === 1 ? '' : 's'})…`, { duration: 6000 })
       await generateIssuesLogPdf(rows, {
@@ -4414,15 +4462,16 @@ async function onExportRun(p: IssueExportPayload) {
       })
     } else if (p.report === 'sheets') {
       ui.showInfo(`Generating issue sheets (${rows.length} issue${rows.length === 1 ? '' : 's'})… photos load per issue.`, { duration: 8000 })
-      await generateIssuesCompactPdf(rows)
+      await generateIssuesCompactPdf(rows, { summaryBand: p.summaryBand })
     } else if (p.report === 'detail') {
       ui.showInfo(`Generating full detail report (${rows.length} issue${rows.length === 1 ? '' : 's'})… this can take a minute.`, { duration: 8000 })
-      await generateIssuesDetailedPdf(rows)
+      await generateIssuesDetailedPdf(rows, { summaryBand: p.summaryBand })
     } else {
-      // Data: route the dialog's column choice through the existing exporters.
+      // Data: route the dialog's column choice through the existing exporters
+      // (they fetch the full filtered set themselves).
       selectedColumns.value = p.columns.slice()
-      if (p.format === 'csv') exportFilteredIssuesCsv()
-      else exportFilteredIssuesXlsx()
+      if (p.format === 'csv') await exportFilteredIssuesCsv()
+      else await exportFilteredIssuesXlsx()
     }
     showExportDialog.value = false
   } catch (e: any) {
@@ -4470,12 +4519,12 @@ async function onDownloadDetailedReport() {
   if (detailedReportBusy.value) return
   detailedReportBusy.value = true
   showDownloadsMenu.value = false
-  const count = filteredIssues.value.length
-  // Each issue fetches its full record, photos, logs and links — give the
-  // user feedback instead of a long silent gather.
-  ui.showInfo(`Generating issues report (${count} issue${count === 1 ? '' : 's'})… this can take a minute for large selections.`, { duration: 8000 })
   try {
-    await generateIssuesDetailedPdf(filteredIssues.value.map(mapIssueForReport))
+    const rows = (await fetchAllFilteredIssues()).map(mapIssueForReport)
+    // Each issue fetches its full record, photos, logs and links — give the
+    // user feedback instead of a long silent gather.
+    ui.showInfo(`Generating issues report (${rows.length} issue${rows.length === 1 ? '' : 's'})… this can take a minute for large selections.`, { duration: 8000 })
+    await generateIssuesDetailedPdf(rows)
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the issues report')
   } finally {
@@ -4487,10 +4536,10 @@ async function onDownloadCompactReport() {
   if (detailedReportBusy.value) return
   detailedReportBusy.value = true
   showDownloadsMenu.value = false
-  const count = filteredIssues.value.length
-  ui.showInfo(`Generating issue sheets (${count} issue${count === 1 ? '' : 's'})… photos load per issue, so this can take a moment.`, { duration: 8000 })
   try {
-    await generateIssuesCompactPdf(filteredIssues.value.map(mapIssueForReport))
+    const rows = (await fetchAllFilteredIssues()).map(mapIssueForReport)
+    ui.showInfo(`Generating issue sheets (${rows.length} issue${rows.length === 1 ? '' : 's'})… photos load per issue, so this can take a moment.`, { duration: 8000 })
+    await generateIssuesCompactPdf(rows)
   } catch (e: any) {
     ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the issue sheets')
   } finally {
@@ -4500,12 +4549,13 @@ async function onDownloadCompactReport() {
 
 async function onDownloadListReport() {
   try {
+    const rows = await fetchAllFilteredIssues()
     const cols = (selectedColumns.value && selectedColumns.value.length)
       ? selectedColumns.value.slice()
-      : getExportColumns(filteredIssues.value)
+      : getExportColumns(rows)
     // prune removed columns in case legacy selections persist
     const prunedCols = cols.filter(c => !removedColumns.includes(c))
-    await generateIssuesListPdf(filteredIssues.value.map(mapIssueForReport), prunedCols)
+    await generateIssuesListPdf(rows.map(mapIssueForReport), prunedCols)
   } catch (e) {
     // silent; optionally show a toast
   } finally {

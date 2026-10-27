@@ -13,7 +13,8 @@ import { stampPageXofY } from '../../core/merge'
 import { deliverPdfBytes, reportFileName } from '../../core/deliver'
 import { CRITICAL_STYLE, GREEN_STYLE, RED, SEV_STYLE, chip, outlineChip } from '../../core/blocks'
 import { daysPast, formatDateOnly } from '../../core/dates'
-import { formatPerson, plainText, priorityBucket, shortCompany, type PriorityKey } from './model'
+import { drawIssuesSummaryBand } from './summaryBand'
+import { formatPerson, plainText, priorityBucket, type PriorityKey } from './model'
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
 const PRIORITY_BAR: Record<PriorityKey, [number, number, number]> = {
@@ -97,6 +98,8 @@ function buildCard(i: any, shortMap: Record<string, string>, now: Date, sameOf: 
 export interface IssueSheetsOptions {
   /** Plain-words filter scope shown in the running header (e.g. "Assigned to BoldAir · Open"). */
   scopeLine?: string
+  /** Analytic tiles above the first card (shared with the Issues Log); on by default. */
+  summaryBand?: boolean
 }
 
 export async function generateIssueSheetsReport(issuesLike: any[], project: any, opts: IssueSheetsOptions = {}): Promise<void> {
@@ -170,6 +173,11 @@ export async function generateIssueSheetsReport(issuesLike: any[], project: any,
   const contentW = rd.contentWidth
   const setInk = (t: readonly number[]) => doc.setTextColor(t[0], t[1], t[2])
   const hairline = () => { doc.setDrawColor(...c(COLORS.hairline)); doc.setLineWidth(0.2) }
+
+  // ---- summary band (same tiles as the Issues Log) -----------------------
+  if (opts.summaryBand !== false && full.length > 1) {
+    drawIssuesSummaryBand(rd, full, shortMap, now)
+  }
 
   const PAD = 4
   const THUMB_W = 40

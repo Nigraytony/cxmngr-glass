@@ -44,22 +44,22 @@ export async function generateIssueDocx(issue: any, opts: { sections?: Record<st
 /** Batch export (Issue report redesign Step 5): a cover table followed by
  *  each selected issue's full redesigned sheet, continuous page numbers.
  *  Honors the per-project section preferences from IssueEdit's ▾ menu. */
-export async function generateIssuesDetailedPdf(issues: any[]): Promise<void> {
+export async function generateIssuesDetailedPdf(issues: any[], opts: { summaryBand?: boolean } = {}): Promise<void> {
   if (!Array.isArray(issues) || issues.length === 0) return
   const project = await resolveProject(issues[0]?.projectId)
   const { generateIssuesBatchReport, loadIssueReportSections } = await import('./issue/report')
   const pid = String(issues[0]?.projectId || project?._id || project?.id || '')
-  await generateIssuesBatchReport(issues, project, { sections: loadIssueReportSections(pid) })
+  await generateIssuesBatchReport(issues, project, { sections: loadIssueReportSections(pid), summaryBand: opts.summaryBand })
 }
 
 /** Issue Sheets (Issues batch redesign): the compact card deck — priority
  *  top borders, chips, clamped Condition/Action, photo thumbnails, a card
  *  never split across pages. Replaces the old run-together compact layout. */
-export async function generateIssuesCompactPdf(issues: any[]): Promise<void> {
+export async function generateIssuesCompactPdf(issues: any[], opts: { scopeLine?: string; summaryBand?: boolean } = {}): Promise<void> {
   if (!Array.isArray(issues) || issues.length === 0) return
   const project = await resolveProject(issues[0]?.projectId)
   const { generateIssueSheetsReport } = await import('./issue/sheets')
-  await generateIssueSheetsReport(issues, project)
+  await generateIssueSheetsReport(issues, project, opts)
 }
 
 /** Issues Log (Batch-Log mockup): landscape table with the summary band,
