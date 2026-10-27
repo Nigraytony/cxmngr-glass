@@ -210,6 +210,9 @@ const props = defineProps<{
   matchCount: number
   filterSummary: string
   busy?: boolean
+  /** True when the list has a hand-picked row selection: matchCount is the
+   *  selection size and the scope line says so instead of citing filters. */
+  selectionMode?: boolean
 }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'export', payload: IssueExportPayload): void }>()
 
@@ -293,7 +296,11 @@ const widthWarning = computed(() => {
   return 132 + extraW > 255 ? 'This many columns may be tight on landscape Letter — the Issue column shrinks to fit.' : ''
 })
 
-const scopeText = computed(() => `${props.matchCount} issue${props.matchCount === 1 ? '' : 's'} match the current filters${props.filterSummary ? ` · ${props.filterSummary}` : ''}`)
+const scopeText = computed(() => {
+  const n = props.matchCount
+  if (props.selectionMode) return `${n} issue${n === 1 ? '' : 's'} selected by hand — only these export`
+  return `${n} issue${n === 1 ? '' : 's'} match the current filters${props.filterSummary ? ` · ${props.filterSummary}` : ''}`
+})
 const buttonLabel = computed(() => report.value === 'data' ? (format.value === 'xlsx' ? 'Export Excel' : 'Export CSV') : 'Export PDF')
 
 const storageKey = () => `issueExport:${props.projectId || 'global'}`

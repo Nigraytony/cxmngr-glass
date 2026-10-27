@@ -97,7 +97,18 @@ original prompt text lives with Tony's attachments.
   gets labels + full plain text. **Full Detail cover Page column**:
   drawTable gained an onCellDrawn hook; the cover's Page cells are recorded
   while empty and stamped once every sheet's start page is known.
+- 2026-10-27 (fifth slice, after Tony field-validated the dialog):
+  **list-page UI**. Legacy Downloads menu + Choose-columns modal removed
+  (the Export dialog is the one export surface; the dialog's Data columns
+  still persist via selectedColumns). **Row checkboxes** on each card with
+  a selection bar ("N selected · Select all M matching · Clear"); the
+  selection is the export scope for every report and Data export, the
+  Export button/dialog show the selection count, and a filter or project
+  change clears the selection (page/sort changes keep it — selecting
+  across pages is the point). **Overdue chip** ("Overdue Nd", red) on open
+  cards past due. **Company short names** in Assigned to via the shared
+  formatPerson (moved with shortCompany to definitions/issue/people.ts,
+  re-exported from model.ts). **"Title:" label dropped** from cards.
 - Pending: run the date migration (gated on dry-run review),
-  checklist-issue cleanup (gated), batch QA panel, remaining list-page UI
-  (row checkboxes, overdue chip, removing the legacy Downloads menu),
-  per-party zip for Sheets, Issue.summary field, project timezone setting.
+  checklist-issue cleanup (gated), batch QA panel, per-party zip for
+  Sheets, Issue.summary field, project timezone setting.

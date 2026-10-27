@@ -655,224 +655,8 @@
                   stroke-linecap="round"
                 />
               </svg>
-              <span>Export {{ totalItems }}…</span>
+              <span>Export {{ exportCount }}…</span>
             </button>
-            <div
-              ref="downloadsRef"
-              class="relative"
-            >
-              <button
-                :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
-                @click="toggleDownloadsMenu"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    d="M4 7h16M4 12h16M4 17h16"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                <span>Downloads</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-3 h-3 ml-1"
-                >
-                  <path
-                    d="M6 9l6 6 6-6"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-              <div
-                v-if="showDownloadsMenu"
-                class="absolute left-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
-              >
-                <div
-                  class="py-1"
-                  role="menu"
-                >
-                  <button
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
-                    @click="onChooseColumnsClick"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>Choose columns</span>
-                  </button>
-                  <div class="my-1 h-px bg-white/10" />
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadCsvClick"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M12 3v11"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                      <path
-                        d="M8 11l4 4 4-4"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M5 20h14"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                    <span>Download CSV</span>
-                  </button>
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadXlsxClick"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <rect
-                        x="3"
-                        y="3"
-                        width="18"
-                        height="18"
-                        rx="2"
-                        ry="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M8 3v18M16 3v18M3 8h18M3 16h18"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>Download Excel</span>
-                  </button>
-                  <div class="my-1 h-px bg-white/10" />
-                  <div class="px-3 py-1 text-xs text-white/60">
-                    Reports
-                  </div>
-                  <button
-                    :disabled="!filteredIssues.length || detailedReportBusy"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadDetailedReport"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M14 2v6h6"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M9 15h3a2 2 0 1 0 0-4H9v6z"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>{{ detailedReportBusy ? 'Generating…' : 'Detailed PDF (one per issue)' }}</span>
-                  </button>
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadCompactReport"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M4 7h16M4 12h16M4 17h16"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                    <span>Compact PDF (continuous)</span>
-                  </button>
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadListReport"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <rect
-                        x="3"
-                        y="4"
-                        width="18"
-                        height="16"
-                        rx="2"
-                        ry="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M3 9h18M9 4v16M15 4v16"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>List PDF (table)</span>
-                  </button>
-                </div>
-              </div>
-            </div>
             <button
               type="button"
               class="px-3 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
@@ -1053,6 +837,30 @@
             </button>
           </div>
         </div>
+        <!-- Selection bar (batch redesign): hand-picked export scope -->
+        <div
+          v-if="selectedCount > 0"
+          class="mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-400/30 px-3 py-2 text-sm text-emerald-100"
+        >
+          <span class="font-semibold">{{ selectedCount }} selected</span>
+          <button
+            v-if="selectedCount < totalItems"
+            type="button"
+            class="px-2 py-1 rounded bg-white/10 hover:bg-white/15 border border-white/15 text-white/90 disabled:opacity-50"
+            :disabled="selectAllBusy"
+            @click="selectAllMatching"
+          >
+            {{ selectAllBusy ? 'Selecting…' : `Select all ${totalItems} matching` }}
+          </button>
+          <button
+            type="button"
+            class="px-2 py-1 rounded bg-white/10 hover:bg-white/15 border border-white/15 text-white/90"
+            @click="clearSelection"
+          >
+            Clear selection
+          </button>
+          <span class="text-emerald-200/70">Exports cover only the selected issues.</span>
+        </div>
         <!-- Card-based issue list -->
         <div class="flex flex-col gap-4">
           <div
@@ -1079,7 +887,6 @@
                 </div>
                 <div class="flex-1 min-w-0 space-y-1">
                   <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <span class="text-xs text-white/60">Title:</span>
                     <span class="text-base font-semibold text-white">{{ issue.title || issue.type }}</span>
                   </div>
                   <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -1101,6 +908,10 @@
                       v-else
                       class="text-xs text-white/40"
                     >N/A</span>
+                    <span
+                      v-if="overdueDaysFor(issue) > 0"
+                      class="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-200 border border-red-400/40 font-semibold"
+                    >Overdue {{ overdueDaysFor(issue) }}d</span>
                     <span class="text-xs text-white/60 ml-4">Priority:</span>
                     <span
                       v-if="issue.priority"
@@ -1164,7 +975,7 @@
                   <div class="flex flex-wrap gap-4 text-xs text-white/60 mt-1">
                     <span v-if="issue.system"><span class="text-white/80">System:</span> {{ issue.system }}</span>
                     <span v-if="issue.location"><span class="text-white/80">Location:</span> {{ issue.location }}</span>
-                    <span v-if="issue.responsible_person"><span class="text-white/80">Assigned to:</span> {{ issue.responsible_person }}</span>
+                    <span v-if="issue.responsible_person"><span class="text-white/80">Assigned to:</span> {{ shortResponsible(issue) }}</span>
                     <span v-if="issue.equipment"><span class="text-white/80">Equipment:</span> {{ issue.equipment }}</span>
                     <span v-if="issue.recommendation"><span class="text-white/80">Recommendation:</span> {{ issue.recommendation }}</span>
                     <span v-if="issue.dueDate"><span class="text-white/80">Due date:</span> {{ formatDueDate(issue.dueDate) }}</span>
@@ -1176,6 +987,14 @@
             <!-- Right: Actions -->
             <div class="flex flex-col items-end min-w-[120px] justify-end">
               <div class="flex flex-row items-center gap-1">
+                <input
+                  type="checkbox"
+                  class="w-4 h-4 mr-1 rounded bg-white/10 border-white/20 accent-emerald-500 cursor-pointer"
+                  :checked="isRowSelected(issue)"
+                  :aria-label="`Select issue #${issue.number} for export`"
+                  title="Select for export"
+                  @click.stop="toggleRowSelected(issue)"
+                >
                 <button
                   class="w-6 h-6 grid place-items-center rounded border p-0"
                   :class="isExpanded(issue) ? 'bg-sky-500/30 border-sky-400/40 text-sky-100' : 'bg-white/10 hover:bg-white/20 text-white border-white/10'"
@@ -1526,75 +1345,6 @@
       :apply-tags="applyIssueTags"
     />
 
-    <!-- Choose Columns Modal -->
-    <Modal v-model="showColumnsModal">
-      <template #header>
-        <h3 class="text-lg font-semibold">
-          Choose columns to export
-        </h3>
-      </template>
-      <div class="space-y-3">
-        <p class="text-white/70 text-sm">
-          Your selection applies to both CSV and Excel exports. It will be remembered for this project.
-        </p>
-        <div class="flex flex-wrap gap-2">
-          <button
-            class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-            @click="selectCommonColumns"
-          >
-            Common preset
-          </button>
-          <button
-            class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-            @click="selectAllColumns"
-          >
-            Select all
-          </button>
-          <button
-            class="px-3 py-1.5 rounded bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10"
-            @click="clearAllColumns"
-          >
-            Clear
-          </button>
-        </div>
-
-        <div class="max-h-80 overflow-auto rounded-xl border border-white/10 p-3 bg-white/5">
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            <label
-              v-for="col in sortedAvailableColumns"
-              :key="col"
-              class="inline-flex items-center gap-2 text-white/90"
-            >
-              <input
-                type="checkbox"
-                class="form-checkbox rounded bg-white/10 border-white/20"
-                :value="col"
-                :checked="selectedColumnsSet.has(col)"
-                @change="(e) => onToggleColumn(col, (e.target as HTMLInputElement).checked)"
-              >
-              <span class="text-sm">{{ col }}</span>
-            </label>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <div class="flex gap-2">
-          <button
-            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
-            @click="applyAndCloseColumns"
-          >
-            Done
-          </button>
-          <button
-            class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
-            @click="showColumnsModal = false"
-          >
-            Cancel
-          </button>
-        </div>
-      </template>
-    </Modal>
-
     <!-- Mobile Filters Modal -->
     <Modal v-model="showFiltersModal">
       <template #header>
@@ -1903,224 +1653,8 @@
                   stroke-linecap="round"
                 />
               </svg>
-              <span>Export {{ totalItems }}…</span>
+              <span>Export {{ exportCount }}…</span>
             </button>
-            <div
-              ref="downloadsRef"
-              class="relative"
-            >
-              <button
-                :aria-expanded="showDownloadsMenu ? 'true' : 'false'"
-                class="px-3 py-1.5 rounded-lg bg-white/6 hover:bg-white/10 text-white text-sm border border-white/10 inline-flex items-center gap-2"
-                @click="toggleDownloadsMenu"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-4 h-4"
-                >
-                  <path
-                    d="M4 7h16M4 12h16M4 17h16"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                <span>Downloads</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  class="w-3 h-3 ml-1"
-                >
-                  <path
-                    d="M6 9l6 6 6-6"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-              <div
-                v-if="showDownloadsMenu"
-                class="absolute left-0 mt-2 w-64 rounded-xl bg-slate-950 border border-white/10 shadow-lg ring-1 ring-white/10 z-50"
-              >
-                <div
-                  class="py-1"
-                  role="menu"
-                >
-                  <button
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2"
-                    @click="onChooseColumnsClick"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.8v.2a2 2 0 1 1-4 0v-.1a1 1 0 0 0-.7-.8 1 1 0 0 0-1.1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.8-.6H5a2 2 0 1 1 0-4h.1a1 1 0 0 0 .8-.7 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.8V5a2 2 0 1 1 4 0v.1a1 1 0 0 0 .7.8h.1a1 1 0 0 0 1.1-.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .8.6H19a2 2 0 1 1 0 4h-.1a1 1 0 0 0-.8.6Z"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>Choose columns</span>
-                  </button>
-                  <div class="my-1 h-px bg-white/10" />
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadCsvClick"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M12 3v11"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                      <path
-                        d="M8 11l4 4 4-4"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <path
-                        d="M5 20h14"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                    <span>Download CSV</span>
-                  </button>
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadXlsxClick"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <rect
-                        x="3"
-                        y="3"
-                        width="18"
-                        height="18"
-                        rx="2"
-                        ry="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M8 3v18M16 3v18M3 8h18M3 16h18"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>Download Excel</span>
-                  </button>
-                  <div class="my-1 h-px bg-white/10" />
-                  <div class="px-3 py-1 text-xs text-white/60">
-                    Reports
-                  </div>
-                  <button
-                    :disabled="!filteredIssues.length || detailedReportBusy"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadDetailedReport"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M14 2v6h6"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M9 15h3a2 2 0 1 0 0-4H9v6z"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>{{ detailedReportBusy ? 'Generating…' : 'Detailed PDF (one per issue)' }}</span>
-                  </button>
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadCompactReport"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <path
-                        d="M4 7h16M4 12h16M4 17h16"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                    <span>Compact PDF (continuous)</span>
-                  </button>
-                  <button
-                    :disabled="!filteredIssues.length"
-                    role="menuitem"
-                    class="w-full px-3 py-2 text-left text-white/90 hover:bg-white/10 inline-flex items-center gap-2 disabled:opacity-40"
-                    @click="onDownloadListReport"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      class="w-4 h-4"
-                    >
-                      <rect
-                        x="3"
-                        y="4"
-                        width="18"
-                        height="16"
-                        rx="2"
-                        ry="2"
-                        stroke-width="1.5"
-                      />
-                      <path
-                        d="M3 9h18M9 4v16M15 4v16"
-                        stroke-width="1.5"
-                      />
-                    </svg>
-                    <span>List PDF (table)</span>
-                  </button>
-                </div>
-              </div>
-            </div>
             <button
               type="button"
               class="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/10 text-white"
@@ -2158,7 +1692,8 @@
     <IssueExportDialog
       v-if="showExportDialog"
       :project-id="String(projectStore.currentProjectId || '')"
-      :match-count="totalItems"
+      :match-count="exportCount"
+      :selection-mode="selectedCount > 0"
       :filter-summary="buildFilterSummary()"
       :busy="detailedReportBusy"
       @close="showExportDialog = false"
@@ -2226,7 +1761,8 @@ import AzurePhotosPanel from '../../components/photos/AzurePhotosPanel.vue'
 import { useUiStore } from '../../stores/ui'
 import ReportQaModal from '../../components/reports/ReportQaModal.vue'
 import type { QaWarning } from '../../reports/qaTypes'
-import { dateOnlyToLocal } from '../../reports/core/dates'
+import { dateOnlyToLocal, daysPast } from '../../reports/core/dates'
+import { formatPerson } from '../../reports/definitions/issue/people'
 import { useIssuesStore } from '../../stores/issues'
 import { issuesRepository } from '../../data/issuesRepository'
 import { useLocal } from '../../data/offlineGate'
@@ -2236,7 +1772,7 @@ import { useAuthStore } from '../../stores/auth'
 import http from '../../utils/http'
 import { getApiBase } from '../../utils/api'
 // lists is not used in this file; previously imported for legacy filtering UI
-import { generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesListPdf, generateIssuesLogPdf } from '../../reports/definitions/issue'
+import { generateIssuesDetailedPdf, generateIssuesCompactPdf, generateIssuesLogPdf } from '../../reports/definitions/issue'
 import IssueExportDialog, { type IssueExportPayload } from '../../components/issues/IssueExportDialog.vue'
 import { confirm as inlineConfirm } from '../../utils/confirm'
 import { runCoachmarkOnce } from '../../utils/coachmarks'
@@ -2359,6 +1895,20 @@ const toggling = reactive<Record<string, boolean>>({})
 function isClosedRow(issue: Partial<Issue> | null | undefined): boolean {
   const s = String(issue?.status || '').toLowerCase()
   return s === 'closed' || s === 'canceled' || s === 'cancelled'
+}
+
+/** Whole days an OPEN issue is past due (0 when closed, not due, or no date). */
+function overdueDaysFor(issue: any): number {
+  if (!issue || isClosedRow(issue)) return 0
+  const d = daysPast(issue.dueDate)
+  return d !== null && d > 0 ? d : 0
+}
+
+/** "Randy Frost (BoldAir Mechanical, LLC)" -> "Randy Frost · BoldAir" using
+ *  the project's company short-name map (same rendering as the reports). */
+function shortResponsible(issue: any): string {
+  const map: Record<string, string> = ((projectStore.currentProject as any)?.reportSettings?.companyShortNames) || {}
+  return formatPerson(issue?.responsible_person || issue?.assignedTo, map) || String(issue?.responsible_person || '')
 }
 
 async function toggleIssueClosed(issue: Partial<Issue> | null | undefined): Promise<void> {
@@ -2492,14 +2042,11 @@ const isEditReadOnly = computed(() => {
   const s = String(editIssue.value?.status || '').toLowerCase()
   return s === 'closed' || s === 'canceled' || s === 'cancelled'
 })
-// Columns chooser state
-const showColumnsModal = ref(false)
+// Data-export column selection (written by the Export dialog; the legacy
+// Choose-columns modal and Downloads menu were retired once the dialog was
+// field-validated).
 const selectedColumns = ref<string[]>([])
-const selectedColumnsSet = computed<Set<string>>(() => new Set(selectedColumns.value || []))
 const columnsStorageKey = computed(() => `issuesExportColumns:${projectStore.currentProjectId || 'global'}`)
-// Downloads dropdown state
-const showDownloadsMenu = ref(false)
-const downloadsRef = ref<HTMLElement | null>(null)
 const showTypeMenu = ref(false)
 const typeMenuRef = ref<HTMLElement | null>(null)
 const showPriorityMenu = ref(false)
@@ -2519,15 +2066,6 @@ const availableColumns = computed<string[]>(() => {
     }
   }
   return Array.from(colSet)
-})
-
-const sortedAvailableColumns = computed<string[]>(() => {
-  const avail = new Set(availableColumns.value)
-  removedColumns.forEach(c => avail.delete(c))
-  return [
-    ...preferredColumns.filter(c => avail.has(c)),
-    ...Array.from(avail).filter(c => !preferredColumns.includes(c)).sort()
-  ]
 })
 
 function loadSelectedColumns() {
@@ -2558,17 +2096,6 @@ watch(availableColumns, () => {
 })
 watch(selectedColumns, persistSelectedColumns, { deep: true })
 
-function openColumnsModal() {
-  if (!selectedColumns.value || selectedColumns.value.length === 0) loadSelectedColumns()
-  showColumnsModal.value = true
-}
-function applyAndCloseColumns() { persistSelectedColumns(); showColumnsModal.value = false }
-function selectAllColumns() { selectedColumns.value = sortedAvailableColumns.value.slice() }
-function clearAllColumns() { selectedColumns.value = [] }
-function selectCommonColumns() {
-  const avail = new Set(availableColumns.value)
-  selectedColumns.value = preferredColumns.filter(c => avail.has(c))
-}
 function orderColumns(cols: string[]): string[] {
   const pref = preferredColumns
   const inPref = cols.filter(c => pref.includes(c))
@@ -2577,12 +2104,6 @@ function orderColumns(cols: string[]): string[] {
   const orderedPref = pref.filter(c => inPref.includes(c))
   return [...orderedPref, ...remaining]
 }
-function onToggleColumn(col: string, checked: boolean): void {
-  const set = new Set(selectedColumns.value)
-  if (checked) set.add(col); else set.delete(col)
-  selectedColumns.value = orderColumns(Array.from(set))
-}
-
 function getExportColumns(rows: any[]): string[] {
   // Use selected columns if any; otherwise derive from rows using preferred order then others
   if (selectedColumns.value && selectedColumns.value.length) return orderColumns(selectedColumns.value.slice().filter(c => !removedColumns.includes(c)))
@@ -2600,12 +2121,6 @@ function getExportColumns(rows: any[]): string[] {
   ]
 }
 
-function toggleDownloadsMenu() {
-  showDownloadsMenu.value = !showDownloadsMenu.value
-}
-function closeDownloadsMenu() {
-  showDownloadsMenu.value = false
-}
 function toggleTypeMenu() {
   showTypeMenu.value = !showTypeMenu.value
 }
@@ -2630,28 +2145,13 @@ function toggleOprMenu() {
 function closeOprMenu() {
   showOprMenu.value = false
 }
-function onChooseColumnsClick() {
-  closeDownloadsMenu()
-  openColumnsModal()
-}
-function onDownloadCsvClick() {
-  closeDownloadsMenu()
-  exportFilteredIssuesCsv()
-}
-function onDownloadXlsxClick() {
-  closeDownloadsMenu()
-  exportFilteredIssuesXlsx()
-}
-
 function handleClickOutside(e: MouseEvent): void {
-  const dEl = downloadsRef.value
   const tEl = typeMenuRef.value
   const pEl = priorityMenuRef.value
   const sEl = statusMenuRef.value
   const oEl = oprMenuRef.value
   const target = (e.target as Node | null)
   if (!target) return
-  if (dEl && !dEl.contains(target)) closeDownloadsMenu()
   if (tEl && !tEl.contains(target)) closeTypeMenu()
   if (pEl && !pEl.contains(target)) closePriorityMenu()
   if (sEl && !sEl.contains(target)) closeStatusMenu()
@@ -3684,6 +3184,41 @@ async function fetchAllFilteredIssues(): Promise<IssueRow[]> {
   }
 }
 
+// ---- Row selection (batch redesign): hand-picked export scope ------------
+const selectedIssueIds = ref<Set<string>>(new Set())
+const selectedCount = computed(() => selectedIssueIds.value.size)
+const selectAllBusy = ref(false)
+function rowKey(issue: any): string { return String(issue?.id || issue?._id || '') }
+function isRowSelected(issue: any): boolean { return selectedIssueIds.value.has(rowKey(issue)) }
+function toggleRowSelected(issue: any): void {
+  const id = rowKey(issue)
+  if (!id) return
+  const next = new Set(selectedIssueIds.value)
+  if (next.has(id)) next.delete(id); else next.add(id)
+  selectedIssueIds.value = next
+}
+function clearSelection(): void { selectedIssueIds.value = new Set() }
+async function selectAllMatching(): Promise<void> {
+  if (selectAllBusy.value) return
+  selectAllBusy.value = true
+  try {
+    const rows = await fetchAllFilteredIssues()
+    selectedIssueIds.value = new Set(rows.map(rowKey).filter(Boolean))
+  } finally {
+    selectAllBusy.value = false
+  }
+}
+
+/** The export scope: the hand-picked selection when one exists, otherwise
+ *  every issue matching the current filters (all pages). */
+async function fetchExportRows(): Promise<IssueRow[]> {
+  const all = await fetchAllFilteredIssues()
+  if (!selectedCount.value) return all
+  const ids = selectedIssueIds.value
+  return all.filter(r => ids.has(rowKey(r)))
+}
+const exportCount = computed(() => selectedCount.value || totalItems.value)
+
 function fetchIssuesPage(projectId?: string | null) {
   return (async () => {
     loading.value = true
@@ -3882,6 +3417,31 @@ watch([
   () => hideClosed.value,
   () => myIssuesOnly.value
 ], () => debouncedFetch(), { immediate: false })
+
+// A changed filter (or project) can orphan selected rows that no longer
+// match; clear the selection rather than export a set the user can't see.
+// Page, page-size and sort changes keep it — selecting across pages is the
+// point of the checkboxes.
+watch([
+  preferredProjectId,
+  () => effectiveSearch.value,
+  () => typeFilter.value,
+  () => statusFilter.value,
+  () => priorityFilter.value,
+  () => oprCategoryFilter.value,
+  () => oprItemFilter.value,
+  () => hasOprFilter.value,
+  () => locationFilter.value,
+  () => responsibleFilter.value,
+  () => systemFilter.value,
+  () => dateFoundFrom.value,
+  () => dateFoundTo.value,
+  () => dueDateFrom.value,
+  () => dueDateTo.value,
+  () => tagsFilter.value,
+  () => hideClosed.value,
+  () => myIssuesOnly.value
+], () => clearSelection())
 
 const oprIdsForMetaKey = computed(() => {
   const useServer = Number(serverTotal.value || 0) > 0 && Array.isArray(serverIssues.value) && serverIssues.value.length > 0
@@ -4320,7 +3880,7 @@ function togglePriority(name: string) {
 // cells, frozen header + autofilter, fitted widths \u2014 definitions/issue/data.
 async function exportFilteredIssuesCsv() {
   try {
-    const rows = await fetchAllFilteredIssues()
+    const rows = await fetchExportRows()
     if (!rows.length) return
     const { exportIssuesCsv } = await import('../../reports/definitions/issue/data')
     exportIssuesCsv(rows, getExportColumns(rows))
@@ -4331,7 +3891,7 @@ async function exportFilteredIssuesCsv() {
 
 async function exportFilteredIssuesXlsx() {
   try {
-    const rows = await fetchAllFilteredIssues()
+    const rows = await fetchExportRows()
     if (!rows.length) return
     const { exportIssuesXlsx } = await import('../../reports/definitions/issue/data')
     await exportIssuesXlsx(rows, getExportColumns(rows))
@@ -4386,8 +3946,9 @@ async function onExportRun(p: IssueExportPayload) {
   if (detailedReportBusy.value) return
   detailedReportBusy.value = true
   try {
-    // Every export covers the full filtered set, not just the visible page.
-    const rows = (await fetchAllFilteredIssues()).map(mapIssueForReport)
+    // Scope: the hand-picked selection when one exists, else the full
+    // filtered set (never just the visible page).
+    const rows = (await fetchExportRows()).map(mapIssueForReport)
     if (p.report === 'log') {
       ui.showInfo(`Generating Issues Log (${rows.length} issue${rows.length === 1 ? '' : 's'})…`, { duration: 6000 })
       await generateIssuesLogPdf(rows, {
@@ -4452,52 +4013,5 @@ function onHealthOpen(w: QaWarning) {
 }
 
 const detailedReportBusy = ref(false)
-async function onDownloadDetailedReport() {
-  if (detailedReportBusy.value) return
-  detailedReportBusy.value = true
-  showDownloadsMenu.value = false
-  try {
-    const rows = (await fetchAllFilteredIssues()).map(mapIssueForReport)
-    // Each issue fetches its full record, photos, logs and links — give the
-    // user feedback instead of a long silent gather.
-    ui.showInfo(`Generating issues report (${rows.length} issue${rows.length === 1 ? '' : 's'})… this can take a minute for large selections.`, { duration: 8000 })
-    await generateIssuesDetailedPdf(rows)
-  } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the issues report')
-  } finally {
-    detailedReportBusy.value = false
-  }
-}
-
-async function onDownloadCompactReport() {
-  if (detailedReportBusy.value) return
-  detailedReportBusy.value = true
-  showDownloadsMenu.value = false
-  try {
-    const rows = (await fetchAllFilteredIssues()).map(mapIssueForReport)
-    ui.showInfo(`Generating issue sheets (${rows.length} issue${rows.length === 1 ? '' : 's'})… photos load per issue, so this can take a moment.`, { duration: 8000 })
-    await generateIssuesCompactPdf(rows)
-  } catch (e: any) {
-    ui.showError(e?.response?.data?.error || e?.message || 'Failed to generate the issue sheets')
-  } finally {
-    detailedReportBusy.value = false
-  }
-}
-
-async function onDownloadListReport() {
-  try {
-    const rows = await fetchAllFilteredIssues()
-    const cols = (selectedColumns.value && selectedColumns.value.length)
-      ? selectedColumns.value.slice()
-      : getExportColumns(rows)
-    // prune removed columns in case legacy selections persist
-    const prunedCols = cols.filter(c => !removedColumns.includes(c))
-    await generateIssuesListPdf(rows.map(mapIssueForReport), prunedCols)
-  } catch (e) {
-    // silent; optionally show a toast
-  } finally {
-    showDownloadsMenu.value = false
-  }
-}
 
 </script>

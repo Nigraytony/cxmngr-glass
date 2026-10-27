@@ -114,26 +114,10 @@ export function priorityBucket(sev: any): PriorityKey {
  * Shorten a company name: the project's companyShortNames map wins
  * (Project Settings), then a suffix-stripping heuristic.
  */
-export function shortCompany(name: string, map: Record<string, string> = {}): string {
-  const full = String(name || '').trim()
-  if (!full) return ''
-  for (const [k, v] of Object.entries(map)) {
-    if (k.trim().toLowerCase() === full.toLowerCase()) return String(v)
-  }
-  const stripped = full.replace(/[,.]?\s*(LLC|L\.L\.C\.|Inc|Incorporated|Corp|Corporation|Co|Company|Ltd)\.?$/i, '').trim().replace(/[,.]+$/, '')
-  return stripped || full
-}
-
-/** "Name (Company)" / "Name - Company" -> "Name · ShortCo". */
-export function formatPerson(raw: any, map: Record<string, string> = {}): string {
-  const s = String(raw || '').trim()
-  if (!s) return ''
-  const m = s.match(/^(.*?)\s*[(–-]\s*([^)]+?)\)?$/)
-  if (m && m[2] && m[1]) {
-    return `${m[1].trim()} · ${shortCompany(m[2], map)}`
-  }
-  return s
-}
+// Moved to people.ts so the Issues list UI can share them; re-exported here
+// so every report module keeps importing them from the model.
+import { formatPerson, shortCompany } from './people'
+export { formatPerson, shortCompany }
 
 /** Split the recommendation into numbered action items (lines / list markup). */
 export function splitActions(recommendation: string): string[] {
