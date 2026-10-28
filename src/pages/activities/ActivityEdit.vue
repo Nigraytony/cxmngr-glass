@@ -829,6 +829,35 @@
                   <span>Report Settings</span>
                 </button>
                 <button
+                  v-if="!isNew"
+                  type="button"
+                  :disabled="qaRunning"
+                  class="px-3 py-2 rounded-md bg-white/10 border border-white/20 hover:bg-white/15 inline-flex items-center gap-2"
+                  :class="qaRunning ? 'opacity-60 cursor-not-allowed' : ''"
+                  title="Review data conflicts (checklist answers vs open issues, photos, due dates). Optional — reports generate without it."
+                  @click.stop="runPreIssueQa"
+                >
+                  <!-- clipboard-check icon -->
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    class="w-4 h-4"
+                  ><path
+                    d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1zM8 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /><path
+                    d="M9 13.5l2 2 4-4.5"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  /></svg>
+                  <span>{{ qaRunning ? 'Checking…' : 'Pre-issue QA' }}</span>
+                </button>
+                <button
                   :disabled="saving"
                   class="px-3 py-2 rounded-md bg-white/20 border border-white/30 hover:bg-white/30 inline-flex items-center gap-2"
                   :class="saving ? 'opacity-60 cursor-not-allowed' : ''"
@@ -2454,12 +2483,14 @@
       @save="saveActivityReportSettings"
     />
 
-    <!-- Pre-issue QA panel (Stage 4): data conflicts surfaced before the
-         report generates. Never blocks, never printed. -->
+    <!-- Pre-issue QA panel: an on-demand review of data conflicts (its own
+         button in the report actions row). Never printed, never involved in
+         report generation. -->
     <ReportQaModal
       v-if="showQaModal"
       :warnings="qaWarnings"
-      @proceed="onQaProceed"
+      :show-proceed="false"
+      subtitle="Shown to you only — never printed in the issued report. Reports generate independently of this check."
       @cancel="onQaCancel"
       @dismiss="onQaDismiss"
       @open="onQaOpen"
@@ -3737,13 +3768,22 @@ function buildActivityPdfFilename(): string {
 // renders via reports/definitions/activity. Equipment detail is an optional
 // appendix (settings key 'equipmentReports', default off); PDF attachments
 // append at the end; page numbers are stamped continuously post-merge.
-// ---- Pre-issue QA panel state (Stage 4). Dismissals persist per activity. ----
+// ---- Pre-issue QA panel state. Its own workflow (the "Pre-issue QA"
+// button) — report generation no longer runs it or waits on it.
+// Dismissals persist per activity. ----
 const qaWarnings = ref<QaWarning[]>([])
 const showQaModal = ref(false)
-let qaResolver: ((proceed: boolean) => void) | null = null
+const qaRunning = ref(false)
 const qaDismissedKey = () => `activityQa:dismissed:${String(id.value || '')}`
 function loadQaDismissed(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(qaDismissedKey()) || '[]')) } catch (e) { return new Set() }
+}
+async function runPreIssueQa() {
+  if (!id.value || isNew.value || qaRunning.value) return
+  qaRunning.value = true
+  try { await gatherActivityReportModel({ qaOnly: true }) }
+  catch (e) { ui.showError('QA check failed to run') }
+  finally { qaRunning.value = false }
 }
 function onQaDismiss(w: QaWarning) {
   try {
@@ -3755,27 +3795,20 @@ function onQaDismiss(w: QaWarning) {
 }
 function onQaOpen(w: QaWarning) {
   showQaModal.value = false
-  qaResolver?.(false)
-  qaResolver = null
   if (w.link?.type === 'issue' && w.link.id) router.push({ name: 'issue-edit', params: { id: w.link.id } })
   else if (w.link?.type === 'equipment' && w.link.id) router.push({ name: 'equipment-edit', params: { id: w.link.id } })
   else if (w.link?.type === 'photos') currentTab.value = 'Photos'
 }
-function onQaProceed() {
-  showQaModal.value = false
-  qaResolver?.(true)
-  qaResolver = null
-}
 function onQaCancel() {
   showQaModal.value = false
-  qaResolver?.(false)
-  qaResolver = null
 }
 
-// Shared gathering + QA gate + view-model assembly for BOTH report formats:
-// the PDF and the Word export consume the same model so they cannot drift.
-// Returns null when the user cancels out of the QA panel.
-async function gatherActivityReportModel(): Promise<null | { model: any; project: any; equipment: any[]; allIssues: any[]; pid: string; activityIdStr: string }> {
+// Shared gathering + view-model assembly for BOTH report formats: the PDF
+// and the Word export consume the same model so they cannot drift.
+// With { qaOnly: true } it stops after the QA inputs are gathered, shows the
+// Pre-issue QA panel and returns null — that is the standalone QA workflow;
+// plain report generation never runs QA and never blocks on it.
+async function gatherActivityReportModel(opts?: { qaOnly?: boolean }): Promise<null | { model: any; project: any; equipment: any[]; allIssues: any[]; pid: string; activityIdStr: string }> {
     await ensureReportData()
     const project: any = projectStore.currentProject || {}
     const activityIdStr = String(id.value || '')
@@ -3845,26 +3878,23 @@ async function gatherActivityReportModel(): Promise<null | { model: any; project
     // Cover-flagged photo first (it becomes the hero), then issue-linked, then the rest.
     reportPhotos.sort((a, b) => Number(!!b.isCover) - Number(!!a.isCover) || Number(!!(b.issueRefs && b.issueRefs.length)) - Number(!!(a.issueRefs && a.issueRefs.length)))
 
+    // ---- standalone Pre-issue QA workflow (its own button; a review panel,
+    // not a gate — report generation skips this entirely) -------------------
+    if (opts?.qaOnly) {
+      const { runActivityQaChecks } = await import('../../reports/definitions/activity/qa')
+      const dismissed = loadQaDismissed()
+      qaWarnings.value = runActivityQaChecks({ equipment, issues: scopedIssues, photos: reportPhotos })
+        .filter(w => !dismissed.has(w.id))
+      if (qaWarnings.value.length) showQaModal.value = true
+      else ui.showInfo('Pre-issue QA: no conflicts found.')
+      return null
+    }
+
     // ---- actions (reviews-completed KPI) + action items ------------------
     let acts: any[] = Array.isArray(actions.value) ? actions.value : []
     if (!acts.length) { try { acts = await actionsStore.list(activityIdStr, pid) } catch (e) { acts = [] } }
     let actionItems: any[] = []
     try { actionItems = await actionItemsStore.list(activityIdStr, pid) } catch (e) { actionItems = [] }
-
-    // ---- Stage 4: pre-issue QA panel. Surfaces data conflicts before the
-    // report generates; dismissable, never blocking, never printed.
-    try {
-      const { runActivityQaChecks } = await import('../../reports/definitions/activity/qa')
-      const dismissed = loadQaDismissed()
-      const found = runActivityQaChecks({ equipment, issues: scopedIssues, photos: reportPhotos })
-        .filter(w => !dismissed.has(w.id))
-      if (found.length) {
-        qaWarnings.value = found
-        showQaModal.value = true
-        const proceed = await new Promise<boolean>(resolve => { qaResolver = resolve })
-        if (!proceed) return null
-      }
-    } catch (e) { /* QA must never break report generation */ }
 
     // ---- assemble the shared view-model --------------------------------
     const { assembleActivityReportModel } = await import('../../reports/definitions/activity/model')

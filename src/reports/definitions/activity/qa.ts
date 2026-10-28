@@ -1,8 +1,8 @@
-// Pre-issue QA checks for the Activity report (Stage 4 of the redesign,
-// docs/activity_report_redesign.md). Pure data-in/warnings-out so the checks
-// are testable; the modal UI lives in components/activity/ActivityReportQaModal.vue.
-// These surface conflicts in the UI before generating — they never block and
-// are NEVER printed in the report.
+// Pre-issue QA checks for the Activity report (born in Stage 4 of the
+// redesign, docs/activity_report_redesign.md). Pure data-in/warnings-out so
+// the checks are testable; shown via components/reports/ReportQaModal.vue.
+// This is its own workflow (the Pre-issue QA button on the Activity page) —
+// report generation never runs it, and findings are NEVER printed.
 
 import type { QaWarning } from '../../qaTypes'
 export type { QaWarning } from '../../qaTypes'
@@ -26,9 +26,14 @@ const TOPIC_WORDS = [
   'strainer', 'eliminator', 'heater',
 ]
 
+// Whole words only (plural-tolerant): a substring test made "discharge"
+// match the charge topic and "voltage" match tag, flooding the panel with
+// false conflicts.
+const TOPIC_RES = TOPIC_WORDS.map(w => ({ w, re: new RegExp(`\\b${w}s?\\b`, 'i') }))
+
 function topicsIn(text: string): Set<string> {
-  const t = String(text || '').toLowerCase()
-  return new Set(TOPIC_WORDS.filter(w => t.includes(w)))
+  const t = String(text || '')
+  return new Set(TOPIC_RES.filter(x => x.re.test(t)).map(x => x.w))
 }
 
 function checklistItems(eq: any): Array<{ text: string; done: boolean; section: string }> {

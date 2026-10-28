@@ -169,3 +169,11 @@ Work in small, reviewable steps. After each step, regenerate the sample report a
   (equipment appendix off, blank FPT off, photo appendix on, max photos in log).
 - **Stage 4 — QA panel**: pre-download modal with the six conflict checks; dismissable,
   never blocking, never printed.
+- **2026-10-28 — QA panel decoupled from generation** (Tony field feedback: the
+  pre-download modal read as a gate blocking the report). It is now its own
+  workflow: a "Pre-issue QA" button beside Report Settings on the Activity page
+  runs the checks on demand (review-only modal, `show-proceed=false`; a toast
+  when nothing is found); Download PDF/Word never run QA and never wait on it.
+  Also fixed the check-#1 topic matcher to whole words (plural-tolerant) — the
+  substring test made "discharge" match charge and "voltage" match tag,
+  producing 33 findings on a 20-issue project (tests/unit/activityQa.test.ts).
