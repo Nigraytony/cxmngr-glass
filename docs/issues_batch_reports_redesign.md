@@ -109,6 +109,42 @@ original prompt text lives with Tony's attachments.
   cards past due. **Company short names** in Assigned to via the shared
   formatPerson (moved with shortCompany to definitions/issue/people.ts,
   re-exported from model.ts). **"Title:" label dropped** from cards.
-- Pending: run the date migration (gated on dry-run review),
-  checklist-issue cleanup (gated), batch QA panel, per-party zip for
-  Sheets, Issue.summary field, project timezone setting.
+- 2026-10-28: **Step 0 date migration resolved as a no-op.** Dry run executed
+  against production (read-only, all projects): 171 issues, 265 non-empty
+  date values — every one already plain YYYY-MM-DD; 0 to change, 0
+  unparseable. No BSON Dates either (String()-ified Dates would have shown
+  as changes). The script was first verified end-to-end on a seeded local
+  DB (date-only kept, UTC-midnight → date part, true timestamps → Eastern
+  calendar date incl. the 03:15Z → previous-day case, junk text listed for
+  review, --apply idempotent). Storage is clean; the date-only rendering
+  bugs were display-layer and are already fixed by core/dates.ts. No
+  --apply needed; keep the script for future audits (note: bare
+  US-format strings like 10/05/2026 parse in the machine's local TZ, so
+  run audits from an Eastern machine).
+- 2026-10-28: **checklist-issue cleanup built** (data write still gated).
+  Schema: structured `Issue.source` subdoc (models/issue.js — sourceType,
+  equipmentId/tag, checklistNumber/Title/Type, questionNumber/Text, answer;
+  checklists live embedded on Equipment, so the link is numbers + equipment
+  id, not a checklist id) + `source` added to LIGHT_FIELDS. One-time parse:
+  backend-api/scripts/cleanup_checklist_issues.js (dry-run default, --apply
+  gated) parses the "Checklist: TAG • Sec N – … • Qn – …" titles and the
+  "Equipment: … Section: … Question: … Answer: … Notes: …" description dumps
+  (plain lines or <p>-wrapped), validates each extraction against the
+  equipment's embedded checklist (question numbers resolve as number ??
+  position+1 — older checklists store null numbers), proposes clean titles
+  (dump titles get curated replacements in CURATED_TITLES) and
+  dump-stripped descriptions, sets origin='checklist' and $addToSet
+  equipmentIds. Prod dry run: 14 issues (all Pulaski), every extraction
+  validated, 0 warnings. Forward path: ChecklistPanel.vue now sends
+  `source` + equipmentIds and prefills a clean title (TAG: question) with
+  notes-only description — origin is deliberately NOT sent (create route
+  400s checklist-origin issues without a recommendation and the dialog has
+  no such field). Sheets chip reads source ("From checklist: TAG PFC · Sec
+  N · Qn") with the old heuristics as fallback; same-condition grouping
+  (Sheets + Log) now keys on checklist question identity via shared
+  model.ts sameConditionKey, else normalized description.
+- 2026-10-28: **checklist cleanup APPLIED** after Tony's review — 14 issues
+  updated in prod, follow-up dry run matches 0, spot checks of #4/#15
+  verified (clean title/description, full source, origin, equipmentIds).
+- Pending: batch QA panel, per-party zip for Sheets, Issue.summary field,
+  project timezone setting.

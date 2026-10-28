@@ -30,6 +30,22 @@ const issueSchema = new mongoose.Schema({
   // a recommendation (enforced in the create route); the Activity report
   // prints this as the issue's source.
   origin: { type: String, default: '' },
+  // Structured origin for checklist-raised issues (issues batch redesign).
+  // Checklists live embedded on Equipment (equipment.checklists[] keyed by
+  // number, questions[] keyed by number), so the link is numbers + the
+  // equipment id, not a checklist id. Replaces the "Equipment: … Section: …
+  // Question: …" text dumps that used to be pasted into title/description.
+  source: {
+    sourceType: { type: String, default: '' }, // 'checklist' (later: 'fpt', …)
+    equipmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Equipment' },
+    equipmentTag: { type: String, default: '' },
+    checklistNumber: { type: Number },          // printed as "Sec N"
+    checklistTitle: { type: String, default: '' },  // e.g. 'Installation Verification'
+    checklistType: { type: String, default: '' },   // e.g. 'Pre-functional Checklist'
+    questionNumber: { type: Number },           // printed as "Qn"
+    questionText: { type: String, default: '' },
+    answer: { type: String, default: '' },      // the triggering answer, e.g. 'no'
+  },
   // -------------------------------------------------------------------------
   // Issue report redesign Step 2 (issue-mockup.pdf). All optional.
   // -------------------------------------------------------------------------

@@ -228,7 +228,7 @@ function getBackendBaseUrl(req) {
 
 // Light projection for list responses to avoid pulling large blobs.
 // Includes __v so clients can send it back for optimistic-lock updates.
-const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation resolution origin oprItemIds equipmentIds lifeSafety lifeSafetyNote reference response verification __v';
+const LIGHT_FIELDS = 'number tag title type priority severity status projectId spaceId assignedTo responsible_person foundBy dateFound description system location assetId activityId systemId createdAt updatedAt dueDate closedBy closedDate labels recommendation resolution origin source oprItemIds equipmentIds lifeSafety lifeSafetyNote reference response verification __v';
 
 // runMiddleware extracted to ../middleware/runMiddleware.js
 

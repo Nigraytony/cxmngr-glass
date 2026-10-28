@@ -14,7 +14,7 @@ import { deliverPdfBytes, reportFileName } from '../../core/deliver'
 import { CRITICAL_STYLE, GREEN_STYLE, RED, SEV_STYLE, chip, outlineChip } from '../../core/blocks'
 import { daysPast, formatDateOnly } from '../../core/dates'
 import { drawIssuesSummaryBand } from './summaryBand'
-import { formatPerson, plainText, priorityBucket, type PriorityKey } from './model'
+import { formatPerson, plainText, priorityBucket, sameConditionKey, type PriorityKey } from './model'
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
 const PRIORITY_BAR: Record<PriorityKey, [number, number, number]> = {
@@ -58,8 +58,18 @@ function buildCard(i: any, shortMap: Record<string, string>, now: Date, sameOf: 
   if (closed) overdue = i?.closedDate ? `Closed ${formatDateOnly(i.closedDate)}` : null
   else if (days !== null && days > 0) overdue = `Overdue ${days} day${days === 1 ? '' : 's'}`
 
-  const fromChecklist = String(i?.origin || '').toLowerCase() === 'checklist' || /^checklist\b/i.test(String(i?.title || '')) || String(i?.type || '').toLowerCase() === 'checklist'
+  // Structured source fields (models/issue.js) say exactly where a checklist
+  // issue came from; the origin/title/type heuristics remain as the fallback
+  // for issues created before the fields existed.
+  const src = i?.source && String(i.source.sourceType || '').toLowerCase() === 'checklist' ? i.source : null
+  const fromChecklist = !!src || String(i?.origin || '').toLowerCase() === 'checklist' || /^checklist\b/i.test(String(i?.title || '')) || String(i?.type || '').toLowerCase() === 'checklist'
   const title = plainText(i?.title).replace(/^Checklist:\s*/i, '')
+  const checklistAbbrev = (t: string) => /pre.?functional/i.test(t) ? 'PFC' : (t.match(/\b[A-Za-z]/g) || []).slice(0, 3).join('').toUpperCase()
+  const checklistChip = src
+    ? ['From checklist:', src.equipmentTag, checklistAbbrev(String(src.checklistType || '')) || null,
+       src.checklistNumber != null ? `· Sec ${src.checklistNumber}` : null,
+       src.questionNumber != null ? `· Q${src.questionNumber}` : null].filter(Boolean).join(' ')
+    : fromChecklist ? `From checklist${i?.tag ? `: ${i.tag} PFC` : ''}` : ''
 
   const metaBits = [
     i?.tag ? String(i.tag) : '',
@@ -85,7 +95,7 @@ function buildCard(i: any, shortMap: Record<string, string>, now: Date, sameOf: 
     statusLabel: closed ? 'CLOSED' : String(i?.status || 'Open').toUpperCase(),
     overdue,
     lifeSafety: !!i?.lifeSafety,
-    checklistChip: fromChecklist ? `From checklist${i?.tag ? `: ${i.tag} PFC` : ''}` : '',
+    checklistChip,
     condition: plainText(i?.description),
     action: plainText(i?.recommendation),
     meta: metaBits.join(' · '),
@@ -144,11 +154,12 @@ export async function generateIssueSheetsReport(issuesLike: any[], project: any,
     return String(a?.dueDate || '9999').localeCompare(String(b?.dueDate || '9999'))
   })
 
-  // Same-condition groups by normalized description (first keeps the refs).
+  // Same-condition groups: checklist question identity when the structured
+  // source fields exist, else normalized description (first keeps the refs).
   const byDesc = new Map<string, any[]>()
   for (const i of full) {
-    const key = plainText(i?.description).toLowerCase().replace(/\s+/g, ' ')
-    if (key.length > 20) byDesc.set(key, [...(byDesc.get(key) || []), i])
+    const key = sameConditionKey(i)
+    if (key) byDesc.set(key, [...(byDesc.get(key) || []), i])
   }
   const sameOf = new Map<string, string[]>()
   for (const group of byDesc.values()) {

@@ -1351,16 +1351,13 @@ function openAttachIssue(si: number, qi: number | null = null) {
   const sec = local[si]
   const q = qi != null ? sec?.questions?.[qi] : null
   const asset = (resolvedAssetTag.value || resolvedAssetId.value || resolvedAssetLabelTitle.value) as any
-  const secLabel = `Sec ${sec?.number ?? (si+1)}${sec?.title ? ' – ' + sec.title : ''}`
-  const qLabel = q ? ` • Q${q.number ?? (qi!+1)}${q.question_text ? ' – ' + q.question_text : ''}` : ''
-  issueDraft.value.title = `Checklist: ${asset} • ${secLabel}${qLabel}`.slice(0, 120)
-  const lines: string[] = []
-  lines.push(`${resolvedAssetLabelTitle.value}: ${asset}`)
-  lines.push(`Section: ${secLabel}`)
-  if (q) lines.push(`Question: ${q.question_text || ''}`)
-  if (q && q.answer) lines.push(`Answer: ${String(q.answer).toUpperCase()}`)
-  if (q && q.notes) lines.push(`Notes: ${q.notes}`)
-  issueDraft.value.description = lines.join('\n')
+  // The checklist/section/question metadata travels as structured
+  // Issue.source fields (built in saveAttachIssue), so the title prefill is a
+  // clean starting point and the description stays free for the observed
+  // condition (question notes make a useful seed when present).
+  const qSubject = String(q?.question_text || sec?.title || '').replace(/\?+\s*$/, '').trim()
+  issueDraft.value.title = `${asset}${qSubject ? ': ' + qSubject : ''}`.slice(0, 120)
+  issueDraft.value.description = String(q?.notes || '').trim()
   issueDraft.value.type = 'checklist'
   issueDraft.value.status = 'open'
   issueDraft.value.priority = 'medium'
@@ -1381,11 +1378,28 @@ async function saveAttachIssue() {
     const si = ctx.si
     const qi = ctx.qi
     const sec = local[si]
+    const q = qi != null ? sec?.questions?.[qi] : null
     const ps = useProjectStore()
     const pid = normalizeId(props.projectId) || normalizeId(ps.currentProjectId) || ''
     if (!pid) return
     const draft = issueDraft.value || ({} as any)
     const payload: any = {
+      // Structured origin (models/issue.js `source`); checklists live on the
+      // equipment doc, so the link is equipment id + section/question numbers.
+      // `origin: 'checklist'` is NOT sent: the create route requires a
+      // recommendation for checklist-origin issues and this dialog has no
+      // recommendation field — source.sourceType carries the provenance.
+      source: {
+        sourceType: 'checklist',
+        equipmentId: resolvedAssetId.value || undefined,
+        equipmentTag: resolvedAssetTag.value || '',
+        checklistNumber: sec?.number ?? (si + 1),
+        checklistTitle: sec?.title || '',
+        checklistType: sec?.type || '',
+        questionNumber: q ? (q.number ?? (qi! + 1)) : undefined,
+        questionText: String(q?.question_text || '').replace(/\?+\s*$/, '').trim(),
+        answer: String(q?.answer || ''),
+      },
       projectId: pid,
       title: (draft.title || '').trim() || 'Checklist Issue',
       description: (draft.description || '').trim() || 'Created from checklist',
@@ -1396,6 +1410,7 @@ async function saveAttachIssue() {
       tag: resolvedAssetTag.value || undefined,
       location: normalizeText(draft.location) || resolvedAssetSpace.value || undefined,
       assetId: resolvedAssetId.value || undefined,
+      equipmentIds: resolvedAssetId.value ? [resolvedAssetId.value] : undefined,
       assignedTo: normalizeText(draft.assignedTo),
       foundBy: normalizeText(draft.foundBy),
       dateFound: normalizeText(draft.dateFound),

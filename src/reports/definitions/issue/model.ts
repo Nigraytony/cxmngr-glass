@@ -111,6 +111,22 @@ export function priorityBucket(sev: any): PriorityKey {
 }
 
 /**
+ * Key for "Same condition: #…" grouping in the batch reports: the checklist
+ * question identity when the structured Issue.source fields exist (the same
+ * section/question raised on different equipment), else the normalized
+ * description. Keys under ~20 chars are too generic to group on — callers
+ * skip them, so short/empty keys are returned as ''.
+ */
+export function sameConditionKey(i: any): string {
+  const s = i?.source
+  if (s && String(s.sourceType || '').toLowerCase() === 'checklist' && s.questionText) {
+    return `q:${s.checklistNumber ?? ''}/${s.questionNumber ?? ''}/${String(s.questionText).toLowerCase().replace(/\s+/g, ' ')}`
+  }
+  const key = plainText(i?.description).toLowerCase().replace(/\s+/g, ' ')
+  return key.length > 20 ? key : ''
+}
+
+/**
  * Shorten a company name: the project's companyShortNames map wins
  * (Project Settings), then a suffix-stripping heuristic.
  */

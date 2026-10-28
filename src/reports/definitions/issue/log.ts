@@ -12,7 +12,7 @@ import { deliverPdfBytes, reportFileName } from '../../core/deliver'
 import { CRITICAL_STYLE, RED, SEV_STYLE, chip } from '../../core/blocks'
 import { daysPast, formatDateOnly } from '../../core/dates'
 import { drawIssuesSummaryBand } from './summaryBand'
-import { formatPerson, plainText, priorityBucket, type PriorityKey } from './model'
+import { formatPerson, plainText, priorityBucket, sameConditionKey, type PriorityKey } from './model'
 
 const c = (t: readonly number[]) => [t[0], t[1], t[2]] as [number, number, number]
 const rank: Record<PriorityKey, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 }
@@ -68,11 +68,12 @@ export async function generateIssuesLogReport(issuesLike: any[], project: any, o
     return String(a?.dueDate || '9999').localeCompare(String(b?.dueDate || '9999'))
   })
 
-  // ---- same-condition notes (by normalized description) ------------------
+  // ---- same-condition notes (checklist question identity when the
+  // structured source fields exist, else normalized description) -----------
   const byDesc = new Map<string, any[]>()
   for (const i of issues) {
-    const key = plainText(i?.description).toLowerCase().replace(/\s+/g, ' ')
-    if (key.length > 20) byDesc.set(key, [...(byDesc.get(key) || []), i])
+    const key = sameConditionKey(i)
+    if (key) byDesc.set(key, [...(byDesc.get(key) || []), i])
   }
   const sameNote = new Map<string, string>()
   for (const group of byDesc.values()) {
